@@ -99,7 +99,8 @@ target/
 .#*
 
 # Notebook Checkpoints
-.ipynb_checkpoints/
+/.ipynb_checkpoints/
+/.ipynb_checkpoints
 /src/.ipynb_checkpoints/
 /notebooks/.ipynb_checkpoints/
 /src/rheedium/.ipynb_checkpoints/
