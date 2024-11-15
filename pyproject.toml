@@ -18,6 +18,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Environment :: GPU :: NVIDIA CUDA",
+    "Typing :: Typed",
 ]
 dependencies = [
     "numpy",
@@ -51,10 +52,6 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",
 ]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "gpu: marks tests that need GPU",
-]
 
 [tool.coverage.run]
 source = ["rheedium"]
@@ -80,6 +77,9 @@ include-package-data = true
 [tool.setuptools.packages.find]
 namespaces = true
 where = ["src"]
+
+[tool.setuptools.package-data]
+"rheedium" = ["py.typed"]
 
 [project.urls]
 Homepage = "https://code.ornl.gov/intersect-em/rheedium"
