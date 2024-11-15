@@ -109,4 +109,4 @@ target/
 /data/*/.ipynb_checkpoints/
 /ens/.ipynb_checkpoints/
 /.mypy_cache/
-/.pytest_cache/
+/.pytest_cache

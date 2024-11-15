@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 from jax import random
+from jaxtyping import Array, Float
 
 jax.config.update("jax_enable_x64", True)
 
@@ -17,10 +18,10 @@ if __name__ == "__main__":
 class test_wavelength_ang(chex.TestCase):
     @chex.all_variants
     @parameterized.parameters(
-        {"test_kV": 200, "expected_wavelength": 0.02508},
-        {"test_kV": 1000, "expected_wavelength": 0.008719185412913083},
+        {"test_kV": 200.0, "expected_wavelength": 0.02508},
+        {"test_kV": 1000.0, "expected_wavelength": 0.008719185412913083},
         {"test_kV": 0.001, "expected_wavelength": 12.2642524552},
-        {"test_kV": 300, "expected_wavelength": 0.0196874863882},
+        {"test_kV": 300.0, "expected_wavelength": 0.0196874863882},
     )
     def test_voltage_values(self, test_kV, expected_wavelength):
         var_wavelength_ang = self.variant(wavelength_ang)

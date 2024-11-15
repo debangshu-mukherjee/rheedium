@@ -32,6 +32,47 @@ dependencies = [
     "pytest >= 8.0.0",
     "beartype",
 ]
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "absl-py",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra -q --cov=rheedium"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    "src"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "gpu: marks tests that need GPU",
+]
+
+[tool.coverage.run]
+source = ["rheedium"]
+omit = [
+    "tests/*",
+    "**/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "pass",
+    "raise ImportError",
+]
 
 [tool.setuptools]
 include-package-data = true
@@ -42,7 +83,6 @@ where = ["src"]
 
 [project.urls]
 Homepage = "https://code.ornl.gov/intersect-em/rheedium"
-
 
 [build-system]
 requires = ["setuptools>=61.0"]
