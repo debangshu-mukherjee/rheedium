@@ -8,7 +8,7 @@ from jax import random
 jax.config.update("jax_enable_x64", True)
 
 # Import your functions here
-from rheedium.unitcell import wavelength_ang
+from rheedium.unitcell import reciprocal_unitcell, wavelength_ang
 
 if __name__ == "__main__":
     pytest.main([__file__])
@@ -60,3 +60,87 @@ class test_wavelength_ang(chex.TestCase):
         results = var_wavelength_ang(voltages)
         expected = jnp.array([0.03701436, 0.02507934, 0.01968749, 0.01643943])
         assert jnp.allclose(results, expected, atol=1e-5)
+
+
+class test_reciprocal_unitcell(chex.TestCase):
+    @chex.all_variants
+    @parameterized.parameters(
+        {
+            "test_cell": jnp.array([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]),
+            "expected_reciprocal": jnp.array(
+                [[1.25663706, 0.0, 0.0], [0.0, 1.25663706, 0.0], [0.0, 0.0, 1.25663706]]
+            ),  # 2π/5 on diagonal
+        },
+        {
+            "test_cell": jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]),
+            "expected_reciprocal": jnp.array(
+                [[2.0944271, 0.0, 0.0], [0.0, 1.5708203, 0.0], [0.0, 0.0, 1.2566371]]
+            ),  # 2π/[3,4,5]
+        },
+    )
+    def test_known_cells(self, test_cell, expected_reciprocal):
+        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
+        result = var_reciprocal_unitcell(test_cell)
+        assert jnp.allclose(
+            result, expected_reciprocal, atol=1e-6
+        ), f"Expected {expected_reciprocal}, but got {result}"
+
+    # Test for ill-conditioned matrix
+    @chex.all_variants
+    def test_ill_conditioned_matrix(self):
+        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
+        ill_conditioned = jnp.array(
+            [[1.0, 1.0, 1.0], [1.0, 1.0 + 1e-8, 1.0], [1.0, 1.0, 1.0 + 1e-8]]
+        )
+        result = var_reciprocal_unitcell(ill_conditioned)
+        assert jnp.all(
+            jnp.isnan(result)
+        ), "Expected NaN values for ill-conditioned matrix"
+
+    # Test crystallographic properties
+    @chex.all_variants
+    def test_crystallographic_properties(self):
+        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
+        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        reciprocal = var_reciprocal_unitcell(unit_cell)
+
+        # Test orthogonality relations (a* ⊥ b, etc.)
+        for i in range(3):
+            for j in range(3):
+                if i != j:
+                    dot_product = jnp.dot(unit_cell[i], reciprocal[j])
+                    assert (
+                        jnp.abs(dot_product) < 1e-10
+                    ), f"Non-zero dot product found: {dot_product}"
+                else:
+                    dot_product = jnp.dot(unit_cell[i], reciprocal[j])
+                    assert (
+                        jnp.abs(dot_product - 2 * jnp.pi) < 1e-10
+                    ), f"Incorrect self dot product: {dot_product}"
+
+    # Ensure function returns a Float Array with correct shape
+    @chex.all_variants
+    def test_returns_float_array_3x3(self):
+        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
+        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        result = var_reciprocal_unitcell(unit_cell)
+        assert isinstance(
+            result, jax.Array
+        ), "Expected the function to return a JAX Array"
+        assert result.shape == (3, 3), f"Expected shape (3, 3), got {result.shape}"
+
+    # Test volume conservation
+    @chex.all_variants
+    def test_volume_conservation(self):
+        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
+        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        reciprocal = var_reciprocal_unitcell(unit_cell)
+
+        direct_volume = jnp.abs(jnp.linalg.det(unit_cell))
+        reciprocal_volume = jnp.abs(jnp.linalg.det(reciprocal))
+        product = direct_volume * reciprocal_volume
+        expected = (2 * jnp.pi) ** 3
+
+        assert jnp.isclose(
+            product, expected, atol=1e-6
+        ), f"Volume conservation violated. Expected {expected}, got {product}"

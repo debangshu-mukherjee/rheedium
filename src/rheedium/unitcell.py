@@ -83,8 +83,27 @@ def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
     -------
     - `reciprocal_cell` (Float[Array, "3 3"]):
         The reciprocal cell.
+
+    Flow
+    ----
+    - Calculate the reciprocal cell
+    - Check if the matrix is well-conditioned
+    - If not, replace the values with NaN
     """
-    reciprocal_cell: Float[Array, "3 3"] = jnp.linalg.pinv(unitcell)
+    # Optional: Check that matrix is well-conditioned
+    condition_number = jnp.linalg.cond(unitcell)
+    is_well_conditioned = condition_number < 1e10  # threshold can be adjusted
+
+    # Calculate reciprocal cell
+    reciprocal_cell_uncond: Float[Array, "3 3"] = (
+        2 * jnp.pi * jnp.transpose(jnp.linalg.inv(unitcell))
+    )
+
+    reciprocal_cell: Float[Array, "3 3"] = jnp.where(
+        is_well_conditioned,
+        reciprocal_cell_uncond,
+        jnp.full_like(reciprocal_cell_uncond, jnp.nan),
+    )
     return reciprocal_cell
 
 
@@ -205,39 +224,34 @@ def get_unit_cell_matrix(
         3x3 transformation matrix
     """
     # Convert to radians if needed
+    angles_rad: Num[Array, "3"]
     if in_degrees:
         angles_rad = jnp.radians(unitcell_angles)
     else:
         angles_rad = unitcell_angles
 
-    # Unpack parameters
-    a, b, c = unitcell_abc
-    alpha, beta, gamma = angles_rad
-
     # Calculate trigonometric values
-    cos_alpha = jnp.cos(alpha)
-    cos_beta = jnp.cos(beta)
-    cos_gamma = jnp.cos(gamma)
-    sin_gamma = jnp.sin(gamma)
+    cos_angles: Float[Array, "3"] = jnp.cos(angles_rad)
+    sin_angles: Float[Array, "3"] = jnp.sin(angles_rad)
 
     # Calculate volume factor
-    v = jnp.sqrt(
-        1
-        - cos_alpha**2
-        - cos_beta**2
-        - cos_gamma**2
-        + 2 * cos_alpha * cos_beta * cos_gamma
+    volume_factor: Float[Array, ""] = jnp.sqrt(
+        1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
     )
 
     # Create the transformation matrix
-    matrix = jnp.zeros((3, 3))
+    matrix: Float[Array, "3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
 
     # Update matrix elements
-    matrix = matrix.at[0, 0].set(a)
-    matrix = matrix.at[0, 1].set(b * cos_gamma)
-    matrix = matrix.at[0, 2].set(c * cos_beta)
-    matrix = matrix.at[1, 1].set(b * sin_gamma)
-    matrix = matrix.at[1, 2].set(c * (cos_alpha - cos_beta * cos_gamma) / sin_gamma)
-    matrix = matrix.at[2, 2].set(c * v / sin_gamma)
+    matrix = matrix.at[0, 0].set(unitcell_abc[0])
+    matrix = matrix.at[0, 1].set(unitcell_abc[1] * cos_angles[2])
+    matrix = matrix.at[0, 2].set(unitcell_abc[2] * cos_angles[1])
+    matrix = matrix.at[1, 1].set(unitcell_abc[1] * sin_angles[2])
+    matrix = matrix.at[1, 2].set(
+        unitcell_abc[2]
+        * (cos_angles[0] - cos_angles[1] * cos_angles[2])
+        / sin_angles[2]
+    )
+    matrix = matrix.at[2, 2].set(unitcell_abc[2] * volume_factor / sin_angles[2])
 
     return matrix
