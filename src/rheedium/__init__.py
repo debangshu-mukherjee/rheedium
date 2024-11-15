@@ -1,13 +1,10 @@
 """
 =========================================================
-RHEED Simulations with JAX
+RHEED Simulations with JAX (:mod:`rheedium`)
 =========================================================
-
-.. currentmodule:: rheedium
 
 This package contains the modules for the simulation of 
 RHEED patterns using JAX.
 """
 
-from .simulator import *
-from .solver import *
+from . import solver, unitcell
