@@ -94,9 +94,9 @@ class test_reciprocal_unitcell(chex.TestCase):
             [[1.0, 1.0, 1.0], [1.0, 1.0 + 1e-8, 1.0], [1.0, 1.0, 1.0 + 1e-8]]
         )
         result = var_reciprocal_unitcell(ill_conditioned)
-        assert jnp.all(
-            jnp.isnan(result)
-        ), "Expected NaN values for ill-conditioned matrix"
+        assert jnp.allclose(
+            result, 0.0, atol=1e-6
+        ), "Expected zero values for ill-conditioned matrix"
 
     # Test crystallographic properties
     @chex.all_variants

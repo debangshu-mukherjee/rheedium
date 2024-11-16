@@ -20,7 +20,7 @@ num_type = int | float
 
 
 @jaxtyped(typechecker=typechecker)
-def wavelength_ang(voltage_kV: num_type | Float[Array, "*"]) -> Float[Array, "*"]:
+def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
     """
     Description
     -----------
@@ -35,13 +35,13 @@ def wavelength_ang(voltage_kV: num_type | Float[Array, "*"]) -> Float[Array, "*"
 
     Parameters
     ----------
-    - `voltage_kV` (num_type | Float[Array, "*"]):
+    - `voltage_kV` (num_type | Float[Array, ""]):
         The microscope accelerating voltage in kilo
         electronVolts
 
     Returns
     -------
-    - `in_angstroms (Float[Array, "*"]):
+    - `in_angstroms (Float[Array, ""]):
         The electron wavelength in angstroms
 
     Flow
@@ -49,21 +49,21 @@ def wavelength_ang(voltage_kV: num_type | Float[Array, "*"]) -> Float[Array, "*"
     - Calculate the electron wavelength in meters
     - Convert the wavelength to angstroms
     """
-    m: Float[Array, "*"] = jnp.float64(9.109383e-31)  # mass of an electron
-    e: Float[Array, "*"] = jnp.float64(1.602177e-19)  # charge of an electron
-    c: Float[Array, "*"] = jnp.float64(299792458.0)  # speed of light
-    h: Float[Array, "*"] = jnp.float64(6.62607e-34)  # Planck's constant
+    m: Float[Array, ""] = jnp.float64(9.109383e-31)  # mass of an electron
+    e: Float[Array, ""] = jnp.float64(1.602177e-19)  # charge of an electron
+    c: Float[Array, ""] = jnp.float64(299792458.0)  # speed of light
+    h: Float[Array, ""] = jnp.float64(6.62607e-34)  # Planck's constant
 
-    voltage: Float[Array, "*"] = jnp.multiply(
+    voltage: Float[Array, ""] = jnp.multiply(
         jnp.float64(voltage_kV), jnp.float64(1000)
     )
     eV = jnp.multiply(e, voltage)
-    numerator: Float[Array, "*"] = jnp.multiply(jnp.square(h), jnp.square(c))
-    denominator: Float[Array, "*"] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
-    wavelength_meters: Float[Array, "*"] = jnp.sqrt(
+    numerator: Float[Array, ""] = jnp.multiply(jnp.square(h), jnp.square(c))
+    denominator: Float[Array, ""] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
+    wavelength_meters: Float[Array, ""] = jnp.sqrt(
         numerator / denominator
     )  # in meters
-    in_angstroms: Float[Array, "*"] = 1e10 * wavelength_meters  # in angstroms
+    in_angstroms: Float[Array, ""] = 1e10 * wavelength_meters  # in angstroms
     return in_angstroms
 
 
@@ -102,7 +102,7 @@ def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
     reciprocal_cell: Float[Array, "3 3"] = jnp.where(
         is_well_conditioned,
         reciprocal_cell_uncond,
-        jnp.full_like(reciprocal_cell_uncond, jnp.nan),
+        jnp.full_like(reciprocal_cell_uncond, 0.0),
     )
     return reciprocal_cell
 
