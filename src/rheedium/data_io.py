@@ -15,8 +15,11 @@ import jax.numpy as jnp
 from beartype import beartype as typechecker
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Num, jaxtyped
+from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
 from pymatgen.io.cif import CifParser
+
+import rheedium
 
 jax.config.update("jax_enable_x64", True)
 num_type = int | float
@@ -96,9 +99,10 @@ def parse_cif_to_jax(
     ----------
     - `cif_path` (str | Path):
         Path to the CIF file
-    - `primitive` (bool | None):
+    - `primitive` (bool, optional):
         Whether to return the primitive unit cell.
         If False, the full cell is returned.
+        Default is False.
 
 
     Returns
@@ -157,9 +161,58 @@ def parse_cif_to_jax(
     frac_positions: Num[Array, "* 4"] = jnp.column_stack([frac_coords, atomic_numbers])
     cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
 
-    return CrystalStructure(
+    return rheedium.data_io.CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
+
+
+def create_phosphor_colormap(name: str | None = "phosphor") -> LinearSegmentedColormap:
+    """
+    Description
+    -----------
+    Create a custom colormap that simulates a phosphor screen appearance.
+    The colormap transitions from black through a bright phosphorescent green,
+    with a slight white bloom at maximum intensity.
+
+    Parameters
+    ----------
+    - `name` (str, optional):
+        Name for the colormap.
+        Default is 'phosphor'
+
+    Returns
+    -------
+    - `matplotlib.colors.LinearSegmentedColormap`
+        Custom phosphor screen colormap
+    """
+    # Define colors for different intensity levels
+    colors: list[tuple[float, tuple[float, float, float]]] = [
+        (0.0, (0.0, 0.0, 0.0)),  # Black at minimum
+        (0.4, (0.0, 0.05, 0.0)),  # Very dark green
+        (0.7, (0.15, 0.85, 0.15)),  # Bright phosphorescent green
+        (0.9, (0.45, 0.95, 0.45)),  # Lighter green
+        (1.0, (0.8, 1.0, 0.8)),  # Slight white bloom at maximum
+    ]
+
+    # Separate positions and RGB values
+    positions: list[float] = [x[0] for x in colors]
+    rgb_values: list[tuple[float, float, float]] = [x[1] for x in colors]
+
+    # Create segments for each color component
+    red: list[tuple[float, float, float]] = [
+        (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)
+    ]
+    green: list[tuple[float, float, float]] = [
+        (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values)
+    ]
+    blue: list[tuple[float, float, float]] = [
+        (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)
+    ]
+
+    # Create and return the colormap
+    cmap = LinearSegmentedColormap(name, {"red": red, "green": green, "blue": blue})
+
+    return cmap

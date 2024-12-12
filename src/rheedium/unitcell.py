@@ -15,6 +15,8 @@ from beartype import beartype as typechecker
 from jax import lax
 from jaxtyping import Array, Float, Num, jaxtyped
 
+import rheedium
+
 jax.config.update("jax_enable_x64", True)
 num_type = int | float
 
