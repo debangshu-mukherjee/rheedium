@@ -54,15 +54,11 @@ def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
     c: Float[Array, ""] = jnp.float64(299792458.0)  # speed of light
     h: Float[Array, ""] = jnp.float64(6.62607e-34)  # Planck's constant
 
-    voltage: Float[Array, ""] = jnp.multiply(
-        jnp.float64(voltage_kV), jnp.float64(1000)
-    )
+    voltage: Float[Array, ""] = jnp.multiply(jnp.float64(voltage_kV), jnp.float64(1000))
     eV = jnp.multiply(e, voltage)
     numerator: Float[Array, ""] = jnp.multiply(jnp.square(h), jnp.square(c))
     denominator: Float[Array, ""] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
-    wavelength_meters: Float[Array, ""] = jnp.sqrt(
-        numerator / denominator
-    )  # in meters
+    wavelength_meters: Float[Array, ""] = jnp.sqrt(numerator / denominator)  # in meters
     in_angstroms: Float[Array, ""] = 1e10 * wavelength_meters  # in angstroms
     return in_angstroms
 

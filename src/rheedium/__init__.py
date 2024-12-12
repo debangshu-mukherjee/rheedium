@@ -7,4 +7,4 @@ This package contains the modules for the simulation of
 RHEED patterns using JAX.
 """
 
-from . import solver, unitcell
+from . import data_io, solver, unitcell

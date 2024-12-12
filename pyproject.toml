@@ -32,6 +32,7 @@ dependencies = [
     "optax >= 0.1.8",
     "pytest >= 8.0.0",
     "beartype",
+    "pymatgen",
 ]
 [project.optional-dependencies]
 test = [
@@ -41,7 +42,6 @@ test = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra -q --cov=rheedium"
 testpaths = [
     "tests",
 ]
