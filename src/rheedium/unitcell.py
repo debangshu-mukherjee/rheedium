@@ -7,7 +7,7 @@ This package contains the modules for the calculations of
 unit cell operations and conversion to Ewald sphere.
 """
 
-from typing import Tuple
+from typing import Tuple, SupportsFloat
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +18,7 @@ from jaxtyping import Array, Float, Num, jaxtyped
 import rheedium
 
 jax.config.update("jax_enable_x64", True)
-num_type = int | float
+num_type = type[SupportsFloat]
 
 
 @jaxtyped(typechecker=typechecker)

@@ -8,7 +8,7 @@ unloading of datasets.
 """
 
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, SupportsFloat
 
 import jax
 import jax.numpy as jnp
@@ -22,7 +22,7 @@ from pymatgen.io.cif import CifParser
 import rheedium
 
 jax.config.update("jax_enable_x64", True)
-num_type = int | float
+num_type = type[SupportsFloat]
 
 
 @register_pytree_node_class
