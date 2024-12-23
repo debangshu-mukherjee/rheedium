@@ -26,13 +26,14 @@ dependencies = [
     "matplotlib",
     "matplotlib-scalebar >= 0.5.0",
     "tqdm >= 4.66.0",
-    "jax >= 0.4.17",
+    "jax[cuda12]>=0.4.17",
     "jaxtyping >= 0.2.21",
     "chex >= 0.1.85",
     "optax >= 0.1.8",
     "pytest >= 8.0.0",
     "beartype",
     "pymatgen",
+    "ruff>=0.8.4",
 ]
 [project.optional-dependencies]
 test = [
