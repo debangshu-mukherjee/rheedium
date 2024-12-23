@@ -7,9 +7,10 @@ license = {file = "LICENSE"}
 maintainers = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 keywords = [
     "RHEED",
-    "Ewald",
-    "JAX",
     "MBE",
+    "PLD",
+    "JAX",
+    "Ewald Sphere",
 ]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,7 +34,6 @@ dependencies = [
     "pytest >= 8.0.0",
     "beartype",
     "pymatgen",
-    "ruff>=0.8.4",
 ]
 [project.optional-dependencies]
 test = [
@@ -83,7 +83,7 @@ where = ["src"]
 "rheedium" = ["py.typed"]
 
 [project.urls]
-Homepage = "https://code.ornl.gov/intersect-em/rheedium"
+Homepage = "https://github.com/dxm447/rheedium/"
 
 [build-system]
 requires = ["setuptools>=61.0"]
