@@ -7,7 +7,7 @@ This package contains the modules for the calculations of
 unit cell operations and conversion to Ewald sphere.
 """
 
-from typing import Tuple, SupportsFloat
+from typing import SupportsFloat, Tuple
 
 import jax
 import jax.numpy as jnp
