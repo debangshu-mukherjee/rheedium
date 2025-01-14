@@ -8,11 +8,11 @@ unloading of datasets.
 """
 
 from pathlib import Path
-from beartype.typing import NamedTuple, SupportsFloat, TypeAlias
 
 import jax
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import NamedTuple, SupportsFloat, TypeAlias
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap

@@ -7,11 +7,10 @@ This package contains the modules for the calculations of
 unit cell operations and conversion to Ewald sphere.
 """
 
-from beartype.typing import SupportsFloat, Tuple
-
 import jax
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import SupportsFloat, Tuple
 from jax import lax
 from jaxtyping import Array, Float, Num, jaxtyped
 

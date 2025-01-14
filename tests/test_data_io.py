@@ -1,12 +1,12 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Tuple
 from unittest.mock import Mock, patch
 
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from beartype.typing import List, Optional, Tuple
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.pyplot import colormaps
 from pymatgen.core import Lattice, Structure
