@@ -8,11 +8,11 @@ unloading of datasets.
 """
 
 from pathlib import Path
-from typing import NamedTuple, SupportsFloat, TypeAlias
+from beartype.typing import NamedTuple, SupportsFloat, TypeAlias
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype as typechecker
+from beartype import beartype
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
@@ -86,7 +86,7 @@ class CrystalStructure(NamedTuple):
         return cls(*children)
 
 
-@jaxtyped(typechecker=typechecker)
+@jaxtyped(typechecker=beartype)
 def parse_cif_to_jax(
     cif_path: str | Path, primitive: bool | None = False
 ) -> CrystalStructure:

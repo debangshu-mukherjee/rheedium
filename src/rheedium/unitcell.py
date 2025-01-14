@@ -7,11 +7,11 @@ This package contains the modules for the calculations of
 unit cell operations and conversion to Ewald sphere.
 """
 
-from typing import SupportsFloat, Tuple
+from beartype.typing import SupportsFloat, Tuple
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype as typechecker
+from beartype import beartype
 from jax import lax
 from jaxtyping import Array, Float, Num, jaxtyped
 
@@ -21,7 +21,7 @@ jax.config.update("jax_enable_x64", True)
 num_type = type[SupportsFloat]
 
 
-@jaxtyped(typechecker=typechecker)
+@jaxtyped(typechecker=beartype)
 def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
     """
     Description
@@ -65,7 +65,7 @@ def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
     return in_angstroms
 
 
-@jaxtyped(typechecker=typechecker)
+@jaxtyped(typechecker=beartype)
 def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
     """
     Description
@@ -105,7 +105,7 @@ def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
     return reciprocal_cell
 
 
-@jaxtyped(typechecker=typechecker)
+@jaxtyped(typechecker=beartype)
 def reciprocal_uc_angles(
     unitcell_abc: Num[Array, "3"],
     unitcell_angles: Num[Array, "3"],
@@ -195,7 +195,7 @@ def reciprocal_uc_angles(
     return (reciprocal_abc, reciprocal_angles)
 
 
-@jaxtyped(typechecker=typechecker)
+@jaxtyped(typechecker=beartype)
 def get_unit_cell_matrix(
     unitcell_abc: Num[Array, "3"],
     unitcell_angles: Num[Array, "3"],
