@@ -1,67 +1,12 @@
-"""
-=========================================================
-
-Unit Cell Operations (:mod:`rheedium.unitcell`)
-
-=========================================================
-
-This package contains the modules for the calculations of
-unit cell operations and conversion to Ewald sphere.
-"""
-
 import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
-from rheedium import data_io as io
+from rheedium import uc, io
 
 jax.config.update("jax_enable_x64", True)
-
-
-@jaxtyped(typechecker=beartype)
-def wavelength_ang(voltage_kV: Float[Array, ""]) -> Float[Array, ""]:
-    """
-    Description
-    -----------
-    Calculates the relativistic electron wavelength
-    in angstroms based on the microscope accelerating
-    voltage.
-
-    Because this is JAX - you assume that the input
-    is clean, and you don't need to check for negative
-    or NaN values. Your preprocessing steps should check
-    for them - not the function itself.
-
-    Parameters
-    ----------
-    - `voltage_kV` (Float[Array, ""]):
-        The microscope accelerating voltage in kilo
-        electronVolts
-
-    Returns
-    -------
-    - `in_angstroms (Float[Array, ""]):
-        The electron wavelength in angstroms
-
-    Flow
-    ----
-    - Calculate the electron wavelength in meters
-    - Convert the wavelength to angstroms
-    """
-    m: Float[Array, ""] = jnp.float64(9.109383e-31)  # mass of an electron
-    e: Float[Array, ""] = jnp.float64(1.602177e-19)  # charge of an electron
-    c: Float[Array, ""] = jnp.float64(299792458.0)  # speed of light
-    h: Float[Array, ""] = jnp.float64(6.62607e-34)  # Planck's constant
-
-    voltage: Float[Array, ""] = jnp.multiply(jnp.float64(voltage_kV), jnp.float64(1000))
-    eV = jnp.multiply(e, voltage)
-    numerator: Float[Array, ""] = jnp.multiply(jnp.square(h), jnp.square(c))
-    denominator: Float[Array, ""] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
-    wavelength_meters: Float[Array, ""] = jnp.sqrt(numerator / denominator)  # in meters
-    in_angstroms: Float[Array, ""] = 1e10 * wavelength_meters  # in angstroms
-    return in_angstroms
 
 
 @jaxtyped(typechecker=beartype)
@@ -334,43 +279,6 @@ def build_cell_vectors(
 
     cell_vectors: Float[Array, "3 3"] = jnp.stack([a_vec, b_vec, c_vec], axis=0)
     return cell_vectors
-
-
-def compute_lengths_angles_from_vectors(
-    cell_vectors: Float[Array, "3 3"]
-) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
-    """
-    Given a (3, 3) array of lattice vectors (a_vec, b_vec, c_vec),
-    compute (a, b, c) in Å and (alpha, beta, gamma) in degrees.
-
-    alpha = angle(b, c)
-    beta  = angle(a, c)
-    gamma = angle(a, b)
-    """
-    a_vec = cell_vectors[0]
-    b_vec = cell_vectors[1]
-    c_vec = cell_vectors[2]
-
-    def angle_in_degrees(u, v):
-        dot_uv = jnp.dot(u, v)
-        cos_val = dot_uv / (jnp.linalg.norm(u) * jnp.linalg.norm(v) + 1e-32)
-        # clip to [-1, 1] to avoid domain errors
-        cos_val_clamped = jnp.clip(cos_val, -1.0, 1.0)
-        return jnp.arccos(cos_val_clamped) * 180.0 / jnp.pi
-
-    # Lengths
-    a_len = jnp.linalg.norm(a_vec)
-    b_len = jnp.linalg.norm(b_vec)
-    c_len = jnp.linalg.norm(c_vec)
-
-    # Angles in degrees
-    alpha = angle_in_degrees(b_vec, c_vec)
-    beta = angle_in_degrees(a_vec, c_vec)
-    gamma = angle_in_degrees(a_vec, b_vec)
-
-    lengths = jnp.array([a_len, b_len, c_len])
-    angles = jnp.array([alpha, beta, gamma])
-    return (lengths, angles)
 
 
 @jaxtyped(typechecker=beartype)

@@ -9,7 +9,7 @@ from jaxtyping import Array, Float
 jax.config.update("jax_enable_x64", True)
 
 # Import your functions here
-from rheedium.unitcell import reciprocal_unitcell, wavelength_ang
+from rheedium.uc.unitcell import reciprocal_unitcell, wavelength_ang
 
 if __name__ == "__main__":
     pytest.main([__file__])
