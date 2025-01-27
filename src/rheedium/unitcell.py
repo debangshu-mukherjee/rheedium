@@ -1,6 +1,8 @@
 """
 =========================================================
+
 Unit Cell Operations (:mod:`rheedium.unitcell`)
+
 =========================================================
 
 This package contains the modules for the calculations of
@@ -10,18 +12,16 @@ unit cell operations and conversion to Ewald sphere.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import SupportsFloat, Tuple
-from jax import lax
-from jaxtyping import Array, Float, Num, jaxtyped
+from beartype.typing import Optional, Tuple
+from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
-import rheedium
+from rheedium import data_io as io
 
 jax.config.update("jax_enable_x64", True)
-num_type = type[SupportsFloat]
 
 
 @jaxtyped(typechecker=beartype)
-def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
+def wavelength_ang(voltage_kV: Float[Array, ""]) -> Float[Array, ""]:
     """
     Description
     -----------
@@ -36,7 +36,7 @@ def wavelength_ang(voltage_kV: num_type | Float[Array, ""]) -> Float[Array, ""]:
 
     Parameters
     ----------
-    - `voltage_kV` (num_type | Float[Array, ""]):
+    - `voltage_kV` (Float[Array, ""]):
         The microscope accelerating voltage in kilo
         electronVolts
 
@@ -108,8 +108,8 @@ def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
 def reciprocal_uc_angles(
     unitcell_abc: Num[Array, "3"],
     unitcell_angles: Num[Array, "3"],
-    in_degrees: bool | None = True,
-    out_degrees: bool | None = False,
+    in_degrees: Optional[bool] = True,
+    out_degrees: Optional[bool] = False,
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
     Description
@@ -198,7 +198,7 @@ def reciprocal_uc_angles(
 def get_unit_cell_matrix(
     unitcell_abc: Num[Array, "3"],
     unitcell_angles: Num[Array, "3"],
-    in_degrees: bool | None = True,
+    in_degrees: Optional[bool] = True,
 ) -> Float[Array, "3 3"]:
     """
     Description
@@ -252,3 +252,243 @@ def get_unit_cell_matrix(
     matrix = matrix.at[2, 2].set(unitcell_abc[2] * volume_factor / sin_angles[2])
 
     return matrix
+
+
+@jaxtyped(typechecker=beartype)
+def build_cell_vectors(
+    a: Float[Array, ""],
+    b: Float[Array, ""],
+    c: Float[Array, ""],
+    alpha_deg: Float[Array, ""],
+    beta_deg: Float[Array, ""],
+    gamma_deg: Float[Array, ""],
+) -> Float[Array, "3 3"]:
+    """
+    Description
+    -----------
+    Convert (a, b, c, alpha, beta, gamma) into a 3x3 set of lattice vectors
+    in Cartesian coordinates, using the standard crystallographic convention:
+
+    - alpha = angle(b, c)
+    - beta  = angle(a, c)
+    - gamma = angle(a, b)
+
+    Angles are in degrees.
+
+    Parameters
+    ----------
+    - `a` (Float[Array, ""]):
+        Length of the a-vector in Å
+    - `b` (Float[Array, ""]):
+        Length of the b-vector in Å
+    - `c` (Float[Array, ""]):
+        Length of the c-vector in Å
+    - `alpha_deg` (Float[Array, ""]):
+        Angle between b and c in degrees
+    - `beta_deg` (Float[Array, ""]):
+        Angle between a and c in degrees
+    - `gamma_deg` (Float[Array, ""]):
+        Angle between a and b in degrees
+
+    Returns
+    -------
+    - `cell_vectors` (Float[Array, "3 3"]):
+        The 3x3 array of lattice vectors in Cartesian coordinates.
+        * cell_vectors[0] = a-vector
+        * cell_vectors[1] = b-vector
+        * cell_vectors[2] = c-vector
+
+    Flow
+    ----
+    - Convert angles to radians
+    - Calculate the a-vector along x
+    - Calculate the b-vector in the x-y plane
+    - Calculate the c-vector in full 3D
+    - Stack the vectors to form the cell_vectors array
+    """
+    alpha: Float[Array, ""] = (alpha_deg * jnp.pi) / 180.0
+    beta: Float[Array, ""] = (beta_deg * jnp.pi) / 180.0
+    gamma: Float[Array, ""] = (gamma_deg * jnp.pi) / 180.0
+
+    # Vector a along x
+    a_vec: Float[Array, "3"] = jnp.array([a, 0.0, 0.0])
+
+    # Vector b in the x-y plane
+    b_x: Float[Array, ""] = b * jnp.cos(gamma)
+    b_y: Float[Array, ""] = b * jnp.sin(gamma)
+    b_vec: Float[Array, "3"] = jnp.array([b_x, b_y, 0.0])
+
+    # Vector c in full 3D
+    c_x: Float[Array, ""] = c * jnp.cos(beta)
+    # The expression for c_y uses the fact that cos(alpha) = (b·c)/(|b||c|)
+    # combined with the known c_x and gamma.  This is a standard formula:
+    c_y: Float[Array, ""] = c * (
+        (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)
+    )
+    # Finally, c_z by Pythagoras to ensure the correct |c|
+    c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
+    # clip to avoid negative sqrt from floating error
+    c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
+
+    c_vec: Float[Array, "3"] = jnp.array([c_x, c_y, c_z])
+
+    cell_vectors: Float[Array, "3 3"] = jnp.stack([a_vec, b_vec, c_vec], axis=0)
+    return cell_vectors
+
+
+def compute_lengths_angles_from_vectors(
+    cell_vectors: Float[Array, "3 3"]
+) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
+    """
+    Given a (3, 3) array of lattice vectors (a_vec, b_vec, c_vec),
+    compute (a, b, c) in Å and (alpha, beta, gamma) in degrees.
+
+    alpha = angle(b, c)
+    beta  = angle(a, c)
+    gamma = angle(a, b)
+    """
+    a_vec = cell_vectors[0]
+    b_vec = cell_vectors[1]
+    c_vec = cell_vectors[2]
+
+    def angle_in_degrees(u, v):
+        dot_uv = jnp.dot(u, v)
+        cos_val = dot_uv / (jnp.linalg.norm(u) * jnp.linalg.norm(v) + 1e-32)
+        # clip to [-1, 1] to avoid domain errors
+        cos_val_clamped = jnp.clip(cos_val, -1.0, 1.0)
+        return jnp.arccos(cos_val_clamped) * 180.0 / jnp.pi
+
+    # Lengths
+    a_len = jnp.linalg.norm(a_vec)
+    b_len = jnp.linalg.norm(b_vec)
+    c_len = jnp.linalg.norm(c_vec)
+
+    # Angles in degrees
+    alpha = angle_in_degrees(b_vec, c_vec)
+    beta = angle_in_degrees(a_vec, c_vec)
+    gamma = angle_in_degrees(a_vec, b_vec)
+
+    lengths = jnp.array([a_len, b_len, c_len])
+    angles = jnp.array([alpha, beta, gamma])
+    return (lengths, angles)
+
+
+@jaxtyped(typechecker=beartype)
+def atom_scraper(
+    crystal: io.CrystalStructure,
+    zone_axis: Float[Array, "3"],
+    penetration_depth: Optional[Float[Array, ""]] = jnp.asarray(0.0),
+    eps: Optional[Float[Array, ""]] = jnp.asarray(1e-8),
+    max_atoms: Optional[Int[Array, ""]] = jnp.asarray(0),
+) -> io.CrystalStructure:
+    """
+    Description
+    ------------
+    Filters atoms in `crystal` so only those within `penetration_depth`
+    from the top surface (along `zone_axis`) are returned.
+    If `penetration_depth == 0.0`, only the topmost layer is returned.
+    Adjusts the unit cell dimension along zone_axis to match the
+    penetration depth.
+
+    Parameters
+    ----------
+    - `crystal` (CrystalStructure):
+        The input crystal structure
+    - `zone_axis` (Float[Array, "3"]):
+        The reference axis (surface normal) in Cartesian space.
+    - `penetration_depth` (Optional[Float[Array, ""]]):
+        Thickness (in Å) from the top layer to retain.
+    - `eps` (Optional[Float[Array, ""]]):
+        Tolerance for identifying top layer atoms.
+    - `max_atoms` (Optional[Int[Array, ""]]):
+        Maximum number of atoms to handle. Used for static shapes.
+        If None, uses the length of input positions.
+
+    Returns
+    -------
+    - `filtered_crystal` (CrystalStructure):
+        A new CrystalStructure containing only the filtered atoms and
+        adjusted cell.
+    """
+    # Handle max_atoms for static shapes
+    if max_atoms == 0:
+        max_atoms = crystal.cart_positions.shape[0]
+
+    # Normalize zone_axis
+    zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
+    zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
+
+    # Extract xyz coordinates
+    cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
+
+    # Compute dot products
+    dot_vals: Float[Array, "n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
+    d_max: Float[Array, ""] = jnp.max(dot_vals)
+    d_min: Float[Array, ""] = jnp.min(dot_vals)
+    dist_from_top: Float[Array, "n"] = d_max - dot_vals
+
+    is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
+        penetration_depth, jnp.asarray(0.0), atol=1e-8
+    )
+
+    # Create mask
+    mask: Bool[Array, "n"] = jnp.where(
+        is_top_layer_mode,
+        dist_from_top <= eps,
+        dist_from_top <= penetration_depth,
+    )
+
+    # Convert boolean mask to indices
+    indices: Int[Array, "k"] = jnp.where(mask)[0]
+
+    # Pad indices to fixed length
+    padded_indices: Int[Array, "max_n"] = jnp.pad(
+        indices, (0, max_atoms - indices.shape[0]), mode="constant", constant_values=-1
+    )
+
+    # Use gather with masked updates for fixed-shape output
+    def gather_positions(positions: Float[Array, "n 4"]) -> Float[Array, "max_n 4"]:
+        gathered: Float[Array, "max_n 4"] = jnp.zeros(
+            (max_atoms,) + positions.shape[1:]
+        )
+        valid_mask: Bool[Array, "max_n"] = padded_indices >= 0
+        return jax.lax.select(valid_mask[:, None], positions[padded_indices], gathered)
+
+    filtered_frac: Float[Array, "max_n 4"] = gather_positions(crystal.frac_positions)
+    filtered_cart: Float[Array, "max_n 4"] = gather_positions(crystal.cart_positions)
+
+    # Calculate the new cell dimension along zone_axis
+    original_height: Float[Array, ""] = d_max - d_min
+    new_height: Float[Array, ""] = jnp.where(
+        is_top_layer_mode,
+        eps,  # Minimal thickness for top layer
+        jnp.minimum(penetration_depth, original_height),
+    )
+
+    # Project cell vectors onto zone_axis and perpendicular components
+    cell_vectors: Float[Array, "3 3"] = jnp.array(
+        [
+            [crystal.cell_lengths[0], 0, 0],  # a
+            [0, crystal.cell_lengths[1], 0],  # b
+            [0, 0, crystal.cell_lengths[2]],  # c
+        ]
+    )
+
+    # For each cell vector, calculate its component along zone_axis
+    projections: Float[Array, "3"] = jnp.einsum("ij,j->i", cell_vectors, zone_axis_hat)
+
+    # Scale the cell vectors along zone_axis direction
+    scale_factors: Float[Array, "3"] = jnp.where(
+        jnp.abs(projections) > eps, new_height / (jnp.abs(projections) + 1e-32), 1.0
+    )
+
+    # Apply scaling to cell lengths
+    new_cell_lengths: Float[Array, "3"] = crystal.cell_lengths * scale_factors
+
+    filtered_crystal = io.CrystalStructure(
+        frac_positions=filtered_frac,
+        cart_positions=filtered_cart,
+        cell_lengths=new_cell_lengths,
+        cell_angles=crystal.cell_angles,
+    )
+    return filtered_crystal

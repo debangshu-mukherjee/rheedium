@@ -1,6 +1,8 @@
 """
 =========================================================
+
 Data I/O (:mod:`rheedium.data_io`)
+
 =========================================================
 
 This package contains the modules for the loading and
@@ -12,9 +14,9 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple, SupportsFloat, TypeAlias
+from beartype.typing import NamedTuple, Optional
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Num, jaxtyped
+from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
 from pymatgen.io.cif import CifParser
@@ -22,7 +24,6 @@ from pymatgen.io.cif import CifParser
 import rheedium
 
 jax.config.update("jax_enable_x64", True)
-num_type: TypeAlias = type[SupportsFloat]
 
 
 @register_pytree_node_class
@@ -35,7 +36,7 @@ class CrystalStructure(NamedTuple):
 
     Attributes
     ----------
-    - `frac_positions` (Num[Array, "* 4"]):
+    - `frac_positions` (Float[Array, "* 4"]):
         Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
         Each row contains [x, y, z, atomic_number] where:
         - x, y, z: Fractional coordinates in the unit cell (range [0,1])
@@ -63,7 +64,7 @@ class CrystalStructure(NamedTuple):
     data is stored in JAX arrays.
     """
 
-    frac_positions: Num[Array, "* 4"]
+    frac_positions: Float[Array, "* 4"]
     cart_positions: Num[Array, "* 4"]
     cell_lengths: Num[Array, "3"]
     cell_angles: Num[Array, "3"]
@@ -88,7 +89,7 @@ class CrystalStructure(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def parse_cif_to_jax(
-    cif_path: str | Path, primitive: bool | None = False
+    cif_path: str | Path, primitive: Optional[bool] = False
 ) -> CrystalStructure:
     """
     Description
@@ -108,7 +109,7 @@ def parse_cif_to_jax(
     Returns
     -------
     CrystalStructure with:
-        - `frac_positions` (Num[Array, "* 4"]):
+        - `frac_positions` (Float[Array, "* 4"]):
             containing [x, y, z, atomic_number] in fractional coordinates
         - `cart_positions` (Num[Array, "* 4"]):
             containing [x, y, z, atomic_number] in Cartesian coordinates (Å)
@@ -158,10 +159,12 @@ def parse_cif_to_jax(
     )
 
     # Stack coordinates and atomic numbers
-    frac_positions: Num[Array, "* 4"] = jnp.column_stack([frac_coords, atomic_numbers])
+    frac_positions: Float[Array, "* 4"] = jnp.column_stack(
+        [frac_coords, atomic_numbers]
+    )
     cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
 
-    return rheedium.data_io.CrystalStructure(
+    return CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
