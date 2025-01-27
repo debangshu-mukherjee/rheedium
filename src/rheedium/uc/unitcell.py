@@ -164,6 +164,13 @@ def get_unit_cell_matrix(
     -------
     - `matrix` (Float[Array, "3 3"]):
         3x3 transformation matrix
+        
+    Flow
+    ----
+    - Convert angles to radians if needed
+    - Calculate trigonometric values
+    - Calculate volume factor
+    - Create the transformation matrix
     """
     # Convert to radians if needed
     angles_rad: Num[Array, "3"]

@@ -10,7 +10,6 @@ from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
 from pymatgen.io.cif import CifParser
 
-import rheedium
 
 jax.config.update("jax_enable_x64", True)
 

@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.pyplot import colormaps
 from pymatgen.core import Lattice, Structure
 
-from rheedium.data_io import create_phosphor_colormap, parse_cif_to_jax
+from rheedium.io import create_phosphor_colormap, parse_cif_to_jax
 
 
 class PhosphorColormap:
