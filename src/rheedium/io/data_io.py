@@ -1,14 +1,3 @@
-"""
-=========================================================
-
-Data I/O (:mod:`rheedium.data_io`)
-
-=========================================================
-
-This package contains the modules for the loading and
-unloading of datasets.
-"""
-
 from pathlib import Path
 
 import jax

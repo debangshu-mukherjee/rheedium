@@ -4,7 +4,7 @@ from beartype import beartype
 from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
-from rheedium import uc, io
+from rheedium import io, uc
 
 jax.config.update("jax_enable_x64", True)
 

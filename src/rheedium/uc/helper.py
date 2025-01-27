@@ -4,9 +4,10 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Float, jaxtyped
 
-from rheedium import uc, io
+from rheedium import io, uc
 
 jax.config.update("jax_enable_x64", True)
+
 
 @jaxtyped(typechecker=beartype)
 def wavelength_ang(voltage_kV: Float[Array, ""]) -> Float[Array, ""]:
@@ -50,6 +51,7 @@ def wavelength_ang(voltage_kV: Float[Array, ""]) -> Float[Array, ""]:
     wavelength_meters: Float[Array, ""] = jnp.sqrt(numerator / denominator)  # in meters
     in_angstroms: Float[Array, ""] = 1e10 * wavelength_meters  # in angstroms
     return in_angstroms
+
 
 @jaxtyped(typechecker=beartype)
 def angle_in_degrees(u: Float[Array, "c"], v: Float[Array, "c"]) -> Float[Array, ""]:

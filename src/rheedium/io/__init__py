@@ -1,12 +1,12 @@
 """
 =========================================================
 
-Unit Cell Operations (:mod:`rheedium.uc`)
+Data I/O (:mod:`rheedium.io`)
 
 =========================================================
 
-This package contains the modules for the calculations of
-unit cell operations and conversion to Ewald sphere.
+This package contains the modules for the loading and
+unloading of datasets.
 """
 
 
