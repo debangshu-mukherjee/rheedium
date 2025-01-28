@@ -95,6 +95,7 @@ dev-dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/dxm447/rheedium/"
+Documentation = "https://rheedium.readthedocs.io/"
 
 [build-system]
 requires = ["setuptools>=61.0"]

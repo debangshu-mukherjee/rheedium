@@ -289,6 +289,94 @@ def build_cell_vectors(
 
 
 @jaxtyped(typechecker=beartype)
+def generate_reciprocal_points(
+    crystal: io.CrystalStructure,
+    hmax: Optional[Int[Array, ""]] = jnp.asarray(3),
+    kmax: Optional[Int[Array, ""]] = jnp.asarray(3),
+    lmax: Optional[Int[Array, ""]] = jnp.asarray(1),
+    in_degrees: Optional[bool] = True,
+) -> Float[Array, "M 3"]:
+    """
+    Description
+    -----------
+    Generate a set of reciprocal-lattice vectors
+    G_{hkl} = h a* + k b* + l c*
+    for integer h, k, l in [-hmax..hmax], [-kmax..kmax], [-lmax..lmax].
+
+    Utilizes `reciprocal_uc_angles` to find the reciprocal cell parameters
+    from the direct (a,b,c,alpha,beta,gamma). Then constructs the
+    (3x3) reciprocal-cell vectors via `build_cell_vectors`
+    and forms the linear combinations.
+
+    Parameters
+    ----------
+    - `crystal` (io.CrystalStructure)
+        A NamedTuple containing cell_lengths and cell_angles (in degrees by default).
+    - `hmax` (Optional[Int[Array, ""]]):
+        Bounds on h. Default is 3.
+    - `kmax` (Optional[Int[Array, ""]]):
+        Bounds on k. Default is 3.
+    - `lmax` (Optional[Int[Array, ""]]):
+        Bounds on l. Default is 1.
+    - `in_degrees` (Optional[bool]):
+        If True, interpret the crystal.cell_angles as degrees.
+
+    Returns
+    -------
+    - `Gs` (Float[Array, "M 3"]):
+        The set of reciprocal-lattice vectors in inverse angstroms.
+    """
+    # Extract direct cell parameters
+    abc: Num[Array, "3"] = crystal.cell_lengths
+    angles: Num[Array, "3"] = crystal.cell_angles
+
+    # Convert to reciprocal cell
+    # returns (a*, b*, c*), (alpha*, beta*, gamma*)
+    rec_abc: Float[Array, "3"]
+    rec_angles: Float[Array, "3"]
+    rec_abc, rec_angles = uc.reciprocal_uc_angles(
+        unitcell_abc=abc,
+        unitcell_angles=angles,
+        in_degrees=in_degrees,
+        out_degrees=False,  # keep them in radians for build_cell_vectors
+    )
+
+    # Build reciprocal-cell vectors a*, b*, c*
+    # Now treat rec_abc, rec_angles as if they define a "crystal" in reciprocal space
+    rec_vectors: Float[Array, "3 3"] = uc.build_cell_vectors(
+        rec_abc, rec_angles, in_degrees=False
+    )
+    a_star: Float[Array, "3"] = rec_vectors[0]  # shape (3,)
+    b_star: Float[Array, "3"] = rec_vectors[1]  # shape (3,)
+    c_star: Float[Array, "3"] = rec_vectors[2]  # shape (3,)
+
+    # Create a mesh of (h, k, l)
+    hs: Num[Array, "n_h"] = jnp.arange(-hmax, hmax + 1)
+    ks: Num[Array, "n_k"] = jnp.arange(-kmax, kmax + 1)
+    ls: Num[Array, "n_l"] = jnp.arange(-lmax, lmax + 1)
+
+    H: Num[Array, "n_h n_k n_l"]
+    K: Num[Array, "n_h n_k n_l"]
+    L: Num[Array, "n_h n_k n_l"]
+
+    H, K, L = jnp.meshgrid(
+        hs, ks, ls, indexing="ij"
+    )  # each is shape (range_h, range_k, range_l)
+    hkl: Num[Array, "M 3"] = jnp.stack([H.ravel(), K.ravel(), L.ravel()], axis=-1)
+
+    # Form G_{hkl} = h a* + k b* + l c*
+    def single_G(hkl_1d):
+        h_ = hkl_1d[0]
+        k_ = hkl_1d[1]
+        l_ = hkl_1d[2]
+        return (h_ * a_star) + (k_ * b_star) + (l_ * c_star)
+
+    Gs: Float[Array, "M 3"] = jax.vmap(single_G)(hkl)
+
+    return Gs
+
+
+@jaxtyped(typechecker=beartype)
 def atom_scraper(
     crystal: io.CrystalStructure,
     zone_axis: Float[Array, "3"],
