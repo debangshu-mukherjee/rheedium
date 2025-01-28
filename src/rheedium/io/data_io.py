@@ -159,7 +159,9 @@ def parse_cif_to_jax(
     )
 
 
-def create_phosphor_colormap(name: str | None = "phosphor") -> LinearSegmentedColormap:
+def create_phosphor_colormap(
+    name: Optional[str] = "phosphor",
+) -> LinearSegmentedColormap:
     """
     Description
     -----------

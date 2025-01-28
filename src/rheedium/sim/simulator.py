@@ -1,9 +1,12 @@
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
 from beartype import beartype
 from beartype.typing import NamedTuple, Optional, Tuple
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from scipy.interpolate import griddata
 
 from rheedium import io, sim, uc
 
@@ -25,15 +28,21 @@ class RHEEDPattern(NamedTuple):
         Outgoing wavevectors (in 1/Å) for those reflections
     - `detector_points` (Float[Array, "M 2"]):
         (Y, Z) coordinates on the detector plane, in Ångstroms.
+    - `intensities` (Float[Array, "M"]):
+        Intensities for each reflection.
     """
 
     G_indices: Int[Array, "*"]  # shape (M,) or similar
     k_out: Float[Array, "M 3"]  # shape (M, 3)
     detector_points: Float[Array, "M 2"]  # shape (M, 2)
+    intensities: Float[Array, "M"]  # shape (M,)
 
     def tree_flatten(self):
         # children: all the arrays in a tuple
-        return ((self.G_indices, self.k_out, self.detector_points), None)
+        return (
+            (self.G_indices, self.k_out, self.detector_points, self.intensities),
+            None,
+        )
 
     @classmethod
     def tree_unflatten(cls, aux_data, children):
@@ -152,6 +161,45 @@ def find_kinematic_reflections(
     return (allowed_indices, k_out)
 
 
+def compute_kinematic_intensities(
+    positions: Float[Array, "N 3"], G_allowed: Float[Array, "M 3"]
+) -> Float[Array, "M"]:
+    """
+    Description
+    -----------
+    Given the atomic Cartesian positions (N,3) and the
+    reciprocal vectors G_allowed (M,3),
+    compute the kinematic intensity for each reflection:
+        I(G) = | sum_j exp(i G·r_j) |^2
+    ignoring atomic form factors, etc.
+
+    Parameters
+    ----------
+    - `positions` (Float[Array, "N 3]):
+        Atomic positions in Cartesian coordinates.
+    - `G_allowed` (Float[Array, "M 3]):
+        Reciprocal lattice vectors that satisfy reflection condition.
+
+    Returns
+    -------
+    - `intensities` (Float[Array, "M"]):
+        Intensities for each reflection.
+    """
+
+    # We'll define a helper for one G, then vmap over G_allowed
+    def intensity_for_G(G_):
+        # (N,) phases = G_.dot(r_j) for all j
+        phases = jnp.einsum("j,ij->i", G_, positions)  # shape (N,)
+        # Sum up cos(phases) and sin(phases)
+        re = jnp.sum(jnp.cos(phases))
+        im = jnp.sum(jnp.sin(phases))
+        return re * re + im * im  # magnitude^2
+
+    # Vectorize over M
+    intensities = jax.vmap(intensity_for_G)(G_allowed)
+    return intensities
+
+
 def simulate_rheed_pattern(
     crystal: io.CrystalStructure,
     voltage_kV: Optional[Float[Array, ""]] = jnp.asarray(10.0),
@@ -240,10 +288,121 @@ def simulate_rheed_pattern(
         k_out, jnp.asarray(detector_distance)
     )
 
-    pattern: sim.RHEEDPattern = sim.RHEEDPattern(
+    # Compute kinematic intensities
+    # We need the actual G_allowed => Gs[allowed_indices]
+    G_allowed = Gs[allowed_indices]  # shape (M, 3)
+    # Retrieve all atomic positions from the crystal
+    # cart_positions: shape (N, 4) => columns [x, y, z, atomic_num]
+    # We only need columns [x, y, z], i.e. crystal.cart_positions[:, :3]
+    atom_positions = crystal.cart_positions[:, :3]  # shape (N, 3)
+
+    intensities: Float[Array, "M"] = sim.compute_kinematic_intensities(
+        positions=atom_positions, G_allowed=G_allowed
+    )
+
+    pattern = sim.RHEEDPattern(
         G_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
+        intensities=intensities,
+    )
+    return pattern
+
+
+def plot_rheed(
+    rheed_pattern: sim.RHEEDPattern,
+    grid_size: Optional[int] = 200,
+    interp_type: Optional[str] = "cubic",
+    cmap_name: Optional[str] = "phosphor",
+):
+    """
+    Description
+    -----------
+    Interpolate the RHEED spots onto a uniform grid using various methods,
+    then display using the phosphor colormap.
+
+    The parameter `interp_type` controls which interpolation method is used:
+      - "cubic"    => calls griddata(..., method="cubic")
+      - "linear"   => calls griddata(..., method="linear")
+      - "nearest"  => calls griddata(..., method="nearest")
+
+    Parameters
+    ----------
+    - `rheed_pattern` (sim.RHEEDPattern)
+        Must have `detector_points` of shape (M, 2) and
+        `intensities` of shape (M,).
+    - `grid_size` (int)
+        Controls how many grid points in Y and Z directions.
+        Default is 200.
+    - `interp_type` (str)
+        Which interpolation approach to use. Default is "cubic".
+        The parameter `interp_type` controls which interpolation method is used:
+        - "cubic"    => calls griddata(..., method="cubic")
+        - "linear"   => calls griddata(..., method="linear")
+        - "nearest"  => calls griddata(..., method="nearest")
+    - `cmap_name` (str):
+        Name for your custom phosphor colormap.
+        Default is 'phosphor'.
+    """
+
+    # Extract (Y, Z) from the pattern
+    coords = rheed_pattern.detector_points
+    Y = coords[:, 0]
+    Z = coords[:, 1]
+    intensities = rheed_pattern.intensities
+
+    # Convert to NumPy (griddata is not JAX-compatible)
+    Y_np = np.asarray(Y)
+    Z_np = np.asarray(Z)
+    I_np = np.asarray(intensities)
+
+    # Determine the griddata "method" based on interp_type
+    # By default, if interp_type == "griddata", we choose "cubic"
+    if interp_type in ("cubic", "linear", "nearest"):
+        method = interp_type
+    else:
+        raise ValueError(
+            "interp_type must be one of: 'cubic', 'linear', or 'nearest'. "
+            f"Got: {interp_type}"
+        )
+
+    # Build a regular grid covering the bounding box
+    y_min, y_max = float(Y_np.min()), float(Y_np.max())
+    z_min, z_max = float(Z_np.min()), float(Z_np.max())
+
+    y_lin = np.linspace(y_min, y_max, grid_size)
+    z_lin = np.linspace(z_min, z_max, grid_size)
+
+    # Make a meshgrid for the interpolation
+    Yg, Zg = np.meshgrid(y_lin, z_lin, indexing="xy")
+    grid_points = np.column_stack([Yg.ravel(), Zg.ravel()])  # shape (grid_size^2, 2)
+
+    # Interpolate intensities using scipy.griddata
+    interpolated = griddata(
+        points=(Y_np, Z_np), values=I_np, xi=grid_points, method=method, fill_value=0.0
+    )
+    intensity_grid = interpolated.reshape((grid_size, grid_size))
+
+    # Create phosphor colormap
+    phosphor_cmap = io.create_phosphor_colormap(cmap_name)
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(6, 6))
+    cax = ax.imshow(
+        intensity_grid.T,
+        origin="lower",
+        cmap=phosphor_cmap,
+        extent=[y_min, y_max, z_min, z_max],
+        aspect="equal",
+        interpolation="bilinear",
     )
 
-    return pattern
+    cbar = fig.colorbar(cax, ax=ax)
+    cbar.set_label("Interpolated Intensity (arb. units)")
+
+    ax.set_title(f"RHEED Pattern ({method} interpolation)")
+    ax.set_xlabel("Y (Å)")
+    ax.set_ylabel("Z (Å)")
+
+    plt.tight_layout()
+    plt.show()
