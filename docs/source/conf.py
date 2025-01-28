@@ -62,3 +62,46 @@ html_css_files = [
 ]
 
 html_theme = "sphinx_rtd_theme"
+
+# Add these configurations to exclude imported items and type hints
+autodoc_default_options = {
+    'exclude-members': 'Float, Array, Int, Num, beartype'
+}
+
+# Add nitpicky mode to catch any broken references
+nitpicky = True
+
+# Add type aliases to handle jaxtyping types cleanly
+napoleon_type_aliases = {
+    # Add common type hints you want to simplify
+    'Float[Array, ""]': 'array',
+    'Float[Array, "3"]': 'array',
+    'Float[Array, "3 3"]': 'array',
+    'Int[Array, ""]': 'array',
+    'Num[Array, "*"]': 'array',
+}
+
+# Add any modules to ignore when warning about missing references
+nitpick_ignore = [
+    ('py:class', 'Float'),
+    ('py:class', 'Array'),
+    ('py:class', 'Int'),
+    ('py:class', 'Num'),
+    ('py:class', 'Bool'),
+    ('py:class', 'jaxtyping.Float'),
+    ('py:class', 'jaxtyping.Array'),
+    ('py:class', 'jaxtyping.Int'),
+    ('py:class', 'jaxtyping.Num'),
+    ('py:class', 'jaxtyping.Bool'),
+    ('py:class', 'beartype.typing.NamedTuple'),
+]
+
+# Define what to skip during documentation
+def skip_member(app, what, name, obj, skip, options):
+    # Skip all imported jaxtyping and beartype items
+    if name in ['Float', 'Array', 'Int', 'Num', 'Bool', 'beartype']:
+        return True
+    return skip
+
+def setup(app):
+    app.connect('autodoc-skip-member', skip_member)

@@ -1,17 +1,37 @@
 API Reference
 ============
 
-.. automodule:: rheedium.io
+IO Module
+---------
+.. automodule:: rheedium.io.data_io
    :members:
    :undoc-members:
    :show-inheritance:
+   :imported-members:
 
-.. automodule:: rheedium.uc
+Simulation Module
+---------------
+.. automodule:: rheedium.sim.simulator
    :members:
    :undoc-members:
    :show-inheritance:
+   :imported-members:
 
-.. automodule:: rheedium.sim
+Unit Cell Module
+--------------
+
+Helper Functions
+~~~~~~~~~~~~~~
+.. automodule:: rheedium.uc.helper
    :members:
    :undoc-members:
    :show-inheritance:
+   :imported-members:
+
+Unit Cell Classes
+~~~~~~~~~~~~~~
+.. automodule:: rheedium.uc.unitcell
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :imported-members:
