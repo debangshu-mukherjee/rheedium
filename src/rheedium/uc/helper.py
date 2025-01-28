@@ -89,6 +89,7 @@ def angle_in_degrees(u: Float[Array, "c"], v: Float[Array, "c"]) -> Float[Array,
     return cos_val_degrees
 
 
+@jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
     cell_vectors: Float[Array, "3 3"]
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:

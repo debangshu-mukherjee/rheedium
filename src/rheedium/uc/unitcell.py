@@ -164,7 +164,7 @@ def get_unit_cell_matrix(
     -------
     - `matrix` (Float[Array, "3 3"]):
         3x3 transformation matrix
-        
+
     Flow
     ----
     - Convert angles to radians if needed
