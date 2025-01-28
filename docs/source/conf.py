@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx_rtd_theme',
+    'nbsphinx',
 ]
 
 templates_path = ['_templates']
@@ -43,6 +44,13 @@ napoleon_custom_sections = [
     'Flow',
     'Description'
 ]
+
+# Add nbsphinx configuration
+nbsphinx_execute = 'never'  # Don't execute notebooks during build
+nbsphinx_allow_errors = True  # Continue building even if there are errors
+
+# Specify the path to the tutorials directory relative to conf.py
+nbsphinx_notebooks_dir = '../../tutorials'
 
 # Type hints settings
 autodoc_typehints = 'description'
