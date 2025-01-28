@@ -324,7 +324,37 @@ def atom_scraper(
     - `filtered_crystal` (CrystalStructure):
         A new CrystalStructure containing only the filtered atoms and
         adjusted cell.
+
+    Flow
+    ----
+    - Calculate theoriginal cell vector (3 by 3) matrix
+    - Normalize the zone_axis
+    - Get the cartesian coordinates of the atoms and multiply that with
+        the normalized zone_axis
+    - Calculate the maximum and minimum values of the dot product
+    - Calculate the distance from the top, by subtracting the minimum from the
+        maximum.
+    - Create a mask to filter the atoms within the penetration depth
+    - Convert the boolean mask to indices
+    - Pad the indices to a fixed length, because JAX requires fixed shapes
+    - Create a gather function to return a fixed-shape array
+    - Gather the fractional and cartesian positions
+    - Calculate the original height of the cell, and how much to trim in the new cell.
+    - Scale the cell vectors along the zone_axis
+    - The scaling is done by calculating the projection of each vector onto the zone_axis
+    - Recompute the new cell lengths and angles
+    - Build the final crystal structure
     """
+    # Rebuild the original cell vectors from the old cell_lengths, cell_angles
+    orig_cell_vectors: Float[Array, "3 3"] = uc.build_cell_vectors(
+        crystal.cell_lengths[0],
+        crystal.cell_lengths[1],
+        crystal.cell_lengths[2],
+        crystal.cell_angles[0],
+        crystal.cell_angles[1],
+        crystal.cell_angles[2],
+    )
+
     # Handle max_atoms for static shapes
     if max_atoms == 0:
         max_atoms = crystal.cart_positions.shape[0]
@@ -333,20 +363,18 @@ def atom_scraper(
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
 
-    # Extract xyz coordinates
+    # Find which atoms are "within" the penetration depth
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
-
-    # Compute dot products
     dot_vals: Float[Array, "n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
+
     d_max: Float[Array, ""] = jnp.max(dot_vals)
     d_min: Float[Array, ""] = jnp.min(dot_vals)
     dist_from_top: Float[Array, "n"] = d_max - dot_vals
 
+    # Create mask: topmost layer if pen_depth=0, else top region
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
         penetration_depth, jnp.asarray(0.0), atol=1e-8
     )
-
-    # Create mask
     mask: Bool[Array, "n"] = jnp.where(
         is_top_layer_mode,
         dist_from_top <= eps,
@@ -361,49 +389,91 @@ def atom_scraper(
         indices, (0, max_atoms - indices.shape[0]), mode="constant", constant_values=-1
     )
 
-    # Use gather with masked updates for fixed-shape output
+    # Gather function that returns a fixed-shape array
     def gather_positions(positions: Float[Array, "n 4"]) -> Float[Array, "max_n 4"]:
-        gathered: Float[Array, "max_n 4"] = jnp.zeros(
-            (max_atoms,) + positions.shape[1:]
-        )
+        gathered: Float[Array, "max_n 4"] = jnp.zeros((max_atoms, 4))
         valid_mask: Bool[Array, "max_n"] = padded_indices >= 0
         return jax.lax.select(valid_mask[:, None], positions[padded_indices], gathered)
 
     filtered_frac: Float[Array, "max_n 4"] = gather_positions(crystal.frac_positions)
     filtered_cart: Float[Array, "max_n 4"] = gather_positions(crystal.cart_positions)
 
-    # Calculate the new cell dimension along zone_axis
+    # Compute how far we want to "trim" the cell along zone_axis
     original_height: Float[Array, ""] = d_max - d_min
     new_height: Float[Array, ""] = jnp.where(
         is_top_layer_mode,
-        eps,  # Minimal thickness for top layer
+        eps,  # minimal thickness for the top layer
         jnp.minimum(penetration_depth, original_height),
     )
 
-    # Project cell vectors onto zone_axis and perpendicular components
-    cell_vectors: Float[Array, "3 3"] = jnp.array(
-        [
-            [crystal.cell_lengths[0], 0, 0],  # a
-            [0, crystal.cell_lengths[1], 0],  # b
-            [0, 0, crystal.cell_lengths[2]],  # c
-        ]
+    # Scale the portion of the cell vectors parallel to zone_axis
+    # We measure how much each vector projects onto zone_axis_hat
+    # and scale that portion so that the total "height" is new_height.
+    a_vec: Float[Array, "3"] = orig_cell_vectors[0]
+    b_vec: Float[Array, "3"] = orig_cell_vectors[1]
+    c_vec: Float[Array, "3"] = orig_cell_vectors[2]
+
+    def scale_vector(
+        vec: Float[Array, "3"],
+        zone_axis_hat: Float[Array, "3"],
+        old_height: Float[Array, ""],
+        new_height: Float[Array, ""],
+    ):
+        proj_mag = jnp.dot(vec, zone_axis_hat)  # length of projection
+        # The scaling factor applies only to the parallel component:
+        #    parallel_new = parallel_old * (new_height/old_height)
+        # The perpendicular component remains unchanged.
+        # In other words:
+        #   vec = parallel + perp
+        #   parallel' = scale_factor * parallel
+        #   perp' = perp
+        if old_height < 1e-32:
+            return vec  # avoid dividing by zero if there's no real dimension
+        scale_factor = new_height / old_height
+        parallel_comp = proj_mag * zone_axis_hat
+        perp_comp = vec - parallel_comp
+        # sign of proj_mag matters if vector is "behind" zone_axis
+        # so we reintroduce sign via (proj_mag / |proj_mag|)
+        sign = jnp.sign(proj_mag)
+        scaled_parallel = scale_factor * (jnp.abs(proj_mag) * zone_axis_hat) * sign
+        return scaled_parallel + perp_comp
+
+    # We apply the same "height" definition to each vector’s projection
+    # along zone_axis.  This is a simplification if your zone_axis is
+    # not aligned with a single axis or you want partial shaping.
+    scaled_a = jax.lax.cond(
+        jnp.abs(jnp.dot(a_vec, zone_axis_hat)) > 1e-8,
+        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
+        lambda v: v,
+        a_vec,
+    )
+    scaled_b = jax.lax.cond(
+        jnp.abs(jnp.dot(b_vec, zone_axis_hat)) > 1e-8,
+        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
+        lambda v: v,
+        b_vec,
+    )
+    scaled_c = jax.lax.cond(
+        jnp.abs(jnp.dot(c_vec, zone_axis_hat)) > 1e-8,
+        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
+        lambda v: v,
+        c_vec,
     )
 
-    # For each cell vector, calculate its component along zone_axis
-    projections: Float[Array, "3"] = jnp.einsum("ij,j->i", cell_vectors, zone_axis_hat)
-
-    # Scale the cell vectors along zone_axis direction
-    scale_factors: Float[Array, "3"] = jnp.where(
-        jnp.abs(projections) > eps, new_height / (jnp.abs(projections) + 1e-32), 1.0
+    new_cell_vectors: Float[Array, "3 3"] = jnp.stack(
+        [scaled_a, scaled_b, scaled_c], axis=0
     )
 
-    # Apply scaling to cell lengths
-    new_cell_lengths: Float[Array, "3"] = crystal.cell_lengths * scale_factors
+    # Recompute the new cell lengths and angles
+    new_lengths: Float[Array, "3"]
+    new_angles: Float[Array, "3"]
+    new_lengths, new_angles = uc.compute_lengths_angles(new_cell_vectors)
 
+    # Build the final crystal structure
     filtered_crystal = io.CrystalStructure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,
-        cell_lengths=new_cell_lengths,
-        cell_angles=crystal.cell_angles,
+        cell_lengths=new_lengths,
+        cell_angles=new_angles,
     )
     return filtered_crystal
