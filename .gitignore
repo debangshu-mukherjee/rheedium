@@ -5,8 +5,12 @@ notebooks/__pycache__/
 /src/rheedium/__pycache__/
 /src/rheedium/io/__pycache__/
 /src/rheedium/uc/__pycache__/
+/src/rheedium/sim/__pycache__/
 /data/__pycache__/
 /tests/__pycache__/
+/tests/uc/__pycache__/
+/tests/sim/__pycache__/
+/tests/io/__pycache__/
 /envs/__pycache__/
 *.py[cod]
 
