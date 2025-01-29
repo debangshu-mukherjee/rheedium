@@ -3,7 +3,7 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple, Optional
+from beartype.typing import NamedTuple, Optional, Union
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
@@ -57,7 +57,6 @@ class CrystalStructure(NamedTuple):
     cell_angles: Num[Array, "3"]
 
     def tree_flatten(self):
-        # Return a tuple of arrays (the children) and None (the auxiliary data)
         return (
             (
                 self.frac_positions,
@@ -70,13 +69,12 @@ class CrystalStructure(NamedTuple):
 
     @classmethod
     def tree_unflatten(cls, aux_data, children):
-        # Reconstruct the NamedTuple from flattened data
         return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
 def parse_cif_to_jax(
-    cif_path: str | Path, primitive: Optional[bool] = False
+    cif_path: Union[str, Path], primitive: Optional[bool] = False
 ) -> CrystalStructure:
     """
     Description
@@ -92,7 +90,6 @@ def parse_cif_to_jax(
         If False, the full cell is returned.
         Default is False.
 
-
     Returns
     -------
     CrystalStructure with:
@@ -105,52 +102,32 @@ def parse_cif_to_jax(
         - `cell_angles` (Num[Array, "3"])
             containing (alpha, beta, gamma) in degree
     """
-    # Check if the file exists and has the correct extension
     path = Path(cif_path)
     if not path.exists():
         raise FileNotFoundError(f"CIF file not found: {path}")
     if path.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {path}")
-
-    # Parse the CIF file using pymatgen
     parser = CifParser(cif_path)
-    structure = parser.parse_structures(primitive=primitive)[
-        0
-    ]  # Get the first structure
-
-    # Get cell parameters and convert to JAX arrays
-    cell_lengths: Num[Array, "3"] = jnp.array(structure.lattice.abc)  # (a, b, c)
-    cell_angles: Num[Array, "3"] = jnp.array(
-        structure.lattice.angles
-    )  # (alpha, beta, gamma)
-
-    # Check if cell parameters are valid
+    structure = parser.parse_structures(primitive=primitive)[0]
+    cell_lengths: Num[Array, "3"] = jnp.array(structure.lattice.abc)
+    cell_angles: Num[Array, "3"] = jnp.array(structure.lattice.angles)
     if jnp.any(cell_lengths <= 0):
         raise ValueError("Cell lengths must be positive")
     if jnp.any((cell_angles <= 0) | (cell_angles >= 180)):
         raise ValueError("Cell angles must be between 0 and 180 degrees")
-
-    # Get fractional coordinates using list comprehension
     frac_coords: Num[Array, "* 3"] = jnp.array(
         [[site.frac_coords[i] for i in range(3)] for site in structure.sites]
     )
-
-    # Get Cartesian coordinates using list comprehension
     cart_coords: Num[Array, "* 3"] = jnp.array(
         [[site.coords[i] for i in range(3)] for site in structure.sites]
     )
-
-    # Get atomic numbers using list comprehension
     atomic_numbers: Num[Array, "*"] = jnp.array(
         [Element(site.specie.symbol).Z for site in structure.sites]
     )
-
-    # Stack coordinates and atomic numbers
     frac_positions: Float[Array, "* 4"] = jnp.column_stack(
         [frac_coords, atomic_numbers]
     )
     cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
-
     return CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
@@ -180,20 +157,15 @@ def create_phosphor_colormap(
     - `matplotlib.colors.LinearSegmentedColormap`
         Custom phosphor screen colormap
     """
-    # Define colors for different intensity levels
     colors: list[tuple[float, tuple[float, float, float]]] = [
-        (0.0, (0.0, 0.0, 0.0)),  # Black at minimum
-        (0.4, (0.0, 0.05, 0.0)),  # Very dark green
-        (0.7, (0.15, 0.85, 0.15)),  # Bright phosphorescent green
-        (0.9, (0.45, 0.95, 0.45)),  # Lighter green
-        (1.0, (0.8, 1.0, 0.8)),  # Slight white bloom at maximum
+        (0.0, (0.0, 0.0, 0.0)),
+        (0.4, (0.0, 0.05, 0.0)),
+        (0.7, (0.15, 0.85, 0.15)),
+        (0.9, (0.45, 0.95, 0.45)),
+        (1.0, (0.8, 1.0, 0.8)),
     ]
-
-    # Separate positions and RGB values
     positions: list[float] = [x[0] for x in colors]
     rgb_values: list[tuple[float, float, float]] = [x[1] for x in colors]
-
-    # Create segments for each color component
     red: list[tuple[float, float, float]] = [
         (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)
     ]
@@ -203,8 +175,5 @@ def create_phosphor_colormap(
     blue: list[tuple[float, float, float]] = [
         (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)
     ]
-
-    # Create and return the colormap
     cmap = LinearSegmentedColormap(name, {"red": red, "green": green, "blue": blue})
-
     return cmap

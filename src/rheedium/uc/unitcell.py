@@ -32,15 +32,11 @@ def reciprocal_unitcell(unitcell: Num[Array, "3 3"]) -> Float[Array, "3 3"]:
     - Check if the matrix is well-conditioned
     - If not, replace the values with NaN
     """
-    # Optional: Check that matrix is well-conditioned
     condition_number = jnp.linalg.cond(unitcell)
-    is_well_conditioned = condition_number < 1e10  # threshold can be adjusted
-
-    # Calculate reciprocal cell
+    is_well_conditioned = condition_number < 1e10
     reciprocal_cell_uncond: Float[Array, "3 3"] = (
         2 * jnp.pi * jnp.transpose(jnp.linalg.inv(unitcell))
     )
-
     reciprocal_cell: Float[Array, "3 3"] = jnp.where(
         is_well_conditioned,
         reciprocal_cell_uncond,
@@ -96,23 +92,14 @@ def reciprocal_uc_angles(
     - Calculate the reciprocal angles
     - Convert the angles to degrees if they are in radians
     """
-    # Convert to radians if the angles are in degrees
     if in_degrees:
         unitcell_angles = jnp.radians(unitcell_angles)
-
-    # Calculate cos and sin values of the angles
     cos_angles: Float[Array, "3"] = jnp.cos(unitcell_angles)
     sin_angles: Float[Array, "3"] = jnp.sin(unitcell_angles)
-
-    # Calculate the volume factor of the unit cell
     volume_factor: Float[Array, ""] = jnp.sqrt(
         1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
     )
-
-    # Calculate unit cell volume
     volume: Float[Array, ""] = jnp.prod(unitcell_abc) * volume_factor
-
-    # Calculate reciprocal lattice parameters
     reciprocal_abc: Float[Array, "3"] = (
         jnp.array(
             [
@@ -123,8 +110,6 @@ def reciprocal_uc_angles(
         )
         / volume
     )
-
-    # Calculate reciprocal angles
     reciprocal_angles = jnp.arccos(
         (cos_angles[:, None] * cos_angles[None, :] - cos_angles[None, :])
         / (sin_angles[:, None] * sin_angles[None, :])
@@ -132,10 +117,8 @@ def reciprocal_uc_angles(
     reciprocal_angles: Float[Array, "3"] = jnp.array(
         [reciprocal_angles[1, 2], reciprocal_angles[2, 0], reciprocal_angles[0, 1]]
     )
-
     if out_degrees:
         reciprocal_angles = jnp.degrees(reciprocal_angles)
-
     return (reciprocal_abc, reciprocal_angles)
 
 
@@ -172,26 +155,17 @@ def get_unit_cell_matrix(
     - Calculate volume factor
     - Create the transformation matrix
     """
-    # Convert to radians if needed
     angles_rad: Num[Array, "3"]
     if in_degrees:
         angles_rad = jnp.radians(unitcell_angles)
     else:
         angles_rad = unitcell_angles
-
-    # Calculate trigonometric values
     cos_angles: Float[Array, "3"] = jnp.cos(angles_rad)
     sin_angles: Float[Array, "3"] = jnp.sin(angles_rad)
-
-    # Calculate volume factor
     volume_factor: Float[Array, ""] = jnp.sqrt(
         1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
     )
-
-    # Create the transformation matrix
     matrix: Float[Array, "3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
-
-    # Update matrix elements
     matrix = matrix.at[0, 0].set(unitcell_abc[0])
     matrix = matrix.at[0, 1].set(unitcell_abc[1] * cos_angles[2])
     matrix = matrix.at[0, 2].set(unitcell_abc[2] * cos_angles[1])
@@ -202,7 +176,6 @@ def get_unit_cell_matrix(
         / sin_angles[2]
     )
     matrix = matrix.at[2, 2].set(unitcell_abc[2] * volume_factor / sin_angles[2])
-
     return matrix
 
 
@@ -261,29 +234,17 @@ def build_cell_vectors(
     alpha: Float[Array, ""] = (alpha_deg * jnp.pi) / 180.0
     beta: Float[Array, ""] = (beta_deg * jnp.pi) / 180.0
     gamma: Float[Array, ""] = (gamma_deg * jnp.pi) / 180.0
-
-    # Vector a along x
     a_vec: Float[Array, "3"] = jnp.array([a, 0.0, 0.0])
-
-    # Vector b in the x-y plane
     b_x: Float[Array, ""] = b * jnp.cos(gamma)
     b_y: Float[Array, ""] = b * jnp.sin(gamma)
     b_vec: Float[Array, "3"] = jnp.array([b_x, b_y, 0.0])
-
-    # Vector c in full 3D
     c_x: Float[Array, ""] = c * jnp.cos(beta)
-    # The expression for c_y uses the fact that cos(alpha) = (b·c)/(|b||c|)
-    # combined with the known c_x and gamma.  This is a standard formula:
     c_y: Float[Array, ""] = c * (
         (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)
     )
-    # Finally, c_z by Pythagoras to ensure the correct |c|
     c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
-    # clip to avoid negative sqrt from floating error
     c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
-
     c_vec: Float[Array, "3"] = jnp.array([c_x, c_y, c_z])
-
     cell_vectors: Float[Array, "3 3"] = jnp.stack([a_vec, b_vec, c_vec], axis=0)
     return cell_vectors
 
@@ -326,45 +287,31 @@ def generate_reciprocal_points(
     - `Gs` (Float[Array, "M 3"]):
         The set of reciprocal-lattice vectors in inverse angstroms.
     """
-    # Extract direct cell parameters
     abc: Num[Array, "3"] = crystal.cell_lengths
     angles: Num[Array, "3"] = crystal.cell_angles
-
-    # Convert to reciprocal cell
-    # returns (a*, b*, c*), (alpha*, beta*, gamma*)
     rec_abc: Float[Array, "3"]
     rec_angles: Float[Array, "3"]
     rec_abc, rec_angles = uc.reciprocal_uc_angles(
         unitcell_abc=abc,
         unitcell_angles=angles,
         in_degrees=in_degrees,
-        out_degrees=False,  # keep them in radians for build_cell_vectors
+        out_degrees=False,
     )
-
-    # Build reciprocal-cell vectors a*, b*, c*
-    # Now treat rec_abc, rec_angles as if they define a "crystal" in reciprocal space
     rec_vectors: Float[Array, "3 3"] = uc.build_cell_vectors(
         rec_abc, rec_angles, in_degrees=False
     )
-    a_star: Float[Array, "3"] = rec_vectors[0]  # shape (3,)
-    b_star: Float[Array, "3"] = rec_vectors[1]  # shape (3,)
-    c_star: Float[Array, "3"] = rec_vectors[2]  # shape (3,)
-
-    # Create a mesh of (h, k, l)
+    a_star: Float[Array, "3"] = rec_vectors[0]
+    b_star: Float[Array, "3"] = rec_vectors[1]
+    c_star: Float[Array, "3"] = rec_vectors[2]
     hs: Num[Array, "n_h"] = jnp.arange(-hmax, hmax + 1)
     ks: Num[Array, "n_k"] = jnp.arange(-kmax, kmax + 1)
     ls: Num[Array, "n_l"] = jnp.arange(-lmax, lmax + 1)
-
     H: Num[Array, "n_h n_k n_l"]
     K: Num[Array, "n_h n_k n_l"]
     L: Num[Array, "n_h n_k n_l"]
-
-    H, K, L = jnp.meshgrid(
-        hs, ks, ls, indexing="ij"
-    )  # each is shape (range_h, range_k, range_l)
+    H, K, L = jnp.meshgrid(hs, ks, ls, indexing="ij")
     hkl: Num[Array, "M 3"] = jnp.stack([H.ravel(), K.ravel(), L.ravel()], axis=-1)
 
-    # Form G_{hkl} = h a* + k b* + l c*
     def single_G(hkl_1d):
         h_ = hkl_1d[0]
         k_ = hkl_1d[1]
@@ -372,7 +319,6 @@ def generate_reciprocal_points(
         return (h_ * a_star) + (k_ * b_star) + (l_ * c_star)
 
     Gs: Float[Array, "M 3"] = jax.vmap(single_G)(hkl)
-
     return Gs
 
 
@@ -433,7 +379,6 @@ def atom_scraper(
     - Recompute the new cell lengths and angles
     - Build the final crystal structure
     """
-    # Rebuild the original cell vectors from the old cell_lengths, cell_angles
     orig_cell_vectors: Float[Array, "3 3"] = uc.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -442,24 +387,15 @@ def atom_scraper(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-
-    # Handle max_atoms for static shapes
     if max_atoms == 0:
         max_atoms = crystal.cart_positions.shape[0]
-
-    # Normalize zone_axis
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
-
-    # Find which atoms are "within" the penetration depth
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
     dot_vals: Float[Array, "n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
-
     d_max: Float[Array, ""] = jnp.max(dot_vals)
     d_min: Float[Array, ""] = jnp.min(dot_vals)
     dist_from_top: Float[Array, "n"] = d_max - dot_vals
-
-    # Create mask: topmost layer if pen_depth=0, else top region
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
         penetration_depth, jnp.asarray(0.0), atol=1e-8
     )
@@ -468,16 +404,11 @@ def atom_scraper(
         dist_from_top <= eps,
         dist_from_top <= penetration_depth,
     )
-
-    # Convert boolean mask to indices
     indices: Int[Array, "k"] = jnp.where(mask)[0]
-
-    # Pad indices to fixed length
     padded_indices: Int[Array, "max_n"] = jnp.pad(
         indices, (0, max_atoms - indices.shape[0]), mode="constant", constant_values=-1
     )
 
-    # Gather function that returns a fixed-shape array
     def gather_positions(positions: Float[Array, "n 4"]) -> Float[Array, "max_n 4"]:
         gathered: Float[Array, "max_n 4"] = jnp.zeros((max_atoms, 4))
         valid_mask: Bool[Array, "max_n"] = padded_indices >= 0
@@ -485,18 +416,12 @@ def atom_scraper(
 
     filtered_frac: Float[Array, "max_n 4"] = gather_positions(crystal.frac_positions)
     filtered_cart: Float[Array, "max_n 4"] = gather_positions(crystal.cart_positions)
-
-    # Compute how far we want to "trim" the cell along zone_axis
     original_height: Float[Array, ""] = d_max - d_min
     new_height: Float[Array, ""] = jnp.where(
         is_top_layer_mode,
-        eps,  # minimal thickness for the top layer
+        eps,
         jnp.minimum(penetration_depth, original_height),
     )
-
-    # Scale the portion of the cell vectors parallel to zone_axis
-    # We measure how much each vector projects onto zone_axis_hat
-    # and scale that portion so that the total "height" is new_height.
     a_vec: Float[Array, "3"] = orig_cell_vectors[0]
     b_vec: Float[Array, "3"] = orig_cell_vectors[1]
     c_vec: Float[Array, "3"] = orig_cell_vectors[2]
@@ -507,28 +432,16 @@ def atom_scraper(
         old_height: Float[Array, ""],
         new_height: Float[Array, ""],
     ):
-        proj_mag = jnp.dot(vec, zone_axis_hat)  # length of projection
-        # The scaling factor applies only to the parallel component:
-        #    parallel_new = parallel_old * (new_height/old_height)
-        # The perpendicular component remains unchanged.
-        # In other words:
-        #   vec = parallel + perp
-        #   parallel' = scale_factor * parallel
-        #   perp' = perp
+        proj_mag = jnp.dot(vec, zone_axis_hat)
         if old_height < 1e-32:
-            return vec  # avoid dividing by zero if there's no real dimension
+            return vec
         scale_factor = new_height / old_height
         parallel_comp = proj_mag * zone_axis_hat
         perp_comp = vec - parallel_comp
-        # sign of proj_mag matters if vector is "behind" zone_axis
-        # so we reintroduce sign via (proj_mag / |proj_mag|)
         sign = jnp.sign(proj_mag)
         scaled_parallel = scale_factor * (jnp.abs(proj_mag) * zone_axis_hat) * sign
         return scaled_parallel + perp_comp
 
-    # We apply the same "height" definition to each vector’s projection
-    # along zone_axis.  This is a simplification if your zone_axis is
-    # not aligned with a single axis or you want partial shaping.
     scaled_a = jax.lax.cond(
         jnp.abs(jnp.dot(a_vec, zone_axis_hat)) > 1e-8,
         lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
@@ -547,17 +460,12 @@ def atom_scraper(
         lambda v: v,
         c_vec,
     )
-
     new_cell_vectors: Float[Array, "3 3"] = jnp.stack(
         [scaled_a, scaled_b, scaled_c], axis=0
     )
-
-    # Recompute the new cell lengths and angles
     new_lengths: Float[Array, "3"]
     new_angles: Float[Array, "3"]
     new_lengths, new_angles = uc.compute_lengths_angles(new_cell_vectors)
-
-    # Build the final crystal structure
     filtered_crystal = io.CrystalStructure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,
