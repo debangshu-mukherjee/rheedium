@@ -288,13 +288,8 @@ def simulate_rheed_pattern(
         k_out, jnp.asarray(detector_distance)
     )
 
-    # Compute kinematic intensities
-    # We need the actual G_allowed => Gs[allowed_indices]
-    G_allowed = Gs[allowed_indices]  # shape (M, 3)
-    # Retrieve all atomic positions from the crystal
-    # cart_positions: shape (N, 4) => columns [x, y, z, atomic_num]
-    # We only need columns [x, y, z], i.e. crystal.cart_positions[:, :3]
-    atom_positions = crystal.cart_positions[:, :3]  # shape (N, 3)
+    G_allowed = Gs[allowed_indices]
+    atom_positions = crystal.cart_positions[:, :3]
 
     intensities: Float[Array, "M"] = sim.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed

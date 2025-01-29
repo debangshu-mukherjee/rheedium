@@ -48,6 +48,8 @@ docs = [
     "myst-parser>=4.0.0",
     "nbsphinx>=0.9.6",
     "ipykernel>=6.29.5",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinxcontrib-napoleon>=0.7",
 ]
 
 [tool.pytest.ini_options]

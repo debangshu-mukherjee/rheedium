@@ -1,22 +1,16 @@
-/* docs/source/_static/custom.css */
-
-/* Improve type hint rendering */
 .highlight-python .annotation {
     color: #2980b9;
     font-weight: normal;
 }
 
-/* Better formatting for parameter lists */
 dl.field-list > dt {
     word-break: break-word;
 }
 
-/* Better formatting for custom sections */
 .section > h2 {
     margin-top: 2em;
 }
 
-/* Format Flow and Description sections nicely */
 .rubric {
     font-size: 1.2em;
     color: #2980b9;
@@ -24,7 +18,6 @@ dl.field-list > dt {
     padding-bottom: 0.3em;
 }
 
-/* Format type hints in parameter descriptions */
 dl.field-list code.literal {
     background: #f8f9fa;
     border: none;

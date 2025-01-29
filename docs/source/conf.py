@@ -2,6 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("./_ext"))
 
 project = "rheedium"
 copyright = "2024"
@@ -18,12 +19,13 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_rtd_theme',
     'nbsphinx',
+    'param_parser',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 
 # Napoleon settings for custom docstring format
@@ -41,8 +43,10 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 napoleon_custom_sections = [
-    'Flow',
-    'Description'
+    'Description',
+    'Parameters',
+    'Returns',
+    'Flow'
 ]
 
 # Add nbsphinx configuration
