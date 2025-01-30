@@ -199,7 +199,7 @@ def simulate_rheed_pattern(
     tolerance: Optional[Float[Array, ""]] = jnp.asarray(0.05),
     detector_distance: Optional[Float[Array, ""]] = jnp.asarray(1000.0),
     z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
-) -> sim.RHEEDPattern:
+) -> RHEEDPattern:
     """
     Description
     -----------
@@ -229,7 +229,7 @@ def simulate_rheed_pattern(
         Optional. Default: 1.0
     Returns
     -------
-    - `pattern` (io.RHEEDPattern):
+    - `pattern` (RHEEDPattern):
         A NamedTuple capturing reflection indices, k_out, and detector coords.
 
     Flow
@@ -270,7 +270,7 @@ def simulate_rheed_pattern(
     intensities: Float[Array, "M"] = sim.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed
     )
-    pattern = sim.RHEEDPattern(
+    pattern = RHEEDPattern(
         G_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
@@ -280,7 +280,7 @@ def simulate_rheed_pattern(
 
 
 def plot_rheed(
-    rheed_pattern: sim.RHEEDPattern,
+    rheed_pattern: RHEEDPattern,
     grid_size: Optional[int] = 200,
     interp_type: Optional[str] = "cubic",
     cmap_name: Optional[str] = "phosphor",
@@ -298,7 +298,7 @@ def plot_rheed(
 
     Parameters
     ----------
-    - `rheed_pattern` (sim.RHEEDPattern)
+    - `rheed_pattern` (RHEEDPattern)
         Must have `detector_points` of shape (M, 2) and
         `intensities` of shape (M,).
     - `grid_size` (int)

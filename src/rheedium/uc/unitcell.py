@@ -325,7 +325,7 @@ def generate_reciprocal_points(
 @jaxtyped(typechecker=beartype)
 def atom_scraper(
     crystal: io.CrystalStructure,
-    zone_axis: Float[Array, "3"],
+    zone_axis: Num[Array, "3"],
     penetration_depth: Optional[Float[Array, ""]] = jnp.asarray(0.0),
     eps: Optional[Float[Array, ""]] = jnp.asarray(1e-8),
     max_atoms: Optional[Int[Array, ""]] = jnp.asarray(0),
@@ -343,7 +343,7 @@ def atom_scraper(
     ----------
     - `crystal` (CrystalStructure):
         The input crystal structure
-    - `zone_axis` (Float[Array, "3"]):
+    - `zone_axis` (Num[Array, "3"]):
         The reference axis (surface normal) in Cartesian space.
     - `penetration_depth` (Optional[Float[Array, ""]]):
         Thickness (in Å) from the top layer to retain.
@@ -389,6 +389,9 @@ def atom_scraper(
     )
     if max_atoms == 0:
         max_atoms = crystal.cart_positions.shape[0]
+    else:
+        n_needed: Float[Array, ""] = jnp.sum(mask)
+        max_atoms = jnp.maximum(max_atoms, n_needed)
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
@@ -399,23 +402,26 @@ def atom_scraper(
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
         penetration_depth, jnp.asarray(0.0), atol=1e-8
     )
+
     mask: Bool[Array, "n"] = jnp.where(
         is_top_layer_mode,
         dist_from_top <= eps,
         dist_from_top <= penetration_depth,
     )
-    indices: Int[Array, "k"] = jnp.where(mask)[0]
-    padded_indices: Int[Array, "max_n"] = jnp.pad(
-        indices, (0, max_atoms - indices.shape[0]), mode="constant", constant_values=-1
+
+    def gather_positions(
+        positions: Float[Array, "n 4"], gather_mask: Bool[Array, "n"]
+    ) -> Float[Array, "max_n 4"]:
+        out = jnp.zeros((max_atoms, 4))
+        valid_positions = positions[gather_mask]
+        return jax.lax.dynamic_update_slice(out, valid_positions[:max_atoms], (0, 0))
+
+    filtered_frac: Float[Array, "max_n 4"] = gather_positions(
+        crystal.frac_positions, mask
     )
-
-    def gather_positions(positions: Float[Array, "n 4"]) -> Float[Array, "max_n 4"]:
-        gathered: Float[Array, "max_n 4"] = jnp.zeros((max_atoms, 4))
-        valid_mask: Bool[Array, "max_n"] = padded_indices >= 0
-        return jax.lax.select(valid_mask[:, None], positions[padded_indices], gathered)
-
-    filtered_frac: Float[Array, "max_n 4"] = gather_positions(crystal.frac_positions)
-    filtered_cart: Float[Array, "max_n 4"] = gather_positions(crystal.cart_positions)
+    filtered_cart: Float[Array, "max_n 4"] = gather_positions(
+        crystal.cart_positions, mask
+    )
     original_height: Float[Array, ""] = d_max - d_min
     new_height: Float[Array, ""] = jnp.where(
         is_top_layer_mode,
