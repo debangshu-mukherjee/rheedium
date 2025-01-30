@@ -437,34 +437,43 @@ def atom_scraper(
         zone_axis_hat: Float[Array, "3"],
         old_height: Float[Array, ""],
         new_height: Float[Array, ""],
-    ):
-        proj_mag = jnp.dot(vec, zone_axis_hat)
-        if old_height < 1e-32:
-            return vec
-        scale_factor = new_height / old_height
-        parallel_comp = proj_mag * zone_axis_hat
-        perp_comp = vec - parallel_comp
-        sign = jnp.sign(proj_mag)
-        scaled_parallel = scale_factor * (jnp.abs(proj_mag) * zone_axis_hat) * sign
+    ) -> Float[Array, "3"]:
+        proj_mag: Float[Array, ""] = jnp.dot(vec, zone_axis_hat)
+        parallel_comp: Float[Array, "3"] = proj_mag * zone_axis_hat
+        perp_comp: Float[Array, "3"] = vec - parallel_comp
+        scale_factor: Float[Array, ""] = jnp.where(
+            old_height < 1e-32, 1.0, new_height / old_height
+        )
+        sign: Float[Array, ""] = jnp.sign(
+            proj_mag
+        )  # Changed from "3" to "" as sign of scalar
+        scaled_parallel: Float[Array, "3"] = (
+            scale_factor * (jnp.abs(proj_mag) * zone_axis_hat) * sign
+        )
         return scaled_parallel + perp_comp
 
-    scaled_a = jax.lax.cond(
-        jnp.abs(jnp.dot(a_vec, zone_axis_hat)) > 1e-8,
-        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
-        lambda v: v,
-        a_vec,
+    def scale_if_needed(
+        vec: Float[Array, "3"],
+        zone_axis_hat: Float[Array, "3"],
+        original_height: Float[Array, ""],
+        new_height: Float[Array, ""],
+    ) -> Float[Array, "3"]:
+        needs_scaling: Bool[Array, ""] = (
+            jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
+        )  # Changed from Float to Bool
+        scaled: Float[Array, "3"] = scale_vector(
+            vec, zone_axis_hat, original_height, new_height
+        )
+        return jnp.where(needs_scaling, scaled, vec)
+
+    scaled_a: Float[Array, "3"] = scale_if_needed(
+        a_vec, zone_axis_hat, original_height, new_height
     )
-    scaled_b = jax.lax.cond(
-        jnp.abs(jnp.dot(b_vec, zone_axis_hat)) > 1e-8,
-        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
-        lambda v: v,
-        b_vec,
+    scaled_b: Float[Array, "3"] = scale_if_needed(
+        b_vec, zone_axis_hat, original_height, new_height
     )
-    scaled_c = jax.lax.cond(
-        jnp.abs(jnp.dot(c_vec, zone_axis_hat)) > 1e-8,
-        lambda v: scale_vector(v, zone_axis_hat, original_height, new_height),
-        lambda v: v,
-        c_vec,
+    scaled_c: Float[Array, "3"] = scale_if_needed(
+        c_vec, zone_axis_hat, original_height, new_height
     )
     new_cell_vectors: Float[Array, "3 3"] = jnp.stack(
         [scaled_a, scaled_b, scaled_c], axis=0
