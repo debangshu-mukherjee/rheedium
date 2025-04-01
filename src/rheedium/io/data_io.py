@@ -9,67 +9,11 @@ from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
 from pymatgen.io.cif import CifParser
+import rheedium as rh
+from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
 
-
-@register_pytree_node_class
-class CrystalStructure(NamedTuple):
-    """
-    Description
-    -----------
-    A JAX-compatible data structure representing a crystal structure with both
-    fractional and Cartesian coordinates.
-
-    Attributes
-    ----------
-    - `frac_positions` (Float[Array, "* 4"]):
-        Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
-        Each row contains [x, y, z, atomic_number] where:
-        - x, y, z: Fractional coordinates in the unit cell (range [0,1])
-        - atomic_number: Integer atomic number (Z) of the element
-
-    - `cart_positions` (Num[Array, "* 4"]):
-        Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
-        Each row contains [x, y, z, atomic_number] where:
-        - x, y, z: Cartesian coordinates in Ångstroms
-        - atomic_number: Integer atomic number (Z) of the element
-
-    - `cell_lengths` (Num[Array, "3"]):
-        Unit cell lengths [a, b, c] in Ångstroms
-
-    - `cell_angles` (Num[Array, "3"]):
-        Unit cell angles [α, β, γ] in degrees.
-        α is the angle between b and c
-        β is the angle between a and c
-        γ is the angle between a and b
-
-    Notes
-    -----
-    This class is registered as a PyTree node, making it compatible with JAX transformations
-    like jit, grad, and vmap. The auxiliary data in tree_flatten is None as all relevant
-    data is stored in JAX arrays.
-    """
-
-    frac_positions: Float[Array, "* 4"]
-    cart_positions: Num[Array, "* 4"]
-    cell_lengths: Num[Array, "3"]
-    cell_angles: Num[Array, "3"]
-
-    def tree_flatten(self):
-        return (
-            (
-                self.frac_positions,
-                self.cart_positions,
-                self.cell_lengths,
-                self.cell_angles,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
@@ -128,7 +72,7 @@ def parse_cif_to_jax(
         [frac_coords, atomic_numbers]
     )
     cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
-    return CrystalStructure(
+    return rh.types.CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
