@@ -14,7 +14,4 @@ This is the root of the rheedium package, containing submodules for:
 Each submodule can be directly accessed after importing rheedium.
 """
 
-from . import io
-from . import sim
-from . import uc
-from . import types
+from . import io, sim, types, uc

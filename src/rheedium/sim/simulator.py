@@ -3,49 +3,14 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from beartype import beartype
-from beartype.typing import NamedTuple, Optional, Tuple
-from jax.tree_util import register_pytree_node_class
+from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 from scipy.interpolate import griddata
 
-from rheedium import io, sim, uc
+import rheedium as rh
+from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
-
-
-@register_pytree_node_class
-class RHEEDPattern(NamedTuple):
-    """
-    Description
-    -----------
-    A JAX-compatible data structure for representing RHEED patterns.
-
-    Attributes
-    ----------
-    - `G_indices` (Int[Array, "*"]):
-        Indices of reciprocal-lattice vectors that satisfy reflection
-    - `k_out` (Float[Array, "M 3"]):
-        Outgoing wavevectors (in 1/Å) for those reflections
-    - `detector_points` (Float[Array, "M 2"]):
-        (Y, Z) coordinates on the detector plane, in Ångstroms.
-    - `intensities` (Float[Array, "M"]):
-        Intensities for each reflection.
-    """
-
-    G_indices: Int[Array, "*"]
-    k_out: Float[Array, "M 3"]
-    detector_points: Float[Array, "M 2"]
-    intensities: Float[Array, "M"]
-
-    def tree_flatten(self):
-        return (
-            (self.G_indices, self.k_out, self.detector_points, self.intensities),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
@@ -190,7 +155,7 @@ def compute_kinematic_intensities(
 
 
 def simulate_rheed_pattern(
-    crystal: io.CrystalStructure,
+    crystal: CrystalStructure,
     voltage_kV: Optional[Float[Array, ""]] = jnp.asarray(10.0),
     theta_deg: Optional[Float[Array, ""]] = jnp.asarray(1.0),
     hmax: Optional[Int[Array, ""]] = jnp.asarray(3),
@@ -242,7 +207,7 @@ def simulate_rheed_pattern(
     - Project the resulting k_out onto a plane at x=detector_distance.
     - Return a RHEEDPattern with reflection info.
     """
-    cell_vecs = uc.build_cell_vectors(
+    cell_vecs = rh.uc.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],
@@ -250,16 +215,16 @@ def simulate_rheed_pattern(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    Gs: Float[Array, "M 3"] = uc.generate_reciprocal_points(
+    Gs: Float[Array, "M 3"] = rh.uc.generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
         kmax=kmax,
         lmax=lmax,
         in_degrees=True,
     )
-    lam_ang: Float[Array, ""] = uc.wavelength_ang(voltage_kV)
-    k_in: Float[Array, "3"] = sim.incident_wavevector(lam_ang, theta_deg)
-    allowed_indices, k_out = sim.find_kinematic_reflections(
+    lam_ang: Float[Array, ""] = rh.uc.wavelength_ang(voltage_kV)
+    k_in: Float[Array, "3"] = rh.sim.incident_wavevector(lam_ang, theta_deg)
+    allowed_indices, k_out = rh.sim.find_kinematic_reflections(
         k_in=k_in, Gs=Gs, lam_ang=lam_ang, z_sign=z_sign, tolerance=tolerance
     )
     detector_points: Float[Array, "M 2"] = project_on_detector(
@@ -267,7 +232,7 @@ def simulate_rheed_pattern(
     )
     G_allowed = Gs[allowed_indices]
     atom_positions = crystal.cart_positions[:, :3]
-    intensities: Float[Array, "M"] = sim.compute_kinematic_intensities(
+    intensities: Float[Array, "M"] = rh.sim.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed
     )
     pattern = RHEEDPattern(
@@ -338,7 +303,7 @@ def plot_rheed(
         points=(Y_np, Z_np), values=I_np, xi=grid_points, method=method, fill_value=0.0
     )
     intensity_grid = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap = io.create_phosphor_colormap(cmap_name)
+    phosphor_cmap = rh.io.create_phosphor_colormap(cmap_name)
     fig, ax = plt.subplots(figsize=(6, 6))
     cax = ax.imshow(
         intensity_grid.T,

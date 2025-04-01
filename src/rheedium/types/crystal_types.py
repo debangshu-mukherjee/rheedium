@@ -4,6 +4,7 @@ from jaxtyping import Array, Float, Num
 
 __all__ = ["CrystalStructure"]
 
+
 @register_pytree_node_class
 class CrystalStructure(NamedTuple):
     """

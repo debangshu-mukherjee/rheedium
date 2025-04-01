@@ -3,17 +3,15 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple, Optional, Union
-from jax.tree_util import register_pytree_node_class
+from beartype.typing import Optional, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
 from pymatgen.io.cif import CifParser
-import rheedium as rh
+
 from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
-
 
 
 @jaxtyped(typechecker=beartype)
@@ -72,7 +70,7 @@ def parse_cif_to_jax(
         [frac_coords, atomic_numbers]
     )
     cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
-    return rh.types.CrystalStructure(
+    return CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,

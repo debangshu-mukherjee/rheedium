@@ -10,5 +10,5 @@ for use throughout the rheedium package.
 """
 
 from .crystal_types import *
-from .rheed_types import *
 from .custom_types import *
+from .rheed_types import *

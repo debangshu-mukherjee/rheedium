@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.01.29"
+version = "2025.03.31"
 description = "Differentiable RHEED simulations in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}

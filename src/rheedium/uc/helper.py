@@ -4,7 +4,7 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Float, Num, jaxtyped
 
-from rheedium import uc
+import rheedium as rh
 
 jax.config.update("jax_enable_x64", True)
 
@@ -114,9 +114,9 @@ def compute_lengths_angles(
     a_len: Float[Array, ""] = jnp.linalg.norm(a_vec)
     b_len: Float[Array, ""] = jnp.linalg.norm(b_vec)
     c_len: Float[Array, ""] = jnp.linalg.norm(c_vec)
-    alpha: Float[Array, ""] = uc.angle_in_degrees(b_vec, c_vec)
-    beta: Float[Array, ""] = uc.angle_in_degrees(a_vec, c_vec)
-    gamma: Float[Array, ""] = uc.angle_in_degrees(a_vec, b_vec)
+    alpha: Float[Array, ""] = rh.uc.angle_in_degrees(b_vec, c_vec)
+    beta: Float[Array, ""] = rh.uc.angle_in_degrees(a_vec, c_vec)
+    gamma: Float[Array, ""] = rh.uc.angle_in_degrees(a_vec, b_vec)
     lengths: Float[Array, "3"] = jnp.array([a_len, b_len, c_len])
     angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
     return (lengths, angles)
