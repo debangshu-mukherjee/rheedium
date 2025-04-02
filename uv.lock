@@ -2746,6 +2746,7 @@ source = { editable = "." }
 dependencies = [
     { name = "beartype" },
     { name = "chex" },
+    { name = "ipykernel" },
     { name = "ipython" },
     { name = "jax", extra = ["cuda12"] },
     { name = "jaxtyping" },
@@ -2786,6 +2787,7 @@ requires-dist = [
     { name = "absl-py", marker = "extra == 'test'" },
     { name = "beartype" },
     { name = "chex", specifier = ">=0.1.85" },
+    { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipykernel", marker = "extra == 'docs'", specifier = ">=6.29.5" },
     { name = "ipython", specifier = ">=8.31.0" },
     { name = "jax", extras = ["cuda12"], specifier = ">=0.4.17" },
