@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional, Tuple
-from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Num, jaxtyped
 
 import rheedium as rh
 from rheedium.types import *
@@ -292,13 +292,13 @@ def generate_reciprocal_points(
     angles: Num[Array, "3"] = crystal.cell_angles
     rec_abc: Float[Array, "3"]
     rec_angles: Float[Array, "3"]
-    rec_abc, rec_angles = rh.uc.reciprocal_uc_angles(
+    rec_abc, rec_angles = rh.ucell.reciprocal_uc_angles(
         unitcell_abc=abc,
         unitcell_angles=angles,
         in_degrees=in_degrees,
         out_degrees=False,
     )
-    rec_vectors: Float[Array, "3 3"] = rh.uc.build_cell_vectors(
+    rec_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         rec_abc, rec_angles, in_degrees=False
     )
     a_star: Float[Array, "3"] = rec_vectors[0]
@@ -384,7 +384,7 @@ def atom_scraper(
     - Recompute the new cell lengths and angles
     - Build the final crystal structure
     """
-    orig_cell_vectors: Float[Array, "3 3"] = rh.uc.build_cell_vectors(
+    orig_cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],
@@ -485,7 +485,7 @@ def atom_scraper(
     )
     new_lengths: Float[Array, "3"]
     new_angles: Float[Array, "3"]
-    new_lengths, new_angles = rh.uc.compute_lengths_angles(new_cell_vectors)
+    new_lengths, new_angles = rh.ucell.compute_lengths_angles(new_cell_vectors)
     filtered_crystal = CrystalStructure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,

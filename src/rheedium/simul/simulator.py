@@ -207,7 +207,7 @@ def simulate_rheed_pattern(
     - Project the resulting k_out onto a plane at x=detector_distance.
     - Return a RHEEDPattern with reflection info.
     """
-    cell_vecs = rh.uc.build_cell_vectors(
+    cell_vecs = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],
@@ -215,16 +215,16 @@ def simulate_rheed_pattern(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    Gs: Float[Array, "M 3"] = rh.uc.generate_reciprocal_points(
+    Gs: Float[Array, "M 3"] = rh.ucell.generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
         kmax=kmax,
         lmax=lmax,
         in_degrees=True,
     )
-    lam_ang: Float[Array, ""] = rh.uc.wavelength_ang(voltage_kV)
-    k_in: Float[Array, "3"] = rh.sim.incident_wavevector(lam_ang, theta_deg)
-    allowed_indices, k_out = rh.sim.find_kinematic_reflections(
+    lam_ang: Float[Array, ""] = rh.ucell.wavelength_ang(voltage_kV)
+    k_in: Float[Array, "3"] = rh.simul.incident_wavevector(lam_ang, theta_deg)
+    allowed_indices, k_out = rh.simul.find_kinematic_reflections(
         k_in=k_in, Gs=Gs, lam_ang=lam_ang, z_sign=z_sign, tolerance=tolerance
     )
     detector_points: Float[Array, "M 2"] = project_on_detector(
@@ -232,7 +232,7 @@ def simulate_rheed_pattern(
     )
     G_allowed = Gs[allowed_indices]
     atom_positions = crystal.cart_positions[:, :3]
-    intensities: Float[Array, "M"] = rh.sim.compute_kinematic_intensities(
+    intensities: Float[Array, "M"] = rh.simul.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed
     )
     pattern = RHEEDPattern(
@@ -303,7 +303,7 @@ def plot_rheed(
         points=(Y_np, Z_np), values=I_np, xi=grid_points, method=method, fill_value=0.0
     )
     intensity_grid = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap = rh.io.create_phosphor_colormap(cmap_name)
+    phosphor_cmap = rh.inout.create_phosphor_colormap(cmap_name)
     fig, ax = plt.subplots(figsize=(6, 6))
     cax = ax.imshow(
         intensity_grid.T,

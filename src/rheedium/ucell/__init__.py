@@ -1,7 +1,7 @@
 """
 =========================================================
 
-Unit Cell Operations (:mod:`rheedium.uc`)
+Unit Cell Operations (:mod:`rheedium.ucell`)
 
 =========================================================
 
