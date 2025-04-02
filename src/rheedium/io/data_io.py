@@ -3,7 +3,7 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Optional, Union
+from beartype.typing import List, Optional, Tuple, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
 from pymatgen.core import Element
@@ -57,19 +57,19 @@ def parse_cif_to_jax(
         raise ValueError("Cell lengths must be positive")
     if jnp.any((cell_angles <= 0) | (cell_angles >= 180)):
         raise ValueError("Cell angles must be between 0 and 180 degrees")
-    frac_coords: Num[Array, "* 3"] = jnp.array(
+    frac_coords: Num[Array, "n 3"] = jnp.array(
         [[site.frac_coords[i] for i in range(3)] for site in structure.sites]
     )
-    cart_coords: Num[Array, "* 3"] = jnp.array(
+    cart_coords: Num[Array, "n 3"] = jnp.array(
         [[site.coords[i] for i in range(3)] for site in structure.sites]
     )
-    atomic_numbers: Num[Array, "*"] = jnp.array(
+    atomic_numbers: Num[Array, "n"] = jnp.array(
         [Element(site.specie.symbol).Z for site in structure.sites]
     )
-    frac_positions: Float[Array, "* 4"] = jnp.column_stack(
+    frac_positions: Float[Array, "n 4"] = jnp.column_stack(
         [frac_coords, atomic_numbers]
     )
-    cart_positions: Num[Array, "* 4"] = jnp.column_stack([cart_coords, atomic_numbers])
+    cart_positions: Num[Array, "n 4"] = jnp.column_stack([cart_coords, atomic_numbers])
     return CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
@@ -78,6 +78,7 @@ def parse_cif_to_jax(
     )
 
 
+@beartype
 def create_phosphor_colormap(
     name: Optional[str] = "phosphor",
 ) -> LinearSegmentedColormap:
@@ -99,22 +100,26 @@ def create_phosphor_colormap(
     - `matplotlib.colors.LinearSegmentedColormap`
         Custom phosphor screen colormap
     """
-    colors: list[tuple[float, tuple[float, float, float]]] = [
+    colors: List[
+        Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
+    ] = [
         (0.0, (0.0, 0.0, 0.0)),
         (0.4, (0.0, 0.05, 0.0)),
         (0.7, (0.15, 0.85, 0.15)),
         (0.9, (0.45, 0.95, 0.45)),
         (1.0, (0.8, 1.0, 0.8)),
     ]
-    positions: list[float] = [x[0] for x in colors]
-    rgb_values: list[tuple[float, float, float]] = [x[1] for x in colors]
-    red: list[tuple[float, float, float]] = [
+    positions: List[scalar_float] = [x[0] for x in colors]
+    rgb_values: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
+        x[1] for x in colors
+    ]
+    red: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
         (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)
     ]
-    green: list[tuple[float, float, float]] = [
+    green: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
         (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values)
     ]
-    blue: list[tuple[float, float, float]] = [
+    blue: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
         (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)
     ]
     cmap = LinearSegmentedColormap(name, {"red": red, "green": green, "blue": blue})

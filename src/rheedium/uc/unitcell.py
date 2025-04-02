@@ -182,12 +182,12 @@ def get_unit_cell_matrix(
 
 @jaxtyped(typechecker=beartype)
 def build_cell_vectors(
-    a: Float[Array, ""],
-    b: Float[Array, ""],
-    c: Float[Array, ""],
-    alpha_deg: Float[Array, ""],
-    beta_deg: Float[Array, ""],
-    gamma_deg: Float[Array, ""],
+    a: scalar_num,
+    b: scalar_num,
+    c: scalar_num,
+    alpha_deg: scalar_num,
+    beta_deg: scalar_num,
+    gamma_deg: scalar_num,
 ) -> Float[Array, "3 3"]:
     """
     Description
@@ -203,17 +203,17 @@ def build_cell_vectors(
 
     Parameters
     ----------
-    - `a` (Float[Array, ""]):
+    - `a` (scalar_num):
         Length of the a-vector in Å
-    - `b` (Float[Array, ""]):
+    - `b` (scalar_num):
         Length of the b-vector in Å
-    - `c` (Float[Array, ""]):
+    - `c` (scalar_num):
         Length of the c-vector in Å
-    - `alpha_deg` (Float[Array, ""]):
+    - `alpha_deg` (scalar_num):
         Angle between b and c in degrees
-    - `beta_deg` (Float[Array, ""]):
+    - `beta_deg` (scalar_num):
         Angle between a and c in degrees
-    - `gamma_deg` (Float[Array, ""]):
+    - `gamma_deg` (scalar_num):
         Angle between a and b in degrees
 
     Returns
@@ -253,9 +253,9 @@ def build_cell_vectors(
 @jaxtyped(typechecker=beartype)
 def generate_reciprocal_points(
     crystal: CrystalStructure,
-    hmax: Optional[Int[Array, ""]] = jnp.asarray(3),
-    kmax: Optional[Int[Array, ""]] = jnp.asarray(3),
-    lmax: Optional[Int[Array, ""]] = jnp.asarray(1),
+    hmax: Optional[scalar_int] = 3,
+    kmax: Optional[scalar_int] = 3,
+    lmax: Optional[scalar_int] = 1,
     in_degrees: Optional[bool] = True,
 ) -> Float[Array, "M 3"]:
     """
@@ -272,7 +272,7 @@ def generate_reciprocal_points(
 
     Parameters
     ----------
-    - `crystal` (io.CrystalStructure)
+    - `crystal` (CrystalStructure)
         A NamedTuple containing cell_lengths and cell_angles (in degrees by default).
     - `hmax` (Optional[Int[Array, ""]]):
         Bounds on h. Default is 3.
@@ -327,9 +327,9 @@ def generate_reciprocal_points(
 def atom_scraper(
     crystal: CrystalStructure,
     zone_axis: Num[Array, "3"],
-    penetration_depth: Optional[Float[Array, ""]] = jnp.asarray(0.0),
-    eps: Optional[Float[Array, ""]] = jnp.asarray(1e-8),
-    max_atoms: Optional[Int[Array, ""]] = jnp.asarray(0),
+    penetration_depth: Optional[scalar_float] = 0.0,
+    eps: Optional[scalar_float] = 1e-8,
+    max_atoms: Optional[scalar_int] = 0,
 ) -> CrystalStructure:
     """
     Description
@@ -346,13 +346,17 @@ def atom_scraper(
         The input crystal structure
     - `zone_axis` (Num[Array, "3"]):
         The reference axis (surface normal) in Cartesian space.
-    - `penetration_depth` (Optional[Float[Array, ""]]):
+    - `penetration_depth` (scalar_float, optional):
         Thickness (in Å) from the top layer to retain.
-    - `eps` (Optional[Float[Array, ""]]):
+        Default is 0.0 (only top layer).
+        If penetration_depth is 0.0, only the top layer is returned.
+    - `eps` (scalar_float, optional):
         Tolerance for identifying top layer atoms.
-    - `max_atoms` (Optional[Int[Array, ""]]):
+        Default is 1e-8.
+    - `max_atoms` (scalar_int, optional):
         Maximum number of atoms to handle. Used for static shapes.
         If None, uses the length of input positions.
+        Default is 0 (no limit).
 
     Returns
     -------

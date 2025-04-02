@@ -5,12 +5,13 @@ from beartype.typing import Tuple
 from jaxtyping import Array, Float, Num, jaxtyped
 
 import rheedium as rh
+from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)
-def wavelength_ang(voltage_kV: Num[Array, ""]) -> Float[Array, ""]:
+def wavelength_ang(voltage_kV: scalar_num) -> Float[Array, ""]:
     """
     Description
     -----------
@@ -25,7 +26,7 @@ def wavelength_ang(voltage_kV: Num[Array, ""]) -> Float[Array, ""]:
 
     Parameters
     ----------
-    - `voltage_kV` (Num[Array, ""]):
+    - `voltage_kV` (scalar_num):
         The microscope accelerating voltage in kilo
         electronVolts
 

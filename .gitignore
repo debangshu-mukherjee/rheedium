@@ -6,6 +6,7 @@ notebooks/__pycache__/
 /src/rheedium/io/__pycache__/
 /src/rheedium/uc/__pycache__/
 /src/rheedium/sim/__pycache__/
+/src/rheedium/types/__pycache__/
 /data/__pycache__/
 /tests/__pycache__/
 /tests/uc/__pycache__/
