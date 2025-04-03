@@ -55,17 +55,37 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     -------
     - `CrystalStructure`:
         Parsed crystal structure object with fractional and Cartesian coordinates.
+
+        Attributes:
+
+        - `frac_positions` (Float[Array, "* 4"]):
+            Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
+            Each row contains [x, y, z, atomic_number] where:
+            - x, y, z: Fractional coordinates in the unit cell (range [0,1])
+            - atomic_number: Integer atomic number (Z) of the element
+
+        - `cart_positions` (Num[Array, "* 4"]):
+            Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
+            Each row contains [x, y, z, atomic_number] where:
+            - x, y, z: Cartesian coordinates in Ångstroms
+            - atomic_number: Integer atomic number (Z) of the element
+
+        - `cell_lengths` (Num[Array, "3"]):
+            Unit cell lengths [a, b, c] in Ångstroms
+
+        - `cell_angles` (Num[Array, "3"]):
+            Unit cell angles [α, β, γ] in degrees.
+            - α is the angle between b and c
+            - β is the angle between a and c
+            - γ is the angle between a and b
     """
     cif_path = Path(cif_path)
     if not cif_path.exists():
         raise FileNotFoundError(f"CIF file not found: {cif_path}")
     if cif_path.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path}")
-
     cif_text = cif_path.read_text()
     atomic_numbers = load_atomic_numbers()
-
-    # Extract cell parameters
     cell_params_pattern = (
         r"_cell_length_a\s+([\d\.]+)\s+"
         r"_cell_length_b\s+([\d\.]+)\s+"
@@ -77,36 +97,34 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cell_match = re.search(cell_params_pattern, cif_text, re.DOTALL)
     if not cell_match:
         raise ValueError("Failed to parse cell parameters from CIF.")
-
     a, b, c, alpha, beta, gamma = map(float, cell_match.groups())
     cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
     cell_angles: Num[Array, "3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
-
-    # Find atom_site loop and columns
     loop_pattern = r"(loop_[\s\S]+?)(_atom_site_[\s\S]+?)\n\s*([^_]+?(?:\n|$))"
     loops = re.findall(loop_pattern, cif_text, re.DOTALL)
-
     atom_loop, columns_block, data_block = None, None, None
     for loop, columns, data in loops:
-        if "_atom_site_fract_x" in columns and "_atom_site_fract_y" in columns and "_atom_site_fract_z" in columns:
+        if (
+            "_atom_site_fract_x" in columns
+            and "_atom_site_fract_y" in columns
+            and "_atom_site_fract_z" in columns
+        ):
             atom_loop, columns_block, data_block = loop, columns, data
             break
-
     if atom_loop is None:
         raise ValueError("Failed to find atom positions block in CIF.")
-
-    # Parse column headers
     column_headers = [line.strip() for line in columns_block.strip().splitlines()]
     column_indices = {col: idx for idx, col in enumerate(column_headers)}
-
-    required_cols = ["_atom_site_type_symbol", "_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]
+    required_cols = [
+        "_atom_site_type_symbol",
+        "_atom_site_fract_x",
+        "_atom_site_fract_y",
+        "_atom_site_fract_z",
+    ]
     if not all(col in column_indices for col in required_cols):
         raise ValueError("Required atomic position columns missing in CIF.")
-
-    # Extract positions data
     positions_lines = data_block.strip().splitlines()
     frac_positions_list: List[List[float]] = []
-
     for line in positions_lines:
         if not line.strip() or line.startswith("#"):
             continue
@@ -119,22 +137,23 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         atomic_number = atomic_numbers.get(element_symbol)
         if atomic_number is None:
             raise ValueError(f"Unknown element symbol: {element_symbol}")
-
         frac_positions_list.append([frac_x, frac_y, frac_z, atomic_number])
-
-    frac_positions: Float[Array, "* 4"] = jnp.array(frac_positions_list, dtype=jnp.float64)
-
-    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(a, b, c, alpha, beta, gamma)
+    frac_positions: Float[Array, "* 4"] = jnp.array(
+        frac_positions_list, dtype=jnp.float64
+    )
+    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
+        a, b, c, alpha, beta, gamma
+    )
     cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, "* 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
-
+    cart_positions: Float[Array, "* 4"] = jnp.column_stack(
+        (cart_coords, frac_positions[:, 3])
+    )
     return CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
-
 
 
 @beartype

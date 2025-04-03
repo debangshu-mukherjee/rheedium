@@ -32,9 +32,9 @@ class CrystalStructure(NamedTuple):
 
     - `cell_angles` (Num[Array, "3"]):
         Unit cell angles [α, β, γ] in degrees.
-        α is the angle between b and c
-        β is the angle between a and c
-        γ is the angle between a and b
+        - α is the angle between b and c
+        - β is the angle between a and c
+        - γ is the angle between a and b
 
     Notes
     -----
