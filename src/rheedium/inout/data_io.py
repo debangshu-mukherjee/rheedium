@@ -2,6 +2,7 @@ import json
 import re
 from pathlib import Path
 
+import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple, Union
@@ -155,49 +156,86 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     )
 
 
-@beartype
-def create_phosphor_colormap(
-    name: Optional[str] = "phosphor",
-) -> LinearSegmentedColormap:
+@jaxtyped(typechecker=beartype)
+def symmetry_expansion(
+    crystal: CrystalStructure,
+    sym_ops: List[str],
+    tolerance: scalar_float = 1.0,
+) -> CrystalStructure:
     """
     Description
     -----------
-    Create a custom colormap that simulates a phosphor screen appearance.
-    The colormap transitions from black through a bright phosphorescent green,
-    with a slight white bloom at maximum intensity.
+    Apply symmetry operations to expand fractional positions and remove duplicates.
 
     Parameters
     ----------
-    - `name` (str, optional):
-        Name for the colormap.
-        Default is 'phosphor'
+    - `crystal` (CrystalStructure):
+        The initial crystal structure with symmetry-independent positions.
+    - `sym_ops` (List[str]):
+        List of symmetry operations as strings from the CIF file.
+        Example: ["x,y,z", "-x,-y,z", ...]
+    - `tolerance` (scalar_float):
+        Distance tolerance in angstroms for duplicate atom removal.
+        Default: 1.0 Å.
 
     Returns
     -------
-    - `matplotlib.colors.LinearSegmentedColormap`
-        Custom phosphor screen colormap
+    - `expanded_crystal` (CrystalStructure):
+        Symmetry-expanded crystal structure without duplicates.
     """
-    colors: List[
-        Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
-    ] = [
-        (0.0, (0.0, 0.0, 0.0)),
-        (0.4, (0.0, 0.05, 0.0)),
-        (0.7, (0.15, 0.85, 0.15)),
-        (0.9, (0.45, 0.95, 0.45)),
-        (1.0, (0.8, 1.0, 0.8)),
-    ]
-    positions: List[scalar_float] = [x[0] for x in colors]
-    rgb_values: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        x[1] for x in colors
-    ]
-    red: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)
-    ]
-    green: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values)
-    ]
-    blue: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)
-    ]
-    cmap = LinearSegmentedColormap(name, {"red": red, "green": green, "blue": blue})
-    return cmap
+    frac_positions = crystal.frac_positions
+    expanded_positions = []
+
+    def parse_sym_op(op_str: str):
+        def op(pos):
+            x, y, z = pos
+            replacements = {"x": x, "y": y, "z": z}
+            components = op_str.lower().replace(" ", "").split(",")
+            return jnp.array([eval(comp, {}, replacements) for comp in components])
+
+        return op
+
+    ops = [parse_sym_op(op) for op in sym_ops]
+    for pos in frac_positions:
+        xyz, atomic_number = pos[:3], pos[3]
+        for op in ops:
+            new_xyz = jnp.mod(op(xyz), 1.0)
+            expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
+    expanded_positions = jnp.array(expanded_positions)
+    cell_vectors = rh.ucell.build_cell_vectors(
+        *crystal.cell_lengths, *crystal.cell_angles
+    )
+    cart_positions = expanded_positions[:, :3] @ cell_vectors
+
+    def deduplicate_positions(cart, frac, tol):
+        def body_fn(i, carry):
+            unique_cart, unique_frac = carry
+            diff = unique_cart - cart[i]
+            dist_sq = jnp.sum(diff**2, axis=1)
+            is_duplicate = jnp.any(dist_sq < tol**2)
+            unique_cart = jnp.where(
+                is_duplicate, unique_cart, jnp.vstack([unique_cart, cart[i]])
+            )
+            unique_frac = jnp.where(
+                is_duplicate, unique_frac, jnp.vstack([unique_frac, frac[i]])
+            )
+            return (unique_cart, unique_frac)
+
+        init_cart = cart[0][None, :]
+        init_frac = frac[0][None, :]
+        carry = (init_cart, init_frac)
+        _, (unique_cart, unique_frac) = jax.lax.fori_loop(
+            1, cart.shape[0], body_fn, carry
+        )
+        return unique_cart, unique_frac
+
+    unique_cart, unique_frac = deduplicate_positions(
+        cart_positions, expanded_positions, tolerance
+    )
+    expanded_crystal = CrystalStructure(
+        frac_positions=unique_frac,
+        cart_positions=jnp.column_stack((unique_cart, unique_frac[:, 3])),
+        cell_lengths=crystal.cell_lengths,
+        cell_angles=crystal.cell_angles,
+    )
+    return expanded_crystal
