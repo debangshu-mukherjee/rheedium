@@ -5,9 +5,8 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import List, Optional, Tuple, Union
+from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
-from matplotlib.colors import LinearSegmentedColormap
 
 import rheedium as rh
 from rheedium.types import *
