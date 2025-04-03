@@ -5,7 +5,7 @@ from pathlib import Path
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple, Union
-from jaxtyping import Array, Float, Num
+from jaxtyping import Array, Float, Num, jaxtyped
 from matplotlib.colors import LinearSegmentedColormap
 
 import rheedium as rh
@@ -39,7 +39,7 @@ def load_atomic_numbers(path: str = str(DEFAULT_ATOMIC_NUMBERS_PATH)) -> dict[st
     return atomic_numbers
 
 
-@beartype
+@jaxtyped(typechecker=beartype)
 def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     """
     Description
@@ -65,12 +65,13 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cif_text = cif_path.read_text()
     atomic_numbers = load_atomic_numbers()
 
+    # Extract cell parameters
     cell_params_pattern = (
-        r"_cell_length_a\s+([\d\.]+).*?"
-        r"_cell_length_b\s+([\d\.]+).*?"
-        r"_cell_length_c\s+([\d\.]+).*?"
-        r"_cell_angle_alpha\s+([\d\.]+).*?"
-        r"_cell_angle_beta\s+([\d\.]+).*?"
+        r"_cell_length_a\s+([\d\.]+)\s+"
+        r"_cell_length_b\s+([\d\.]+)\s+"
+        r"_cell_length_c\s+([\d\.]+)\s+"
+        r"_cell_angle_alpha\s+([\d\.]+)\s+"
+        r"_cell_angle_beta\s+([\d\.]+)\s+"
         r"_cell_angle_gamma\s+([\d\.]+)"
     )
     cell_match = re.search(cell_params_pattern, cif_text, re.DOTALL)
@@ -81,53 +82,33 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
     cell_angles: Num[Array, "3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
 
-    if jnp.any(cell_lengths <= 0):
-        raise ValueError("Cell lengths must be positive")
-    if jnp.any((cell_angles <= 0) | (cell_angles >= 180)):
-        raise ValueError("Cell angles must be between 0 and 180 degrees")
+    # Find atom_site loop and columns
+    loop_pattern = r"(loop_[\s\S]+?)(_atom_site_[\s\S]+?)\n\s*([^_]+?(?:\n|$))"
+    loops = re.findall(loop_pattern, cif_text, re.DOTALL)
 
-    positions_pattern = r"loop_([\s\S]+?)(_atom_site_[\s\S]+?)\n\n"
-    positions_matches = re.findall(positions_pattern, cif_text, re.DOTALL)
-
-    atom_site_block = None
-    for _, block in positions_matches:
-        if all(
-            x in block
-            for x in [
-                "_atom_site_type_symbol",
-                "_atom_site_fract_x",
-                "_atom_site_fract_y",
-                "_atom_site_fract_z",
-            ]
-        ):
-            atom_site_block = block.strip()
+    atom_loop, columns_block, data_block = None, None, None
+    for loop, columns, data in loops:
+        if "_atom_site_fract_x" in columns and "_atom_site_fract_y" in columns and "_atom_site_fract_z" in columns:
+            atom_loop, columns_block, data_block = loop, columns, data
             break
 
-    if atom_site_block is None:
+    if atom_loop is None:
         raise ValueError("Failed to find atom positions block in CIF.")
 
-    columns = atom_site_block.splitlines()
-    column_indices = {name.strip(): idx for idx, name in enumerate(columns)}
+    # Parse column headers
+    column_headers = [line.strip() for line in columns_block.strip().splitlines()]
+    column_indices = {col: idx for idx, col in enumerate(column_headers)}
 
-    required_columns = [
-        "_atom_site_type_symbol",
-        "_atom_site_fract_x",
-        "_atom_site_fract_y",
-        "_atom_site_fract_z",
-    ]
-    if not all(col in column_indices for col in required_columns):
-        raise ValueError("CIF file missing required atomic position columns.")
+    required_cols = ["_atom_site_type_symbol", "_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]
+    if not all(col in column_indices for col in required_cols):
+        raise ValueError("Required atomic position columns missing in CIF.")
 
-    positions_data_pattern = atom_site_block + r"([\s\S]+?)(?:\n\n|$)"
-    positions_data_match = re.search(positions_data_pattern, cif_text, re.DOTALL)
-    if not positions_data_match:
-        raise ValueError("Failed to parse atomic positions data from CIF.")
-
-    positions_block = positions_data_match.group(1).strip().split("\n")
-
+    # Extract positions data
+    positions_lines = data_block.strip().splitlines()
     frac_positions_list: List[List[float]] = []
-    for line in positions_block:
-        if line.strip() == "":
+
+    for line in positions_lines:
+        if not line.strip() or line.startswith("#"):
             continue
         tokens = line.split()
         element_symbol = tokens[column_indices["_atom_site_type_symbol"]]
@@ -141,17 +122,11 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
 
         frac_positions_list.append([frac_x, frac_y, frac_z, atomic_number])
 
-    frac_positions: Float[Array, "* 4"] = jnp.array(
-        frac_positions_list, dtype=jnp.float64
-    )
+    frac_positions: Float[Array, "* 4"] = jnp.array(frac_positions_list, dtype=jnp.float64)
 
-    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
-        a, b, c, alpha, beta, gamma
-    )
+    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(a, b, c, alpha, beta, gamma)
     cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, "* 4"] = jnp.column_stack(
-        (cart_coords, frac_positions[:, 3])
-    )
+    cart_positions: Float[Array, "* 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
 
     return CrystalStructure(
         frac_positions=frac_positions,
@@ -159,6 +134,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
+
 
 
 @beartype
