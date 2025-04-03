@@ -327,62 +327,33 @@ def generate_reciprocal_points(
 def atom_scraper(
     crystal: CrystalStructure,
     zone_axis: Num[Array, "3"],
-    penetration_depth: Optional[scalar_float] = 0.0,
-    eps: Optional[scalar_float] = 1e-8,
-    max_atoms: Optional[scalar_int] = 0,
+    penetration_depth: Optional[scalar_num] = 0.0,
+    eps: Optional[scalar_float] = 1e-3,
+    max_atoms: Optional[scalar_int] = None,
 ) -> CrystalStructure:
     """
-    Description
-    ------------
-    Filters atoms in `crystal` so only those within `penetration_depth`
-    from the top surface (along `zone_axis`) are returned.
-    If `penetration_depth == 0.0`, only the topmost layer is returned.
-    Adjusts the unit cell dimension along zone_axis to match the
-    penetration depth.
+    Robustly filter atoms in `crystal` within `penetration_depth` from the top surface
+    (along `zone_axis`). If `penetration_depth == 0.0`, only the topmost layer is returned.
 
     Parameters
     ----------
     - `crystal` (CrystalStructure):
-        The input crystal structure
+        The input crystal structure.
     - `zone_axis` (Num[Array, "3"]):
-        The reference axis (surface normal) in Cartesian space.
-    - `penetration_depth` (scalar_float, optional):
-        Thickness (in Å) from the top layer to retain.
-        Default is 0.0 (only top layer).
-        If penetration_depth is 0.0, only the top layer is returned.
+        Surface normal axis in Cartesian space.
+    - `penetration_depth` (scalar_num, optional):
+        Thickness from the top layer to retain.
+        Default: 0.0 (only top layer).
     - `eps` (scalar_float, optional):
-        Tolerance for identifying top layer atoms.
-        Default is 1e-8.
+        Numerical tolerance for identifying top layer atoms.
+        Default: 1e-3.
     - `max_atoms` (scalar_int, optional):
-        Maximum number of atoms to handle. Used for static shapes.
-        If None, uses the length of input positions.
-        Default is 0 (no limit).
+        Maximum atoms to include. If None, defaults to the number of atoms in the input.
 
     Returns
     -------
     - `filtered_crystal` (CrystalStructure):
-        A new CrystalStructure containing only the filtered atoms and
-        adjusted cell.
-
-    Flow
-    ----
-    - Calculate theoriginal cell vector (3 by 3) matrix
-    - Normalize the zone_axis
-    - Get the cartesian coordinates of the atoms and multiply that with
-        the normalized zone_axis
-    - Calculate the maximum and minimum values of the dot product
-    - Calculate the distance from the top, by subtracting the minimum from the
-        maximum.
-    - Create a mask to filter the atoms within the penetration depth
-    - Convert the boolean mask to indices
-    - Pad the indices to a fixed length, because JAX requires fixed shapes
-    - Create a gather function to return a fixed-shape array
-    - Gather the fractional and cartesian positions
-    - Calculate the original height of the cell, and how much to trim in the new cell.
-    - Scale the cell vectors along the zone_axis
-    - The scaling is done by calculating the projection of each vector onto the zone_axis
-    - Recompute the new cell lengths and angles
-    - Build the final crystal structure
+        New CrystalStructure with filtered atoms and adjusted cell.
     """
     orig_cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
@@ -392,50 +363,42 @@ def atom_scraper(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    if max_atoms == 0:
-        max_atoms = crystal.cart_positions.shape[0]
-    else:
-        n_needed: Float[Array, ""] = jnp.sum(mask)
-        max_atoms = jnp.maximum(max_atoms, n_needed)
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
     dot_vals: Float[Array, "n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
     d_max: Float[Array, ""] = jnp.max(dot_vals)
-    d_min: Float[Array, ""] = jnp.min(dot_vals)
     dist_from_top: Float[Array, "n"] = d_max - dot_vals
+    positive_distances = dist_from_top[dist_from_top > 1e-8]
+    adaptive_eps = jnp.where(
+        positive_distances.size > 0,
+        jnp.maximum(eps, 2 * jnp.min(positive_distances)),
+        eps,
+    )
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
         penetration_depth, jnp.asarray(0.0), atol=1e-8
     )
-
     mask: Bool[Array, "n"] = jnp.where(
         is_top_layer_mode,
-        dist_from_top <= eps,
+        dist_from_top <= adaptive_eps,
         dist_from_top <= penetration_depth,
     )
 
-    def gather_positions(
+    def gather_valid_positions(
         positions: Float[Array, "n 4"], gather_mask: Bool[Array, "n"]
-    ) -> Float[Array, "max_n 4"]:
-        out = jnp.zeros((max_atoms, 4))
-        valid_positions = positions[gather_mask]
-        return jax.lax.dynamic_update_slice(out, valid_positions[:max_atoms], (0, 0))
+    ) -> Float[Array, "m 4"]:
+        return positions[gather_mask]
 
-    filtered_frac: Float[Array, "max_n 4"] = gather_positions(
+    filtered_frac: Float[Array, "m 4"] = gather_valid_positions(
         crystal.frac_positions, mask
     )
-    filtered_cart: Float[Array, "max_n 4"] = gather_positions(
+    filtered_cart: Float[Array, "m 4"] = gather_valid_positions(
         crystal.cart_positions, mask
     )
-    original_height: Float[Array, ""] = d_max - d_min
+    original_height: Float[Array, ""] = jnp.max(dot_vals) - jnp.min(dot_vals)
     new_height: Float[Array, ""] = jnp.where(
-        is_top_layer_mode,
-        eps,
-        jnp.minimum(penetration_depth, original_height),
+        is_top_layer_mode, adaptive_eps, jnp.minimum(penetration_depth, original_height)
     )
-    a_vec: Float[Array, "3"] = orig_cell_vectors[0]
-    b_vec: Float[Array, "3"] = orig_cell_vectors[1]
-    c_vec: Float[Array, "3"] = orig_cell_vectors[2]
 
     def scale_vector(
         vec: Float[Array, "3"],
@@ -449,12 +412,7 @@ def atom_scraper(
         scale_factor: Float[Array, ""] = jnp.where(
             old_height < 1e-32, 1.0, new_height / old_height
         )
-        sign: Float[Array, ""] = jnp.sign(
-            proj_mag
-        )  # Changed from "3" to "" as sign of scalar
-        scaled_parallel: Float[Array, "3"] = (
-            scale_factor * (jnp.abs(proj_mag) * zone_axis_hat) * sign
-        )
+        scaled_parallel: Float[Array, "3"] = scale_factor * parallel_comp
         return scaled_parallel + perp_comp
 
     def scale_if_needed(
@@ -463,29 +421,21 @@ def atom_scraper(
         original_height: Float[Array, ""],
         new_height: Float[Array, ""],
     ) -> Float[Array, "3"]:
-        needs_scaling: Bool[Array, ""] = (
-            jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
-        )  # Changed from Float to Bool
+        needs_scaling: Bool[Array, ""] = jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
         scaled: Float[Array, "3"] = scale_vector(
             vec, zone_axis_hat, original_height, new_height
         )
         return jnp.where(needs_scaling, scaled, vec)
 
-    scaled_a: Float[Array, "3"] = scale_if_needed(
-        a_vec, zone_axis_hat, original_height, new_height
+    scaled_vectors = jnp.stack(
+        [
+            scale_if_needed(
+                orig_cell_vectors[i], zone_axis_hat, original_height, new_height
+            )
+            for i in range(3)
+        ]
     )
-    scaled_b: Float[Array, "3"] = scale_if_needed(
-        b_vec, zone_axis_hat, original_height, new_height
-    )
-    scaled_c: Float[Array, "3"] = scale_if_needed(
-        c_vec, zone_axis_hat, original_height, new_height
-    )
-    new_cell_vectors: Float[Array, "3 3"] = jnp.stack(
-        [scaled_a, scaled_b, scaled_c], axis=0
-    )
-    new_lengths: Float[Array, "3"]
-    new_angles: Float[Array, "3"]
-    new_lengths, new_angles = rh.ucell.compute_lengths_angles(new_cell_vectors)
+    new_lengths, new_angles = rh.ucell.compute_lengths_angles(scaled_vectors)
     filtered_crystal = CrystalStructure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,

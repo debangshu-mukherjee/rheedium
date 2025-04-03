@@ -53,7 +53,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
 
     Returns
     -------
-    - `CrystalStructure`:
+    `CrystalStructure`:
         Parsed crystal structure object with fractional and Cartesian coordinates.
 
         Attributes:
