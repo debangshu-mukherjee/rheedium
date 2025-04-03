@@ -86,61 +86,60 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         raise ValueError(f"File must have .cif extension: {cif_path}")
     cif_text = cif_path.read_text()
     atomic_numbers = load_atomic_numbers()
-    cell_params_pattern = (
-        r"_cell_length_a\s+([\d\.]+)\s+"
-        r"_cell_length_b\s+([\d\.]+)\s+"
-        r"_cell_length_c\s+([\d\.]+)\s+"
-        r"_cell_angle_alpha\s+([\d\.]+)\s+"
-        r"_cell_angle_beta\s+([\d\.]+)\s+"
-        r"_cell_angle_gamma\s+([\d\.]+)"
-    )
-    cell_match = re.search(cell_params_pattern, cif_text, re.DOTALL)
-    if not cell_match:
-        raise ValueError("Failed to parse cell parameters from CIF.")
-    a, b, c, alpha, beta, gamma = map(float, cell_match.groups())
+
+    def extract_param(name: str) -> float:
+        match = re.search(rf"{name}\s+([0-9.]+)", cif_text)
+        if match:
+            return float(match.group(1))
+        else:
+            raise ValueError(f"Failed to parse {name} from CIF.")
+
+    a = extract_param("_cell_length_a")
+    b = extract_param("_cell_length_b")
+    c = extract_param("_cell_length_c")
+    alpha = extract_param("_cell_angle_alpha")
+    beta = extract_param("_cell_angle_beta")
+    gamma = extract_param("_cell_angle_gamma")
     cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
     cell_angles: Num[Array, "3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
-    loop_pattern = r"(loop_[\s\S]+?)(_atom_site_[\s\S]+?)\n\s*([^_]+?(?:\n|$))"
-    loops = re.findall(loop_pattern, cif_text, re.DOTALL)
-    atom_loop, columns_block, data_block = None, None, None
-    for loop, columns, data in loops:
-        if (
-            "_atom_site_fract_x" in columns
-            and "_atom_site_fract_y" in columns
-            and "_atom_site_fract_z" in columns
-        ):
-            atom_loop, columns_block, data_block = loop, columns, data
-            break
-    if atom_loop is None:
-        raise ValueError("Failed to find atom positions block in CIF.")
-    column_headers = [line.strip() for line in columns_block.strip().splitlines()]
-    column_indices = {col: idx for idx, col in enumerate(column_headers)}
-    required_cols = [
-        "_atom_site_type_symbol",
-        "_atom_site_fract_x",
-        "_atom_site_fract_y",
-        "_atom_site_fract_z",
-    ]
-    if not all(col in column_indices for col in required_cols):
-        raise ValueError("Required atomic position columns missing in CIF.")
-    positions_lines = data_block.strip().splitlines()
-    frac_positions_list: List[List[float]] = []
-    for line in positions_lines:
-        if not line.strip() or line.startswith("#"):
+    lines = cif_text.splitlines()
+    atom_site_columns = []
+    positions_list = []
+    in_atom_site_loop = False
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.lower().startswith("loop_"):
+            in_atom_site_loop = False
+            atom_site_columns = []
             continue
-        tokens = line.split()
-        element_symbol = tokens[column_indices["_atom_site_type_symbol"]]
-        frac_x = float(tokens[column_indices["_atom_site_fract_x"]])
-        frac_y = float(tokens[column_indices["_atom_site_fract_y"]])
-        frac_z = float(tokens[column_indices["_atom_site_fract_z"]])
-
-        atomic_number = atomic_numbers.get(element_symbol)
-        if atomic_number is None:
-            raise ValueError(f"Unknown element symbol: {element_symbol}")
-        frac_positions_list.append([frac_x, frac_y, frac_z, atomic_number])
-    frac_positions: Float[Array, "* 4"] = jnp.array(
-        frac_positions_list, dtype=jnp.float64
-    )
+        if stripped_line.startswith("_atom_site_"):
+            atom_site_columns.append(stripped_line)
+            in_atom_site_loop = True
+            continue
+        if in_atom_site_loop and stripped_line and not stripped_line.startswith("_"):
+            tokens = stripped_line.split()
+            if len(tokens) != len(atom_site_columns):
+                continue
+            required_cols = [
+                "_atom_site_type_symbol",
+                "_atom_site_fract_x",
+                "_atom_site_fract_y",
+                "_atom_site_fract_z",
+            ]
+            if not all(col in atom_site_columns for col in required_cols):
+                continue
+            col_indices = {col: atom_site_columns.index(col) for col in required_cols}
+            element_symbol = tokens[col_indices["_atom_site_type_symbol"]]
+            frac_x = float(tokens[col_indices["_atom_site_fract_x"]])
+            frac_y = float(tokens[col_indices["_atom_site_fract_y"]])
+            frac_z = float(tokens[col_indices["_atom_site_fract_z"]])
+            atomic_number = atomic_numbers.get(element_symbol)
+            if atomic_number is None:
+                raise ValueError(f"Unknown element symbol: {element_symbol}")
+            positions_list.append([frac_x, frac_y, frac_z, atomic_number])
+    if not positions_list:
+        raise ValueError("No atomic positions found in CIF.")
+    frac_positions: Float[Array, "* 4"] = jnp.array(positions_list, dtype=jnp.float64)
     cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         a, b, c, alpha, beta, gamma
     )
