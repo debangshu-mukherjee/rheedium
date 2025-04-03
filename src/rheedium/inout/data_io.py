@@ -148,12 +148,20 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cart_positions: Float[Array, "* 4"] = jnp.column_stack(
         (cart_coords, frac_positions[:, 3])
     )
-    return CrystalStructure(
+    sym_ops = re.findall(r"_symmetry_equiv_pos_as_xyz\s+'([^']+)'", cif_text)
+    if not sym_ops:
+        sym_ops_matches = re.findall(r"_symmetry_equiv_pos_as_xyz\s+([^\n]+)", cif_text)
+        sym_ops = [m.strip() for m in sym_ops_matches]
+    if not sym_ops:
+        sym_ops = ["x,y,z"]
+    crystal = CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
+    expanded_crystal = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
+    return expanded_crystal
 
 
 @jaxtyped(typechecker=beartype)
