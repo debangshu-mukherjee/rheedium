@@ -1,3 +1,4 @@
+import fractions
 import json
 import re
 from pathlib import Path
@@ -5,7 +6,7 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import List, Union
+from beartype.typing import List, Tuple, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
 import rheedium as rh
@@ -147,10 +148,11 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cart_positions: Float[Array, "* 4"] = jnp.column_stack(
         (cart_coords, frac_positions[:, 3])
     )
-    sym_ops = re.findall(r"_symmetry_equiv_pos_as_xyz\s+'([^']+)'", cif_text)
-    if not sym_ops:
+    sym_ops_raw = re.findall(r"_symmetry_equiv_pos_as_xyz\s+'([^']+)'", cif_text)
+    if not sym_ops_raw:
         sym_ops_matches = re.findall(r"_symmetry_equiv_pos_as_xyz\s+([^\n]+)", cif_text)
-        sym_ops = [m.strip() for m in sym_ops_matches]
+        sym_ops_raw = [m.strip().strip("'\"") for m in sym_ops_matches]
+    sym_ops = [op.replace("'", "").replace('"', "").strip() for op in sym_ops_raw]
     if not sym_ops:
         sym_ops = ["x,y,z"]
     crystal = CrystalStructure(
@@ -195,10 +197,37 @@ def symmetry_expansion(
 
     def parse_sym_op(op_str: str):
         def op(pos):
-            x, y, z = pos
-            replacements = {"x": x, "y": y, "z": z}
-            components = op_str.lower().replace(" ", "").split(",")
-            return jnp.array([eval(comp, {}, replacements) for comp in components])
+            replacements = {"x": pos[0], "y": pos[1], "z": pos[2]}
+
+            def safe_eval(comp: str) -> float:
+                comp = comp.strip().lower().replace("'", "").replace('"', "")
+                comp = comp.replace("-", "+-")
+                terms = comp.split("+")
+                result = 0.0
+                for term in terms:
+                    term = term.strip()
+                    if not term:
+                        continue
+                    factor = 1.0
+                    for var in ("x", "y", "z"):
+                        if var in term:
+                            parts = term.split(var)
+                            coeff_str = parts[0].strip()
+                            if coeff_str in ["", "+"]:
+                                coeff = 1.0
+                            elif coeff_str == "-":
+                                coeff = -1.0
+                            else:
+                                coeff = float(fractions.Fraction(coeff_str))
+                            factor *= coeff * replacements[var]
+                            break
+                    else:
+                        factor *= float(fractions.Fraction(term))
+                    result += factor
+                return result
+
+            components = op_str.strip().split(",")
+            return jnp.array([safe_eval(comp) for comp in components])
 
         return op
 
@@ -214,27 +243,53 @@ def symmetry_expansion(
     )
     cart_positions = expanded_positions[:, :3] @ cell_vectors
 
-    def deduplicate_positions(cart, frac, tol):
+    def deduplicate_positions(
+        cart: Float[Array, "N 3"],
+        frac: Float[Array, "N 4"],
+        tol: scalar_float,
+    ) -> Tuple[Float[Array, "M 3"], Float[Array, "M 4"]]:
+        N = cart.shape[0]
+
         def body_fn(i, carry):
-            unique_cart, unique_frac = carry
-            diff = unique_cart - cart[i]
+            unique_cart, unique_frac, count = carry
+            current_cart = cart[i]
+            current_frac = frac[i]
+
+            diff = unique_cart[:count] - current_cart
             dist_sq = jnp.sum(diff**2, axis=1)
             is_duplicate = jnp.any(dist_sq < tol**2)
-            unique_cart = jnp.where(
-                is_duplicate, unique_cart, jnp.vstack([unique_cart, cart[i]])
-            )
-            unique_frac = jnp.where(
-                is_duplicate, unique_frac, jnp.vstack([unique_frac, frac[i]])
-            )
-            return (unique_cart, unique_frac)
 
-        init_cart = cart[0][None, :]
-        init_frac = frac[0][None, :]
-        carry = (init_cart, init_frac)
-        _, (unique_cart, unique_frac) = jax.lax.fori_loop(
-            1, cart.shape[0], body_fn, carry
+            def append_atom(args):
+                unique_cart, unique_frac, count = args
+                unique_cart = unique_cart.at[count].set(current_cart)
+                unique_frac = unique_frac.at[count].set(current_frac)
+                return unique_cart, unique_frac, count + 1
+
+            carry = jax.lax.cond(
+                is_duplicate,
+                lambda args: args,  # if duplicate, return unchanged
+                append_atom,  # if unique, append atom
+                carry,
+            )
+            return carry
+
+        # Preallocate arrays to maximum possible size
+        unique_cart_init = jnp.zeros_like(cart)
+        unique_frac_init = jnp.zeros_like(frac)
+        unique_cart_init = unique_cart_init.at[0].set(cart[0])
+        unique_frac_init = unique_frac_init.at[0].set(frac[0])
+        count_init = jnp.array(1, dtype=int)
+
+        init_carry = (unique_cart_init, unique_frac_init, count_init)
+        unique_cart, unique_frac, final_count = jax.lax.fori_loop(
+            1, N, body_fn, init_carry
         )
-        return unique_cart, unique_frac
+
+        # Slice arrays to actual final size
+        unique_cart_final = unique_cart[:final_count]
+        unique_frac_final = unique_frac[:final_count]
+
+        return unique_cart_final, unique_frac_final
 
     unique_cart, unique_frac = deduplicate_positions(
         cart_positions, expanded_positions, tolerance
