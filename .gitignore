@@ -109,7 +109,7 @@ target/
 /.ipynb_checkpoints/
 /.ipynb_checkpoints
 /src/.ipynb_checkpoints/
-/notebooks/.ipynb_checkpoints/
+/tutorials/.ipynb_checkpoints/
 /src/rheedium/.ipynb_checkpoints/
 /tests/.ipynb_checkpoints/
 /data/.ipynb_checkpoints/
