@@ -6,10 +6,10 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import List, Tuple, Union
+from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
-import rheedium as rh
+from rheedium import *
 from rheedium.types import *
 
 DEFAULT_ATOMIC_NUMBERS_PATH = (
@@ -141,20 +141,35 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
     frac_positions: Float[Array, "* 4"] = jnp.array(positions_list, dtype=jnp.float64)
-    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
+    cell_vectors: Float[Array, "3 3"] = ucell.build_cell_vectors(
         a, b, c, alpha, beta, gamma
     )
     cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
     cart_positions: Float[Array, "* 4"] = jnp.column_stack(
         (cart_coords, frac_positions[:, 3])
     )
-    sym_ops_raw = re.findall(r"_symmetry_equiv_pos_as_xyz\s+'([^']+)'", cif_text)
-    if not sym_ops_raw:
-        sym_ops_matches = re.findall(r"_symmetry_equiv_pos_as_xyz\s+([^\n]+)", cif_text)
-        sym_ops_raw = [m.strip().strip("'\"") for m in sym_ops_matches]
-    sym_ops = [op.replace("'", "").replace('"', "").strip() for op in sym_ops_raw]
+    sym_ops = []
+    lines = cif_text.splitlines()
+    collect_sym_ops = False
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith("_symmetry_equiv_pos_as_xyz"):
+            collect_sym_ops = True
+            continue
+        if collect_sym_ops:
+            if stripped_line.startswith("'") and stripped_line.endswith("'"):
+                op_clean = stripped_line.strip("'").strip()
+                sym_ops.append(op_clean)
+            elif stripped_line.startswith('"') and stripped_line.endswith('"'):
+                op_clean = stripped_line.strip('"').strip()
+                sym_ops.append(op_clean)
+            else:
+                if sym_ops:
+                    break
+
     if not sym_ops:
         sym_ops = ["x,y,z"]
+
     crystal = CrystalStructure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
@@ -198,36 +213,27 @@ def symmetry_expansion(
     def parse_sym_op(op_str: str):
         def op(pos):
             replacements = {"x": pos[0], "y": pos[1], "z": pos[2]}
+            components = op_str.lower().replace(" ", "").split(",")
 
-            def safe_eval(comp: str) -> float:
-                comp = comp.strip().lower().replace("'", "").replace('"', "")
+            def eval_comp(comp):
                 comp = comp.replace("-", "+-")
                 terms = comp.split("+")
-                result = 0.0
+                total = 0.0
                 for term in terms:
-                    term = term.strip()
                     if not term:
                         continue
-                    factor = 1.0
+                    coeff = 1.0
                     for var in ("x", "y", "z"):
                         if var in term:
-                            parts = term.split(var)
-                            coeff_str = parts[0].strip()
-                            if coeff_str in ["", "+"]:
-                                coeff = 1.0
-                            elif coeff_str == "-":
-                                coeff = -1.0
-                            else:
-                                coeff = float(fractions.Fraction(coeff_str))
-                            factor *= coeff * replacements[var]
+                            part = term.split(var)[0]
+                            coeff = float(fractions.Fraction(part)) if part else 1.0
+                            total += coeff * replacements[var]
                             break
                     else:
-                        factor *= float(fractions.Fraction(term))
-                    result += factor
-                return result
+                        total += float(fractions.Fraction(term))
+                return total
 
-            components = op_str.strip().split(",")
-            return jnp.array([safe_eval(comp) for comp in components])
+            return jnp.array([eval_comp(c) for c in components])
 
         return op
 
@@ -238,65 +244,45 @@ def symmetry_expansion(
             new_xyz = jnp.mod(op(xyz), 1.0)
             expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
     expanded_positions = jnp.array(expanded_positions)
-    cell_vectors = rh.ucell.build_cell_vectors(
+    cart_positions = expanded_positions[:, :3] @ ucell.build_cell_vectors(
         *crystal.cell_lengths, *crystal.cell_angles
     )
-    cart_positions = expanded_positions[:, :3] @ cell_vectors
 
-    def deduplicate_positions(
-        cart: Float[Array, "N 3"],
-        frac: Float[Array, "N 4"],
-        tol: scalar_float,
-    ) -> Tuple[Float[Array, "M 3"], Float[Array, "M 4"]]:
-        N = cart.shape[0]
+    def deduplicate(positions, tol):
+        def dist(p1, p2):
+            return jnp.sqrt(jnp.sum((p1 - p2) ** 2))
 
-        def body_fn(i, carry):
-            unique_cart, unique_frac, count = carry
-            current_cart = cart[i]
-            current_frac = frac[i]
-
-            diff = unique_cart[:count] - current_cart
+        def unique_cond(carry, pos):
+            unique, count = carry
+            diff = unique - pos
             dist_sq = jnp.sum(diff**2, axis=1)
-            is_duplicate = jnp.any(dist_sq < tol**2)
-
-            def append_atom(args):
-                unique_cart, unique_frac, count = args
-                unique_cart = unique_cart.at[count].set(current_cart)
-                unique_frac = unique_frac.at[count].set(current_frac)
-                return unique_cart, unique_frac, count + 1
-
-            carry = jax.lax.cond(
-                is_duplicate,
-                lambda args: args,  # if duplicate, return unchanged
-                append_atom,  # if unique, append atom
-                carry,
+            is_dup = jnp.any(dist_sq < tol**2)
+            unique = jax.lax.cond(
+                is_dup,
+                lambda u: u,
+                lambda u: u.at[count].set(pos),
+                unique,
             )
-            return carry
+            count += jnp.logical_not(is_dup)
+            return (unique, count), None
 
-        # Preallocate arrays to maximum possible size
-        unique_cart_init = jnp.zeros_like(cart)
-        unique_frac_init = jnp.zeros_like(frac)
-        unique_cart_init = unique_cart_init.at[0].set(cart[0])
-        unique_frac_init = unique_frac_init.at[0].set(frac[0])
-        count_init = jnp.array(1, dtype=int)
-
-        init_carry = (unique_cart_init, unique_frac_init, count_init)
-        unique_cart, unique_frac, final_count = jax.lax.fori_loop(
-            1, N, body_fn, init_carry
+        unique_init = jnp.zeros_like(positions)
+        unique_init = unique_init.at[0].set(positions[0])
+        count_init = 1
+        (unique_final, final_count), _ = jax.lax.scan(
+            unique_cond, (unique_init, count_init), positions[1:]
         )
+        return unique_final[:final_count]
 
-        # Slice arrays to actual final size
-        unique_cart_final = unique_cart[:final_count]
-        unique_frac_final = unique_frac[:final_count]
-
-        return unique_cart_final, unique_frac_final
-
-    unique_cart, unique_frac = deduplicate_positions(
-        cart_positions, expanded_positions, tolerance
+    unique_cart = deduplicate(cart_positions, tolerance)
+    cell_inv = jnp.linalg.inv(
+        ucell.build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
     )
+    unique_frac = (unique_cart @ cell_inv) % 1.0
+    atomic_numbers = expanded_positions[:, 3][: unique_cart.shape[0]]
     expanded_crystal = CrystalStructure(
-        frac_positions=unique_frac,
-        cart_positions=jnp.column_stack((unique_cart, unique_frac[:, 3])),
+        frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
+        cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),
         cell_lengths=crystal.cell_lengths,
         cell_angles=crystal.cell_angles,
     )

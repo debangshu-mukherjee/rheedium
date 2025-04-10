@@ -1,10 +1,12 @@
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Tuple
-from jaxtyping import Array, Float, Num, jaxtyped
+from beartype.typing import Optional, Tuple, Union
+from jaxtyping import Array, Bool, Float, jaxtyped
 
-import rheedium as rh
+from rheedium import *
 from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
@@ -115,9 +117,89 @@ def compute_lengths_angles(
     a_len: Float[Array, ""] = jnp.linalg.norm(a_vec)
     b_len: Float[Array, ""] = jnp.linalg.norm(b_vec)
     c_len: Float[Array, ""] = jnp.linalg.norm(c_vec)
-    alpha: Float[Array, ""] = rh.ucell.angle_in_degrees(b_vec, c_vec)
-    beta: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, c_vec)
-    gamma: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, b_vec)
+    alpha: Float[Array, ""] = ucell.angle_in_degrees(b_vec, c_vec)
+    beta: Float[Array, ""] = ucell.angle_in_degrees(a_vec, c_vec)
+    gamma: Float[Array, ""] = ucell.angle_in_degrees(a_vec, b_vec)
     lengths: Float[Array, "3"] = jnp.array([a_len, b_len, c_len])
     angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
     return (lengths, angles)
+
+
+@jaxtyped(typechecker=beartype)
+def parse_cif_and_scrape(
+    cif_path: Union[str, Path],
+    zone_axis: Float[Array, "3"],
+    thickness_xyz: Float[Array, "3"],
+    tolerance: Optional[scalar_float] = 1e-3,
+) -> CrystalStructure:
+    """
+    Description
+    -----------
+    Parse a CIF file, apply symmetry operations to obtain all equivalent
+    atomic positions, and scrape (filter) atoms within specified thickness
+    along a given zone axis.
+
+    Parameters
+    ----------
+    - `cif_path` (Union[str, Path]):
+        Path to the CIF file.
+    - `zone_axis` (Float[Array, "3"]):
+        Vector indicating the zone axis direction (surface normal) in
+        Cartesian coordinates.
+    - `thickness_xyz` (Float[Array, "3"]):
+        Thickness along x, y, z directions in Ångstroms; currently,
+        only thickness_xyz[2] (z-direction)
+        is used to filter atoms along the provided zone axis.
+    - `tolerance` (scalar_float, optional):
+        Numerical tolerance parameter reserved for future use.
+        Default is 1e-3.
+
+    Returns
+    -------
+    - `filtered_crystal` (CrystalStructure):
+        Crystal structure containing atoms filtered within the specified thickness.
+
+    Notes
+    -----
+    - The provided `zone_axis` is normalized internally.
+    - Current implementation uses thickness only along the zone axis
+        direction (z-component of `thickness_xyz`).
+    - The `tolerance` parameter is reserved for compatibility and future
+        functionality.
+    """
+    crystal: CrystalStructure = inout.parse_cif(cif_path)
+    cart_positions: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Float[Array, "n"] = crystal.cart_positions[:, 3]
+    zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
+    zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-12)
+    projections: Float[Array, "n"] = cart_positions @ zone_axis_hat
+    min_proj: Float[Array, ""] = jnp.min(projections)
+    max_proj: Float[Array, ""] = jnp.max(projections)
+    center_proj: Float[Array, ""] = (max_proj + min_proj) / 2.0
+    half_thickness: Float[Array, ""] = thickness_xyz[2] / 2.0
+    mask: Bool[Array, "n"] = jnp.abs(projections - center_proj) <= half_thickness
+    filtered_cart_positions: Float[Array, "m 3"] = cart_positions[mask]
+    filtered_atomic_numbers: Float[Array, "m"] = atomic_numbers[mask]
+    cell_vectors: Float[Array, "3 3"] = ucell.build_cell_vectors(
+        crystal.cell_lengths[0],
+        crystal.cell_lengths[1],
+        crystal.cell_lengths[2],
+        crystal.cell_angles[0],
+        crystal.cell_angles[1],
+        crystal.cell_angles[2],
+    )
+    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
+    filtered_frac_positions: Float[Array, "m 3"] = (
+        filtered_cart_positions @ cell_inv
+    ) % 1.0
+    filtered_crystal: CrystalStructure = CrystalStructure(
+        frac_positions=jnp.column_stack(
+            [filtered_frac_positions, filtered_atomic_numbers]
+        ),
+        cart_positions=jnp.column_stack(
+            [filtered_cart_positions, filtered_atomic_numbers]
+        ),
+        cell_lengths=crystal.cell_lengths,
+        cell_angles=crystal.cell_angles,
+    )
+    return filtered_crystal
