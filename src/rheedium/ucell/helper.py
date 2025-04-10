@@ -4,9 +4,9 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional, Tuple, Union
-from jaxtyping import Array, Bool, Float, jaxtyped
+from jaxtyping import Array, Bool, Float, Real, jaxtyped
 
-from rheedium import *
+import rheedium as rh
 from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
@@ -117,9 +117,9 @@ def compute_lengths_angles(
     a_len: Float[Array, ""] = jnp.linalg.norm(a_vec)
     b_len: Float[Array, ""] = jnp.linalg.norm(b_vec)
     c_len: Float[Array, ""] = jnp.linalg.norm(c_vec)
-    alpha: Float[Array, ""] = ucell.angle_in_degrees(b_vec, c_vec)
-    beta: Float[Array, ""] = ucell.angle_in_degrees(a_vec, c_vec)
-    gamma: Float[Array, ""] = ucell.angle_in_degrees(a_vec, b_vec)
+    alpha: Float[Array, ""] = rh.ucell.angle_in_degrees(b_vec, c_vec)
+    beta: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, c_vec)
+    gamma: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, b_vec)
     lengths: Float[Array, "3"] = jnp.array([a_len, b_len, c_len])
     angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
     return (lengths, angles)
@@ -128,8 +128,8 @@ def compute_lengths_angles(
 @jaxtyped(typechecker=beartype)
 def parse_cif_and_scrape(
     cif_path: Union[str, Path],
-    zone_axis: Float[Array, "3"],
-    thickness_xyz: Float[Array, "3"],
+    zone_axis: Real[Array, "3"],
+    thickness_xyz: Real[Array, "3"],
     tolerance: Optional[scalar_float] = 1e-3,
 ) -> CrystalStructure:
     """
@@ -143,10 +143,10 @@ def parse_cif_and_scrape(
     ----------
     - `cif_path` (Union[str, Path]):
         Path to the CIF file.
-    - `zone_axis` (Float[Array, "3"]):
+    - `zone_axis` (Real[Array, "3"]):
         Vector indicating the zone axis direction (surface normal) in
         Cartesian coordinates.
-    - `thickness_xyz` (Float[Array, "3"]):
+    - `thickness_xyz` (Real[Array, "3"]):
         Thickness along x, y, z directions in Ångstroms; currently,
         only thickness_xyz[2] (z-direction)
         is used to filter atoms along the provided zone axis.
@@ -167,7 +167,7 @@ def parse_cif_and_scrape(
     - The `tolerance` parameter is reserved for compatibility and future
         functionality.
     """
-    crystal: CrystalStructure = inout.parse_cif(cif_path)
+    crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_positions: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "n"] = crystal.cart_positions[:, 3]
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
@@ -180,7 +180,7 @@ def parse_cif_and_scrape(
     mask: Bool[Array, "n"] = jnp.abs(projections - center_proj) <= half_thickness
     filtered_cart_positions: Float[Array, "m 3"] = cart_positions[mask]
     filtered_atomic_numbers: Float[Array, "m"] = atomic_numbers[mask]
-    cell_vectors: Float[Array, "3 3"] = ucell.build_cell_vectors(
+    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],

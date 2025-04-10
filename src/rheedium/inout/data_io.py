@@ -9,7 +9,7 @@ from beartype import beartype
 from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
-from rheedium import *
+import rheedium as rh
 from rheedium.types import *
 
 DEFAULT_ATOMIC_NUMBERS_PATH = (
@@ -141,7 +141,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
     frac_positions: Float[Array, "* 4"] = jnp.array(positions_list, dtype=jnp.float64)
-    cell_vectors: Float[Array, "3 3"] = ucell.build_cell_vectors(
+    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         a, b, c, alpha, beta, gamma
     )
     cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
@@ -244,7 +244,7 @@ def symmetry_expansion(
             new_xyz = jnp.mod(op(xyz), 1.0)
             expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
     expanded_positions = jnp.array(expanded_positions)
-    cart_positions = expanded_positions[:, :3] @ ucell.build_cell_vectors(
+    cart_positions = expanded_positions[:, :3] @ rh.ucell.build_cell_vectors(
         *crystal.cell_lengths, *crystal.cell_angles
     )
 
@@ -276,7 +276,7 @@ def symmetry_expansion(
 
     unique_cart = deduplicate(cart_positions, tolerance)
     cell_inv = jnp.linalg.inv(
-        ucell.build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
+        rh.ucell.build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
     )
     unique_frac = (unique_cart @ cell_inv) % 1.0
     atomic_numbers = expanded_positions[:, 3][: unique_cart.shape[0]]
