@@ -12,7 +12,8 @@ jax.config.update("jax_enable_x64", True)
 
 @jaxtyped(typechecker=beartype)
 def incident_wavevector(
-    lam_ang: Float[Array, ""], theta_deg: Float[Array, ""]
+    lam_ang: scalar_float, 
+    theta_deg: scalar_float
 ) -> Float[Array, "3"]:
     """
     Description
@@ -22,9 +23,9 @@ def incident_wavevector(
 
     Parameters
     ----------
-    - `lam_ang` (Float[Array, ""]):
+    - `lam_ang` (scalar_float):
         Electron wavelength in angstroms
-    - `theta_deg` (Float[Array, ""]):
+    - `theta_deg` (scalar_float):
         Grazing angle in degrees
 
     Returns
@@ -42,7 +43,8 @@ def incident_wavevector(
 
 @jaxtyped(typechecker=beartype)
 def project_on_detector(
-    k_out_set: Float[Array, "M 3"], detector_distance: Float[Array, ""]
+    k_out_set: Float[Array, "M 3"], 
+    detector_distance: scalar_float,
 ) -> Float[Array, "M 2"]:
     """
     Description
@@ -54,7 +56,7 @@ def project_on_detector(
     ----------
     - `k_out_set` (Float[Array, "M 3"]):
         (M, 3) array of outgoing wavevectors
-    - `detector_distance` (Float[Array, ""):
+    - `detector_distance` (scalar_float):
         distance (in angstroms, or same unit) where screen is placed at x = L
 
     Returns
@@ -77,7 +79,7 @@ def find_kinematic_reflections(
     Gs: Float[Array, "M 3"],
     lam_ang: Float[Array, ""],
     z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
-    tolerance: Optional[Float[Array, ""]] = jnp.asarray(0.05),
+    tolerance: Optional[scalar_float] = 0.05,
 ) -> Tuple[Int[Array, "K"], Float[Array, "K 3"]]:
     """
     Description
@@ -95,8 +97,9 @@ def find_kinematic_reflections(
         electron wavelength in Å
     - `z_sign` (Float[Array, ""]):
         sign for z-component of k_out
-    - `tolerance` (Float[Array, ""]):
+    - `tolerance` (scalar_float, optional),
         how close to the Ewald sphere in 1/Å
+        Optional. Default: 0.05
 
     Returns
     -------
