@@ -1,4 +1,3 @@
-import jax.numpy as jnp
 from beartype.typing import NamedTuple, Union
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int

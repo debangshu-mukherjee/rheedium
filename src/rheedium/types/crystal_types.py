@@ -1,8 +1,10 @@
 from beartype.typing import NamedTuple
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Num
+import jax.numpy as jnp
+from beartype import beartype
 
-__all__ = ["CrystalStructure"]
+__all__ = ["CrystalStructure", "create_crystal_structure"]
 
 
 @register_pytree_node_class
@@ -62,3 +64,63 @@ class CrystalStructure(NamedTuple):
     @classmethod
     def tree_unflatten(cls, aux_data, children):
         return cls(*children)
+
+
+@beartype
+def create_crystal_structure(
+    frac_positions: Float[Array, "* 4"],
+    cart_positions: Num[Array, "* 4"],
+    cell_lengths: Num[Array, "3"],
+    cell_angles: Num[Array, "3"],
+) -> CrystalStructure:
+    """
+    Factory function to create a CrystalStructure instance with type checking.
+
+    Parameters
+    ----------
+    frac_positions : Float[Array, "* 4"]
+        Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
+    cart_positions : Num[Array, "* 4"]
+        Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
+    cell_lengths : Num[Array, "3"]
+        Unit cell lengths [a, b, c] in Ångstroms.
+    cell_angles : Num[Array, "3"]
+        Unit cell angles [α, β, γ] in degrees.
+
+    Returns
+    -------
+    CrystalStructure
+        A validated CrystalStructure instance.
+
+    Raises
+    ------
+    ValueError
+        If the input arrays have incompatible shapes or invalid values.
+    """
+    frac_positions = jnp.asarray(frac_positions)
+    cart_positions = jnp.asarray(cart_positions)
+    cell_lengths = jnp.asarray(cell_lengths)
+    cell_angles = jnp.asarray(cell_angles)
+    if frac_positions.shape[1] != 4:
+        raise ValueError("frac_positions must have shape (n_atoms, 4)")
+    if cart_positions.shape[1] != 4:
+        raise ValueError("cart_positions must have shape (n_atoms, 4)")
+    if cell_lengths.shape != (3,):
+        raise ValueError("cell_lengths must have shape (3,)")
+    if cell_angles.shape != (3,):
+        raise ValueError("cell_angles must have shape (3,)")
+    if frac_positions.shape[0] != cart_positions.shape[0]:
+        raise ValueError("Number of atoms must match between frac_positions and cart_positions")
+    if not jnp.all(frac_positions[:, 3] == cart_positions[:, 3]):
+        raise ValueError("Atomic numbers must match between frac_positions and cart_positions")
+    if jnp.any(cell_lengths <= 0):
+        raise ValueError("Cell lengths must be positive")
+    if jnp.any(cell_angles <= 0) or jnp.any(cell_angles >= 180):
+        raise ValueError("Cell angles must be between 0 and 180 degrees")
+
+    return CrystalStructure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
+    )
