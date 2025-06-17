@@ -219,75 +219,72 @@ def compute_kinematic_intensities(
 @jaxtyped(typechecker=beartype)
 def simulate_rheed_pattern(
     crystal: CrystalStructure,
-    voltage_kV: Optional[scalar_num] = 10,
-    theta_deg: Optional[scalar_num] = 1,
-    hmax: Optional[scalar_int] = 3,
-    kmax: Optional[scalar_int] = 3,
-    lmax: Optional[scalar_int] = 1,
-    tolerance: Optional[scalar_float] = 0.05,
-    detector_distance: Optional[scalar_num] = 1000.0,
-    z_sign: Optional[scalar_num] = 1.0,
+    voltage_kV: Optional[Float[Array, ""]] = jnp.asarray(10.0),
+    theta_deg: Optional[Float[Array, ""]] = jnp.asarray(1.0),
+    hmax: Optional[Int[Array, ""]] = jnp.asarray(3),
+    kmax: Optional[Int[Array, ""]] = jnp.asarray(3),
+    lmax: Optional[Int[Array, ""]] = jnp.asarray(1),
+    tolerance: Optional[Float[Array, ""]] = jnp.asarray(0.05),
+    detector_distance: Optional[Float[Array, ""]] = jnp.asarray(1000.0),
+    z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
+    use_atomic_potentials: Optional[bool] = True,
+    pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
 ) -> RHEEDPattern:
     """
     Description
     -----------
-    Compute a simple kinematic RHEED pattern for the given crystal.
+    Compute a kinematic RHEED pattern for the given crystal with optional
+    atomic form factors from Kirkland potentials.
 
     Parameters
     ----------
     - `crystal` (CrystalStructure):
         Crystal structure to simulate
-    - `voltage_kV` (scalar_num, optional):
+    - `voltage_kV` (Float[Array, ""]):
         Accelerating voltage in kilovolts.
-        Default: 10.0
-    - `theta_deg` (scalar_num, optional):
+        Optional. Default: 10.0
+    - `theta_deg` (Float[Array, ""]):
         Grazing angle in degrees
-        Default: 1.0
-    - `hmax` (scalar_int, optional):
-        Maximum h index for reciprocal lattice
-        Default: 3
-    - `kmax` (scalar_int, optional):
-        Maximum k index for reciprocal lattice
-        Default: 3
-    - `lmax` (scalar_int, optional):
-        Maximum l index for reciprocal lattice
-        Default: 1
-    - `tolerance` (scalar_float, optional):
+        Optional. Default: 1.0
+    - `hmax, kmax, lmax` (Int[Array, ""]):
+        Bounds on reciprocal lattice indices
+        Optional. Default: 3, 3, 1
+    - `tolerance` (Float[Array, ""]):
         How close to the Ewald sphere in 1/Å
-        Default: 0.05
-    - `detector_distance` (scalar_num, optional):
-        Distance to detector in Å
-        Default: 1000.0
-    - `z_sign` (scalar_num, optional):
-        Sign for z-component of outgoing wavevector
-        Default: 1.0
+        Optional. Default: 0.05
+    - `detector_distance` (Float[Array, ""]):
+        Distance from sample to detector plane in angstroms
+        Optional. Default: 1000.0
+    - `z_sign` (Float[Array, ""]):
+        If +1, keep reflections with positive z in k_out
+        Optional. Default: 1.0
+    - `use_atomic_potentials` (bool):
+        Whether to include atomic form factors using Kirkland potentials
+        Optional. Default: True
+    - `pixel_size` (Float[Array, ""]):
+        Pixel size for atomic potential calculation in angstroms
+        Optional. Default: 0.1
 
     Returns
     -------
     - `pattern` (RHEEDPattern):
-        Simulated RHEED pattern with:
-        - k_out: Outgoing wavevectors (K, 3)
-        - detector_points: Projected points on detector (K, 2)
-        - intensities: Diffraction intensities (K,)
+        A NamedTuple capturing reflection indices, k_out, and detector coords.
 
     Flow
     ----
+    - Build real-space cell vectors from cell parameters
+    - Generate reciprocal lattice points up to specified bounds
     - Calculate electron wavelength from voltage
-    - Generate reciprocal lattice points
-    - Calculate incident wavevector
-    - Find kinematically allowed reflections
-    - Project wavevectors onto detector plane
-    - Compute kinematic intensities
-    - Create and return RHEEDPattern instance
+    - Build incident wavevector at specified angle
+    - Find G vectors satisfying reflection condition
+    - Project resulting k_out onto detector plane
+    - Calculate kinematic intensities for allowed reflections
+    - If using atomic potentials:
+        - Extract unique atomic numbers from crystal
+        - Calculate atomic potentials for each element
+        - Apply form factors to modify intensities
+    - Create and return RHEEDPattern with all computed data
     """
-    cell_vecs = rh.ucell.build_cell_vectors(
-        crystal.cell_lengths[0],
-        crystal.cell_lengths[1],
-        crystal.cell_lengths[2],
-        crystal.cell_angles[0],
-        crystal.cell_angles[1],
-        crystal.cell_angles[2],
-    )
     Gs: Float[Array, "M 3"] = rh.ucell.generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
@@ -297,18 +294,79 @@ def simulate_rheed_pattern(
     )
     lam_ang: Float[Array, ""] = rh.ucell.wavelength_ang(voltage_kV)
     k_in: Float[Array, "3"] = rh.simul.incident_wavevector(lam_ang, theta_deg)
+    allowed_indices: Int[Array, "K"]
+    k_out: Float[Array, "K 3"]
     allowed_indices, k_out = rh.simul.find_kinematic_reflections(
         k_in=k_in, Gs=Gs, lam_ang=lam_ang, z_sign=z_sign, tolerance=tolerance
     )
-    detector_points: Float[Array, "M 2"] = project_on_detector(
-        k_out, jnp.asarray(detector_distance)
-    )
-    G_allowed = Gs[allowed_indices]
-    atom_positions = crystal.cart_positions[:, :3]
-    intensities: Float[Array, "M"] = rh.simul.compute_kinematic_intensities(
-        positions=atom_positions, G_allowed=G_allowed
+    detector_points: Float[Array, "K 2"] = project_on_detector(k_out, detector_distance)
+    G_allowed: Float[Array, "K 3"] = Gs[allowed_indices]
+    atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
+    intensities: Float[Array, "K"]
+
+    def compute_basic_intensities() -> Float[Array, "K"]:
+        return rh.simul.compute_kinematic_intensities(
+            positions=atom_positions, G_allowed=G_allowed
+        )
+
+    def compute_enhanced_intensities() -> Float[Array, "K"]:
+        atomic_numbers: Float[Array, "N"] = crystal.cart_positions[:, 3]
+        unique_atomic_numbers: Float[Array, "U"] = jnp.unique(atomic_numbers)
+
+        def calculate_form_factor_for_atom(
+            atomic_num: Float[Array, ""],
+        ) -> Float[Array, "n n"]:
+            atomic_num_int: scalar_int = int(atomic_num)
+            return rh.simul.atomic_potential(
+                atom_no=atomic_num_int,
+                pixel_size=pixel_size,
+                sampling=16,
+                potential_extent=4.0,
+            )
+
+        form_factors: Float[Array, "U n n"] = jax.vmap(calculate_form_factor_for_atom)(
+            unique_atomic_numbers
+        )
+
+        def compute_structure_factor_with_form_factors(
+            G_vec: Float[Array, "3"],
+        ) -> Float[Array, ""]:
+            phases: Float[Array, "N"] = jnp.einsum("j,ij->i", G_vec, atom_positions)
+
+            def get_form_factor_for_atom(atom_idx: Int[Array, ""]) -> Float[Array, ""]:
+                atomic_num: Float[Array, ""] = atomic_numbers[atom_idx]
+                form_factor_idx: Int[Array, ""] = jnp.where(
+                    unique_atomic_numbers == atomic_num, size=1
+                )[0][0]
+                form_factor_matrix: Float[Array, "n n"] = form_factors[form_factor_idx]
+                center_idx: Int[Array, ""] = form_factor_matrix.shape[0] // 2
+                return form_factor_matrix[center_idx, center_idx]
+
+            atom_indices: Int[Array, "N"] = jnp.arange(len(atomic_numbers))
+            form_factor_values: Float[Array, "N"] = jax.vmap(get_form_factor_for_atom)(
+                atom_indices
+            )
+            complex_amplitudes: Float[Array, "N"] = form_factor_values * jnp.exp(
+                1j * phases
+            )
+            total_amplitude: Float[Array, ""] = jnp.sum(complex_amplitudes)
+            intensity: Float[Array, ""] = jnp.real(
+                total_amplitude * jnp.conj(total_amplitude)
+            )
+            return intensity
+
+        enhanced_intensities: Float[Array, "K"] = jax.vmap(
+            compute_structure_factor_with_form_factors
+        )(G_allowed)
+        return enhanced_intensities
+
+    intensities = jax.lax.cond(
+        use_atomic_potentials,
+        compute_enhanced_intensities,
+        compute_basic_intensities,
     )
     pattern: RHEEDPattern = rh.types.create_rheed_pattern(
+        G_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,
