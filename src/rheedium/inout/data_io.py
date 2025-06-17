@@ -34,6 +34,12 @@ def load_atomic_numbers(path: str = str(DEFAULT_ATOMIC_NUMBERS_PATH)) -> dict[st
     -------
     - `atomic_numbers` (dict[str, int]):
         Dictionary mapping element symbols to atomic numbers.
+
+    Flow
+    ----
+    - Open and read the JSON file at the specified path
+    - Parse the JSON content into a dictionary
+    - Return the atomic numbers mapping
     """
     with open(path, "r") as f:
         atomic_numbers = json.load(f)
@@ -79,6 +85,29 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             - α is the angle between b and c
             - β is the angle between a and c
             - γ is the angle between a and b
+
+    Flow
+    ----
+    - Validate CIF file path and extension
+    - Read CIF file content
+    - Load atomic numbers mapping
+    - Extract unit cell parameters:
+        - Parse cell lengths (a, b, c)
+        - Parse cell angles (alpha, beta, gamma)
+    - Parse atomic positions:
+        - Find atom site loop section
+        - Extract required columns
+        - Parse element symbols and fractional coordinates
+        - Convert element symbols to atomic numbers
+    - Convert fractional to Cartesian coordinates:
+        - Build cell vectors
+        - Transform coordinates
+    - Parse symmetry operations:
+        - Find symmetry operations section
+        - Extract operation strings
+    - Create initial CrystalStructure
+    - Apply symmetry operations to expand positions
+    - Return expanded crystal structure
     """
     cif_path = Path(cif_path)
     if not cif_path.exists():
@@ -206,6 +235,25 @@ def symmetry_expansion(
     -------
     - `expanded_crystal` (CrystalStructure):
         Symmetry-expanded crystal structure without duplicates.
+
+    Flow
+    ----
+    - Parse symmetry operations into functions:
+        - Split operation strings into components
+        - Create functions to evaluate each component
+        - Handle coefficients and variables
+    - Apply symmetry operations:
+        - For each atomic position
+        - For each symmetry operation
+        - Generate new positions
+        - Apply modulo 1 to keep in unit cell
+    - Convert expanded positions to Cartesian coordinates:
+        - Build cell vectors
+        - Transform coordinates
+    - Remove duplicate positions:
+        - Calculate distances between positions
+        - Keep only unique positions within tolerance
+    - Create and return expanded CrystalStructure
     """
     frac_positions = crystal.frac_positions
     expanded_positions = []

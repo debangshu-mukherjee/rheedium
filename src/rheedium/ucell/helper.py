@@ -110,6 +110,17 @@ def compute_lengths_angles(
         The lengths of the lattice vectors (a, b, c) in Å.
     - `angles` (Float[Array, "3"]):
         The angles between the lattice vectors (alpha, beta, gamma) in degrees.
+
+    Flow
+    ----
+    - Extract individual lattice vectors (a_vec, b_vec, c_vec)
+    - Calculate lengths of each vector using linalg.norm
+    - Calculate angles between vectors using angle_in_degrees:
+        - alpha: angle between b_vec and c_vec
+        - beta: angle between a_vec and c_vec
+        - gamma: angle between a_vec and b_vec
+    - Stack lengths and angles into arrays
+    - Return tuple of lengths and angles
     """
     a_vec: Float[Array, "3"] = cell_vectors[0]
     b_vec: Float[Array, "3"] = cell_vectors[1]
@@ -166,6 +177,22 @@ def parse_cif_and_scrape(
         direction (z-component of `thickness_xyz`).
     - The `tolerance` parameter is reserved for compatibility and future
         functionality.
+
+    Flow
+    ----
+    - Parse CIF file to get initial crystal structure
+    - Extract Cartesian positions and atomic numbers
+    - Normalize zone axis vector
+    - Calculate projections of atomic positions onto zone axis
+    - Find minimum and maximum projections
+    - Calculate center projection and half thickness
+    - Create mask for atoms within thickness range
+    - Filter Cartesian positions and atomic numbers using mask
+    - Build cell vectors from crystal parameters
+    - Calculate inverse of cell vectors
+    - Convert filtered Cartesian positions to fractional coordinates
+    - Create new CrystalStructure with filtered positions
+    - Return filtered crystal structure
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_positions: Float[Array, "n 3"] = crystal.cart_positions[:, :3]

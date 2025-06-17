@@ -46,6 +46,23 @@ def bessel_k0(x: Float[Array, "*"]) -> Float[Array, "*"]:
     -----
     For x ≤ 2, uses series expansion around x=0
     For x > 2, uses asymptotic expansion
+
+    Flow
+    ----
+    - Ensure input values are positive by applying minimum threshold
+    - Define coefficients for small x approximation (p0_coeffs)
+    - Define coefficients for large x approximation (q0_coeffs)
+    - For small x (≤ 2):
+        - Calculate t = x/2
+        - Compute I₀ series expansion
+        - Calculate logarithmic term
+        - Evaluate polynomial using p0_coeffs
+        - Combine terms for final result
+    - For large x (> 2):
+        - Calculate t = 2/x
+        - Evaluate polynomial using q0_coeffs
+        - Apply exponential and square root scaling
+    - Select appropriate result based on x value
     """
     x_safe: Float[Array, "*"] = jnp.maximum(x, jnp.asarray(1e-16))
     p0_coeffs: Float[Array, "7"] = jnp.array(
@@ -129,6 +146,23 @@ def bessel_k1(x: Float[Array, "*"]) -> Float[Array, "*"]:
     -------
     - `result` (Float[Array, "*"]):
         K₁(x) values with same shape as input
+
+    Flow
+    ----
+    - Ensure input values are positive by applying minimum threshold
+    - Define coefficients for small x approximation (p1_coeffs)
+    - Define coefficients for large x approximation (q1_coeffs)
+    - For small x (≤ 2):
+        - Calculate t = x/2
+        - Compute I₁ series expansion
+        - Calculate logarithmic term
+        - Evaluate polynomial using p1_coeffs
+        - Combine terms with 1/x term for final result
+    - For large x (> 2):
+        - Calculate t = 2/x
+        - Evaluate polynomial using q1_coeffs
+        - Apply exponential and square root scaling
+    - Select appropriate result based on x value
     """
     x_safe: Float[Array, "*"] = jnp.maximum(x, jnp.asarray(1e-16))
     p1_coeffs: Float[Array, "7"] = jnp.array(
@@ -217,6 +251,21 @@ def bessel_kv(nu: scalar_float, x: Float[Array, "*"]) -> Float[Array, "*"]:
     K_{n+1}(x) = K_{n-1}(x) + (2n/x) * K_n(x)
 
     For non-integer orders, uses approximation suitable for atomic potentials
+
+    Flow
+    ----
+    - Convert nu to JAX array
+    - Ensure input values are positive by applying minimum threshold
+    - For nu = 0:
+        - Return result from bessel_k0
+    - For nu = 1:
+        - Return result from bessel_k1
+    - For general nu:
+        - Calculate initial K₀ and K₁ values
+        - Determine number of recurrence steps needed
+        - Apply recurrence relation using scan:
+            - K_{n+1}(x) = K_{n-1}(x) + (2n/x) * K_n(x)
+        - Return final result
     """
     nu_val: Float[Array, ""] = jnp.asarray(nu)
     x_safe: Float[Array, "*"] = jnp.maximum(x, jnp.asarray(1e-16))

@@ -287,6 +287,17 @@ def generate_reciprocal_points(
     -------
     - `Gs` (Float[Array, "M 3"]):
         The set of reciprocal-lattice vectors in inverse angstroms.
+
+    Flow
+    ----
+    - Extract cell lengths and angles from crystal structure
+    - Calculate reciprocal cell parameters using reciprocal_uc_angles
+    - Build reciprocal cell vectors using build_cell_vectors
+    - Extract a*, b*, c* vectors from reciprocal cell
+    - Generate meshgrid of h, k, l indices
+    - Stack indices into hkl array
+    - Define function to compute single G vector
+    - Vectorize computation over all hkl combinations
     """
     abc: Num[Array, "3"] = crystal.cell_lengths
     angles: Num[Array, "3"] = crystal.cell_angles
@@ -355,6 +366,21 @@ def atom_scraper(
     -------
     - `filtered_crystal` (CrystalStructure):
         New CrystalStructure with filtered atoms and adjusted cell.
+
+    Flow
+    ----
+    - Build original cell vectors from crystal parameters
+    - Normalize zone axis vector
+    - Calculate dot products of atomic positions with zone axis
+    - Find maximum dot product value (top surface)
+    - Calculate distances from top surface
+    - Determine adaptive epsilon for top layer detection
+    - Create mask for atoms within penetration depth
+    - Filter fractional and Cartesian positions using mask
+    - Calculate original and new cell heights
+    - Scale cell vectors to match new height
+    - Compute new cell lengths and angles
+    - Create and return new CrystalStructure with filtered atoms
     """
     orig_cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],

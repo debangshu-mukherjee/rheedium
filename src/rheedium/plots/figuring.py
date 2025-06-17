@@ -33,6 +33,17 @@ def create_phosphor_colormap(
     -------
     - `matplotlib.colors.LinearSegmentedColormap`
         Custom phosphor screen colormap
+
+    Flow
+    ----
+    - Define color transition points and RGB values:
+        - Black (0.0) -> Dark green (0.4)
+        - Dark green (0.4) -> Bright green (0.7)
+        - Bright green (0.7) -> Lighter green (0.9)
+        - Lighter green (0.9) -> White bloom (1.0)
+    - Extract positions and RGB values from color definitions
+    - Create color channel definitions for red, green, and blue
+    - Create and return LinearSegmentedColormap with custom colors
     """
     colors: List[
         Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
@@ -94,6 +105,26 @@ def plot_rheed(
     - `cmap_name` (str):
         Name for your custom phosphor colormap.
         Default is 'phosphor'.
+
+    Flow
+    ----
+    - Extract coordinates and intensities from RHEED pattern
+    - Convert JAX arrays to NumPy arrays
+    - Validate interpolation method
+    - Calculate coordinate ranges for grid
+    - Create uniform grid points
+    - Interpolate intensities onto grid:
+        - Convert grid points to column format
+        - Apply griddata interpolation
+        - Reshape result to 2D grid
+    - Create phosphor colormap
+    - Create figure and plot:
+        - Set up figure and axes
+        - Display interpolated data
+        - Add colorbar
+        - Set labels and title
+        - Adjust layout
+    - Show plot
     """
     coords = rheed_pattern.detector_points
     Y = coords[:, 0]

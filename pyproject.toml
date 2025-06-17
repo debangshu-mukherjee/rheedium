@@ -35,6 +35,7 @@ dependencies = [
     "ipykernel>=6.29.5",
     "jax[cuda12]>=0.4.38 ; sys_platform == 'linux'",
     "jax>=0.4.38 ; sys_platform == 'win64'",
+    "pandas>=2.3.0",
 ]
 [project.optional-dependencies]
 test = [

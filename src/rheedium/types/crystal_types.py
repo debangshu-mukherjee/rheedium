@@ -78,29 +78,43 @@ def create_crystal_structure(
 
     Parameters
     ----------
-    frac_positions : Float[Array, "* 4"]
+    - `frac_positions` : Float[Array, "* 4"]
         Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
-    cart_positions : Num[Array, "* 4"]
+    - `cart_positions` : Num[Array, "* 4"]
         Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
-    cell_lengths : Num[Array, "3"]
+    - `cell_lengths` : Num[Array, "3"]
         Unit cell lengths [a, b, c] in Ångstroms.
-    cell_angles : Num[Array, "3"]
+    - `cell_angles` : Num[Array, "3"]
         Unit cell angles [α, β, γ] in degrees.
 
     Returns
     -------
-    CrystalStructure
+    - `CrystalStructure` : CrystalStructure
         A validated CrystalStructure instance.
 
     Raises
     ------
     ValueError
         If the input arrays have incompatible shapes or invalid values.
+
+    Flow
+    ----
+    - Convert all inputs to JAX arrays using jnp.asarray
+    - Validate shape of frac_positions is (n_atoms, 4)
+    - Validate shape of cart_positions is (n_atoms, 4)
+    - Validate shape of cell_lengths is (3,)
+    - Validate shape of cell_angles is (3,)
+    - Verify number of atoms matches between frac and cart positions
+    - Verify atomic numbers match between frac and cart positions
+    - Ensure cell lengths are positive
+    - Ensure cell angles are between 0 and 180 degrees
+    - Create and return CrystalStructure instance with validated data
     """
     frac_positions = jnp.asarray(frac_positions)
     cart_positions = jnp.asarray(cart_positions)
     cell_lengths = jnp.asarray(cell_lengths)
     cell_angles = jnp.asarray(cell_angles)
+
     if frac_positions.shape[1] != 4:
         raise ValueError("frac_positions must have shape (n_atoms, 4)")
     if cart_positions.shape[1] != 4:
@@ -109,6 +123,7 @@ def create_crystal_structure(
         raise ValueError("cell_lengths must have shape (3,)")
     if cell_angles.shape != (3,):
         raise ValueError("cell_angles must have shape (3,)")
+
     if frac_positions.shape[0] != cart_positions.shape[0]:
         raise ValueError(
             "Number of atoms must match between frac_positions and cart_positions"
