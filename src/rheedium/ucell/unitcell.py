@@ -300,8 +300,7 @@ def generate_reciprocal_points(
     )
 
     rec_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
-        rec_abc[0], rec_abc[1], rec_abc[2],
-        rec_angles[0], rec_angles[1], rec_angles[2]
+        rec_abc[0], rec_abc[1], rec_abc[2], rec_angles[0], rec_angles[1], rec_angles[2]
     )
     a_star: Float[Array, "3"] = rec_vectors[0]
     b_star: Float[Array, "3"] = rec_vectors[1]

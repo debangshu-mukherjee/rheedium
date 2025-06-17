@@ -6,13 +6,14 @@ from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
 from rheedium.types import CrystalStructure, RHEEDPattern, scalar_int, scalar_float
+from rheedium.ucell import bessel_kv
+
 jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)
 def incident_wavevector(
-    lam_ang: scalar_float, 
-    theta_deg: scalar_float
+    lam_ang: scalar_float, theta_deg: scalar_float
 ) -> Float[Array, "3"]:
     """
     Description
@@ -42,7 +43,7 @@ def incident_wavevector(
 
 @jaxtyped(typechecker=beartype)
 def project_on_detector(
-    k_out_set: Float[Array, "M 3"], 
+    k_out_set: Float[Array, "M 3"],
     detector_distance: scalar_float,
 ) -> Float[Array, "M 2"]:
     """
@@ -151,6 +152,7 @@ def compute_kinematic_intensities(
 
     intensities = jax.vmap(intensity_for_G)(G_allowed)
     return intensities
+
 
 @jaxtyped(typechecker=beartype)
 def simulate_rheed_pattern(
@@ -291,37 +293,38 @@ def atomic_potential(
     term1: Float[Array, ""] = 4 * (jnp.pi**2) * a0 * ek
     term2: Float[Array, ""] = 2 * (jnp.pi**2) * a0 * ek
     kirkland: Float[Array, "103 12"] = jnp.load(datafile)
-    xsub: Float[Array, "n"] = jnp.arange(-potential_extent, potential_extent, (pixel_size / sampling))
-    ysub: Float[Array, "n"] = jnp.arange(-potential_extent, potential_extent, (pixel_size / sampling))
+    xsub: Float[Array, "n"] = jnp.arange(
+        -potential_extent, potential_extent, (pixel_size / sampling)
+    )
+    ysub: Float[Array, "n"] = jnp.arange(
+        -potential_extent, potential_extent, (pixel_size / sampling)
+    )
     kirk_fun: Float[Array, "12"] = kirkland[atom_no - 1, :]
     ya: Float[Array, "n n"]
     xa: Float[Array, "n n"]
     ya, xa = jnp.meshgrid(ysub, xsub)
     r: Float[Array, "n n"] = jnp.power((jnp.power(xa, 2) + jnp.power(ya, 2)), 0.5)
-    part1 = np.zeros_like(r)
-    part2 = np.zeros_like(r)
-    sspot = np.zeros_like(r)
-    part1 = term1 * (
-        np.multiply(
+    part1: Float[Array, "n n"] = term1 * (
+        jax.multiply(
             kirk_fun[0],
-            s2.kv(0, (np.multiply((2 * np.pi * np.power(kirk_fun[1], 0.5)), r))),
+            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[1], 0.5)), r))),
         )
-        + np.multiply(
+        + jnp.multiply(
             kirk_fun[2],
-            s2.kv(0, (np.multiply((2 * np.pi * np.power(kirk_fun[3], 0.5)), r))),
+            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[3], 0.5)), r))),
         )
-        + np.multiply(
+        + jnp.multiply(
             kirk_fun[4],
-            s2.kv(0, (np.multiply((2 * np.pi * np.power(kirk_fun[5], 0.5)), r))),
+            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[5], 0.5)), r))),
         )
     )
-    part2 = term2 * (
-        (kirk_fun[6] / kirk_fun[7]) * np.exp(-((np.pi**2) / kirk_fun[7]) * r2)
-        + (kirk_fun[8] / kirk_fun[9]) * np.exp(-((np.pi**2) / kirk_fun[9]) * r2)
-        + (kirk_fun[10] / kirk_fun[11]) * np.exp(-((np.pi**2) / kirk_fun[11]) * r2)
+    part2: Float[Array, "n n"] = term2 * (
+        (kirk_fun[6] / kirk_fun[7]) * jnp.exp(-((jnp.pi**2) / kirk_fun[7]) * r * r)
+        + (kirk_fun[8] / kirk_fun[9]) * jnp.exp(-((jnp.pi**2) / kirk_fun[9]) * r * r)
+        + (kirk_fun[10] / kirk_fun[11]) * jnp.exp(-((jnp.pi**2) / kirk_fun[11]) * r * r)
     )
-    sspot = part1 + part2
-    finalsize = (np.asarray(sspot.shape) / sampling).astype(int)
+    sspot: Float[Array, "n n"] = part1 + part2
+    finalsize = (jnp.asarray(sspot.shape) / sampling).astype(int)
     sspot_im = PIL.Image.fromarray(sspot)
     potential = np.array(sspot_im.resize(finalsize, resample=PIL.Image.LANCZOS))
     return potential

@@ -110,9 +110,13 @@ def create_crystal_structure(
     if cell_angles.shape != (3,):
         raise ValueError("cell_angles must have shape (3,)")
     if frac_positions.shape[0] != cart_positions.shape[0]:
-        raise ValueError("Number of atoms must match between frac_positions and cart_positions")
+        raise ValueError(
+            "Number of atoms must match between frac_positions and cart_positions"
+        )
     if not jnp.all(frac_positions[:, 3] == cart_positions[:, 3]):
-        raise ValueError("Atomic numbers must match between frac_positions and cart_positions")
+        raise ValueError(
+            "Atomic numbers must match between frac_positions and cart_positions"
+        )
     if jnp.any(cell_lengths <= 0):
         raise ValueError("Cell lengths must be positive")
     if jnp.any(cell_angles <= 0) or jnp.any(cell_angles >= 180):
