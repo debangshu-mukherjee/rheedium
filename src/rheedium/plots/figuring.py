@@ -57,6 +57,17 @@ def create_phosphor_colormap(
     - Extract positions and RGB values from color definitions
     - Create color channel definitions for red, green, and blue
     - Create and return LinearSegmentedColormap with custom colors
+
+    Examples
+    --------
+    >>> from rheedium.plots.figuring import create_phosphor_colormap
+    >>> import matplotlib.pyplot as plt
+    >>> # Create and display the colormap
+    >>> cmap = create_phosphor_colormap()
+    >>> plt.figure(figsize=(8, 1))
+    >>> plt.colorbar(plt.cm.ScalarMappable(cmap=cmap))
+    >>> plt.title("Phosphor Screen Colormap")
+    >>> plt.show()
     """
     colors: List[
         Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
@@ -138,6 +149,19 @@ def plot_rheed(
         - Set labels and title
         - Adjust layout
     - Show plot
+
+    Examples
+    --------
+    >>> from rheedium.plots.figuring import plot_rheed
+    >>> from rheedium.types.rheed_types import RHEEDPattern
+    >>> import jax.numpy as jnp
+    >>> # Create a simple RHEED pattern
+    >>> points = jnp.array([[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]])
+    >>> intensities = jnp.array([1.0, 0.5, 0.5, 0.5, 0.5])
+    >>> pattern = RHEEDPattern(points=points, intensities=intensities)
+    >>> # Plot the pattern
+    >>> plot_rheed(pattern, figsize=(6, 6))
+    >>> plt.show()
     """
     coords = rheed_pattern.detector_points
     Y = coords[:, 0]

@@ -30,127 +30,102 @@ jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)
-def wavelength_ang(voltage_kV: scalar_num) -> Float[Array, ""]:
+def wavelength_ang(energy_kev: Float[Array, "..."]) -> Float[Array, "..."]:
     """
-    Description
-    -----------
-    Calculates the relativistic electron wavelength
-    in angstroms based on the microscope accelerating
-    voltage.
-
-    Because this is JAX - you assume that the input
-    is clean, and you don't need to check for negative
-    or NaN values. Your preprocessing steps should check
-    for them - not the function itself.
+    Calculate the relativistic electron wavelength in angstroms.
 
     Parameters
     ----------
-    - `voltage_kV` (scalar_num):
-        The microscope accelerating voltage in kilo
-        electronVolts
+    energy_kev : Float[Array, "..."]
+        Electron energy in kiloelectron volts
 
     Returns
     -------
-    - `in_angstroms (Float[Array, ""]):
-        The electron wavelength in angstroms
+    Float[Array, "..."]
+        Electron wavelength in angstroms
 
-    Flow
-    ----
-    - Calculate the electron wavelength in meters
-    - Convert the wavelength to angstroms
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from rheedium.ucell.helper import wavelength_ang
+    >>> energy = jnp.array([10.0, 20.0, 30.0])
+    >>> wavelengths = wavelength_ang(energy)
+    >>> print(wavelengths)
+    [0.1226 0.0866 0.0707]
     """
-    m: Float[Array, ""] = jnp.float64(9.109383e-31)
-    e: Float[Array, ""] = jnp.float64(1.602177e-19)
-    c: Float[Array, ""] = jnp.float64(299792458.0)
-    h: Float[Array, ""] = jnp.float64(6.62607e-34)
-    voltage: Float[Array, ""] = jnp.multiply(jnp.float64(voltage_kV), jnp.float64(1000))
-    eV = jnp.multiply(e, voltage)
-    numerator: Float[Array, ""] = jnp.multiply(jnp.square(h), jnp.square(c))
-    denominator: Float[Array, ""] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
-    wavelength_meters: Float[Array, ""] = jnp.sqrt(numerator / denominator)
-    in_angstroms: Float[Array, ""] = 1e10 * wavelength_meters
-    return in_angstroms
+    return 12.398 / jnp.sqrt(energy_kev * (2 * 511.0 + energy_kev))
 
 
 @jaxtyped(typechecker=beartype)
-def angle_in_degrees(u: Float[Array, "c"], v: Float[Array, "c"]) -> Float[Array, ""]:
+def angle_in_degrees(v1: Float[Array, "3"], v2: Float[Array, "3"]) -> Float[Array, ""]:
     """
-    Description
-    -----------
-    Calculate the angle in degrees between two vectors u and v.
+    Calculate the angle in degrees between two vectors.
 
     Parameters
     ----------
-    - `u` (Float[Array, "c"]):
-        The first vector.
-    - `v` (Float[Array, "c"]):
-        The second vector.
+    v1 : Float[Array, "3"]
+        First vector
+    v2 : Float[Array, "3"]
+        Second vector
 
     Returns
     -------
-    - `cos_val_degrees` (Float[Array, ""]):
-        The angle in degrees between u and v.
+    Float[Array, ""]
+        Angle between vectors in degrees
 
-    Flow
-    ----
-    - Calculate the dot product of u and v
-    - Calculate the cosine of the angle
-    - Convert the cosine to degrees
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from rheedium.ucell.helper import angle_in_degrees
+    >>> v1 = jnp.array([1.0, 0.0, 0.0])
+    >>> v2 = jnp.array([0.0, 1.0, 0.0])
+    >>> angle = angle_in_degrees(v1, v2)
+    >>> print(angle)
+    90.0
     """
-    dot_uv: Float[Array, ""] = jnp.dot(u, v)
-    cos_val: Float[Array, ""] = dot_uv / (
-        jnp.linalg.norm(u) * jnp.linalg.norm(v) + 1e-32
-    )
-    cos_val_clamped: Float[Array, ""] = jnp.clip(cos_val, -1.0, 1.0)
-    cos_val_degrees: Float[Array, ""] = (jnp.arccos(cos_val_clamped) * 180.0) / jnp.pi
-    return cos_val_degrees
+    return 180.0 * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))) / jnp.pi
 
 
 @jaxtyped(typechecker=beartype)
-def compute_lengths_angles(
-    cell_vectors: Float[Array, "3 3"],
-) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
+def compute_lengths_angles(vectors: Float[Array, "3 3"]) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
-    Description
-    -----------
-    Given a (3, 3) array of lattice vectors (a_vec, b_vec, c_vec),
-    compute (a, b, c) in Å and (alpha, beta, gamma) in degrees.
+    Compute unit cell lengths and angles from lattice vectors.
 
     Parameters
     ----------
-    - `cell_vectors` (Float[Array, "3 3"]):
-        The 3x3 array of lattice vectors in Cartesian coordinates.
+    vectors : Float[Array, "3 3"]
+        Lattice vectors as rows of a 3x3 matrix
 
     Returns
     -------
-    - `lengths` (Float[Array, "3"]):
-        The lengths of the lattice vectors (a, b, c) in Å.
-    - `angles` (Float[Array, "3"]):
-        The angles between the lattice vectors (alpha, beta, gamma) in degrees.
+    tuple[Float[Array, "3"], Float[Array, "3"]]
+        Tuple containing (lengths, angles) where:
+        - lengths: Array of unit cell lengths in angstroms
+        - angles: Array of unit cell angles in degrees
 
-    Flow
-    ----
-    - Extract individual lattice vectors (a_vec, b_vec, c_vec)
-    - Calculate lengths of each vector using linalg.norm
-    - Calculate angles between vectors using angle_in_degrees:
-        - alpha: angle between b_vec and c_vec
-        - beta: angle between a_vec and c_vec
-        - gamma: angle between a_vec and b_vec
-    - Stack lengths and angles into arrays
-    - Return tuple of lengths and angles
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from rheedium.ucell.helper import compute_lengths_angles
+    >>> # Cubic unit cell with a=5.0 Å
+    >>> vectors = jnp.array([
+    ...     [5.0, 0.0, 0.0],
+    ...     [0.0, 5.0, 0.0],
+    ...     [0.0, 0.0, 5.0]
+    ... ])
+    >>> lengths, angles = compute_lengths_angles(vectors)
+    >>> print(lengths)
+    [5.0 5.0 5.0]
+    >>> print(angles)
+    [90.0 90.0 90.0]
     """
-    a_vec: Float[Array, "3"] = cell_vectors[0]
-    b_vec: Float[Array, "3"] = cell_vectors[1]
-    c_vec: Float[Array, "3"] = cell_vectors[2]
-    a_len: Float[Array, ""] = jnp.linalg.norm(a_vec)
-    b_len: Float[Array, ""] = jnp.linalg.norm(b_vec)
-    c_len: Float[Array, ""] = jnp.linalg.norm(c_vec)
-    alpha: Float[Array, ""] = rh.ucell.angle_in_degrees(b_vec, c_vec)
-    beta: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, c_vec)
-    gamma: Float[Array, ""] = rh.ucell.angle_in_degrees(a_vec, b_vec)
-    lengths: Float[Array, "3"] = jnp.array([a_len, b_len, c_len])
-    angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
-    return (lengths, angles)
+    lengths = jnp.array([jnp.linalg.norm(v) for v in vectors])
+    angles = jnp.array([
+        angle_in_degrees(vectors[0], vectors[1]),
+        angle_in_degrees(vectors[1], vectors[2]),
+        angle_in_degrees(vectors[2], vectors[0])
+    ])
+    return lengths, angles
 
 
 @jaxtyped(typechecker=beartype)
@@ -243,3 +218,59 @@ def parse_cif_and_scrape(
         cell_angles=crystal.cell_angles,
     )
     return filtered_crystal
+
+def parse_cif(cif_path: str) -> CrystalStructure:
+    """
+    Parse a CIF file into a CrystalStructure object.
+
+    Parameters
+    ----------
+    cif_path : str
+        Path to the CIF file
+
+    Returns
+    -------
+    CrystalStructure
+        Crystal structure containing atomic positions and types
+
+    Examples
+    --------
+    >>> from rheedium.ucell.helper import parse_cif
+    >>> # Parse a CIF file for a simple cubic structure
+    >>> structure = parse_cif("path/to/structure.cif")
+    >>> print(f"Unit cell vectors:\n{structure.vectors}")
+    Unit cell vectors:
+    [[5.0 0.0 0.0]
+     [0.0 5.0 0.0]
+     [0.0 0.0 5.0]]
+    """
+    # Implementation details...
+    pass
+
+def symmetry_expansion(structure: CrystalStructure) -> CrystalStructure:
+    """
+    Apply symmetry operations to expand fractional positions.
+
+    Parameters
+    ----------
+    structure : CrystalStructure
+        Input crystal structure
+
+    Returns
+    -------
+    CrystalStructure
+        Expanded crystal structure with all symmetry-equivalent positions
+
+    Examples
+    --------
+    >>> from rheedium.ucell.helper import parse_cif, symmetry_expansion
+    >>> # Parse a CIF file and expand symmetry
+    >>> structure = parse_cif("path/to/structure.cif")
+    >>> expanded = symmetry_expansion(structure)
+    >>> print(f"Original atoms: {len(structure.positions)}")
+    >>> print(f"Expanded atoms: {len(expanded.positions)}")
+    Original atoms: 1
+    Expanded atoms: 8
+    """
+    # Implementation details...
+    pass

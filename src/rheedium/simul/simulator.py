@@ -30,7 +30,7 @@ from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
 from rheedium.types import (CrystalStructure, RHEEDPattern, scalar_float,
-                            scalar_int, scalar_num)
+                            scalar_int)
 
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
@@ -59,6 +59,18 @@ def incident_wavevector(
     -------
     - `k_in` (Float[Array, "3"]):
         The 3D incident wavevector (1/angstrom)
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Calculate wavelength for 20 kV electrons
+    >>> lam = rh.ucell.wavelength_ang(20.0)
+    >>> 
+    >>> # Calculate incident wavevector at 2 degree grazing angle
+    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
+    >>> print(f"Incident wavevector: {k_in}")
 
     Flow
     ----
@@ -98,6 +110,22 @@ def project_on_detector(
     -------
     - `coords` (Float[Array, "M 2"]):
         (M, 2) array of projected [Y, Z]
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Create some outgoing wavevectors
+    >>> k_out = jnp.array([
+    ...     [1.0, 0.1, 0.1],  # First reflection
+    ...     [1.0, -0.1, 0.2], # Second reflection
+    ...     [1.0, 0.2, -0.1]  # Third reflection
+    ... ])
+    >>> 
+    >>> # Project onto detector at 1000 Å distance
+    >>> detector_points = rh.simul.project_on_detector(k_out, 1000.0)
+    >>> print(f"Detector points: {detector_points}")
 
     Flow
     ----
@@ -152,6 +180,33 @@ def find_kinematic_reflections(
     - `k_out` (Float[Array, "K 3"]):
         Outgoing wavevectors (in 1/Å) for those reflections.
 
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Calculate incident wavevector
+    >>> lam = rh.ucell.wavelength_ang(20.0)
+    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
+    >>> 
+    >>> # Generate some reciprocal lattice points
+    >>> Gs = jnp.array([
+    ...     [0, 0, 0],    # (000)
+    ...     [1, 0, 0],    # (100)
+    ...     [0, 1, 0],    # (010)
+    ...     [1, 1, 0]     # (110)
+    ... ])
+    >>> 
+    >>> # Find allowed reflections
+    >>> indices, k_out = rh.simul.find_kinematic_reflections(
+    ...     k_in=k_in,
+    ...     Gs=Gs,
+    ...     lam_ang=lam,
+    ...     tolerance=0.1  # More lenient tolerance
+    ... )
+    >>> print(f"Allowed indices: {indices}")
+    >>> print(f"Outgoing wavevectors: {k_out}")
+
     Flow
     ----
     - Calculate wavevector magnitude as 2π/λ
@@ -197,6 +252,31 @@ def compute_kinematic_intensities(
     - `intensities` (Float[Array, "M"]):
         Intensities for each reflection.
 
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Create a simple unit cell with two atoms
+    >>> positions = jnp.array([
+    ...     [0.0, 0.0, 0.0],  # First atom at origin
+    ...     [0.5, 0.5, 0.5]   # Second atom at cell center
+    ... ])
+    >>> 
+    >>> # Define some allowed G vectors
+    >>> G_allowed = jnp.array([
+    ...     [1, 0, 0],    # (100)
+    ...     [0, 1, 0],    # (010)
+    ...     [1, 1, 0]     # (110)
+    ... ])
+    >>> 
+    >>> # Calculate intensities
+    >>> intensities = rh.simul.compute_kinematic_intensities(
+    ...     positions=positions,
+    ...     G_allowed=G_allowed
+    ... )
+    >>> print(f"Reflection intensities: {intensities}")
+
     Flow
     ----
     - Define inner function to compute intensity for single G vector
@@ -235,10 +315,18 @@ def simulate_rheed_pattern(
     Compute a kinematic RHEED pattern for the given crystal using
     atomic form factors from Kirkland potentials for realistic intensities.
 
+    This function combines several steps:
+    1. Generates reciprocal lattice points using :func:`rheedium.ucell.generate_reciprocal_points`
+    2. Calculates incident wavevector using :func:`incident_wavevector`
+    3. Finds allowed reflections using :func:`find_kinematic_reflections`
+    4. Projects points onto detector using :func:`project_on_detector`
+    5. Computes intensities using atomic form factors from :func:`atomic_potential`
+
     Parameters
     ----------
     - `crystal` (CrystalStructure):
-        Crystal structure to simulate
+        Crystal structure to simulate. Can be created using :func:`rheedium.types.create_crystal_structure`
+        or loaded from a CIF file using :func:`rheedium.inout.parse_cif`
     - `voltage_kV` (Float[Array, ""]):
         Accelerating voltage in kilovolts.
         Optional. Default: 10.0
@@ -265,6 +353,28 @@ def simulate_rheed_pattern(
     -------
     - `pattern` (RHEEDPattern):
         A NamedTuple capturing reflection indices, k_out, and detector coords.
+        Can be visualized using :func:`rheedium.plots.plot_rheed`
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Load crystal structure from CIF file
+    >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
+    >>> 
+    >>> # Simulate RHEED pattern
+    >>> pattern = rh.simul.simulate_rheed_pattern(
+    ...     crystal=crystal,
+    ...     voltage_kV=jnp.asarray(20.0),  # 20 kV beam
+    ...     theta_deg=jnp.asarray(2.0),    # 2 degree grazing angle
+    ...     hmax=jnp.asarray(4),           # Generate more reflections
+    ...     kmax=jnp.asarray(4),
+    ...     lmax=jnp.asarray(2)
+    ... )
+    >>> 
+    >>> # Plot the pattern
+    >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
     Flow
     ----
@@ -364,47 +474,59 @@ def atomic_potential(
     """
     Description
     -----------
-    Calculate the projected potential of a single atom using Kirkland scattering factors.
+    Calculate the atomic potential for a given element using Kirkland's parameterization.
+    This function is used internally by :func:`simulate_rheed_pattern` to compute
+    realistic diffraction intensities.
 
-    This function computes the projected screened potential of an independent atom
-    using the Kirkland parameterization with modified Bessel functions. The potential
-    is calculated on a 2D grid and downsampled to the target pixel size.
+    The potential is computed on a grid with size determined by `sampling` and `potential_extent`.
+    The grid is centered on the atom position, with the potential value at the center
+    used as the atomic form factor in structure factor calculations.
 
     Parameters
     ----------
     - `atom_no` (scalar_int):
-        Atomic number of the atom whose potential is being calculated
+        Atomic number of the element
     - `pixel_size` (scalar_float):
-        Real space pixel size in Ångstroms
+        Size of each pixel in angstroms
     - `sampling` (scalar_int, optional):
-        Supersampling factor for increased accuracy. Higher values improve precision
-        with larger pixel sizes. Default is 16
+        Number of pixels in each dimension
+        Default: 16
     - `potential_extent` (scalar_float, optional):
-        Distance in Ångstroms from atom center to which the projected potential
-        is calculated. Default is 4.0 Ångstroms
+        Extent of the potential in angstroms
+        Default: 4.0
     - `datafile` (str, optional):
-        Path to the CSV file containing Kirkland scattering factors.
-        Default points to data/Kirkland_Potentials.csv
+        Path to Kirkland potentials data file
+        Default: '<project_root>/data/Kirkland_Potentials.csv'
 
     Returns
     -------
     - `potential` (Float[Array, "n n"]):
-        Projected potential matrix in the appropriate units
+        Atomic potential on a 2D grid, where n = sampling
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>> 
+    >>> # Calculate potential for gold (Z=79)
+    >>> potential = rh.simul.atomic_potential(
+    ...     atom_no=79,
+    ...     pixel_size=0.1,  # 0.1 Å per pixel
+    ...     sampling=32,     # 32x32 grid
+    ...     potential_extent=5.0  # 5 Å extent
+    ... )
+    >>> 
+    >>> # The center value is used as the atomic form factor
+    >>> form_factor = potential[16, 16]  # Center of 32x32 grid
 
     Flow
     ----
-    - Define physical constants (Bohr radius and electron charge)
-    - Calculate constant terms for potential calculation
-    - Load Kirkland scattering factors from CSV file
-    - Extract parameters for specified atomic number
-    - Calculate step size and grid extent
-    - Create coordinate grid around atom center
-    - Calculate radial distances from atom center
-    - Compute Bessel function terms using Kirkland parameters
-    - Compute Gaussian terms using Kirkland parameters
-    - Combine terms to get total potential
-    - Downsample potential to target resolution using average pooling
-    - Return final potential matrix
+    - Load Kirkland potential parameters from CSV file
+    - Create coordinate grid for potential calculation
+    - Calculate radial distances from center
+    - Compute Bessel functions for each parameter
+    - Sum contributions from all parameters
+    - Return 2D potential array
     """
     a0: Float[Array, ""] = jnp.asarray(0.5292)
     ek: Float[Array, ""] = jnp.asarray(14.4)

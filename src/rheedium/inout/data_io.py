@@ -55,6 +55,15 @@ def load_atomic_numbers(path: str = str(DEFAULT_ATOMIC_NUMBERS_PATH)) -> dict[st
     - Open and read the JSON file at the specified path
     - Parse the JSON content into a dictionary
     - Return the atomic numbers mapping
+
+    Examples
+    --------
+    >>> from rheedium.inout.data_io import load_atomic_numbers
+    >>> atomic_numbers = load_atomic_numbers()
+    >>> print(atomic_numbers["Si"])
+    14
+    >>> print(atomic_numbers["Au"])
+    79
     """
     with open(path, "r") as f:
         atomic_numbers = json.load(f)
@@ -123,6 +132,19 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     - Create initial CrystalStructure
     - Apply symmetry operations to expand positions
     - Return expanded crystal structure
+
+    Examples
+    --------
+    >>> from rheedium.inout.data_io import parse_cif
+    >>> # Parse a CIF file for silicon
+    >>> structure = parse_cif("path/to/silicon.cif")
+    >>> print(f"Unit cell vectors:\n{structure.vectors}")
+    Unit cell vectors:
+    [[5.431 0.000 0.000]
+     [0.000 5.431 0.000]
+     [0.000 0.000 5.431]]
+    >>> print(f"Number of atoms: {len(structure.positions)}")
+    Number of atoms: 8
     """
     cif_path = Path(cif_path)
     if not cif_path.exists():
@@ -271,6 +293,17 @@ def symmetry_expansion(
         - Calculate distances between positions
         - Keep only unique positions within tolerance
     - Create and return expanded CrystalStructure
+
+    Examples
+    --------
+    >>> from rheedium.inout.data_io import parse_cif, symmetry_expansion
+    >>> # Parse a CIF file and expand symmetry
+    >>> structure = parse_cif("path/to/structure.cif")
+    >>> expanded = symmetry_expansion(structure)
+    >>> print(f"Original atoms: {len(structure.positions)}")
+    >>> print(f"Expanded atoms: {len(expanded.positions)}")
+    Original atoms: 1
+    Expanded atoms: 8
     """
     frac_positions = crystal.frac_positions
     expanded_positions = []
