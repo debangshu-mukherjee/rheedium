@@ -38,24 +38,10 @@ Type Aliases
         Union type for non-JAX numeric values (int or float)
 """
 
-from .crystal_types import (
-    CrystalStructure,
-    create_crystal_structure,
-)
-
-from .rheed_types import (
-    RHEEDPattern,
-    RHEEDImage,
-    create_rheed_pattern,
-    create_rheed_image,
-)
-
-from .custom_types import (
-    scalar_float,
-    scalar_int,
-    scalar_num,
-    non_jax_number,
-)
+from .crystal_types import CrystalStructure, create_crystal_structure
+from .custom_types import non_jax_number, scalar_float, scalar_int, scalar_num
+from .rheed_types import (RHEEDImage, RHEEDPattern, create_rheed_image,
+                          create_rheed_pattern)
 
 __all__ = [
     "CrystalStructure",

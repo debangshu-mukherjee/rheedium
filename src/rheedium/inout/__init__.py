@@ -14,11 +14,7 @@ Functions
         Apply symmetry operations to expand fractional positions and remove duplicates
 """
 
-from .data_io import (
-    load_atomic_numbers,
-    parse_cif,
-    symmetry_expansion,
-)
+from .data_io import load_atomic_numbers, parse_cif, symmetry_expansion
 
 __all__ = [
     "load_atomic_numbers",

@@ -20,15 +20,17 @@ Functions
 """
 
 from pathlib import Path
+
 import jax
 import jax.numpy as jnp
+import pandas as pd
 from beartype import beartype
 from beartype.typing import Optional, Tuple
-import pandas as pd
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
-from rheedium.types import CrystalStructure, RHEEDPattern, scalar_int, scalar_float
+from rheedium.types import (CrystalStructure, RHEEDPattern, scalar_float,
+                            scalar_int, scalar_num)
 
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
@@ -217,14 +219,14 @@ def compute_kinematic_intensities(
 @jaxtyped(typechecker=beartype)
 def simulate_rheed_pattern(
     crystal: CrystalStructure,
-    voltage_kV: Optional[Float[Array, ""]] = jnp.asarray(10.0),
-    theta_deg: Optional[Float[Array, ""]] = jnp.asarray(1.0),
-    hmax: Optional[Int[Array, ""]] = jnp.asarray(3),
-    kmax: Optional[Int[Array, ""]] = jnp.asarray(3),
-    lmax: Optional[Int[Array, ""]] = jnp.asarray(1),
-    tolerance: Optional[Float[Array, ""]] = jnp.asarray(0.05),
-    detector_distance: Optional[Float[Array, ""]] = jnp.asarray(1000.0),
-    z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
+    voltage_kV: Optional[scalar_num] = 10,
+    theta_deg: Optional[scalar_num] = 1,
+    hmax: Optional[scalar_int] = 3,
+    kmax: Optional[scalar_int] = 3,
+    lmax: Optional[scalar_int] = 1,
+    tolerance: Optional[scalar_float] = 0.05,
+    detector_distance: Optional[scalar_num] = 1000.0,
+    z_sign: Optional[scalar_num] = 1.0,
 ) -> RHEEDPattern:
     """
     Description
@@ -233,42 +235,50 @@ def simulate_rheed_pattern(
 
     Parameters
     ----------
-    - `crystal` (io.CrystalStructure):
+    - `crystal` (CrystalStructure):
         Crystal structure to simulate
-    - `voltage_kV` (Float[Array, ""]):
+    - `voltage_kV` (scalar_num, optional):
         Accelerating voltage in kilovolts.
-        Optional. Default: 10.0
-    - `theta_deg` (Float[Array, ""]):
+        Default: 10.0
+    - `theta_deg` (scalar_num, optional):
         Grazing angle in degrees
-        Optional. Default: 1.0
-    - `hmax, kmax, lmax` (Int[Array, ""]):
-        Bounds on reciprocal lattice indices
-        Optional. Default: 3, 3, 1
-    - `tolerance` (Float[Array, ""]):
+        Default: 1.0
+    - `hmax` (scalar_int, optional):
+        Maximum h index for reciprocal lattice
+        Default: 3
+    - `kmax` (scalar_int, optional):
+        Maximum k index for reciprocal lattice
+        Default: 3
+    - `lmax` (scalar_int, optional):
+        Maximum l index for reciprocal lattice
+        Default: 1
+    - `tolerance` (scalar_float, optional):
         How close to the Ewald sphere in 1/Å
-        Optional. Default: 0.05
-    - `detector_distance` (Float[Array, ""]):
-        Distance from the sample to the detector plane in angstroms
-        Optional. Default: 1000.0
-    - `z_sign` (Float[Array, ""]):
-        If +1, keep reflections with positive z in k_out
-        Optional. Default: 1.0
+        Default: 0.05
+    - `detector_distance` (scalar_num, optional):
+        Distance to detector in Å
+        Default: 1000.0
+    - `z_sign` (scalar_num, optional):
+        Sign for z-component of outgoing wavevector
+        Default: 1.0
 
     Returns
     -------
     - `pattern` (RHEEDPattern):
-        A NamedTuple capturing reflection indices, k_out, and detector coords.
+        Simulated RHEED pattern with:
+        - k_out: Outgoing wavevectors (K, 3)
+        - detector_points: Projected points on detector (K, 2)
+        - intensities: Diffraction intensities (K,)
 
     Flow
     ----
-    - Build real-space cell vectors from cell parameters
-    - Generate reciprocal lattice points up to specified bounds
     - Calculate electron wavelength from voltage
-    - Build incident wavevector at specified angle
-    - Find G vectors satisfying reflection condition
-    - Project resulting k_out onto detector plane
-    - Calculate kinematic intensities for allowed reflections
-    - Create and return RHEEDPattern with all computed data
+    - Generate reciprocal lattice points
+    - Calculate incident wavevector
+    - Find kinematically allowed reflections
+    - Project wavevectors onto detector plane
+    - Compute kinematic intensities
+    - Create and return RHEEDPattern instance
     """
     cell_vecs = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
@@ -298,7 +308,7 @@ def simulate_rheed_pattern(
     intensities: Float[Array, "M"] = rh.simul.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed
     )
-    pattern = rh.types.create_rheed_pattern(
+    pattern: RHEEDPattern = rh.types.create_rheed_pattern(
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,
@@ -395,21 +405,14 @@ def atomic_potential(
     )
     part2: Float[Array, "n n"] = term2 * (gauss_term1 + gauss_term2 + gauss_term3)
     supersampled_potential: Float[Array, "n n"] = part1 + part2
-
-    target_size: Int[Array, ""] = jnp.ceil(n_points / sampling).astype(jnp.int32)
-
     height: Int[Array, ""] = supersampled_potential.shape[0]
     width: Int[Array, ""] = supersampled_potential.shape[1]
-
     new_height: Int[Array, ""] = (height // sampling) * sampling
     new_width: Int[Array, ""] = (width // sampling) * sampling
-
     cropped: Float[Array, "h w"] = supersampled_potential[:new_height, :new_width]
-
     reshaped: Float[Array, "h_new sampling w_new sampling"] = cropped.reshape(
         new_height // sampling, sampling, new_width // sampling, sampling
     )
-
     potential: Float[Array, "h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
 
     return potential

@@ -220,7 +220,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
-    expanded_crystal: CrystalStructure = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
+    expanded_crystal: CrystalStructure = symmetry_expansion(
+        crystal, sym_ops, tolerance=1.0
+    )
     return expanded_crystal
 
 

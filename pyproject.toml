@@ -36,6 +36,7 @@ dependencies = [
     "jax[cuda12]>=0.4.38 ; sys_platform == 'linux'",
     "jax>=0.4.38 ; sys_platform == 'win64'",
     "pandas>=2.3.0",
+    "isort>=6.0.1",
 ]
 [project.optional-dependencies]
 test = [

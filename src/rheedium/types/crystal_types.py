@@ -14,11 +14,11 @@ Functions
     Factory function to create CrystalStructure instances with data validation
 """
 
+import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import NamedTuple
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Num
-import jax.numpy as jnp
-from beartype import beartype
 
 __all__ = ["CrystalStructure", "create_crystal_structure"]
 

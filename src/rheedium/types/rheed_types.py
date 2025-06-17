@@ -18,11 +18,11 @@ Functions
     Factory function to create RHEEDImage instances with data validation
 """
 
+import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import NamedTuple, Union
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int
-import jax.numpy as jnp
-from beartype import beartype
 
 from rheedium.types import scalar_float, scalar_num
 

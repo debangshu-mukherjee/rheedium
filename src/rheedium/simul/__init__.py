@@ -20,14 +20,9 @@ Functions
         Calculate atomic scattering potential for given atomic number
 """
 
-from .simulator import (
-    incident_wavevector,
-    project_on_detector,
-    find_kinematic_reflections,
-    compute_kinematic_intensities,
-    simulate_rheed_pattern,
-    atomic_potential,
-)
+from .simulator import (atomic_potential, compute_kinematic_intensities,
+                        find_kinematic_reflections, incident_wavevector,
+                        project_on_detector, simulate_rheed_pattern)
 
 __all__ = [
     "incident_wavevector",

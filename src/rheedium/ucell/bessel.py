@@ -17,6 +17,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from jaxtyping import Array, Float, jaxtyped
+
 from rheedium.types import scalar_float
 
 jax.config.update("jax_enable_x64", True)
