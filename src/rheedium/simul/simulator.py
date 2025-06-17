@@ -227,14 +227,13 @@ def simulate_rheed_pattern(
     tolerance: Optional[Float[Array, ""]] = jnp.asarray(0.05),
     detector_distance: Optional[Float[Array, ""]] = jnp.asarray(1000.0),
     z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
-    use_atomic_potentials: Optional[bool] = True,
     pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
 ) -> RHEEDPattern:
     """
     Description
     -----------
-    Compute a kinematic RHEED pattern for the given crystal with optional
-    atomic form factors from Kirkland potentials.
+    Compute a kinematic RHEED pattern for the given crystal using
+    atomic form factors from Kirkland potentials for realistic intensities.
 
     Parameters
     ----------
@@ -258,9 +257,6 @@ def simulate_rheed_pattern(
     - `z_sign` (Float[Array, ""]):
         If +1, keep reflections with positive z in k_out
         Optional. Default: 1.0
-    - `use_atomic_potentials` (bool):
-        Whether to include atomic form factors using Kirkland potentials
-        Optional. Default: True
     - `pixel_size` (Float[Array, ""]):
         Pixel size for atomic potential calculation in angstroms
         Optional. Default: 0.1
@@ -278,12 +274,10 @@ def simulate_rheed_pattern(
     - Build incident wavevector at specified angle
     - Find G vectors satisfying reflection condition
     - Project resulting k_out onto detector plane
-    - Calculate kinematic intensities for allowed reflections
-    - If using atomic potentials:
-        - Extract unique atomic numbers from crystal
-        - Calculate atomic potentials for each element
-        - Apply form factors to modify intensities
-    - Create and return RHEEDPattern with all computed data
+    - Extract unique atomic numbers from crystal
+    - Calculate atomic potentials for each element type
+    - Compute structure factors with atomic form factors
+    - Create and return RHEEDPattern with computed data
     """
     Gs: Float[Array, "M 3"] = rh.ucell.generate_reciprocal_points(
         crystal=crystal,
@@ -302,69 +296,54 @@ def simulate_rheed_pattern(
     detector_points: Float[Array, "K 2"] = project_on_detector(k_out, detector_distance)
     G_allowed: Float[Array, "K 3"] = Gs[allowed_indices]
     atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
-    intensities: Float[Array, "K"]
+    atomic_numbers: Float[Array, "N"] = crystal.cart_positions[:, 3]
+    unique_atomic_numbers: Float[Array, "U"] = jnp.unique(atomic_numbers)
 
-    def compute_basic_intensities() -> Float[Array, "K"]:
-        return rh.simul.compute_kinematic_intensities(
-            positions=atom_positions, G_allowed=G_allowed
+    def calculate_form_factor_for_atom(
+        atomic_num: Float[Array, ""],
+    ) -> Float[Array, "n n"]:
+        atomic_num_int: scalar_int = int(atomic_num)
+        return rh.simul.atomic_potential(
+            atom_no=atomic_num_int,
+            pixel_size=pixel_size,
+            sampling=16,
+            potential_extent=4.0,
         )
 
-    def compute_enhanced_intensities() -> Float[Array, "K"]:
-        atomic_numbers: Float[Array, "N"] = crystal.cart_positions[:, 3]
-        unique_atomic_numbers: Float[Array, "U"] = jnp.unique(atomic_numbers)
-
-        def calculate_form_factor_for_atom(
-            atomic_num: Float[Array, ""],
-        ) -> Float[Array, "n n"]:
-            atomic_num_int: scalar_int = int(atomic_num)
-            return rh.simul.atomic_potential(
-                atom_no=atomic_num_int,
-                pixel_size=pixel_size,
-                sampling=16,
-                potential_extent=4.0,
-            )
-
-        form_factors: Float[Array, "U n n"] = jax.vmap(calculate_form_factor_for_atom)(
-            unique_atomic_numbers
-        )
-
-        def compute_structure_factor_with_form_factors(
-            G_vec: Float[Array, "3"],
-        ) -> Float[Array, ""]:
-            phases: Float[Array, "N"] = jnp.einsum("j,ij->i", G_vec, atom_positions)
-
-            def get_form_factor_for_atom(atom_idx: Int[Array, ""]) -> Float[Array, ""]:
-                atomic_num: Float[Array, ""] = atomic_numbers[atom_idx]
-                form_factor_idx: Int[Array, ""] = jnp.where(
-                    unique_atomic_numbers == atomic_num, size=1
-                )[0][0]
-                form_factor_matrix: Float[Array, "n n"] = form_factors[form_factor_idx]
-                center_idx: Int[Array, ""] = form_factor_matrix.shape[0] // 2
-                return form_factor_matrix[center_idx, center_idx]
-
-            atom_indices: Int[Array, "N"] = jnp.arange(len(atomic_numbers))
-            form_factor_values: Float[Array, "N"] = jax.vmap(get_form_factor_for_atom)(
-                atom_indices
-            )
-            complex_amplitudes: Float[Array, "N"] = form_factor_values * jnp.exp(
-                1j * phases
-            )
-            total_amplitude: Float[Array, ""] = jnp.sum(complex_amplitudes)
-            intensity: Float[Array, ""] = jnp.real(
-                total_amplitude * jnp.conj(total_amplitude)
-            )
-            return intensity
-
-        enhanced_intensities: Float[Array, "K"] = jax.vmap(
-            compute_structure_factor_with_form_factors
-        )(G_allowed)
-        return enhanced_intensities
-
-    intensities = jax.lax.cond(
-        use_atomic_potentials,
-        compute_enhanced_intensities,
-        compute_basic_intensities,
+    form_factors: Float[Array, "U n n"] = jax.vmap(calculate_form_factor_for_atom)(
+        unique_atomic_numbers
     )
+
+    def compute_structure_factor_with_form_factors(
+        G_vec: Float[Array, "3"],
+    ) -> Float[Array, ""]:
+        phases: Float[Array, "N"] = jnp.einsum("j,ij->i", G_vec, atom_positions)
+
+        def get_form_factor_for_atom(atom_idx: Int[Array, ""]) -> Float[Array, ""]:
+            atomic_num: Float[Array, ""] = atomic_numbers[atom_idx]
+            form_factor_idx: Int[Array, ""] = jnp.where(
+                unique_atomic_numbers == atomic_num, size=1
+            )[0][0]
+            form_factor_matrix: Float[Array, "n n"] = form_factors[form_factor_idx]
+            center_idx: Int[Array, ""] = form_factor_matrix.shape[0] // 2
+            return form_factor_matrix[center_idx, center_idx]
+
+        atom_indices: Int[Array, "N"] = jnp.arange(len(atomic_numbers))
+        form_factor_values: Float[Array, "N"] = jax.vmap(get_form_factor_for_atom)(
+            atom_indices
+        )
+        complex_amplitudes: Float[Array, "N"] = form_factor_values * jnp.exp(
+            1j * phases
+        )
+        total_amplitude: Float[Array, ""] = jnp.sum(complex_amplitudes)
+        intensity: Float[Array, ""] = jnp.real(
+            total_amplitude * jnp.conj(total_amplitude)
+        )
+        return intensity
+
+    intensities: Float[Array, "K"] = jax.vmap(
+        compute_structure_factor_with_form_factors
+    )(G_allowed)
     pattern: RHEEDPattern = rh.types.create_rheed_pattern(
         G_indices=allowed_indices,
         k_out=k_out,
