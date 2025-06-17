@@ -1,14 +1,62 @@
 """
-=========================================================
+Module: types
+-------------
+Custom types and data structures for RHEED simulation.
 
-Custom Types (:mod:`rheedium.types`)
+Classes
+-------
+- From `crystal_types.py` submodule:
+    - `CrystalStructure`:
+        JAX-compatible crystal structure with fractional and Cartesian coordinates
+- From `rheed_types.py` submodule:
+    - `RHEEDPattern`:
+        Container for RHEED diffraction pattern data with detector points and intensities
+    - `RHEEDImage`:
+        Container for RHEED image data with pixel coordinates and intensity values
 
-=========================================================
+Functions
+---------
+- From `crystal_types.py` submodule:
+    - `create_crystal_structure`:
+        Factory function to create CrystalStructure instances
 
-This submodule contains custom-defined types and PyTrees
-for use throughout the rheedium package.
+Type Aliases
+------------
+- From `custom_types.py` submodule:
+    - `scalar_float`:
+        Union type for scalar float values (float or JAX scalar array)
+    - `scalar_int`:
+        Union type for scalar integer values (int or JAX scalar array)
+    - `scalar_num`:
+        Union type for scalar numeric values (int, float, or JAX scalar array)
+    - `non_jax_number`:
+        Union type for non-JAX numeric values (int or float)
 """
 
-from .crystal_types import *
-from .custom_types import *
-from .rheed_types import *
+from .crystal_types import (
+    CrystalStructure,
+    create_crystal_structure,
+)
+
+from .rheed_types import (
+    RHEEDPattern,
+    RHEEDImage,
+)
+
+from .custom_types import (
+    scalar_float,
+    scalar_int,
+    scalar_num,
+    non_jax_number,
+)
+
+__all__ = [
+    "CrystalStructure",
+    "create_crystal_structure",
+    "RHEEDPattern",
+    "RHEEDImage",
+    "scalar_float",
+    "scalar_int",
+    "scalar_num",
+    "non_jax_number",
+]
