@@ -6,7 +6,6 @@ from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
 from rheedium.types import CrystalStructure, RHEEDPattern, scalar_int, scalar_float
-from rheedium.ucell import bessel_kv
 
 jax.config.update("jax_enable_x64", True)
 
@@ -307,15 +306,21 @@ def atomic_potential(
     part1: Float[Array, "n n"] = term1 * (
         jax.multiply(
             kirk_fun[0],
-            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[1], 0.5)), r))),
+            rh.ucell.bessel_kv(
+                0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[1], 0.5)), r))
+            ),
         )
         + jnp.multiply(
             kirk_fun[2],
-            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[3], 0.5)), r))),
+            rh.ucell.bessel_kv(
+                0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[3], 0.5)), r))
+            ),
         )
         + jnp.multiply(
             kirk_fun[4],
-            bessel_kv(0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[5], 0.5)), r))),
+            rh.ucell.bessel_kv(
+                0, (jnp.multiply((2 * jnp.pi * jnp.power(kirk_fun[5], 0.5)), r))
+            ),
         )
     )
     part2: Float[Array, "n n"] = term2 * (

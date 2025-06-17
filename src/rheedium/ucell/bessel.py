@@ -1,7 +1,6 @@
 """
 Module: ucell.bessel
 --------------------
-
 JAX-compatible implementation of modified Bessel functions of the second kind.
 
 Functions
