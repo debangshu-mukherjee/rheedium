@@ -7,7 +7,7 @@ Submodules
 ----------
 - `inout`:
     Data input/output operations for crystal structures and RHEED images
-- `plots`: 
+- `plots`:
     Visualization tools for RHEED patterns and crystal structures
 - `recon`:
     Surface reconstruction analysis and modeling utilities
@@ -31,7 +31,7 @@ from . import inout, plots, recon, simul, types, ucell
 
 __all__ = [
     "inout",
-    "plots", 
+    "plots",
     "recon",
     "simul",
     "types",

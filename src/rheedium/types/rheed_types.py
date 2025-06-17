@@ -1,3 +1,23 @@
+"""
+Module: types.rheed_types
+-------------------------
+Data structures and factory functions for RHEED pattern and image representation.
+
+Classes
+-------
+- `RHEEDPattern`:
+    Container for RHEED diffraction pattern data with detector points and intensities
+- `RHEEDImage`:
+    Container for RHEED image data with pixel coordinates and intensity values
+
+Functions
+---------
+- `create_rheed_pattern`:
+    Factory function to create RHEEDPattern instances with data validation
+- `create_rheed_image`:
+    Factory function to create RHEEDImage instances with data validation
+"""
+
 from beartype.typing import NamedTuple, Union
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int
@@ -145,7 +165,9 @@ def create_rheed_pattern(
     if k_out.shape != (M, 3):
         raise ValueError(f"k_out must have shape (M, 3), got {k_out.shape}")
     if detector_points.shape != (M, 2):
-        raise ValueError(f"detector_points must have shape (M, 2), got {detector_points.shape}")
+        raise ValueError(
+            f"detector_points must have shape (M, 2), got {detector_points.shape}"
+        )
     if intensities.shape != (M,):
         raise ValueError(f"intensities must have shape (M,), got {intensities.shape}")
     if G_indices.shape[0] != M:
@@ -243,7 +265,9 @@ def create_rheed_image(
             raise ValueError("calibration scalar must be positive")
     else:
         if calibration.shape != (2,):
-            raise ValueError(f"calibration array must have shape (2,), got {calibration.shape}")
+            raise ValueError(
+                f"calibration array must have shape (2,), got {calibration.shape}"
+            )
         if jnp.any(calibration <= 0):
             raise ValueError("calibration array must contain only positive values")
 

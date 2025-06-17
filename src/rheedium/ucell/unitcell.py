@@ -1,3 +1,26 @@
+"""
+Module: ucell.unitcell
+----------------------
+Functions for unit cell calculations and transformations.
+
+Functions
+---------
+- `reciprocal_unitcell`:
+    Calculate reciprocal unit cell parameters from direct cell parameters
+- `reciprocal_uc_angles`:
+    Calculate reciprocal unit cell angles from direct cell angles
+- `get_unit_cell_matrix`:
+    Build transformation matrix between direct and reciprocal space
+- `build_cell_vectors`:
+    Construct unit cell vectors from lengths and angles
+- `compute_lengths_angles`:
+    Compute unit cell lengths and angles from lattice vectors
+- `generate_reciprocal_points`:
+    Generate reciprocal lattice points for given hkl ranges
+- `atom_scraper`:
+    Filter atoms within specified thickness along zone axis
+"""
+
 import jax
 import jax.numpy as jnp
 from beartype import beartype

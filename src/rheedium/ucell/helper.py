@@ -1,3 +1,20 @@
+"""
+Module: ucell.helper
+--------------------
+Helper functions for unit cell calculations and transformations.
+
+Functions
+---------
+- `wavelength_ang`:
+    Calculates the relativistic electron wavelength in angstroms
+- `angle_in_degrees`:
+    Calculate the angle in degrees between two vectors
+- `compute_lengths_angles`:
+    Compute unit cell lengths and angles from lattice vectors
+- `parse_cif_and_scrape`:
+    Parse CIF file and filter atoms within specified thickness
+"""
+
 from pathlib import Path
 
 import jax

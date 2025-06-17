@@ -1,3 +1,16 @@
+"""
+Module: plots.figuring
+----------------------
+Functions for creating and customizing RHEED pattern visualizations.
+
+Functions
+---------
+- `create_phosphor_colormap`:
+    Create custom colormap simulating phosphor screen appearance
+- `plot_rheed`:
+    Plot RHEED pattern with interpolation and phosphor colormap
+"""
+
 import jax
 import matplotlib.pyplot as plt
 import numpy as np

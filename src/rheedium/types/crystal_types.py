@@ -1,3 +1,19 @@
+"""
+Module: types.crystal_types
+---------------------------
+Data structures and factory functions for crystal structure representation.
+
+Classes
+-------
+- `CrystalStructure`:
+    JAX-compatible crystal structure with fractional and Cartesian coordinates
+
+Functions
+---------
+- `create_crystal_structure`:
+    Factory function to create CrystalStructure instances with data validation
+"""
+
 from beartype.typing import NamedTuple
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Num

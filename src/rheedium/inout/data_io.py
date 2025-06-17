@@ -1,3 +1,18 @@
+"""
+Module: inout.data_io
+---------------------
+Functions for reading and writing crystal structure data.
+
+Functions
+---------
+- `load_atomic_numbers`:
+    Load atomic numbers mapping from JSON file
+- `parse_cif`:
+    Parse CIF file into JAX-compatible CrystalStructure
+- `symmetry_expansion`:
+    Apply symmetry operations to expand fractional positions
+"""
+
 import fractions
 import json
 import re

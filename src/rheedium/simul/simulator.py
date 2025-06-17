@@ -1,3 +1,24 @@
+"""
+Module: simul.simulator
+-----------------------
+Functions for simulating RHEED patterns and calculating diffraction intensities.
+
+Functions
+---------
+- `incident_wavevector`:
+    Calculate incident electron wavevector
+- `project_on_detector`:
+    Project wavevectors onto detector plane
+- `find_kinematic_reflections`:
+    Find reflections satisfying kinematic conditions
+- `compute_kinematic_intensities`:
+    Calculate kinematic diffraction intensities
+- `simulate_rheed_pattern`:
+    Simulate complete RHEED pattern
+- `atomic_potential`:
+    Calculate atomic potential for intensity computation
+"""
+
 from pathlib import Path
 import jax
 import jax.numpy as jnp
@@ -182,6 +203,7 @@ def compute_kinematic_intensities(
     - Compute intensity as sum of squared real and imaginary parts
     - Vectorize computation over all allowed G vectors
     """
+
     def intensity_for_G(G_):
         phases = jnp.einsum("j,ij->i", G_, positions)
         re = jnp.sum(jnp.cos(phases))
@@ -297,7 +319,7 @@ def atomic_potential(
     Description
     -----------
     Calculate the projected potential of a single atom using Kirkland scattering factors.
-    
+
     This function computes the projected screened potential of an independent atom
     using the Kirkland parameterization with modified Bessel functions. The potential
     is calculated on a 2D grid and downsampled to the target pixel size.
@@ -351,7 +373,7 @@ def atomic_potential(
     coords: Float[Array, "n"] = jnp.linspace(-grid_extent, grid_extent, n_points)
     ya: Float[Array, "n n"]
     xa: Float[Array, "n n"]
-    ya, xa = jnp.meshgrid(coords, coords, indexing='ij')
+    ya, xa = jnp.meshgrid(coords, coords, indexing="ij")
     r: Float[Array, "n n"] = jnp.sqrt(xa**2 + ya**2)
     bessel_term1: Float[Array, "n n"] = kirk_params[0] * rh.ucell.bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
@@ -374,21 +396,21 @@ def atomic_potential(
     )
     part2: Float[Array, "n n"] = term2 * (gauss_term1 + gauss_term2 + gauss_term3)
     supersampled_potential: Float[Array, "n n"] = part1 + part2
-    
+
     target_size: Int[Array, ""] = jnp.ceil(n_points / sampling).astype(jnp.int32)
-    
+
     height: Int[Array, ""] = supersampled_potential.shape[0]
     width: Int[Array, ""] = supersampled_potential.shape[1]
-    
+
     new_height: Int[Array, ""] = (height // sampling) * sampling
     new_width: Int[Array, ""] = (width // sampling) * sampling
-    
+
     cropped: Float[Array, "h w"] = supersampled_potential[:new_height, :new_width]
-    
+
     reshaped: Float[Array, "h_new sampling w_new sampling"] = cropped.reshape(
         new_height // sampling, sampling, new_width // sampling, sampling
     )
-    
+
     potential: Float[Array, "h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
-    
+
     return potential
