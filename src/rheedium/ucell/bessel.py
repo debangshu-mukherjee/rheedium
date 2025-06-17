@@ -223,10 +223,10 @@ def bessel_kv(nu: scalar_float, x: Float[Array, "*"]) -> Float[Array, "*"]:
     x_safe: Float[Array, "*"] = jnp.maximum(x, jnp.asarray(1e-16))
 
     def handle_nu_0() -> Float[Array, "*"]:
-        return modified_bessel_k0(x_safe)
+        return bessel_k0(x_safe)
 
     def handle_nu_1() -> Float[Array, "*"]:
-        return modified_bessel_k1(x_safe)
+        return bessel_k1(x_safe)
 
     def handle_general_nu() -> Float[Array, "*"]:
         def recurrence_step(carry: tuple, _):
