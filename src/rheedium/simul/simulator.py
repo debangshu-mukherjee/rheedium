@@ -298,8 +298,7 @@ def simulate_rheed_pattern(
     intensities: Float[Array, "M"] = rh.simul.compute_kinematic_intensities(
         positions=atom_positions, G_allowed=G_allowed
     )
-    pattern = RHEEDPattern(
-        G_indices=allowed_indices,
+    pattern = rh.types.create_rheed_pattern(
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,

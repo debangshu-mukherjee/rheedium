@@ -25,7 +25,7 @@ from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
 import rheedium as rh
-from rheedium.types import *
+from rheedium.types import CrystalStructure, scalar_float
 
 DEFAULT_ATOMIC_NUMBERS_PATH = (
     Path(__file__).resolve().parents[3] / "data" / "atomic_numbers.json"
@@ -214,13 +214,13 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if not sym_ops:
         sym_ops = ["x,y,z"]
 
-    crystal = CrystalStructure(
+    crystal: CrystalStructure = rh.types.create_crystal_structure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
-    expanded_crystal = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
+    expanded_crystal: CrystalStructure = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
     return expanded_crystal
 
 
@@ -343,7 +343,7 @@ def symmetry_expansion(
     )
     unique_frac = (unique_cart @ cell_inv) % 1.0
     atomic_numbers = expanded_positions[:, 3][: unique_cart.shape[0]]
-    expanded_crystal = CrystalStructure(
+    expanded_crystal: CrystalStructure = rh.types.create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
         cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),
         cell_lengths=crystal.cell_lengths,

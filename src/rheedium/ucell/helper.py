@@ -236,13 +236,9 @@ def parse_cif_and_scrape(
     filtered_frac_positions: Float[Array, "m 3"] = (
         filtered_cart_positions @ cell_inv
     ) % 1.0
-    filtered_crystal: CrystalStructure = CrystalStructure(
-        frac_positions=jnp.column_stack(
-            [filtered_frac_positions, filtered_atomic_numbers]
-        ),
-        cart_positions=jnp.column_stack(
-            [filtered_cart_positions, filtered_atomic_numbers]
-        ),
+    filtered_crystal: CrystalStructure = rh.types.create_crystal_structure(
+        frac_positions=filtered_frac_positions,
+        cart_positions=filtered_cart_positions,
         cell_lengths=crystal.cell_lengths,
         cell_angles=crystal.cell_angles,
     )

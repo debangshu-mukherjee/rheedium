@@ -486,7 +486,7 @@ def atom_scraper(
         ]
     )
     new_lengths, new_angles = rh.ucell.compute_lengths_angles(scaled_vectors)
-    filtered_crystal = CrystalStructure(
+    filtered_crystal = rh.types.create_crystal_structure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,
         cell_lengths=new_lengths,
