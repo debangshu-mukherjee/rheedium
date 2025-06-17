@@ -19,6 +19,11 @@ Functions
 - From `crystal_types.py` submodule:
     - `create_crystal_structure`:
         Factory function to create CrystalStructure instances
+- From `rheed_types.py` submodule:
+    - `create_rheed_pattern`:
+        Factory function to create RHEEDPattern instances
+    - `create_rheed_image`:
+        Factory function to create RHEEDImage instances
 
 Type Aliases
 ------------
@@ -41,6 +46,8 @@ from .crystal_types import (
 from .rheed_types import (
     RHEEDPattern,
     RHEEDImage,
+    create_rheed_pattern,
+    create_rheed_image,
 )
 
 from .custom_types import (
@@ -55,6 +62,8 @@ __all__ = [
     "create_crystal_structure",
     "RHEEDPattern",
     "RHEEDImage",
+    "create_rheed_pattern",
+    "create_rheed_image",
     "scalar_float",
     "scalar_int",
     "scalar_num",
