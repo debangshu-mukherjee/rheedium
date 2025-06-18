@@ -65,7 +65,7 @@ def reciprocal_unitcell(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Calculate reciprocal cell for a cubic unit cell
     >>> a_star, angles_star = rh.ucell.reciprocal_unitcell(
     ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
@@ -82,21 +82,63 @@ def reciprocal_unitcell(
     - Return reciprocal parameters
     """
     condition_number = jnp.linalg.cond(
-        jnp.array([
-            [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
-            [0, b * jnp.sin(gamma), c * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)],
-            [0, 0, c * jnp.sqrt(1 - jnp.cos(alpha)**2 - jnp.cos(beta)**2 - jnp.cos(gamma)**2 + 2 * jnp.cos(alpha) * jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)]
-        ])
+        jnp.array(
+            [
+                [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
+                [
+                    0,
+                    b * jnp.sin(gamma),
+                    c
+                    * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
+                    / jnp.sin(gamma),
+                ],
+                [
+                    0,
+                    0,
+                    c
+                    * jnp.sqrt(
+                        1
+                        - jnp.cos(alpha) ** 2
+                        - jnp.cos(beta) ** 2
+                        - jnp.cos(gamma) ** 2
+                        + 2 * jnp.cos(alpha) * jnp.cos(beta) * jnp.cos(gamma)
+                    )
+                    / jnp.sin(gamma),
+                ],
+            ]
+        )
     )
     is_well_conditioned = condition_number < 1e10
     reciprocal_cell_uncond: Float[Array, "3 3"] = (
-        2 * jnp.pi * jnp.transpose(
+        2
+        * jnp.pi
+        * jnp.transpose(
             jnp.linalg.inv(
-                jnp.array([
-                    [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
-                    [0, b * jnp.sin(gamma), c * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)],
-                    [0, 0, c * jnp.sqrt(1 - jnp.cos(alpha)**2 - jnp.cos(beta)**2 - jnp.cos(gamma)**2 + 2 * jnp.cos(alpha) * jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)]
-                ])
+                jnp.array(
+                    [
+                        [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
+                        [
+                            0,
+                            b * jnp.sin(gamma),
+                            c
+                            * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
+                            / jnp.sin(gamma),
+                        ],
+                        [
+                            0,
+                            0,
+                            c
+                            * jnp.sqrt(
+                                1
+                                - jnp.cos(alpha) ** 2
+                                - jnp.cos(beta) ** 2
+                                - jnp.cos(gamma) ** 2
+                                + 2 * jnp.cos(alpha) * jnp.cos(beta) * jnp.cos(gamma)
+                            )
+                            / jnp.sin(gamma),
+                        ],
+                    ]
+                )
             )
         )
     )
@@ -131,7 +173,7 @@ def reciprocal_uc_angles(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Calculate reciprocal angles for a cubic cell
     >>> angles_star = rh.ucell.reciprocal_uc_angles(
     ...     alpha=90.0,
@@ -207,14 +249,14 @@ def get_unit_cell_matrix(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Get transformation matrix for a cubic cell
     >>> matrix = rh.ucell.get_unit_cell_matrix(
     ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
     ...     alpha=90.0, beta=90.0, gamma=90.0
     ... )
     >>> print(f"Transformation matrix:\n{matrix}")
-    >>> 
+    >>>
     >>> # Transform a direct space vector to reciprocal space
     >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
     >>> recip_vec = direct_vec @ matrix
@@ -241,9 +283,7 @@ def get_unit_cell_matrix(
     matrix = matrix.at[0, 2].set(c * cos_angles[1])
     matrix = matrix.at[1, 1].set(b * sin_angles[2])
     matrix = matrix.at[1, 2].set(
-        c
-        * (cos_angles[0] - cos_angles[1] * cos_angles[2])
-        / sin_angles[2]
+        c * (cos_angles[0] - cos_angles[1] * cos_angles[2]) / sin_angles[2]
     )
     matrix = matrix.at[2, 2].set(c * volume_factor / sin_angles[2])
     return matrix
@@ -279,14 +319,14 @@ def build_cell_vectors(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Build vectors for a cubic cell
     >>> vectors = rh.ucell.build_cell_vectors(
     ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
     ...     alpha=90.0, beta=90.0, gamma=90.0
     ... )
     >>> print(f"Cell vectors:\n{vectors}")
-    >>> 
+    >>>
     >>> # Calculate cell volume
     >>> volume = jnp.linalg.det(vectors)
     >>> print(f"Cell volume: {volume}")
@@ -309,7 +349,8 @@ def build_cell_vectors(
     b_vec: Float[Array, "3"] = jnp.array([b_x, b_y, 0.0])
     c_x: Float[Array, ""] = c * jnp.cos(beta_rad)
     c_y: Float[Array, ""] = c * (
-        (jnp.cos(alpha_rad) - jnp.cos(beta_rad) * jnp.cos(gamma_rad)) / jnp.sin(gamma_rad)
+        (jnp.cos(alpha_rad) - jnp.cos(beta_rad) * jnp.cos(gamma_rad))
+        / jnp.sin(gamma_rad)
     )
     c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
     c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
@@ -343,14 +384,14 @@ def compute_lengths_angles(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Create some cell vectors
     >>> vectors = jnp.array([
     ...     [3.0, 0.0, 0.0],  # a vector
     ...     [0.0, 3.0, 0.0],  # b vector
     ...     [0.0, 0.0, 3.0]   # c vector
     ... ])
-    >>> 
+    >>>
     >>> # Compute lengths and angles
     >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
     >>> print(f"Cell lengths: {lengths}")
@@ -402,10 +443,10 @@ def generate_reciprocal_points(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Load crystal structure from CIF
     >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
-    >>> 
+    >>>
     >>> # Generate reciprocal points up to (2,2,1)
     >>> G_vectors = rh.ucell.generate_reciprocal_points(
     ...     crystal=crystal,
@@ -489,10 +530,10 @@ def atom_scraper(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Load crystal structure
     >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
-    >>> 
+    >>>
     >>> # Filter atoms within 12 Å along [111] direction
     >>> filtered = rh.ucell.atom_scraper(
     ...     crystal=crystal,

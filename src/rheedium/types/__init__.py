@@ -8,6 +8,8 @@ Classes
 - From `crystal_types.py` submodule:
     - `CrystalStructure`:
         JAX-compatible crystal structure with fractional and Cartesian coordinates
+    - `PotentialSlices`:
+        JAX-compatible data structure for representing multislice potential data
 - From `rheed_types.py` submodule:
     - `RHEEDPattern`:
         Container for RHEED diffraction pattern data with detector points and intensities
@@ -19,6 +21,8 @@ Functions
 - From `crystal_types.py` submodule:
     - `create_crystal_structure`:
         Factory function to create CrystalStructure instances
+    - `create_potential_slices`:
+        Factory function to create PotentialSlices instances
 - From `rheed_types.py` submodule:
     - `create_rheed_pattern`:
         Factory function to create RHEEDPattern instances
@@ -38,13 +42,24 @@ Type Aliases
         Union type for non-JAX numeric values (int or float)
 """
 
-from .crystal_types import CrystalStructure, create_crystal_structure
+from .crystal_types import (
+    CrystalStructure,
+    PotentialSlices,
+    create_crystal_structure,
+    create_potential_slices,
+)
 from .custom_types import non_jax_number, scalar_float, scalar_int, scalar_num
-from .rheed_types import (RHEEDImage, RHEEDPattern, create_rheed_image,
-                          create_rheed_pattern)
+from .rheed_types import (
+    RHEEDImage,
+    RHEEDPattern,
+    create_rheed_image,
+    create_rheed_pattern,
+)
 
 __all__ = [
     "CrystalStructure",
+    "PotentialSlices",
+    "create_potential_slices",
     "create_crystal_structure",
     "RHEEDPattern",
     "RHEEDImage",

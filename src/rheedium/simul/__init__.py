@@ -18,11 +18,19 @@ Functions
         Complete RHEED pattern simulation from crystal structure to detector pattern
     - `atomic_potential`:
         Calculate atomic scattering potential for given atomic number
+    - `crystal_potential`:
+        Calculate multislice potential for a crystal structure
 """
 
-from .simulator import (atomic_potential, compute_kinematic_intensities,
-                        find_kinematic_reflections, incident_wavevector,
-                        project_on_detector, simulate_rheed_pattern)
+from .simulator import (
+    atomic_potential,
+    compute_kinematic_intensities,
+    crystal_potential,
+    find_kinematic_reflections,
+    incident_wavevector,
+    project_on_detector,
+    simulate_rheed_pattern,
+)
 
 __all__ = [
     "incident_wavevector",
@@ -31,4 +39,5 @@ __all__ = [
     "compute_kinematic_intensities",
     "simulate_rheed_pattern",
     "atomic_potential",
+    "crystal_potential",
 ]

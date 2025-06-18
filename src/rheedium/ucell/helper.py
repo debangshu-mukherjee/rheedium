@@ -83,11 +83,17 @@ def angle_in_degrees(v1: Float[Array, "3"], v2: Float[Array, "3"]) -> Float[Arra
     >>> print(angle)
     90.0
     """
-    return 180.0 * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))) / jnp.pi
+    return (
+        180.0
+        * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2)))
+        / jnp.pi
+    )
 
 
 @jaxtyped(typechecker=beartype)
-def compute_lengths_angles(vectors: Float[Array, "3 3"]) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
+def compute_lengths_angles(
+    vectors: Float[Array, "3 3"]
+) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
     Compute unit cell lengths and angles from lattice vectors.
 
@@ -120,11 +126,13 @@ def compute_lengths_angles(vectors: Float[Array, "3 3"]) -> tuple[Float[Array, "
     [90.0 90.0 90.0]
     """
     lengths = jnp.array([jnp.linalg.norm(v) for v in vectors])
-    angles = jnp.array([
-        angle_in_degrees(vectors[0], vectors[1]),
-        angle_in_degrees(vectors[1], vectors[2]),
-        angle_in_degrees(vectors[2], vectors[0])
-    ])
+    angles = jnp.array(
+        [
+            angle_in_degrees(vectors[0], vectors[1]),
+            angle_in_degrees(vectors[1], vectors[2]),
+            angle_in_degrees(vectors[2], vectors[0]),
+        ]
+    )
     return lengths, angles
 
 
@@ -219,6 +227,7 @@ def parse_cif_and_scrape(
     )
     return filtered_crystal
 
+
 def parse_cif(cif_path: str) -> CrystalStructure:
     """
     Parse a CIF file into a CrystalStructure object.
@@ -246,6 +255,7 @@ def parse_cif(cif_path: str) -> CrystalStructure:
     """
     # Implementation details...
     pass
+
 
 def symmetry_expansion(structure: CrystalStructure) -> CrystalStructure:
     """

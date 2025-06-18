@@ -17,6 +17,8 @@ Functions
     Simulate complete RHEED pattern
 - `atomic_potential`:
     Calculate atomic potential for intensity computation
+- `crystal_potential`:
+    Calculate multislice potential for a crystal structure
 """
 
 from pathlib import Path
@@ -29,8 +31,13 @@ from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
-from rheedium.types import (CrystalStructure, RHEEDPattern, scalar_float,
-                            scalar_int)
+from rheedium.types import (
+    CrystalStructure,
+    PotentialSlices,
+    RHEEDPattern,
+    scalar_float,
+    scalar_int,
+)
 
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
@@ -64,10 +71,10 @@ def incident_wavevector(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Calculate wavelength for 20 kV electrons
     >>> lam = rh.ucell.wavelength_ang(20.0)
-    >>> 
+    >>>
     >>> # Calculate incident wavevector at 2 degree grazing angle
     >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
     >>> print(f"Incident wavevector: {k_in}")
@@ -115,14 +122,14 @@ def project_on_detector(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Create some outgoing wavevectors
     >>> k_out = jnp.array([
     ...     [1.0, 0.1, 0.1],  # First reflection
     ...     [1.0, -0.1, 0.2], # Second reflection
     ...     [1.0, 0.2, -0.1]  # Third reflection
     ... ])
-    >>> 
+    >>>
     >>> # Project onto detector at 1000 Å distance
     >>> detector_points = rh.simul.project_on_detector(k_out, 1000.0)
     >>> print(f"Detector points: {detector_points}")
@@ -184,11 +191,11 @@ def find_kinematic_reflections(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Calculate incident wavevector
     >>> lam = rh.ucell.wavelength_ang(20.0)
     >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
-    >>> 
+    >>>
     >>> # Generate some reciprocal lattice points
     >>> Gs = jnp.array([
     ...     [0, 0, 0],    # (000)
@@ -196,7 +203,7 @@ def find_kinematic_reflections(
     ...     [0, 1, 0],    # (010)
     ...     [1, 1, 0]     # (110)
     ... ])
-    >>> 
+    >>>
     >>> # Find allowed reflections
     >>> indices, k_out = rh.simul.find_kinematic_reflections(
     ...     k_in=k_in,
@@ -256,20 +263,20 @@ def compute_kinematic_intensities(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Create a simple unit cell with two atoms
     >>> positions = jnp.array([
     ...     [0.0, 0.0, 0.0],  # First atom at origin
     ...     [0.5, 0.5, 0.5]   # Second atom at cell center
     ... ])
-    >>> 
+    >>>
     >>> # Define some allowed G vectors
     >>> G_allowed = jnp.array([
     ...     [1, 0, 0],    # (100)
     ...     [0, 1, 0],    # (010)
     ...     [1, 1, 0]     # (110)
     ... ])
-    >>> 
+    >>>
     >>> # Calculate intensities
     >>> intensities = rh.simul.compute_kinematic_intensities(
     ...     positions=positions,
@@ -359,10 +366,10 @@ def simulate_rheed_pattern(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Load crystal structure from CIF file
     >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
-    >>> 
+    >>>
     >>> # Simulate RHEED pattern
     >>> pattern = rh.simul.simulate_rheed_pattern(
     ...     crystal=crystal,
@@ -372,7 +379,7 @@ def simulate_rheed_pattern(
     ...     kmax=jnp.asarray(4),
     ...     lmax=jnp.asarray(2)
     ... )
-    >>> 
+    >>>
     >>> # Plot the pattern
     >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
@@ -488,7 +495,7 @@ def atomic_potential(
         Atomic number of the element
     - `pixel_size` (scalar_float):
         Size of each pixel in angstroms
-    - `sampling` (scalar_int, optional):
+    - `calibration` (scalar_int, optional):
         Number of pixels in each dimension
         Default: 16
     - `potential_extent` (scalar_float, optional):
@@ -507,7 +514,7 @@ def atomic_potential(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> 
+    >>>
     >>> # Calculate potential for gold (Z=79)
     >>> potential = rh.simul.atomic_potential(
     ...     atom_no=79,
@@ -515,7 +522,7 @@ def atomic_potential(
     ...     sampling=32,     # 32x32 grid
     ...     potential_extent=5.0  # 5 Å extent
     ... )
-    >>> 
+    >>>
     >>> # The center value is used as the atomic form factor
     >>> form_factor = potential[16, 16]  # Center of 32x32 grid
 
@@ -575,3 +582,126 @@ def atomic_potential(
     potential: Float[Array, "h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
 
     return potential
+
+
+@jaxtyped(typechecker=beartype)
+def crystal_potential(
+    crystal: CrystalStructure,
+    slice_thickness: scalar_float,
+    pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
+    sampling: Optional[Int[Array, ""]] = jnp.asarray(16),
+    potential_extent: Optional[Float[Array, ""]] = jnp.asarray(4.0),
+) -> PotentialSlices:
+    """
+    Description
+    -----------
+    Calculate the multislice potential for a crystal structure by dividing
+    the crystal into slices along the z-direction and computing atomic
+    potentials for atoms within each slice.
+
+    Parameters
+    ----------
+    - `crystal` (CrystalStructure):
+        Crystal structure to compute potential for
+    - `slice_thickness` (scalar_float):
+        Thickness of each slice in angstroms
+    - `pixel_size` (Float[Array, ""]):
+        Real space pixel size in angstroms
+        Optional. Default: 0.1
+    - `sampling` (Int[Array, ""]):
+        Supersampling factor for potential calculation
+        Optional. Default: 16
+    - `potential_extent` (Float[Array, ""]):
+        Distance from atom center to calculate potential in angstroms
+        Optional. Default: 4.0
+
+    Returns
+    -------
+    - `potential_slices` (PotentialSlices):
+        Structured potential data containing slice arrays and calibration information
+
+    Flow
+    ----
+    - Extract atomic positions and numbers from crystal structure
+    - Calculate z-range and determine number of slices needed
+    - For each slice:
+        - Find atoms within the slice boundaries
+        - Calculate individual atomic potentials for atoms in slice
+        - Sum potentials to get total slice potential
+    - Calculate calibration parameters from pixel size
+    - Create PotentialSlices object with slice data and metadata
+    - Return structured potential slices
+    """
+    atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "N"] = crystal.cart_positions[:, 3].astype(jnp.int32)
+
+    z_coords: Float[Array, "N"] = atom_positions[:, 2]
+    z_min: Float[Array, ""] = jnp.min(z_coords)
+    z_max: Float[Array, ""] = jnp.max(z_coords)
+    z_range: Float[Array, ""] = z_max - z_min
+
+    n_slices: Int[Array, ""] = jnp.ceil(z_range / slice_thickness).astype(jnp.int32)
+    n_slices = jnp.maximum(n_slices, 1)
+
+    grid_size: Int[Array, ""] = jnp.ceil(2.0 * potential_extent / pixel_size).astype(
+        jnp.int32
+    )
+
+    def calculate_slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "n n"]:
+        slice_z_start: Float[Array, ""] = z_min + slice_idx * slice_thickness
+        slice_z_end: Float[Array, ""] = slice_z_start + slice_thickness
+
+        atoms_in_slice: Bool[Array, "N"] = jnp.logical_and(
+            z_coords >= slice_z_start, z_coords < slice_z_end
+        )
+
+        slice_atom_positions: Float[Array, "M 3"] = atom_positions[atoms_in_slice]
+        slice_atomic_numbers: Int[Array, "M"] = atomic_numbers[atoms_in_slice]
+
+        def calculate_positioned_potential(
+            atom_idx: Int[Array, ""]
+        ) -> Float[Array, "n n"]:
+            atom_pos: Float[Array, "3"] = slice_atom_positions[atom_idx]
+            atomic_num: Int[Array, ""] = slice_atomic_numbers[atom_idx]
+
+            base_potential: Float[Array, "n n"] = rh.simul.atomic_potential(
+                atom_no=atomic_num,
+                pixel_size=pixel_size,
+                sampling=sampling,
+                potential_extent=potential_extent,
+            )
+
+            return base_potential
+
+        n_atoms_in_slice: Int[Array, ""] = slice_atom_positions.shape[0]
+
+        def compute_slice_sum() -> Float[Array, "n n"]:
+            atom_indices: Int[Array, "M"] = jnp.arange(n_atoms_in_slice)
+            atom_potentials: Float[Array, "M n n"] = jax.vmap(
+                calculate_positioned_potential
+            )(atom_indices)
+            return jnp.sum(atom_potentials, axis=0)
+
+        def return_empty_slice() -> Float[Array, "n n"]:
+            return jnp.zeros((grid_size, grid_size), dtype=jnp.float64)
+
+        slice_potential: Float[Array, "n n"] = jax.lax.cond(
+            n_atoms_in_slice > 0, compute_slice_sum, return_empty_slice
+        )
+
+        return slice_potential
+
+    slice_indices: Int[Array, "n_slices"] = jnp.arange(n_slices)
+    slice_arrays: Float[Array, "n_slices n n"] = jax.vmap(calculate_slice_potential)(
+        slice_indices
+    )
+
+    final_pixel_size: Float[Array, ""] = pixel_size / sampling
+
+    potential_slices: PotentialSlices = rh.types.create_potential_slices(
+        slices=slice_arrays,
+        slice_thickness=slice_thickness,
+        x_calibration=final_pixel_size,
+        y_calibration=final_pixel_size,
+    )
+    return potential_slices
