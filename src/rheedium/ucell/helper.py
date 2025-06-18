@@ -92,7 +92,7 @@ def angle_in_degrees(v1: Float[Array, "3"], v2: Float[Array, "3"]) -> Float[Arra
 
 @jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
-    vectors: Float[Array, "3 3"]
+    vectors: Float[Array, "3 3"],
 ) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
     Compute unit cell lengths and angles from lattice vectors.

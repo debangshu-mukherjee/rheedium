@@ -23,6 +23,7 @@ from beartype import beartype
 from beartype.typing import NamedTuple
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Num
+
 from rheedium.types import scalar_float
 
 

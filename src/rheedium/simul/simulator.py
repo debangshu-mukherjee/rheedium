@@ -31,13 +31,8 @@ from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 import rheedium as rh
-from rheedium.types import (
-    CrystalStructure,
-    PotentialSlices,
-    RHEEDPattern,
-    scalar_float,
-    scalar_int,
-)
+from rheedium.types import (CrystalStructure, PotentialSlices, RHEEDPattern,
+                            scalar_float, scalar_int)
 
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
@@ -474,66 +469,52 @@ def simulate_rheed_pattern(
 def atomic_potential(
     atom_no: scalar_int,
     pixel_size: scalar_float,
+    grid_shape: Optional[Tuple[scalar_int, scalar_int]] = None,
+    center_coords: Optional[Float[Array, "2"]] = None,
     sampling: Optional[scalar_int] = 16,
     potential_extent: Optional[scalar_float] = 4.0,
     datafile: Optional[str] = str(DEFAULT_KIRKLAND_PATH),
-) -> Float[Array, "n n"]:
+) -> Float[Array, "h w"]:
     """
     Description
     -----------
-    Calculate the atomic potential for a given element using Kirkland's parameterization.
-    This function is used internally by :func:`simulate_rheed_pattern` to compute
-    realistic diffraction intensities.
-
-    The potential is computed on a grid with size determined by `sampling` and `potential_extent`.
-    The grid is centered on the atom position, with the potential value at the center
-    used as the atomic form factor in structure factor calculations.
+    Calculate the projected potential of a single atom using Kirkland scattering factors.
+    The potential can be centered at arbitrary coordinates within a custom grid.
 
     Parameters
     ----------
     - `atom_no` (scalar_int):
-        Atomic number of the element
+        Atomic number of the atom whose potential is being calculated
     - `pixel_size` (scalar_float):
-        Size of each pixel in angstroms
-    - `calibration` (scalar_int, optional):
-        Number of pixels in each dimension
-        Default: 16
+        Real space pixel size in Ångstroms
+    - `grid_shape` (Tuple[scalar_int, scalar_int], optional):
+        Shape of the output grid (height, width). If None, calculated from potential_extent
+    - `center_coords` (Float[Array, "2"], optional):
+        (x, y) coordinates in Ångstroms where atom should be centered.
+        If None, centers at grid center
+    - `sampling` (scalar_int, optional):
+        Supersampling factor for increased accuracy. Default is 16
     - `potential_extent` (scalar_float, optional):
-        Extent of the potential in angstroms
-        Default: 4.0
+        Distance in Ångstroms from atom center to calculate potential. Default is 4.0 Å
     - `datafile` (str, optional):
-        Path to Kirkland potentials data file
-        Default: '<project_root>/data/Kirkland_Potentials.csv'
+        Path to CSV file containing Kirkland scattering factors
 
     Returns
     -------
-    - `potential` (Float[Array, "n n"]):
-        Atomic potential on a 2D grid, where n = sampling
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate potential for gold (Z=79)
-    >>> potential = rh.simul.atomic_potential(
-    ...     atom_no=79,
-    ...     pixel_size=0.1,  # 0.1 Å per pixel
-    ...     sampling=32,     # 32x32 grid
-    ...     potential_extent=5.0  # 5 Å extent
-    ... )
-    >>>
-    >>> # The center value is used as the atomic form factor
-    >>> form_factor = potential[16, 16]  # Center of 32x32 grid
+    - `potential` (Float[Array, "h w"]):
+        Projected potential matrix with atom centered at specified coordinates
 
     Flow
     ----
-    - Load Kirkland potential parameters from CSV file
-    - Create coordinate grid for potential calculation
-    - Calculate radial distances from center
-    - Compute Bessel functions for each parameter
-    - Sum contributions from all parameters
-    - Return 2D potential array
+    - Define physical constants and load Kirkland parameters
+    - Determine grid size and center coordinates
+    - Calculate step size for supersampling
+    - Create coordinate grid with atom centered at specified position
+    - Calculate radial distances from atom center
+    - Compute Bessel and Gaussian terms using Kirkland parameters
+    - Combine terms to get total potential
+    - Downsample to target resolution using average pooling
+    - Return final potential matrix
     """
     a0: Float[Array, ""] = jnp.asarray(0.5292)
     ek: Float[Array, ""] = jnp.asarray(14.4)
@@ -543,45 +524,76 @@ def atomic_potential(
     kirkland_array: Float[Array, "103 12"] = jnp.array(kirkland_df.values)
     kirk_params: Float[Array, "12"] = kirkland_array[atom_no - 1, :]
     step_size: Float[Array, ""] = pixel_size / sampling
-    grid_extent: Float[Array, ""] = potential_extent
-    n_points: Int[Array, ""] = jnp.ceil(2.0 * grid_extent / step_size).astype(jnp.int32)
-    coords: Float[Array, "n"] = jnp.linspace(-grid_extent, grid_extent, n_points)
-    ya: Float[Array, "n n"]
-    xa: Float[Array, "n n"]
-    ya, xa = jnp.meshgrid(coords, coords, indexing="ij")
-    r: Float[Array, "n n"] = jnp.sqrt(xa**2 + ya**2)
-    bessel_term1: Float[Array, "n n"] = kirk_params[0] * rh.ucell.bessel_kv(
+    if grid_shape is None:
+        grid_extent: Float[Array, ""] = potential_extent
+        n_points: Int[Array, ""] = jnp.ceil(2.0 * grid_extent / step_size).astype(
+            jnp.int32
+        )
+        grid_height: Int[Array, ""] = n_points
+        grid_width: Int[Array, ""] = n_points
+    else:
+        grid_height: Int[Array, ""] = jnp.asarray(
+            grid_shape[0] * sampling, dtype=jnp.int32
+        )
+        grid_width: Int[Array, ""] = jnp.asarray(
+            grid_shape[1] * sampling, dtype=jnp.int32
+        )
+    if center_coords is None:
+        center_x: Float[Array, ""] = 0.0
+        center_y: Float[Array, ""] = 0.0
+    else:
+        center_x: Float[Array, ""] = center_coords[0]
+        center_y: Float[Array, ""] = center_coords[1]
+    y_coords: Float[Array, "h"] = (
+        jnp.arange(grid_height) - grid_height // 2
+    ) * step_size + center_y
+    x_coords: Float[Array, "w"] = (
+        jnp.arange(grid_width) - grid_width // 2
+    ) * step_size + center_x
+    ya: Float[Array, "h w"]
+    xa: Float[Array, "h w"]
+    ya, xa = jnp.meshgrid(y_coords, x_coords, indexing="ij")
+    r: Float[Array, "h w"] = jnp.sqrt((xa - center_x) ** 2 + (ya - center_y) ** 2)
+    bessel_term1: Float[Array, "h w"] = kirk_params[0] * rh.ucell.bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
     )
-    bessel_term2: Float[Array, "n n"] = kirk_params[2] * rh.ucell.bessel_kv(
+    bessel_term2: Float[Array, "h w"] = kirk_params[2] * rh.ucell.bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
     )
-    bessel_term3: Float[Array, "n n"] = kirk_params[4] * rh.ucell.bessel_kv(
+    bessel_term3: Float[Array, "h w"] = kirk_params[4] * rh.ucell.bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
     )
-    part1: Float[Array, "n n"] = term1 * (bessel_term1 + bessel_term2 + bessel_term3)
-    gauss_term1: Float[Array, "n n"] = (kirk_params[6] / kirk_params[7]) * jnp.exp(
+    part1: Float[Array, "h w"] = term1 * (bessel_term1 + bessel_term2 + bessel_term3)
+    gauss_term1: Float[Array, "h w"] = (kirk_params[6] / kirk_params[7]) * jnp.exp(
         -(jnp.pi**2 / kirk_params[7]) * r**2
     )
-    gauss_term2: Float[Array, "n n"] = (kirk_params[8] / kirk_params[9]) * jnp.exp(
+    gauss_term2: Float[Array, "h w"] = (kirk_params[8] / kirk_params[9]) * jnp.exp(
         -(jnp.pi**2 / kirk_params[9]) * r**2
     )
-    gauss_term3: Float[Array, "n n"] = (kirk_params[10] / kirk_params[11]) * jnp.exp(
+    gauss_term3: Float[Array, "h w"] = (kirk_params[10] / kirk_params[11]) * jnp.exp(
         -(jnp.pi**2 / kirk_params[11]) * r**2
     )
-    part2: Float[Array, "n n"] = term2 * (gauss_term1 + gauss_term2 + gauss_term3)
-    supersampled_potential: Float[Array, "n n"] = part1 + part2
+    part2: Float[Array, "h w"] = term2 * (gauss_term1 + gauss_term2 + gauss_term3)
+    supersampled_potential: Float[Array, "h w"] = part1 + part2
+    if grid_shape is None:
+        target_height: Int[Array, ""] = grid_height // sampling
+        target_width: Int[Array, ""] = grid_width // sampling
+    else:
+        target_height: Int[Array, ""] = jnp.asarray(grid_shape[0], dtype=jnp.int32)
+        target_width: Int[Array, ""] = jnp.asarray(grid_shape[1], dtype=jnp.int32)
     height: Int[Array, ""] = supersampled_potential.shape[0]
     width: Int[Array, ""] = supersampled_potential.shape[1]
     new_height: Int[Array, ""] = (height // sampling) * sampling
     new_width: Int[Array, ""] = (width // sampling) * sampling
-    cropped: Float[Array, "h w"] = supersampled_potential[:new_height, :new_width]
+    cropped: Float[Array, "h_crop w_crop"] = supersampled_potential[
+        :new_height, :new_width
+    ]
     reshaped: Float[Array, "h_new sampling w_new sampling"] = cropped.reshape(
         new_height // sampling, sampling, new_width // sampling, sampling
     )
     potential: Float[Array, "h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
-
-    return potential
+    potential_resized: Float[Array, "h w"] = potential[:target_height, :target_width]
+    return potential_resized
 
 
 @jaxtyped(typechecker=beartype)
@@ -659,7 +671,7 @@ def crystal_potential(
         slice_atomic_numbers: Int[Array, "M"] = atomic_numbers[atoms_in_slice]
 
         def calculate_positioned_potential(
-            atom_idx: Int[Array, ""]
+            atom_idx: Int[Array, ""],
         ) -> Float[Array, "n n"]:
             atom_pos: Float[Array, "3"] = slice_atom_positions[atom_idx]
             atomic_num: Int[Array, ""] = slice_atomic_numbers[atom_idx]

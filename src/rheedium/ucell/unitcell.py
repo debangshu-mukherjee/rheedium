@@ -361,7 +361,7 @@ def build_cell_vectors(
 
 @jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
-    vectors: Float[Array, "3 3"]
+    vectors: Float[Array, "3 3"],
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
     Description

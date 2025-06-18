@@ -22,15 +22,10 @@ Functions
         Calculate multislice potential for a crystal structure
 """
 
-from .simulator import (
-    atomic_potential,
-    compute_kinematic_intensities,
-    crystal_potential,
-    find_kinematic_reflections,
-    incident_wavevector,
-    project_on_detector,
-    simulate_rheed_pattern,
-)
+from .simulator import (atomic_potential, compute_kinematic_intensities,
+                        crystal_potential, find_kinematic_reflections,
+                        incident_wavevector, project_on_detector,
+                        simulate_rheed_pattern)
 
 __all__ = [
     "incident_wavevector",
