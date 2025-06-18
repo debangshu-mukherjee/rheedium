@@ -600,16 +600,17 @@ def atomic_potential(
 def crystal_potential(
     crystal: CrystalStructure,
     slice_thickness: scalar_float,
+    grid_shape: Tuple[scalar_int, scalar_int],
+    physical_extent: Tuple[scalar_float, scalar_float],
     pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
     sampling: Optional[Int[Array, ""]] = jnp.asarray(16),
-    potential_extent: Optional[Float[Array, ""]] = jnp.asarray(4.0),
 ) -> PotentialSlices:
     """
     Description
     -----------
-    Calculate the multislice potential for a crystal structure by dividing
-    the crystal into slices along the z-direction and computing atomic
-    potentials for atoms within each slice.
+    Calculate the multislice potential for a crystal structure using an optimized
+    approach: compute atomic potentials once per unique atom type, then use
+    Fourier shifts to position them at their actual coordinates.
 
     Parameters
     ----------
@@ -617,15 +618,16 @@ def crystal_potential(
         Crystal structure to compute potential for
     - `slice_thickness` (scalar_float):
         Thickness of each slice in angstroms
+    - `grid_shape` (Tuple[scalar_int, scalar_int]):
+        Shape of the output grid (height, width) for each slice
+    - `physical_extent` (Tuple[scalar_float, scalar_float]):
+        Physical size of the grid (y_extent, x_extent) in angstroms
     - `pixel_size` (Float[Array, ""]):
         Real space pixel size in angstroms
         Optional. Default: 0.1
     - `sampling` (Int[Array, ""]):
         Supersampling factor for potential calculation
         Optional. Default: 16
-    - `potential_extent` (Float[Array, ""]):
-        Distance from atom center to calculate potential in angstroms
-        Optional. Default: 4.0
 
     Returns
     -------
@@ -635,85 +637,153 @@ def crystal_potential(
     Flow
     ----
     - Extract atomic positions and numbers from crystal structure
+    - Find unique atomic numbers and compute their centered potentials once
     - Calculate z-range and determine number of slices needed
+    - Calculate pixel calibrations and coordinate grids
     - For each slice:
         - Find atoms within the slice boundaries
-        - Calculate individual atomic potentials for atoms in slice
-        - Sum potentials to get total slice potential
-    - Calculate calibration parameters from pixel size
+        - Group atoms by atomic number
+        - For each unique atom type in slice:
+            - Use Fourier shifts to position atoms at their x,y coordinates
+            - Sum shifted potentials for all atoms of this type
+        - Sum contributions from all atom types to get total slice potential
     - Create PotentialSlices object with slice data and metadata
     - Return structured potential slices
     """
     atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "N"] = crystal.cart_positions[:, 3].astype(jnp.int32)
+    unique_atomic_numbers: Int[Array, "U"] = jnp.unique(atomic_numbers)
+    y_calibration: Float[Array, ""] = physical_extent[0] / grid_shape[0]
+    x_calibration: Float[Array, ""] = physical_extent[1] / grid_shape[1]
 
+    def compute_centered_potential(atomic_num: Int[Array, ""]) -> Float[Array, "h w"]:
+        return rh.simul.atomic_potential(
+            atom_no=atomic_num,
+            pixel_size=pixel_size,
+            grid_shape=grid_shape,
+            center_coords=None,  # Centered potential
+            sampling=sampling,
+        )
+
+    centered_potentials: Float[Array, "U h w"] = jax.vmap(compute_centered_potential)(
+        unique_atomic_numbers
+    )
     z_coords: Float[Array, "N"] = atom_positions[:, 2]
     z_min: Float[Array, ""] = jnp.min(z_coords)
     z_max: Float[Array, ""] = jnp.max(z_coords)
     z_range: Float[Array, ""] = z_max - z_min
-
     n_slices: Int[Array, ""] = jnp.ceil(z_range / slice_thickness).astype(jnp.int32)
     n_slices = jnp.maximum(n_slices, 1)
 
-    grid_size: Int[Array, ""] = jnp.ceil(2.0 * potential_extent / pixel_size).astype(
-        jnp.int32
-    )
+    def fourier_shift_potential(
+        potential: Float[Array, "h w"],
+        shift_x: Float[Array, ""],
+        shift_y: Float[Array, ""],
+    ) -> Float[Array, "h w"]:
+        """
+        Description
+        -----------
+        Apply Fourier shift theorem to translate potential in real space.
 
-    def calculate_slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "n n"]:
+        Parameters
+        ----------
+        - `potential` (Float[Array, "h w"]):
+            Input potential to be shifted
+        - `shift_x` (Float[Array, ""]):
+            Shift in x-direction in angstroms
+        - `shift_y` (Float[Array, ""]):
+            Shift in y-direction in angstroms
+
+        Returns
+        -------
+        - `shifted_potential` (Float[Array, "h w"]):
+            Potential shifted to new position
+
+        Flow
+        ----
+        - Convert shifts from physical units to pixel units
+        - Create frequency grids for FFT
+        - Apply phase shift in Fourier domain
+        - Transform back to real space
+        """
+        shift_pixels_x: Float[Array, ""] = shift_x / x_calibration
+        shift_pixels_y: Float[Array, ""] = shift_y / y_calibration
+        ky: Float[Array, "h"] = jnp.fft.fftfreq(grid_shape[0], d=1.0)
+        kx: Float[Array, "w"] = jnp.fft.fftfreq(grid_shape[1], d=1.0)
+        ky_grid: Float[Array, "h w"]
+        kx_grid: Float[Array, "h w"]
+        ky_grid, kx_grid = jnp.meshgrid(ky, kx, indexing="ij")
+        phase_shift: Float[Array, "h w"] = jnp.exp(
+            -2j * jnp.pi * (kx_grid * shift_pixels_x + ky_grid * shift_pixels_y)
+        )
+        potential_fft: Float[Array, "h w"] = jnp.fft.fft2(potential)
+        shifted_fft: Float[Array, "h w"] = potential_fft * phase_shift
+        shifted_potential: Float[Array, "h w"] = jnp.real(jnp.fft.ifft2(shifted_fft))
+        return shifted_potential
+
+    def calculate_slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "h w"]:
         slice_z_start: Float[Array, ""] = z_min + slice_idx * slice_thickness
         slice_z_end: Float[Array, ""] = slice_z_start + slice_thickness
-
         atoms_in_slice: Bool[Array, "N"] = jnp.logical_and(
             z_coords >= slice_z_start, z_coords < slice_z_end
         )
-
         slice_atom_positions: Float[Array, "M 3"] = atom_positions[atoms_in_slice]
         slice_atomic_numbers: Int[Array, "M"] = atomic_numbers[atoms_in_slice]
 
-        def calculate_positioned_potential(
-            atom_idx: Int[Array, ""],
-        ) -> Float[Array, "n n"]:
-            atom_pos: Float[Array, "3"] = slice_atom_positions[atom_idx]
-            atomic_num: Int[Array, ""] = slice_atomic_numbers[atom_idx]
+        def process_atom_type(unique_atomic_num: Int[Array, ""]) -> Float[Array, "h w"]:
+            potential_idx: Int[Array, ""] = jnp.where(
+                unique_atomic_numbers == unique_atomic_num, size=1
+            )[0][0]
+            base_potential: Float[Array, "h w"] = centered_potentials[potential_idx]
+            atoms_of_type: Bool[Array, "M"] = slice_atomic_numbers == unique_atomic_num
+            positions_of_type: Float[Array, "K 3"] = slice_atom_positions[atoms_of_type]
 
-            base_potential: Float[Array, "n n"] = rh.simul.atomic_potential(
-                atom_no=atomic_num,
-                pixel_size=pixel_size,
-                sampling=sampling,
-                potential_extent=potential_extent,
+            def shift_single_atom(atom_pos: Float[Array, "3"]) -> Float[Array, "h w"]:
+                shift_x: Float[Array, ""] = atom_pos[0]
+                shift_y: Float[Array, ""] = atom_pos[1]
+                return fourier_shift_potential(base_potential, shift_x, shift_y)
+
+            n_atoms_of_type: Int[Array, ""] = positions_of_type.shape[0]
+
+            def compute_type_contribution() -> Float[Array, "h w"]:
+                shifted_potentials: Float[Array, "K h w"] = jax.vmap(shift_single_atom)(
+                    positions_of_type
+                )
+                return jnp.sum(shifted_potentials, axis=0)
+
+            def return_zero_contribution() -> Float[Array, "h w"]:
+                return jnp.zeros(grid_shape, dtype=jnp.float64)
+
+            type_contribution: Float[Array, "h w"] = jax.lax.cond(
+                n_atoms_of_type > 0, compute_type_contribution, return_zero_contribution
             )
-
-            return base_potential
+            return type_contribution
 
         n_atoms_in_slice: Int[Array, ""] = slice_atom_positions.shape[0]
 
-        def compute_slice_sum() -> Float[Array, "n n"]:
-            atom_indices: Int[Array, "M"] = jnp.arange(n_atoms_in_slice)
-            atom_potentials: Float[Array, "M n n"] = jax.vmap(
-                calculate_positioned_potential
-            )(atom_indices)
-            return jnp.sum(atom_potentials, axis=0)
+        def compute_slice_sum() -> Float[Array, "h w"]:
+            unique_slice_numbers: Int[Array, "V"] = jnp.unique(slice_atomic_numbers)
+            type_contributions: Float[Array, "V h w"] = jax.vmap(process_atom_type)(
+                unique_slice_numbers
+            )
+            return jnp.sum(type_contributions, axis=0)
 
-        def return_empty_slice() -> Float[Array, "n n"]:
-            return jnp.zeros((grid_size, grid_size), dtype=jnp.float64)
+        def return_empty_slice() -> Float[Array, "h w"]:
+            return jnp.zeros(grid_shape, dtype=jnp.float64)
 
-        slice_potential: Float[Array, "n n"] = jax.lax.cond(
+        slice_potential: Float[Array, "h w"] = jax.lax.cond(
             n_atoms_in_slice > 0, compute_slice_sum, return_empty_slice
         )
-
         return slice_potential
 
     slice_indices: Int[Array, "n_slices"] = jnp.arange(n_slices)
-    slice_arrays: Float[Array, "n_slices n n"] = jax.vmap(calculate_slice_potential)(
+    slice_arrays: Float[Array, "n_slices h w"] = jax.vmap(calculate_slice_potential)(
         slice_indices
     )
-
-    final_pixel_size: Float[Array, ""] = pixel_size / sampling
-
     potential_slices: PotentialSlices = rh.types.create_potential_slices(
         slices=slice_arrays,
         slice_thickness=slice_thickness,
-        x_calibration=final_pixel_size,
-        y_calibration=final_pixel_size,
+        x_calibration=x_calibration,
+        y_calibration=y_calibration,
     )
     return potential_slices
