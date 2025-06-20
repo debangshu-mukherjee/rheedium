@@ -5,6 +5,8 @@ Functions for simulating RHEED patterns and calculating diffraction intensities.
 
 Functions
 ---------
+- `wavelength_ang`:
+    Calculate electron wavelength in angstroms
 - `incident_wavevector`:
     Calculate incident electron wavevector
 - `project_on_detector`:
@@ -28,16 +30,60 @@ import jax.numpy as jnp
 import pandas as pd
 from beartype import beartype
 from beartype.typing import Optional, Tuple
-from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 import rheedium as rh
 from rheedium.types import (CrystalStructure, PotentialSlices, RHEEDPattern,
-                            scalar_float, scalar_int)
+                            scalar_float, scalar_int, scalar_num)
 
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
     Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
 )
+
+
+@jaxtyped(typechecker=beartype)
+def wavelength_ang(
+    voltage_kV: Union[scalar_num, Num[Array, "..."]],
+) -> Float[Array, "..."]:
+    """
+    Description
+    -----------
+    Calculate the relativistic electron wavelength in angstroms.
+
+    Parameters
+    ----------
+    - `voltage_kV` (Union[scalar_num, Num[Array, "..."]]):
+        Electron energy in kiloelectron volts
+        Could be either a scalar or an array.
+
+    Returns
+    -------
+    - `wavelength_ang` (Float[Array, "..."]):
+        Electron wavelength in angstroms
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>> energy = jnp.array([10.0, 20.0, 30.0])
+    >>> wavelengths = rh.simul.wavelength_ang(energy)
+    >>> print(wavelengths)
+    [0.1226 0.0866 0.0707]
+    """
+    m: scalar_float = jnp.asarray(9.109383e-31)
+    e: scalar_float = jnp.asarray(1.602177e-19)
+    c: scalar_float = jnp.asarray(299792458.0)
+    h: scalar_float = jnp.asarray(6.62607e-34)
+
+    eV: Float[Array, "..."] = (
+        jnp.float64(voltage_kV) * jnp.float64(1000.0) * jnp.float64(e)
+    )
+    numerator: scalar_float = jnp.multiply(jnp.square(h), jnp.square(c))
+    denominator: Float[Array, "..."] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
+    wavelength_meters: Float[Array, "..."] = jnp.sqrt(numerator / denominator)
+    lambda_angstroms: Float[Array, "..."] = jnp.asarray(1e10) * wavelength_meters
+    return lambda_angstroms
 
 
 @jaxtyped(typechecker=beartype)

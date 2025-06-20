@@ -5,8 +5,6 @@ Helper functions for unit cell calculations and transformations.
 
 Functions
 ---------
-- `wavelength_ang`:
-    Calculates the relativistic electron wavelength in angstroms
 - `angle_in_degrees`:
     Calculate the angle in degrees between two vectors
 - `compute_lengths_angles`:
@@ -16,6 +14,7 @@ Functions
 """
 
 from pathlib import Path
+from tkinter import S
 
 import jax
 import jax.numpy as jnp
@@ -24,102 +23,93 @@ from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Real, jaxtyped
 
 import rheedium as rh
-from rheedium.types import *
+from rheedium.types import CrystalStructure, scalar_float
 
 jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)
-def wavelength_ang(energy_kev: Float[Array, "..."]) -> Float[Array, "..."]:
+def angle_in_degrees(v1: Float[Array, "n"], v2: Float[Array, "n"]) -> Float[Array, ""]:
     """
-    Calculate the relativistic electron wavelength in angstroms.
-
-    Parameters
-    ----------
-    energy_kev : Float[Array, "..."]
-        Electron energy in kiloelectron volts
-
-    Returns
-    -------
-    Float[Array, "..."]
-        Electron wavelength in angstroms
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-    >>> from rheedium.ucell.helper import wavelength_ang
-    >>> energy = jnp.array([10.0, 20.0, 30.0])
-    >>> wavelengths = wavelength_ang(energy)
-    >>> print(wavelengths)
-    [0.1226 0.0866 0.0707]
-    """
-    return 12.398 / jnp.sqrt(energy_kev * (2 * 511.0 + energy_kev))
-
-
-@jaxtyped(typechecker=beartype)
-def angle_in_degrees(v1: Float[Array, "3"], v2: Float[Array, "3"]) -> Float[Array, ""]:
-    """
+    Description
+    -----------
     Calculate the angle in degrees between two vectors.
+    As long as the vectors have the same number of elements,
+    any dimensional vectors will work.
 
     Parameters
     ----------
-    v1 : Float[Array, "3"]
+    - `v1` (Float[Array, "n"]):
         First vector
-    v2 : Float[Array, "3"]
+    - `v2` (Float[Array, "n"]):
         Second vector
 
     Returns
     -------
-    Float[Array, ""]
+    - `angle` (Float[Array, ""]):
         Angle between vectors in degrees
 
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> from rheedium.ucell.helper import angle_in_degrees
+    >>> import rheedium as rh
     >>> v1 = jnp.array([1.0, 0.0, 0.0])
     >>> v2 = jnp.array([0.0, 1.0, 0.0])
-    >>> angle = angle_in_degrees(v1, v2)
+    >>> angle = rh.ucell.angle_in_degrees(v1, v2)
     >>> print(angle)
     90.0
     """
-    return (
+
+    def check_vector_dimensions():
+        return jax.lax.cond(
+            v1.shape == v2.shape,
+            lambda: (v1, v2),
+            lambda: jax.lax.stop_gradient(
+                jax.lax.cond(False, lambda: (v1, v2), lambda: (v1, v2))
+            ),
+        )
+
+    check_vector_dimensions()
+    angle: Float[Array, ""] = (
         180.0
         * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2)))
         / jnp.pi
     )
+    return angle
 
 
 @jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
     vectors: Float[Array, "3 3"],
-) -> tuple[Float[Array, "3"], Float[Array, "3"]]:
+) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
+    Description
+    -----------
     Compute unit cell lengths and angles from lattice vectors.
 
     Parameters
     ----------
-    vectors : Float[Array, "3 3"]
+    - `vectors` (Float[Array, "3 3"]):
         Lattice vectors as rows of a 3x3 matrix
 
     Returns
     -------
-    tuple[Float[Array, "3"], Float[Array, "3"]]
-        Tuple containing (lengths, angles) where:
-        - lengths: Array of unit cell lengths in angstroms
-        - angles: Array of unit cell angles in degrees
+    - `lengths` (Float[Array, "3"]):
+        Unit cell lengths in angstroms
+    - `angles` (Float[Array, "3"]):
+        Unit cell angles in degrees
 
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> from rheedium.ucell.helper import compute_lengths_angles
+    >>> import rheedium as rh
     >>> # Cubic unit cell with a=5.0 Å
     >>> vectors = jnp.array([
     ...     [5.0, 0.0, 0.0],
     ...     [0.0, 5.0, 0.0],
     ...     [0.0, 0.0, 5.0]
     ... ])
-    >>> lengths, angles = compute_lengths_angles(vectors)
+    >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
     >>> print(lengths)
     [5.0 5.0 5.0]
     >>> print(angles)
@@ -206,7 +196,6 @@ def parse_cif_and_scrape(
     half_thickness: Float[Array, ""] = thickness_xyz[2] / 2.0
     mask: Bool[Array, "n"] = jnp.abs(projections - center_proj) <= half_thickness
     filtered_cart_positions: Float[Array, "m 3"] = cart_positions[mask]
-    filtered_atomic_numbers: Float[Array, "m"] = atomic_numbers[mask]
     cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -226,61 +215,3 @@ def parse_cif_and_scrape(
         cell_angles=crystal.cell_angles,
     )
     return filtered_crystal
-
-
-def parse_cif(cif_path: str) -> CrystalStructure:
-    """
-    Parse a CIF file into a CrystalStructure object.
-
-    Parameters
-    ----------
-    cif_path : str
-        Path to the CIF file
-
-    Returns
-    -------
-    CrystalStructure
-        Crystal structure containing atomic positions and types
-
-    Examples
-    --------
-    >>> from rheedium.ucell.helper import parse_cif
-    >>> # Parse a CIF file for a simple cubic structure
-    >>> structure = parse_cif("path/to/structure.cif")
-    >>> print(f"Unit cell vectors:\n{structure.vectors}")
-    Unit cell vectors:
-    [[5.0 0.0 0.0]
-     [0.0 5.0 0.0]
-     [0.0 0.0 5.0]]
-    """
-    # Implementation details...
-    pass
-
-
-def symmetry_expansion(structure: CrystalStructure) -> CrystalStructure:
-    """
-    Apply symmetry operations to expand fractional positions.
-
-    Parameters
-    ----------
-    structure : CrystalStructure
-        Input crystal structure
-
-    Returns
-    -------
-    CrystalStructure
-        Expanded crystal structure with all symmetry-equivalent positions
-
-    Examples
-    --------
-    >>> from rheedium.ucell.helper import parse_cif, symmetry_expansion
-    >>> # Parse a CIF file and expand symmetry
-    >>> structure = parse_cif("path/to/structure.cif")
-    >>> expanded = symmetry_expansion(structure)
-    >>> print(f"Original atoms: {len(structure.positions)}")
-    >>> print(f"Expanded atoms: {len(expanded.positions)}")
-    Original atoms: 1
-    Expanded atoms: 8
-    """
-    # Implementation details...
-    pass
