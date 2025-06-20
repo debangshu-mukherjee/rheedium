@@ -20,7 +20,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
 import rheedium as rh
-from rheedium.types import *
+from rheedium.types import RHEEDPattern, scalar_float
 
 jax.config.update("jax_enable_x64", True)
 

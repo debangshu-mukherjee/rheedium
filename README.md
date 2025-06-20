@@ -244,7 +244,7 @@ Full documentation is available at [rheedium.readthedocs.io](https://rheedium.re
 
 ## Contributing
 
-We welcome contributions from the community! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+We welcome contributions from the community! Please see our [Contributing Guide](https://github.com/debangshu-mukherjee/rheedium/blob/main/CONTRIBUTING.md) for details on:
 
 - Code style and standards
 - Testing requirements
@@ -269,7 +269,7 @@ pytest --cov=rheedium tests/  # With coverage
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/debangshu-mukherjee/rheedium/blob/main/LICENSE) file for details.
 
 ## Citation
 

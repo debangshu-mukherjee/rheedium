@@ -78,10 +78,10 @@ Key Components
 4. **Error Branch**: Use `lax.stop_gradient(lax.cond(False, ...))` for invalid cases
 
 Common Validation Patterns
---------------------------
+---------------------------
 
 Shape Validation
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -93,7 +93,7 @@ Shape Validation
         )
 
 Value Range Validation
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -105,7 +105,7 @@ Value Range Validation
         )
 
 Finite Values Validation
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -117,7 +117,7 @@ Finite Values Validation
         )
 
 Multiple Parameter Validation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -132,7 +132,7 @@ Multiple Parameter Validation
         )
 
 Conditional Validation
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 

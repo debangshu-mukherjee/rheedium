@@ -3,17 +3,24 @@ import sys
 from datetime import datetime
 import tomllib
 
-sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("./_ext"))
+# CRITICAL: Proper path setup for autodoc
+project_root = os.path.abspath("../..")
+src_path = os.path.join(project_root, "src")
+
+# Add both src and project root to path
+sys.path.insert(0, src_path)
+sys.path.insert(0, project_root)
+
+print(f"Added to sys.path: {src_path}")  # Debug line
 
 # Read project metadata from pyproject.toml
-pyproject_path = os.path.abspath("../../pyproject.toml")
+pyproject_path = os.path.join(project_root, "pyproject.toml")
 with open(pyproject_path, "rb") as f:
     pyproject_data = tomllib.load(f)
 
 project = pyproject_data["project"]["name"]
 
-# Handle authors - extract name from dict format
+# Handle authors
 authors_data = pyproject_data["project"]["authors"]
 if isinstance(authors_data[0], dict):
     author = authors_data[0]["name"]
@@ -31,11 +38,9 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_rtd_theme",
     "nbsphinx",
-    "myst_parser",  # Added for Markdown support
-    # "param_parser",  # Comment out if this extension doesn't exist
+    "myst_parser",
 ]
 
-# Add source file suffixes
 source_suffix = {
     '.rst': None,
     '.md': None,
@@ -44,11 +49,10 @@ source_suffix = {
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-# Choose one theme consistently
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
-# Napoleon settings for custom docstring format
+# Napoleon settings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = True
@@ -62,52 +66,59 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
-napoleon_custom_sections = ["Description", "Parameters", "Returns", "Flow"]
 
-# Add nbsphinx configuration
-nbsphinx_execute = "never"  # Don't execute notebooks during build
-nbsphinx_allow_errors = True  # Continue building even if there are errors
-
-# Type hints settings
-autodoc_typehints = "description"
-autodoc_typehints_format = "short"
-python_use_unqualified_type_names = True
-
-# Intersphinx mapping for external references
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "jax": ("https://jax.readthedocs.io/en/latest/", None),
-}
-
-# Custom CSS to improve type hint rendering
-html_css_files = [
-    "custom.css",
+# Add custom sections to napoleon
+napoleon_custom_sections = [
+    ("Description", "params_style"),
+    ("Parameters", "params_style"), 
+    ("Returns", "returns_style"),
+    ("Flow", "params_style"),
+    ("Examples", "examples_style"),
+    ("Notes", "notes_style"),
 ]
 
-# Add these configurations to exclude imported items and type hints
+# nbsphinx configuration
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+
+# IMPORTANT: Mock problematic imports
+autodoc_mock_imports = [
+    "jax.config",  # This often causes issues
+]
+
+# Autodoc configuration
 autodoc_default_options = {
-    "exclude-members": "Float, Array, Int, Num, Bool, beartype, jaxtyped",
+    "members": True,
     "undoc-members": True,
     "show-inheritance": True,
+    "special-members": "__init__",
+    "exclude-members": "Float, Array, Int, Num, Bool, beartype, jaxtyped, tree_flatten, tree_unflatten",
 }
 
-# Add nitpicky mode to catch any broken references
-nitpicky = False  # Set to False initially to avoid overwhelming warnings
+# Type handling
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
+autodoc_typehints_description_target = "documented"
+python_use_unqualified_type_names = True
 
-# Add type aliases to handle jaxtyping types cleanly
+# Reduced nitpicky mode
+nitpicky = False
+
+# Type aliases for cleaner display
 napoleon_type_aliases = {
     'Float[Array, ""]': "scalar array",
     'Float[Array, "3"]': "3D array", 
     'Float[Array, "3 3"]': "3x3 array",
     'Float[Array, "M 3"]': "Mx3 array",
     'Float[Array, "N 3"]': "Nx3 array",
+    'Float[Array, "* 4"]': "Nx4 array",
     'Int[Array, ""]': "integer array",
     'Num[Array, "*"]': "numeric array",
-    'Bool[Array, "*"]': "boolean array",
+    'scalar_float': "float",
+    'scalar_int': "int",
 }
 
-# Add any modules to ignore when warning about missing references
+# Ignore problematic references
 nitpick_ignore = [
     ("py:class", "Float"),
     ("py:class", "Array"), 
@@ -116,20 +127,28 @@ nitpick_ignore = [
     ("py:class", "Bool"),
     ("py:class", "jaxtyping.Float"),
     ("py:class", "jaxtyping.Array"),
-    ("py:class", "jaxtyping.Int"),
-    ("py:class", "jaxtyping.Num"),
-    ("py:class", "jaxtyping.Bool"),
-    ("py:class", "beartype.typing.NamedTuple"),
     ("py:class", "beartype"),
     ("py:class", "jaxtyped"),
     ("py:obj", "beartype"),
     ("py:obj", "jaxtyped"),
 ]
 
-# Define what to skip during documentation
+# Intersphinx mapping
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "jax": ("https://jax.readthedocs.io/en/latest/", None),
+}
+
+html_css_files = ["custom.css"]
+
 def skip_member(app, what, name, obj, skip, options):
-    # Skip all imported jaxtyping and beartype items
-    if name in ["Float", "Array", "Int", "Num", "Bool", "beartype", "jaxtyped"]:
+    """Skip problematic members."""
+    skip_names = [
+        "Float", "Array", "Int", "Num", "Bool", 
+        "beartype", "jaxtyped", "tree_flatten", "tree_unflatten"
+    ]
+    if name in skip_names:
         return True
     return skip
 

@@ -21,13 +21,13 @@ JAX Validation Pattern
 ---------------------
 All factory functions in this codebase follow a JAX-compatible validation pattern:
 
-1. **Use `jax.lax.cond` for validation**: 
+1. **Use `jax.lax.cond` for validation**:
     Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
-2. **Compile-time validation**: 
+2. **Compile-time validation**:
     Validation happens at JIT compilation time, not runtime.
-3. **Side-effect validation**: 
+3. **Side-effect validation**:
     Validation functions don't return modified data, they ensure original data is valid
-4. **Error handling**: 
+4. **Error handling**:
     Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause compilation errors
 
 Example Pattern:
@@ -63,9 +63,9 @@ from beartype import beartype
 from beartype.typing import NamedTuple
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Num
+from jaxtyping import Array, Float, Num, jaxtyped
 
-from rheedium.types import scalar_float
+from .custom_types import scalar_float
 
 
 @register_pytree_node_class

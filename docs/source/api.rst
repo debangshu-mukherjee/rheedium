@@ -2,7 +2,7 @@ API Reference
 =============
 
 Input/Output Module
-------------------
+-------------------
 .. automodule:: rheedium.inout.data_io
    :members:
    :undoc-members:

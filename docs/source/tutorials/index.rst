@@ -7,4 +7,4 @@ Here you'll find tutorials demonstrating how to use rheedium.
    :maxdepth: 2
    :caption: Contents:
 
-   ../../tutorials/01_single_crystal
+   ../../tutorials/01_single_crystal.ipynb

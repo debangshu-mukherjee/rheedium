@@ -44,7 +44,8 @@ Type Aliases
 
 from .crystal_types import (CrystalStructure, PotentialSlices,
                             create_crystal_structure, create_potential_slices)
-from .custom_types import non_jax_number, scalar_float, scalar_int, scalar_num
+from .custom_types import (float_image, int_image, non_jax_number,
+                           scalar_float, scalar_int, scalar_num)
 from .rheed_types import (RHEEDImage, RHEEDPattern, create_rheed_image,
                           create_rheed_pattern)
 
@@ -61,4 +62,6 @@ __all__ = [
     "scalar_int",
     "scalar_num",
     "non_jax_number",
+    "float_image",
+    "int_image",
 ]

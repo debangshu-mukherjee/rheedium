@@ -8,8 +8,8 @@
 
    installation
    jax_validation_pattern
-   api
    tutorials/index
+   api
 
 Indices and tables
 ==================
