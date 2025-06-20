@@ -21,10 +21,14 @@ JAX Validation Pattern
 ---------------------
 All factory functions in this codebase follow a JAX-compatible validation pattern:
 
-1. **Use `jax.lax.cond` for validation**: Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
-2. **Compile-time validation**: Validation happens at JIT compilation time, not runtime
-3. **Side-effect validation**: Validation functions don't return modified data, they ensure original data is valid
-4. **Error handling**: Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause compilation errors
+1. **Use `jax.lax.cond` for validation**: 
+    Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
+2. **Compile-time validation**: 
+    Validation happens at JIT compilation time, not runtime.
+3. **Side-effect validation**: 
+    Validation functions don't return modified data, they ensure original data is valid
+4. **Error handling**: 
+    Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause compilation errors
 
 Example Pattern:
 ```python
