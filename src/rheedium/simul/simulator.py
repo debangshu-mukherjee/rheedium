@@ -602,8 +602,8 @@ def crystal_potential(
     slice_thickness: scalar_float,
     grid_shape: Tuple[scalar_int, scalar_int],
     physical_extent: Tuple[scalar_float, scalar_float],
-    pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
-    sampling: Optional[Int[Array, ""]] = jnp.asarray(16),
+    pixel_size: Optional[scalar_float] = 0.1,
+    sampling: Optional[scalar_int] = 16,
 ) -> PotentialSlices:
     """
     Description
@@ -622,12 +622,12 @@ def crystal_potential(
         Shape of the output grid (height, width) for each slice
     - `physical_extent` (Tuple[scalar_float, scalar_float]):
         Physical size of the grid (y_extent, x_extent) in angstroms
-    - `pixel_size` (Float[Array, ""]):
+    - `pixel_size` (scalar_float, optional:
         Real space pixel size in angstroms
-        Optional. Default: 0.1
-    - `sampling` (Int[Array, ""]):
+        Default: 0.1
+    - `sampling` (scalar_int, optional):
         Supersampling factor for potential calculation
-        Optional. Default: 16
+        Default: 16
 
     Returns
     -------
