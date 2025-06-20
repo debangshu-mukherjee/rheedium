@@ -6,8 +6,6 @@ Unit cell and crystallographic utilities for RHEED simulation.
 Functions
 ---------
 - From `helper.py` submodule:
-    - `wavelength_ang`:
-        Calculate relativistic electron wavelength from accelerating voltage
     - `angle_in_degrees`:
         Calculate angle in degrees between two vectors
     - `compute_lengths_angles`:
@@ -38,13 +36,12 @@ Functions
 
 from .bessel import bessel_k0, bessel_k1, bessel_kv
 from .helper import (angle_in_degrees, compute_lengths_angles,
-                     parse_cif_and_scrape, wavelength_ang)
+                     parse_cif_and_scrape)
 from .unitcell import (atom_scraper, build_cell_vectors,
                        generate_reciprocal_points, get_unit_cell_matrix,
                        reciprocal_uc_angles, reciprocal_unitcell)
 
 __all__ = [
-    "wavelength_ang",
     "angle_in_degrees",
     "compute_lengths_angles",
     "parse_cif_and_scrape",

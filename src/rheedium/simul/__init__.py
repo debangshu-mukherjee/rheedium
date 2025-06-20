@@ -6,6 +6,8 @@ RHEED pattern simulation utilities.
 Functions
 ---------
 - From `simulator.py` submodule:
+    - `wavelength_ang`:
+        Calculate electron wavelength in angstroms
     - `incident_wavevector`:
         Calculate incident electron wavevector from beam parameters
     - `project_on_detector`:
@@ -25,9 +27,10 @@ Functions
 from .simulator import (atomic_potential, compute_kinematic_intensities,
                         crystal_potential, find_kinematic_reflections,
                         incident_wavevector, project_on_detector,
-                        simulate_rheed_pattern)
+                        simulate_rheed_pattern, wavelength_ang)
 
 __all__ = [
+    "wavelength_ang",
     "incident_wavevector",
     "project_on_detector",
     "find_kinematic_reflections",

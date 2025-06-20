@@ -14,7 +14,6 @@ Functions
 """
 
 from pathlib import Path
-from tkinter import S
 
 import jax
 import jax.numpy as jnp
