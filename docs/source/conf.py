@@ -1,15 +1,27 @@
 import os
 import sys
+from datetime import datetime
+import tomllib
 
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath("./_ext"))
 
-project = "rheedium"
-copyright = "2024"
-author = "Debangshu Mukherjee"
+# Read project metadata from pyproject.toml
+pyproject_path = os.path.abspath("../../pyproject.toml")
+with open(pyproject_path, "rb") as f:
+    pyproject_data = tomllib.load(f)
 
-# The full version, including alpha/beta/rc tags
-release = "2025.01.28"
+project = pyproject_data["project"]["name"]
+
+# Handle authors - extract name from dict format
+authors_data = pyproject_data["project"]["authors"]
+if isinstance(authors_data[0], dict):
+    author = authors_data[0]["name"]
+else:
+    author = authors_data[0]
+
+copyright = f"{datetime.now().year}, {author}"
+release = pyproject_data["project"]["version"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -19,8 +31,15 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_rtd_theme",
     "nbsphinx",
+    "myst_parser",  # Added for Markdown support
     # "param_parser",  # Comment out if this extension doesn't exist
 ]
+
+# Add source file suffixes
+source_suffix = {
+    '.rst': None,
+    '.md': None,
+}
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]

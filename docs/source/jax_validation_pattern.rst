@@ -339,6 +339,7 @@ Migration Guide
 Converting from Python `if` statements:
 
 **Before:**
+
 .. code-block:: python
 
     if data.shape != expected_shape:
@@ -348,6 +349,7 @@ Converting from Python `if` statements:
     return DataStructure(data=data)
 
 **After:**
+
 .. code-block:: python
 
     def validate_and_create():
