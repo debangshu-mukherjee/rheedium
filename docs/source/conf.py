@@ -1,7 +1,7 @@
 import os
 import sys
-from datetime import datetime
 import tomllib
+from datetime import datetime
 
 # CRITICAL: Proper path setup for autodoc
 project_root = os.path.abspath("../..")
@@ -42,8 +42,8 @@ extensions = [
 ]
 
 source_suffix = {
-    '.rst': None,
-    '.md': None,
+    ".rst": None,
+    ".md": None,
 }
 
 templates_path = ["_templates"]
@@ -70,7 +70,7 @@ napoleon_attr_annotations = True
 # Add custom sections to napoleon
 napoleon_custom_sections = [
     ("Description", "params_style"),
-    ("Parameters", "params_style"), 
+    ("Parameters", "params_style"),
     ("Returns", "returns_style"),
     ("Flow", "params_style"),
     ("Examples", "examples_style"),
@@ -107,21 +107,21 @@ nitpicky = False
 # Type aliases for cleaner display
 napoleon_type_aliases = {
     'Float[Array, ""]': "scalar array",
-    'Float[Array, "3"]': "3D array", 
+    'Float[Array, "3"]': "3D array",
     'Float[Array, "3 3"]': "3x3 array",
     'Float[Array, "M 3"]': "Mx3 array",
     'Float[Array, "N 3"]': "Nx3 array",
     'Float[Array, "* 4"]': "Nx4 array",
     'Int[Array, ""]': "integer array",
     'Num[Array, "*"]': "numeric array",
-    'scalar_float': "float",
-    'scalar_int': "int",
+    "scalar_float": "float",
+    "scalar_int": "int",
 }
 
 # Ignore problematic references
 nitpick_ignore = [
     ("py:class", "Float"),
-    ("py:class", "Array"), 
+    ("py:class", "Array"),
     ("py:class", "Int"),
     ("py:class", "Num"),
     ("py:class", "Bool"),
@@ -142,15 +142,24 @@ intersphinx_mapping = {
 
 html_css_files = ["custom.css"]
 
+
 def skip_member(app, what, name, obj, skip, options):
     """Skip problematic members."""
     skip_names = [
-        "Float", "Array", "Int", "Num", "Bool", 
-        "beartype", "jaxtyped", "tree_flatten", "tree_unflatten"
+        "Float",
+        "Array",
+        "Int",
+        "Num",
+        "Bool",
+        "beartype",
+        "jaxtyped",
+        "tree_flatten",
+        "tree_unflatten",
     ]
     if name in skip_names:
         return True
     return skip
+
 
 def setup(app):
     app.connect("autodoc-skip-member", skip_member)

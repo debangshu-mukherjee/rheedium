@@ -29,7 +29,7 @@ import jax
 import jax.numpy as jnp
 import pandas as pd
 from beartype import beartype
-from beartype.typing import Optional, Tuple
+from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 import rheedium as rh
@@ -69,7 +69,7 @@ def wavelength_ang(
     >>> energy = jnp.array([10.0, 20.0, 30.0])
     >>> wavelengths = rh.simul.wavelength_ang(energy)
     >>> print(wavelengths)
-    [0.1226 0.0866 0.0707]
+    [0.12204694 0.08588511 0.06979081]
     """
     m: scalar_float = jnp.asarray(9.109383e-31)
     e: scalar_float = jnp.asarray(1.602177e-19)
