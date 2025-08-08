@@ -9,61 +9,26 @@ Classes
     JAX-compatible crystal structure with fractional and Cartesian coordinates
 - `PotentialSlices`:
     JAX-compatible data structure for representing multislice potential data
+- `XYZData`:
+    A PyTree for XYZ file data with atomic positions, lattice vectors,
+    stress tensor, energy, properties, and comment
 
-Functions
----------
+FactoryFunctions
+-----------------
 - `create_crystal_structure`:
     Factory function to create CrystalStructure instances with data validation
 - `create_potential_slices`:
     Factory function to create PotentialSlices instances with data validation
-
-JAX Validation Pattern
----------------------
-All factory functions in this codebase follow a JAX-compatible validation pattern:
-
-1. **Use `jax.lax.cond` for validation**:
-    Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
-2. **Compile-time validation**:
-    Validation happens at JIT compilation time, not runtime.
-3. **Side-effect validation**:
-    Validation functions don't return modified data, they ensure original data is valid
-4. **Error handling**:
-    Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause compilation errors
-
-Example Pattern:
-```python
-def validate_and_create():
-    def check_shape():
-        return lax.cond(
-            data.shape == expected_shape,
-            lambda: data,  # Pass through if valid
-            lambda: lax.stop_gradient(lax.cond(False, lambda: data, lambda: data))  # Fail if invalid
-        )
-
-    # Execute validations (no assignment needed)
-    check_shape()
-    check_values()
-    check_conditions()
-
-    # Return original data (now guaranteed valid)
-    return DataStructure(data=data, ...)
-
-return validate_and_create()
-```
-
-This pattern ensures:
-- JIT compatibility
-- Compile-time error detection
-- Zero runtime validation overhead
-- Type safety through JAX's compilation system
+- `create_xyz_data`:
+    Factory function to create XYZData instances with data validation
 """
 
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple
+from beartype.typing import Dict, List, NamedTuple, Optional, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Num, jaxtyped
+from jaxtyping import Array, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 
@@ -468,6 +433,189 @@ def create_potential_slices(
             slice_thickness=slice_thickness,
             x_calibration=x_calibration,
             y_calibration=y_calibration,
+        )
+
+    return validate_and_create()
+
+
+@register_pytree_node_class
+class XYZData(NamedTuple):
+    """
+    Description
+    -----------
+    JAX-compatible PyTree representing a full parsed XYZ file.
+
+    Attributes
+    ----------
+    - `positions` (Float[Array, "N 3"]):
+        Cartesian positions in Ångstroms.
+    - `atomic_numbers` (Int[Array, "N"]):
+        Atomic numbers (Z) corresponding to each atom.
+    - `lattice` (Optional[Float[Array, "3 3"]]):
+        Lattice vectors in Ångstroms if present, otherwise None.
+    - `stress` (Optional[Float[Array, "3 3"]]):
+        Symmetric stress tensor if present.
+    - `energy` (Optional[scalar_float]):
+        Total energy in eV if present.
+    - `properties` (Optional[List[Dict[str, Union[str, int]]]]):
+        List of properties described in the metadata.
+    - `comment` (Optional[str]):
+        The raw comment line from the XYZ file.
+
+    Notes
+    -----
+    - Can be used for geometry parsing, simulation prep, or ML data loaders.
+    - Compatible with JAX transformations (jit, vmap, etc).
+    """
+
+    positions: Float[Array, "N 3"]
+    atomic_numbers: Int[Array, "N"]
+    lattice: Optional[Float[Array, "3 3"]]
+    stress: Optional[Float[Array, "3 3"]]
+    energy: Optional[Float[Array, ""]]
+    properties: Optional[List[Dict[str, Union[str, int]]]]
+    comment: Optional[str]
+
+    def tree_flatten(self):
+        children = (
+            self.positions,
+            self.atomic_numbers,
+            self.lattice,
+            self.stress,
+            self.energy,
+        )
+        aux_data = {
+            "properties": self.properties,
+            "comment": self.comment,
+        }
+        return children, aux_data
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        positions, atomic_numbers, lattice, stress, energy = children
+        return cls(
+            positions=positions,
+            atomic_numbers=atomic_numbers,
+            lattice=lattice,
+            stress=stress,
+            energy=energy,
+            properties=aux_data["properties"],
+            comment=aux_data["comment"],
+        )
+
+
+@jaxtyped(typechecker=beartype)
+def make_xyz_data(
+    positions: Float[Array, "N 3"],
+    atomic_numbers: Int[Array, "N"],
+    lattice: Optional[Float[Array, "3 3"]] = None,
+    stress: Optional[Float[Array, "3 3"]] = None,
+    energy: Optional[scalar_float] = None,
+    properties: Optional[List[Dict[str, Union[str, int]]]] = None,
+    comment: Optional[str] = None,
+) -> XYZData:
+    """
+    Description
+    -----------
+    JAX-safe factory function for XYZData with runtime validation.
+
+    Parameters
+    ----------
+    - `positions` (Float[Array, "N 3"]):
+        Cartesian positions in Ångstroms
+    - `atomic_numbers` (Int[Array, "N"]):
+        Atomic numbers (Z) for each atom
+    - `lattice` (Optional[Float[Array, "3 3"]]):
+        Lattice vectors (if any)
+    - `stress` (Optional[Float[Array, "3 3"]]):
+        Stress tensor (if any)
+    - `energy` (Optional[scalar_float]):
+        Total energy (if any)
+    - `properties` (Optional[List[Dict[str, Union[str, int]]]]):
+        Per-atom metadata
+    - `comment` (Optional[str]):
+        Original XYZ comment line
+
+    Returns
+    -------
+    - `XYZData`:
+        Validated PyTree structure for XYZ file contents
+
+    Validation Flow
+    ---------------
+    - Convert required inputs to JAX arrays with appropriate dtypes:
+       - positions: Convert to float64
+       - atomic_numbers: Convert to int32
+       - lattice (if provided): Convert to float64
+       - stress (if provided): Convert to float64
+       - energy (if provided): Convert to float64
+    - Extract number of atoms (N) from positions array
+    - Execute shape validation checks:
+       - check_shape(): Verify positions has shape (N, 3) and atomic_numbers has shape (N,)
+    - Execute value validation checks:
+       - check_finiteness(): Ensure all position values are finite and atomic numbers are non-negative
+    - Execute optional matrix validation checks (if provided):
+       - check_optional_matrices(): For lattice and stress tensors:
+         * Verify shape is (3, 3)
+         * Ensure all values are finite
+    - If all validations pass, create and return XYZData instance
+    - If any validation fails, raise ValueError with descriptive error message
+    """
+
+    positions = jnp.asarray(positions, dtype=jnp.float64)
+    atomic_numbers = jnp.asarray(atomic_numbers, dtype=jnp.int32)
+    if lattice is not None:
+        lattice = jnp.asarray(lattice, dtype=jnp.float64)
+    else:
+        lattice = jnp.eye(3, dtype=jnp.float64)
+
+    if stress is not None:
+        stress = jnp.asarray(stress, dtype=jnp.float64)
+
+    if energy is not None:
+        energy = jnp.asarray(energy, dtype=jnp.float64)
+
+    def validate_and_create():
+        N = positions.shape[0]
+
+        def check_shape():
+            if positions.shape[1] != 3:
+                raise ValueError("positions must have shape (N, 3)")
+            if atomic_numbers.shape[0] != N:
+                raise ValueError("atomic_numbers must have shape (N,)")
+
+        def check_finiteness():
+            if not jnp.all(jnp.isfinite(positions)):
+                raise ValueError("positions contain non-finite values")
+            if not jnp.all(atomic_numbers >= 0):
+                raise ValueError("atomic_numbers must be non-negative")
+
+        def check_optional_matrices():
+            # We have to use Python if for None checks here as well
+            if lattice is not None:
+                if lattice.shape != (3, 3):
+                    raise ValueError("lattice must have shape (3, 3)")
+                if not jnp.all(jnp.isfinite(lattice)):
+                    raise ValueError("lattice contains non-finite values")
+
+            if stress is not None:
+                if stress.shape != (3, 3):
+                    raise ValueError("stress must have shape (3, 3)")
+                if not jnp.all(jnp.isfinite(stress)):
+                    raise ValueError("stress contains non-finite values")
+
+        check_shape()
+        check_finiteness()
+        check_optional_matrices()
+
+        return XYZData(
+            positions=positions,
+            atomic_numbers=atomic_numbers,
+            lattice=lattice,
+            stress=stress,
+            energy=energy,
+            properties=properties,
+            comment=comment,
         )
 
     return validate_and_create()

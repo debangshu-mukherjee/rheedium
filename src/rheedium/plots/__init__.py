@@ -5,11 +5,10 @@ Plotting and visualization utilities for RHEED data.
 
 Functions
 ---------
-- From `figuring.py` submodule:
-    - `create_phosphor_colormap`:
-        Create a custom colormap that simulates a phosphor screen appearance
-    - `plot_rheed`:
-        Interpolate RHEED spots onto a uniform grid and display using phosphor colormap
+- `create_phosphor_colormap`:
+    Create a custom colormap that simulates a phosphor screen appearance
+- `plot_rheed`:
+    Interpolate RHEED spots onto a uniform grid and display using phosphor colormap
 """
 
 from .figuring import create_phosphor_colormap, plot_rheed

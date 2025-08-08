@@ -2398,7 +2398,7 @@ wheels = [
 
 [[package]]
 name = "rheedium"
-version = "2025.6.17"
+version = "2025.6.19"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },

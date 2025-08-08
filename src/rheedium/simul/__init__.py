@@ -5,23 +5,22 @@ RHEED pattern simulation utilities.
 
 Functions
 ---------
-- From `simulator.py` submodule:
-    - `wavelength_ang`:
-        Calculate electron wavelength in angstroms
-    - `incident_wavevector`:
-        Calculate incident electron wavevector from beam parameters
-    - `project_on_detector`:
-        Project reciprocal lattice points onto detector screen
-    - `find_kinematic_reflections`:
-        Find kinematically allowed reflections for given experimental conditions
-    - `compute_kinematic_intensities`:
-        Calculate kinematic diffraction intensities for reciprocal lattice points
-    - `simulate_rheed_pattern`:
-        Complete RHEED pattern simulation from crystal structure to detector pattern
-    - `atomic_potential`:
-        Calculate atomic scattering potential for given atomic number
-    - `crystal_potential`:
-        Calculate multislice potential for a crystal structure
+- `wavelength_ang`:
+    Calculate electron wavelength in angstroms
+- `incident_wavevector`:
+    Calculate incident electron wavevector from beam parameters
+- `project_on_detector`:
+    Project reciprocal lattice points onto detector screen
+- `find_kinematic_reflections`:
+    Find kinematically allowed reflections for given experimental conditions
+- `compute_kinematic_intensities`:
+    Calculate kinematic diffraction intensities for reciprocal lattice points
+- `simulate_rheed_pattern`:
+    Complete RHEED pattern simulation from crystal structure to detector pattern
+- `atomic_potential`:
+    Calculate atomic scattering potential for given atomic number
+- `crystal_potential`:
+    Calculate multislice potential for a crystal structure
 """
 
 from .simulator import (atomic_potential, compute_kinematic_intensities,
