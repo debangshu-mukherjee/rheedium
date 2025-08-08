@@ -13,6 +13,7 @@ notebooks/__pycache__/
 /tests/sim/__pycache__/
 /tests/io/__pycache__/
 /envs/__pycache__/
+/data/
 *.py[cod]
 
 # VS Code settings
