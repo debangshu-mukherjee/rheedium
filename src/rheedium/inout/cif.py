@@ -1,12 +1,10 @@
 """
-Module: inout.data_io
----------------------
+Module: inout.cif
+-----------------
 Functions for reading and writing crystal structure data.
 
 Functions
 ---------
-- `load_atomic_numbers`:
-    Load atomic numbers mapping from JSON file
 - `parse_cif`:
     Parse CIF file into JAX-compatible CrystalStructure
 - `symmetry_expansion`:
@@ -14,7 +12,6 @@ Functions
 """
 
 import fractions
-import json
 import re
 from pathlib import Path
 
@@ -24,51 +21,10 @@ from beartype import beartype
 from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
+from rheedium.inout import atomic_symbol
 from rheedium.types import (CrystalStructure, create_crystal_structure,
                             scalar_float)
 from rheedium.ucell import build_cell_vectors
-
-DEFAULT_ATOMIC_NUMBERS_PATH = (
-    Path(__file__).resolve().parents[3] / "data" / "atomic_numbers.json"
-)
-
-
-@beartype
-def load_atomic_numbers(path: str = str(DEFAULT_ATOMIC_NUMBERS_PATH)) -> dict[str, int]:
-    """
-    Description
-    -----------
-    Load the atomic numbers mapping from a JSON file.
-
-    Parameters
-    ----------
-    - `path` (str, optional):
-        Path to the atomic numbers JSON file.
-        Defaults to '<project_root>/data/atomic_numbers.json'.
-
-    Returns
-    -------
-    - `atomic_numbers` (dict[str, int]):
-        Dictionary mapping element symbols to atomic numbers.
-
-    Flow
-    ----
-    - Open and read the JSON file at the specified path
-    - Parse the JSON content into a dictionary
-    - Return the atomic numbers mapping
-
-    Examples
-    --------
-    >>> from rheedium.inout.data_io import load_atomic_numbers
-    >>> atomic_numbers = load_atomic_numbers()
-    >>> print(atomic_numbers["Si"])
-    14
-    >>> print(atomic_numbers["Au"])
-    79
-    """
-    with open(path, "r") as f:
-        atomic_numbers = json.load(f)
-    return atomic_numbers
 
 
 @jaxtyped(typechecker=beartype)
@@ -153,7 +109,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if cif_path.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path}")
     cif_text = cif_path.read_text()
-    atomic_numbers = load_atomic_numbers()
+    atomic_numbers = atomic_symbol()
 
     def extract_param(name: str) -> float:
         match = re.search(rf"{name}\s+([0-9.]+)", cif_text)
