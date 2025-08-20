@@ -3,8 +3,8 @@ Module: inout.cif
 -----------------
 Functions for reading and writing crystal structure data.
 
-Functions
----------
+Function List
+-------------
 - `parse_cif`:
     Parse CIF file into JAX-compatible CrystalStructure
 - `symmetry_expansion`:
@@ -17,8 +17,8 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-from beartype.typing import List, Union
-from jaxtyping import Array, Float, Num
+from beartype.typing import Callable, Dict, List, Optional, Tuple, Union
+from jaxtyping import Array, Float, Int, Num
 
 from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.inout.xyz import atomic_symbol
@@ -31,10 +31,12 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     """Parse a CIF file into a JAX-compatible CrystalStructure.
 
     Args:
-        cif_path (Union[str, Path]): Path to the CIF file.
+        cif_path (str | Path):
+            Path to the CIF file.
 
     Returns:
-        CrystalStructure: Parsed crystal structure object with fractional and Cartesian
+        expanded_crystal (CrystalStructure):
+            Parsed crystal structure object with fractional and Cartesian
             coordinates. Contains arrays of atomic positions in both fractional
             (range [0,1]) and Cartesian (Ångstroms) coordinates, along with unit
             cell parameters (lengths in Ångstroms, angles in degrees).
@@ -64,34 +66,34 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         >>> print(f"Number of atoms: {len(structure.positions)}")
         Number of atoms: 8
     """
-    cif_path = Path(cif_path)
+    cif_path: Path = Path(cif_path)
     if not cif_path.exists():
         raise FileNotFoundError(f"CIF file not found: {cif_path}")
     if cif_path.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path}")
-    cif_text = cif_path.read_text()
+    cif_text: str = cif_path.read_text()
 
-    def extract_param(name: str) -> float:
-        match = re.search(rf"{name}\s+([0-9.]+)", cif_text)
+    def _extract_param(name: str) -> float:
+        match: Optional[re.Match[str]] = re.search(rf"{name}\s+([0-9.]+)", cif_text)
         if match:
             return float(match.group(1))
         else:
             raise ValueError(f"Failed to parse {name} from CIF.")
 
-    a = extract_param("_cell_length_a")
-    b = extract_param("_cell_length_b")
-    c = extract_param("_cell_length_c")
-    alpha = extract_param("_cell_angle_alpha")
-    beta = extract_param("_cell_angle_beta")
-    gamma = extract_param("_cell_angle_gamma")
+    a: float = _extract_param("_cell_length_a")
+    b: float = _extract_param("_cell_length_b")
+    c: float = _extract_param("_cell_length_c")
+    alpha: float = _extract_param("_cell_angle_alpha")
+    beta: float = _extract_param("_cell_angle_beta")
+    gamma: float = _extract_param("_cell_angle_gamma")
     cell_lengths: Num[Array, " 3"] = jnp.array([a, b, c], dtype=jnp.float64)
     cell_angles: Num[Array, " 3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
-    lines = cif_text.splitlines()
-    atom_site_columns = []
-    positions_list = []
-    in_atom_site_loop = False
+    lines: List[str] = cif_text.splitlines()
+    atom_site_columns: List[str] = []
+    positions_list: List[List[float]] = []
+    in_atom_site_loop: bool = False
     for line in lines:
-        stripped_line = line.strip()
+        stripped_line: str = line.strip()
         if stripped_line.lower().startswith("loop_"):
             in_atom_site_loop = False
             atom_site_columns = []
@@ -101,10 +103,10 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             in_atom_site_loop = True
             continue
         if in_atom_site_loop and stripped_line and not stripped_line.startswith("_"):
-            tokens = stripped_line.split()
+            tokens: List[str] = stripped_line.split()
             if len(tokens) != len(atom_site_columns):
                 continue
-            required_cols = [
+            required_cols: List[str] = [
                 "_atom_site_type_symbol",
                 "_atom_site_fract_x",
                 "_atom_site_fract_y",
@@ -112,13 +114,15 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             ]
             if not all(col in atom_site_columns for col in required_cols):
                 continue
-            col_indices = {col: atom_site_columns.index(col) for col in required_cols}
-            element_symbol = tokens[col_indices["_atom_site_type_symbol"]]
-            frac_x = float(tokens[col_indices["_atom_site_fract_x"]])
-            frac_y = float(tokens[col_indices["_atom_site_fract_y"]])
-            frac_z = float(tokens[col_indices["_atom_site_fract_z"]])
+            col_indices: Dict[str, int] = {
+                col: atom_site_columns.index(col) for col in required_cols
+            }
+            element_symbol: str = tokens[col_indices["_atom_site_type_symbol"]]
+            frac_x: float = float(tokens[col_indices["_atom_site_fract_x"]])
+            frac_y: float = float(tokens[col_indices["_atom_site_fract_y"]])
+            frac_z: float = float(tokens[col_indices["_atom_site_fract_z"]])
             # Use the atomic_symbol function to convert element symbol to atomic number
-            atomic_number = atomic_symbol(element_symbol)
+            atomic_number: int = atomic_symbol(element_symbol)
             positions_list.append([frac_x, frac_y, frac_z, atomic_number])
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
@@ -126,20 +130,20 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
     cart_coords: Float[Array, " N 3"] = frac_positions[:, :3] @ cell_vectors
     cart_positions: Float[Array, " N 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
-    sym_ops = []
+    sym_ops: List[str] = []
     lines = cif_text.splitlines()
-    collect_sym_ops = False
+    collect_sym_ops: bool = False
     for line in lines:
-        stripped_line = line.strip()
+        stripped_line: str = line.strip()
         if stripped_line.startswith("_symmetry_equiv_pos_as_xyz"):
             collect_sym_ops = True
             continue
         if collect_sym_ops:
             if stripped_line.startswith("'") and stripped_line.endswith("'"):
-                op_clean = stripped_line.strip("'").strip()
+                op_clean: str = stripped_line.strip("'").strip()
                 sym_ops.append(op_clean)
             elif stripped_line.startswith('"') and stripped_line.endswith('"'):
-                op_clean = stripped_line.strip('"').strip()
+                op_clean: str = stripped_line.strip('"').strip()
                 sym_ops.append(op_clean)
             else:
                 if sym_ops:
@@ -197,25 +201,25 @@ def symmetry_expansion(
         Original atoms: 1
         Expanded atoms: 8
     """
-    frac_positions = crystal.frac_positions
-    expanded_positions = []
+    frac_positions: Float[Array, " N 4"] = crystal.frac_positions
+    expanded_positions: List[Array] = []
 
-    def parse_sym_op(op_str: str):
-        def op(pos):
-            replacements = {"x": pos[0], "y": pos[1], "z": pos[2]}
-            components = op_str.lower().replace(" ", "").split(",")
+    def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
+        def _op(pos: Array) -> Array:
+            replacements: Dict[str, float] = {"x": pos[0], "y": pos[1], "z": pos[2]}
+            components: List[str] = op_str.lower().replace(" ", "").split(",")
 
-            def eval_comp(comp):
+            def _eval_comp(comp: str) -> float:
                 comp = comp.replace("-", "+-")
-                terms = comp.split("+")
-                total = 0.0
+                terms: List[str] = comp.split("+")
+                total: float = 0.0
                 for term in terms:
                     if not term:
                         continue
-                    coeff = 1.0
+                    coeff: float = 1.0
                     for var in ("x", "y", "z"):
                         if var in term:
-                            part = term.split(var)[0]
+                            part: str = term.split(var)[0]
                             coeff = float(fractions.Fraction(part)) if part else 1.0
                             total += coeff * replacements[var]
                             break
@@ -223,31 +227,33 @@ def symmetry_expansion(
                         total += float(fractions.Fraction(term))
                 return total
 
-            return jnp.array([eval_comp(c) for c in components])
+            return jnp.array([_eval_comp(c) for c in components])
 
-        return op
+        return _op
 
-    ops = [parse_sym_op(op) for op in sym_ops]
+    ops: List[Callable[[Array], Array]] = [_parse_sym_op(op) for op in sym_ops]
     for pos in frac_positions:
-        xyz, atomic_number = pos[:3], pos[3]
+        xyz: Array = pos[:3]
+        atomic_number: float = pos[3]
         for op in ops:
-            new_xyz = jnp.mod(op(xyz), 1.0)
+            new_xyz: Array = jnp.mod(op(xyz), 1.0)
             expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
-    expanded_positions = jnp.array(expanded_positions)
-    cart_positions = expanded_positions[:, :3] @ build_cell_vectors(
+    expanded_positions: Float[Array, " N 4"] = jnp.array(expanded_positions)
+    cart_positions: Float[Array, " N 3"] = expanded_positions[:, :3] @ build_cell_vectors(
         *crystal.cell_lengths, *crystal.cell_angles
     )
 
-    def deduplicate(positions, tol):
-        def dist(p1, p2):
-            return jnp.sqrt(jnp.sum((p1 - p2) ** 2))
-
-        def unique_cond(carry, pos):
+    def _deduplicate(positions: Float[Array, " N 3"], tol: scalar_float) -> Float[Array, " N 3"]:
+        def _unique_cond(
+            carry: Tuple[Float[Array, " N 3"], Int[Array, " "]], pos: Float[Array, " 3"]
+        ) -> Tuple[Tuple[Float[Array, " N 3"], Int[Array, " "]], None]:
+            unique: Float[Array, " N 3"]
+            count: Int[Array, " "]
             unique, count = carry
-            diff = unique - pos
-            dist_sq = jnp.sum(diff**2, axis=1)
-            is_dup = jnp.any(dist_sq < tol**2)
-            unique = jax.lax.cond(
+            diff: Float[Array, " N 3"] = unique - pos
+            dist_sq: Float[Array, " N"] = jnp.sum(diff**2, axis=1)
+            is_dup: bool = jnp.any(dist_sq < tol**2)
+            unique: Float[Array, " N 3"] = jax.lax.cond(
                 is_dup,
                 lambda u: u,
                 lambda u: u.at[count].set(pos),
@@ -256,18 +262,20 @@ def symmetry_expansion(
             count += jnp.logical_not(is_dup)
             return (unique, count), None
 
-        unique_init = jnp.zeros_like(positions)
+        unique_init: Float[Array, " N 3"] = jnp.zeros_like(positions)
         unique_init = unique_init.at[0].set(positions[0])
-        count_init = 1
+        count_init: int = 1
         (unique_final, final_count), _ = jax.lax.scan(
-            unique_cond, (unique_init, count_init), positions[1:]
+            _unique_cond, (unique_init, count_init), positions[1:]
         )
         return unique_final[:final_count]
 
-    unique_cart = deduplicate(cart_positions, tolerance)
-    cell_inv = jnp.linalg.inv(build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles))
-    unique_frac = (unique_cart @ cell_inv) % 1.0
-    atomic_numbers = expanded_positions[:, 3][: unique_cart.shape[0]]
+    unique_cart: Float[Array, " N 3"] = _deduplicate(cart_positions, tolerance)
+    cell_inv: Float[Array, " 3 3"] = jnp.linalg.inv(
+        build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
+    )
+    unique_frac: Float[Array, " N 3"] = (unique_cart @ cell_inv) % 1.0
+    atomic_numbers: Float[Array, " N"] = expanded_positions[:, 3][: unique_cart.shape[0]]
     expanded_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
         cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),

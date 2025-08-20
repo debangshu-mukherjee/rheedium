@@ -54,14 +54,14 @@ def angle_in_degrees(v1: Float[Array, " n"], v2: Float[Array, " n"]) -> Float[Ar
         90.0
     """
 
-    def check_vector_dimensions():
+    def _check_vector_dimensions() -> Tuple[Float[Array, " n"], Float[Array, " n"]]:
         return jax.lax.cond(
             v1.shape == v2.shape,
             lambda: (v1, v2),
             lambda: jax.lax.stop_gradient(jax.lax.cond(False, lambda: (v1, v2), lambda: (v1, v2))),
         )
 
-    check_vector_dimensions()
+    _check_vector_dimensions()
     angle: Float[Array, " "] = (
         180.0 * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))) / jnp.pi
     )
@@ -99,8 +99,8 @@ def compute_lengths_angles(
         >>> print(angles)
         [90.0 90.0 90.0]
     """
-    lengths = jnp.array([jnp.linalg.norm(v) for v in vectors])
-    angles = jnp.array(
+    lengths: Float[Array, " 3"] = jnp.array([jnp.linalg.norm(v) for v in vectors])
+    angles: Float[Array, " 3"] = jnp.array(
         [
             angle_in_degrees(vectors[0], vectors[1]),
             angle_in_degrees(vectors[1], vectors[2]),

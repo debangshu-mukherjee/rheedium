@@ -72,7 +72,7 @@ def reciprocal_unitcell(
         >>> print(f"Reciprocal lengths: {a_star}")
         >>> print(f"Reciprocal angles: {angles_star}")
     """
-    condition_number = jnp.linalg.cond(
+    condition_number: Float[Array, " "] = jnp.linalg.cond(
         jnp.array(
             [
                 [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
@@ -97,7 +97,7 @@ def reciprocal_unitcell(
             ]
         )
     )
-    is_well_conditioned = condition_number < 1e10
+    is_well_conditioned: Bool[Array, " "] = condition_number < 1e10
     reciprocal_cell_uncond: Float[Array, " 3 3"] = (
         2
         * jnp.pi
@@ -168,14 +168,20 @@ def reciprocal_uc_angles(
         ... )
         >>> print(f"Reciprocal angles: {angles_star}")
     """
-    alpha_rad = jnp.radians(alpha)
-    beta_rad = jnp.radians(beta)
-    gamma_rad = jnp.radians(gamma)
-    cos_angles = jnp.array([jnp.cos(alpha_rad), jnp.cos(beta_rad), jnp.cos(gamma_rad)])
-    sin_angles = jnp.array([jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)])
-    volume_factor = jnp.sqrt(1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles)))
-    volume = jnp.prod(jnp.array([a, b, c])) * volume_factor
-    reciprocal_abc = (
+    alpha_rad: Float[Array, " "] = jnp.radians(alpha)
+    beta_rad: Float[Array, " "] = jnp.radians(beta)
+    gamma_rad: Float[Array, " "] = jnp.radians(gamma)
+    cos_angles: Float[Array, " 3"] = jnp.array(
+        [jnp.cos(alpha_rad), jnp.cos(beta_rad), jnp.cos(gamma_rad)]
+    )
+    sin_angles: Float[Array, " 3"] = jnp.array(
+        [jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)]
+    )
+    volume_factor: Float[Array, " "] = jnp.sqrt(
+        1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
+    )
+    volume: Float[Array, " "] = jnp.prod(jnp.array([a, b, c])) * volume_factor
+    reciprocal_abc: Float[Array, " 3"] = (
         jnp.array(
             [
                 b * c * sin_angles[0],
@@ -185,7 +191,7 @@ def reciprocal_uc_angles(
         )
         / volume
     )
-    reciprocal_angles = jnp.arccos(
+    reciprocal_angles: Float[Array, " 3 3"] = jnp.arccos(
         (cos_angles[:, None] * cos_angles[None, :] - cos_angles[None, :])
         / (sin_angles[:, None] * sin_angles[None, :])
     )
@@ -235,12 +241,18 @@ def get_unit_cell_matrix(
         >>> recip_vec = direct_vec @ matrix
         >>> print(f"Reciprocal vector: {recip_vec}")
     """
-    alpha_rad = jnp.radians(alpha)
-    beta_rad = jnp.radians(beta)
-    gamma_rad = jnp.radians(gamma)
-    cos_angles = jnp.array([jnp.cos(alpha_rad), jnp.cos(beta_rad), jnp.cos(gamma_rad)])
-    sin_angles = jnp.array([jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)])
-    volume_factor = jnp.sqrt(1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles)))
+    alpha_rad: Float[Array, " "] = jnp.radians(alpha)
+    beta_rad: Float[Array, " "] = jnp.radians(beta)
+    gamma_rad: Float[Array, " "] = jnp.radians(gamma)
+    cos_angles: Float[Array, " 3"] = jnp.array(
+        [jnp.cos(alpha_rad), jnp.cos(beta_rad), jnp.cos(gamma_rad)]
+    )
+    sin_angles: Float[Array, " 3"] = jnp.array(
+        [jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)]
+    )
+    volume_factor: Float[Array, " "] = jnp.sqrt(
+        1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
+    )
     matrix: Float[Array, " 3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
     matrix = matrix.at[0, 0].set(a)
     matrix = matrix.at[0, 1].set(b * cos_angles[2])
@@ -294,9 +306,9 @@ def build_cell_vectors(
         >>> volume = jnp.linalg.det(vectors)
         >>> print(f"Cell volume: {volume}")
     """
-    alpha_rad = jnp.radians(alpha)
-    beta_rad = jnp.radians(beta)
-    gamma_rad = jnp.radians(gamma)
+    alpha_rad: Float[Array, " "] = jnp.radians(alpha)
+    beta_rad: Float[Array, " "] = jnp.radians(beta)
+    gamma_rad: Float[Array, " "] = jnp.radians(gamma)
     a_vec: Float[Array, " 3"] = jnp.array([a, 0.0, 0.0])
     b_x: Float[Array, " "] = b * jnp.cos(gamma_rad)
     b_y: Float[Array, " "] = b * jnp.sin(gamma_rad)
@@ -348,9 +360,9 @@ def compute_lengths_angles(
         >>> print(f"Cell lengths: {lengths}")
         >>> print(f"Cell angles: {angles}")
     """
-    lengths = jnp.linalg.norm(vectors, axis=1)
-    dot_products = jnp.einsum("ij,ij->i", vectors, vectors)
-    angles = jnp.arccos(dot_products / (lengths[:, None] * lengths[None, :]))
+    lengths: Float[Array, " 3"] = jnp.linalg.norm(vectors, axis=1)
+    dot_products: Float[Array, " 3"] = jnp.einsum("ij,ij->i", vectors, vectors)
+    angles: Float[Array, " 3 3"] = jnp.arccos(dot_products / (lengths[:, None] * lengths[None, :]))
     return lengths, jnp.degrees(angles)
 
 
@@ -422,13 +434,13 @@ def generate_reciprocal_points(
     H, K, L = jnp.meshgrid(hs, ks, ls, indexing="ij")
     hkl: Num[Array, " M 3"] = jnp.stack([H.ravel(), K.ravel(), L.ravel()], axis=-1)
 
-    def single_G(hkl_1d):
-        h_ = hkl_1d[0]
-        k_ = hkl_1d[1]
-        l_ = hkl_1d[2]
+    def _single_G(hkl_1d: Num[Array, " 3"]) -> Float[Array, " 3"]:
+        h_: Float[Array, " "] = hkl_1d[0]
+        k_: Float[Array, " "] = hkl_1d[1]
+        l_: Float[Array, " "] = hkl_1d[2]
         return (h_ * a_star) + (k_ * b_star) + (l_ * c_star)
 
-    Gs: Float[Array, " M 3"] = jax.vmap(single_G)(hkl)
+    Gs: Float[Array, " M 3"] = jax.vmap(_single_G)(hkl)
     return Gs
 
 
@@ -485,8 +497,8 @@ def atom_scraper(
     dot_vals: Float[Array, " n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
     d_max: Float[Array, " "] = jnp.max(dot_vals)
     dist_from_top: Float[Array, " n"] = d_max - dot_vals
-    positive_distances = dist_from_top[dist_from_top > 1e-8]
-    adaptive_eps = jnp.where(
+    positive_distances: Float[Array, " m"] = dist_from_top[dist_from_top > 1e-8]
+    adaptive_eps: Float[Array, " "] = jnp.where(
         positive_distances.size > 0,
         jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
         1e-3,
@@ -498,19 +510,19 @@ def atom_scraper(
         dist_from_top <= thickness,
     )
 
-    def gather_valid_positions(
+    def _gather_valid_positions(
         positions: Float[Array, " n 4"], gather_mask: Bool[Array, " n"]
     ) -> Float[Array, " m 4"]:
         return positions[gather_mask]
 
-    filtered_frac: Float[Array, " m 4"] = gather_valid_positions(crystal.frac_positions, mask)
-    filtered_cart: Float[Array, " m 4"] = gather_valid_positions(crystal.cart_positions, mask)
+    filtered_frac: Float[Array, " m 4"] = _gather_valid_positions(crystal.frac_positions, mask)
+    filtered_cart: Float[Array, " m 4"] = _gather_valid_positions(crystal.cart_positions, mask)
     original_height: Float[Array, " "] = jnp.max(dot_vals) - jnp.min(dot_vals)
     new_height: Float[Array, " "] = jnp.where(
         is_top_layer_mode, adaptive_eps, jnp.minimum(thickness, original_height)
     )
 
-    def scale_vector(
+    def _scale_vector(
         vec: Float[Array, " 3"],
         zone_axis_hat: Float[Array, " 3"],
         old_height: Float[Array, " "],
@@ -519,28 +531,32 @@ def atom_scraper(
         proj_mag: Float[Array, " "] = jnp.dot(vec, zone_axis_hat)
         parallel_comp: Float[Array, " 3"] = proj_mag * zone_axis_hat
         perp_comp: Float[Array, " 3"] = vec - parallel_comp
-        scale_factor: Float[Array, " "] = jnp.where(old_height < 1e-32, 1.0, new_height / old_height)
+        scale_factor: Float[Array, " "] = jnp.where(
+            old_height < 1e-32, 1.0, new_height / old_height
+        )
         scaled_parallel: Float[Array, " 3"] = scale_factor * parallel_comp
         return scaled_parallel + perp_comp
 
-    def scale_if_needed(
+    def _scale_if_needed(
         vec: Float[Array, " 3"],
         zone_axis_hat: Float[Array, " 3"],
         original_height: Float[Array, " "],
         new_height: Float[Array, " "],
     ) -> Float[Array, " 3"]:
         needs_scaling: Bool[Array, " "] = jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
-        scaled: Float[Array, " 3"] = scale_vector(vec, zone_axis_hat, original_height, new_height)
+        scaled: Float[Array, " 3"] = _scale_vector(vec, zone_axis_hat, original_height, new_height)
         return jnp.where(needs_scaling, scaled, vec)
 
-    scaled_vectors = jnp.stack(
+    scaled_vectors: Float[Array, " 3 3"] = jnp.stack(
         [
-            scale_if_needed(orig_cell_vectors[i], zone_axis_hat, original_height, new_height)
+            _scale_if_needed(orig_cell_vectors[i], zone_axis_hat, original_height, new_height)
             for i in range(3)
         ]
     )
+    new_lengths: Float[Array, " 3"]
+    new_angles: Float[Array, " 3"]
     new_lengths, new_angles = rh.ucell.compute_lengths_angles(scaled_vectors)
-    filtered_crystal = rh.types.create_crystal_structure(
+    filtered_crystal: CrystalStructure = rh.types.create_crystal_structure(
         frac_positions=filtered_frac,
         cart_positions=filtered_cart,
         cell_lengths=new_lengths,

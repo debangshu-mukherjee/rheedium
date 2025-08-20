@@ -14,7 +14,8 @@ Functions
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
-from beartype.typing import List, Optional, Tuple
+from beartype.typing import Any, Dict, List, Optional, Tuple
+from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
@@ -67,18 +68,21 @@ def create_phosphor_colormap(
     positions: List[scalar_float] = [x[0] for x in colors]
     rgb_values: List[Tuple[scalar_float, scalar_float, scalar_float]] = [x[1] for x in colors]
     red: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)
+        (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
     green: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values)
+        (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
     blue: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)
+        (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
-    cmap = LinearSegmentedColormap(name, {"red": red, "green": green, "blue": blue})
+    cmap: LinearSegmentedColormap = LinearSegmentedColormap(
+        name, {"red": red, "green": green, "blue": blue}
+    )
     return cmap
 
 
+@beartype
 def plot_rheed(
     rheed_pattern: RHEEDPattern,
     grid_size: Optional[int] = 200,
@@ -125,32 +129,38 @@ def plot_rheed(
         >>> plot_rheed(pattern, figsize=(6, 6))
         >>> plt.show()
     """
-    coords = rheed_pattern.detector_points
-    Y = coords[:, 0]
-    Z = coords[:, 1]
-    intensities = rheed_pattern.intensities
-    Y_np = np.asarray(Y)
-    Z_np = np.asarray(Z)
-    I_np = np.asarray(intensities)
+    coords: Float[np.ndarray, "M 2"] = rheed_pattern.detector_points
+    yy: Float[np.ndarray, "M"] = coords[:, 0]
+    zz: Float[np.ndarray, "M"] = coords[:, 1]
+    intensities: Float[np.ndarray, "M"] = rheed_pattern.intensities
+    y_np: np.ndarray = np.asarray(yy)
+    z_np: np.ndarray = np.asarray(zz)
+    i_np: np.ndarray = np.asarray(intensities)
     if interp_type in ("cubic", "linear", "nearest"):
-        method = interp_type
+        method: str = interp_type
     else:
         raise ValueError(
             f"interp_type must be one of: 'cubic', 'linear', or 'nearest'. Got: {interp_type}"
         )
-    y_min, y_max = float(Y_np.min()), float(Y_np.max())
-    z_min, z_max = float(Z_np.min()), float(Z_np.max())
-    y_lin = np.linspace(y_min, y_max, grid_size)
-    z_lin = np.linspace(z_min, z_max, grid_size)
-    Yg, Zg = np.meshgrid(y_lin, z_lin, indexing="xy")
-    grid_points = np.column_stack([Yg.ravel(), Zg.ravel()])
-    interpolated = griddata(
-        points=(Y_np, Z_np), values=I_np, xi=grid_points, method=method, fill_value=0.0
+    y_min: float = float(y_np.min())
+    y_max: float = float(y_np.max())
+    z_min: float = float(z_np.min())
+    z_max: float = float(z_np.max())
+    y_lin: np.ndarray = np.linspace(y_min, y_max, grid_size)
+    z_lin: np.ndarray = np.linspace(z_min, z_max, grid_size)
+    yg: np.ndarray
+    zg: np.ndarray
+    yg, zg = np.meshgrid(y_lin, z_lin, indexing="xy")
+    grid_points: np.ndarray = np.column_stack([yg.ravel(), zg.ravel()])
+    interpolated: np.ndarray = griddata(
+        points=(y_np, z_np), values=i_np, xi=grid_points, method=method, fill_value=0.0
     )
-    intensity_grid = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap = rh.inout.create_phosphor_colormap(cmap_name)
+    intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
+    phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(cmap_name)
+    fig: plt.Figure
+    ax: plt.Axes
     fig, ax = plt.subplots(figsize=(6, 6))
-    cax = ax.imshow(
+    cax: Any = ax.imshow(
         intensity_grid.T,
         origin="lower",
         cmap=phosphor_cmap,
@@ -158,7 +168,7 @@ def plot_rheed(
         aspect="equal",
         interpolation="bilinear",
     )
-    cbar = fig.colorbar(cax, ax=ax)
+    cbar: Any = fig.colorbar(cax, ax=ax)
     cbar.set_label("Interpolated Intensity (arb. units)")
     ax.set_title(f"RHEED Pattern ({method} interpolation)")
     ax.set_xlabel("Y (Å)")

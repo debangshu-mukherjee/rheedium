@@ -16,12 +16,14 @@ BUILDING_DOCS = os.environ.get('BUILDING_DOCS', '').lower() in ('1', 'true', 'ye
 
 if BUILDING_DOCS:
     # During documentation builds, make decorators no-ops
-    def jaxtyped(typechecker=None) -> Callable[[F], F]:
+    def jaxtyped(typechecker: Any = None) -> Callable[[F], F]:
         """No-op decorator for documentation builds."""
+
         def decorator(func: F) -> F:
             return func
+
         return decorator
-    
+
     # Mock beartype to be a no-op decorator
     def beartype(func: F) -> F:
         """No-op decorator for documentation builds."""
@@ -31,18 +33,20 @@ else:
     try:
         from beartype import beartype as _beartype
         from jaxtyping import jaxtyped as _jaxtyped
-        
+
         # Re-export the actual decorators
         jaxtyped = _jaxtyped
         beartype = _beartype.beartype  # Get the actual beartype decorator
     except ImportError:
         # If packages aren't installed, make them no-ops
-        def jaxtyped(typechecker=None) -> Callable[[F], F]:
+        def jaxtyped(typechecker: Any = None) -> Callable[[F], F]:
             def decorator(func: F) -> F:
                 return func
+
             return decorator
-        
+
         def beartype(func: F) -> F:
             return func
+
 
 __all__ = ['jaxtyped', 'beartype', 'BUILDING_DOCS']

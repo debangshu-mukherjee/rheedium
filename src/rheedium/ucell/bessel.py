@@ -28,6 +28,7 @@ from rheedium.types import scalar_float
 jax.config.update("jax_enable_x64", True)
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_iv_series(
     v_order: scalar_float,
     x_val: Float[Array, " ..."],
@@ -63,6 +64,7 @@ def _bessel_iv_series(
     return result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_k0_series(
     x: Float[Array, " ..."],
     dtype: jnp.dtype,
@@ -100,6 +102,7 @@ def _bessel_k0_series(
     return result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_kn_recurrence(
     n: Int[Array, ""],
     x: Float[Array, " ..."],
@@ -124,21 +127,24 @@ def _bessel_kn_recurrence(
     """
 
     def _compute_kn() -> Float[Array, " ..."]:
-        init = (k0, k1)
-        max_n = 20
-        indices = jnp.arange(1, max_n, dtype=jnp.float32)
+        init: Tuple[Float[Array, " ..."], Float[Array, " ..."]] = (k0, k1)
+        max_n: int = 20
+        indices: Float[Array, " 19"] = jnp.arange(1, max_n, dtype=jnp.float32)
 
         def masked_step(
             carry: Tuple[Float[Array, " ..."], Float[Array, " ..."]],
             i: Float[Array, ""],
         ) -> Tuple[Tuple[Float[Array, " ..."], Float[Array, " ..."]], Float[Array, " ..."]]:
+            k_prev2: Float[Array, " ..."]
+            k_prev1: Float[Array, " ..."]
             k_prev2, k_prev1 = carry
-            mask = i < n
+            mask: Bool[Array, ""] = i < n
             two_i_over_x: Float[Array, " ..."] = 2.0 * i / x
             k_curr: Float[Array, " ..."] = two_i_over_x * k_prev1 + k_prev2
             k_curr = jnp.where(mask, k_curr, k_prev1)
             return (k_prev1, k_curr), k_curr
 
+        carry: Tuple[Float[Array, " ..."], Float[Array, " ..."]]
         carry, _ = jax.lax.scan(masked_step, init, indices)
         final_k: Float[Array, " ..."] = carry[1]
         return final_k
@@ -147,6 +153,7 @@ def _bessel_kn_recurrence(
     return kn_result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_kv_small_non_integer(
     v: scalar_float,
     x: Float[Array, " ..."],
@@ -178,6 +185,7 @@ def _bessel_kv_small_non_integer(
     return result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_kv_small_integer(
     v: Float[Array, ""],
     x: Float[Array, " ..."],
@@ -210,11 +218,12 @@ def _bessel_kv_small_integer(
     log_i1_term: Float[Array, " ..."] = -jnp.log(x / 2.0) * i1
     k1: Float[Array, " ..."] = log_i1_term + k1_poly / x
 
-    kn_result: Float[Array, " ..."] = _bessel_kn_recurrence(n, x, k0, k1, dtype)
+    kn_result: Float[Array, " ..."] = _bessel_kn_recurrence(n, x, k0, k1)
     pos_v_result: Float[Array, " ..."] = jnp.where(v >= 0, kn_result, kn_result)
     return pos_v_result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_kv_large(
     v: scalar_float,
     x: Float[Array, " ..."],
@@ -251,6 +260,7 @@ def _bessel_kv_large(
     return large_x_result
 
 
+@jaxtyped(typechecker=beartype)
 def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
     """Special case K_{1/2}(x) = sqrt(π/(2x)) * exp(-x).
 

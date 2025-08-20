@@ -100,7 +100,7 @@ nbsphinx_allow_errors = True
 autodoc_mock_imports = [
     "pandas",
     "scipy",
-    "scipy.interpolate", 
+    "scipy.interpolate",
     "matplotlib",
     "matplotlib.pyplot",
     "matplotlib.colors",

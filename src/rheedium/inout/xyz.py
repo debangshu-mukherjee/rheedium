@@ -182,18 +182,18 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
             If lattice or stress tensor dimensions are incorrect
     """
     metadata: Dict[str, Any] = {}
-
+    num_values_in_lattice: int = 9
     lattice_match: Optional[re.Match[str]] = re.search(r'Lattice="([^"]+)"', line)
     if lattice_match:
         values: list = list(map(float, lattice_match.group(1).split()))
-        if len(values) != 9:
+        if len(values) != num_values_in_lattice:
             raise ValueError("Lattice must contain 9 values")
         metadata["lattice"] = jnp.array(values, dtype=jnp.float64).reshape(3, 3)
 
     stress_match: Optional[re.Match[str]] = re.search(r'stress="([^"]+)"', line)
     if stress_match:
         values: list = list(map(float, stress_match.group(1).split()))
-        if len(values) != 9:
+        if len(values) != num_values_in_lattice:
             raise ValueError("Stress tensor must contain 9 values")
         metadata["stress"] = jnp.array(values, dtype=jnp.float64).reshape(3, 3)
 
@@ -244,8 +244,8 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
 
     try:
         num_atoms: int = int(lines[0].strip())
-    except ValueError:
-        raise ValueError("First line must be the number of atoms (int).")
+    except ValueError as err:
+        raise ValueError("First line must be the number of atoms (int).") from err
 
     comment: str = lines[1].strip()
     metadata: Dict[str, Any] = _parse_xyz_metadata(comment)
@@ -255,19 +255,21 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
 
     positions: list = []
     atomic_numbers: list = []
+    standard_xyz_cols: int = 4
+    extended_xyz_cols: int = 5
 
     for i in range(2, 2 + num_atoms):
         parts: list = lines[i].split()
         if len(parts) not in {4, 5, 6, 7}:
             raise ValueError(f"Line {i + 1} has unexpected format: {lines[i].strip()}")
 
-        if len(parts) == 4:
+        if len(parts) == standard_xyz_cols:
             symbol: str
             x: str
             y: str
             z: str
             symbol, x, y, z = parts
-        elif len(parts) == 5:
+        elif len(parts) == extended_xyz_cols:
             _: str
             symbol, x, y, z = parts
         else:
@@ -278,18 +280,18 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
         # Handle both atomic symbols and atomic numbers
         try:
             # Try to parse as an integer (atomic number)
-            atomic_num = int(symbol)
+            atomic_num: int = int(symbol)
             atomic_numbers.append(atomic_num)
         except ValueError:
             # Not a number, treat as atomic symbol
             atomic_numbers.append(atomic_symbol(symbol))
 
     positions_arr: Float[Array, " N 3"] = jnp.array(positions, dtype=jnp.float64)
-    atomic_Z_arr: Int[Array, " N"] = jnp.array(atomic_numbers, dtype=jnp.int32)
+    atomic_z_arr: Int[Array, " N"] = jnp.array(atomic_numbers, dtype=jnp.int32)
 
     return make_xyz_data(
         positions=positions_arr,
-        atomic_numbers=atomic_Z_arr,
+        atomic_numbers=atomic_z_arr,
         lattice=metadata.get("lattice"),
         stress=metadata.get("stress"),
         energy=metadata.get("energy"),
