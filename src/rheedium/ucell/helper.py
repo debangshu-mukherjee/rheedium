@@ -17,11 +17,11 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import Optional, Tuple, Union
-from jaxtyping import Array, Bool, Float, Real, jaxtyped
+from jaxtyping import Array, Bool, Float, Real
 
 import rheedium as rh
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.types import CrystalStructure, scalar_float
 
 jax.config.update("jax_enable_x64", True)

@@ -24,11 +24,12 @@ Factory Functions
 """
 
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Float, Int, Num
+
+from rheedium._typing_utils import beartype, jaxtyped
 
 from .custom_types import scalar_float
 

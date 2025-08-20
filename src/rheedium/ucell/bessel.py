@@ -19,10 +19,10 @@ Internal functions:
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from jaxtyping import Array, Bool, Float, Int
 
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.types import scalar_float
 
 jax.config.update("jax_enable_x64", True)

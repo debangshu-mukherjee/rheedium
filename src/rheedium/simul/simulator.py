@@ -28,11 +28,11 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import pandas as pd
-from beartype import beartype
 from beartype.typing import Optional, Tuple, Union
-from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, Num
 
 import rheedium as rh
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.types import (
     CrystalStructure,
     PotentialSlices,

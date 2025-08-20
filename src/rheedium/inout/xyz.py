@@ -32,10 +32,10 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import numpy as np
-from beartype import beartype
 from beartype.typing import Any, Dict, Optional, Union
-from jaxtyping import Array, Float, Int, jaxtyped
+from jaxtyping import Array, Float, Int
 
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.types import XYZData, make_xyz_data, scalar_int
 
 _KIRKLAND_PATH: Path = Path(__file__).resolve().parent / "luggage" / "Kirkland_Potentials.csv"

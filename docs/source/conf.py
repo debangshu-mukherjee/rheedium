@@ -5,6 +5,9 @@ from datetime import datetime
 import tomllib
 from sphinx.application import Sphinx
 
+# CRITICAL: Disable beartype during documentation builds
+os.environ["BUILDING_DOCS"] = "1"
+
 # CRITICAL: Proper path setup for autodoc
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
@@ -177,7 +180,7 @@ html_css_files = ["custom.css"]
 html_js_files = ["custom.js"]
 
 
-def skip_member(name: str, skip: bool) -> bool:
+def skip_member(app, what, name, obj, skip, options):
     """Skip problematic members."""
     skip_names = [
         "Float",

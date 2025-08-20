@@ -58,11 +58,12 @@ This pattern ensures:
 """
 
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import NamedTuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Int, jaxtyped
+from jaxtyping import Array, Float, Int
+
+from rheedium._typing_utils import beartype, jaxtyped
 
 from .custom_types import scalar_float, scalar_num
 

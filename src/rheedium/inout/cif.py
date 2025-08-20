@@ -17,10 +17,10 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import List, Union
-from jaxtyping import Array, Float, Num, jaxtyped
+from jaxtyping import Array, Float, Num
 
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.inout.xyz import atomic_symbol
 from rheedium.types import CrystalStructure, create_crystal_structure, scalar_float
 from rheedium.ucell import build_cell_vectors

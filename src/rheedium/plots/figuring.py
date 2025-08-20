@@ -14,12 +14,12 @@ Functions
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
-from beartype import beartype
 from beartype.typing import List, Optional, Tuple
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
 import rheedium as rh
+from rheedium._typing_utils import beartype
 from rheedium.types import RHEEDPattern, scalar_float
 
 jax.config.update("jax_enable_x64", True)

@@ -23,11 +23,11 @@ Functions
 
 import jax
 import jax.numpy as jnp
-from beartype import beartype
 from beartype.typing import Optional, Tuple
-from jaxtyping import Array, Bool, Float, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Num
 
 import rheedium as rh
+from rheedium._typing_utils import beartype, jaxtyped
 from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
