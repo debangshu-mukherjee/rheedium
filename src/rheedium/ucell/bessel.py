@@ -22,7 +22,7 @@ import jax.numpy as jnp
 from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Float, Int
 
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped, jit
 from rheedium.types import scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -36,17 +36,19 @@ def _bessel_iv_series(
 ) -> Float[Array, " ..."]:
     """Compute I_v(x) using series expansion for Bessel function.
 
-    Args:
-        v_order (scalar_float):
-            Order of the Bessel function
-        x_val (Float[Array, " ..."]):
-            Input array of real values
-        dtype (jnp.dtype):
-            Data type of the input array
+    Parameters
+    ----------
+    v_order : scalar_float
+        Order of the Bessel function
+    x_val : Float[Array, " ..."]
+        Input array of real values
+    dtype : jnp.dtype
+        Data type of the input array
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of I_v(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of I_v(x)
     """
     x_half: Float[Array, " ..."] = x_val / 2.0
     x_half_v: Float[Array, " ..."] = jnp.power(x_half, v_order)
@@ -71,15 +73,17 @@ def _bessel_k0_series(
 ) -> Float[Array, " ..."]:
     """Compute K_0(x) using series expansion.
 
-    Args:
-        x (Float[Array, " ..."]):
-            Input array of real values
-        dtype (jnp.dtype):
-            Data type of the input array
+    Parameters
+    ----------
+    x : Float[Array, " ..."]
+        Input array of real values
+    dtype : jnp.dtype
+        Data type of the input array
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_0(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_0(x)
     """
     i0: Float[Array, " ..."] = jax.scipy.special.i0(x)
     coeffs: Float[Array, " 7"] = jnp.array(
@@ -111,19 +115,21 @@ def _bessel_kn_recurrence(
 ) -> Float[Array, " ..."]:
     """Compute K_n(x) using recurrence relation.
 
-    Args:
-        n (Int[Array, ""]):
-            Order of the Bessel function
-        x (Float[Array, " ..."]):
-            Input array of real values
-        k0 (Float[Array, " ..."]):
-            Approximated values of K_0(x)
-        k1 (Float[Array, " ..."]):
-            Approximated values of K_1(x)
+    Parameters
+    ----------
+    n : Int[Array, ""]
+        Order of the Bessel function
+    x : Float[Array, " ..."]
+        Input array of real values
+    k0 : Float[Array, " ..."]
+        Approximated values of K_0(x)
+    k1 : Float[Array, " ..."]
+        Approximated values of K_1(x)
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_n(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_n(x)
     """
 
     def _compute_kn() -> Float[Array, " ..."]:
@@ -161,17 +167,19 @@ def _bessel_kv_small_non_integer(
 ) -> Float[Array, " ..."]:
     """Compute K_v(x) for small x and non-integer v.
 
-    Args:
-        v (scalar_float):
-            Order of the Bessel function
-        x (Float[Array, " ..."]):
-            Input array of real values
-        dtype (jnp.dtype):
-            Data type of the input array
+    Parameters
+    ----------
+    v : scalar_float
+        Order of the Bessel function
+    x : Float[Array, " ..."]
+        Input array of real values
+    dtype : jnp.dtype
+        Data type of the input array
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_v(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_v(x)
     """
     error_bound: Float[Array, ""] = jnp.asarray(1e-10)
     iv_pos: Float[Array, " ..."] = _bessel_iv_series(v, x, dtype)
@@ -193,17 +201,19 @@ def _bessel_kv_small_integer(
 ) -> Float[Array, " ..."]:
     """Compute K_v(x) for small x and integer v.
 
-    Args:
-        v (Float[Array, ""]):
-            Order of the Bessel function
-        x (Float[Array, " ..."]):
-            Input array of real values
-        dtype (jnp.dtype):
-            Data type of the input array
+    Parameters
+    ----------
+    v : Float[Array, ""]
+        Order of the Bessel function
+    x : Float[Array, " ..."]
+        Input array of real values
+    dtype : jnp.dtype
+        Data type of the input array
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_v(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_v(x)
     """
     v_int: Float[Array, ""] = jnp.round(v)
     n: Int[Array, ""] = jnp.abs(v_int).astype(jnp.int32)
@@ -230,15 +240,17 @@ def _bessel_kv_large(
 ) -> Float[Array, " ..."]:
     """Asymptotic expansion for K_v(x) for large x.
 
-    Args:
-        v (scalar_float):
-            Order of the Bessel function
-        x (Float[Array, " ..."]):
-            Input array of real values
+    Parameters
+    ----------
+    v : scalar_float
+        Order of the Bessel function
+    x : Float[Array, " ..."]
+        Input array of real values
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_v(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_v(x)
     """
     sqrt_term: Float[Array, " ..."] = jnp.sqrt(jnp.pi / (2.0 * x))
     exp_term: Float[Array, " ..."] = jnp.exp(-x)
@@ -264,13 +276,15 @@ def _bessel_kv_large(
 def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
     """Special case K_{1/2}(x) = sqrt(π/(2x)) * exp(-x).
 
-    Args:
-        x (Float[Array, " ..."]):
-            Input array of real values
+    Parameters
+    ----------
+    x : Float[Array, " ..."]
+        Input array of real values
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_{1/2}(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_{1/2}(x)
     """
     sqrt_pi_over_2x: Float[Array, " ..."] = jnp.sqrt(jnp.pi / (2.0 * x))
     exp_neg_x: Float[Array, " ..."] = jnp.exp(-x)
@@ -279,39 +293,43 @@ def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
 
 
 @jaxtyped(typechecker=beartype)
-@jax.jit
+@jit
 def bessel_kv(v: scalar_float, x: Float[Array, " ..."]) -> Float[Array, " ..."]:
     """Computes the modified Bessel function of the second kind K_v(x).
 
     Computes K_v(x) for real order v >= 0 and x > 0, using a numerically stable
     and differentiable JAX-compatible approximation.
 
-    Args:
-        v (scalar_float):
-            Order of the Bessel function (v >= 0).
-        x (Float[Array, " ..."]):
-            Positive real input array.
+    Parameters
+    ----------
+    v : scalar_float
+        Order of the Bessel function (v >= 0).
+    x : Float[Array, " ..."]
+        Positive real input array.
 
-    Returns:
-        result (Float[Array, " ..."]):
-            Approximated values of K_v(x)
+    Returns
+    -------
+    result : Float[Array, " ..."]
+        Approximated values of K_v(x)
 
-    Note:
-        - Valid for v >= 0 and x > 0
-        - Supports broadcasting and autodiff
-        - JIT-safe and VMAP-safe
-        - Uses series expansion for small x (x <= 2.0) and asymptotic expansion
-          for large x
-        - For non-integer v, uses the reflection formula:
-          K_v = π/(2sin(πv)) * (I_{-v} - I_v)
-        - For integer v, uses specialized series expansions and recurrence relations
-        - Special exact formula for v = 0.5: K_{1/2}(x) = sqrt(π/(2x)) * exp(-x)
-        - The transition point between small and large x approximations is set
-          at x = 2.0
+    Notes
+    -----
+    - Valid for v >= 0 and x > 0
+    - Supports broadcasting and autodiff
+    - JIT-safe and VMAP-safe
+    - Uses series expansion for small x (x <= 2.0) and asymptotic expansion
+      for large x
+    - For non-integer v, uses the reflection formula:
+      K_v = π/(2sin(πv)) * (I_{-v} - I_v)
+    - For integer v, uses specialized series expansions and recurrence relations
+    - Special exact formula for v = 0.5: K_{1/2}(x) = sqrt(π/(2x)) * exp(-x)
+    - The transition point between small and large x approximations is set
+      at x = 2.0
 
-    Algorithm:
-        - For integer orders n > 1, uses recurrence relations with masked updates
-          to only update values within the target range
+    Algorithm
+    ---------
+    - For integer orders n > 1, uses recurrence relations with masked updates
+      to only update values within the target range
     """
     v: Float[Array, ""] = jnp.asarray(v)
     x: Float[Array, " ..."] = jnp.asarray(x)

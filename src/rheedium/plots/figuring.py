@@ -20,7 +20,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
 import rheedium as rh
-from rheedium._typing_utils import beartype
+from rheedium._decorators import beartype
 from rheedium.types import RHEEDPattern, scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -35,28 +35,34 @@ def create_phosphor_colormap(
     The colormap transitions from black through a bright phosphorescent green,
     with a slight white bloom at maximum intensity.
 
-    Args:
-        name (str, optional): Name for the colormap. Default is 'phosphor'.
+    Parameters
+    ----------
+    name : str, optional
+        Name for the colormap. Default is 'phosphor'.
 
-    Returns:
-        matplotlib.colors.LinearSegmentedColormap: Custom phosphor screen colormap.
+    Returns
+    -------
+    matplotlib.colors.LinearSegmentedColormap
+        Custom phosphor screen colormap.
 
-    Algorithm:
-        - Define color transition points and RGB values from black through dark green,
-          bright green, lighter green, to white bloom
-        - Extract positions and RGB values from color definitions
-        - Create color channel definitions for red, green, and blue
-        - Create and return LinearSegmentedColormap with custom colors
+    Algorithm
+    ---------
+    - Define color transition points and RGB values from black through dark green,
+      bright green, lighter green, to white bloom
+    - Extract positions and RGB values from color definitions
+    - Create color channel definitions for red, green, and blue
+    - Create and return LinearSegmentedColormap with custom colors
 
-    Examples:
-        >>> from rheedium.plots.figuring import create_phosphor_colormap
-        >>> import matplotlib.pyplot as plt
-        >>> # Create and display the colormap
-        >>> cmap = create_phosphor_colormap()
-        >>> plt.figure(figsize=(8, 1))
-        >>> plt.colorbar(plt.cm.ScalarMappable(cmap=cmap))
-        >>> plt.title("Phosphor Screen Colormap")
-        >>> plt.show()
+    Examples
+    --------
+    >>> from rheedium.plots.figuring import create_phosphor_colormap
+    >>> import matplotlib.pyplot as plt
+    >>> # Create and display the colormap
+    >>> cmap = create_phosphor_colormap()
+    >>> plt.figure(figsize=(8, 1))
+    >>> plt.colorbar(plt.cm.ScalarMappable(cmap=cmap))
+    >>> plt.title("Phosphor Screen Colormap")
+    >>> plt.show()
     """
     colors: List[Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]] = [
         (0.0, (0.0, 0.0, 0.0)),
@@ -93,41 +99,44 @@ def plot_rheed(
 
     Then display using the phosphor colormap.
 
-    Args:
-        rheed_pattern (RHEEDPattern): Must have `detector_points` of shape (M, 2)
-            and `intensities` of shape (M,).
-        grid_size (int, optional): Controls how many grid points in Y and Z
-            directions. Default is 200.
-        interp_type (str, optional): Which interpolation approach to use.
-            Default is "cubic". Options are:
-            - "cubic" => calls griddata(..., method="cubic")
-            - "linear" => calls griddata(..., method="linear")
-            - "nearest" => calls griddata(..., method="nearest")
-        cmap_name (str, optional): Name for your custom phosphor colormap.
-            Default is 'phosphor'.
+    Parameters
+    ----------
+    rheed_pattern : RHEEDPattern
+        Must have `detector_points` of shape (M, 2) and `intensities` of shape (M,).
+    grid_size : int, optional
+        Controls how many grid points in Y and Z directions. Default is 200.
+    interp_type : str, optional
+        Which interpolation approach to use. Default is "cubic". Options are:
+        - "cubic" => calls griddata(..., method="cubic")
+        - "linear" => calls griddata(..., method="linear")
+        - "nearest" => calls griddata(..., method="nearest")
+    cmap_name : str, optional
+        Name for your custom phosphor colormap. Default is 'phosphor'.
 
-    Algorithm:
-        - Extract coordinates and intensities from RHEED pattern
-        - Convert JAX arrays to NumPy arrays
-        - Validate interpolation method
-        - Calculate coordinate ranges for grid and create uniform grid points
-        - Interpolate intensities onto grid using griddata
-        - Reshape result to 2D grid
-        - Create phosphor colormap
-        - Create figure and plot with colorbar, labels, and title
-        - Show plot
+    Algorithm
+    ---------
+    - Extract coordinates and intensities from RHEED pattern
+    - Convert JAX arrays to NumPy arrays
+    - Validate interpolation method
+    - Calculate coordinate ranges for grid and create uniform grid points
+    - Interpolate intensities onto grid using griddata
+    - Reshape result to 2D grid
+    - Create phosphor colormap
+    - Create figure and plot with colorbar, labels, and title
+    - Show plot
 
-    Examples:
-        >>> from rheedium.plots.figuring import plot_rheed
-        >>> from rheedium.types.rheed_types import RHEEDPattern
-        >>> import jax.numpy as jnp
-        >>> # Create a simple RHEED pattern
-        >>> points = jnp.array([[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]])
-        >>> intensities = jnp.array([1.0, 0.5, 0.5, 0.5, 0.5])
-        >>> pattern = RHEEDPattern(points=points, intensities=intensities)
-        >>> # Plot the pattern
-        >>> plot_rheed(pattern, figsize=(6, 6))
-        >>> plt.show()
+    Examples
+    --------
+    >>> from rheedium.plots.figuring import plot_rheed
+    >>> from rheedium.types.rheed_types import RHEEDPattern
+    >>> import jax.numpy as jnp
+    >>> # Create a simple RHEED pattern
+    >>> points = jnp.array([[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]])
+    >>> intensities = jnp.array([1.0, 0.5, 0.5, 0.5, 0.5])
+    >>> pattern = RHEEDPattern(points=points, intensities=intensities)
+    >>> # Plot the pattern
+    >>> plot_rheed(pattern, figsize=(6, 6))
+    >>> plt.show()
     """
     coords: Float[np.ndarray, "M 2"] = rheed_pattern.detector_points
     yy: Float[np.ndarray, "M"] = coords[:, 0]

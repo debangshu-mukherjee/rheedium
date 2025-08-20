@@ -63,7 +63,7 @@ from jax import lax
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int
 
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped
 
 from .custom_types import scalar_float, scalar_num
 
@@ -235,28 +235,35 @@ def create_rheed_pattern(
 ) -> RHEEDPattern:
     """Factory function to create a RHEEDPattern instance with data validation.
 
-    Args:
-        G_indices (Int[Array, " N"]): Indices of reciprocal-lattice vectors that
-            satisfy reflection.
-        k_out (Float[Array, " M 3"]): Outgoing wavevectors (in 1/Å) for those
-            reflections.
-        detector_points (Float[Array, " M 2"]): (Y, Z) coordinates on the detector
-            plane, in Ångstroms.
-        intensities (Float[Array, " M"]): Intensities for each reflection.
+    Parameters
+    ----------
+    G_indices : Int[Array, " N"]
+        Indices of reciprocal-lattice vectors that satisfy reflection.
+    k_out : Float[Array, " M 3"]
+        Outgoing wavevectors (in 1/Å) for those reflections.
+    detector_points : Float[Array, " M 2"]
+        (Y, Z) coordinates on the detector plane, in Ångstroms.
+    intensities : Float[Array, " M"]
+        Intensities for each reflection.
 
-    Returns:
-        RHEEDPattern: Validated RHEED pattern instance.
+    Returns
+    -------
+    RHEEDPattern
+        Validated RHEED pattern instance.
 
-    Raises:
-        ValueError: If array shapes are inconsistent or data is invalid.
+    Raises
+    ------
+    ValueError
+        If array shapes are inconsistent or data is invalid.
 
-    Algorithm:
-        - Convert inputs to JAX arrays
-        - Validate array shapes: check k_out has shape (M, 3), detector_points
-          has shape (M, 2), intensities has shape (M,), and G_indices has length M
-        - Validate data: ensure intensities are non-negative, k_out vectors are
-          non-zero, and detector points are finite
-        - Create and return RHEEDPattern instance
+    Algorithm
+    ---------
+    - Convert inputs to JAX arrays
+    - Validate array shapes: check k_out has shape (M, 3), detector_points
+      has shape (M, 2), intensities has shape (M,), and G_indices has length M
+    - Validate data: ensure intensities are non-negative, k_out vectors are
+      non-zero, and detector points are finite
+    - Create and return RHEEDPattern instance
     """
     G_indices: Int[Array, " N"] = jnp.asarray(G_indices, dtype=jnp.int32)
     k_out: Float[Array, " M 3"] = jnp.asarray(k_out, dtype=jnp.float64)
@@ -353,31 +360,38 @@ def create_rheed_image(
 ) -> RHEEDImage:
     """Factory function to create a RHEEDImage instance with data validation.
 
-    Args:
-        img_array (Float[Array, " H W"]): The image in 2D array format.
-        incoming_angle (scalar_float): The angle of the incoming electron beam
-            in degrees.
-        calibration (Union[Float[Array, " 2"], scalar_float]): Calibration factor
-            for the image, either as a 2D array or a scalar.
-        electron_wavelength (scalar_float): The wavelength of the electrons
-            in Ångstroms.
-        detector_distance (scalar_num): The distance from the sample to the
-            detector in Ångstroms.
+    Parameters
+    ----------
+    img_array : Float[Array, " H W"]
+        The image in 2D array format.
+    incoming_angle : scalar_float
+        The angle of the incoming electron beam in degrees.
+    calibration : Union[Float[Array, " 2"], scalar_float]
+        Calibration factor for the image, either as a 2D array or a scalar.
+    electron_wavelength : scalar_float
+        The wavelength of the electrons in Ångstroms.
+    detector_distance : scalar_num
+        The distance from the sample to the detector in Ångstroms.
 
-    Returns:
-        RHEEDImage: Validated RHEED image instance.
+    Returns
+    -------
+    RHEEDImage
+        Validated RHEED image instance.
 
-    Raises:
-        ValueError: If data is invalid or parameters are out of valid ranges.
+    Raises
+    ------
+    ValueError
+        If data is invalid or parameters are out of valid ranges.
 
-    Algorithm:
-        - Convert inputs to JAX arrays
-        - Validate image array: check it's 2D, all values are finite and non-negative
-        - Validate parameters: check incoming_angle is between 0 and 90 degrees,
-          electron_wavelength is positive, and detector_distance is positive
-        - Validate calibration: if scalar, ensure it's positive; if array, ensure
-          shape is (2,) and all values are positive
-        - Create and return RHEEDImage instance
+    Algorithm
+    ---------
+    - Convert inputs to JAX arrays
+    - Validate image array: check it's 2D, all values are finite and non-negative
+    - Validate parameters: check incoming_angle is between 0 and 90 degrees,
+      electron_wavelength is positive, and detector_distance is positive
+    - Validate calibration: if scalar, ensure it's positive; if array, ensure
+      shape is (2,) and all values are positive
+    - Create and return RHEEDImage instance
     """
     img_array: Float[Array, " H W"] = jnp.asarray(img_array, dtype=jnp.float64)
     incoming_angle: Float[Array, " "] = jnp.asarray(incoming_angle, dtype=jnp.float64)

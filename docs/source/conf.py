@@ -71,9 +71,9 @@ html_theme_options = {
     "sidebar_hide_name": False,
 }
 
-# Napoleon settings for Google-style docstrings
-napoleon_google_docstring = True
-napoleon_numpy_docstring = False
+# Napoleon settings for NumPy-style docstrings
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
@@ -86,9 +86,9 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-# Add custom sections to napoleon (for Google style)
+# Add custom sections to napoleon (for NumPy style)
 napoleon_custom_sections = [
-    ("Algorithm", "notes_style"),  # Custom section for Algorithm (converted from Flow)
+    ("Algorithm", "notes_style"),  # Custom section for Algorithm
 ]
 
 # nbsphinx configuration
@@ -123,8 +123,8 @@ autodoc_typehints_format = "short"
 autodoc_typehints_description_target = "all"
 python_use_unqualified_type_names = True
 typehints_fully_qualified = False
-always_document_param_types = False  # Let Google docstrings handle this
-typehints_document_rtype = False  # Let Google docstrings handle this
+always_document_param_types = False  # Let NumPy docstrings handle this
+typehints_document_rtype = False  # Let NumPy docstrings handle this
 typehints_use_signature = True
 typehints_use_signature_return = True
 autodoc_preserve_defaults = True

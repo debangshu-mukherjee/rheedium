@@ -21,7 +21,7 @@ from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Real
 
 import rheedium as rh
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped
 from rheedium.types import CrystalStructure, scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -34,24 +34,27 @@ def angle_in_degrees(v1: Float[Array, " n"], v2: Float[Array, " n"]) -> Float[Ar
     As long as the vectors have the same number of elements,
     any dimensional vectors will work.
 
-    Args:
-        v1 (Float[Array, " n"]):
-            First vector
-        v2 (Float[Array, " n"]):
-            Second vector
+    Parameters
+    ----------
+    v1 : Float[Array, " n"]
+        First vector
+    v2 : Float[Array, " n"]
+        Second vector
 
-    Returns:
-        angle (Float[Array, " "]):
-            Angle between vectors in degrees
+    Returns
+    -------
+    angle : Float[Array, " "]
+        Angle between vectors in degrees
 
-    Examples:
-        >>> import jax.numpy as jnp
-        >>> import rheedium as rh
-        >>> v1 = jnp.array([1.0, 0.0, 0.0])
-        >>> v2 = jnp.array([0.0, 1.0, 0.0])
-        >>> angle = rh.ucell.angle_in_degrees(v1, v2)
-        >>> print(angle)
-        90.0
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>> v1 = jnp.array([1.0, 0.0, 0.0])
+    >>> v2 = jnp.array([0.0, 1.0, 0.0])
+    >>> angle = rh.ucell.angle_in_degrees(v1, v2)
+    >>> print(angle)
+    90.0
     """
 
     def _check_vector_dimensions() -> Tuple[Float[Array, " n"], Float[Array, " n"]]:
@@ -74,30 +77,33 @@ def compute_lengths_angles(
 ) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
 
-    Args:
-        vectors (Float[Array, " 3 3"]):
-            Lattice vectors as rows of a 3x3 matrix
+    Parameters
+    ----------
+    vectors : Float[Array, " 3 3"]
+        Lattice vectors as rows of a 3x3 matrix
 
-    Returns:
-        lengths (Float[Array, " 3"]):
-            Unit cell lengths in angstroms
-        angles (Float[Array, " 3"]):
-            Unit cell angles in degrees
+    Returns
+    -------
+    lengths : Float[Array, " 3"]
+        Unit cell lengths in angstroms
+    angles : Float[Array, " 3"]
+        Unit cell angles in degrees
 
-    Examples:
-        >>> import jax.numpy as jnp
-        >>> import rheedium as rh
-        >>> # Cubic unit cell with a=5.0 Å
-        >>> vectors = jnp.array([
-        ...     [5.0, 0.0, 0.0],
-        ...     [0.0, 5.0, 0.0],
-        ...     [0.0, 0.0, 5.0]
-        ... ])
-        >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
-        >>> print(lengths)
-        [5.0 5.0 5.0]
-        >>> print(angles)
-        [90.0 90.0 90.0]
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>> # Cubic unit cell with a=5.0 Å
+    >>> vectors = jnp.array([
+    ...     [5.0, 0.0, 0.0],
+    ...     [0.0, 5.0, 0.0],
+    ...     [0.0, 0.0, 5.0]
+    ... ])
+    >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
+    >>> print(lengths)
+    [5.0 5.0 5.0]
+    >>> print(angles)
+    [90.0 90.0 90.0]
     """
     lengths: Float[Array, " 3"] = jnp.array([jnp.linalg.norm(v) for v in vectors])
     angles: Float[Array, " 3"] = jnp.array(
@@ -123,45 +129,49 @@ def parse_cif_and_scrape(
     atomic positions, and scrape (filter) atoms within specified thickness
     along a given zone axis.
 
-    Args:
-        cif_path (Union[str, Path]):
-            Path to the CIF file.
-        zone_axis (Real[Array, " 3"]):
-            Vector indicating the zone axis direction (surface normal) in
-            Cartesian coordinates.
-        thickness_xyz (Real[Array, " 3"]):
-            Thickness along x, y, z directions in Ångstroms; currently,
-            only thickness_xyz[2] (z-direction)
-            is used to filter atoms along the provided zone axis.
-        tolerance (scalar_float, optional):
-            Numerical tolerance parameter reserved for future use.
-            Default is 1e-3.
+    Parameters
+    ----------
+    cif_path : Union[str, Path]
+        Path to the CIF file.
+    zone_axis : Real[Array, " 3"]
+        Vector indicating the zone axis direction (surface normal) in
+        Cartesian coordinates.
+    thickness_xyz : Real[Array, " 3"]
+        Thickness along x, y, z directions in Ångstroms; currently,
+        only thickness_xyz[2] (z-direction)
+        is used to filter atoms along the provided zone axis.
+    tolerance : scalar_float, optional
+        Numerical tolerance parameter reserved for future use.
+        Default is 1e-3.
 
-    Returns:
-        filtered_crystal (CrystalStructure):
-            Crystal structure containing atoms filtered within the specified thickness.
+    Returns
+    -------
+    filtered_crystal : CrystalStructure
+        Crystal structure containing atoms filtered within the specified thickness.
 
-    Note:
-        - The provided `zone_axis` is normalized internally.
-        - Current implementation uses thickness only along the zone axis
-          direction (z-component of `thickness_xyz`).
-        - The `tolerance` parameter is reserved for compatibility and future
-          functionality.
+    Notes
+    -----
+    - The provided `zone_axis` is normalized internally.
+    - Current implementation uses thickness only along the zone axis
+      direction (z-component of `thickness_xyz`).
+    - The `tolerance` parameter is reserved for compatibility and future
+      functionality.
 
-    Algorithm:
-        - Parse CIF file to get initial crystal structure
-        - Extract Cartesian positions and atomic numbers
-        - Normalize zone axis vector
-        - Calculate projections of atomic positions onto zone axis
-        - Find minimum and maximum projections
-        - Calculate center projection and half thickness
-        - Create mask for atoms within thickness range
-        - Filter Cartesian positions and atomic numbers using mask
-        - Build cell vectors from crystal parameters
-        - Calculate inverse of cell vectors
-        - Convert filtered Cartesian positions to fractional coordinates
-        - Create new CrystalStructure with filtered positions
-        - Return filtered crystal structure
+    Algorithm
+    ---------
+    - Parse CIF file to get initial crystal structure
+    - Extract Cartesian positions and atomic numbers
+    - Normalize zone axis vector
+    - Calculate projections of atomic positions onto zone axis
+    - Find minimum and maximum projections
+    - Calculate center projection and half thickness
+    - Create mask for atoms within thickness range
+    - Filter Cartesian positions and atomic numbers using mask
+    - Build cell vectors from crystal parameters
+    - Calculate inverse of cell vectors
+    - Convert filtered Cartesian positions to fractional coordinates
+    - Create new CrystalStructure with filtered positions
+    - Return filtered crystal structure
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_positions: Float[Array, " n 3"] = crystal.cart_positions[:, :3]

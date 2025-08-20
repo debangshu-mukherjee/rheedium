@@ -27,7 +27,7 @@ from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Bool, Float, Num
 
 import rheedium as rh
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped
 from rheedium.types import *
 
 jax.config.update("jax_enable_x64", True)
@@ -44,33 +44,39 @@ def reciprocal_unitcell(
 ) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
     """Calculate reciprocal unit cell parameters from direct cell parameters.
 
-    Args:
-        a, b, c (scalar_float): Direct cell lengths in angstroms.
-        alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
+    Parameters
+    ----------
+    a, b, c : scalar_float
+        Direct cell lengths in angstroms.
+    alpha, beta, gamma : scalar_float
+        Direct cell angles in degrees.
 
-    Returns:
-        Tuple[Float[Array, " 3"], Float[Array, " 3"]]: Reciprocal cell lengths
-            and angles. First array contains reciprocal cell lengths
-            [a*, b*, c*] in 1/angstroms. Second array contains reciprocal
-            cell angles [α*, β*, γ*] in degrees.
+    Returns
+    -------
+    Tuple[Float[Array, " 3"], Float[Array, " 3"]]
+        Reciprocal cell lengths and angles. First array contains reciprocal cell lengths
+        [a*, b*, c*] in 1/angstroms. Second array contains reciprocal
+        cell angles [α*, β*, γ*] in degrees.
 
-    Algorithm:
-        - Calculate cell volume from lattice parameters
-        - Calculate reciprocal lengths using volume
-        - Calculate reciprocal angles using direct angles
-        - Return reciprocal parameters
+    Algorithm
+    ---------
+    - Calculate cell volume from lattice parameters
+    - Calculate reciprocal lengths using volume
+    - Calculate reciprocal angles using direct angles
+    - Return reciprocal parameters
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Calculate reciprocal cell for a cubic unit cell
-        >>> a_star, angles_star = rh.ucell.reciprocal_unitcell(
-        ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-        ...     alpha=90.0, beta=90.0, gamma=90.0
-        ... )
-        >>> print(f"Reciprocal lengths: {a_star}")
-        >>> print(f"Reciprocal angles: {angles_star}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Calculate reciprocal cell for a cubic unit cell
+    >>> a_star, angles_star = rh.ucell.reciprocal_unitcell(
+    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
+    ...     alpha=90.0, beta=90.0, gamma=90.0
+    ... )
+    >>> print(f"Reciprocal lengths: {a_star}")
+    >>> print(f"Reciprocal angles: {angles_star}")
     """
     condition_number: Float[Array, " "] = jnp.linalg.cond(
         jnp.array(
@@ -143,30 +149,36 @@ def reciprocal_uc_angles(
 ) -> Float[Array, " 3"]:
     """Calculate reciprocal unit cell angles from direct cell angles.
 
-    Args:
-        alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
+    Parameters
+    ----------
+    alpha, beta, gamma : scalar_float
+        Direct cell angles in degrees.
 
-    Returns:
-        Float[Array, " 3"]: Reciprocal cell angles [α*, β*, γ*] in degrees.
+    Returns
+    -------
+    Float[Array, " 3"]
+        Reciprocal cell angles [α*, β*, γ*] in degrees.
 
-    Algorithm:
-        - Convert angles to radians
-        - Calculate cosines of angles
-        - Calculate reciprocal angles using arccos
-        - Convert back to degrees
-        - Return reciprocal angles
+    Algorithm
+    ---------
+    - Convert angles to radians
+    - Calculate cosines of angles
+    - Calculate reciprocal angles using arccos
+    - Convert back to degrees
+    - Return reciprocal angles
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Calculate reciprocal angles for a cubic cell
-        >>> angles_star = rh.ucell.reciprocal_uc_angles(
-        ...     alpha=90.0,
-        ...     beta=90.0,
-        ...     gamma=90.0
-        ... )
-        >>> print(f"Reciprocal angles: {angles_star}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Calculate reciprocal angles for a cubic cell
+    >>> angles_star = rh.ucell.reciprocal_uc_angles(
+    ...     alpha=90.0,
+    ...     beta=90.0,
+    ...     gamma=90.0
+    ... )
+    >>> print(f"Reciprocal angles: {angles_star}")
     """
     alpha_rad: Float[Array, " "] = jnp.radians(alpha)
     beta_rad: Float[Array, " "] = jnp.radians(beta)
@@ -212,34 +224,41 @@ def get_unit_cell_matrix(
 ) -> Float[Array, " 3 3"]:
     """Build transformation matrix between direct and reciprocal space.
 
-    Args:
-        a, b, c (scalar_float): Direct cell lengths in angstroms.
-        alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
+    Parameters
+    ----------
+    a, b, c : scalar_float
+        Direct cell lengths in angstroms.
+    alpha, beta, gamma : scalar_float
+        Direct cell angles in degrees.
 
-    Returns:
-        Float[Array, " 3 3"]: Transformation matrix from direct to reciprocal space.
+    Returns
+    -------
+    Float[Array, " 3 3"]
+        Transformation matrix from direct to reciprocal space.
 
-    Algorithm:
-        - Calculate cell volume from lattice parameters
-        - Calculate reciprocal lengths
-        - Calculate transformation matrix elements
-        - Return 3x3 transformation matrix
+    Algorithm
+    ---------
+    - Calculate cell volume from lattice parameters
+    - Calculate reciprocal lengths
+    - Calculate transformation matrix elements
+    - Return 3x3 transformation matrix
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Get transformation matrix for a cubic cell
-        >>> matrix = rh.ucell.get_unit_cell_matrix(
-        ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-        ...     alpha=90.0, beta=90.0, gamma=90.0
-        ... )
-        >>> print(f"Transformation matrix:\n{matrix}")
-        >>>
-        >>> # Transform a direct space vector to reciprocal space
-        >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
-        >>> recip_vec = direct_vec @ matrix
-        >>> print(f"Reciprocal vector: {recip_vec}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Get transformation matrix for a cubic cell
+    >>> matrix = rh.ucell.get_unit_cell_matrix(
+    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
+    ...     alpha=90.0, beta=90.0, gamma=90.0
+    ... )
+    >>> print(f"Transformation matrix:\n{matrix}")
+    >>>
+    >>> # Transform a direct space vector to reciprocal space
+    >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
+    >>> recip_vec = direct_vec @ matrix
+    >>> print(f"Reciprocal vector: {recip_vec}")
     """
     alpha_rad: Float[Array, " "] = jnp.radians(alpha)
     beta_rad: Float[Array, " "] = jnp.radians(beta)
@@ -276,35 +295,42 @@ def build_cell_vectors(
 ) -> Float[Array, " 3 3"]:
     """Construct unit cell vectors from lengths and angles.
 
-    Args:
-        a, b, c (scalar_float): Direct cell lengths in angstroms.
-        alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
+    Parameters
+    ----------
+    a, b, c : scalar_float
+        Direct cell lengths in angstroms.
+    alpha, beta, gamma : scalar_float
+        Direct cell angles in degrees.
 
-    Returns:
-        Float[Array, " 3 3"]: Unit cell vectors as rows of 3x3 matrix.
+    Returns
+    -------
+    Float[Array, " 3 3"]
+        Unit cell vectors as rows of 3x3 matrix.
 
-    Algorithm:
-        - Convert angles to radians
-        - Calculate cosines of angles
-        - Build first vector along x-axis
-        - Build second vector in x-y plane
-        - Build third vector using all angles
-        - Return 3x3 matrix of vectors
+    Algorithm
+    ---------
+    - Convert angles to radians
+    - Calculate cosines of angles
+    - Build first vector along x-axis
+    - Build second vector in x-y plane
+    - Build third vector using all angles
+    - Return 3x3 matrix of vectors
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Build vectors for a cubic cell
-        >>> vectors = rh.ucell.build_cell_vectors(
-        ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-        ...     alpha=90.0, beta=90.0, gamma=90.0
-        ... )
-        >>> print(f"Cell vectors:\n{vectors}")
-        >>>
-        >>> # Calculate cell volume
-        >>> volume = jnp.linalg.det(vectors)
-        >>> print(f"Cell volume: {volume}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Build vectors for a cubic cell
+    >>> vectors = rh.ucell.build_cell_vectors(
+    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
+    ...     alpha=90.0, beta=90.0, gamma=90.0
+    ... )
+    >>> print(f"Cell vectors:\n{vectors}")
+    >>>
+    >>> # Calculate cell volume
+    >>> volume = jnp.linalg.det(vectors)
+    >>> print(f"Cell volume: {volume}")
     """
     alpha_rad: Float[Array, " "] = jnp.radians(alpha)
     beta_rad: Float[Array, " "] = jnp.radians(beta)
@@ -330,35 +356,40 @@ def compute_lengths_angles(
 ) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
 
-    Args:
-        vectors (Float[Array, " 3 3"]): Unit cell vectors as rows of 3x3 matrix.
+    Parameters
+    ----------
+    vectors : Float[Array, " 3 3"]
+        Unit cell vectors as rows of 3x3 matrix.
 
-    Returns:
-        Tuple[Float[Array, " 3"], Float[Array, " 3"]]: Unit cell lengths
-            [a, b, c] in angstroms and unit cell angles [α, β, γ] in degrees.
+    Returns
+    -------
+    Tuple[Float[Array, " 3"], Float[Array, " 3"]]
+        Unit cell lengths [a, b, c] in angstroms and unit cell angles [α, β, γ] in degrees.
 
-    Algorithm:
-        - Calculate vector lengths
-        - Calculate dot products between vectors
-        - Calculate angles using arccos
-        - Convert angles to degrees
-        - Return lengths and angles
+    Algorithm
+    ---------
+    - Calculate vector lengths
+    - Calculate dot products between vectors
+    - Calculate angles using arccos
+    - Convert angles to degrees
+    - Return lengths and angles
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Create some cell vectors
-        >>> vectors = jnp.array([
-        ...     [3.0, 0.0, 0.0],  # a vector
-        ...     [0.0, 3.0, 0.0],  # b vector
-        ...     [0.0, 0.0, 3.0]   # c vector
-        ... ])
-        >>>
-        >>> # Compute lengths and angles
-        >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
-        >>> print(f"Cell lengths: {lengths}")
-        >>> print(f"Cell angles: {angles}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Create some cell vectors
+    >>> vectors = jnp.array([
+    ...     [3.0, 0.0, 0.0],  # a vector
+    ...     [0.0, 3.0, 0.0],  # b vector
+    ...     [0.0, 0.0, 3.0]   # c vector
+    ... ])
+    >>>
+    >>> # Compute lengths and angles
+    >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
+    >>> print(f"Cell lengths: {lengths}")
+    >>> print(f"Cell angles: {angles}")
     """
     lengths: Float[Array, " 3"] = jnp.linalg.norm(vectors, axis=1)
     dot_products: Float[Array, " 3"] = jnp.einsum("ij,ij->i", vectors, vectors)
@@ -376,37 +407,45 @@ def generate_reciprocal_points(
 ) -> Float[Array, " M 3"]:
     """Generate reciprocal-lattice vectors based on the crystal structure.
 
-    Args:
-        crystal (CrystalStructure): Crystal structure to generate points for.
-        hmax, kmax, lmax (scalar_int): Maximum h, k, l indices to generate.
-        in_degrees (bool): Whether to use degrees for angles. Default: True.
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to generate points for.
+    hmax, kmax, lmax : scalar_int
+        Maximum h, k, l indices to generate.
+    in_degrees : bool, optional
+        Whether to use degrees for angles. Default: True.
 
-    Returns:
-        Float[Array, " M 3"]: Reciprocal lattice vectors in 1/angstroms.
+    Returns
+    -------
+    Float[Array, " M 3"]
+        Reciprocal lattice vectors in 1/angstroms.
 
-    Algorithm:
-        - Get cell parameters from crystal structure
-        - Build transformation matrix
-        - Generate h, k, l indices
-        - Transform indices to reciprocal space
-        - Return reciprocal vectors
+    Algorithm
+    ---------
+    - Get cell parameters from crystal structure
+    - Build transformation matrix
+    - Generate h, k, l indices
+    - Transform indices to reciprocal space
+    - Return reciprocal vectors
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Load crystal structure from CIF
-        >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
-        >>>
-        >>> # Generate reciprocal points up to (2,2,1)
-        >>> G_vectors = rh.ucell.generate_reciprocal_points(
-        ...     crystal=crystal,
-        ...     hmax=2,
-        ...     kmax=2,
-        ...     lmax=1
-        ... )
-        >>> print(f"Number of G vectors: {len(G_vectors)}")
-        >>> print(f"First few G vectors:\n{G_vectors[:5]}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Load crystal structure from CIF
+    >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
+    >>>
+    >>> # Generate reciprocal points up to (2,2,1)
+    >>> G_vectors = rh.ucell.generate_reciprocal_points(
+    ...     crystal=crystal,
+    ...     hmax=2,
+    ...     kmax=2,
+    ...     lmax=1
+    ... )
+    >>> print(f"Number of G vectors: {len(G_vectors)}")
+    >>> print(f"First few G vectors:\n{G_vectors[:5]}")
     """
     abc: Num[Array, " 3"] = crystal.cell_lengths
     angles: Num[Array, " 3"] = crystal.cell_angles
@@ -452,36 +491,44 @@ def atom_scraper(
 ) -> CrystalStructure:
     """Filter atoms within specified thickness along zone axis.
 
-    Args:
-        crystal (CrystalStructure): Crystal structure to filter.
-        zone_axis (Float[Array, " 3"]): Zone axis direction.
-        thickness (Float[Array, " 3"]): Thickness in each direction.
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to filter.
+    zone_axis : Float[Array, " 3"]
+        Zone axis direction.
+    thickness : Float[Array, " 3"]
+        Thickness in each direction.
 
-    Returns:
-        CrystalStructure: Filtered crystal structure.
+    Returns
+    -------
+    CrystalStructure
+        Filtered crystal structure.
 
-    Algorithm:
-        - Normalize zone axis
-        - Calculate distances along zone axis
-        - Filter atoms within thickness
-        - Create new crystal structure with filtered atoms
-        - Return filtered crystal
+    Algorithm
+    ---------
+    - Normalize zone axis
+    - Calculate distances along zone axis
+    - Filter atoms within thickness
+    - Create new crystal structure with filtered atoms
+    - Return filtered crystal
 
-    Examples:
-        >>> import rheedium as rh
-        >>> import jax.numpy as jnp
-        >>>
-        >>> # Load crystal structure
-        >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
-        >>>
-        >>> # Filter atoms within 12 Å along [111] direction
-        >>> filtered = rh.ucell.atom_scraper(
-        ...     crystal=crystal,
-        ...     zone_axis=jnp.array([1.0, 1.0, 1.0]),
-        ...     thickness=jnp.array([12.0, 12.0, 12.0])
-        ... )
-        >>> print(f"Original atoms: {len(crystal.frac_positions)}")
-        >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> import jax.numpy as jnp
+    >>>
+    >>> # Load crystal structure
+    >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
+    >>>
+    >>> # Filter atoms within 12 Å along [111] direction
+    >>> filtered = rh.ucell.atom_scraper(
+    ...     crystal=crystal,
+    ...     zone_axis=jnp.array([1.0, 1.0, 1.0]),
+    ...     thickness=jnp.array([12.0, 12.0, 12.0])
+    ... )
+    >>> print(f"Original atoms: {len(crystal.frac_positions)}")
+    >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")
     """
     orig_cell_vectors: Float[Array, " 3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],

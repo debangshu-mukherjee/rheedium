@@ -20,7 +20,7 @@ import jax.numpy as jnp
 from beartype.typing import Callable, Dict, List, Optional, Tuple, Union
 from jaxtyping import Array, Float, Int, Num
 
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped
 from rheedium.inout.xyz import atomic_symbol
 from rheedium.types import CrystalStructure, create_crystal_structure, scalar_float
 from rheedium.ucell import build_cell_vectors
@@ -30,41 +30,45 @@ from rheedium.ucell import build_cell_vectors
 def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     """Parse a CIF file into a JAX-compatible CrystalStructure.
 
-    Args:
-        cif_path (str | Path):
-            Path to the CIF file.
+    Parameters
+    ----------
+    cif_path : str | Path
+        Path to the CIF file.
 
-    Returns:
-        expanded_crystal (CrystalStructure):
-            Parsed crystal structure object with fractional and Cartesian
-            coordinates. Contains arrays of atomic positions in both fractional
-            (range [0,1]) and Cartesian (Ångstroms) coordinates, along with unit
-            cell parameters (lengths in Ångstroms, angles in degrees).
+    Returns
+    -------
+    expanded_crystal : CrystalStructure
+        Parsed crystal structure object with fractional and Cartesian
+        coordinates. Contains arrays of atomic positions in both fractional
+        (range [0,1]) and Cartesian (Ångstroms) coordinates, along with unit
+        cell parameters (lengths in Ångstroms, angles in degrees).
 
-    Algorithm:
-        - Validate CIF file path and extension
-        - Read CIF file content
-        - Load atomic numbers mapping
-        - Extract unit cell parameters (cell lengths and angles)
-        - Parse atomic positions from atom site loop section
-        - Convert element symbols to atomic numbers
-        - Convert fractional to Cartesian coordinates using cell vectors
-        - Parse symmetry operations from CIF file
-        - Create initial CrystalStructure
-        - Apply symmetry operations to expand positions
-        - Return expanded crystal structure
+    Algorithm
+    ---------
+    - Validate CIF file path and extension
+    - Read CIF file content
+    - Load atomic numbers mapping
+    - Extract unit cell parameters (cell lengths and angles)
+    - Parse atomic positions from atom site loop section
+    - Convert element symbols to atomic numbers
+    - Convert fractional to Cartesian coordinates using cell vectors
+    - Parse symmetry operations from CIF file
+    - Create initial CrystalStructure
+    - Apply symmetry operations to expand positions
+    - Return expanded crystal structure
 
-    Examples:
-        >>> from rheedium.inout.data_io import parse_cif
-        >>> # Parse a CIF file for silicon
-        >>> structure = parse_cif("path/to/silicon.cif")
-        >>> print(f"Unit cell vectors:\n{structure.vectors}")
-        Unit cell vectors:
-        [[5.431 0.000 0.000]
-         [0.000 5.431 0.000]
-         [0.000 0.000 5.431]]
-        >>> print(f"Number of atoms: {len(structure.positions)}")
-        Number of atoms: 8
+    Examples
+    --------
+    >>> from rheedium.inout.data_io import parse_cif
+    >>> # Parse a CIF file for silicon
+    >>> structure = parse_cif("path/to/silicon.cif")
+    >>> print(f"Unit cell vectors:\n{structure.vectors}")
+    Unit cell vectors:
+    [[5.431 0.000 0.000]
+     [0.000 5.431 0.000]
+     [0.000 0.000 5.431]]
+    >>> print(f"Number of atoms: {len(structure.positions)}")
+    Number of atoms: 8
     """
     cif_path: Path = Path(cif_path)
     if not cif_path.exists():
@@ -74,6 +78,23 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cif_text: str = cif_path.read_text()
 
     def _extract_param(name: str) -> float:
+        """Extract a numerical parameter from CIF text.
+
+        Parameters
+        ----------
+        name : str
+            Name of the CIF parameter to extract (e.g., '_cell_length_a')
+
+        Returns
+        -------
+        float
+            Extracted numerical value
+
+        Raises
+        ------
+        ValueError
+            If the parameter cannot be found in the CIF text
+        """
         match: Optional[re.Match[str]] = re.search(rf"{name}\s+([0-9.]+)", cif_text)
         if match:
             return float(match.group(1))
@@ -170,36 +191,43 @@ def symmetry_expansion(
 ) -> CrystalStructure:
     """Apply symmetry operations to expand fractional positions and remove duplicates.
 
-    Args:
-        crystal (CrystalStructure): The initial crystal structure with
-            symmetry-independent positions.
-        sym_ops (List[str]): List of symmetry operations as strings from the CIF file.
-            Example: ["x,y,z", "-x,-y,z", ...]
-        tolerance (scalar_float): Distance tolerance in angstroms for duplicate atom
-            removal. Default: 1.0 Å.
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        The initial crystal structure with symmetry-independent positions.
+    sym_ops : List[str]
+        List of symmetry operations as strings from the CIF file.
+        Example: ["x,y,z", "-x,-y,z", ...]
+    tolerance : scalar_float, optional
+        Distance tolerance in angstroms for duplicate atom removal.
+        Default: 1.0 Å.
 
-    Returns:
-        CrystalStructure: Symmetry-expanded crystal structure without duplicates.
+    Returns
+    -------
+    CrystalStructure
+        Symmetry-expanded crystal structure without duplicates.
 
-    Algorithm:
-        - Parse symmetry operations into functions by splitting operation strings
-          into components and creating evaluation functions for coefficients
-        - Apply symmetry operations to each atomic position to generate new positions
-        - Apply modulo 1 to keep positions within unit cell
-        - Convert expanded positions to Cartesian coordinates using cell vectors
-        - Remove duplicate positions by calculating distances and keeping only
-          unique positions within tolerance
-        - Create and return expanded CrystalStructure
+    Algorithm
+    ---------
+    - Parse symmetry operations into functions by splitting operation strings
+      into components and creating evaluation functions for coefficients
+    - Apply symmetry operations to each atomic position to generate new positions
+    - Apply modulo 1 to keep positions within unit cell
+    - Convert expanded positions to Cartesian coordinates using cell vectors
+    - Remove duplicate positions by calculating distances and keeping only
+      unique positions within tolerance
+    - Create and return expanded CrystalStructure
 
-    Examples:
-        >>> from rheedium.inout.data_io import parse_cif, symmetry_expansion
-        >>> # Parse a CIF file and expand symmetry
-        >>> structure = parse_cif("path/to/structure.cif")
-        >>> expanded = symmetry_expansion(structure)
-        >>> print(f"Original atoms: {len(structure.positions)}")
-        >>> print(f"Expanded atoms: {len(expanded.positions)}")
-        Original atoms: 1
-        Expanded atoms: 8
+    Examples
+    --------
+    >>> from rheedium.inout.data_io import parse_cif, symmetry_expansion
+    >>> # Parse a CIF file and expand symmetry
+    >>> structure = parse_cif("path/to/structure.cif")
+    >>> expanded = symmetry_expansion(structure)
+    >>> print(f"Original atoms: {len(structure.positions)}")
+    >>> print(f"Expanded atoms: {len(expanded.positions)}")
+    Original atoms: 1
+    Expanded atoms: 8
     """
     frac_positions: Float[Array, " N 4"] = crystal.frac_positions
     expanded_positions: List[Array] = []

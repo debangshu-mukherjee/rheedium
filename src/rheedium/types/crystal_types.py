@@ -29,7 +29,7 @@ from jax import lax
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int, Num
 
-from rheedium._typing_utils import beartype, jaxtyped
+from rheedium._decorators import beartype, jaxtyped
 
 from .custom_types import scalar_float
 
@@ -120,28 +120,36 @@ def create_crystal_structure(
 ) -> CrystalStructure:
     """Factory function to create a CrystalStructure instance with type checking.
 
-    Args:
-        frac_positions (Float[Array, " N 4"]): Array of shape (n_atoms, 4) containing
-            atomic positions in fractional coordinates.
-        cart_positions (Num[Array, " N 4"]): Array of shape (n_atoms, 4) containing
-            atomic positions in Cartesian coordinates.
-        cell_lengths (Num[Array, " 3"]): Unit cell lengths [a, b, c] in Ångstroms.
-        cell_angles (Num[Array, " 3"]): Unit cell angles [α, β, γ] in degrees.
+    Parameters
+    ----------
+    frac_positions : Float[Array, " N 4"]
+        Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
+    cart_positions : Num[Array, " N 4"]
+        Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
+    cell_lengths : Num[Array, " 3"]
+        Unit cell lengths [a, b, c] in Ångstroms.
+    cell_angles : Num[Array, " 3"]
+        Unit cell angles [α, β, γ] in degrees.
 
-    Returns:
-        CrystalStructure: A validated CrystalStructure instance.
+    Returns
+    -------
+    CrystalStructure
+        A validated CrystalStructure instance.
 
-    Raises:
-        ValueError: If the input arrays have incompatible shapes or invalid values.
+    Raises
+    ------
+    ValueError
+        If the input arrays have incompatible shapes or invalid values.
 
-    Algorithm:
-        - Convert all inputs to JAX arrays using jnp.asarray
-        - Validate shapes of frac_positions, cart_positions, cell_lengths, and cell_angles
-        - Verify number of atoms matches between frac and cart positions
-        - Verify atomic numbers match between frac and cart positions
-        - Ensure cell lengths are positive
-        - Ensure cell angles are between 0 and 180 degrees
-        - Create and return CrystalStructure instance with validated data
+    Algorithm
+    ---------
+    - Convert all inputs to JAX arrays using jnp.asarray
+    - Validate shapes of frac_positions, cart_positions, cell_lengths, and cell_angles
+    - Verify number of atoms matches between frac and cart positions
+    - Verify atomic numbers match between frac and cart positions
+    - Ensure cell lengths are positive
+    - Ensure cell angles are between 0 and 180 degrees
+    - Create and return CrystalStructure instance with validated data
     """
     frac_positions: Float[Array, " N 4"] = jnp.asarray(frac_positions)
     cart_positions: Num[Array, " N 4"] = jnp.asarray(cart_positions)
@@ -324,29 +332,36 @@ def create_potential_slices(
 ) -> PotentialSlices:
     """Factory function to create a PotentialSlices instance with data validation.
 
-    Args:
-        slices (Float[Array, " n_slices height width"]): 3D array containing
-            potential data for each slice.
-        slice_thickness (scalar_float): Thickness of each slice in Ångstroms.
-        x_calibration (scalar_float): Real space calibration in x-direction
-            in Ångstroms per pixel.
-        y_calibration (scalar_float): Real space calibration in y-direction
-            in Ångstroms per pixel.
+    Parameters
+    ----------
+    slices : Float[Array, " n_slices height width"]
+        3D array containing potential data for each slice.
+    slice_thickness : scalar_float
+        Thickness of each slice in Ångstroms.
+    x_calibration : scalar_float
+        Real space calibration in x-direction in Ångstroms per pixel.
+    y_calibration : scalar_float
+        Real space calibration in y-direction in Ångstroms per pixel.
 
-    Returns:
-        PotentialSlices: Validated PotentialSlices instance.
+    Returns
+    -------
+    PotentialSlices
+        Validated PotentialSlices instance.
 
-    Raises:
-        ValueError: If array shapes are invalid, calibrations are non-positive,
-            or slice thickness is non-positive.
+    Raises
+    ------
+    ValueError
+        If array shapes are invalid, calibrations are non-positive,
+        or slice thickness is non-positive.
 
-    Algorithm:
-        - Convert inputs to JAX arrays with appropriate dtypes
-        - Validate slice array is 3D
-        - Ensure slice thickness is positive
-        - Ensure calibrations are positive
-        - Check that all slice data is finite
-        - Create and return PotentialSlices instance
+    Algorithm
+    ---------
+    - Convert inputs to JAX arrays with appropriate dtypes
+    - Validate slice array is 3D
+    - Ensure slice thickness is positive
+    - Ensure calibrations are positive
+    - Check that all slice data is finite
+    - Create and return PotentialSlices instance
     """
     slices: Float[Array, " n_slices height width"] = jnp.asarray(slices, dtype=jnp.float64)
     slice_thickness: Float[Array, " "] = jnp.asarray(slice_thickness, dtype=jnp.float64)
@@ -525,30 +540,41 @@ def make_xyz_data(
 ) -> XYZData:
     """JAX-safe factory function for XYZData with runtime validation.
 
-    Args:
-        positions (Float[Array, " N 3"]): Cartesian positions in Ångstroms.
-        atomic_numbers (Int[Array, " N"]): Atomic numbers (Z) for each atom.
-        lattice (Optional[Float[Array, " 3 3"]]): Lattice vectors (if any).
-        stress (Optional[Float[Array, " 3 3"]]): Stress tensor (if any).
-        energy (Optional[scalar_float]): Total energy (if any).
-        properties (Optional[List[Dict[str, Union[str, int]]]]): Per-atom metadata.
-        comment (Optional[str]): Original XYZ comment line.
+    Parameters
+    ----------
+    positions : Float[Array, " N 3"]
+        Cartesian positions in Ångstroms.
+    atomic_numbers : Int[Array, " N"]
+        Atomic numbers (Z) for each atom.
+    lattice : Optional[Float[Array, " 3 3"]], optional
+        Lattice vectors (if any).
+    stress : Optional[Float[Array, " 3 3"]], optional
+        Stress tensor (if any).
+    energy : Optional[scalar_float], optional
+        Total energy (if any).
+    properties : Optional[List[Dict[str, Union[str, int]]]], optional
+        Per-atom metadata.
+    comment : Optional[str], optional
+        Original XYZ comment line.
 
-    Returns:
-        XYZData: Validated PyTree structure for XYZ file contents.
+    Returns
+    -------
+    XYZData
+        Validated PyTree structure for XYZ file contents.
 
-    Algorithm:
-        - Convert required inputs to JAX arrays with appropriate dtypes:
-          positions to float64, atomic_numbers to int32, lattice/stress/energy
-          to float64 if provided
-        - Execute shape validation checks: verify positions has shape (N, 3)
-          and atomic_numbers has shape (N,)
-        - Execute value validation checks: ensure all position values are finite
-          and atomic numbers are non-negative
-        - Execute optional matrix validation checks: for lattice and stress tensors,
-          verify shape is (3, 3) and all values are finite
-        - If all validations pass, create and return XYZData instance
-        - If any validation fails, raise ValueError with descriptive error message
+    Algorithm
+    ---------
+    - Convert required inputs to JAX arrays with appropriate dtypes:
+      positions to float64, atomic_numbers to int32, lattice/stress/energy
+      to float64 if provided
+    - Execute shape validation checks: verify positions has shape (N, 3)
+      and atomic_numbers has shape (N,)
+    - Execute value validation checks: ensure all position values are finite
+      and atomic numbers are non-negative
+    - Execute optional matrix validation checks: for lattice and stress tensors,
+      verify shape is (3, 3) and all values are finite
+    - If all validations pass, create and return XYZData instance
+    - If any validation fails, raise ValueError with descriptive error message
     """
 
     positions: Float[Array, " N 3"] = jnp.asarray(positions, dtype=jnp.float64)

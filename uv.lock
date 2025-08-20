@@ -1872,6 +1872,18 @@ wheels = [
 ]
 
 [[package]]
+name = "numpydoc"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2f/19/7721093e25804cc82c7c1cdab0cce6b9343451828fc2ce249cee10646db5/numpydoc-1.9.0.tar.gz", hash = "sha256:5fec64908fe041acc4b3afc2a32c49aab1540cf581876f5563d68bb129e27c5b", size = 91451, upload-time = "2025-06-24T12:22:55.283Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/62/5783d8924fca72529defb2c7dbe2070d49224d2dba03a85b20b37adb24d8/numpydoc-1.9.0-py3-none-any.whl", hash = "sha256:8a2983b2d62bfd0a8c470c7caa25e7e0c3d163875cdec12a8a1034020a9d1135", size = 64871, upload-time = "2025-06-24T12:22:53.701Z" },
+]
+
+[[package]]
 name = "nvidia-cublas-cu12"
 version = "12.6.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2665,6 +2677,7 @@ all = [
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
+    { name = "numpydoc" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
@@ -2690,6 +2703,7 @@ docs = [
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
+    { name = "numpydoc" },
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc-typehints" },
@@ -2734,6 +2748,7 @@ requires-dist = [
     { name = "nbconvert", marker = "extra == 'notebooks'", specifier = ">=7.16.6" },
     { name = "nbsphinx", marker = "extra == 'docs'", specifier = ">=0.9.7" },
     { name = "numpy", specifier = ">=2.2.1" },
+    { name = "numpydoc", marker = "extra == 'docs'", specifier = ">=1.9.0" },
     { name = "optax", specifier = ">=0.1.8" },
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },
