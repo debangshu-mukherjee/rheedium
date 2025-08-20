@@ -15,6 +15,10 @@ sys.path.insert(0, project_root)
 
 print(f"Added to sys.path: {src_path}")  # Debug line
 
+# Set up JAX to avoid issues during import
+os.environ["JAX_ENABLE_X64"] = "True"
+os.environ["JAX_PLATFORMS"] = "cpu"
+
 # Read project metadata from pyproject.toml
 pyproject_path = os.path.join(project_root, "pyproject.toml")
 with open(pyproject_path, "rb") as f:
@@ -35,6 +39,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
+    "sphinx_autodoc_typehints",
     "nbsphinx",
     "myst_parser",
 ]
@@ -87,47 +92,64 @@ napoleon_custom_sections = [
 nbsphinx_execute = "never"
 nbsphinx_allow_errors = True
 
-# IMPORTANT: Mock problematic imports
+# IMPORTANT: Mock only truly problematic dependencies
+# sphinx-autodoc-typehints should handle most type annotations
 autodoc_mock_imports = [
-    "jax.config",  # This often causes issues
-    "jax",
-    "jaxtyping", 
-    "beartype",
     "pandas",
     "scipy",
+    "scipy.interpolate", 
     "matplotlib",
+    "matplotlib.pyplot",
+    "matplotlib.colors",
+    "gemmi",
 ]
 
 # Autodoc configuration
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
+    "member-order": "bysource",
+    "undoc-members": False,
     "show-inheritance": True,
-    "special-members": "__init__",
+    "inherited-members": False,
+    "ignore-module-all": False,  # Respect __all__
 }
 
-# Type handling
-autodoc_typehints = "description"
+# Type handling with sphinx-autodoc-typehints
+autodoc_typehints = "signature"  # Show types only in signature
 autodoc_typehints_format = "short"
-autodoc_typehints_description_target = "documented"
+autodoc_typehints_description_target = "all"
 python_use_unqualified_type_names = True
+typehints_fully_qualified = False
+always_document_param_types = False  # Let Google docstrings handle this
+typehints_document_rtype = False  # Let Google docstrings handle this
+typehints_use_signature = True
+typehints_use_signature_return = True
+autodoc_preserve_defaults = True
+autodoc_inherit_docstrings = True
 
 # Reduced nitpicky mode
 nitpicky = False
 
 # Type aliases for cleaner display
 napoleon_type_aliases = {
-    'Float[Array, ""]': "scalar array",
-    'Float[Array, "3"]': "3D array",
-    'Float[Array, "3 3"]': "3x3 array",
-    'Float[Array, "M 3"]': "Mx3 array",
-    'Float[Array, "N 3"]': "Nx3 array",
-    'Float[Array, "* 4"]': "Nx4 array",
-    'Int[Array, ""]': "integer array",
-    'Num[Array, "*"]': "numeric array",
+    'Float[Array, " "]': "scalar float",
+    'Float[Array, " 3"]': "3D float array",
+    'Float[Array, " 3 3"]': "3x3 float array",
+    'Float[Array, " M 3"]': "Mx3 float array",
+    'Float[Array, " N 3"]': "Nx3 float array",
+    'Float[Array, " N 4"]': "Nx4 float array",
+    'Int[Array, " "]': "scalar int",
+    'Int[Array, " N"]': "N int array",
+    'Num[Array, " N"]': "N numeric array",
+    'Bool[Array, " "]': "scalar bool",
     "scalar_float": "float",
     "scalar_int": "int",
+    "scalar_num": "numeric",
 }
+
+# Additional type aliases for sphinx-autodoc-typehints
+typehints_defaults = "comma"
+typehints_type_aliases = napoleon_type_aliases
 
 # Ignore problematic references
 nitpick_ignore = [
@@ -173,5 +195,18 @@ def skip_member(name: str, skip: bool) -> bool:
     return skip
 
 
+def process_signature(app, what, name, obj, options, signature, return_annotation):
+    """Process signatures to handle jaxtyping annotations."""
+    if signature:
+        # Simplify jaxtyping annotations in signatures
+        signature = signature.replace('Float[Array, " ', 'FloatArray[')
+        signature = signature.replace('Int[Array, " ', 'IntArray[')
+        signature = signature.replace('Bool[Array, " ', 'BoolArray[')
+        signature = signature.replace('Num[Array, " ', 'NumArray[')
+        signature = signature.replace('"]', ']')
+    return signature, return_annotation
+
+
 def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip_member)
+    app.connect("autodoc-process-signature", process_signature)

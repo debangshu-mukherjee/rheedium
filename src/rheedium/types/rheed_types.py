@@ -21,10 +21,13 @@ JAX Validation Pattern
 ---------------------
 All factory functions in this codebase follow a JAX-compatible validation pattern:
 
-1. **Use `jax.lax.cond` for validation**: Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
+1. **Use `jax.lax.cond` for validation**: 
+   Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
 2. **Compile-time validation**: Validation happens at JIT compilation time, not runtime
-3. **Side-effect validation**: Validation functions don't return modified data, they ensure original data is valid
-4. **Error handling**: Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause compilation errors
+3. **Side-effect validation**: Validation functions don't return modified data, 
+   they ensure original data is valid
+4. **Error handling**: Use `lax.stop_gradient(lax.cond(False, ...))` in false branches 
+   to cause compilation errors
 
 Example Pattern:
 ```python
@@ -66,27 +69,51 @@ from .custom_types import scalar_float, scalar_num
 
 @register_pytree_node_class
 class RHEEDPattern(NamedTuple):
-    """
-    Description
-    -----------
-    A JAX-compatible data structure for representing RHEED patterns.
+    """JAX-compatible RHEED diffraction pattern data structure.
 
-    Attributes
-    ----------
-    - `G_indices` (Int[Array, "*"]):
-        Indices of reciprocal-lattice vectors that satisfy reflection
-    - `k_out` (Float[Array, "M 3"]):
-        Outgoing wavevectors (in 1/Å) for those reflections
-    - `detector_points` (Float[Array, "M 2"]):
-        (Y, Z) coordinates on the detector plane, in Ångstroms.
-    - `intensities` (Float[Array, "M"]):
-        Intensities for each reflection.
+    This PyTree represents a RHEED diffraction pattern containing reflection
+    data including reciprocal lattice indices, outgoing wavevectors, detector
+    coordinates, and intensity values for electron diffraction analysis.
+
+    Attributes:
+        G_indices (Int[Array, " N"]): Indices of reciprocal-lattice vectors
+            that satisfy reflection conditions. Variable length array of
+            integer indices.
+        k_out (Float[Array, " M 3"]): Outgoing wavevectors in 1/Å for
+            reflections. Shape (M, 3) where M is the number of reflections
+            and each row contains [kx, ky, kz] components.
+        detector_points (Float[Array, " M 2"]): Detector coordinates (Y, Z)
+            on the detector plane in Ångstroms. Shape (M, 2) where each
+            row contains [y, z] coordinates.
+        intensities (Float[Array, " M"]): Intensity values for each reflection.
+            Shape (M,) with non-negative intensity values.
+
+    Note:
+        This class is registered as a PyTree node, making it compatible with JAX
+        transformations like jit, grad, and vmap. All data is immutable and
+        stored in JAX arrays for efficient RHEED pattern analysis.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>>
+        >>> # Create RHEED pattern data
+        >>> G_indices = jnp.array([1, 2, 3])
+        >>> k_out = jnp.array([[1.0, 0.0, 0.5], [2.0, 0.0, 1.0], [3.0, 0.0, 1.5]])
+        >>> detector_points = jnp.array([[10.0, 5.0], [20.0, 10.0], [30.0, 15.0]])
+        >>> intensities = jnp.array([100.0, 80.0, 60.0])
+        >>> pattern = rh.types.create_rheed_pattern(
+        ...     G_indices=G_indices,
+        ...     k_out=k_out,
+        ...     detector_points=detector_points,
+        ...     intensities=intensities
+        ... )
     """
 
-    G_indices: Int[Array, "*"]
-    k_out: Float[Array, "M 3"]
-    detector_points: Float[Array, "M 2"]
-    intensities: Float[Array, "M"]
+    G_indices: Int[Array, " N"]
+    k_out: Float[Array, " M 3"]
+    detector_points: Float[Array, " M 2"]
+    intensities: Float[Array, " M"]
 
     def tree_flatten(self):
         return (
@@ -101,29 +128,51 @@ class RHEEDPattern(NamedTuple):
 
 @register_pytree_node_class
 class RHEEDImage(NamedTuple):
-    """
-    Description
-    -----------
-    A PyTree for representing an experimental RHEED image.
+    """JAX-compatible experimental RHEED image data structure.
 
-    Attributes
-    ----------
-    - `img_array` (Float[Array, "H W"]):
-        The image in 2D array format.
-    - `incoming_angle` (scalar_float):
-        The angle of the incoming electron beam in degrees.
-    - `calibration` (Union[Float[Array, "2"], scalar_float]):
-        Calibration factor for the image, either as a 2D array or a scalar.
-        If scalar, then both the X and Y axes have the same calibration.
-    - `electron_wavelength` (scalar_float):
-        The wavelength of the electrons in Ångstroms.
-    - `detector_distance` (scalar_float):
-        The distance from the sample to the detector in Ångstroms.
+    This PyTree represents an experimental RHEED image with associated
+    experimental parameters including beam geometry, detector calibration,
+    and electron beam properties for quantitative RHEED analysis.
+
+    Attributes:
+        img_array (Float[Array, " H W"]): 2D image array with shape (height, width)
+            containing pixel intensity values. Non-negative finite values.
+        incoming_angle (scalar_float): Angle of the incoming electron beam
+            in degrees, typically between 0 and 90 degrees for grazing
+            incidence geometry.
+        calibration (Union[Float[Array, " 2"], scalar_float]): Calibration factor
+            for converting pixels to physical units. Either a scalar (same
+            calibration for both axes) or array of shape (2,) with separate
+            [x, y] calibrations in appropriate units per pixel.
+        electron_wavelength (scalar_float): Wavelength of the electrons in
+            Ångstroms. Determines the diffraction geometry and resolution.
+        detector_distance (scalar_float): Distance from the sample to the
+            detector in Ångstroms. Affects the angular resolution and
+            reciprocal space mapping.
+
+    Note:
+        This class is registered as a PyTree node, making it compatible with JAX
+        transformations like jit, grad, and vmap. All data is immutable for
+        functional programming patterns and efficient image processing.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>>
+        >>> # Create RHEED image with experimental parameters
+        >>> image = jnp.ones((256, 512))  # 256x512 pixel RHEED image
+        >>> rheed_img = rh.types.create_rheed_image(
+        ...     img_array=image,
+        ...     incoming_angle=2.0,  # 2 degree grazing angle
+        ...     calibration=0.01,    # 0.01 units per pixel
+        ...     electron_wavelength=0.037,  # 10 keV electrons
+        ...     detector_distance=1000.0     # 1000 Å to detector
+        ... )
     """
 
-    img_array: Float[Array, "H W"]
+    img_array: Float[Array, " H W"]
     incoming_angle: scalar_float
-    calibration: Union[Float[Array, "2"], scalar_float]
+    calibration: Union[Float[Array, " 2"], scalar_float]
     electron_wavelength: scalar_float
     detector_distance: scalar_num
 
@@ -146,21 +195,21 @@ class RHEEDImage(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_pattern(
-    G_indices: Int[Array, "*"],
-    k_out: Float[Array, "M 3"],
-    detector_points: Float[Array, "M 2"],
-    intensities: Float[Array, "M"],
+    G_indices: Int[Array, " N"],
+    k_out: Float[Array, " M 3"],
+    detector_points: Float[Array, " M 2"],
+    intensities: Float[Array, " M"],
 ) -> RHEEDPattern:
     """Factory function to create a RHEEDPattern instance with data validation.
 
     Args:
-        G_indices (Int[Array, "*"]): Indices of reciprocal-lattice vectors that
+        G_indices (Int[Array, " N"]): Indices of reciprocal-lattice vectors that
             satisfy reflection.
-        k_out (Float[Array, "M 3"]): Outgoing wavevectors (in 1/Å) for those
+        k_out (Float[Array, " M 3"]): Outgoing wavevectors (in 1/Å) for those
             reflections.
-        detector_points (Float[Array, "M 2"]): (Y, Z) coordinates on the detector
+        detector_points (Float[Array, " M 2"]): (Y, Z) coordinates on the detector
             plane, in Ångstroms.
-        intensities (Float[Array, "M"]): Intensities for each reflection.
+        intensities (Float[Array, " M"]): Intensities for each reflection.
 
     Returns:
         RHEEDPattern: Validated RHEED pattern instance.
@@ -263,19 +312,19 @@ def create_rheed_pattern(
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_image(
-    img_array: Float[Array, "H W"],
+    img_array: Float[Array, " H W"],
     incoming_angle: scalar_float,
-    calibration: Union[Float[Array, "2"], scalar_float],
+    calibration: Union[Float[Array, " 2"], scalar_float],
     electron_wavelength: scalar_float,
     detector_distance: scalar_num,
 ) -> RHEEDImage:
     """Factory function to create a RHEEDImage instance with data validation.
 
     Args:
-        img_array (Float[Array, "H W"]): The image in 2D array format.
+        img_array (Float[Array, " H W"]): The image in 2D array format.
         incoming_angle (scalar_float): The angle of the incoming electron beam
             in degrees.
-        calibration (Union[Float[Array, "2"], scalar_float]): Calibration factor
+        calibration (Union[Float[Array, " 2"], scalar_float]): Calibration factor
             for the image, either as a 2D array or a scalar.
         electron_wavelength (scalar_float): The wavelength of the electrons
             in Ångstroms.

@@ -118,7 +118,7 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
 @jaxtyped(typechecker=beartype)
 def _load_kirkland_csv(
     file_path: Optional[Path] = _KIRKLAND_PATH,
-) -> Float[Array, "103 12"]:
+) -> Float[Array, " 103 12"]:
     """Loads Kirkland potential parameters from CSV file.
 
     Uses numpy to load CSV then converts to JAX array for performance.
@@ -128,7 +128,7 @@ def _load_kirkland_csv(
             Custom path to CSV file, defaults to module path
 
     Returns:
-        kirkland_data (Float[Array, "103 12"]):
+        kirkland_data (Float[Array, " 103 12"]):
             Kirkland potential parameters as JAX array
 
     Raises:
@@ -141,21 +141,21 @@ def _load_kirkland_csv(
     kirkland_numpy: np.ndarray = np.loadtxt(file_path, delimiter=",", dtype=np.float64)
     if kirkland_numpy.shape != (103, 12):
         raise ValueError(f"Expected CSV shape (103, 12), got {kirkland_numpy.shape}")
-    kirkland_data: Float[Array, "103 12"] = jnp.asarray(kirkland_numpy, dtype=jnp.float64)
+    kirkland_data: Float[Array, " 103 12"] = jnp.asarray(kirkland_numpy, dtype=jnp.float64)
     return kirkland_data
 
 
-_KIRKLAND_POTENTIALS: Float[Array, "103 12"] = _load_kirkland_csv()
+_KIRKLAND_POTENTIALS: Float[Array, " 103 12"] = _load_kirkland_csv()
 
 
 @jaxtyped(typechecker=beartype)
-def kirkland_potentials() -> Float[Array, "103 12"]:
+def kirkland_potentials() -> Float[Array, " 103 12"]:
     """Returns preloaded Kirkland potential parameters as JAX array.
 
     Data is loaded once at module import for optimal performance.
 
     Returns:
-        kirkland_potentials (Float[Array, "103 12"]):
+        kirkland_potentials (Float[Array, " 103 12"]):
             Kirkland potential parameters for elements 1-103
 
     Algorithm:
@@ -284,8 +284,8 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
             # Not a number, treat as atomic symbol
             atomic_numbers.append(atomic_symbol(symbol))
 
-    positions_arr: Float[Array, "N 3"] = jnp.array(positions, dtype=jnp.float64)
-    atomic_Z_arr: Int[Array, "N"] = jnp.array(atomic_numbers, dtype=jnp.int32)
+    positions_arr: Float[Array, " N 3"] = jnp.array(positions, dtype=jnp.float64)
+    atomic_Z_arr: Int[Array, " N"] = jnp.array(atomic_numbers, dtype=jnp.int32)
 
     return make_xyz_data(
         positions=positions_arr,

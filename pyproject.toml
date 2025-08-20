@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.06.19"
+version = "2025.06.21"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -56,6 +56,7 @@ docs = [
     "nbconvert>=7.16.6",
     "sphinx-autobuild>=2024.10.3",
     "furo>=2025.7.19",
+    "sphinx-autodoc-typehints>=3.0.1",
 ]
 test = [
     "pytest>=8.3.5",

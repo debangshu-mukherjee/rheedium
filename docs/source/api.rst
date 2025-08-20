@@ -8,7 +8,6 @@ Input/Output Module
 
 .. automodule:: rheedium.inout
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Simulation Module
@@ -16,7 +15,6 @@ Simulation Module
 
 .. automodule:: rheedium.simul
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Unit Cell Module
@@ -24,7 +22,6 @@ Unit Cell Module
 
 .. automodule:: rheedium.ucell
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Types Module
@@ -32,7 +29,6 @@ Types Module
 
 .. automodule:: rheedium.types
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Plotting Module
@@ -40,7 +36,6 @@ Plotting Module
 
 .. automodule:: rheedium.plots
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Reconstruction Module
@@ -48,5 +43,4 @@ Reconstruction Module
 
 .. automodule:: rheedium.recon
    :members:
-   :undoc-members:
    :show-inheritance:

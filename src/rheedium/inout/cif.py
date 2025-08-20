@@ -21,7 +21,7 @@ from beartype import beartype
 from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
-from rheedium.inout import atomic_symbol
+from rheedium.inout.xyz import atomic_symbol
 from rheedium.types import CrystalStructure, create_crystal_structure, scalar_float
 from rheedium.ucell import build_cell_vectors
 
@@ -34,22 +34,10 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cif_path (Union[str, Path]): Path to the CIF file.
 
     Returns:
-        CrystalStructure: Parsed crystal structure object with fractional and Cartesian coordinates.
-
-            Attributes:
-            - frac_positions (Float[Array, "* 4"]): Array of shape (n_atoms, 4) containing
-                atomic positions in fractional coordinates. Each row contains
-                [x, y, z, atomic_number] where x, y, z are fractional coordinates
-                in the unit cell (range [0,1]) and atomic_number is the integer
-                atomic number (Z) of the element.
-            - cart_positions (Num[Array, "* 4"]): Array of shape (n_atoms, 4) containing
-                atomic positions in Cartesian coordinates. Each row contains
-                [x, y, z, atomic_number] where x, y, z are Cartesian coordinates
-                in Ångstroms and atomic_number is the integer atomic number (Z).
-            - cell_lengths (Num[Array, "3"]): Unit cell lengths [a, b, c] in Ångstroms.
-            - cell_angles (Num[Array, "3"]): Unit cell angles [α, β, γ] in degrees.
-                α is the angle between b and c, β is the angle between a and c,
-                and γ is the angle between a and b.
+        CrystalStructure: Parsed crystal structure object with fractional and Cartesian
+            coordinates. Contains arrays of atomic positions in both fractional
+            (range [0,1]) and Cartesian (Ångstroms) coordinates, along with unit
+            cell parameters (lengths in Ångstroms, angles in degrees).
 
     Algorithm:
         - Validate CIF file path and extension
@@ -82,7 +70,6 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if cif_path.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path}")
     cif_text = cif_path.read_text()
-    atomic_numbers = atomic_symbol()
 
     def extract_param(name: str) -> float:
         match = re.search(rf"{name}\s+([0-9.]+)", cif_text)
@@ -97,8 +84,8 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     alpha = extract_param("_cell_angle_alpha")
     beta = extract_param("_cell_angle_beta")
     gamma = extract_param("_cell_angle_gamma")
-    cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
-    cell_angles: Num[Array, "3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
+    cell_lengths: Num[Array, " 3"] = jnp.array([a, b, c], dtype=jnp.float64)
+    cell_angles: Num[Array, " 3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
     lines = cif_text.splitlines()
     atom_site_columns = []
     positions_list = []
@@ -130,16 +117,15 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             frac_x = float(tokens[col_indices["_atom_site_fract_x"]])
             frac_y = float(tokens[col_indices["_atom_site_fract_y"]])
             frac_z = float(tokens[col_indices["_atom_site_fract_z"]])
-            atomic_number = atomic_numbers.get(element_symbol)
-            if atomic_number is None:
-                raise ValueError(f"Unknown element symbol: {element_symbol}")
+            # Use the atomic_symbol function to convert element symbol to atomic number
+            atomic_number = atomic_symbol(element_symbol)
             positions_list.append([frac_x, frac_y, frac_z, atomic_number])
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
-    frac_positions: Float[Array, "* 4"] = jnp.array(positions_list, dtype=jnp.float64)
-    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
-    cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, "* 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
+    frac_positions: Float[Array, " N 4"] = jnp.array(positions_list, dtype=jnp.float64)
+    cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
+    cart_coords: Float[Array, " N 3"] = frac_positions[:, :3] @ cell_vectors
+    cart_positions: Float[Array, " N 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
     sym_ops = []
     lines = cif_text.splitlines()
     collect_sym_ops = False

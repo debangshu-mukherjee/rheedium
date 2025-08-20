@@ -13,8 +13,8 @@ Classes
     A PyTree for XYZ file data with atomic positions, lattice vectors,
     stress tensor, energy, properties, and comment
 
-FactoryFunctions
------------------
+Factory Functions
+-----------------    
 - `create_crystal_structure`:
     Factory function to create CrystalStructure instances with data validation
 - `create_potential_slices`:
@@ -25,7 +25,7 @@ FactoryFunctions
 
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Dict, List, NamedTuple, Optional, Union
+from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, Int, Num, jaxtyped
@@ -35,48 +35,60 @@ from .custom_types import scalar_float
 
 @register_pytree_node_class
 class CrystalStructure(NamedTuple):
+    """JAX-compatible crystal structure with fractional and Cartesian coordinates.
+
+    This PyTree represents a crystal structure containing atomic positions in both
+    fractional and Cartesian coordinate systems, along with unit cell parameters.
+    It's designed for efficient crystal structure calculations and electron
+    diffraction simulations.
+
+    Attributes:
+        frac_positions (Float[Array, " N 4"]): Array of shape (n_atoms, 4) containing
+            atomic positions in fractional coordinates. Each row contains
+            [x, y, z, atomic_number] where x, y, z are fractional coordinates
+            in the unit cell (range [0,1]) and atomic_number is the integer
+            atomic number (Z) of the element.
+        cart_positions (Num[Array, " N 4"]): Array of shape (n_atoms, 4) containing
+            atomic positions in Cartesian coordinates. Each row contains
+            [x, y, z, atomic_number] where x, y, z are Cartesian coordinates
+            in Ångstroms and atomic_number is the integer atomic number (Z).
+        cell_lengths (Num[Array, " 3"]): Unit cell lengths [a, b, c] in Ångstroms.
+        cell_angles (Num[Array, " 3"]): Unit cell angles [α, β, γ] in degrees,
+            where α is the angle between b and c, β is the angle between a and c,
+            and γ is the angle between a and b.
+
+    Note:
+        This class is registered as a PyTree node, making it compatible with JAX
+        transformations like jit, grad, and vmap. All data is immutable and stored
+        in JAX arrays for efficient computation.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>>
+        >>> # Create crystal structure for simple cubic lattice
+        >>> frac_pos = jnp.array([[0.0, 0.0, 0.0, 6]])  # Carbon atom at origin
+        >>> cart_pos = jnp.array([[0.0, 0.0, 0.0, 6]])  # Same in Cartesian
+        >>> cell_lengths = jnp.array([3.57, 3.57, 3.57])  # Diamond lattice
+        >>> cell_angles = jnp.array([90.0, 90.0, 90.0])  # Cubic angles
+        >>> crystal = rh.types.create_crystal_structure(
+        ...     frac_positions=frac_pos,
+        ...     cart_positions=cart_pos,
+        ...     cell_lengths=cell_lengths,
+        ...     cell_angles=cell_angles
+        ... )
     """
-    Description
-    -----------
-    A JAX-compatible data structure representing a crystal structure with both
-    fractional and Cartesian coordinates.
 
-    Attributes
-    ----------
-    - `frac_positions` (Float[Array, "* 4"]):
-        Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
-        Each row contains [x, y, z, atomic_number] where:
-        - x, y, z: Fractional coordinates in the unit cell (range [0,1])
-        - atomic_number: Integer atomic number (Z) of the element
+    frac_positions: Float[Array, " N 4"]
+    cart_positions: Num[Array, " N 4"]
+    cell_lengths: Num[Array, " 3"]
+    cell_angles: Num[Array, " 3"]
 
-    - `cart_positions` (Num[Array, "* 4"]):
-        Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
-        Each row contains [x, y, z, atomic_number] where:
-        - x, y, z: Cartesian coordinates in Ångstroms
-        - atomic_number: Integer atomic number (Z) of the element
-
-    - `cell_lengths` (Num[Array, "3"]):
-        Unit cell lengths [a, b, c] in Ångstroms
-
-    - `cell_angles` (Num[Array, "3"]):
-        Unit cell angles [α, β, γ] in degrees.
-        - α is the angle between b and c
-        - β is the angle between a and c
-        - γ is the angle between a and b
-
-    Notes
-    -----
-    This class is registered as a PyTree node, making it compatible with JAX transformations
-    like jit, grad, and vmap. The auxiliary data in tree_flatten is None as all relevant
-    data is stored in JAX arrays.
-    """
-
-    frac_positions: Float[Array, "* 4"]
-    cart_positions: Num[Array, "* 4"]
-    cell_lengths: Num[Array, "3"]
-    cell_angles: Num[Array, "3"]
-
-    def tree_flatten(self):
+    def tree_flatten(
+        self,
+    ) -> Tuple[
+        Tuple[Float[Array, " N 4"], Num[Array, " N 4"], Num[Array, " 3"], Num[Array, " 3"]], None
+    ]:
         return (
             (
                 self.frac_positions,
@@ -88,26 +100,30 @@ class CrystalStructure(NamedTuple):
         )
 
     @classmethod
-    def tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(
+        cls,
+        aux_data,
+        children: Tuple[Float[Array, " N 4"], Num[Array, " N 4"], Num[Array, " 3"], Num[Array, " 3"]],
+    ) -> "CrystalStructure":
         return cls(*children)
 
 
 @beartype
 def create_crystal_structure(
-    frac_positions: Float[Array, "* 4"],
-    cart_positions: Num[Array, "* 4"],
-    cell_lengths: Num[Array, "3"],
-    cell_angles: Num[Array, "3"],
+    frac_positions: Float[Array, " N 4"],
+    cart_positions: Num[Array, " N 4"],
+    cell_lengths: Num[Array, " 3"],
+    cell_angles: Num[Array, " 3"],
 ) -> CrystalStructure:
     """Factory function to create a CrystalStructure instance with type checking.
 
     Args:
-        frac_positions (Float[Array, "* 4"]): Array of shape (n_atoms, 4) containing
+        frac_positions (Float[Array, " N 4"]): Array of shape (n_atoms, 4) containing
             atomic positions in fractional coordinates.
-        cart_positions (Num[Array, "* 4"]): Array of shape (n_atoms, 4) containing
+        cart_positions (Num[Array, " N 4"]): Array of shape (n_atoms, 4) containing
             atomic positions in Cartesian coordinates.
-        cell_lengths (Num[Array, "3"]): Unit cell lengths [a, b, c] in Ångstroms.
-        cell_angles (Num[Array, "3"]): Unit cell angles [α, β, γ] in degrees.
+        cell_lengths (Num[Array, " 3"]): Unit cell lengths [a, b, c] in Ångstroms.
+        cell_angles (Num[Array, " 3"]): Unit cell angles [α, β, γ] in degrees.
 
     Returns:
         CrystalStructure: A validated CrystalStructure instance.
@@ -201,9 +217,11 @@ def create_crystal_structure(
                 ),
             )
 
-        def check_cell_angles_valid():
+        def check_cell_angles_valid() -> Num[Array, " 3"]:
+            min_angle: scalar_float = 0.0
+            max_angle: scalar_float = 180.0
             return lax.cond(
-                jnp.all(jnp.logical_and(cell_angles > 0, cell_angles < 180)),
+                jnp.all(jnp.logical_and(cell_angles > min_angle, cell_angles < max_angle)),
                 lambda: cell_angles,
                 lambda: lax.stop_gradient(
                     lax.cond(False, lambda: cell_angles, lambda: cell_angles)
@@ -230,51 +248,45 @@ def create_crystal_structure(
 
 @register_pytree_node_class
 class PotentialSlices(NamedTuple):
-    """
-    Description
-    -----------
-    A JAX-compatible data structure for representing multislice potential data
-    used in electron beam propagation calculations.
+    """JAX-compatible multislice potential data for electron beam propagation.
 
-    Attributes
-    ----------
-    - `slices` (Float[Array, "n_slices height width"]):
-        3D array containing potential data for each slice.
-        First dimension indexes slices, second and third are spatial coordinates.
-        Units: Volts or appropriate potential units.
-    - `slice_thickness` (scalar_float):
-        Thickness of each slice in Ångstroms.
-        Determines the z-spacing between consecutive slices.
-    - `x_calibration` (scalar_float):
-        Real space calibration in the x-direction in Ångstroms per pixel.
-        Converts pixel coordinates to physical distances.
-    - `y_calibration` (scalar_float):
-        Real space calibration in the y-direction in Ångstroms per pixel.
-        Converts pixel coordinates to physical distances.
+    This PyTree represents discretized potential data used in multislice electron
+    diffraction calculations. It contains 3D potential slices with associated
+    calibration information for accurate physical modeling.
 
-    Notes
-    -----
-    This class is registered as a PyTree node, making it compatible with JAX
-    transformations like jit, grad, and vmap. The metadata (calibrations and
-    thickness) is preserved through transformations while the slice data can
-    be efficiently processed.
+    Attributes:
+        slices (Float[Array, " n_slices height width"]): 3D array containing
+            potential data for each slice. First dimension indexes slices,
+            second and third dimensions are spatial coordinates.
+            Units: Volts or appropriate potential units.
+        slice_thickness (scalar_float): Thickness of each slice in Ångstroms.
+            Determines the z-spacing between consecutive slices.
+        x_calibration (scalar_float): Real space calibration in the x-direction
+            in Ångstroms per pixel. Converts pixel coordinates to physical distances.
+        y_calibration (scalar_float): Real space calibration in the y-direction
+            in Ångstroms per pixel. Converts pixel coordinates to physical distances.
 
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-    >>> import rheedium as rh
-    >>>
-    >>> # Create potential slices
-    >>> slices_data = jnp.zeros((10, 64, 64))  # 10 slices, 64x64 each
-    >>> potential_slices = rh.types.create_potential_slices(
-    ...     slices=slices_data,
-    ...     slice_thickness=2.0,  # 2 Å per slice
-    ...     x_calibration=0.1,    # 0.1 Å per pixel in x
-    ...     y_calibration=0.1     # 0.1 Å per pixel in y
-    ... )
+    Note:
+        This class is registered as a PyTree node, making it compatible with JAX
+        transformations like jit, grad, and vmap. The calibration metadata is
+        preserved as auxiliary data while slice data can be efficiently processed.
+        All data is immutable for functional programming patterns.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>>
+        >>> # Create potential slices for multislice calculation
+        >>> slices_data = jnp.zeros((10, 64, 64))  # 10 slices, 64x64 each
+        >>> potential_slices = rh.types.create_potential_slices(
+        ...     slices=slices_data,
+        ...     slice_thickness=2.0,  # 2 Å per slice
+        ...     x_calibration=0.1,    # 0.1 Å per pixel in x
+        ...     y_calibration=0.1     # 0.1 Å per pixel in y
+        ... )
     """
 
-    slices: Float[Array, "n_slices height width"]
+    slices: Float[Array, " n_slices height width"]
     slice_thickness: scalar_float
     x_calibration: scalar_float
     y_calibration: scalar_float
@@ -299,7 +311,7 @@ class PotentialSlices(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def create_potential_slices(
-    slices: Float[Array, "n_slices height width"],
+    slices: Float[Array, " n_slices height width"],
     slice_thickness: scalar_float,
     x_calibration: scalar_float,
     y_calibration: scalar_float,
@@ -307,7 +319,7 @@ def create_potential_slices(
     """Factory function to create a PotentialSlices instance with data validation.
 
     Args:
-        slices (Float[Array, "n_slices height width"]): 3D array containing
+        slices (Float[Array, " n_slices height width"]): 3D array containing
             potential data for each slice.
         slice_thickness (scalar_float): Thickness of each slice in Ångstroms.
         x_calibration (scalar_float): Real space calibration in x-direction
@@ -384,7 +396,7 @@ def create_potential_slices(
                 ),
             )
 
-        def check_finite():
+        def check_finite() -> Float[Array, " n_slices height width"]:
             return lax.cond(
                 jnp.all(jnp.isfinite(slices)),
                 lambda: slices,
@@ -410,39 +422,55 @@ def create_potential_slices(
 
 @register_pytree_node_class
 class XYZData(NamedTuple):
+    """JAX-compatible representation of parsed XYZ file data.
+
+    This PyTree represents a complete XYZ file structure with atomic positions,
+    optional lattice information, and metadata. It's designed for geometry
+    parsing, simulation preparation, and machine learning data processing.
+
+    Attributes:
+        positions (Float[Array, " N 3"]): Cartesian atomic positions in Ångstroms.
+            Shape (N, 3) where N is the number of atoms.
+        atomic_numbers (Int[Array, " N"]): Atomic numbers (Z) corresponding to
+            each atom. Shape (N,) with integer values.
+        lattice (Optional[Float[Array, " 3 3"]]): Lattice vectors in Ångstroms
+            if present in the XYZ file, otherwise None. Shape (3, 3) matrix
+            where each row is a lattice vector.
+        stress (Optional[Float[Array, " 3 3"]]): Symmetric stress tensor if
+            present in the metadata, otherwise None. Shape (3, 3) matrix
+            with stress components.
+        energy (Optional[scalar_float]): Total energy in eV if present in
+            the metadata, otherwise None. Scalar value.
+        properties (Optional[List[Dict[str, Union[str, int]]]]): List of
+            per-atom properties described in the metadata, otherwise None.
+        comment (Optional[str]): The raw comment line from the XYZ file
+            header, otherwise None.
+
+    Note:
+        This class is registered as a PyTree node, making it compatible with JAX
+        transformations like jit, grad, and vmap. Numerical data is stored as
+        JAX arrays while metadata is preserved as auxiliary data. All data is
+        immutable for functional programming patterns.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>>
+        >>> # Create XYZ data for water molecule
+        >>> positions = jnp.array([[0.0, 0.0, 0.0], [0.76, 0.59, 0.0], [-0.76, 0.59, 0.0]])
+        >>> atomic_numbers = jnp.array([8, 1, 1])  # O, H, H
+        >>> xyz_data = rh.types.make_xyz_data(
+        ...     positions=positions,
+        ...     atomic_numbers=atomic_numbers,
+        ...     comment="Water molecule"
+        ... )
     """
-    Description
-    -----------
-    JAX-compatible PyTree representing a full parsed XYZ file.
 
-    Attributes
-    ----------
-    - `positions` (Float[Array, "N 3"]):
-        Cartesian positions in Ångstroms.
-    - `atomic_numbers` (Int[Array, "N"]):
-        Atomic numbers (Z) corresponding to each atom.
-    - `lattice` (Optional[Float[Array, "3 3"]]):
-        Lattice vectors in Ångstroms if present, otherwise None.
-    - `stress` (Optional[Float[Array, "3 3"]]):
-        Symmetric stress tensor if present.
-    - `energy` (Optional[scalar_float]):
-        Total energy in eV if present.
-    - `properties` (Optional[List[Dict[str, Union[str, int]]]]):
-        List of properties described in the metadata.
-    - `comment` (Optional[str]):
-        The raw comment line from the XYZ file.
-
-    Notes
-    -----
-    - Can be used for geometry parsing, simulation prep, or ML data loaders.
-    - Compatible with JAX transformations (jit, vmap, etc).
-    """
-
-    positions: Float[Array, "N 3"]
-    atomic_numbers: Int[Array, "N"]
-    lattice: Optional[Float[Array, "3 3"]]
-    stress: Optional[Float[Array, "3 3"]]
-    energy: Optional[Float[Array, ""]]
+    positions: Float[Array, " N 3"]
+    atomic_numbers: Int[Array, " N"]
+    lattice: Optional[Float[Array, " 3 3"]]
+    stress: Optional[Float[Array, " 3 3"]]
+    energy: Optional[Float[Array, " "]]
     properties: Optional[List[Dict[str, Union[str, int]]]]
     comment: Optional[str]
 
@@ -476,10 +504,10 @@ class XYZData(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def make_xyz_data(
-    positions: Float[Array, "N 3"],
-    atomic_numbers: Int[Array, "N"],
-    lattice: Optional[Float[Array, "3 3"]] = None,
-    stress: Optional[Float[Array, "3 3"]] = None,
+    positions: Float[Array, " N 3"],
+    atomic_numbers: Int[Array, " N"],
+    lattice: Optional[Float[Array, " 3 3"]] = None,
+    stress: Optional[Float[Array, " 3 3"]] = None,
     energy: Optional[scalar_float] = None,
     properties: Optional[List[Dict[str, Union[str, int]]]] = None,
     comment: Optional[str] = None,
@@ -487,10 +515,10 @@ def make_xyz_data(
     """JAX-safe factory function for XYZData with runtime validation.
 
     Args:
-        positions (Float[Array, "N 3"]): Cartesian positions in Ångstroms.
-        atomic_numbers (Int[Array, "N"]): Atomic numbers (Z) for each atom.
-        lattice (Optional[Float[Array, "3 3"]]): Lattice vectors (if any).
-        stress (Optional[Float[Array, "3 3"]]): Stress tensor (if any).
+        positions (Float[Array, " N 3"]): Cartesian positions in Ångstroms.
+        atomic_numbers (Int[Array, " N"]): Atomic numbers (Z) for each atom.
+        lattice (Optional[Float[Array, " 3 3"]]): Lattice vectors (if any).
+        stress (Optional[Float[Array, " 3 3"]]): Stress tensor (if any).
         energy (Optional[scalar_float]): Total energy (if any).
         properties (Optional[List[Dict[str, Union[str, int]]]]): Per-atom metadata.
         comment (Optional[str]): Original XYZ comment line.

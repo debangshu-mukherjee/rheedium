@@ -41,7 +41,7 @@ def reciprocal_unitcell(
     alpha: scalar_float,
     beta: scalar_float,
     gamma: scalar_float,
-) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
+) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
     """Calculate reciprocal unit cell parameters from direct cell parameters.
 
     Args:
@@ -49,7 +49,7 @@ def reciprocal_unitcell(
         alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
 
     Returns:
-        Tuple[Float[Array, "3"], Float[Array, "3"]]: Reciprocal cell lengths
+        Tuple[Float[Array, " 3"], Float[Array, " 3"]]: Reciprocal cell lengths
             and angles. First array contains reciprocal cell lengths
             [a*, b*, c*] in 1/angstroms. Second array contains reciprocal
             cell angles [α*, β*, γ*] in degrees.
@@ -98,7 +98,7 @@ def reciprocal_unitcell(
         )
     )
     is_well_conditioned = condition_number < 1e10
-    reciprocal_cell_uncond: Float[Array, "3 3"] = (
+    reciprocal_cell_uncond: Float[Array, " 3 3"] = (
         2
         * jnp.pi
         * jnp.transpose(
@@ -129,7 +129,7 @@ def reciprocal_unitcell(
             )
         )
     )
-    reciprocal_cell: Float[Array, "3 3"] = jnp.where(
+    reciprocal_cell: Float[Array, " 3 3"] = jnp.where(
         is_well_conditioned,
         reciprocal_cell_uncond,
         jnp.full_like(reciprocal_cell_uncond, 0.0),
@@ -140,14 +140,14 @@ def reciprocal_unitcell(
 @jaxtyped(typechecker=beartype)
 def reciprocal_uc_angles(
     alpha: scalar_float, beta: scalar_float, gamma: scalar_float
-) -> Float[Array, "3"]:
+) -> Float[Array, " 3"]:
     """Calculate reciprocal unit cell angles from direct cell angles.
 
     Args:
         alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
 
     Returns:
-        Float[Array, "3"]: Reciprocal cell angles [α*, β*, γ*] in degrees.
+        Float[Array, " 3"]: Reciprocal cell angles [α*, β*, γ*] in degrees.
 
     Algorithm:
         - Convert angles to radians
@@ -189,7 +189,7 @@ def reciprocal_uc_angles(
         (cos_angles[:, None] * cos_angles[None, :] - cos_angles[None, :])
         / (sin_angles[:, None] * sin_angles[None, :])
     )
-    reciprocal_angles: Float[Array, "3"] = jnp.array(
+    reciprocal_angles: Float[Array, " 3"] = jnp.array(
         [reciprocal_angles[1, 2], reciprocal_angles[2, 0], reciprocal_angles[0, 1]]
     )
     return reciprocal_angles
@@ -203,7 +203,7 @@ def get_unit_cell_matrix(
     alpha: scalar_float,
     beta: scalar_float,
     gamma: scalar_float,
-) -> Float[Array, "3 3"]:
+) -> Float[Array, " 3 3"]:
     """Build transformation matrix between direct and reciprocal space.
 
     Args:
@@ -211,7 +211,7 @@ def get_unit_cell_matrix(
         alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
 
     Returns:
-        Float[Array, "3 3"]: Transformation matrix from direct to reciprocal space.
+        Float[Array, " 3 3"]: Transformation matrix from direct to reciprocal space.
 
     Algorithm:
         - Calculate cell volume from lattice parameters
@@ -241,7 +241,7 @@ def get_unit_cell_matrix(
     cos_angles = jnp.array([jnp.cos(alpha_rad), jnp.cos(beta_rad), jnp.cos(gamma_rad)])
     sin_angles = jnp.array([jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)])
     volume_factor = jnp.sqrt(1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles)))
-    matrix: Float[Array, "3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
+    matrix: Float[Array, " 3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
     matrix = matrix.at[0, 0].set(a)
     matrix = matrix.at[0, 1].set(b * cos_angles[2])
     matrix = matrix.at[0, 2].set(c * cos_angles[1])
@@ -261,7 +261,7 @@ def build_cell_vectors(
     alpha: scalar_float,
     beta: scalar_float,
     gamma: scalar_float,
-) -> Float[Array, "3 3"]:
+) -> Float[Array, " 3 3"]:
     """Construct unit cell vectors from lengths and angles.
 
     Args:
@@ -269,7 +269,7 @@ def build_cell_vectors(
         alpha, beta, gamma (scalar_float): Direct cell angles in degrees.
 
     Returns:
-        Float[Array, "3 3"]: Unit cell vectors as rows of 3x3 matrix.
+        Float[Array, " 3 3"]: Unit cell vectors as rows of 3x3 matrix.
 
     Algorithm:
         - Convert angles to radians
@@ -297,32 +297,32 @@ def build_cell_vectors(
     alpha_rad = jnp.radians(alpha)
     beta_rad = jnp.radians(beta)
     gamma_rad = jnp.radians(gamma)
-    a_vec: Float[Array, "3"] = jnp.array([a, 0.0, 0.0])
-    b_x: Float[Array, ""] = b * jnp.cos(gamma_rad)
-    b_y: Float[Array, ""] = b * jnp.sin(gamma_rad)
-    b_vec: Float[Array, "3"] = jnp.array([b_x, b_y, 0.0])
-    c_x: Float[Array, ""] = c * jnp.cos(beta_rad)
-    c_y: Float[Array, ""] = c * (
+    a_vec: Float[Array, " 3"] = jnp.array([a, 0.0, 0.0])
+    b_x: Float[Array, " "] = b * jnp.cos(gamma_rad)
+    b_y: Float[Array, " "] = b * jnp.sin(gamma_rad)
+    b_vec: Float[Array, " 3"] = jnp.array([b_x, b_y, 0.0])
+    c_x: Float[Array, " "] = c * jnp.cos(beta_rad)
+    c_y: Float[Array, " "] = c * (
         (jnp.cos(alpha_rad) - jnp.cos(beta_rad) * jnp.cos(gamma_rad)) / jnp.sin(gamma_rad)
     )
-    c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
-    c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
-    c_vec: Float[Array, "3"] = jnp.array([c_x, c_y, c_z])
-    cell_vectors: Float[Array, "3 3"] = jnp.stack([a_vec, b_vec, c_vec], axis=0)
+    c_z_sq: Float[Array, " "] = (c**2) - (c_x**2) - (c_y**2)
+    c_z: Float[Array, " "] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
+    c_vec: Float[Array, " 3"] = jnp.array([c_x, c_y, c_z])
+    cell_vectors: Float[Array, " 3 3"] = jnp.stack([a_vec, b_vec, c_vec], axis=0)
     return cell_vectors
 
 
 @jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
-    vectors: Float[Array, "3 3"],
-) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
+    vectors: Float[Array, " 3 3"],
+) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
 
     Args:
-        vectors (Float[Array, "3 3"]): Unit cell vectors as rows of 3x3 matrix.
+        vectors (Float[Array, " 3 3"]): Unit cell vectors as rows of 3x3 matrix.
 
     Returns:
-        Tuple[Float[Array, "3"], Float[Array, "3"]]: Unit cell lengths
+        Tuple[Float[Array, " 3"], Float[Array, " 3"]]: Unit cell lengths
             [a, b, c] in angstroms and unit cell angles [α, β, γ] in degrees.
 
     Algorithm:
@@ -361,7 +361,7 @@ def generate_reciprocal_points(
     kmax: scalar_int,
     lmax: scalar_int,
     in_degrees: bool = True,
-) -> Float[Array, "M 3"]:
+) -> Float[Array, " M 3"]:
     """Generate reciprocal-lattice vectors based on the crystal structure.
 
     Args:
@@ -370,7 +370,7 @@ def generate_reciprocal_points(
         in_degrees (bool): Whether to use degrees for angles. Default: True.
 
     Returns:
-        Float[Array, "M 3"]: Reciprocal lattice vectors in 1/angstroms.
+        Float[Array, " M 3"]: Reciprocal lattice vectors in 1/angstroms.
 
     Algorithm:
         - Get cell parameters from crystal structure
@@ -396,10 +396,10 @@ def generate_reciprocal_points(
         >>> print(f"Number of G vectors: {len(G_vectors)}")
         >>> print(f"First few G vectors:\n{G_vectors[:5]}")
     """
-    abc: Num[Array, "3"] = crystal.cell_lengths
-    angles: Num[Array, "3"] = crystal.cell_angles
-    rec_abc: Float[Array, "3"]
-    rec_angles: Float[Array, "3"]
+    abc: Num[Array, " 3"] = crystal.cell_lengths
+    angles: Num[Array, " 3"] = crystal.cell_angles
+    rec_abc: Float[Array, " 3"]
+    rec_angles: Float[Array, " 3"]
     rec_abc, rec_angles = rh.ucell.reciprocal_uc_angles(
         unitcell_abc=abc,
         unitcell_angles=angles,
@@ -407,20 +407,20 @@ def generate_reciprocal_points(
         out_degrees=False,
     )
 
-    rec_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
+    rec_vectors: Float[Array, " 3 3"] = rh.ucell.build_cell_vectors(
         rec_abc[0], rec_abc[1], rec_abc[2], rec_angles[0], rec_angles[1], rec_angles[2]
     )
-    a_star: Float[Array, "3"] = rec_vectors[0]
-    b_star: Float[Array, "3"] = rec_vectors[1]
-    c_star: Float[Array, "3"] = rec_vectors[2]
-    hs: Num[Array, "n_h"] = jnp.arange(-hmax, hmax + 1)
-    ks: Num[Array, "n_k"] = jnp.arange(-kmax, kmax + 1)
-    ls: Num[Array, "n_l"] = jnp.arange(-lmax, lmax + 1)
-    H: Num[Array, "n_h n_k n_l"]
-    K: Num[Array, "n_h n_k n_l"]
-    L: Num[Array, "n_h n_k n_l"]
+    a_star: Float[Array, " 3"] = rec_vectors[0]
+    b_star: Float[Array, " 3"] = rec_vectors[1]
+    c_star: Float[Array, " 3"] = rec_vectors[2]
+    hs: Num[Array, " n_h"] = jnp.arange(-hmax, hmax + 1)
+    ks: Num[Array, " n_k"] = jnp.arange(-kmax, kmax + 1)
+    ls: Num[Array, " n_l"] = jnp.arange(-lmax, lmax + 1)
+    H: Num[Array, " n_h n_k n_l"]
+    K: Num[Array, " n_h n_k n_l"]
+    L: Num[Array, " n_h n_k n_l"]
     H, K, L = jnp.meshgrid(hs, ks, ls, indexing="ij")
-    hkl: Num[Array, "M 3"] = jnp.stack([H.ravel(), K.ravel(), L.ravel()], axis=-1)
+    hkl: Num[Array, " M 3"] = jnp.stack([H.ravel(), K.ravel(), L.ravel()], axis=-1)
 
     def single_G(hkl_1d):
         h_ = hkl_1d[0]
@@ -428,22 +428,22 @@ def generate_reciprocal_points(
         l_ = hkl_1d[2]
         return (h_ * a_star) + (k_ * b_star) + (l_ * c_star)
 
-    Gs: Float[Array, "M 3"] = jax.vmap(single_G)(hkl)
+    Gs: Float[Array, " M 3"] = jax.vmap(single_G)(hkl)
     return Gs
 
 
 @jaxtyped(typechecker=beartype)
 def atom_scraper(
     crystal: CrystalStructure,
-    zone_axis: Float[Array, "3"],
-    thickness: Float[Array, "3"],
+    zone_axis: Float[Array, " 3"],
+    thickness: Float[Array, " 3"],
 ) -> CrystalStructure:
     """Filter atoms within specified thickness along zone axis.
 
     Args:
         crystal (CrystalStructure): Crystal structure to filter.
-        zone_axis (Float[Array, "3"]): Zone axis direction.
-        thickness (Float[Array, "3"]): Thickness in each direction.
+        zone_axis (Float[Array, " 3"]): Zone axis direction.
+        thickness (Float[Array, " 3"]): Thickness in each direction.
 
     Returns:
         CrystalStructure: Filtered crystal structure.
@@ -471,7 +471,7 @@ def atom_scraper(
         >>> print(f"Original atoms: {len(crystal.frac_positions)}")
         >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")
     """
-    orig_cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
+    orig_cell_vectors: Float[Array, " 3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],
@@ -479,58 +479,58 @@ def atom_scraper(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
-    zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
-    cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
-    dot_vals: Float[Array, "n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
-    d_max: Float[Array, ""] = jnp.max(dot_vals)
-    dist_from_top: Float[Array, "n"] = d_max - dot_vals
+    zone_axis_norm: Float[Array, " "] = jnp.linalg.norm(zone_axis)
+    zone_axis_hat: Float[Array, " 3"] = zone_axis / (zone_axis_norm + 1e-32)
+    cart_xyz: Float[Array, " n 3"] = crystal.cart_positions[:, :3]
+    dot_vals: Float[Array, " n"] = jnp.einsum("ij,j->i", cart_xyz, zone_axis_hat)
+    d_max: Float[Array, " "] = jnp.max(dot_vals)
+    dist_from_top: Float[Array, " n"] = d_max - dot_vals
     positive_distances = dist_from_top[dist_from_top > 1e-8]
     adaptive_eps = jnp.where(
         positive_distances.size > 0,
         jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
         1e-3,
     )
-    is_top_layer_mode: Bool[Array, ""] = jnp.isclose(thickness, jnp.asarray(0.0), atol=1e-8)
-    mask: Bool[Array, "n"] = jnp.where(
+    is_top_layer_mode: Bool[Array, " "] = jnp.isclose(thickness, jnp.asarray(0.0), atol=1e-8)
+    mask: Bool[Array, " n"] = jnp.where(
         is_top_layer_mode,
         dist_from_top <= adaptive_eps,
         dist_from_top <= thickness,
     )
 
     def gather_valid_positions(
-        positions: Float[Array, "n 4"], gather_mask: Bool[Array, "n"]
-    ) -> Float[Array, "m 4"]:
+        positions: Float[Array, " n 4"], gather_mask: Bool[Array, " n"]
+    ) -> Float[Array, " m 4"]:
         return positions[gather_mask]
 
-    filtered_frac: Float[Array, "m 4"] = gather_valid_positions(crystal.frac_positions, mask)
-    filtered_cart: Float[Array, "m 4"] = gather_valid_positions(crystal.cart_positions, mask)
-    original_height: Float[Array, ""] = jnp.max(dot_vals) - jnp.min(dot_vals)
-    new_height: Float[Array, ""] = jnp.where(
+    filtered_frac: Float[Array, " m 4"] = gather_valid_positions(crystal.frac_positions, mask)
+    filtered_cart: Float[Array, " m 4"] = gather_valid_positions(crystal.cart_positions, mask)
+    original_height: Float[Array, " "] = jnp.max(dot_vals) - jnp.min(dot_vals)
+    new_height: Float[Array, " "] = jnp.where(
         is_top_layer_mode, adaptive_eps, jnp.minimum(thickness, original_height)
     )
 
     def scale_vector(
-        vec: Float[Array, "3"],
-        zone_axis_hat: Float[Array, "3"],
-        old_height: Float[Array, ""],
-        new_height: Float[Array, ""],
-    ) -> Float[Array, "3"]:
-        proj_mag: Float[Array, ""] = jnp.dot(vec, zone_axis_hat)
-        parallel_comp: Float[Array, "3"] = proj_mag * zone_axis_hat
-        perp_comp: Float[Array, "3"] = vec - parallel_comp
-        scale_factor: Float[Array, ""] = jnp.where(old_height < 1e-32, 1.0, new_height / old_height)
-        scaled_parallel: Float[Array, "3"] = scale_factor * parallel_comp
+        vec: Float[Array, " 3"],
+        zone_axis_hat: Float[Array, " 3"],
+        old_height: Float[Array, " "],
+        new_height: Float[Array, " "],
+    ) -> Float[Array, " 3"]:
+        proj_mag: Float[Array, " "] = jnp.dot(vec, zone_axis_hat)
+        parallel_comp: Float[Array, " 3"] = proj_mag * zone_axis_hat
+        perp_comp: Float[Array, " 3"] = vec - parallel_comp
+        scale_factor: Float[Array, " "] = jnp.where(old_height < 1e-32, 1.0, new_height / old_height)
+        scaled_parallel: Float[Array, " 3"] = scale_factor * parallel_comp
         return scaled_parallel + perp_comp
 
     def scale_if_needed(
-        vec: Float[Array, "3"],
-        zone_axis_hat: Float[Array, "3"],
-        original_height: Float[Array, ""],
-        new_height: Float[Array, ""],
-    ) -> Float[Array, "3"]:
-        needs_scaling: Bool[Array, ""] = jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
-        scaled: Float[Array, "3"] = scale_vector(vec, zone_axis_hat, original_height, new_height)
+        vec: Float[Array, " 3"],
+        zone_axis_hat: Float[Array, " 3"],
+        original_height: Float[Array, " "],
+        new_height: Float[Array, " "],
+    ) -> Float[Array, " 3"]:
+        needs_scaling: Bool[Array, " "] = jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
+        scaled: Float[Array, " 3"] = scale_vector(vec, zone_axis_hat, original_height, new_height)
         return jnp.where(needs_scaling, scaled, vec)
 
     scaled_vectors = jnp.stack(
