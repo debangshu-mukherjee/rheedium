@@ -76,39 +76,44 @@ class RHEEDPattern(NamedTuple):
     data including reciprocal lattice indices, outgoing wavevectors, detector
     coordinates, and intensity values for electron diffraction analysis.
 
-    Attributes:
-        G_indices (Int[Array, " N"]): Indices of reciprocal-lattice vectors
-            that satisfy reflection conditions. Variable length array of
-            integer indices.
-        k_out (Float[Array, " M 3"]): Outgoing wavevectors in 1/Å for
-            reflections. Shape (M, 3) where M is the number of reflections
-            and each row contains [kx, ky, kz] components.
-        detector_points (Float[Array, " M 2"]): Detector coordinates (Y, Z)
-            on the detector plane in Ångstroms. Shape (M, 2) where each
-            row contains [y, z] coordinates.
-        intensities (Float[Array, " M"]): Intensity values for each reflection.
-            Shape (M,) with non-negative intensity values.
+    Attributes
+    ----------
+    G_indices : Int[Array, " N"]
+        Indices of reciprocal-lattice vectors that satisfy reflection 
+        conditions. Variable length array of integer indices.
+    k_out : Float[Array, " M 3"]
+        Outgoing wavevectors in 1/Å for reflections. Shape (M, 3) where M 
+        is the number of reflections and each row contains [kx, ky, kz] 
+        components.
+    detector_points : Float[Array, " M 2"]
+        Detector coordinates (Y, Z) on the detector plane in Ångstroms. 
+        Shape (M, 2) where each row contains [y, z] coordinates.
+    intensities : Float[Array, " M"]
+        Intensity values for each reflection. Shape (M,) with non-negative 
+        intensity values.
 
-    Note:
-        This class is registered as a PyTree node, making it compatible with JAX
-        transformations like jit, grad, and vmap. All data is immutable and
-        stored in JAX arrays for efficient RHEED pattern analysis.
+    Notes
+    -----
+    This class is registered as a PyTree node, making it compatible with JAX
+    transformations like jit, grad, and vmap. All data is immutable and
+    stored in JAX arrays for efficient RHEED pattern analysis.
 
-    Examples:
-        >>> import jax.numpy as jnp
-        >>> import rheedium as rh
-        >>>
-        >>> # Create RHEED pattern data
-        >>> G_indices = jnp.array([1, 2, 3])
-        >>> k_out = jnp.array([[1.0, 0.0, 0.5], [2.0, 0.0, 1.0], [3.0, 0.0, 1.5]])
-        >>> detector_points = jnp.array([[10.0, 5.0], [20.0, 10.0], [30.0, 15.0]])
-        >>> intensities = jnp.array([100.0, 80.0, 60.0])
-        >>> pattern = rh.types.create_rheed_pattern(
-        ...     G_indices=G_indices,
-        ...     k_out=k_out,
-        ...     detector_points=detector_points,
-        ...     intensities=intensities
-        ... )
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>>
+    >>> # Create RHEED pattern data
+    >>> G_indices = jnp.array([1, 2, 3])
+    >>> k_out = jnp.array([[1.0, 0.0, 0.5], [2.0, 0.0, 1.0], [3.0, 0.0, 1.5]])
+    >>> detector_points = jnp.array([[10.0, 5.0], [20.0, 10.0], [30.0, 15.0]])
+    >>> intensities = jnp.array([100.0, 80.0, 60.0])
+    >>> pattern = rh.types.create_rheed_pattern(
+    ...     G_indices=G_indices,
+    ...     k_out=k_out,
+    ...     detector_points=detector_points,
+    ...     intensities=intensities
+    ... )
     """
 
     G_indices: Int[Array, " N"]
@@ -146,40 +151,45 @@ class RHEEDImage(NamedTuple):
     experimental parameters including beam geometry, detector calibration,
     and electron beam properties for quantitative RHEED analysis.
 
-    Attributes:
-        img_array (Float[Array, " H W"]): 2D image array with shape (height, width)
-            containing pixel intensity values. Non-negative finite values.
-        incoming_angle (scalar_float): Angle of the incoming electron beam
-            in degrees, typically between 0 and 90 degrees for grazing
-            incidence geometry.
-        calibration (Union[Float[Array, " 2"], scalar_float]): Calibration factor
-            for converting pixels to physical units. Either a scalar (same
-            calibration for both axes) or array of shape (2,) with separate
-            [x, y] calibrations in appropriate units per pixel.
-        electron_wavelength (scalar_float): Wavelength of the electrons in
-            Ångstroms. Determines the diffraction geometry and resolution.
-        detector_distance (scalar_float): Distance from the sample to the
-            detector in Ångstroms. Affects the angular resolution and
-            reciprocal space mapping.
+    Attributes
+    ----------
+    img_array : Float[Array, " H W"]
+        2D image array with shape (height, width) containing pixel intensity 
+        values. Non-negative finite values.
+    incoming_angle : scalar_float
+        Angle of the incoming electron beam in degrees, typically between 
+        0 and 90 degrees for grazing incidence geometry.
+    calibration : Union[Float[Array, " 2"], scalar_float]
+        Calibration factor for converting pixels to physical units. Either 
+        a scalar (same calibration for both axes) or array of shape (2,) 
+        with separate [x, y] calibrations in appropriate units per pixel.
+    electron_wavelength : scalar_float
+        Wavelength of the electrons in Ångstroms. Determines the diffraction 
+        geometry and resolution.
+    detector_distance : scalar_float
+        Distance from the sample to the detector in Ångstroms. Affects the 
+        angular resolution and reciprocal space mapping.
 
-    Note:
-        This class is registered as a PyTree node, making it compatible with JAX
-        transformations like jit, grad, and vmap. All data is immutable for
-        functional programming patterns and efficient image processing.
+    Notes
+    -----
+    This class is registered as a PyTree node, making it compatible with JAX
+    transformations like jit, grad, and vmap. All data is immutable for
+    functional programming patterns and efficient image processing.
 
-    Examples:
-        >>> import jax.numpy as jnp
-        >>> import rheedium as rh
-        >>>
-        >>> # Create RHEED image with experimental parameters
-        >>> image = jnp.ones((256, 512))  # 256x512 pixel RHEED image
-        >>> rheed_img = rh.types.create_rheed_image(
-        ...     img_array=image,
-        ...     incoming_angle=2.0,  # 2 degree grazing angle
-        ...     calibration=0.01,    # 0.01 units per pixel
-        ...     electron_wavelength=0.037,  # 10 keV electrons
-        ...     detector_distance=1000.0     # 1000 Å to detector
-        ... )
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>>
+    >>> # Create RHEED image with experimental parameters
+    >>> image = jnp.ones((256, 512))  # 256x512 pixel RHEED image
+    >>> rheed_img = rh.types.create_rheed_image(
+    ...     img_array=image,
+    ...     incoming_angle=2.0,  # 2 degree grazing angle
+    ...     calibration=0.01,    # 0.01 units per pixel
+    ...     electron_wavelength=0.037,  # 10 keV electrons
+    ...     detector_distance=1000.0     # 1000 Å to detector
+    ... )
     """
 
     img_array: Float[Array, " H W"]
