@@ -2,11 +2,17 @@ import os
 import sys
 from datetime import datetime
 
+# CRITICAL: Set environment variables BEFORE any imports
+# Force JAX to use CPU mode (Read the Docs servers don't have GPUs)
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+os.environ["JAX_PLATFORMS"] = "cpu"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["JAX_ENABLE_X64"] = "True"
+# Disable beartype and jaxtyping during documentation builds
+os.environ["BUILDING_DOCS"] = "1"
+
 import tomllib
 from sphinx.application import Sphinx
-
-# CRITICAL: Disable beartype during documentation builds
-os.environ["BUILDING_DOCS"] = "1"
 
 # CRITICAL: Proper path setup for autodoc
 project_root = os.path.abspath("../..")
@@ -17,10 +23,6 @@ sys.path.insert(0, src_path)
 sys.path.insert(0, project_root)
 
 print(f"Added to sys.path: {src_path}")  # Debug line
-
-# Set up JAX to avoid issues during import
-os.environ["JAX_ENABLE_X64"] = "True"
-os.environ["JAX_PLATFORMS"] = "cpu"
 
 # Read project metadata from pyproject.toml
 pyproject_path = os.path.join(project_root, "pyproject.toml")
@@ -118,15 +120,15 @@ autodoc_default_options = {
 }
 
 # Type handling with sphinx-autodoc-typehints
-autodoc_typehints = "signature"  # Show types only in signature
+autodoc_typehints = "none"  # Disable type hints in signature (NumPy docstrings handle this)
 autodoc_typehints_format = "short"
-autodoc_typehints_description_target = "all"
+autodoc_typehints_description_target = "documented"
 python_use_unqualified_type_names = True
 typehints_fully_qualified = False
 always_document_param_types = False  # Let NumPy docstrings handle this
 typehints_document_rtype = False  # Let NumPy docstrings handle this
-typehints_use_signature = True
-typehints_use_signature_return = True
+typehints_use_signature = False  # Don't add types to signature
+typehints_use_signature_return = False  # Don't add return types to signature
 autodoc_preserve_defaults = True
 autodoc_inherit_docstrings = True
 
