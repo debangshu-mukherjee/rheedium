@@ -1,0 +1,1135 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.07.19 -->
+        <title>rheedium.simul.simulator - rheedium 2025.06.23 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=25af2a20" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=3fa2ad6f" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  --color-brand-primary: #0066cc;
+  --color-brand-content: #0066cc;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #3399ff;
+  --color-brand-content: #3399ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #3399ff;
+  --color-brand-content: #3399ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">rheedium 2025.06.23 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">rheedium 2025.06.23 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../jax_validation_pattern.html">JAX Validation Pattern for Factory Functions</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Tutorials</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for rheedium.simul.simulator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module: simul.simulator</span>
+<span class="sd">-----------------------</span>
+<span class="sd">Functions for simulating RHEED patterns and calculating diffraction intensities.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">- `wavelength_ang`:</span>
+<span class="sd">    Calculate electron wavelength in angstroms</span>
+<span class="sd">- `incident_wavevector`:</span>
+<span class="sd">    Calculate incident electron wavevector</span>
+<span class="sd">- `project_on_detector`:</span>
+<span class="sd">    Project wavevectors onto detector plane</span>
+<span class="sd">- `find_kinematic_reflections`:</span>
+<span class="sd">    Find reflections satisfying kinematic conditions</span>
+<span class="sd">- `compute_kinematic_intensities`:</span>
+<span class="sd">    Calculate kinematic diffraction intensities</span>
+<span class="sd">- `simulate_rheed_pattern`:</span>
+<span class="sd">    Simulate complete RHEED pattern</span>
+<span class="sd">- `atomic_potential`:</span>
+<span class="sd">    Calculate atomic potential for intensity computation</span>
+<span class="sd">- `crystal_potential`:</span>
+<span class="sd">    Calculate multislice potential for a crystal structure</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">beartype.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxtyping</span><span class="w"> </span><span class="kn">import</span> <span class="n">Array</span><span class="p">,</span> <span class="n">Bool</span><span class="p">,</span> <span class="n">Float</span><span class="p">,</span> <span class="n">Int</span><span class="p">,</span> <span class="n">Num</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rheedium._decorators</span><span class="w"> </span><span class="kn">import</span> <span class="n">beartype</span><span class="p">,</span> <span class="n">jaxtyped</span>
+
+<span class="c1"># Remove circular import - atomic_potential is defined in this file</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rheedium.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CrystalStructure</span><span class="p">,</span>
+    <span class="n">PotentialSlices</span><span class="p">,</span>
+    <span class="n">RHEEDPattern</span><span class="p">,</span>
+    <span class="n">create_potential_slices</span><span class="p">,</span>
+    <span class="n">create_rheed_pattern</span><span class="p">,</span>
+    <span class="n">scalar_float</span><span class="p">,</span>
+    <span class="n">scalar_int</span><span class="p">,</span>
+    <span class="n">scalar_num</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rheedium.ucell</span><span class="w"> </span><span class="kn">import</span> <span class="n">bessel_kv</span><span class="p">,</span> <span class="n">generate_reciprocal_points</span>
+
+<span class="n">jax</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<span class="n">DEFAULT_KIRKLAND_PATH</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;Kirkland_Potentials.csv&quot;</span>
+
+
+<div class="viewcode-block" id="wavelength_ang">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.wavelength_ang">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">wavelength_ang</span><span class="p">(</span><span class="n">voltage_kv</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">scalar_num</span><span class="p">,</span> <span class="n">Num</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the relativistic electron wavelength in angstroms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    voltage_kV : Union[scalar_num, Num[Array, &quot; ...&quot;]]</span>
+<span class="sd">        Electron energy in kiloelectron volts.</span>
+<span class="sd">        Could be either a scalar or an array.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    wavelength_ang : Float[Array, &quot; ...&quot;]</span>
+<span class="sd">        Electron wavelength in angstroms</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; energy = jnp.array([10.0, 20.0, 30.0])</span>
+<span class="sd">    &gt;&gt;&gt; wavelengths = rh.simul.wavelength_ang(energy)</span>
+<span class="sd">    &gt;&gt;&gt; print(wavelengths)</span>
+<span class="sd">    [0.12204694 0.08588511 0.06979081]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">m</span><span class="p">:</span> <span class="n">scalar_float</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">9.109383e-31</span><span class="p">)</span>
+    <span class="n">e</span><span class="p">:</span> <span class="n">scalar_float</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">1.602177e-19</span><span class="p">)</span>
+    <span class="n">c</span><span class="p">:</span> <span class="n">scalar_float</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">299792458.0</span><span class="p">)</span>
+    <span class="n">h</span><span class="p">:</span> <span class="n">scalar_float</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">6.62607e-34</span><span class="p">)</span>
+
+    <span class="n">ev</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">voltage_kv</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="mf">1000.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="n">numerator</span><span class="p">:</span> <span class="n">scalar_float</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">h</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+    <span class="n">denominator</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">ev</span><span class="p">,</span> <span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">m</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">+</span> <span class="n">ev</span><span class="p">))</span>
+    <span class="n">wavelength_meters</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span><span class="p">)</span>
+    <span class="n">lambda_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; ...&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">1e10</span><span class="p">)</span> <span class="o">*</span> <span class="n">wavelength_meters</span>
+    <span class="k">return</span> <span class="n">lambda_angstroms</span></div>
+
+
+
+<div class="viewcode-block" id="incident_wavevector">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.incident_wavevector">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">incident_wavevector</span><span class="p">(</span><span class="n">lam_ang</span><span class="p">:</span> <span class="n">scalar_float</span><span class="p">,</span> <span class="n">theta_deg</span><span class="p">:</span> <span class="n">scalar_float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an incident wavevector k_in with magnitude (2π / λ).</span>
+
+<span class="sd">    Traveling mostly along +x, with a small angle theta from the x-y plane.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lam_ang : scalar_float</span>
+<span class="sd">        Electron wavelength in angstroms</span>
+<span class="sd">    theta_deg : scalar_float</span>
+<span class="sd">        Grazing angle in degrees</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    k_in : Float[Array, &quot; 3&quot;]</span>
+<span class="sd">        The 3D incident wavevector (1/angstrom)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Calculate wavelength for 20 kV electrons</span>
+<span class="sd">    &gt;&gt;&gt; lam = rh.ucell.wavelength_ang(20.0)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Calculate incident wavevector at 2 degree grazing angle</span>
+<span class="sd">    &gt;&gt;&gt; k_in = rh.simul.incident_wavevector(lam, 2.0)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Incident wavevector: {k_in}&quot;)</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Calculate wavevector magnitude as 2π/λ</span>
+<span class="sd">    - Convert theta from degrees to radians</span>
+<span class="sd">    - Calculate x-component using cosine of theta</span>
+<span class="sd">    - Calculate z-component using negative sine of theta</span>
+<span class="sd">    - Return 3D wavevector array with y-component as 0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">k_mag</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">lam_ang</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">theta_deg</span><span class="p">)</span>
+    <span class="n">kx</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_mag</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="n">kz</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">k_mag</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="n">k_in</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">kx</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">kz</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">k_in</span></div>
+
+
+
+<div class="viewcode-block" id="project_on_detector">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.project_on_detector">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">project_on_detector</span><span class="p">(</span>
+    <span class="n">k_out_set</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">],</span>
+    <span class="n">detector_distance</span><span class="p">:</span> <span class="n">scalar_float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 2&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project wavevectors k_out onto a plane at x = detector_distance.</span>
+
+<span class="sd">    Returns (M, 2) array of [Y, Z] coordinates on the detector.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    k_out_set : Float[Array, &quot; M 3&quot;]</span>
+<span class="sd">        (M, 3) array of outgoing wavevectors</span>
+<span class="sd">    detector_distance : scalar_float</span>
+<span class="sd">        distance (in angstroms, or same unit) where screen is placed at x = L</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    coords : Float[Array, &quot; M 2&quot;]</span>
+<span class="sd">        (M, 2) array of projected [Y, Z]</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Create some outgoing wavevectors</span>
+<span class="sd">    &gt;&gt;&gt; k_out = jnp.array([</span>
+<span class="sd">    ...     [1.0, 0.1, 0.1],  # First reflection</span>
+<span class="sd">    ...     [1.0, -0.1, 0.2], # Second reflection</span>
+<span class="sd">    ...     [1.0, 0.2, -0.1]  # Third reflection</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Project onto detector at 1000 Å distance</span>
+<span class="sd">    &gt;&gt;&gt; detector_points = rh.simul.project_on_detector(k_out, 1000.0)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Detector points: {detector_points}&quot;)</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Calculate norms of each wavevector</span>
+<span class="sd">    - Normalize wavevectors to get unit directions</span>
+<span class="sd">    - Calculate time parameter t for each ray to reach detector</span>
+<span class="sd">    - Calculate Y coordinates using y-component of direction</span>
+<span class="sd">    - Calculate Z coordinates using z-component of direction</span>
+<span class="sd">    - Stack Y and Z coordinates into final array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">norms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">k_out_set</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">directions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_out_set</span> <span class="o">/</span> <span class="p">(</span><span class="n">norms</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+    <span class="n">t_vals</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">detector_distance</span> <span class="o">/</span> <span class="p">(</span><span class="n">directions</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+    <span class="n">yy</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">directions</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">t_vals</span>
+    <span class="n">zz</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">directions</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">t_vals</span>
+    <span class="n">coords</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">yy</span><span class="p">,</span> <span class="n">zz</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">coords</span></div>
+
+
+
+<div class="viewcode-block" id="find_kinematic_reflections">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.find_kinematic_reflections">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_kinematic_reflections</span><span class="p">(</span>
+    <span class="n">k_in</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">],</span>
+    <span class="n">gs</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">],</span>
+    <span class="n">lam_ang</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">],</span>
+    <span class="n">z_sign</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K&quot;</span><span class="p">],</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 3&quot;</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns indices of G for which ||k_in + G|| ~ 2π/lam.</span>
+
+<span class="sd">    The z-component of (k_in + G) must have the specified sign.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    k_in : Float[Array, &quot; 3&quot;]</span>
+<span class="sd">        shape (3,)</span>
+<span class="sd">    Gs : Float[Array, &quot; M 3&quot;]</span>
+<span class="sd">        G vector</span>
+<span class="sd">    lam_ang : Float[Array, &quot; &quot;]</span>
+<span class="sd">        electron wavelength in Å</span>
+<span class="sd">    z_sign : scalar_float, optional</span>
+<span class="sd">        sign for z-component of k_out</span>
+<span class="sd">    tolerance : scalar_float, optional</span>
+<span class="sd">        how close to the Ewald sphere in 1/Å.</span>
+<span class="sd">        Default: 0.05</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    allowed_indices : Int[Array, &quot; K&quot;]</span>
+<span class="sd">        Allowed indices that will kinematically reflect.</span>
+<span class="sd">    k_out : Float[Array, &quot; K 3&quot;]</span>
+<span class="sd">        Outgoing wavevectors (in 1/Å) for those reflections.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Calculate incident wavevector</span>
+<span class="sd">    &gt;&gt;&gt; lam = rh.ucell.wavelength_ang(20.0)</span>
+<span class="sd">    &gt;&gt;&gt; k_in = rh.simul.incident_wavevector(lam, 2.0)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Generate some reciprocal lattice points</span>
+<span class="sd">    &gt;&gt;&gt; Gs = jnp.array([</span>
+<span class="sd">    ...     [0, 0, 0],    # (000)</span>
+<span class="sd">    ...     [1, 0, 0],    # (100)</span>
+<span class="sd">    ...     [0, 1, 0],    # (010)</span>
+<span class="sd">    ...     [1, 1, 0]     # (110)</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Find allowed reflections</span>
+<span class="sd">    &gt;&gt;&gt; indices, k_out = rh.simul.find_kinematic_reflections(</span>
+<span class="sd">    ...     k_in=k_in,</span>
+<span class="sd">    ...     Gs=Gs,</span>
+<span class="sd">    ...     lam_ang=lam,</span>
+<span class="sd">    ...     tolerance=0.1  # More lenient tolerance</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Allowed indices: {indices}&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Outgoing wavevectors: {k_out}&quot;)</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Calculate wavevector magnitude as 2π/λ</span>
+<span class="sd">    - Calculate candidate outgoing wavevectors by adding k_in to each G</span>
+<span class="sd">    - Calculate norms of candidate wavevectors</span>
+<span class="sd">    - Create mask for wavevectors close to Ewald sphere</span>
+<span class="sd">    - Create mask for wavevectors with correct z-sign</span>
+<span class="sd">    - Combine masks to get final allowed indices</span>
+<span class="sd">    - Return allowed indices and corresponding outgoing wavevectors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">k_mag</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">lam_ang</span>
+    <span class="n">k_out_candidates</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_in</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">gs</span>
+    <span class="n">norms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">k_out_candidates</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">cond_mag</span><span class="p">:</span> <span class="n">Bool</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">norms</span> <span class="o">-</span> <span class="n">k_mag</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tolerance</span>
+    <span class="n">cond_z</span><span class="p">:</span> <span class="n">Bool</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">k_out_candidates</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">])</span> <span class="o">==</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z_sign</span><span class="p">))</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">Bool</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">cond_mag</span><span class="p">,</span> <span class="n">cond_z</span><span class="p">)</span>
+    <span class="n">allowed_indices</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">k_out</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_out_candidates</span><span class="p">[</span><span class="n">allowed_indices</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">allowed_indices</span><span class="p">,</span> <span class="n">k_out</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_kinematic_intensities">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.compute_kinematic_intensities">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_kinematic_intensities</span><span class="p">(</span>
+    <span class="n">positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N 3&quot;</span><span class="p">],</span> <span class="n">g_allowed</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the kinematic intensity for each reflection.</span>
+
+<span class="sd">    Given the atomic Cartesian positions (N,3) and the</span>
+<span class="sd">    reciprocal vectors G_allowed (M,3), compute::</span>
+
+<span class="sd">        I(G) = | sum_j exp(i G·r_j) |^2</span>
+
+<span class="sd">    ignoring atomic form factors, etc.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positions : Float[Array, &quot; N 3&quot;]</span>
+<span class="sd">        Atomic positions in Cartesian coordinates.</span>
+<span class="sd">    G_allowed : Float[Array, &quot; M 3&quot;]</span>
+<span class="sd">        Reciprocal lattice vectors that satisfy reflection condition.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    intensities : Float[Array, &quot; M&quot;]</span>
+<span class="sd">        Intensities for each reflection.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Create a simple unit cell with two atoms</span>
+<span class="sd">    &gt;&gt;&gt; positions = jnp.array([</span>
+<span class="sd">    ...     [0.0, 0.0, 0.0],  # First atom at origin</span>
+<span class="sd">    ...     [0.5, 0.5, 0.5]   # Second atom at cell center</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Define some allowed G vectors</span>
+<span class="sd">    &gt;&gt;&gt; G_allowed = jnp.array([</span>
+<span class="sd">    ...     [1, 0, 0],    # (100)</span>
+<span class="sd">    ...     [0, 1, 0],    # (010)</span>
+<span class="sd">    ...     [1, 1, 0]     # (110)</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Calculate intensities</span>
+<span class="sd">    &gt;&gt;&gt; intensities = rh.simul.compute_kinematic_intensities(</span>
+<span class="sd">    ...     positions=positions,</span>
+<span class="sd">    ...     G_allowed=G_allowed</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;Reflection intensities: {intensities}&quot;)</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Define inner function to compute intensity for single G vector</span>
+<span class="sd">    - Calculate phase factors for each atom position</span>
+<span class="sd">    - Sum real and imaginary parts of phase factors</span>
+<span class="sd">    - Compute intensity as sum of squared real and imaginary parts</span>
+<span class="sd">    - Vectorize computation over all allowed G vectors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_intensity_for_g</span><span class="p">(</span><span class="n">g_</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate intensity for a single G vector.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        g_ : Float[Array, &quot; 3&quot;]</span>
+<span class="sd">            Single reciprocal lattice vector</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Float[Array, &quot; &quot;]</span>
+<span class="sd">            Intensity value for this G vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">phases</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;j,ij-&gt;i&quot;</span><span class="p">,</span> <span class="n">g_</span><span class="p">,</span> <span class="n">positions</span><span class="p">)</span>
+        <span class="n">re</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phases</span><span class="p">))</span>
+        <span class="n">im</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phases</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">re</span> <span class="o">*</span> <span class="n">re</span> <span class="o">+</span> <span class="n">im</span> <span class="o">*</span> <span class="n">im</span>
+
+    <span class="n">intensities</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_intensity_for_g</span><span class="p">)(</span><span class="n">g_allowed</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">intensities</span></div>
+
+
+
+<div class="viewcode-block" id="simulate_rheed_pattern">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.simulate_rheed_pattern">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">simulate_rheed_pattern</span><span class="p">(</span>
+    <span class="n">crystal</span><span class="p">:</span> <span class="n">CrystalStructure</span><span class="p">,</span>
+    <span class="n">voltage_kv</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_num</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">theta_deg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">hmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">kmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">lmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">detector_distance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_num</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="p">,</span>
+    <span class="n">z_sign</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">pixel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RHEEDPattern</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute a kinematic RHEED pattern for the given crystal.</span>
+
+<span class="sd">    Uses atomic form factors from Kirkland potentials for realistic intensities.</span>
+
+<span class="sd">    This function combines several steps:</span>
+<span class="sd">    1. Generates reciprocal lattice points using :func:`generate_reciprocal_points`</span>
+<span class="sd">    2. Calculates incident wavevector using :func:`incident_wavevector`</span>
+<span class="sd">    3. Finds allowed reflections using :func:`find_kinematic_reflections`</span>
+<span class="sd">    4. Projects points onto detector using :func:`project_on_detector`</span>
+<span class="sd">    5. Computes intensities using atomic form factors from :func:`atomic_potential`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    crystal : CrystalStructure</span>
+<span class="sd">        Crystal structure to simulate.</span>
+<span class="sd">        Can be created using :func:`rheedium.types.create_crystal_structure`</span>
+<span class="sd">        or loaded from a CIF file using :func:`rheedium.inout.parse_cif`</span>
+<span class="sd">    voltage_kV : scalar_num, optional</span>
+<span class="sd">        Accelerating voltage in kilovolts.</span>
+<span class="sd">        Default: 10.0</span>
+<span class="sd">    theta_deg : scalar_float, optional</span>
+<span class="sd">        Grazing angle in degrees.</span>
+<span class="sd">        Default: 1.0</span>
+<span class="sd">    hmax : scalar_int, optional</span>
+<span class="sd">        h Bound on reciprocal lattice indices.</span>
+<span class="sd">        Default is 3.</span>
+<span class="sd">    kmax : scalar_int, optional</span>
+<span class="sd">        k Bound on reciprocal lattice indices.</span>
+<span class="sd">        Default is 3.</span>
+<span class="sd">    lmax : scalar_int, optional</span>
+<span class="sd">        l Bound on reciprocal lattice indices.</span>
+<span class="sd">        Default is 1.</span>
+<span class="sd">    tolerance : scalar_float, optional</span>
+<span class="sd">        How close to the Ewald sphere in 1/Å.</span>
+<span class="sd">        Default: 0.05</span>
+<span class="sd">    detector_distance : scalar_float, optional</span>
+<span class="sd">        Distance from sample to detector plane in angstroms.</span>
+<span class="sd">        Default: 1000.0</span>
+<span class="sd">    z_sign : scalar_float, optional</span>
+<span class="sd">        If +1, keep reflections with positive z in k_out.</span>
+<span class="sd">        Default: 1.0</span>
+<span class="sd">    pixel_size : scalar_float, optional</span>
+<span class="sd">        Pixel size for atomic potential calculation in angstroms.</span>
+<span class="sd">        Default: 0.1</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pattern : RHEEDPattern</span>
+<span class="sd">        A NamedTuple capturing reflection indices, k_out, and detector coords.</span>
+<span class="sd">        Can be visualized using :func:`rheedium.plots.plot_rheed`</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import rheedium as rh</span>
+<span class="sd">    &gt;&gt;&gt; import jax.numpy as jnp</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Load crystal structure from CIF file</span>
+<span class="sd">    &gt;&gt;&gt; crystal = rh.inout.parse_cif(&quot;path/to/crystal.cif&quot;)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Simulate RHEED pattern</span>
+<span class="sd">    &gt;&gt;&gt; pattern = rh.simul.simulate_rheed_pattern(</span>
+<span class="sd">    ...     crystal=crystal,</span>
+<span class="sd">    ...     voltage_kV=jnp.asarray(20.0),  # 20 kV beam</span>
+<span class="sd">    ...     theta_deg=jnp.asarray(2.0),    # 2 degree grazing angle</span>
+<span class="sd">    ...     hmax=jnp.asarray(4),           # Generate more reflections</span>
+<span class="sd">    ...     kmax=jnp.asarray(4),</span>
+<span class="sd">    ...     lmax=jnp.asarray(2)</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Plot the pattern</span>
+<span class="sd">    &gt;&gt;&gt; rh.plots.plot_rheed(pattern, grid_size=400)</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Build real-space cell vectors from cell parameters</span>
+<span class="sd">    - Generate reciprocal lattice points up to specified bounds</span>
+<span class="sd">    - Calculate electron wavelength from voltage</span>
+<span class="sd">    - Build incident wavevector at specified angle</span>
+<span class="sd">    - Find G vectors satisfying reflection condition</span>
+<span class="sd">    - Project resulting k_out onto detector plane</span>
+<span class="sd">    - Extract unique atomic numbers from crystal</span>
+<span class="sd">    - Calculate atomic potentials for each element type</span>
+<span class="sd">    - Compute structure factors with atomic form factors</span>
+<span class="sd">    - Create and return RHEEDPattern with computed data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gs</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">generate_reciprocal_points</span><span class="p">(</span>
+        <span class="n">crystal</span><span class="o">=</span><span class="n">crystal</span><span class="p">,</span>
+        <span class="n">hmax</span><span class="o">=</span><span class="n">hmax</span><span class="p">,</span>
+        <span class="n">kmax</span><span class="o">=</span><span class="n">kmax</span><span class="p">,</span>
+        <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+        <span class="n">in_degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lam_ang</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wavelength_ang</span><span class="p">(</span><span class="n">voltage_kv</span><span class="p">)</span>
+    <span class="n">k_in</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">incident_wavevector</span><span class="p">(</span><span class="n">lam_ang</span><span class="p">,</span> <span class="n">theta_deg</span><span class="p">)</span>
+    <span class="n">allowed_indices</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K&quot;</span><span class="p">]</span>
+    <span class="n">k_out</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 3&quot;</span><span class="p">]</span>
+    <span class="n">allowed_indices</span><span class="p">,</span> <span class="n">k_out</span> <span class="o">=</span> <span class="n">find_kinematic_reflections</span><span class="p">(</span>
+        <span class="n">k_in</span><span class="o">=</span><span class="n">k_in</span><span class="p">,</span> <span class="n">gs</span><span class="o">=</span><span class="n">gs</span><span class="p">,</span> <span class="n">lam_ang</span><span class="o">=</span><span class="n">lam_ang</span><span class="p">,</span> <span class="n">z_sign</span><span class="o">=</span><span class="n">z_sign</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">tolerance</span>
+    <span class="p">)</span>
+    <span class="n">detector_points</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">project_on_detector</span><span class="p">(</span><span class="n">k_out</span><span class="p">,</span> <span class="n">detector_distance</span><span class="p">)</span>
+    <span class="n">g_allowed</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gs</span><span class="p">[</span><span class="n">allowed_indices</span><span class="p">]</span>
+    <span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">crystal</span><span class="o">.</span><span class="n">cart_positions</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">atomic_numbers</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">crystal</span><span class="o">.</span><span class="n">cart_positions</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="n">unique_atomic_numbers</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">atomic_numbers</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_form_factor_for_atom</span><span class="p">(</span>
+        <span class="n">atomic_num</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; n n&quot;</span><span class="p">]:</span>
+        <span class="n">atomic_num_int</span><span class="p">:</span> <span class="n">scalar_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">atomic_num</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">atomic_potential</span><span class="p">(</span>
+            <span class="n">atom_no</span><span class="o">=</span><span class="n">atomic_num_int</span><span class="p">,</span>
+            <span class="n">pixel_size</span><span class="o">=</span><span class="n">pixel_size</span><span class="p">,</span>
+            <span class="n">sampling</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+            <span class="n">potential_extent</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">form_factors</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; U n n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_calculate_form_factor_for_atom</span><span class="p">)(</span>
+        <span class="n">unique_atomic_numbers</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_structure_factor_with_form_factors</span><span class="p">(</span>
+        <span class="n">g_vec</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]:</span>
+        <span class="n">phases</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;j,ij-&gt;i&quot;</span><span class="p">,</span> <span class="n">g_vec</span><span class="p">,</span> <span class="n">atom_positions</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_get_form_factor_for_atom</span><span class="p">(</span><span class="n">atom_idx</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]:</span>
+            <span class="n">atomic_num</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atomic_numbers</span><span class="p">[</span><span class="n">atom_idx</span><span class="p">]</span>
+            <span class="n">form_factor_idx</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">unique_atomic_numbers</span> <span class="o">==</span> <span class="n">atomic_num</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">form_factor_matrix</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; n n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">form_factors</span><span class="p">[</span><span class="n">form_factor_idx</span><span class="p">]</span>
+            <span class="n">center_idx</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">form_factor_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="k">return</span> <span class="n">form_factor_matrix</span><span class="p">[</span><span class="n">center_idx</span><span class="p">,</span> <span class="n">center_idx</span><span class="p">]</span>
+
+        <span class="n">atom_indices</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atomic_numbers</span><span class="p">))</span>
+        <span class="n">form_factor_values</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_get_form_factor_for_atom</span><span class="p">)(</span><span class="n">atom_indices</span><span class="p">)</span>
+        <span class="n">complex_amplitudes</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">form_factor_values</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phases</span><span class="p">)</span>
+        <span class="n">total_amplitude</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">complex_amplitudes</span><span class="p">)</span>
+        <span class="n">intensity</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">total_amplitude</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="n">total_amplitude</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">intensity</span>
+
+    <span class="n">intensities</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_compute_structure_factor_with_form_factors</span><span class="p">)(</span>
+        <span class="n">g_allowed</span>
+    <span class="p">)</span>
+    <span class="n">pattern</span><span class="p">:</span> <span class="n">RHEEDPattern</span> <span class="o">=</span> <span class="n">create_rheed_pattern</span><span class="p">(</span>
+        <span class="n">G_indices</span><span class="o">=</span><span class="n">allowed_indices</span><span class="p">,</span>
+        <span class="n">k_out</span><span class="o">=</span><span class="n">k_out</span><span class="p">,</span>
+        <span class="n">detector_points</span><span class="o">=</span><span class="n">detector_points</span><span class="p">,</span>
+        <span class="n">intensities</span><span class="o">=</span><span class="n">intensities</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pattern</span></div>
+
+
+
+<div class="viewcode-block" id="atomic_potential">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.atomic_potential">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_potential</span><span class="p">(</span>
+    <span class="n">atom_no</span><span class="p">:</span> <span class="n">scalar_int</span><span class="p">,</span>
+    <span class="n">pixel_size</span><span class="p">:</span> <span class="n">scalar_float</span><span class="p">,</span>
+    <span class="n">grid_shape</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">,</span> <span class="n">scalar_int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">center_coords</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 2&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">sampling</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+    <span class="n">potential_extent</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span>
+    <span class="n">datafile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">DEFAULT_KIRKLAND_PATH</span><span class="p">),</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the projected potential of a single atom using Kirkland scattering factors.</span>
+
+<span class="sd">    The potential can be centered at arbitrary coordinates within a custom grid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    atom_no : scalar_int</span>
+<span class="sd">        Atomic number of the atom whose potential is being calculated</span>
+<span class="sd">    pixel_size : scalar_float</span>
+<span class="sd">        Real space pixel size in Ångstroms</span>
+<span class="sd">    grid_shape : Tuple[scalar_int, scalar_int], optional</span>
+<span class="sd">        Shape of the output grid (height, width). If None, calculated from potential_extent</span>
+<span class="sd">    center_coords : Float[Array, &quot; 2&quot;], optional</span>
+<span class="sd">        (x, y) coordinates in Ångstroms where atom should be centered.</span>
+<span class="sd">        If None, centers at grid center</span>
+<span class="sd">    sampling : scalar_int, optional</span>
+<span class="sd">        Supersampling factor for increased accuracy. Default is 16</span>
+<span class="sd">    potential_extent : scalar_float, optional</span>
+<span class="sd">        Distance in Ångstroms from atom center to calculate potential. Default is 4.0 Å</span>
+<span class="sd">    datafile : str, optional</span>
+<span class="sd">        Path to CSV file containing Kirkland scattering factors</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    potential : Float[Array, &quot; h w&quot;]</span>
+<span class="sd">        Projected potential matrix with atom centered at specified coordinates</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Define physical constants and load Kirkland parameters</span>
+<span class="sd">    - Determine grid size and center coordinates</span>
+<span class="sd">    - Calculate step size for supersampling</span>
+<span class="sd">    - Create coordinate grid with atom centered at specified position</span>
+<span class="sd">    - Calculate radial distances from atom center</span>
+<span class="sd">    - Compute Bessel and Gaussian terms using Kirkland parameters</span>
+<span class="sd">    - Combine terms to get total potential</span>
+<span class="sd">    - Downsample to target resolution using average pooling</span>
+<span class="sd">    - Return final potential matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a0</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">0.5292</span><span class="p">)</span>
+    <span class="n">ek</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">14.4</span><span class="p">)</span>
+    <span class="n">term1</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">a0</span> <span class="o">*</span> <span class="n">ek</span>
+    <span class="n">term2</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">a0</span> <span class="o">*</span> <span class="n">ek</span>
+    <span class="n">kirkland_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">kirkland_array</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 103 12&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kirkland_df</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">kirk_params</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 12&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kirkland_array</span><span class="p">[</span><span class="n">atom_no</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">step_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pixel_size</span> <span class="o">/</span> <span class="n">sampling</span>
+    <span class="k">if</span> <span class="n">grid_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">grid_extent</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">potential_extent</span>
+        <span class="n">n_points</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">grid_extent</span> <span class="o">/</span> <span class="n">step_size</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">grid_height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_points</span>
+        <span class="n">grid_width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_points</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">grid_height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">sampling</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">grid_width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">sampling</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">center_coords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">center_x</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">center_y</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">center_x</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">center_coords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">center_y</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">center_coords</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">y_coords</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_height</span><span class="p">)</span> <span class="o">-</span> <span class="n">grid_height</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="p">)</span> <span class="o">*</span> <span class="n">step_size</span> <span class="o">+</span> <span class="n">center_y</span>
+    <span class="n">x_coords</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_width</span><span class="p">)</span> <span class="o">-</span> <span class="n">grid_width</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">step_size</span> <span class="o">+</span> <span class="n">center_x</span>
+    <span class="n">ya</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span>
+    <span class="n">xa</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span>
+    <span class="n">ya</span><span class="p">,</span> <span class="n">xa</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">y_coords</span><span class="p">,</span> <span class="n">x_coords</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s2">&quot;ij&quot;</span><span class="p">)</span>
+    <span class="n">r</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">xa</span> <span class="o">-</span> <span class="n">center_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ya</span> <span class="o">-</span> <span class="n">center_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">bessel_term1</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">bessel_kv</span><span class="p">(</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span>
+    <span class="p">)</span>
+    <span class="n">bessel_term2</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">bessel_kv</span><span class="p">(</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span>
+    <span class="p">)</span>
+    <span class="n">bessel_term3</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="n">bessel_kv</span><span class="p">(</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span>
+    <span class="p">)</span>
+    <span class="n">part1</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">term1</span> <span class="o">*</span> <span class="p">(</span><span class="n">bessel_term1</span> <span class="o">+</span> <span class="n">bessel_term2</span> <span class="o">+</span> <span class="n">bessel_term3</span><span class="p">)</span>
+    <span class="n">gauss_term1</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+        <span class="o">-</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span><span class="o">**</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="n">gauss_term2</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">9</span><span class="p">])</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+        <span class="o">-</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">9</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span><span class="o">**</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="n">gauss_term3</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">kirk_params</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">11</span><span class="p">])</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+        <span class="o">-</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">kirk_params</span><span class="p">[</span><span class="mi">11</span><span class="p">])</span> <span class="o">*</span> <span class="n">r</span><span class="o">**</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="n">part2</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">term2</span> <span class="o">*</span> <span class="p">(</span><span class="n">gauss_term1</span> <span class="o">+</span> <span class="n">gauss_term2</span> <span class="o">+</span> <span class="n">gauss_term3</span><span class="p">)</span>
+    <span class="n">supersampled_potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">part1</span> <span class="o">+</span> <span class="n">part2</span>
+    <span class="k">if</span> <span class="n">grid_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">target_height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_height</span> <span class="o">//</span> <span class="n">sampling</span>
+        <span class="n">target_width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_width</span> <span class="o">//</span> <span class="n">sampling</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">target_height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">target_width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">supersampled_potential</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">supersampled_potential</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">new_height</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">//</span> <span class="n">sampling</span><span class="p">)</span> <span class="o">*</span> <span class="n">sampling</span>
+    <span class="n">new_width</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">width</span> <span class="o">//</span> <span class="n">sampling</span><span class="p">)</span> <span class="o">*</span> <span class="n">sampling</span>
+    <span class="n">cropped</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h_crop w_crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">supersampled_potential</span><span class="p">[:</span><span class="n">new_height</span><span class="p">,</span> <span class="p">:</span><span class="n">new_width</span><span class="p">]</span>
+    <span class="n">reshaped</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h_new sampling w_new sampling&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cropped</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+        <span class="n">new_height</span> <span class="o">//</span> <span class="n">sampling</span><span class="p">,</span> <span class="n">sampling</span><span class="p">,</span> <span class="n">new_width</span> <span class="o">//</span> <span class="n">sampling</span><span class="p">,</span> <span class="n">sampling</span>
+    <span class="p">)</span>
+    <span class="n">potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h_new w_new&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">reshaped</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">potential_resized</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">potential</span><span class="p">[:</span><span class="n">target_height</span><span class="p">,</span> <span class="p">:</span><span class="n">target_width</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">potential_resized</span></div>
+
+
+
+<div class="viewcode-block" id="crystal_potential">
+<a class="viewcode-back" href="../../../api.html#rheedium.simul.crystal_potential">[docs]</a>
+<span class="nd">@jaxtyped</span><span class="p">(</span><span class="n">typechecker</span><span class="o">=</span><span class="n">beartype</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">crystal_potential</span><span class="p">(</span>
+    <span class="n">crystal</span><span class="p">:</span> <span class="n">CrystalStructure</span><span class="p">,</span>
+    <span class="n">slice_thickness</span><span class="p">:</span> <span class="n">scalar_float</span><span class="p">,</span>
+    <span class="n">grid_shape</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">,</span> <span class="n">scalar_int</span><span class="p">],</span>
+    <span class="n">physical_extent</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">,</span> <span class="n">scalar_float</span><span class="p">],</span>
+    <span class="n">pixel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">sampling</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">scalar_int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PotentialSlices</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the multislice potential for a crystal structure.</span>
+
+<span class="sd">    Uses an optimized approach: compute atomic potentials once per unique atom type,</span>
+<span class="sd">    then use Fourier shifts to position them at their actual coordinates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    crystal : CrystalStructure</span>
+<span class="sd">        Crystal structure to compute potential for</span>
+<span class="sd">    slice_thickness : scalar_float</span>
+<span class="sd">        Thickness of each slice in angstroms</span>
+<span class="sd">    grid_shape : Tuple[scalar_int, scalar_int]</span>
+<span class="sd">        Shape of the output grid (height, width) for each slice</span>
+<span class="sd">    physical_extent : Tuple[scalar_float, scalar_float]</span>
+<span class="sd">        Physical size of the grid (y_extent, x_extent) in angstroms</span>
+<span class="sd">    pixel_size : scalar_float, optional</span>
+<span class="sd">        Real space pixel size in angstroms.</span>
+<span class="sd">        Default: 0.1</span>
+<span class="sd">    sampling : scalar_int, optional</span>
+<span class="sd">        Supersampling factor for potential calculation.</span>
+<span class="sd">        Default: 16</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    potential_slices : PotentialSlices</span>
+<span class="sd">        Structured potential data containing slice arrays and calibration information</span>
+
+<span class="sd">    Algorithm</span>
+<span class="sd">    ---------</span>
+<span class="sd">    - Extract atomic positions and numbers from crystal structure</span>
+<span class="sd">    - Find unique atomic numbers and compute their centered potentials once</span>
+<span class="sd">    - Calculate z-range and determine number of slices needed</span>
+<span class="sd">    - Calculate pixel calibrations and coordinate grids</span>
+<span class="sd">    - For each slice:</span>
+<span class="sd">        - Find atoms within the slice boundaries</span>
+<span class="sd">        - Group atoms by atomic number</span>
+<span class="sd">        - For each unique atom type in slice:</span>
+<span class="sd">            - Use Fourier shifts to position atoms at their x,y coordinates</span>
+<span class="sd">            - Sum shifted potentials for all atoms of this type</span>
+<span class="sd">        - Sum contributions from all atom types to get total slice potential</span>
+<span class="sd">    - Create PotentialSlices object with slice data and metadata</span>
+<span class="sd">    - Return structured potential slices</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">crystal</span><span class="o">.</span><span class="n">cart_positions</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">atomic_numbers</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">crystal</span><span class="o">.</span><span class="n">cart_positions</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">unique_atomic_numbers</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">atomic_numbers</span><span class="p">)</span>
+    <span class="n">y_calibration</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">physical_extent</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">grid_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x_calibration</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">physical_extent</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">grid_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_centered_potential</span><span class="p">(</span><span class="n">atomic_num</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">atomic_potential</span><span class="p">(</span>
+            <span class="n">atom_no</span><span class="o">=</span><span class="n">atomic_num</span><span class="p">,</span>
+            <span class="n">pixel_size</span><span class="o">=</span><span class="n">pixel_size</span><span class="p">,</span>
+            <span class="n">grid_shape</span><span class="o">=</span><span class="n">grid_shape</span><span class="p">,</span>
+            <span class="n">center_coords</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Centered potential</span>
+            <span class="n">sampling</span><span class="o">=</span><span class="n">sampling</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">centered_potentials</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; U h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_compute_centered_potential</span><span class="p">)(</span>
+        <span class="n">unique_atomic_numbers</span>
+    <span class="p">)</span>
+    <span class="n">z_coords</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atom_positions</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">z_min</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">z_coords</span><span class="p">)</span>
+    <span class="n">z_max</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">z_coords</span><span class="p">)</span>
+    <span class="n">z_range</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_max</span> <span class="o">-</span> <span class="n">z_min</span>
+    <span class="n">n_slices</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">z_range</span> <span class="o">/</span> <span class="n">slice_thickness</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">n_slices</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">n_slices</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fourier_shift_potential</span><span class="p">(</span>
+        <span class="n">potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">],</span>
+        <span class="n">shift_x</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">],</span>
+        <span class="n">shift_y</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply Fourier shift theorem to translate potential in real space.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        potential : Float[Array, &quot; h w&quot;]</span>
+<span class="sd">            Input potential to be shifted</span>
+<span class="sd">        shift_x : Float[Array, &quot; &quot;]</span>
+<span class="sd">            Shift in x-direction in angstroms</span>
+<span class="sd">        shift_y : Float[Array, &quot; &quot;]</span>
+<span class="sd">            Shift in y-direction in angstroms</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        shifted_potential : Float[Array, &quot; h w&quot;]</span>
+<span class="sd">            Potential shifted to new position</span>
+
+<span class="sd">        Algorithm</span>
+<span class="sd">        ---------</span>
+<span class="sd">        - Convert shifts from physical units to pixel units</span>
+<span class="sd">        - Create frequency grids for FFT</span>
+<span class="sd">        - Apply phase shift in Fourier domain</span>
+<span class="sd">        - Transform back to real space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shift_pixels_x</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">shift_x</span> <span class="o">/</span> <span class="n">x_calibration</span>
+        <span class="n">shift_pixels_y</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">shift_y</span> <span class="o">/</span> <span class="n">y_calibration</span>
+        <span class="n">ky</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">kx</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">ky_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span>
+        <span class="n">kx_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span>
+        <span class="n">ky_grid</span><span class="p">,</span> <span class="n">kx_grid</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">ky</span><span class="p">,</span> <span class="n">kx</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s2">&quot;ij&quot;</span><span class="p">)</span>
+        <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+            <span class="o">-</span><span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">kx_grid</span> <span class="o">*</span> <span class="n">shift_pixels_x</span> <span class="o">+</span> <span class="n">ky_grid</span> <span class="o">*</span> <span class="n">shift_pixels_y</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">potential_fft</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">potential</span><span class="p">)</span>
+        <span class="n">shifted_fft</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">potential_fft</span> <span class="o">*</span> <span class="n">phase_shift</span>
+        <span class="n">shifted_potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">shifted_fft</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">shifted_potential</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_slice_potential</span><span class="p">(</span><span class="n">slice_idx</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+        <span class="n">slice_z_start</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_min</span> <span class="o">+</span> <span class="n">slice_idx</span> <span class="o">*</span> <span class="n">slice_thickness</span>
+        <span class="n">slice_z_end</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slice_z_start</span> <span class="o">+</span> <span class="n">slice_thickness</span>
+        <span class="n">atoms_in_slice</span><span class="p">:</span> <span class="n">Bool</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+            <span class="n">z_coords</span> <span class="o">&gt;=</span> <span class="n">slice_z_start</span><span class="p">,</span> <span class="n">z_coords</span> <span class="o">&lt;</span> <span class="n">slice_z_end</span>
+        <span class="p">)</span>
+        <span class="n">slice_atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atom_positions</span><span class="p">[</span><span class="n">atoms_in_slice</span><span class="p">]</span>
+        <span class="n">slice_atomic_numbers</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atomic_numbers</span><span class="p">[</span><span class="n">atoms_in_slice</span><span class="p">]</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_process_atom_type</span><span class="p">(</span><span class="n">unique_atomic_num</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+            <span class="n">potential_idx</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">unique_atomic_numbers</span> <span class="o">==</span> <span class="n">unique_atomic_num</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">base_potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">centered_potentials</span><span class="p">[</span><span class="n">potential_idx</span><span class="p">]</span>
+            <span class="n">atoms_of_type</span><span class="p">:</span> <span class="n">Bool</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slice_atomic_numbers</span> <span class="o">==</span> <span class="n">unique_atomic_num</span>
+            <span class="n">positions_of_type</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K 3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slice_atom_positions</span><span class="p">[</span><span class="n">atoms_of_type</span><span class="p">]</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_shift_single_atom</span><span class="p">(</span><span class="n">atom_pos</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; 3&quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+                <span class="n">shift_x</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atom_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">shift_y</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atom_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">_fourier_shift_potential</span><span class="p">(</span><span class="n">base_potential</span><span class="p">,</span> <span class="n">shift_x</span><span class="p">,</span> <span class="n">shift_y</span><span class="p">)</span>
+
+            <span class="n">n_atoms_of_type</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">positions_of_type</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_compute_type_contribution</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+                <span class="n">shifted_potentials</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; K h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_shift_single_atom</span><span class="p">)(</span>
+                    <span class="n">positions_of_type</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">shifted_potentials</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_return_zero_contribution</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+            <span class="n">type_contribution</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+                <span class="n">n_atoms_of_type</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_compute_type_contribution</span><span class="p">,</span> <span class="n">_return_zero_contribution</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">type_contribution</span>
+
+        <span class="n">n_atoms_in_slice</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slice_atom_positions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_compute_slice_sum</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+            <span class="n">unique_slice_numbers</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; V&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">slice_atomic_numbers</span><span class="p">)</span>
+            <span class="n">type_contributions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; V h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_process_atom_type</span><span class="p">)(</span>
+                <span class="n">unique_slice_numbers</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">type_contributions</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_return_empty_slice</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">grid_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="n">slice_potential</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+            <span class="n">n_atoms_in_slice</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_compute_slice_sum</span><span class="p">,</span> <span class="n">_return_empty_slice</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">slice_potential</span>
+
+    <span class="n">slice_indices</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; n_slices&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_slices</span><span class="p">)</span>
+    <span class="n">slice_arrays</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s2">&quot; n_slices h w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_calculate_slice_potential</span><span class="p">)(</span>
+        <span class="n">slice_indices</span>
+    <span class="p">)</span>
+    <span class="n">potential_slices</span><span class="p">:</span> <span class="n">PotentialSlices</span> <span class="o">=</span> <span class="n">create_potential_slices</span><span class="p">(</span>
+        <span class="n">slices</span><span class="o">=</span><span class="n">slice_arrays</span><span class="p">,</span>
+        <span class="n">slice_thickness</span><span class="o">=</span><span class="n">slice_thickness</span><span class="p">,</span>
+        <span class="n">x_calibration</span><span class="o">=</span><span class="n">x_calibration</span><span class="p">,</span>
+        <span class="n">y_calibration</span><span class="o">=</span><span class="n">y_calibration</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">potential_slices</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Debangshu Mukherjee
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=0cdc004a"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/custom.js?v=2bc55c53"></script>
+    </body>
+</html>
