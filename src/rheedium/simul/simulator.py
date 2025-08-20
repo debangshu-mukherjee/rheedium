@@ -33,52 +33,48 @@ from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 import rheedium as rh
-from rheedium.types import (CrystalStructure, PotentialSlices, RHEEDPattern,
-                            scalar_float, scalar_int, scalar_num)
+from rheedium.types import (
+    CrystalStructure,
+    PotentialSlices,
+    RHEEDPattern,
+    scalar_float,
+    scalar_int,
+    scalar_num,
+)
 
 jax.config.update("jax_enable_x64", True)
-DEFAULT_KIRKLAND_PATH = (
-    Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
-)
+DEFAULT_KIRKLAND_PATH = Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
 
 
 @jaxtyped(typechecker=beartype)
 def wavelength_ang(
     voltage_kV: Union[scalar_num, Num[Array, "..."]],
 ) -> Float[Array, "..."]:
-    """
-    Description
-    -----------
-    Calculate the relativistic electron wavelength in angstroms.
+    """Calculate the relativistic electron wavelength in angstroms.
 
-    Parameters
-    ----------
-    - `voltage_kV` (Union[scalar_num, Num[Array, "..."]]):
-        Electron energy in kiloelectron volts
-        Could be either a scalar or an array.
+    Args:
+        voltage_kV (Union[scalar_num, Num[Array, "..."]]):
+            Electron energy in kiloelectron volts.
+            Could be either a scalar or an array.
 
-    Returns
-    -------
-    - `wavelength_ang` (Float[Array, "..."]):
-        Electron wavelength in angstroms
+    Returns:
+        wavelength_ang (Float[Array, "..."]):
+            Electron wavelength in angstroms
 
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-    >>> import rheedium as rh
-    >>> energy = jnp.array([10.0, 20.0, 30.0])
-    >>> wavelengths = rh.simul.wavelength_ang(energy)
-    >>> print(wavelengths)
-    [0.12204694 0.08588511 0.06979081]
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import rheedium as rh
+        >>> energy = jnp.array([10.0, 20.0, 30.0])
+        >>> wavelengths = rh.simul.wavelength_ang(energy)
+        >>> print(wavelengths)
+        [0.12204694 0.08588511 0.06979081]
     """
     m: scalar_float = jnp.asarray(9.109383e-31)
     e: scalar_float = jnp.asarray(1.602177e-19)
     c: scalar_float = jnp.asarray(299792458.0)
     h: scalar_float = jnp.asarray(6.62607e-34)
 
-    eV: Float[Array, "..."] = (
-        jnp.float64(voltage_kV) * jnp.float64(1000.0) * jnp.float64(e)
-    )
+    eV: Float[Array, "..."] = jnp.float64(voltage_kV) * jnp.float64(1000.0) * jnp.float64(e)
     numerator: scalar_float = jnp.multiply(jnp.square(h), jnp.square(c))
     denominator: Float[Array, "..."] = jnp.multiply(eV, ((2 * m * jnp.square(c)) + eV))
     wavelength_meters: Float[Array, "..."] = jnp.sqrt(numerator / denominator)
@@ -87,46 +83,38 @@ def wavelength_ang(
 
 
 @jaxtyped(typechecker=beartype)
-def incident_wavevector(
-    lam_ang: scalar_float, theta_deg: scalar_float
-) -> Float[Array, "3"]:
-    """
-    Description
-    -----------
-    Build an incident wavevector k_in with magnitude (2π / λ),
-    traveling mostly along +x, with a small angle theta from the x-y plane.
+def incident_wavevector(lam_ang: scalar_float, theta_deg: scalar_float) -> Float[Array, "3"]:
+    """Build an incident wavevector k_in with magnitude (2π / λ).
 
-    Parameters
-    ----------
-    - `lam_ang` (scalar_float):
-        Electron wavelength in angstroms
-    - `theta_deg` (scalar_float):
-        Grazing angle in degrees
+    Traveling mostly along +x, with a small angle theta from the x-y plane.
 
-    Returns
-    -------
-    - `k_in` (Float[Array, "3"]):
-        The 3D incident wavevector (1/angstrom)
+    Args:
+        lam_ang (scalar_float):
+            Electron wavelength in angstroms
+        theta_deg (scalar_float):
+            Grazing angle in degrees
 
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate wavelength for 20 kV electrons
-    >>> lam = rh.ucell.wavelength_ang(20.0)
-    >>>
-    >>> # Calculate incident wavevector at 2 degree grazing angle
-    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
-    >>> print(f"Incident wavevector: {k_in}")
+    Returns:
+        k_in (Float[Array, "3"]):
+            The 3D incident wavevector (1/angstrom)
 
-    Flow
-    ----
-    - Calculate wavevector magnitude as 2π/λ
-    - Convert theta from degrees to radians
-    - Calculate x-component using cosine of theta
-    - Calculate z-component using negative sine of theta
-    - Return 3D wavevector array with y-component as 0
+    Examples:
+        >>> import rheedium as rh
+        >>> import jax.numpy as jnp
+        >>>
+        >>> # Calculate wavelength for 20 kV electrons
+        >>> lam = rh.ucell.wavelength_ang(20.0)
+        >>>
+        >>> # Calculate incident wavevector at 2 degree grazing angle
+        >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
+        >>> print(f"Incident wavevector: {k_in}")
+
+    Algorithm:
+        - Calculate wavevector magnitude as 2π/λ
+        - Convert theta from degrees to radians
+        - Calculate x-component using cosine of theta
+        - Calculate z-component using negative sine of theta
+        - Return 3D wavevector array with y-component as 0
     """
     k_mag: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
     theta: Float[Array, ""] = jnp.deg2rad(theta_deg)
@@ -141,48 +129,42 @@ def project_on_detector(
     k_out_set: Float[Array, "M 3"],
     detector_distance: scalar_float,
 ) -> Float[Array, "M 2"]:
-    """
-    Description
-    -----------
-    Project wavevectors k_out onto a plane at x = detector_distance.
+    """Project wavevectors k_out onto a plane at x = detector_distance.
+
     Returns (M, 2) array of [Y, Z] coordinates on the detector.
 
-    Parameters
-    ----------
-    - `k_out_set` (Float[Array, "M 3"]):
-        (M, 3) array of outgoing wavevectors
-    - `detector_distance` (scalar_float):
-        distance (in angstroms, or same unit) where screen is placed at x = L
+    Args:
+        k_out_set (Float[Array, "M 3"]):
+            (M, 3) array of outgoing wavevectors
+        detector_distance (scalar_float):
+            distance (in angstroms, or same unit) where screen is placed at x = L
 
-    Returns
-    -------
-    - `coords` (Float[Array, "M 2"]):
-        (M, 2) array of projected [Y, Z]
+    Returns:
+        coords (Float[Array, "M 2"]):
+            (M, 2) array of projected [Y, Z]
 
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Create some outgoing wavevectors
-    >>> k_out = jnp.array([
-    ...     [1.0, 0.1, 0.1],  # First reflection
-    ...     [1.0, -0.1, 0.2], # Second reflection
-    ...     [1.0, 0.2, -0.1]  # Third reflection
-    ... ])
-    >>>
-    >>> # Project onto detector at 1000 Å distance
-    >>> detector_points = rh.simul.project_on_detector(k_out, 1000.0)
-    >>> print(f"Detector points: {detector_points}")
+    Examples:
+        >>> import rheedium as rh
+        >>> import jax.numpy as jnp
+        >>>
+        >>> # Create some outgoing wavevectors
+        >>> k_out = jnp.array([
+        ...     [1.0, 0.1, 0.1],  # First reflection
+        ...     [1.0, -0.1, 0.2], # Second reflection
+        ...     [1.0, 0.2, -0.1]  # Third reflection
+        ... ])
+        >>>
+        >>> # Project onto detector at 1000 Å distance
+        >>> detector_points = rh.simul.project_on_detector(k_out, 1000.0)
+        >>> print(f"Detector points: {detector_points}")
 
-    Flow
-    ----
-    - Calculate norms of each wavevector
-    - Normalize wavevectors to get unit directions
-    - Calculate time parameter t for each ray to reach detector
-    - Calculate Y coordinates using y-component of direction
-    - Calculate Z coordinates using z-component of direction
-    - Stack Y and Z coordinates into final array
+    Algorithm:
+        - Calculate norms of each wavevector
+        - Normalize wavevectors to get unit directions
+        - Calculate time parameter t for each ray to reach detector
+        - Calculate Y coordinates using y-component of direction
+        - Calculate Z coordinates using z-component of direction
+        - Stack Y and Z coordinates into final array
     """
     norms: Float[Array, "M 1"] = jnp.linalg.norm(k_out_set, axis=1, keepdims=True)
     directions: Float[Array, "M 3"] = k_out_set / (norms + 1e-12)
@@ -201,69 +183,63 @@ def find_kinematic_reflections(
     z_sign: Optional[Float[Array, ""]] = jnp.asarray(1.0),
     tolerance: Optional[scalar_float] = 0.05,
 ) -> Tuple[Int[Array, "K"], Float[Array, "K 3"]]:
-    """
-    Description
-    -----------
-    Returns indices of G for which ||k_in + G|| ~ 2π/lam
-    and the z-component of (k_in + G) has the specified sign.
+    """Returns indices of G for which ||k_in + G|| ~ 2π/lam.
 
-    Parameters
-    ----------
-    - `k_in` (Float[Array, "3"]):
-        shape (3,)
-    - `Gs` (Float[Array, "M 3]"):
-        G vector
-    - `lam_ang` (Float[Array, ""):
-        electron wavelength in Å
-    - `z_sign` (Float[Array, ""]):
-        sign for z-component of k_out
-    - `tolerance` (scalar_float, optional),
-        how close to the Ewald sphere in 1/Å
-        Optional. Default: 0.05
+    The z-component of (k_in + G) must have the specified sign.
 
-    Returns
-    -------
-    - `allowed_indices` (Int[Array, "K"]):
-        Allowed indices that will kinematically reflect.
-    - `k_out` (Float[Array, "K 3"]):
-        Outgoing wavevectors (in 1/Å) for those reflections.
+    Args:
+        k_in (Float[Array, "3"]):
+            shape (3,)
+        Gs (Float[Array, "M 3"]):
+            G vector
+        lam_ang (Float[Array, ""]):
+            electron wavelength in Å
+        z_sign (Float[Array, ""]):
+            sign for z-component of k_out
+        tolerance (scalar_float, optional):
+            how close to the Ewald sphere in 1/Å.
+            Default: 0.05
 
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate incident wavevector
-    >>> lam = rh.ucell.wavelength_ang(20.0)
-    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
-    >>>
-    >>> # Generate some reciprocal lattice points
-    >>> Gs = jnp.array([
-    ...     [0, 0, 0],    # (000)
-    ...     [1, 0, 0],    # (100)
-    ...     [0, 1, 0],    # (010)
-    ...     [1, 1, 0]     # (110)
-    ... ])
-    >>>
-    >>> # Find allowed reflections
-    >>> indices, k_out = rh.simul.find_kinematic_reflections(
-    ...     k_in=k_in,
-    ...     Gs=Gs,
-    ...     lam_ang=lam,
-    ...     tolerance=0.1  # More lenient tolerance
-    ... )
-    >>> print(f"Allowed indices: {indices}")
-    >>> print(f"Outgoing wavevectors: {k_out}")
+    Returns:
+        allowed_indices (Int[Array, "K"]):
+            Allowed indices that will kinematically reflect.
+        k_out (Float[Array, "K 3"]):
+            Outgoing wavevectors (in 1/Å) for those reflections.
 
-    Flow
-    ----
-    - Calculate wavevector magnitude as 2π/λ
-    - Calculate candidate outgoing wavevectors by adding k_in to each G
-    - Calculate norms of candidate wavevectors
-    - Create mask for wavevectors close to Ewald sphere
-    - Create mask for wavevectors with correct z-sign
-    - Combine masks to get final allowed indices
-    - Return allowed indices and corresponding outgoing wavevectors
+    Examples:
+        >>> import rheedium as rh
+        >>> import jax.numpy as jnp
+        >>>
+        >>> # Calculate incident wavevector
+        >>> lam = rh.ucell.wavelength_ang(20.0)
+        >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
+        >>>
+        >>> # Generate some reciprocal lattice points
+        >>> Gs = jnp.array([
+        ...     [0, 0, 0],    # (000)
+        ...     [1, 0, 0],    # (100)
+        ...     [0, 1, 0],    # (010)
+        ...     [1, 1, 0]     # (110)
+        ... ])
+        >>>
+        >>> # Find allowed reflections
+        >>> indices, k_out = rh.simul.find_kinematic_reflections(
+        ...     k_in=k_in,
+        ...     Gs=Gs,
+        ...     lam_ang=lam,
+        ...     tolerance=0.1  # More lenient tolerance
+        ... )
+        >>> print(f"Allowed indices: {indices}")
+        >>> print(f"Outgoing wavevectors: {k_out}")
+
+    Algorithm:
+        - Calculate wavevector magnitude as 2π/λ
+        - Calculate candidate outgoing wavevectors by adding k_in to each G
+        - Calculate norms of candidate wavevectors
+        - Create mask for wavevectors close to Ewald sphere
+        - Create mask for wavevectors with correct z-sign
+        - Combine masks to get final allowed indices
+        - Return allowed indices and corresponding outgoing wavevectors
     """
     k_mag: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
     k_out_candidates: Float[Array, "M 3"] = k_in[None, :] + Gs
@@ -280,29 +256,25 @@ def compute_kinematic_intensities(
     positions: Float[Array, "N 3"], G_allowed: Float[Array, "M 3"]
 ) -> Float[Array, "M"]:
     """
-    Description
-    -----------
+    Compute the kinematic intensity for each reflection.
+
     Given the atomic Cartesian positions (N,3) and the
-    reciprocal vectors G_allowed (M,3),
-    compute the kinematic intensity for each reflection:
+    reciprocal vectors G_allowed (M,3), compute:
         I(G) = | sum_j exp(i G·r_j) |^2
     ignoring atomic form factors, etc.
 
-    Parameters
-    ----------
-    - `positions` (Float[Array, "N 3]):
-        Atomic positions in Cartesian coordinates.
-    - `G_allowed` (Float[Array, "M 3]):
-        Reciprocal lattice vectors that satisfy reflection condition.
+    Args:
+        positions (Float[Array, "N 3"]):
+            Atomic positions in Cartesian coordinates.
+        G_allowed (Float[Array, "M 3"]):
+            Reciprocal lattice vectors that satisfy reflection condition.
 
-    Returns
-    -------
-    - `intensities` (Float[Array, "M"]):
-        Intensities for each reflection.
+    Returns:
+        intensities (Float[Array, "M"]):
+            Intensities for each reflection.
 
-    Examples
-    --------
-    >>> import rheedium as rh
+    Examples:
+        >>> import rheedium as rh
     >>> import jax.numpy as jnp
     >>>
     >>> # Create a simple unit cell with two atoms
@@ -325,13 +297,12 @@ def compute_kinematic_intensities(
     ... )
     >>> print(f"Reflection intensities: {intensities}")
 
-    Flow
-    ----
-    - Define inner function to compute intensity for single G vector
-    - Calculate phase factors for each atom position
-    - Sum real and imaginary parts of phase factors
-    - Compute intensity as sum of squared real and imaginary parts
-    - Vectorize computation over all allowed G vectors
+    Algorithm:
+        - Define inner function to compute intensity for single G vector
+        - Calculate phase factors for each atom position
+        - Sum real and imaginary parts of phase factors
+        - Compute intensity as sum of squared real and imaginary parts
+        - Vectorize computation over all allowed G vectors
     """
 
     def intensity_for_G(G_):
@@ -358,10 +329,9 @@ def simulate_rheed_pattern(
     pixel_size: Optional[Float[Array, ""]] = jnp.asarray(0.1),
 ) -> RHEEDPattern:
     """
-    Description
-    -----------
-    Compute a kinematic RHEED pattern for the given crystal using
-    atomic form factors from Kirkland potentials for realistic intensities.
+    Compute a kinematic RHEED pattern for the given crystal.
+
+    Uses atomic form factors from Kirkland potentials for realistic intensities.
 
     This function combines several steps:
     1. Generates reciprocal lattice points using :func:`rheedium.ucell.generate_reciprocal_points`
@@ -370,42 +340,39 @@ def simulate_rheed_pattern(
     4. Projects points onto detector using :func:`project_on_detector`
     5. Computes intensities using atomic form factors from :func:`atomic_potential`
 
-    Parameters
-    ----------
-    - `crystal` (CrystalStructure):
-        Crystal structure to simulate. Can be created using :func:`rheedium.types.create_crystal_structure`
-        or loaded from a CIF file using :func:`rheedium.inout.parse_cif`
-    - `voltage_kV` (Float[Array, ""]):
-        Accelerating voltage in kilovolts.
-        Optional. Default: 10.0
-    - `theta_deg` (Float[Array, ""]):
-        Grazing angle in degrees
-        Optional. Default: 1.0
-    - `hmax, kmax, lmax` (Int[Array, ""]):
-        Bounds on reciprocal lattice indices
-        Optional. Default: 3, 3, 1
-    - `tolerance` (Float[Array, ""]):
-        How close to the Ewald sphere in 1/Å
-        Optional. Default: 0.05
-    - `detector_distance` (Float[Array, ""]):
-        Distance from sample to detector plane in angstroms
-        Optional. Default: 1000.0
-    - `z_sign` (Float[Array, ""]):
-        If +1, keep reflections with positive z in k_out
-        Optional. Default: 1.0
-    - `pixel_size` (Float[Array, ""]):
-        Pixel size for atomic potential calculation in angstroms
-        Optional. Default: 0.1
+    Args:
+        crystal (CrystalStructure):
+            Crystal structure to simulate. Can be created using :func:`rheedium.types.create_crystal_structure`
+            or loaded from a CIF file using :func:`rheedium.inout.parse_cif`
+        voltage_kV (Float[Array, ""]):
+            Accelerating voltage in kilovolts.
+            Default: 10.0
+        theta_deg (Float[Array, ""]):
+            Grazing angle in degrees.
+            Default: 1.0
+        hmax, kmax, lmax (Int[Array, ""]):
+            Bounds on reciprocal lattice indices.
+            Default: 3, 3, 1
+        tolerance (Float[Array, ""]):
+            How close to the Ewald sphere in 1/Å.
+            Default: 0.05
+        detector_distance (Float[Array, ""]):
+            Distance from sample to detector plane in angstroms.
+            Default: 1000.0
+        z_sign (Float[Array, ""]):
+            If +1, keep reflections with positive z in k_out.
+            Default: 1.0
+        pixel_size (Float[Array, ""]):
+            Pixel size for atomic potential calculation in angstroms.
+            Default: 0.1
 
-    Returns
-    -------
-    - `pattern` (RHEEDPattern):
-        A NamedTuple capturing reflection indices, k_out, and detector coords.
-        Can be visualized using :func:`rheedium.plots.plot_rheed`
+    Returns:
+        pattern (RHEEDPattern):
+            A NamedTuple capturing reflection indices, k_out, and detector coords.
+            Can be visualized using :func:`rheedium.plots.plot_rheed`
 
-    Examples
-    --------
-    >>> import rheedium as rh
+    Examples:
+        >>> import rheedium as rh
     >>> import jax.numpy as jnp
     >>>
     >>> # Load crystal structure from CIF file
@@ -424,8 +391,7 @@ def simulate_rheed_pattern(
     >>> # Plot the pattern
     >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
-    Flow
-    ----
+    Algorithm:
     - Build real-space cell vectors from cell parameters
     - Generate reciprocal lattice points up to specified bounds
     - Calculate electron wavelength from voltage
@@ -487,21 +453,13 @@ def simulate_rheed_pattern(
             return form_factor_matrix[center_idx, center_idx]
 
         atom_indices: Int[Array, "N"] = jnp.arange(len(atomic_numbers))
-        form_factor_values: Float[Array, "N"] = jax.vmap(get_form_factor_for_atom)(
-            atom_indices
-        )
-        complex_amplitudes: Float[Array, "N"] = form_factor_values * jnp.exp(
-            1j * phases
-        )
+        form_factor_values: Float[Array, "N"] = jax.vmap(get_form_factor_for_atom)(atom_indices)
+        complex_amplitudes: Float[Array, "N"] = form_factor_values * jnp.exp(1j * phases)
         total_amplitude: Float[Array, ""] = jnp.sum(complex_amplitudes)
-        intensity: Float[Array, ""] = jnp.real(
-            total_amplitude * jnp.conj(total_amplitude)
-        )
+        intensity: Float[Array, ""] = jnp.real(total_amplitude * jnp.conj(total_amplitude))
         return intensity
 
-    intensities: Float[Array, "K"] = jax.vmap(
-        compute_structure_factor_with_form_factors
-    )(G_allowed)
+    intensities: Float[Array, "K"] = jax.vmap(compute_structure_factor_with_form_factors)(G_allowed)
     pattern: RHEEDPattern = rh.types.create_rheed_pattern(
         G_indices=allowed_indices,
         k_out=k_out,
@@ -521,46 +479,41 @@ def atomic_potential(
     potential_extent: Optional[scalar_float] = 4.0,
     datafile: Optional[str] = str(DEFAULT_KIRKLAND_PATH),
 ) -> Float[Array, "h w"]:
-    """
-    Description
-    -----------
-    Calculate the projected potential of a single atom using Kirkland scattering factors.
+    """Calculate the projected potential of a single atom using Kirkland scattering factors.
+
     The potential can be centered at arbitrary coordinates within a custom grid.
 
-    Parameters
-    ----------
-    - `atom_no` (scalar_int):
-        Atomic number of the atom whose potential is being calculated
-    - `pixel_size` (scalar_float):
-        Real space pixel size in Ångstroms
-    - `grid_shape` (Tuple[scalar_int, scalar_int], optional):
-        Shape of the output grid (height, width). If None, calculated from potential_extent
-    - `center_coords` (Float[Array, "2"], optional):
-        (x, y) coordinates in Ångstroms where atom should be centered.
-        If None, centers at grid center
-    - `sampling` (scalar_int, optional):
-        Supersampling factor for increased accuracy. Default is 16
-    - `potential_extent` (scalar_float, optional):
-        Distance in Ångstroms from atom center to calculate potential. Default is 4.0 Å
-    - `datafile` (str, optional):
-        Path to CSV file containing Kirkland scattering factors
+    Args:
+        atom_no (scalar_int):
+            Atomic number of the atom whose potential is being calculated
+        pixel_size (scalar_float):
+            Real space pixel size in Ångstroms
+        grid_shape (Tuple[scalar_int, scalar_int], optional):
+            Shape of the output grid (height, width). If None, calculated from potential_extent
+        center_coords (Float[Array, "2"], optional):
+            (x, y) coordinates in Ångstroms where atom should be centered.
+            If None, centers at grid center
+        sampling (scalar_int, optional):
+            Supersampling factor for increased accuracy. Default is 16
+        potential_extent (scalar_float, optional):
+            Distance in Ångstroms from atom center to calculate potential. Default is 4.0 Å
+        datafile (str, optional):
+            Path to CSV file containing Kirkland scattering factors
 
-    Returns
-    -------
-    - `potential` (Float[Array, "h w"]):
-        Projected potential matrix with atom centered at specified coordinates
+    Returns:
+        potential (Float[Array, "h w"]):
+            Projected potential matrix with atom centered at specified coordinates
 
-    Flow
-    ----
-    - Define physical constants and load Kirkland parameters
-    - Determine grid size and center coordinates
-    - Calculate step size for supersampling
-    - Create coordinate grid with atom centered at specified position
-    - Calculate radial distances from atom center
-    - Compute Bessel and Gaussian terms using Kirkland parameters
-    - Combine terms to get total potential
-    - Downsample to target resolution using average pooling
-    - Return final potential matrix
+    Algorithm:
+        - Define physical constants and load Kirkland parameters
+        - Determine grid size and center coordinates
+        - Calculate step size for supersampling
+        - Create coordinate grid with atom centered at specified position
+        - Calculate radial distances from atom center
+        - Compute Bessel and Gaussian terms using Kirkland parameters
+        - Combine terms to get total potential
+        - Downsample to target resolution using average pooling
+        - Return final potential matrix
     """
     a0: Float[Array, ""] = jnp.asarray(0.5292)
     ek: Float[Array, ""] = jnp.asarray(14.4)
@@ -572,18 +525,12 @@ def atomic_potential(
     step_size: Float[Array, ""] = pixel_size / sampling
     if grid_shape is None:
         grid_extent: Float[Array, ""] = potential_extent
-        n_points: Int[Array, ""] = jnp.ceil(2.0 * grid_extent / step_size).astype(
-            jnp.int32
-        )
+        n_points: Int[Array, ""] = jnp.ceil(2.0 * grid_extent / step_size).astype(jnp.int32)
         grid_height: Int[Array, ""] = n_points
         grid_width: Int[Array, ""] = n_points
     else:
-        grid_height: Int[Array, ""] = jnp.asarray(
-            grid_shape[0] * sampling, dtype=jnp.int32
-        )
-        grid_width: Int[Array, ""] = jnp.asarray(
-            grid_shape[1] * sampling, dtype=jnp.int32
-        )
+        grid_height: Int[Array, ""] = jnp.asarray(grid_shape[0] * sampling, dtype=jnp.int32)
+        grid_width: Int[Array, ""] = jnp.asarray(grid_shape[1] * sampling, dtype=jnp.int32)
     if center_coords is None:
         center_x: Float[Array, ""] = 0.0
         center_y: Float[Array, ""] = 0.0
@@ -593,9 +540,7 @@ def atomic_potential(
     y_coords: Float[Array, "h"] = (
         jnp.arange(grid_height) - grid_height // 2
     ) * step_size + center_y
-    x_coords: Float[Array, "w"] = (
-        jnp.arange(grid_width) - grid_width // 2
-    ) * step_size + center_x
+    x_coords: Float[Array, "w"] = (jnp.arange(grid_width) - grid_width // 2) * step_size + center_x
     ya: Float[Array, "h w"]
     xa: Float[Array, "h w"]
     ya, xa = jnp.meshgrid(y_coords, x_coords, indexing="ij")
@@ -631,9 +576,7 @@ def atomic_potential(
     width: Int[Array, ""] = supersampled_potential.shape[1]
     new_height: Int[Array, ""] = (height // sampling) * sampling
     new_width: Int[Array, ""] = (width // sampling) * sampling
-    cropped: Float[Array, "h_crop w_crop"] = supersampled_potential[
-        :new_height, :new_width
-    ]
+    cropped: Float[Array, "h_crop w_crop"] = supersampled_potential[:new_height, :new_width]
     reshaped: Float[Array, "h_new sampling w_new sampling"] = cropped.reshape(
         new_height // sampling, sampling, new_width // sampling, sampling
     )
@@ -651,50 +594,45 @@ def crystal_potential(
     pixel_size: Optional[scalar_float] = 0.1,
     sampling: Optional[scalar_int] = 16,
 ) -> PotentialSlices:
-    """
-    Description
-    -----------
-    Calculate the multislice potential for a crystal structure using an optimized
-    approach: compute atomic potentials once per unique atom type, then use
-    Fourier shifts to position them at their actual coordinates.
+    """Calculate the multislice potential for a crystal structure.
 
-    Parameters
-    ----------
-    - `crystal` (CrystalStructure):
-        Crystal structure to compute potential for
-    - `slice_thickness` (scalar_float):
-        Thickness of each slice in angstroms
-    - `grid_shape` (Tuple[scalar_int, scalar_int]):
-        Shape of the output grid (height, width) for each slice
-    - `physical_extent` (Tuple[scalar_float, scalar_float]):
-        Physical size of the grid (y_extent, x_extent) in angstroms
-    - `pixel_size` (scalar_float, optional:
-        Real space pixel size in angstroms
-        Default: 0.1
-    - `sampling` (scalar_int, optional):
-        Supersampling factor for potential calculation
-        Default: 16
+    Uses an optimized approach: compute atomic potentials once per unique atom type,
+    then use Fourier shifts to position them at their actual coordinates.
 
-    Returns
-    -------
-    - `potential_slices` (PotentialSlices):
-        Structured potential data containing slice arrays and calibration information
+    Args:
+        crystal (CrystalStructure):
+            Crystal structure to compute potential for
+        slice_thickness (scalar_float):
+            Thickness of each slice in angstroms
+        grid_shape (Tuple[scalar_int, scalar_int]):
+            Shape of the output grid (height, width) for each slice
+        physical_extent (Tuple[scalar_float, scalar_float]):
+            Physical size of the grid (y_extent, x_extent) in angstroms
+        pixel_size (scalar_float, optional):
+            Real space pixel size in angstroms.
+            Default: 0.1
+        sampling (scalar_int, optional):
+            Supersampling factor for potential calculation.
+            Default: 16
 
-    Flow
-    ----
-    - Extract atomic positions and numbers from crystal structure
-    - Find unique atomic numbers and compute their centered potentials once
-    - Calculate z-range and determine number of slices needed
-    - Calculate pixel calibrations and coordinate grids
-    - For each slice:
-        - Find atoms within the slice boundaries
-        - Group atoms by atomic number
-        - For each unique atom type in slice:
-            - Use Fourier shifts to position atoms at their x,y coordinates
-            - Sum shifted potentials for all atoms of this type
-        - Sum contributions from all atom types to get total slice potential
-    - Create PotentialSlices object with slice data and metadata
-    - Return structured potential slices
+    Returns:
+        potential_slices (PotentialSlices):
+            Structured potential data containing slice arrays and calibration information
+
+    Algorithm:
+        - Extract atomic positions and numbers from crystal structure
+        - Find unique atomic numbers and compute their centered potentials once
+        - Calculate z-range and determine number of slices needed
+        - Calculate pixel calibrations and coordinate grids
+        - For each slice:
+            - Find atoms within the slice boundaries
+            - Group atoms by atomic number
+            - For each unique atom type in slice:
+                - Use Fourier shifts to position atoms at their x,y coordinates
+                - Sum shifted potentials for all atoms of this type
+            - Sum contributions from all atom types to get total slice potential
+        - Create PotentialSlices object with slice data and metadata
+        - Return structured potential slices
     """
     atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "N"] = crystal.cart_positions[:, 3].astype(jnp.int32)
@@ -726,31 +664,25 @@ def crystal_potential(
         shift_x: Float[Array, ""],
         shift_y: Float[Array, ""],
     ) -> Float[Array, "h w"]:
-        """
-        Description
-        -----------
-        Apply Fourier shift theorem to translate potential in real space.
+        """Apply Fourier shift theorem to translate potential in real space.
 
-        Parameters
-        ----------
-        - `potential` (Float[Array, "h w"]):
-            Input potential to be shifted
-        - `shift_x` (Float[Array, ""]):
-            Shift in x-direction in angstroms
-        - `shift_y` (Float[Array, ""]):
-            Shift in y-direction in angstroms
+        Args:
+            potential (Float[Array, "h w"]):
+                Input potential to be shifted
+            shift_x (Float[Array, ""]):
+                Shift in x-direction in angstroms
+            shift_y (Float[Array, ""]):
+                Shift in y-direction in angstroms
 
-        Returns
-        -------
-        - `shifted_potential` (Float[Array, "h w"]):
-            Potential shifted to new position
+        Returns:
+            shifted_potential (Float[Array, "h w"]):
+                Potential shifted to new position
 
-        Flow
-        ----
-        - Convert shifts from physical units to pixel units
-        - Create frequency grids for FFT
-        - Apply phase shift in Fourier domain
-        - Transform back to real space
+        Algorithm:
+            - Convert shifts from physical units to pixel units
+            - Create frequency grids for FFT
+            - Apply phase shift in Fourier domain
+            - Transform back to real space
         """
         shift_pixels_x: Float[Array, ""] = shift_x / x_calibration
         shift_pixels_y: Float[Array, ""] = shift_y / y_calibration
@@ -823,9 +755,7 @@ def crystal_potential(
         return slice_potential
 
     slice_indices: Int[Array, "n_slices"] = jnp.arange(n_slices)
-    slice_arrays: Float[Array, "n_slices h w"] = jax.vmap(calculate_slice_potential)(
-        slice_indices
-    )
+    slice_arrays: Float[Array, "n_slices h w"] = jax.vmap(calculate_slice_potential)(slice_indices)
     potential_slices: PotentialSlices = rh.types.create_potential_slices(
         slices=slice_arrays,
         slice_thickness=slice_thickness,

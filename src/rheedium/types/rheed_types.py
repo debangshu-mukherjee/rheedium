@@ -151,45 +151,30 @@ def create_rheed_pattern(
     detector_points: Float[Array, "M 2"],
     intensities: Float[Array, "M"],
 ) -> RHEEDPattern:
-    """
-    Description
-    -----------
-    Factory function to create a RHEEDPattern instance with data validation.
+    """Factory function to create a RHEEDPattern instance with data validation.
 
-    Parameters
-    ----------
-    - `G_indices` (Int[Array, "*"]):
-        Indices of reciprocal-lattice vectors that satisfy reflection
-    - `k_out` (Float[Array, "M 3"]):
-        Outgoing wavevectors (in 1/Å) for those reflections
-    - `detector_points` (Float[Array, "M 2"]):
-        (Y, Z) coordinates on the detector plane, in Ångstroms
-    - `intensities` (Float[Array, "M"]):
-        Intensities for each reflection
+    Args:
+        G_indices (Int[Array, "*"]): Indices of reciprocal-lattice vectors that
+            satisfy reflection.
+        k_out (Float[Array, "M 3"]): Outgoing wavevectors (in 1/Å) for those
+            reflections.
+        detector_points (Float[Array, "M 2"]): (Y, Z) coordinates on the detector
+            plane, in Ångstroms.
+        intensities (Float[Array, "M"]): Intensities for each reflection.
 
-    Returns
-    -------
-    - `pattern` (RHEEDPattern):
-        Validated RHEED pattern instance
+    Returns:
+        RHEEDPattern: Validated RHEED pattern instance.
 
-    Raises
-    ------
-    - ValueError:
-        If array shapes are inconsistent or data is invalid
+    Raises:
+        ValueError: If array shapes are inconsistent or data is invalid.
 
-    Flow
-    ----
-    - Convert inputs to JAX arrays
-    - Validate array shapes:
-        - Check k_out has shape (M, 3)
-        - Check detector_points has shape (M, 2)
-        - Check intensities has shape (M,)
-        - Check G_indices has length M
-    - Validate data:
-        - Ensure intensities are non-negative
-        - Ensure k_out vectors are non-zero
-        - Ensure detector points are finite
-    - Create and return RHEEDPattern instance
+    Algorithm:
+        - Convert inputs to JAX arrays
+        - Validate array shapes: check k_out has shape (M, 3), detector_points
+          has shape (M, 2), intensities has shape (M,), and G_indices has length M
+        - Validate data: ensure intensities are non-negative, k_out vectors are
+          non-zero, and detector points are finite
+        - Create and return RHEEDPattern instance
     """
     G_indices = jnp.asarray(G_indices, dtype=jnp.int32)
     k_out = jnp.asarray(k_out, dtype=jnp.float64)
@@ -203,9 +188,7 @@ def create_rheed_pattern(
             return lax.cond(
                 k_out.shape == (M, 3),
                 lambda: k_out,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: k_out, lambda: k_out)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: k_out, lambda: k_out)),
             )
 
         def check_detector_shape():
@@ -230,9 +213,7 @@ def create_rheed_pattern(
             return lax.cond(
                 G_indices.shape[0] == M,
                 lambda: G_indices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: G_indices, lambda: G_indices)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: G_indices, lambda: G_indices)),
             )
 
         def check_intensities_positive():
@@ -249,9 +230,7 @@ def create_rheed_pattern(
             return lax.cond(
                 jnp.all(jnp.linalg.norm(k_out, axis=1) > 0),
                 lambda: k_out,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: k_out, lambda: k_out)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: k_out, lambda: k_out)),
             )
 
         def check_detector_finite():
@@ -290,49 +269,33 @@ def create_rheed_image(
     electron_wavelength: scalar_float,
     detector_distance: scalar_num,
 ) -> RHEEDImage:
-    """
-    Description
-    -----------
-    Factory function to create a RHEEDImage instance with data validation.
+    """Factory function to create a RHEEDImage instance with data validation.
 
-    Parameters
-    ----------
-    - `img_array` (Float[Array, "H W"]):
-        The image in 2D array format
-    - `incoming_angle` (scalar_float):
-        The angle of the incoming electron beam in degrees
-    - `calibration` (Union[Float[Array, "2"], scalar_float]):
-        Calibration factor for the image, either as a 2D array or a scalar
-    - `electron_wavelength` (scalar_float):
-        The wavelength of the electrons in Ångstroms
-    - `detector_distance` (scalar_num):
-        The distance from the sample to the detector in Ångstroms
+    Args:
+        img_array (Float[Array, "H W"]): The image in 2D array format.
+        incoming_angle (scalar_float): The angle of the incoming electron beam
+            in degrees.
+        calibration (Union[Float[Array, "2"], scalar_float]): Calibration factor
+            for the image, either as a 2D array or a scalar.
+        electron_wavelength (scalar_float): The wavelength of the electrons
+            in Ångstroms.
+        detector_distance (scalar_num): The distance from the sample to the
+            detector in Ångstroms.
 
-    Returns
-    -------
-    - `image` (RHEEDImage):
-        Validated RHEED image instance
+    Returns:
+        RHEEDImage: Validated RHEED image instance.
 
-    Raises
-    ------
-    - ValueError:
-        If data is invalid or parameters are out of valid ranges
+    Raises:
+        ValueError: If data is invalid or parameters are out of valid ranges.
 
-    Flow
-    ----
-    - Convert inputs to JAX arrays
-    - Validate image array:
-        - Check it's 2D
-        - Ensure all values are finite
-        - Ensure all values are non-negative
-    - Validate parameters:
-        - Check incoming_angle is between 0 and 90 degrees
-        - Check electron_wavelength is positive
-        - Check detector_distance is positive
-    - Validate calibration:
-        - If scalar, ensure it's positive
-        - If array, ensure shape is (2,) and all values are positive
-    - Create and return RHEEDImage instance
+    Algorithm:
+        - Convert inputs to JAX arrays
+        - Validate image array: check it's 2D, all values are finite and non-negative
+        - Validate parameters: check incoming_angle is between 0 and 90 degrees,
+          electron_wavelength is positive, and detector_distance is positive
+        - Validate calibration: if scalar, ensure it's positive; if array, ensure
+          shape is (2,) and all values are positive
+        - Create and return RHEEDImage instance
     """
     img_array = jnp.asarray(img_array, dtype=jnp.float64)
     incoming_angle = jnp.asarray(incoming_angle, dtype=jnp.float64)
@@ -345,27 +308,21 @@ def create_rheed_image(
             return lax.cond(
                 img_array.ndim == 2,
                 lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: img_array, lambda: img_array)),
             )
 
         def check_finite():
             return lax.cond(
                 jnp.all(jnp.isfinite(img_array)),
                 lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: img_array, lambda: img_array)),
             )
 
         def check_nonnegative():
             return lax.cond(
                 jnp.all(img_array >= 0),
                 lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
+                lambda: lax.stop_gradient(lax.cond(False, lambda: img_array, lambda: img_array)),
             )
 
         def check_angle():
@@ -382,9 +339,7 @@ def create_rheed_image(
                 electron_wavelength > 0,
                 lambda: electron_wavelength,
                 lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: electron_wavelength, lambda: electron_wavelength
-                    )
+                    lax.cond(False, lambda: electron_wavelength, lambda: electron_wavelength)
                 ),
             )
 
@@ -393,9 +348,7 @@ def create_rheed_image(
                 detector_distance > 0,
                 lambda: detector_distance,
                 lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: detector_distance, lambda: detector_distance
-                    )
+                    lax.cond(False, lambda: detector_distance, lambda: detector_distance)
                 ),
             )
 
@@ -411,9 +364,7 @@ def create_rheed_image(
 
             def check_array_cal():
                 return lax.cond(
-                    jnp.logical_and(
-                        calibration.shape == (2,), jnp.all(calibration > 0)
-                    ),
+                    jnp.logical_and(calibration.shape == (2,), jnp.all(calibration > 0)),
                     lambda: calibration,
                     lambda: lax.stop_gradient(
                         lax.cond(False, lambda: calibration, lambda: calibration)

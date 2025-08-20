@@ -15,7 +15,7 @@ keywords = [
     "Differentiable Programming"
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.14"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -34,7 +34,6 @@ dependencies = [
     "optax >= 0.1.8",
     "pytest >= 8.0.0",
     "beartype",
-    "twine>=6.0.1",
     "ipython>=8.31.0",
     "jupyter>=1.1.1",
     "numpy>=2.2.1",
@@ -43,25 +42,43 @@ dependencies = [
     "jupyter-black>=0.4.0",
     "ipykernel>=6.29.5",
     "jax[cuda12]>=0.4.38 ; sys_platform == 'linux'",
-    "jax>=0.4.38 ; sys_platform == 'win64'",
+    "jax>=0.4.30 ; sys_platform == 'win64'",
+    "jax>=0.4.30 ; sys_platform == 'darwin'",
     "pandas>=2.3.0",
-    "isort>=6.0.1",
-    "myst-parser>=4.0.0",
 ]
 [project.optional-dependencies]
-test = [
-    "pytest>=7.0",
-    "pytest-cov",
-    "absl-py",
-]
 docs = [
-    "sphinx>=8.1.3",
+    "sphinx>=7.0.0",
     "sphinx-rtd-theme>=3.0.2",
-    "myst-parser>=4.0.0",
-    "nbsphinx>=0.9.6",
+    "nbsphinx>=0.9.7",
+    "myst-parser>=2.0.0",
     "ipykernel>=6.29.5",
-    "pydata-sphinx-theme>=0.16.1",
-    "sphinxcontrib-napoleon>=0.7",
+    "nbconvert>=7.16.6",
+    "sphinx-autobuild>=2024.10.3",
+    "furo>=2025.7.19",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "chex>=0.1.89",
+]
+dev = [
+    "cryoblob[docs,test]",
+    "black[jupyter]>=25.1.0",
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+    "ipywidgets>=8.1.0",
+    "ruff>=0.12.9",
+    "twine>=6.0.1",
+]
+notebooks = [
+    "ipywidgets>=8.1.0",
+    "ipykernel>=6.29.5",
+    "nbconvert>=7.16.6",
+]
+all = [
+    "rheedium[docs,test,dev,notebooks]",
 ]
 
 [tool.pytest.ini_options]
@@ -104,15 +121,38 @@ where = ["src"]
 [tool.setuptools.package-data]
 "rheedium" = ["py.typed"]
 
-[tool.uv]
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-]
-
 [project.urls]
-Homepage = "https://github.com/dxm447/rheedium/"
+Homepage = "https://github.com/debangshu-mukherjee/rheedium/"
 Documentation = "https://rheedium.readthedocs.io/"
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "ANN", "S", "A", "C4", "PIE", "PT", "RET", "SIM", "ARG", "ERA", "PL"]
+ignore = [
+    "ANN401",
+    "PYI021",
+    "F722",
+    "COM812",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 10  # Allow up to 10 arguments in function definitions
+
+[tool.ruff.lint.per-file-ignores]
+"**/*.py" = ["F821"]  # Ignore undefined name errors which often occur with jaxtyping
+
+[tool.ruff.lint.isort]
+known-third-party = ["jax", "jaxtyping"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "preserve"

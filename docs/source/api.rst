@@ -1,16 +1,20 @@
 API Reference
 =============
 
+This page documents all public functions and classes in the rheedium package.
+
 Input/Output Module
 -------------------
-.. automodule:: rheedium.inout.data_io
+
+.. automodule:: rheedium.inout
    :members:
    :undoc-members:
    :show-inheritance:
 
 Simulation Module
 -----------------
-.. automodule:: rheedium.simul.simulator
+
+.. automodule:: rheedium.simul
    :members:
    :undoc-members:
    :show-inheritance:
@@ -18,23 +22,7 @@ Simulation Module
 Unit Cell Module
 ----------------
 
-Helper Functions
-~~~~~~~~~~~~~~~~
-.. automodule:: rheedium.ucell.helper
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Unit Cell Operations
-~~~~~~~~~~~~~~~~~~~~
-.. automodule:: rheedium.ucell.unitcell
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Bessel Functions
-~~~~~~~~~~~~~~~~
-.. automodule:: rheedium.ucell.bessel
+.. automodule:: rheedium.ucell
    :members:
    :undoc-members:
    :show-inheritance:
@@ -42,36 +30,22 @@ Bessel Functions
 Types Module
 ------------
 
-Crystal Types
-~~~~~~~~~~~~~
-.. automodule:: rheedium.types.crystal_types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-RHEED Types
-~~~~~~~~~~~
-.. automodule:: rheedium.types.rheed_types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Custom Types
-~~~~~~~~~~~~
-.. automodule:: rheedium.types.custom_types
+.. automodule:: rheedium.types
    :members:
    :undoc-members:
    :show-inheritance:
 
 Plotting Module
 ---------------
-.. automodule:: rheedium.plots.figuring
+
+.. automodule:: rheedium.plots
    :members:
    :undoc-members:
    :show-inheritance:
 
 Reconstruction Module
 ---------------------
+
 .. automodule:: rheedium.recon
    :members:
    :undoc-members:

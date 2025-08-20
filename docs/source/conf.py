@@ -1,7 +1,9 @@
 import os
 import sys
-import tomllib
 from datetime import datetime
+
+import tomllib
+from sphinx.application import Sphinx
 
 # CRITICAL: Proper path setup for autodoc
 project_root = os.path.abspath("../..")
@@ -22,12 +24,9 @@ project = pyproject_data["project"]["name"]
 
 # Handle authors
 authors_data = pyproject_data["project"]["authors"]
-if isinstance(authors_data[0], dict):
-    author = authors_data[0]["name"]
-else:
-    author = authors_data[0]
+author = authors_data[0]["name"] if isinstance(authors_data[0], dict) else authors_data[0]
 
-copyright = f"{datetime.now().year}, {author}"
+project_copyright = f"{datetime.now().year}, {author}"
 release = pyproject_data["project"]["version"]
 
 extensions = [
@@ -36,7 +35,6 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
-    "sphinx_rtd_theme",
     "nbsphinx",
     "myst_parser",
 ]
@@ -49,12 +47,25 @@ source_suffix = {
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 
-# Napoleon settings
-napoleon_google_docstring = False
-napoleon_numpy_docstring = True
+# Furo theme options - default to dark mode
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#0066cc",
+        "color-brand-content": "#0066cc",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#3399ff",
+        "color-brand-content": "#3399ff",
+    },
+    "sidebar_hide_name": False,
+}
+
+# Napoleon settings for Google-style docstrings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
@@ -67,14 +78,9 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-# Add custom sections to napoleon
+# Add custom sections to napoleon (for Google style)
 napoleon_custom_sections = [
-    ("Description", "params_style"),
-    ("Parameters", "params_style"),
-    ("Returns", "returns_style"),
-    ("Flow", "params_style"),
-    ("Examples", "examples_style"),
-    ("Notes", "notes_style"),
+    ("Algorithm", "notes_style"),  # Custom section for Algorithm (converted from Flow)
 ]
 
 # nbsphinx configuration
@@ -84,6 +90,12 @@ nbsphinx_allow_errors = True
 # IMPORTANT: Mock problematic imports
 autodoc_mock_imports = [
     "jax.config",  # This often causes issues
+    "jax",
+    "jaxtyping", 
+    "beartype",
+    "pandas",
+    "scipy",
+    "matplotlib",
 ]
 
 # Autodoc configuration
@@ -92,7 +104,6 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "special-members": "__init__",
-    "exclude-members": "Float, Array, Int, Num, Bool, beartype, jaxtyped, tree_flatten, tree_unflatten",
 }
 
 # Type handling
@@ -141,9 +152,10 @@ intersphinx_mapping = {
 }
 
 html_css_files = ["custom.css"]
+html_js_files = ["custom.js"]
 
 
-def skip_member(app, what, name, obj, skip, options):
+def skip_member(name: str, skip: bool) -> bool:
     """Skip problematic members."""
     skip_names = [
         "Float",
@@ -161,5 +173,5 @@ def skip_member(app, what, name, obj, skip, options):
     return skip
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip_member)

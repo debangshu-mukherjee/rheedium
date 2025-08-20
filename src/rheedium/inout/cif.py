@@ -22,86 +22,59 @@ from beartype.typing import List, Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
 from rheedium.inout import atomic_symbol
-from rheedium.types import (CrystalStructure, create_crystal_structure,
-                            scalar_float)
+from rheedium.types import CrystalStructure, create_crystal_structure, scalar_float
 from rheedium.ucell import build_cell_vectors
 
 
 @jaxtyped(typechecker=beartype)
 def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
-    """
-    Description
-    -----------
-    Parse a CIF file into a JAX-compatible CrystalStructure.
+    """Parse a CIF file into a JAX-compatible CrystalStructure.
 
-    Parameters
-    ----------
-    - `cif_path` (Union[str, Path]):
-        Path to the CIF file.
+    Args:
+        cif_path (Union[str, Path]): Path to the CIF file.
 
-    Returns
-    -------
-    `CrystalStructure`:
-        Parsed crystal structure object with fractional and Cartesian coordinates.
+    Returns:
+        CrystalStructure: Parsed crystal structure object with fractional and Cartesian coordinates.
 
-        Attributes:
+            Attributes:
+            - frac_positions (Float[Array, "* 4"]): Array of shape (n_atoms, 4) containing
+                atomic positions in fractional coordinates. Each row contains
+                [x, y, z, atomic_number] where x, y, z are fractional coordinates
+                in the unit cell (range [0,1]) and atomic_number is the integer
+                atomic number (Z) of the element.
+            - cart_positions (Num[Array, "* 4"]): Array of shape (n_atoms, 4) containing
+                atomic positions in Cartesian coordinates. Each row contains
+                [x, y, z, atomic_number] where x, y, z are Cartesian coordinates
+                in Ångstroms and atomic_number is the integer atomic number (Z).
+            - cell_lengths (Num[Array, "3"]): Unit cell lengths [a, b, c] in Ångstroms.
+            - cell_angles (Num[Array, "3"]): Unit cell angles [α, β, γ] in degrees.
+                α is the angle between b and c, β is the angle between a and c,
+                and γ is the angle between a and b.
 
-        - `frac_positions` (Float[Array, "* 4"]):
-            Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
-            Each row contains [x, y, z, atomic_number] where:
-            - x, y, z: Fractional coordinates in the unit cell (range [0,1])
-            - atomic_number: Integer atomic number (Z) of the element
-
-        - `cart_positions` (Num[Array, "* 4"]):
-            Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
-            Each row contains [x, y, z, atomic_number] where:
-            - x, y, z: Cartesian coordinates in Ångstroms
-            - atomic_number: Integer atomic number (Z) of the element
-
-        - `cell_lengths` (Num[Array, "3"]):
-            Unit cell lengths [a, b, c] in Ångstroms
-
-        - `cell_angles` (Num[Array, "3"]):
-            Unit cell angles [α, β, γ] in degrees.
-            - α is the angle between b and c
-            - β is the angle between a and c
-            - γ is the angle between a and b
-
-    Flow
-    ----
-    - Validate CIF file path and extension
-    - Read CIF file content
-    - Load atomic numbers mapping
-    - Extract unit cell parameters:
-        - Parse cell lengths (a, b, c)
-        - Parse cell angles (alpha, beta, gamma)
-    - Parse atomic positions:
-        - Find atom site loop section
-        - Extract required columns
-        - Parse element symbols and fractional coordinates
+    Algorithm:
+        - Validate CIF file path and extension
+        - Read CIF file content
+        - Load atomic numbers mapping
+        - Extract unit cell parameters (cell lengths and angles)
+        - Parse atomic positions from atom site loop section
         - Convert element symbols to atomic numbers
-    - Convert fractional to Cartesian coordinates:
-        - Build cell vectors
-        - Transform coordinates
-    - Parse symmetry operations:
-        - Find symmetry operations section
-        - Extract operation strings
-    - Create initial CrystalStructure
-    - Apply symmetry operations to expand positions
-    - Return expanded crystal structure
+        - Convert fractional to Cartesian coordinates using cell vectors
+        - Parse symmetry operations from CIF file
+        - Create initial CrystalStructure
+        - Apply symmetry operations to expand positions
+        - Return expanded crystal structure
 
-    Examples
-    --------
-    >>> from rheedium.inout.data_io import parse_cif
-    >>> # Parse a CIF file for silicon
-    >>> structure = parse_cif("path/to/silicon.cif")
-    >>> print(f"Unit cell vectors:\n{structure.vectors}")
-    Unit cell vectors:
-    [[5.431 0.000 0.000]
-     [0.000 5.431 0.000]
-     [0.000 0.000 5.431]]
-    >>> print(f"Number of atoms: {len(structure.positions)}")
-    Number of atoms: 8
+    Examples:
+        >>> from rheedium.inout.data_io import parse_cif
+        >>> # Parse a CIF file for silicon
+        >>> structure = parse_cif("path/to/silicon.cif")
+        >>> print(f"Unit cell vectors:\n{structure.vectors}")
+        Unit cell vectors:
+        [[5.431 0.000 0.000]
+         [0.000 5.431 0.000]
+         [0.000 0.000 5.431]]
+        >>> print(f"Number of atoms: {len(structure.positions)}")
+        Number of atoms: 8
     """
     cif_path = Path(cif_path)
     if not cif_path.exists():
@@ -166,9 +139,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     frac_positions: Float[Array, "* 4"] = jnp.array(positions_list, dtype=jnp.float64)
     cell_vectors: Float[Array, "3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
     cart_coords: Float[Array, "* 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, "* 4"] = jnp.column_stack(
-        (cart_coords, frac_positions[:, 3])
-    )
+    cart_positions: Float[Array, "* 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
     sym_ops = []
     lines = cif_text.splitlines()
     collect_sym_ops = False
@@ -197,9 +168,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
-    expanded_crystal: CrystalStructure = symmetry_expansion(
-        crystal, sym_ops, tolerance=1.0
-    )
+    expanded_crystal: CrystalStructure = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
     return expanded_crystal
 
 
@@ -209,56 +178,38 @@ def symmetry_expansion(
     sym_ops: List[str],
     tolerance: scalar_float = 1.0,
 ) -> CrystalStructure:
-    """
-    Description
-    -----------
-    Apply symmetry operations to expand fractional positions and remove duplicates.
+    """Apply symmetry operations to expand fractional positions and remove duplicates.
 
-    Parameters
-    ----------
-    - `crystal` (CrystalStructure):
-        The initial crystal structure with symmetry-independent positions.
-    - `sym_ops` (List[str]):
-        List of symmetry operations as strings from the CIF file.
-        Example: ["x,y,z", "-x,-y,z", ...]
-    - `tolerance` (scalar_float):
-        Distance tolerance in angstroms for duplicate atom removal.
-        Default: 1.0 Å.
+    Args:
+        crystal (CrystalStructure): The initial crystal structure with
+            symmetry-independent positions.
+        sym_ops (List[str]): List of symmetry operations as strings from the CIF file.
+            Example: ["x,y,z", "-x,-y,z", ...]
+        tolerance (scalar_float): Distance tolerance in angstroms for duplicate atom
+            removal. Default: 1.0 Å.
 
-    Returns
-    -------
-    - `expanded_crystal` (CrystalStructure):
-        Symmetry-expanded crystal structure without duplicates.
+    Returns:
+        CrystalStructure: Symmetry-expanded crystal structure without duplicates.
 
-    Flow
-    ----
-    - Parse symmetry operations into functions:
-        - Split operation strings into components
-        - Create functions to evaluate each component
-        - Handle coefficients and variables
-    - Apply symmetry operations:
-        - For each atomic position
-        - For each symmetry operation
-        - Generate new positions
-        - Apply modulo 1 to keep in unit cell
-    - Convert expanded positions to Cartesian coordinates:
-        - Build cell vectors
-        - Transform coordinates
-    - Remove duplicate positions:
-        - Calculate distances between positions
-        - Keep only unique positions within tolerance
-    - Create and return expanded CrystalStructure
+    Algorithm:
+        - Parse symmetry operations into functions by splitting operation strings
+          into components and creating evaluation functions for coefficients
+        - Apply symmetry operations to each atomic position to generate new positions
+        - Apply modulo 1 to keep positions within unit cell
+        - Convert expanded positions to Cartesian coordinates using cell vectors
+        - Remove duplicate positions by calculating distances and keeping only
+          unique positions within tolerance
+        - Create and return expanded CrystalStructure
 
-    Examples
-    --------
-    >>> from rheedium.inout.data_io import parse_cif, symmetry_expansion
-    >>> # Parse a CIF file and expand symmetry
-    >>> structure = parse_cif("path/to/structure.cif")
-    >>> expanded = symmetry_expansion(structure)
-    >>> print(f"Original atoms: {len(structure.positions)}")
-    >>> print(f"Expanded atoms: {len(expanded.positions)}")
-    Original atoms: 1
-    Expanded atoms: 8
+    Examples:
+        >>> from rheedium.inout.data_io import parse_cif, symmetry_expansion
+        >>> # Parse a CIF file and expand symmetry
+        >>> structure = parse_cif("path/to/structure.cif")
+        >>> expanded = symmetry_expansion(structure)
+        >>> print(f"Original atoms: {len(structure.positions)}")
+        >>> print(f"Expanded atoms: {len(expanded.positions)}")
+        Original atoms: 1
+        Expanded atoms: 8
     """
     frac_positions = crystal.frac_positions
     expanded_positions = []
@@ -328,9 +279,7 @@ def symmetry_expansion(
         return unique_final[:final_count]
 
     unique_cart = deduplicate(cart_positions, tolerance)
-    cell_inv = jnp.linalg.inv(
-        build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
-    )
+    cell_inv = jnp.linalg.inv(build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles))
     unique_frac = (unique_cart @ cell_inv) % 1.0
     atomic_numbers = expanded_positions[:, 3][: unique_cart.shape[0]]
     expanded_crystal: CrystalStructure = create_crystal_structure(

@@ -1,3 +1,9 @@
+/* Force dark mode styles */
+[data-theme="dark"] {
+    --color-background-primary: #131416 !important;
+    --color-background-secondary: #1a1c1e !important;
+}
+
 .highlight-python .annotation {
     color: #2980b9;
     font-weight: normal;
