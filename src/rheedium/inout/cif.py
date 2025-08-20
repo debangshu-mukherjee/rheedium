@@ -98,8 +98,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         match: Optional[re.Match[str]] = re.search(rf"{name}\s+([0-9.]+)", cif_text)
         if match:
             return float(match.group(1))
-        else:
-            raise ValueError(f"Failed to parse {name} from CIF.")
+        raise ValueError(f"Failed to parse {name} from CIF.")
 
     a: float = _extract_param("_cell_length_a")
     b: float = _extract_param("_cell_length_b")
@@ -166,9 +165,8 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             elif stripped_line.startswith('"') and stripped_line.endswith('"'):
                 op_clean: str = stripped_line.strip('"').strip()
                 sym_ops.append(op_clean)
-            else:
-                if sym_ops:
-                    break
+            elif sym_ops:
+                break
 
     if not sym_ops:
         sym_ops = ["x,y,z"]

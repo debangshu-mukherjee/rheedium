@@ -1,73 +1,137 @@
-/* Force dark mode styles */
-[data-theme="dark"] {
-    --color-background-primary: #131416 !important;
-    --color-background-secondary: #1a1c1e !important;
+/* Custom CSS for Rheedium documentation */
+
+/* Import Source Sans 3 from Google Fonts (open source version) */
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap');
+
+/* Import Source Code Pro for code blocks */
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&display=swap');
+
+/* Apply Source Sans to body text */
+body {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1.6;
 }
 
-.highlight-python .annotation {
-    color: #2980b9;
-    font-weight: normal;
+/* Headers using Source Sans with different weights */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
 }
 
-dl.field-list > dt {
-    word-break: break-word;
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
 }
 
-.section > h2 {
-    margin-top: 2em;
+h2 {
+    font-size: 2rem;
+    font-weight: 600;
 }
 
+h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* Code blocks using Source Code Pro */
+pre, code, kbd, samp, tt {
+    font-family: 'Source Code Pro', 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+/* Inline code */
+code.literal {
+    font-family: 'Source Code Pro', 'Consolas', 'Monaco', 'Courier New', monospace;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+
+/* Dark mode inline code */
+@media (prefers-color-scheme: dark) {
+    code.literal {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Sidebar text */
+.sidebar-brand-text, .sidebar-logo-container {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 600;
+}
+
+/* Navigation items */
+.sidebar-tree .reference, .toctree-l1, .toctree-l2, .toctree-l3 {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 400;
+}
+
+/* API documentation signatures */
+.sig {
+    font-family: 'Source Code Pro', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+}
+
+/* Admonitions (notes, warnings, etc.) */
+.admonition {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+.admonition-title {
+    font-weight: 600;
+}
+
+/* Tables */
+table {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* Improve readability with better spacing */
+.content {
+    max-width: 900px;
+}
+
+p {
+    margin-bottom: 1.2em;
+}
+
+/* Better list spacing */
+ul, ol {
+    margin-bottom: 1.2em;
+}
+
+li {
+    margin-bottom: 0.5em;
+}
+
+/* Improve code block appearance */
+div.highlight {
+    border-radius: 6px;
+    margin: 1.5em 0;
+}
+
+/* Better spacing for docstring sections */
 .rubric {
-    font-size: 1.2em;
-    color: #2980b9;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.3em;
-}
-
-dl.field-list code.literal {
-    background: #f8f9fa;
-    border: none;
-    padding: 2px 5px;
-    color: #2980b9;
-}
-
-/* Style for all custom sections */
-.rubric {
-    font-size: 1.35em;
-    color: #2980b9;
-    border-bottom: 2px solid #2980b9;
-    padding-bottom: 0.3em;
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 1.2rem;
     margin-top: 1.5em;
-    margin-bottom: 1em;
+    margin-bottom: 0.8em;
 }
 
-/* Parameter formatting */
-.field-list p {
-    margin: 0;
-    padding: 0;
+/* Parameters, Returns, etc. in docstrings */
+dl.field-list > dt {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 600;
 }
 
-/* Style for parameter names */
-.field-list strong code {
-    font-weight: bold;
-    color: #000000;
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-/* Style for parameter types */
-.field-list em {
+/* Better blockquote styling */
+blockquote {
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-style: italic;
-    color: #666666;
-}
-
-/* Spacing between parameters */
-.field-list dt {
-    margin-top: 1em;
-}
-
-/* Parameter description indentation */
-.field-list dd {
-    margin-left: 2em;
+    border-left: 4px solid #0066cc;
+    padding-left: 1em;
+    margin-left: 0;
 }

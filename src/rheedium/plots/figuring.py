@@ -14,7 +14,7 @@ Functions
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
-from beartype.typing import Any, Dict, List, Optional, Tuple
+from beartype.typing import Any, List, Optional, Tuple
 from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
@@ -139,9 +139,9 @@ def plot_rheed(
     >>> plt.show()
     """
     coords: Float[np.ndarray, "M 2"] = rheed_pattern.detector_points
-    yy: Float[np.ndarray, "M"] = coords[:, 0]
-    zz: Float[np.ndarray, "M"] = coords[:, 1]
-    intensities: Float[np.ndarray, "M"] = rheed_pattern.intensities
+    yy: Float[np.ndarray, M] = coords[:, 0]
+    zz: Float[np.ndarray, M] = coords[:, 1]
+    intensities: Float[np.ndarray, M] = rheed_pattern.intensities
     y_np: np.ndarray = np.asarray(yy)
     z_np: np.ndarray = np.asarray(zz)
     i_np: np.ndarray = np.asarray(intensities)

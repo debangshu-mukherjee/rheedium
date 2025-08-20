@@ -60,6 +60,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "furo"
 html_static_path = ["_static"]
 
+# Custom CSS files
+html_css_files = [
+    'custom.css',
+]
+
 # Furo theme options - default to dark mode
 html_theme_options = {
     "light_css_variables": {

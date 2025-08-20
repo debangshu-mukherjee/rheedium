@@ -23,7 +23,7 @@ Functions
 
 import jax
 import jax.numpy as jnp
-from beartype.typing import Optional, Tuple
+from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Float, Num
 
 import rheedium as rh
