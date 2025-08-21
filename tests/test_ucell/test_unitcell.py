@@ -3,13 +3,12 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jax import random
 from jaxtyping import Array, Float
 
 jax.config.update("jax_enable_x64", True)
 
 # Import your functions here
-from rheedium.uc import reciprocal_unitcell, wavelength_ang
+from rheedium.ucell import reciprocal_unitcell, wavelength_ang
 
 if __name__ == "__main__":
     pytest.main([__file__])
@@ -23,7 +22,7 @@ class test_wavelength_ang(chex.TestCase):
         {"test_kV": 0.001, "expected_wavelength": 12.2642524552},
         {"test_kV": 300.0, "expected_wavelength": 0.0196874863882},
     )
-    def test_voltage_values(self, test_kV, expected_wavelength):
+    def test_voltage_values(self, test_kV, expected_wavelength) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         # voltage_kV = 200.0
         # expected_wavelength = 0.02508  # Expected value based on known physics
@@ -34,7 +33,7 @@ class test_wavelength_ang(chex.TestCase):
 
     # Check for precision and rounding errors
     @chex.all_variants
-    def test_precision_and_rounding_errors(self):
+    def test_precision_and_rounding_errors(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltage_kV = 150.0
         expected_wavelength = 0.02957  # Expected value based on known physics
@@ -45,7 +44,7 @@ class test_wavelength_ang(chex.TestCase):
 
     # Ensure function returns a Float Array
     @chex.all_variants
-    def test_returns_float(self):
+    def test_returns_float(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltage_kV = 200.0
         result = var_wavelength_ang(voltage_kV)
@@ -53,7 +52,7 @@ class test_wavelength_ang(chex.TestCase):
 
     # Test whether array inputs work
     @chex.all_variants
-    def test_array_input(self):
+    def test_array_input(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltages = jnp.array([100, 200, 300, 400], dtype=jnp.float64)
         results = var_wavelength_ang(voltages)
@@ -77,7 +76,7 @@ class test_reciprocal_unitcell(chex.TestCase):
             ),  # 2π/[3,4,5]
         },
     )
-    def test_known_cells(self, test_cell, expected_reciprocal):
+    def test_known_cells(self, test_cell, expected_reciprocal) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         result = var_reciprocal_unitcell(test_cell)
         assert jnp.allclose(result, expected_reciprocal, atol=1e-6), (
@@ -86,7 +85,7 @@ class test_reciprocal_unitcell(chex.TestCase):
 
     # Test for ill-conditioned matrix
     @chex.all_variants
-    def test_ill_conditioned_matrix(self):
+    def test_ill_conditioned_matrix(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         ill_conditioned = jnp.array(
             [[1.0, 1.0, 1.0], [1.0, 1.0 + 1e-8, 1.0], [1.0, 1.0, 1.0 + 1e-8]]
@@ -98,7 +97,7 @@ class test_reciprocal_unitcell(chex.TestCase):
 
     # Test crystallographic properties
     @chex.all_variants
-    def test_crystallographic_properties(self):
+    def test_crystallographic_properties(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
         reciprocal = var_reciprocal_unitcell(unit_cell)
@@ -119,7 +118,7 @@ class test_reciprocal_unitcell(chex.TestCase):
 
     # Ensure function returns a Float Array with correct shape
     @chex.all_variants
-    def test_returns_float_array_3x3(self):
+    def test_returns_float_array_3x3(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
         result = var_reciprocal_unitcell(unit_cell)
@@ -128,7 +127,7 @@ class test_reciprocal_unitcell(chex.TestCase):
 
     # Test volume conservation
     @chex.all_variants
-    def test_volume_conservation(self):
+    def test_volume_conservation(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
         reciprocal = var_reciprocal_unitcell(unit_cell)

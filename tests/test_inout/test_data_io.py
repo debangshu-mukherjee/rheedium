@@ -1,6 +1,5 @@
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import jax.numpy as jnp
@@ -11,7 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.pyplot import colormaps
 from pymatgen.core import Lattice, Structure
 
-from rheedium.io import create_phosphor_colormap, parse_cif_to_jax
+from rheedium.io import parse_cif_to_jax
 
 
 class PhosphorColormap:
@@ -21,7 +20,7 @@ class PhosphorColormap:
     with a slight white bloom at maximum intensity.
     """
 
-    def __init__(self, name: Optional[str] = "phosphor"):
+    def __init__(self, name: Optional[str] = "phosphor") -> None:
         """
         Initialize the PhosphorColormap with a given name.
 
@@ -52,9 +51,9 @@ class PhosphorColormap:
         positions = [x[0] for x in self.colors]
         rgb_values = [x[1] for x in self.colors]
 
-        red = [(pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values)]
-        green = [(pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values)]
-        blue = [(pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values)]
+        red = [(pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values, strict=False)]
+        green = [(pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values, strict=False)]
+        blue = [(pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values, strict=False)]
 
         return {"red": red, "green": green, "blue": blue}
 
@@ -94,7 +93,7 @@ class TestPhosphorColormap:
         """Fixture providing a PhosphorColormap instance."""
         return PhosphorColormap()
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test if the class initializes correctly with default and custom names."""
         cmap = PhosphorColormap()
         assert cmap.name == "phosphor"
@@ -103,13 +102,13 @@ class TestPhosphorColormap:
         cmap = PhosphorColormap(name=custom_name)
         assert cmap.name == custom_name
 
-    def test_colormap_creation(self, phosphor_cmap):
+    def test_colormap_creation(self, phosphor_cmap) -> None:
         """Test if the colormap is created correctly."""
         cmap = phosphor_cmap.create()
         assert isinstance(cmap, LinearSegmentedColormap)
         assert cmap.name == "phosphor"
 
-    def test_colormap_property(self, phosphor_cmap):
+    def test_colormap_property(self, phosphor_cmap) -> None:
         """Test if the colormap property works correctly."""
         # First access should create the colormap
         cmap1 = phosphor_cmap.colormap
@@ -119,7 +118,7 @@ class TestPhosphorColormap:
         cmap2 = phosphor_cmap.colormap
         assert cmap1 is cmap2
 
-    def test_color_range(self, phosphor_cmap):
+    def test_color_range(self, phosphor_cmap) -> None:
         """Test if the colormap properly handles the full range of values [0,1]."""
         cmap = phosphor_cmap.colormap
 
@@ -131,14 +130,14 @@ class TestPhosphorColormap:
         color_max = cmap(1.0)
         np.testing.assert_array_almost_equal(color_max[:3], [0.8, 1.0, 0.8])
 
-    def test_green_dominance(self, phosphor_cmap):
+    def test_green_dominance(self, phosphor_cmap) -> None:
         """Test if the green channel is dominant in mid-range values."""
         cmap = phosphor_cmap.colormap
         color_mid = cmap(0.7)
         assert color_mid[1] > color_mid[0]  # Green should be greater than red
         assert color_mid[1] > color_mid[2]  # Green should be greater than blue
 
-    def test_monotonicity(self, phosphor_cmap):
+    def test_monotonicity(self, phosphor_cmap) -> None:
         """Test if the green channel increases monotonically."""
         cmap = phosphor_cmap.colormap
         values = np.linspace(0, 1, 100)
@@ -146,32 +145,32 @@ class TestPhosphorColormap:
 
         assert all(green_values[i] <= green_values[i + 1] for i in range(len(green_values) - 1))
 
-    def test_alpha_channel(self, phosphor_cmap):
+    def test_alpha_channel(self, phosphor_cmap) -> None:
         """Test if the colormap properly sets alpha channel."""
         cmap = phosphor_cmap.colormap
         color = cmap(0.5)
         assert len(color) == 4  # Should have RGBA
         assert color[3] == 1.0  # Alpha should be 1.0 (fully opaque)
 
-    def test_matplotlib_registration(self):
+    def test_matplotlib_registration(self) -> None:
         """Test if the colormap gets properly registered in matplotlib."""
         name = "test_phosphor_registration"
-        cmap = PhosphorColormap(name=name).create()
+        PhosphorColormap(name=name).create()
         assert name in colormaps()
 
-    def test_invalid_input(self):
+    def test_invalid_input(self) -> None:
         """Test if the class handles invalid input appropriately."""
         with pytest.raises(TypeError):
             PhosphorColormap(name=123)  # type: ignore
 
-    def test_array_input(self, phosphor_cmap):
+    def test_array_input(self, phosphor_cmap) -> None:
         """Test if the colormap can handle array inputs."""
         cmap = phosphor_cmap.colormap
         values = np.array([0.0, 0.5, 1.0])
         colors = cmap(values)
         assert colors.shape == (3, 4)  # Should return 3 RGBA colors
 
-    def test_segments_creation(self, phosphor_cmap):
+    def test_segments_creation(self, phosphor_cmap) -> None:
         """Test if the color segments are created correctly."""
         segments = phosphor_cmap._create_segments()
         assert all(key in segments for key in ["red", "green", "blue"])
@@ -214,19 +213,18 @@ class TestCIFParser:
         yield temp_path
         os.unlink(temp_path)  # Cleanup after tests
 
-    def test_file_not_found(self):
+    def test_file_not_found(self) -> None:
         """Test if function raises FileNotFoundError for non-existent file."""
         with pytest.raises(FileNotFoundError):
             parse_cif_to_jax("nonexistent.cif")
 
-    def test_invalid_extension(self):
+    def test_invalid_extension(self) -> None:
         """Test if function raises ValueError for invalid file extension."""
-        with tempfile.NamedTemporaryFile(suffix=".txt") as f:
-            with pytest.raises(ValueError):
-                parse_cif_to_jax(f.name)
+        with tempfile.NamedTemporaryFile(suffix=".txt") as f, pytest.raises(ValueError):
+            parse_cif_to_jax(f.name)
 
     @patch("pymatgen.io.cif.CifParser")
-    def test_invalid_cell_lengths(self, MockCifParser):
+    def test_invalid_cell_lengths(self, MockCifParser) -> None:
         """Test if function raises ValueError for invalid cell lengths."""
         mock_structure = Mock()
         mock_structure.lattice.abc = (-1.0, 5.0, 5.0)
@@ -237,7 +235,7 @@ class TestCIFParser:
             parse_cif_to_jax("test.cif")
 
     @patch("pymatgen.io.cif.CifParser")
-    def test_invalid_cell_angles(self, MockCifParser):
+    def test_invalid_cell_angles(self, MockCifParser) -> None:
         """Test if function raises ValueError for invalid cell angles."""
         mock_structure = Mock()
         mock_structure.lattice.abc = (5.0, 5.0, 5.0)
@@ -247,7 +245,7 @@ class TestCIFParser:
         with pytest.raises(ValueError, match="Cell angles must be between 0 and 180 degrees"):
             parse_cif_to_jax("test.cif")
 
-    def test_successful_parsing(self, sample_cif_file):
+    def test_successful_parsing(self, sample_cif_file) -> None:
         """Test successful parsing of a valid CIF file."""
         result = parse_cif_to_jax(sample_cif_file)
 
@@ -264,7 +262,7 @@ class TestCIFParser:
         assert result.cell_angles.shape == (3,)
 
     @patch("pymatgen.io.cif.CifParser")
-    def test_primitive_cell_option(self, MockCifParser, mock_structure):
+    def test_primitive_cell_option(self, MockCifParser, mock_structure) -> None:
         """Test if primitive cell option is correctly passed."""
         MockCifParser.return_value.parse_structures.return_value = [mock_structure]
 
@@ -276,7 +274,7 @@ class TestCIFParser:
         parse_cif_to_jax("test.cif", primitive=False)
         MockCifParser.return_value.parse_structures.assert_called_with(primitive=False)
 
-    def test_array_types(self, sample_cif_file):
+    def test_array_types(self, sample_cif_file) -> None:
         """Test if the function returns JAX arrays with correct types."""
         result = parse_cif_to_jax(sample_cif_file)
 
@@ -285,7 +283,7 @@ class TestCIFParser:
         assert isinstance(result.cell_lengths, jnp.ndarray)
         assert isinstance(result.cell_angles, jnp.ndarray)
 
-    def test_coordinate_conversion(self, sample_cif_file):
+    def test_coordinate_conversion(self, sample_cif_file) -> None:
         """Test if fractional and Cartesian coordinates are correctly related."""
         result = parse_cif_to_jax(sample_cif_file)
 
@@ -294,7 +292,7 @@ class TestCIFParser:
         scaled_coords = result.frac_positions[:, :3] * result.cell_lengths[0]
         np.testing.assert_array_almost_equal(scaled_coords, result.cart_positions[:, :3], decimal=5)
 
-    def test_atomic_numbers(self, sample_cif_file):
+    def test_atomic_numbers(self, sample_cif_file) -> None:
         """Test if atomic numbers are correctly assigned."""
         result = parse_cif_to_jax(sample_cif_file)
 
@@ -305,7 +303,7 @@ class TestCIFParser:
     @pytest.mark.parametrize(
         "dimension", ["frac_positions", "cart_positions", "cell_lengths", "cell_angles"]
     )
-    def test_array_dimensions(self, sample_cif_file, dimension):
+    def test_array_dimensions(self, sample_cif_file, dimension) -> None:
         """Test if all arrays have correct dimensions."""
         result = parse_cif_to_jax(sample_cif_file)
         array = getattr(result, dimension)

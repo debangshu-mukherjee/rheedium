@@ -41,10 +41,10 @@ dependencies = [
     "matplotlib>=3.10.0",
     "jupyter-black>=0.4.0",
     "ipykernel>=6.29.5",
-    "jax[cuda12]>=0.4.38 ; sys_platform == 'linux'",
-    "jax>=0.4.30 ; sys_platform == 'win64'",
-    "jax>=0.4.30 ; sys_platform == 'darwin'",
     "pandas>=2.3.0",
+    "jax>=0.7.0 ; sys_platform == 'win64'",
+    "jax>=0.7.0 ; sys_platform == 'darwin'",
+    "jax[cuda12]>=0.7.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 [project.optional-dependencies]
 docs = [
