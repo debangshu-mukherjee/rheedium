@@ -63,12 +63,12 @@ docs = [
 ]
 test = [
     "pytest>=8.3.5",
-    "pytest-cov>=4.0.0",
+    "pytest-cov>=6.0.0",
     "pytest-xdist>=3.0.0",
     "chex>=0.1.89",
 ]
 dev = [
-    "cryoblob[docs,test]",
+    "rheedium[docs,test,notebooks]",
     "black[jupyter]>=25.1.0",
     "build>=1.2.2.post1",
     "twine>=6.1.0",
