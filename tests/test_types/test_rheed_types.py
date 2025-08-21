@@ -6,7 +6,12 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.rheed_types import create_rheed_image, create_rheed_pattern
+from rheedium.types.rheed_types import (
+    RHEEDImage,
+    RHEEDPattern,
+    create_rheed_image,
+    create_rheed_pattern,
+)
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -417,14 +422,14 @@ class TestRHEEDIntegration(chex.TestCase):
         image = create_rheed_image(jnp.ones((128, 256)), 2.0, 0.01, 0.037, 1000.0)
 
         # Use variant on a function that processes the combined structure
-        def process_combined(p, i):
+        def process_combined(p: RHEEDPattern, i: RHEEDImage) -> tuple:
             combined = {"pattern": p, "image": i}
             flat, treedef = tree_util.tree_flatten(combined)
             reconstructed = tree_util.tree_unflatten(treedef, flat)
-            return combined, reconstructed
+            return (combined, reconstructed)
         
-        var_process = self.variant(process_combined)
-        combined, reconstructed = var_process(pattern, image)
+        var_process_combined = self.variant(process_combined)
+        combined, reconstructed = var_process_combined(pattern, image)
 
         chex.assert_trees_all_close(combined["pattern"], reconstructed["pattern"])
         chex.assert_trees_all_close(
