@@ -38,7 +38,9 @@ from jaxtyping import Array, Float, Int
 from rheedium._decorators import beartype, jaxtyped
 from rheedium.types import XYZData, make_xyz_data, scalar_int
 
-_KIRKLAND_PATH: Path = Path(__file__).resolve().parent / "luggage" / "Kirkland_Potentials.csv"
+_KIRKLAND_PATH: Path = (
+    Path(__file__).resolve().parent / "luggage" / "Kirkland_Potentials.csv"
+)
 _ATOMS_PATH: Path = Path(__file__).resolve().parent / "luggage" / "atom_numbers.json"
 
 jax.config.update("jax_enable_x64", True)
@@ -151,7 +153,9 @@ def _load_kirkland_csv(
     kirkland_numpy: np.ndarray = np.loadtxt(file_path, delimiter=",", dtype=np.float64)
     if kirkland_numpy.shape != (103, 12):
         raise ValueError(f"Expected CSV shape (103, 12), got {kirkland_numpy.shape}")
-    kirkland_data: Float[Array, " 103 12"] = jnp.asarray(kirkland_numpy, dtype=jnp.float64)
+    kirkland_data: Float[Array, " 103 12"] = jnp.asarray(
+        kirkland_numpy, dtype=jnp.float64
+    )
     return kirkland_data
 
 

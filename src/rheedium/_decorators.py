@@ -16,9 +16,9 @@ from collections.abc import Callable
 
 from beartype.typing import Any, TypeVar
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
-BUILDING_DOCS = os.environ.get('BUILDING_DOCS', '').lower() in ('1', 'true', 'yes')
+BUILDING_DOCS = os.environ.get("BUILDING_DOCS", "").lower() in ("1", "true", "yes")
 
 if BUILDING_DOCS:
 
@@ -76,6 +76,7 @@ if BUILDING_DOCS:
             # Return a decorator that returns the function unchanged
             return lambda f: f
         return func
+
 else:
     # Normal runtime - use actual decorators
     try:
@@ -142,4 +143,4 @@ else:
             return func
 
 
-__all__ = ['jaxtyped', 'beartype', 'jit', 'BUILDING_DOCS']
+__all__ = ["jaxtyped", "beartype", "jit", "BUILDING_DOCS"]

@@ -28,7 +28,9 @@ jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)
-def angle_in_degrees(v1: Float[Array, " n"], v2: Float[Array, " n"]) -> Float[Array, " "]:
+def angle_in_degrees(
+    v1: Float[Array, " n"], v2: Float[Array, " n"]
+) -> Float[Array, " "]:
     """Calculate the angle in degrees between two vectors.
 
     As long as the vectors have the same number of elements,
@@ -61,12 +63,16 @@ def angle_in_degrees(v1: Float[Array, " n"], v2: Float[Array, " n"]) -> Float[Ar
         return jax.lax.cond(
             v1.shape == v2.shape,
             lambda: (v1, v2),
-            lambda: jax.lax.stop_gradient(jax.lax.cond(False, lambda: (v1, v2), lambda: (v1, v2))),
+            lambda: jax.lax.stop_gradient(
+                jax.lax.cond(False, lambda: (v1, v2), lambda: (v1, v2))
+            ),
         )
 
     _check_vector_dimensions()
     angle: Float[Array, " "] = (
-        180.0 * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))) / jnp.pi
+        180.0
+        * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2)))
+        / jnp.pi
     )
     return angle
 
@@ -194,7 +200,9 @@ def parse_cif_and_scrape(
         crystal.cell_angles[2],
     )
     cell_inv: Float[Array, " 3 3"] = jnp.linalg.inv(cell_vectors)
-    filtered_frac_positions: Float[Array, " m 3"] = (filtered_cart_positions @ cell_inv) % 1.0
+    filtered_frac_positions: Float[Array, " m 3"] = (
+        filtered_cart_positions @ cell_inv
+    ) % 1.0
     filtered_crystal: CrystalStructure = rh.types.create_crystal_structure(
         frac_positions=filtered_frac_positions,
         cart_positions=filtered_cart_positions,

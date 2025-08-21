@@ -22,7 +22,8 @@ from jaxtyping import Array, Float, Int, Num
 
 from rheedium._decorators import beartype, jaxtyped
 from rheedium.inout.xyz import atomic_symbol
-from rheedium.types import CrystalStructure, create_crystal_structure, scalar_float
+from rheedium.types import (CrystalStructure, create_crystal_structure,
+                            scalar_float)
 from rheedium.ucell import build_cell_vectors
 
 
@@ -149,7 +150,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     frac_positions: Float[Array, " N 4"] = jnp.array(positions_list, dtype=jnp.float64)
     cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
     cart_coords: Float[Array, " N 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, " N 4"] = jnp.column_stack((cart_coords, frac_positions[:, 3]))
+    cart_positions: Float[Array, " N 4"] = jnp.column_stack(
+        (cart_coords, frac_positions[:, 3])
+    )
     sym_ops: List[str] = []
     lines = cif_text.splitlines()
     collect_sym_ops: bool = False
@@ -177,7 +180,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
-    expanded_crystal: CrystalStructure = symmetry_expansion(crystal, sym_ops, tolerance=1.0)
+    expanded_crystal: CrystalStructure = symmetry_expansion(
+        crystal, sym_ops, tolerance=1.0
+    )
     return expanded_crystal
 
 
@@ -265,11 +270,13 @@ def symmetry_expansion(
             new_xyz: Array = jnp.mod(op(xyz), 1.0)
             expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
     expanded_positions: Float[Array, " N 4"] = jnp.array(expanded_positions)
-    cart_positions: Float[Array, " N 3"] = expanded_positions[:, :3] @ build_cell_vectors(
-        *crystal.cell_lengths, *crystal.cell_angles
-    )
+    cart_positions: Float[Array, " N 3"] = expanded_positions[
+        :, :3
+    ] @ build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
 
-    def _deduplicate(positions: Float[Array, " N 3"], tol: scalar_float) -> Float[Array, " N 3"]:
+    def _deduplicate(
+        positions: Float[Array, " N 3"], tol: scalar_float
+    ) -> Float[Array, " N 3"]:
         def _unique_cond(
             carry: Tuple[Float[Array, " N 3"], Int[Array, " "]], pos: Float[Array, " 3"]
         ) -> Tuple[Tuple[Float[Array, " N 3"], Int[Array, " "]], None]:
@@ -301,7 +308,9 @@ def symmetry_expansion(
         build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
     )
     unique_frac: Float[Array, " N 3"] = (unique_cart @ cell_inv) % 1.0
-    atomic_numbers: Float[Array, " N"] = expanded_positions[:, 3][: unique_cart.shape[0]]
+    atomic_numbers: Float[Array, " N"] = expanded_positions[:, 3][
+        : unique_cart.shape[0]
+    ]
     expanded_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
         cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),

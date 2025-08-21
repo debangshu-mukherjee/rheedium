@@ -85,7 +85,9 @@ def reciprocal_unitcell(
                 [
                     0,
                     b * jnp.sin(gamma),
-                    c * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma),
+                    c
+                    * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
+                    / jnp.sin(gamma),
                 ],
                 [
                     0,
@@ -115,7 +117,9 @@ def reciprocal_unitcell(
                         [
                             0,
                             b * jnp.sin(gamma),
-                            c * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma),
+                            c
+                            * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
+                            / jnp.sin(gamma),
                         ],
                         [
                             0,
@@ -341,7 +345,8 @@ def build_cell_vectors(
     b_vec: Float[Array, " 3"] = jnp.array([b_x, b_y, 0.0])
     c_x: Float[Array, " "] = c * jnp.cos(beta_rad)
     c_y: Float[Array, " "] = c * (
-        (jnp.cos(alpha_rad) - jnp.cos(beta_rad) * jnp.cos(gamma_rad)) / jnp.sin(gamma_rad)
+        (jnp.cos(alpha_rad) - jnp.cos(beta_rad) * jnp.cos(gamma_rad))
+        / jnp.sin(gamma_rad)
     )
     c_z_sq: Float[Array, " "] = (c**2) - (c_x**2) - (c_y**2)
     c_z: Float[Array, " "] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
@@ -393,7 +398,9 @@ def compute_lengths_angles(
     """
     lengths: Float[Array, " 3"] = jnp.linalg.norm(vectors, axis=1)
     dot_products: Float[Array, " 3"] = jnp.einsum("ij,ij->i", vectors, vectors)
-    angles: Float[Array, " 3 3"] = jnp.arccos(dot_products / (lengths[:, None] * lengths[None, :]))
+    angles: Float[Array, " 3 3"] = jnp.arccos(
+        dot_products / (lengths[:, None] * lengths[None, :])
+    )
     return lengths, jnp.degrees(angles)
 
 
@@ -550,7 +557,9 @@ def atom_scraper(
         jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
         1e-3,
     )
-    is_top_layer_mode: Bool[Array, " "] = jnp.isclose(thickness, jnp.asarray(0.0), atol=1e-8)
+    is_top_layer_mode: Bool[Array, " "] = jnp.isclose(
+        thickness, jnp.asarray(0.0), atol=1e-8
+    )
     mask: Bool[Array, " n"] = jnp.where(
         is_top_layer_mode,
         dist_from_top <= adaptive_eps,
@@ -562,8 +571,12 @@ def atom_scraper(
     ) -> Float[Array, " m 4"]:
         return positions[gather_mask]
 
-    filtered_frac: Float[Array, " m 4"] = _gather_valid_positions(crystal.frac_positions, mask)
-    filtered_cart: Float[Array, " m 4"] = _gather_valid_positions(crystal.cart_positions, mask)
+    filtered_frac: Float[Array, " m 4"] = _gather_valid_positions(
+        crystal.frac_positions, mask
+    )
+    filtered_cart: Float[Array, " m 4"] = _gather_valid_positions(
+        crystal.cart_positions, mask
+    )
     original_height: Float[Array, " "] = jnp.max(dot_vals) - jnp.min(dot_vals)
     new_height: Float[Array, " "] = jnp.where(
         is_top_layer_mode, adaptive_eps, jnp.minimum(thickness, original_height)
@@ -591,12 +604,16 @@ def atom_scraper(
         new_height: Float[Array, " "],
     ) -> Float[Array, " 3"]:
         needs_scaling: Bool[Array, " "] = jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
-        scaled: Float[Array, " 3"] = _scale_vector(vec, zone_axis_hat, original_height, new_height)
+        scaled: Float[Array, " 3"] = _scale_vector(
+            vec, zone_axis_hat, original_height, new_height
+        )
         return jnp.where(needs_scaling, scaled, vec)
 
     scaled_vectors: Float[Array, " 3 3"] = jnp.stack(
         [
-            _scale_if_needed(orig_cell_vectors[i], zone_axis_hat, original_height, new_height)
+            _scale_if_needed(
+                orig_cell_vectors[i], zone_axis_hat, original_height, new_height
+            )
             for i in range(3)
         ]
     )

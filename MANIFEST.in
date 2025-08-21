@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include src/rheedium/py.typed
+include src/rheedium/inout/py.typed
+include src/rheedium/plots/py.typed
+include src/rheedium/recon/py.typed
+include src/rheedium/simul/py.typed
+include src/rheedium/types/py.typed
+include src/rheedium/ucell/py.typed

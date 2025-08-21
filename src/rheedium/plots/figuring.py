@@ -64,7 +64,9 @@ def create_phosphor_colormap(
     >>> plt.title("Phosphor Screen Colormap")
     >>> plt.show()
     """
-    colors: List[Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]] = [
+    colors: List[
+        Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
+    ] = [
         (0.0, (0.0, 0.0, 0.0)),
         (0.4, (0.0, 0.05, 0.0)),
         (0.7, (0.15, 0.85, 0.15)),
@@ -72,7 +74,9 @@ def create_phosphor_colormap(
         (1.0, (0.8, 1.0, 0.8)),
     ]
     positions: List[scalar_float] = [x[0] for x in colors]
-    rgb_values: List[Tuple[scalar_float, scalar_float, scalar_float]] = [x[1] for x in colors]
+    rgb_values: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
+        x[1] for x in colors
+    ]
     red: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
         (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
@@ -165,7 +169,9 @@ def plot_rheed(
         points=(y_np, z_np), values=i_np, xi=grid_points, method=method, fill_value=0.0
     )
     intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(cmap_name)
+    phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(
+        cmap_name
+    )
     fig: plt.Figure
     ax: plt.Axes
     fig, ax = plt.subplots(figsize=(6, 6))

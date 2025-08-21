@@ -12,6 +12,7 @@ os.environ["JAX_ENABLE_X64"] = "True"
 os.environ["BUILDING_DOCS"] = "1"
 
 import tomllib
+
 from sphinx.application import Sphinx
 
 # CRITICAL: Proper path setup for autodoc
@@ -33,7 +34,9 @@ project = pyproject_data["project"]["name"]
 
 # Handle authors
 authors_data = pyproject_data["project"]["authors"]
-author = authors_data[0]["name"] if isinstance(authors_data[0], dict) else authors_data[0]
+author = (
+    authors_data[0]["name"] if isinstance(authors_data[0], dict) else authors_data[0]
+)
 
 project_copyright = f"{datetime.now().year}, {author}"
 release = pyproject_data["project"]["version"]
@@ -62,7 +65,7 @@ html_static_path = ["_static"]
 
 # Custom CSS files
 html_css_files = [
-    'custom.css',
+    "custom.css",
 ]
 
 # Furo theme options - default to dark mode
@@ -125,7 +128,9 @@ autodoc_default_options = {
 }
 
 # Type handling with sphinx-autodoc-typehints
-autodoc_typehints = "none"  # Disable type hints in signature (NumPy docstrings handle this)
+autodoc_typehints = (
+    "none"  # Disable type hints in signature (NumPy docstrings handle this)
+)
 autodoc_typehints_format = "short"
 autodoc_typehints_description_target = "documented"
 python_use_unqualified_type_names = True
@@ -209,11 +214,11 @@ def process_signature(app, what, name, obj, options, signature, return_annotatio
     """Process signatures to handle jaxtyping annotations."""
     if signature:
         # Simplify jaxtyping annotations in signatures
-        signature = signature.replace('Float[Array, " ', 'FloatArray[')
-        signature = signature.replace('Int[Array, " ', 'IntArray[')
-        signature = signature.replace('Bool[Array, " ', 'BoolArray[')
-        signature = signature.replace('Num[Array, " ', 'NumArray[')
-        signature = signature.replace('"]', ']')
+        signature = signature.replace('Float[Array, " ', "FloatArray[")
+        signature = signature.replace('Int[Array, " ', "IntArray[")
+        signature = signature.replace('Bool[Array, " ', "BoolArray[")
+        signature = signature.replace('Num[Array, " ', "NumArray[")
+        signature = signature.replace('"]', "]")
     return signature, return_annotation
 
 

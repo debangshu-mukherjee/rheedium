@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.06.23"
+version = "2025.06.25"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -45,6 +45,8 @@ dependencies = [
     "jax>=0.7.0 ; sys_platform == 'win64'",
     "jax>=0.7.0 ; sys_platform == 'darwin'",
     "jax[cuda12]>=0.7.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "black>=25.1.0",
+    "isort>=6.0.1",
 ]
 [project.optional-dependencies]
 docs = [
@@ -132,8 +134,9 @@ requires = ["uv_build>=0.8.3,<0.9.0"]
 build-backend = "uv_build"
 
 [tool.ruff]
-line-length = 100
-target-version = "py310"
+line-length = 99
+target-version = "py312"
+src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "ANN", "S", "A", "C4", "PIE", "PT", "RET", "SIM", "ARG", "ERA", "PL"]
@@ -154,7 +157,7 @@ max-args = 10
 known-third-party = ["jax", "jaxtyping"]
 
 [tool.ruff.lint.pydocstyle]
-convention = "google"
+convention = "numpy"
 
 [tool.ruff.format]
 quote-style = "preserve"

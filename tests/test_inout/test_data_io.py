@@ -51,9 +51,18 @@ class PhosphorColormap:
         positions = [x[0] for x in self.colors]
         rgb_values = [x[1] for x in self.colors]
 
-        red = [(pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values, strict=False)]
-        green = [(pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values, strict=False)]
-        blue = [(pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values, strict=False)]
+        red = [
+            (pos, rgb[0], rgb[0])
+            for pos, rgb in zip(positions, rgb_values, strict=False)
+        ]
+        green = [
+            (pos, rgb[1], rgb[1])
+            for pos, rgb in zip(positions, rgb_values, strict=False)
+        ]
+        blue = [
+            (pos, rgb[2], rgb[2])
+            for pos, rgb in zip(positions, rgb_values, strict=False)
+        ]
 
         return {"red": red, "green": green, "blue": blue}
 
@@ -143,7 +152,9 @@ class TestPhosphorColormap:
         values = np.linspace(0, 1, 100)
         green_values = [cmap(v)[1] for v in values]
 
-        assert all(green_values[i] <= green_values[i + 1] for i in range(len(green_values) - 1))
+        assert all(
+            green_values[i] <= green_values[i + 1] for i in range(len(green_values) - 1)
+        )
 
     def test_alpha_channel(self, phosphor_cmap) -> None:
         """Test if the colormap properly sets alpha channel."""
@@ -242,7 +253,9 @@ class TestCIFParser:
         mock_structure.lattice.angles = (90.0, 181.0, 90.0)
         MockCifParser.return_value.parse_structures.return_value = [mock_structure]
 
-        with pytest.raises(ValueError, match="Cell angles must be between 0 and 180 degrees"):
+        with pytest.raises(
+            ValueError, match="Cell angles must be between 0 and 180 degrees"
+        ):
             parse_cif_to_jax("test.cif")
 
     def test_successful_parsing(self, sample_cif_file) -> None:
@@ -290,7 +303,9 @@ class TestCIFParser:
         # For a cubic cell, conversion should be straightforward
         # Scale fractional coordinates by cell length
         scaled_coords = result.frac_positions[:, :3] * result.cell_lengths[0]
-        np.testing.assert_array_almost_equal(scaled_coords, result.cart_positions[:, :3], decimal=5)
+        np.testing.assert_array_almost_equal(
+            scaled_coords, result.cart_positions[:, :3], decimal=5
+        )
 
     def test_atomic_numbers(self, sample_cif_file) -> None:
         """Test if atomic numbers are correctly assigned."""

@@ -62,7 +62,9 @@ def _bessel_iv_series(
     series_terms: Float[Array, " ... 20"] = powers / (
         factorial_terms * gamma_terms / gamma_v_plus_1
     )
-    result: Float[Array, " ..."] = x_half_v / gamma_v_plus_1 * jnp.sum(series_terms, axis=-1)
+    result: Float[Array, " ..."] = (
+        x_half_v / gamma_v_plus_1 * jnp.sum(series_terms, axis=-1)
+    )
     return result
 
 
@@ -140,7 +142,9 @@ def _bessel_kn_recurrence(
         def masked_step(
             carry: Tuple[Float[Array, " ..."], Float[Array, " ..."]],
             i: Float[Array, ""],
-        ) -> Tuple[Tuple[Float[Array, " ..."], Float[Array, " ..."]], Float[Array, " ..."]]:
+        ) -> Tuple[
+            Tuple[Float[Array, " ..."], Float[Array, " ..."]], Float[Array, " ..."]
+        ]:
             k_prev2: Float[Array, " ..."]
             k_prev1: Float[Array, " ..."]
             k_prev2, k_prev1 = carry
@@ -155,7 +159,9 @@ def _bessel_kn_recurrence(
         final_k: Float[Array, " ..."] = carry[1]
         return final_k
 
-    kn_result: Float[Array, " ..."] = jnp.where(n == 0, k0, jnp.where(n == 1, k1, _compute_kn()))
+    kn_result: Float[Array, " ..."] = jnp.where(
+        n == 0, k0, jnp.where(n == 1, k1, _compute_kn())
+    )
     return kn_result
 
 
@@ -221,7 +227,9 @@ def _bessel_kv_small_integer(
     k0: Float[Array, " ..."] = _bessel_k0_series(x, dtype)
 
     i1: Float[Array, " ..."] = jax.scipy.special.i1(x)
-    k1_coeffs: Float[Array, " 5"] = jnp.array([1.0, -0.5, 0.0625, -0.03125, 0.0234375], dtype=dtype)
+    k1_coeffs: Float[Array, " 5"] = jnp.array(
+        [1.0, -0.5, 0.0625, -0.03125, 0.0234375], dtype=dtype
+    )
     x2: Float[Array, " ..."] = (x * x) / 4.0
     k1_powers: Float[Array, " ... 5"] = jnp.power(x2[..., jnp.newaxis], jnp.arange(5))
     k1_poly: Float[Array, " ..."] = jnp.sum(k1_coeffs * k1_powers, axis=-1)
@@ -260,9 +268,15 @@ def _bessel_kv_large(
     a0: Float[Array, ""] = 1.0
     a1: Float[Array, ""] = (four_v2 - 1.0) / 8.0
     a2: Float[Array, ""] = (four_v2 - 1.0) * (four_v2 - 9.0) / (2.0 * 64.0)
-    a3: Float[Array, ""] = (four_v2 - 1.0) * (four_v2 - 9.0) * (four_v2 - 25.0) / (6.0 * 512.0)
+    a3: Float[Array, ""] = (
+        (four_v2 - 1.0) * (four_v2 - 9.0) * (four_v2 - 25.0) / (6.0 * 512.0)
+    )
     a4: Float[Array, ""] = (
-        (four_v2 - 1.0) * (four_v2 - 9.0) * (four_v2 - 25.0) * (four_v2 - 49.0) / (24.0 * 4096.0)
+        (four_v2 - 1.0)
+        * (four_v2 - 9.0)
+        * (four_v2 - 25.0)
+        * (four_v2 - 49.0)
+        / (24.0 * 4096.0)
     )
 
     z: Float[Array, " ..."] = 1.0 / x
@@ -341,7 +355,9 @@ def bessel_kv(v: scalar_float, x: Float[Array, " ..."]) -> Float[Array, " ..."]:
 
     small_x_non_int: Float[Array, " ..."] = _bessel_kv_small_non_integer(v, x, dtype)
     small_x_int: Float[Array, " ..."] = _bessel_kv_small_integer(v, x, dtype)
-    small_x_vals: Float[Array, " ..."] = jnp.where(is_integer, small_x_int, small_x_non_int)
+    small_x_vals: Float[Array, " ..."] = jnp.where(
+        is_integer, small_x_int, small_x_non_int
+    )
 
     large_x_vals: Float[Array, " ..."] = _bessel_kv_large(v, x)
 
