@@ -56,16 +56,12 @@ jobs:
           --cov-fail-under=70 \
           --junitxml=test-results.xml \
           -v
-          
-    - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-      uses: codecov/codecov-action@v4
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
       with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
+        slug: debangshu-mukherjee/rheedium
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
