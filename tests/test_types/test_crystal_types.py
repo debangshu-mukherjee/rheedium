@@ -7,12 +7,9 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.crystal_types import (
-    XYZData,
-    create_crystal_structure,
-    create_potential_slices,
-    make_xyz_data,
-)
+from rheedium.types.crystal_types import (XYZData, create_crystal_structure,
+                                          create_potential_slices,
+                                          make_xyz_data)
 
 
 class TestCrystalStructure(chex.TestCase):

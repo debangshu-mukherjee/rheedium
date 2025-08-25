@@ -1,38 +1,31 @@
 import os
 import sys
+import tomllib
 from datetime import datetime
 
-# CRITICAL: Set environment variables BEFORE any imports
-# Force JAX to use CPU mode (Read the Docs servers don't have GPUs)
+from beartype.typing import Tuple
+from sphinx.application import Sphinx
+
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["JAX_ENABLE_X64"] = "True"
-# Disable beartype and jaxtyping during documentation builds
 os.environ["BUILDING_DOCS"] = "1"
 
-import tomllib
-
-from sphinx.application import Sphinx
-
-# CRITICAL: Proper path setup for autodoc
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
 
-# Add both src and project root to path
 sys.path.insert(0, src_path)
 sys.path.insert(0, project_root)
 
-print(f"Added to sys.path: {src_path}")  # Debug line
+print(f"Added to sys.path: {src_path}")
 
-# Read project metadata from pyproject.toml
 pyproject_path = os.path.join(project_root, "pyproject.toml")
 with open(pyproject_path, "rb") as f:
     pyproject_data = tomllib.load(f)
 
 project = pyproject_data["project"]["name"]
 
-# Handle authors
 authors_data = pyproject_data["project"]["authors"]
 author = (
     authors_data[0]["name"] if isinstance(authors_data[0], dict) else authors_data[0]
@@ -63,12 +56,10 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "furo"
 html_static_path = ["_static"]
 
-# Custom CSS files
 html_css_files = [
     "custom.css",
 ]
 
-# Furo theme options - default to dark mode
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#0066cc",
@@ -81,7 +72,6 @@ html_theme_options = {
     "sidebar_hide_name": False,
 }
 
-# Napoleon settings for NumPy-style docstrings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = True
@@ -96,17 +86,13 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-# Add custom sections to napoleon (for NumPy style)
 napoleon_custom_sections = [
-    ("Algorithm", "notes_style"),  # Custom section for Algorithm
+    ("Algorithm", "notes_style"),
 ]
 
-# nbsphinx configuration
 nbsphinx_execute = "never"
 nbsphinx_allow_errors = True
 
-# IMPORTANT: Mock only truly problematic dependencies
-# sphinx-autodoc-typehints should handle most type annotations
 autodoc_mock_imports = [
     "pandas",
     "scipy",
@@ -117,35 +103,31 @@ autodoc_mock_imports = [
     "gemmi",
 ]
 
-# Autodoc configuration
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
     "undoc-members": False,
     "show-inheritance": True,
     "inherited-members": False,
-    "ignore-module-all": False,  # Respect __all__
+    "ignore-module-all": False,
 }
 
-# Type handling with sphinx-autodoc-typehints
 autodoc_typehints = (
-    "none"  # Disable type hints in signature (NumPy docstrings handle this)
+    "none"
 )
 autodoc_typehints_format = "short"
 autodoc_typehints_description_target = "documented"
 python_use_unqualified_type_names = True
 typehints_fully_qualified = False
-always_document_param_types = False  # Let NumPy docstrings handle this
-typehints_document_rtype = False  # Let NumPy docstrings handle this
-typehints_use_signature = False  # Don't add types to signature
-typehints_use_signature_return = False  # Don't add return types to signature
+always_document_param_types = False
+typehints_document_rtype = False
+typehints_use_signature = False
+typehints_use_signature_return = False
 autodoc_preserve_defaults = True
 autodoc_inherit_docstrings = True
 
-# Reduced nitpicky mode
 nitpicky = False
 
-# Type aliases for cleaner display
 napoleon_type_aliases = {
     'Float[Array, " "]': "scalar float",
     'Float[Array, " 3"]': "3D float array",
@@ -162,11 +144,9 @@ napoleon_type_aliases = {
     "scalar_num": "numeric",
 }
 
-# Additional type aliases for sphinx-autodoc-typehints
 typehints_defaults = "comma"
 typehints_type_aliases = napoleon_type_aliases
 
-# Ignore problematic references
 nitpick_ignore = [
     ("py:class", "Float"),
     ("py:class", "Array"),
@@ -181,7 +161,6 @@ nitpick_ignore = [
     ("py:obj", "jaxtyped"),
 ]
 
-# Intersphinx mapping
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
@@ -192,8 +171,7 @@ html_css_files = ["custom.css"]
 html_js_files = ["custom.js"]
 
 
-def skip_member(app, what, name, obj, skip, options):
-    """Skip problematic members."""
+def skip_member(name: str, skip: bool) -> bool:
     skip_names = [
         "Float",
         "Array",
@@ -210,10 +188,9 @@ def skip_member(app, what, name, obj, skip, options):
     return skip
 
 
-def process_signature(app, what, name, obj, options, signature, return_annotation):
+def process_signature(signature: str, return_annotation: str) -> Tuple[str, str]:
     """Process signatures to handle jaxtyping annotations."""
     if signature:
-        # Simplify jaxtyping annotations in signatures
         signature = signature.replace('Float[Array, " ', "FloatArray[")
         signature = signature.replace('Int[Array, " ', "IntArray[")
         signature = signature.replace('Bool[Array, " ', "BoolArray[")

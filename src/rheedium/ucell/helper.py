@@ -17,12 +17,12 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-from beartype.typing import Optional, Tuple, Union
+from beartype.typing import Tuple, Union
 from jaxtyping import Array, Bool, Float, Real
 
 import rheedium as rh
 from rheedium._decorators import beartype, jaxtyped
-from rheedium.types import CrystalStructure, scalar_float
+from rheedium.types import CrystalStructure
 
 jax.config.update("jax_enable_x64", True)
 
@@ -127,7 +127,6 @@ def parse_cif_and_scrape(
     cif_path: Union[str, Path],
     zone_axis: Real[Array, " 3"],
     thickness_xyz: Real[Array, " 3"],
-    tolerance: Optional[scalar_float] = 1e-3,
 ) -> CrystalStructure:
     """Parse a CIF file and filter atoms within specified thickness along a zone axis.
 
@@ -146,9 +145,6 @@ def parse_cif_and_scrape(
         Thickness along x, y, z directions in Ångstroms; currently,
         only thickness_xyz[2] (z-direction)
         is used to filter atoms along the provided zone axis.
-    tolerance : scalar_float, optional
-        Numerical tolerance parameter reserved for future use.
-        Default is 1e-3.
 
     Returns
     -------
@@ -181,7 +177,6 @@ def parse_cif_and_scrape(
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_positions: Float[Array, " n 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Float[Array, " n"] = crystal.cart_positions[:, 3]
     zone_axis_norm: Float[Array, " "] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, " 3"] = zone_axis / (zone_axis_norm + 1e-12)
     projections: Float[Array, " n"] = cart_positions @ zone_axis_hat

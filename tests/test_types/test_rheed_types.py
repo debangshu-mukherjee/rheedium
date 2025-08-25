@@ -6,12 +6,9 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.rheed_types import (
-    RHEEDImage,
-    RHEEDPattern,
-    create_rheed_image,
-    create_rheed_pattern,
-)
+from rheedium.types.rheed_types import (RHEEDImage, RHEEDPattern,
+                                        create_rheed_image,
+                                        create_rheed_pattern)
 
 
 class TestRHEEDPattern(chex.TestCase):
