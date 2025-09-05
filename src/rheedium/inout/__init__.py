@@ -1,21 +1,28 @@
-"""
-Module: inout
--------------
-Data input/output utilities for RHEED simulation.
+"""Data input/output utilities for RHEED simulation.
 
-Functions
----------
-- `parse_cif`:
+Extended Summary
+----------------
+This module provides functions for reading and writing various file formats
+used in crystallography and RHEED simulations, including CIF files for crystal
+structures and XYZ files for atomic coordinates.
+
+Routine Listings
+----------------
+parse_cif : function
     Parse a CIF file into a JAX-compatible CrystalStructure
-- `symmetry_expansion`:
+symmetry_expansion : function
     Apply symmetry operations to expand fractional positions and remove duplicates
-- `atomic_symbol`:
-    Returns atomic number for given atomic symbol string.
-- `kirkland_potentials`:
-    Loads Kirkland scattering factors from CSV file.
-- `parse_xyz`:
-    Parses an XYZ file and returns a list of atoms with their
-    element symbols and 3D coordinates.
+atomic_symbol : function
+    Returns atomic number for given atomic symbol string
+kirkland_potentials : function
+    Loads Kirkland scattering factors from CSV file
+parse_xyz : function
+    Parses an XYZ file and returns atoms with element symbols and 3D coordinates
+
+Notes
+-----
+All parsing functions return JAX-compatible data structures suitable for
+automatic differentiation and GPU acceleration.
 """
 
 from .cif import parse_cif, symmetry_expansion

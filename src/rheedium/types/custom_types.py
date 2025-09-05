@@ -1,22 +1,30 @@
-"""
-Module: types.custom_types
---------------------------
-Custom Type Aliases for holding Scalar JAX data.
+"""Custom type aliases for scalar JAX data.
 
-Type Aliases
-------------
-- `scalar_float`:
+Extended Summary
+----------------
+This module defines type aliases for scalar values and arrays that are
+compatible with both standard Python types and JAX arrays. These types
+facilitate type checking and ensure consistency across the codebase.
+
+Routine Listings
+----------------
+scalar_float : TypeAlias
     Union type for scalar float values (float or JAX scalar array)
-- `scalar_int`:
+scalar_int : TypeAlias
     Union type for scalar integer values (int or JAX scalar array)
-- `scalar_num`:
+scalar_num : TypeAlias
     Union type for scalar numeric values (int, float, or JAX scalar array)
-- `non_jax_number`:
+non_jax_number : TypeAlias
     Union type for non-JAX numeric values (int or float)
-- `float_image`:
+float_image : TypeAlias
     Type alias for 2D float array (H, W)
-- `int_image`:
+int_image : TypeAlias
     Type alias for 2D integer array (H, W)
+
+Notes
+-----
+These type aliases are used throughout the library to ensure type safety
+and compatibility with JAX transformations.
 """
 
 from beartype.typing import TypeAlias, Union

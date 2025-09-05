@@ -1,27 +1,34 @@
-"""
-Module: ucell.helper
---------------------
-Helper functions for unit cell calculations and transformations.
+"""Helper functions for unit cell calculations and transformations.
 
-Functions
----------
-- `angle_in_degrees`:
+Extended Summary
+----------------
+This module provides utility functions for crystallographic calculations,
+including vector operations, lattice parameter computations, and crystal
+structure filtering based on geometric criteria.
+
+Routine Listings
+----------------
+angle_in_degrees : function
     Calculate the angle in degrees between two vectors
-- `compute_lengths_angles`:
+compute_lengths_angles : function
     Compute unit cell lengths and angles from lattice vectors
-- `parse_cif_and_scrape`:
+parse_cif_and_scrape : function
     Parse CIF file and filter atoms within specified thickness
+
+Notes
+-----
+All functions are JAX-compatible and support automatic differentiation.
 """
 
 from pathlib import Path
 
 import jax
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import Tuple, Union
-from jaxtyping import Array, Bool, Float, Real
+from jaxtyping import Array, Bool, Float, Real, jaxtyped
 
 import rheedium as rh
-from rheedium._decorators import beartype, jaxtyped
 from rheedium.types import CrystalStructure
 
 jax.config.update("jax_enable_x64", True)

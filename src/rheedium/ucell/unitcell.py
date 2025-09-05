@@ -1,34 +1,41 @@
-"""
-Module: ucell.unitcell
-----------------------
-Functions for unit cell calculations and transformations.
+"""Functions for unit cell calculations and transformations.
 
-Functions
----------
-- `reciprocal_unitcell`:
+Extended Summary
+----------------
+This module provides functions for crystallographic unit cell operations including
+reciprocal space calculations, lattice transformations, and atom filtering for
+specific zones and thicknesses.
+
+Routine Listings
+----------------
+reciprocal_unitcell : function
     Calculate reciprocal unit cell parameters from direct cell parameters
-- `reciprocal_uc_angles`:
+reciprocal_uc_angles : function
     Calculate reciprocal unit cell angles from direct cell angles
-- `get_unit_cell_matrix`:
+get_unit_cell_matrix : function
     Build transformation matrix between direct and reciprocal space
-- `build_cell_vectors`:
+build_cell_vectors : function
     Construct unit cell vectors from lengths and angles
-- `compute_lengths_angles`:
+compute_lengths_angles : function
     Compute unit cell lengths and angles from lattice vectors
-- `generate_reciprocal_points`:
+generate_reciprocal_points : function
     Generate reciprocal lattice points for given hkl ranges
-- `atom_scraper`:
+atom_scraper : function
     Filter atoms within specified thickness along zone axis
+
+Notes
+-----
+All functions are JAX-compatible and support automatic differentiation.
 """
 
 import jax
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Num
+from jaxtyping import Array, Bool, Float, Num, jaxtyped
 
 import rheedium as rh
-from rheedium._decorators import beartype, jaxtyped
-from rheedium.types import *
+from rheedium.types import CrystalStructure, scalar_float, scalar_int
 
 jax.config.update("jax_enable_x64", True)
 
@@ -58,8 +65,10 @@ def reciprocal_unitcell(
         [a*, b*, c*] in 1/angstroms. Second array contains reciprocal
         cell angles [α*, β*, γ*] in degrees.
 
-    Algorithm
-    ---------
+    Notes
+    -----
+    Algorithm:
+    
     - Calculate cell volume from lattice parameters
     - Calculate reciprocal lengths using volume
     - Calculate reciprocal angles using direct angles
@@ -226,7 +235,7 @@ def get_unit_cell_matrix(
     beta: scalar_float,
     gamma: scalar_float,
 ) -> Float[Array, " 3 3"]:
-    """Build transformation matrix between direct and reciprocal space.
+    r"""Build transformation matrix between direct and reciprocal space.
 
     Parameters
     ----------
@@ -297,7 +306,7 @@ def build_cell_vectors(
     beta: scalar_float,
     gamma: scalar_float,
 ) -> Float[Array, " 3 3"]:
-    """Construct unit cell vectors from lengths and angles.
+    r"""Construct unit cell vectors from lengths and angles.
 
     Parameters
     ----------
@@ -509,7 +518,7 @@ def atom_scraper(
 
     Returns
     -------
-    CrystalStructure
+    filtered_crystal : CrystalStructure
         Filtered crystal structure.
 
     Algorithm

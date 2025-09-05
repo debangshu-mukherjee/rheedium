@@ -1,33 +1,31 @@
-"""
-Module: types.rheed_types
--------------------------
-Data structures and factory functions for RHEED pattern and image representation.
+"""Data structures and factory functions for RHEED pattern representation.
 
-Classes
--------
-- `RHEEDPattern`:
+Extended Summary
+----------------
+This module defines JAX-compatible data structures for representing RHEED
+patterns and images. All structures follow a JAX-compatible validation pattern
+that ensures data integrity at compile time.
+
+Routine Listings
+----------------
+RHEEDPattern : class
     Container for RHEED diffraction pattern data with detector points and intensities
-- `RHEEDImage`:
+RHEEDImage : class
     Container for RHEED image data with pixel coordinates and intensity values
-
-Functions
----------
-- `create_rheed_pattern`:
+create_rheed_pattern : function
     Factory function to create RHEEDPattern instances with data validation
-- `create_rheed_image`:
+create_rheed_image : function
     Factory function to create RHEEDImage instances with data validation
 
-JAX Validation Pattern
----------------------
-All factory functions in this codebase follow a JAX-compatible validation pattern:
+Notes
+-----
+JAX Validation Pattern:
 
-1. **Use `jax.lax.cond` for validation**:
-   Replace Python `if` statements with `lax.cond(condition, true_fn, false_fn)`
-2. **Compile-time validation**: Validation happens at JIT compilation time, not runtime
-3. **Side-effect validation**: Validation functions don't return modified data,
-   they ensure original data is valid
-4. **Error handling**: Use `lax.stop_gradient(lax.cond(False, ...))` in false branches
-   to cause compilation errors
+1. Use `jax.lax.cond` for validation instead of Python `if` statements
+2. Validation happens at JIT compilation time, not runtime
+3. Validation functions don't return modified data, they ensure original data is valid
+4. Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause
+   compilation errors
 
 Example Pattern:
 ```python
@@ -58,12 +56,11 @@ This pattern ensures:
 """
 
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import NamedTuple, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Int
-
-from rheedium._decorators import beartype, jaxtyped
+from jaxtyping import Array, Float, Int, jaxtyped
 
 from .custom_types import scalar_float, scalar_num
 

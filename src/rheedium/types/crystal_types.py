@@ -1,35 +1,38 @@
-"""
-Module: types.crystal_types
----------------------------
-Data structures and factory functions for crystal structure representation.
+"""Data structures and factory functions for crystal structure representation.
 
-Classes
--------
-- `CrystalStructure`:
+Extended Summary
+----------------
+This module defines JAX-compatible data structures for representing crystal
+structures, potential slices for multislice simulations, and XYZ file data.
+All structures are PyTrees that support JAX transformations.
+
+Routine Listings
+----------------
+CrystalStructure : class
     JAX-compatible crystal structure with fractional and Cartesian coordinates
-- `PotentialSlices`:
+PotentialSlices : class
     JAX-compatible data structure for representing multislice potential data
-- `XYZData`:
-    A PyTree for XYZ file data with atomic positions, lattice vectors,
-    stress tensor, energy, properties, and comment
-
-Factory Functions
------------------
-- `create_crystal_structure`:
+XYZData : class
+    A PyTree for XYZ file data with atomic positions and metadata
+create_crystal_structure : function
     Factory function to create CrystalStructure instances with data validation
-- `create_potential_slices`:
+create_potential_slices : function
     Factory function to create PotentialSlices instances with data validation
-- `create_xyz_data`:
+create_xyz_data : function
     Factory function to create XYZData instances with data validation
+
+Notes
+-----
+All data structures are immutable and support automatic differentiation
+through JAX's PyTree mechanism.
 """
 
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Int, Num
-
-from rheedium._decorators import beartype, jaxtyped
+from jaxtyping import Array, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 

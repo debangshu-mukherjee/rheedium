@@ -1,28 +1,30 @@
-"""
-Module: inout.xyz
------------------
-Read in XYZ files and convert to JAX-compatible data structures.
+"""Read XYZ files and convert to JAX-compatible data structures.
 
-Functions
----------
-- `atomic_symbol`:
-    Returns atomic number for given atomic symbol string.
-- `kirkland_potentials`:
-    Loads Kirkland scattering factors from CSV file.
-- `parse_xyz`:
-    Parses an XYZ file and returns a list of atoms with their
-    element symbols and 3D coordinates.
+Extended Summary
+----------------
+This module provides utilities for parsing XYZ format files commonly used
+in computational chemistry and materials science. It also includes functions
+for loading atomic data such as Kirkland scattering factors.
 
-Internal Functions
-------------------
-These functions are not exported and are used internally by the module.
+Routine Listings
+----------------
+atomic_symbol : function
+    Returns atomic number for given atomic symbol string
+kirkland_potentials : function
+    Loads Kirkland scattering factors from CSV file
+parse_xyz : function
+    Parses an XYZ file and returns atoms with element symbols and 3D coordinates
+_load_atomic_numbers : function
+    Loads atomic number mapping from JSON file in manifest folder
+_load_kirkland_potentials : function
+    Loads Kirkland scattering factors from CSV file
+_parse_xyz_metadata : function
+    Internal function to extract metadata from the XYZ comment line
 
-- `_load_atomic_numbers`:
-    Loads atomic number mapping from JSON file in manifest folder.
-- `_load_kirkland_potentials`:
-    Loads Kirkland scattering factors from CSV file.
-- `_parse_xyz_metadata`:
-    Internal function to extract metadata from the XYZ comment line.
+Notes
+-----
+Internal functions prefixed with underscore are not part of the public API.
+All returned data structures are JAX-compatible arrays.
 """
 
 import json
@@ -32,10 +34,10 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import numpy as np
+from beartype import beartype
 from beartype.typing import Any, Dict, Optional, Union
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, jaxtyped
 
-from rheedium._decorators import beartype, jaxtyped
 from rheedium.types import XYZData, make_xyz_data, scalar_int
 
 _KIRKLAND_PATH: Path = (
@@ -80,7 +82,7 @@ _ATOMIC_NUMBERS: Dict[str, int] = _load_atomic_numbers()
 
 @jaxtyped(typechecker=beartype)
 def atomic_symbol(symbol_string: str) -> scalar_int:
-    """Returns atomic number for given atomic symbol string.
+    """Return atomic number for given atomic symbol string.
 
     Uses preloaded atomic number mapping for fast lookup.
 
@@ -128,7 +130,7 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
 def _load_kirkland_csv(
     file_path: Optional[Path] = _KIRKLAND_PATH,
 ) -> Float[Array, " 103 12"]:
-    """Loads Kirkland potential parameters from CSV file.
+    """Load Kirkland potential parameters from CSV file.
 
     Uses numpy to load CSV then converts to JAX array for performance.
 
@@ -149,7 +151,6 @@ def _load_kirkland_csv(
     ValueError
         If CSV dimensions are incorrect
     """
-
     kirkland_numpy: np.ndarray = np.loadtxt(file_path, delimiter=",", dtype=np.float64)
     if kirkland_numpy.shape != (103, 12):
         raise ValueError(f"Expected CSV shape (103, 12), got {kirkland_numpy.shape}")

@@ -1,26 +1,33 @@
-"""
-Module: plots.figuring
-----------------------
-Functions for creating and customizing RHEED pattern visualizations.
+"""Functions for creating and customizing RHEED pattern visualizations.
 
-Functions
----------
-- `create_phosphor_colormap`:
+Extended Summary
+----------------
+This module provides specialized visualization functions for RHEED patterns,
+including custom colormaps that simulate the phosphor screen appearance
+commonly seen in experimental RHEED systems.
+
+Routine Listings
+----------------
+create_phosphor_colormap : function
     Create custom colormap simulating phosphor screen appearance
-- `plot_rheed`:
+plot_rheed : function
     Plot RHEED pattern with interpolation and phosphor colormap
+
+Notes
+-----
+Visualization functions use matplotlib for rendering and scipy for interpolation.
 """
 
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
+from beartype import beartype
 from beartype.typing import Any, List, Optional, Tuple
 from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
 import rheedium as rh
-from rheedium._decorators import beartype
 from rheedium.types import RHEEDPattern, scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -142,13 +149,10 @@ def plot_rheed(
     >>> plot_rheed(pattern, figsize=(6, 6))
     >>> plt.show()
     """
-    coords: Float[np.ndarray, "M 2"] = rheed_pattern.detector_points
-    yy: Float[np.ndarray, M] = coords[:, 0]
-    zz: Float[np.ndarray, M] = coords[:, 1]
-    intensities: Float[np.ndarray, M] = rheed_pattern.intensities
-    y_np: np.ndarray = np.asarray(yy)
-    z_np: np.ndarray = np.asarray(zz)
-    i_np: np.ndarray = np.asarray(intensities)
+    coords: Float[np.ndarray, " mm 2"] = rheed_pattern.detector_points
+    y_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 0])
+    z_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 1])
+    i_np: Float[np.ndarray, " mm"] = np.asarray(rheed_pattern.intensities)
     if interp_type in ("cubic", "linear", "nearest"):
         method: str = interp_type
     else:

@@ -1,28 +1,34 @@
-"""
-Module: ucell.bessel
---------------------
-JAX-compatible implementation of modified Bessel functions of the second kind.
+"""JAX-compatible implementation of modified 2nd order Bessel functions.
 
-Functions
----------
-- `bessel_kv`:
+Extended Summary
+----------------
+This module provides JAX-compatible implementations of modified Bessel functions
+which are essential for various calculations in crystallography and diffraction
+physics, particularly for atomic potential calculations.
+
+Routine Listings
+----------------
+bessel_kv : function
     Computes the modified Bessel function of the second kind K_v(x)
-
-Internal functions:
-- `_bessel_iv_series`:
+_bessel_iv_series : function, internal
     Computes I_v(x) using series expansion for Bessel function
-- `_bessel_k0_series`:
+_bessel_k0_series : function, internal
     Computes K_0(x) using series expansion
-- `_bessel_kn_recurrence`:
+_bessel_kn_recurrence : function, internal
     Computes K_n(x) using recurrence relation
+
+Notes
+-----
+All functions are JAX-compatible and support automatic differentiation.
+Internal functions prefixed with underscore are not part of the public API.
 """
 
 import jax
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Int
+from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
-from rheedium._decorators import beartype, jaxtyped, jit
 from rheedium.types import scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -47,7 +53,7 @@ def _bessel_iv_series(
 
     Returns
     -------
-    result : Float[Array, " ..."]
+    Float[Array, " ..."]
         Approximated values of I_v(x)
     """
     x_half: Float[Array, " ..."] = x_val / 2.0
@@ -84,7 +90,7 @@ def _bessel_k0_series(
 
     Returns
     -------
-    result : Float[Array, " ..."]
+    Float[Array, " ..."]
         Approximated values of K_0(x)
     """
     i0: Float[Array, " ..."] = jax.scipy.special.i0(x)
@@ -288,7 +294,7 @@ def _bessel_kv_large(
 
 @jaxtyped(typechecker=beartype)
 def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
-    """Special case K_{1/2}(x) = sqrt(π/(2x)) * exp(-x).
+    """Compute special case K_{1/2}(x) = sqrt(π/(2x)) * exp(-x).
 
     Parameters
     ----------
@@ -307,9 +313,9 @@ def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
 
 
 @jaxtyped(typechecker=beartype)
-@jit
+@jax.jit
 def bessel_kv(v: scalar_float, x: Float[Array, " ..."]) -> Float[Array, " ..."]:
-    """Computes the modified Bessel function of the second kind K_v(x).
+    """Compute the modified Bessel function of the second kind K_v(x).
 
     Computes K_v(x) for real order v >= 0 and x > 0, using a numerically stable
     and differentiable JAX-compatible approximation.

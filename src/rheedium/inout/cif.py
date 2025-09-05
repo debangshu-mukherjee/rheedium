@@ -1,14 +1,23 @@
-"""
-Module: inout.cif
------------------
-Functions for reading and writing crystal structure data.
+"""Functions for reading and writing crystal structure data.
 
-Function List
--------------
-- `parse_cif`:
+Extended Summary
+----------------
+This module provides utilities for parsing Crystallographic Information Format
+(CIF) files and converting them to JAX-compatible data structures. It includes
+symmetry expansion capabilities for generating complete unit cells from
+asymmetric units.
+
+Routine Listings
+----------------
+parse_cif : function
     Parse CIF file into JAX-compatible CrystalStructure
-- `symmetry_expansion`:
+symmetry_expansion : function
     Apply symmetry operations to expand fractional positions
+
+Notes
+-----
+All functions return JAX-compatible arrays suitable for automatic differentiation
+and GPU acceleration.
 """
 
 import fractions
@@ -17,19 +26,22 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
+from beartype import beartype
 from beartype.typing import Callable, Dict, List, Optional, Tuple, Union
-from jaxtyping import Array, Float, Int, Num
+from jaxtyping import Array, Float, Int, Num, jaxtyped
 
-from rheedium._decorators import beartype, jaxtyped
 from rheedium.inout.xyz import atomic_symbol
-from rheedium.types import (CrystalStructure, create_crystal_structure,
-                            scalar_float)
+from rheedium.types import (
+    CrystalStructure,
+    create_crystal_structure,
+    scalar_float,
+)
 from rheedium.ucell import build_cell_vectors
 
 
 @jaxtyped(typechecker=beartype)
 def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
-    """Parse a CIF file into a JAX-compatible CrystalStructure.
+    r"""Parse a CIF file into a JAX-compatible CrystalStructure.
 
     Parameters
     ----------
