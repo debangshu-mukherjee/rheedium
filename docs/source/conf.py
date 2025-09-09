@@ -40,7 +40,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
-    "sphinx_autodoc_typehints",
+    # "sphinx_autodoc_typehints",  # Temporarily disabled due to docstring parsing issues
     "nbsphinx",
     "myst_parser",
 ]
@@ -101,6 +101,13 @@ autodoc_mock_imports = [
     "matplotlib.pyplot",
     "matplotlib.colors",
     "gemmi",
+    "jax",
+    "jaxlib",
+    "jax.numpy",
+    "jax.scipy",
+    "jaxtyping",
+    "beartype",
+    "beartype.typing",
 ]
 
 autodoc_default_options = {
@@ -112,17 +119,15 @@ autodoc_default_options = {
     "ignore-module-all": False,
 }
 
-autodoc_typehints = (
-    "none"
-)
+autodoc_typehints = "signature"
 autodoc_typehints_format = "short"
 autodoc_typehints_description_target = "documented"
 python_use_unqualified_type_names = True
 typehints_fully_qualified = False
 always_document_param_types = False
-typehints_document_rtype = False
-typehints_use_signature = False
-typehints_use_signature_return = False
+typehints_document_rtype = True
+typehints_use_signature = True
+typehints_use_signature_return = True
 autodoc_preserve_defaults = True
 autodoc_inherit_docstrings = True
 
@@ -171,7 +176,10 @@ html_css_files = ["custom.css"]
 html_js_files = ["custom.js"]
 
 
-def skip_member(name: str, skip: bool) -> bool:
+def skip_member(app, what, name, obj, skip, options):
+    """
+    Skip specific members in documentation.
+    """
     skip_names = [
         "Float",
         "Array",
@@ -185,10 +193,12 @@ def skip_member(name: str, skip: bool) -> bool:
     ]
     if name in skip_names:
         return True
+    if name.startswith("_") and not name.startswith("__"):
+        return True
     return skip
 
 
-def process_signature(signature: str, return_annotation: str) -> Tuple[str, str]:
+def process_signature(app, what, name, obj, options, signature, return_annotation):
     """Process signatures to handle jaxtyping annotations."""
     if signature:
         signature = signature.replace('Float[Array, " ', "FloatArray[")

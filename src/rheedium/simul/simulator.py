@@ -413,7 +413,7 @@ def simulate_rheed_pattern(
         Crystal structure to simulate.
         Can be created using :func:`rheedium.types.create_crystal_structure`
         or loaded from a CIF file using :func:`rheedium.inout.parse_cif`
-    voltage_kV : scalar_num, optional
+    voltage_kv : scalar_num, optional
         Accelerating voltage in kilovolts.
         Default: 10.0
     theta_deg : scalar_float, optional
@@ -458,7 +458,7 @@ def simulate_rheed_pattern(
     >>> # Simulate RHEED pattern
     >>> pattern = rh.simul.simulate_rheed_pattern(
     ...     crystal=crystal,
-    ...     voltage_kV=jnp.asarray(20.0),  # 20 kV beam
+    ...     voltage_kv=jnp.asarray(20.0),  # 20 kV beam
     ...     theta_deg=jnp.asarray(2.0),  # 2 degree grazing angle
     ...     hmax=jnp.asarray(4),  # Generate more reflections
     ...     kmax=jnp.asarray(4),
