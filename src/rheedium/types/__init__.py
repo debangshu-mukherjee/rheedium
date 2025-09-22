@@ -8,26 +8,26 @@ that support JAX transformations and automatic differentiation.
 
 Routine Listings
 ----------------
-CrystalStructure : class
-    JAX-compatible crystal structure with fractional and Cartesian coordinates
-PotentialSlices : class
-    JAX-compatible data structure for representing multislice potential data
-RHEEDPattern : class
-    Container for RHEED diffraction pattern data with detector points and intensities
-RHEEDImage : class
-    Container for RHEED image data with pixel coordinates and intensity values
-XYZData : class
-    A PyTree for XYZ file data with atomic positions and metadata
 create_crystal_structure : function
     Factory function to create CrystalStructure instances
 create_potential_slices : function
     Factory function to create PotentialSlices instances
-create_rheed_pattern : function
-    Factory function to create RHEEDPattern instances
 create_rheed_image : function
     Factory function to create RHEEDImage instances
+create_rheed_pattern : function
+    Factory function to create RHEEDPattern instances
+CrystalStructure : class
+    JAX-compatible crystal structure with fractional and Cartesian coordinates
 make_xyz_data : function
     Factory function to create XYZData instances
+PotentialSlices : class
+    JAX-compatible data structure for representing multislice potential data
+RHEEDImage : class
+    Container for RHEED image data with pixel coordinates and intensity values
+RHEEDPattern : class
+    Container for RHEED diffraction pattern data with detector points and intensities
+XYZData : class
+    A PyTree for XYZ file data with atomic positions and metadata
 
 Type Aliases
 ------------
@@ -65,20 +65,20 @@ from .rheed_types import (
 )
 
 __all__ = [
-    "CrystalStructure",
-    "PotentialSlices",
-    "XYZData",
-    "make_xyz_data",
-    "create_potential_slices",
     "create_crystal_structure",
-    "RHEEDPattern",
-    "RHEEDImage",
-    "create_rheed_pattern",
+    "create_potential_slices",
     "create_rheed_image",
+    "create_rheed_pattern",
+    "CrystalStructure",
+    "float_image",
+    "int_image",
+    "make_xyz_data",
+    "non_jax_number",
+    "PotentialSlices",
+    "RHEEDImage",
+    "RHEEDPattern",
     "scalar_float",
     "scalar_int",
     "scalar_num",
-    "non_jax_number",
-    "float_image",
-    "int_image",
+    "XYZData",
 ]
