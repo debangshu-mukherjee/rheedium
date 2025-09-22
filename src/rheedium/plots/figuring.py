@@ -85,13 +85,16 @@ def create_phosphor_colormap(
         x[1] for x in colors
     ]
     red: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[0], rgb[0]) for pos, rgb in zip(positions, rgb_values, strict=True)
+        (pos, rgb[0], rgb[0])
+        for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
     green: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[1], rgb[1]) for pos, rgb in zip(positions, rgb_values, strict=True)
+        (pos, rgb[1], rgb[1])
+        for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
     blue: List[Tuple[scalar_float, scalar_float, scalar_float]] = [
-        (pos, rgb[2], rgb[2]) for pos, rgb in zip(positions, rgb_values, strict=True)
+        (pos, rgb[2], rgb[2])
+        for pos, rgb in zip(positions, rgb_values, strict=True)
     ]
     cmap: LinearSegmentedColormap = LinearSegmentedColormap(
         name, {"red": red, "green": green, "blue": blue}
@@ -170,7 +173,11 @@ def plot_rheed(
     yg, zg = np.meshgrid(y_lin, z_lin, indexing="xy")
     grid_points: np.ndarray = np.column_stack([yg.ravel(), zg.ravel()])
     interpolated: np.ndarray = griddata(
-        points=(y_np, z_np), values=i_np, xi=grid_points, method=method, fill_value=0.0
+        points=(y_np, z_np),
+        values=i_np,
+        xi=grid_points,
+        method=method,
+        fill_value=0.0,
     )
     intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
     phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(

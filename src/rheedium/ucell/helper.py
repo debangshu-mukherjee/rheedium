@@ -66,7 +66,9 @@ def angle_in_degrees(
     90.0
     """
 
-    def _check_vector_dimensions() -> Tuple[Float[Array, " n"], Float[Array, " n"]]:
+    def _check_vector_dimensions() -> (
+        Tuple[Float[Array, " n"], Float[Array, " n"]]
+    ):
         return jax.lax.cond(
             v1.shape == v2.shape,
             lambda: (v1, v2),
@@ -78,7 +80,9 @@ def angle_in_degrees(
     _check_vector_dimensions()
     angle: Float[Array, " "] = (
         180.0
-        * jnp.arccos(jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2)))
+        * jnp.arccos(
+            jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))
+        )
         / jnp.pi
     )
     return angle
@@ -118,7 +122,9 @@ def compute_lengths_angles(
     >>> print(angles)
     [90.0 90.0 90.0]
     """
-    lengths: Float[Array, " 3"] = jnp.array([jnp.linalg.norm(v) for v in vectors])
+    lengths: Float[Array, " 3"] = jnp.array(
+        [jnp.linalg.norm(v) for v in vectors]
+    )
     angles: Float[Array, " 3"] = jnp.array(
         [
             angle_in_degrees(vectors[0], vectors[1]),
@@ -191,7 +197,9 @@ def parse_cif_and_scrape(
     max_proj: Float[Array, " "] = jnp.max(projections)
     center_proj: Float[Array, " "] = (max_proj + min_proj) / 2.0
     half_thickness: Float[Array, " "] = thickness_xyz[2] / 2.0
-    mask: Bool[Array, " n"] = jnp.abs(projections - center_proj) <= half_thickness
+    mask: Bool[Array, " n"] = (
+        jnp.abs(projections - center_proj) <= half_thickness
+    )
     filtered_cart_positions: Float[Array, " m 3"] = cart_positions[mask]
     cell_vectors: Float[Array, " 3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],

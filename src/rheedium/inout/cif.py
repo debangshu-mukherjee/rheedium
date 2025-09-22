@@ -108,7 +108,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         ValueError
             If the parameter cannot be found in the CIF text
         """
-        match: Optional[re.Match[str]] = re.search(rf"{name}\s+([0-9.]+)", cif_text)
+        match: Optional[re.Match[str]] = re.search(
+            rf"{name}\s+([0-9.]+)", cif_text
+        )
         if match:
             return float(match.group(1))
         raise ValueError(f"Failed to parse {name} from CIF.")
@@ -120,7 +122,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     beta: float = _extract_param("_cell_angle_beta")
     gamma: float = _extract_param("_cell_angle_gamma")
     cell_lengths: Num[Array, " 3"] = jnp.array([a, b, c], dtype=jnp.float64)
-    cell_angles: Num[Array, " 3"] = jnp.array([alpha, beta, gamma], dtype=jnp.float64)
+    cell_angles: Num[Array, " 3"] = jnp.array(
+        [alpha, beta, gamma], dtype=jnp.float64
+    )
     lines: List[str] = cif_text.splitlines()
     atom_site_columns: List[str] = []
     positions_list: List[List[float]] = []
@@ -135,7 +139,11 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             atom_site_columns.append(stripped_line)
             in_atom_site_loop = True
             continue
-        if in_atom_site_loop and stripped_line and not stripped_line.startswith("_"):
+        if (
+            in_atom_site_loop
+            and stripped_line
+            and not stripped_line.startswith("_")
+        ):
             tokens: List[str] = stripped_line.split()
             if len(tokens) != len(atom_site_columns):
                 continue
@@ -159,8 +167,12 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             positions_list.append([frac_x, frac_y, frac_z, atomic_number])
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
-    frac_positions: Float[Array, " N 4"] = jnp.array(positions_list, dtype=jnp.float64)
-    cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(a, b, c, alpha, beta, gamma)
+    frac_positions: Float[Array, " N 4"] = jnp.array(
+        positions_list, dtype=jnp.float64
+    )
+    cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(
+        a, b, c, alpha, beta, gamma
+    )
     cart_coords: Float[Array, " N 3"] = frac_positions[:, :3] @ cell_vectors
     cart_positions: Float[Array, " N 4"] = jnp.column_stack(
         (cart_coords, frac_positions[:, 3])
@@ -249,7 +261,11 @@ def symmetry_expansion(
 
     def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
         def _op(pos: Array) -> Array:
-            replacements: Dict[str, float] = {"x": pos[0], "y": pos[1], "z": pos[2]}
+            replacements: Dict[str, float] = {
+                "x": pos[0],
+                "y": pos[1],
+                "z": pos[2],
+            }
             components: List[str] = op_str.lower().replace(" ", "").split(",")
 
             def _eval_comp(comp: str) -> float:
@@ -263,7 +279,11 @@ def symmetry_expansion(
                     for var in ("x", "y", "z"):
                         if var in term:
                             part: str = term.split(var)[0]
-                            coeff = float(fractions.Fraction(part)) if part else 1.0
+                            coeff = (
+                                float(fractions.Fraction(part))
+                                if part
+                                else 1.0
+                            )
                             total += coeff * replacements[var]
                             break
                     else:
@@ -280,7 +300,9 @@ def symmetry_expansion(
         atomic_number: float = pos[3]
         for op in ops:
             new_xyz: Array = jnp.mod(op(xyz), 1.0)
-            expanded_positions.append(jnp.concatenate([new_xyz, atomic_number[None]]))
+            expanded_positions.append(
+                jnp.concatenate([new_xyz, atomic_number[None]])
+            )
     expanded_positions: Float[Array, " N 4"] = jnp.array(expanded_positions)
     cart_positions: Float[Array, " N 3"] = expanded_positions[
         :, :3
@@ -290,7 +312,8 @@ def symmetry_expansion(
         positions: Float[Array, " N 3"], tol: scalar_float
     ) -> Float[Array, " N 3"]:
         def _unique_cond(
-            carry: Tuple[Float[Array, " N 3"], Int[Array, " "]], pos: Float[Array, " 3"]
+            carry: Tuple[Float[Array, " N 3"], Int[Array, " "]],
+            pos: Float[Array, " 3"],
         ) -> Tuple[Tuple[Float[Array, " N 3"], Int[Array, " "]], None]:
             unique: Float[Array, " N 3"]
             count: Int[Array, " "]

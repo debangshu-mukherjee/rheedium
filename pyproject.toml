@@ -238,3 +238,21 @@ style = "sphinx"
 exclude = ["tests", "build", "dist"]
 ignore-init-module = true
 quiet = true
+
+[tool.black]
+line-length = 79
+target-version = ["py311", "py312", "py313"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''

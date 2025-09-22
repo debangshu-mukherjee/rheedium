@@ -31,14 +31,14 @@ All functions support JAX transformations and automatic differentiation.
 """
 
 from .simulator import (
-                        atomic_potential,
-                        compute_kinematic_intensities,
-                        crystal_potential,
-                        find_kinematic_reflections,
-                        incident_wavevector,
-                        project_on_detector,
-                        simulate_rheed_pattern,
-                        wavelength_ang,
+    atomic_potential,
+    compute_kinematic_intensities,
+    crystal_potential,
+    find_kinematic_reflections,
+    incident_wavevector,
+    project_on_detector,
+    simulate_rheed_pattern,
+    wavelength_ang,
 )
 
 __all__ = [

@@ -130,7 +130,12 @@ class RHEEDPattern(NamedTuple):
         None,
     ]:
         return (
-            (self.G_indices, self.k_out, self.detector_points, self.intensities),
+            (
+                self.G_indices,
+                self.k_out,
+                self.detector_points,
+                self.intensities,
+            ),
             None,
         )
 
@@ -285,7 +290,9 @@ def create_rheed_pattern(
     detector_points: Float[Array, " M 2"] = jnp.asarray(
         detector_points, dtype=jnp.float64
     )
-    intensities: Float[Array, " M"] = jnp.asarray(intensities, dtype=jnp.float64)
+    intensities: Float[Array, " M"] = jnp.asarray(
+        intensities, dtype=jnp.float64
+    )
 
     def _validate_and_create() -> RHEEDPattern:
         M: int = k_out.shape[0]
@@ -304,7 +311,9 @@ def create_rheed_pattern(
                 detector_points.shape == (M, 2),
                 lambda: detector_points,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: detector_points, lambda: detector_points)
+                    lax.cond(
+                        False, lambda: detector_points, lambda: detector_points
+                    )
                 ),
             )
 
@@ -350,7 +359,9 @@ def create_rheed_pattern(
                 jnp.all(jnp.isfinite(detector_points)),
                 lambda: detector_points,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: detector_points, lambda: detector_points)
+                    lax.cond(
+                        False, lambda: detector_points, lambda: detector_points
+                    )
                 ),
             )
 
@@ -417,7 +428,9 @@ def create_rheed_image(
     - Create and return RHEEDImage instance
     """
     img_array: Float[Array, " H W"] = jnp.asarray(img_array, dtype=jnp.float64)
-    incoming_angle: Float[Array, " "] = jnp.asarray(incoming_angle, dtype=jnp.float64)
+    incoming_angle: Float[Array, " "] = jnp.asarray(
+        incoming_angle, dtype=jnp.float64
+    )
     calibration: Union[Float[Array, " 2"], Float[Array, " "]] = jnp.asarray(
         calibration, dtype=jnp.float64
     )
@@ -461,7 +474,9 @@ def create_rheed_image(
                 jnp.logical_and(incoming_angle >= 0, incoming_angle <= 90),
                 lambda: incoming_angle,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: incoming_angle, lambda: incoming_angle)
+                    lax.cond(
+                        False, lambda: incoming_angle, lambda: incoming_angle
+                    )
                 ),
             )
 
@@ -471,7 +486,9 @@ def create_rheed_image(
                 lambda: electron_wavelength,
                 lambda: lax.stop_gradient(
                     lax.cond(
-                        False, lambda: electron_wavelength, lambda: electron_wavelength
+                        False,
+                        lambda: electron_wavelength,
+                        lambda: electron_wavelength,
                     )
                 ),
             )
@@ -482,18 +499,24 @@ def create_rheed_image(
                 lambda: detector_distance,
                 lambda: lax.stop_gradient(
                     lax.cond(
-                        False, lambda: detector_distance, lambda: detector_distance
+                        False,
+                        lambda: detector_distance,
+                        lambda: detector_distance,
                     )
                 ),
             )
 
-        def _check_calibration() -> Union[Float[Array, " 2"], Float[Array, " "]]:
+        def _check_calibration() -> (
+            Union[Float[Array, " 2"], Float[Array, " "]]
+        ):
             def _check_scalar_cal() -> Float[Array, " "]:
                 return lax.cond(
                     calibration > 0,
                     lambda: calibration,
                     lambda: lax.stop_gradient(
-                        lax.cond(False, lambda: calibration, lambda: calibration)
+                        lax.cond(
+                            False, lambda: calibration, lambda: calibration
+                        )
                     ),
                 )
 
@@ -504,11 +527,15 @@ def create_rheed_image(
                     ),
                     lambda: calibration,
                     lambda: lax.stop_gradient(
-                        lax.cond(False, lambda: calibration, lambda: calibration)
+                        lax.cond(
+                            False, lambda: calibration, lambda: calibration
+                        )
                     ),
                 )
 
-            return lax.cond(calibration.ndim == 0, _check_scalar_cal, _check_array_cal)
+            return lax.cond(
+                calibration.ndim == 0, _check_scalar_cal, _check_array_cal
+            )
 
         _check_2d()
         _check_finite()

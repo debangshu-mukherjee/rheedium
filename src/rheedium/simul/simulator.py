@@ -3,8 +3,8 @@
 Extended Summary
 ----------------
 This module provides functions for simulating Reflection High-Energy Electron
-Diffraction (RHEED) patterns using kinematic approximations. It includes 
-utilities for calculating electron wavelengths, incident wavevectors, 
+Diffraction (RHEED) patterns using kinematic approximations. It includes
+utilities for calculating electron wavelengths, incident wavevectors,
 diffraction intensities, and complete RHEED patterns from crystal structures.
 
 Routine Listings
@@ -399,12 +399,12 @@ def simulate_rheed_pattern(
     Uses atomic form factors from Kirkland potentials for realistic intensities.
 
     This function combines several steps:
-    1. Generates reciprocal lattice points 
+    1. Generates reciprocal lattice points
         using :func:`generate_reciprocal_points`
     2. Calculates incident wavevector using :func:`incident_wavevector`
     3. Finds allowed reflections using :func:`find_kinematic_reflections`
     4. Projects points onto detector using :func:`project_on_detector`
-    5. Computes intensities using atomic form factors 
+    5. Computes intensities using atomic form factors
         from :func:`atomic_potential`
 
     Parameters
@@ -575,7 +575,7 @@ def atomic_potential(
 ) -> Float[Array, " h w"]:
     """Calculate the projected Kirklans potential of a single atom.
 
-    The potential can be centered at arbitrary coordinates within a 
+    The potential can be centered at arbitrary coordinates within a
     custom grid.
 
     Parameters
@@ -585,7 +585,7 @@ def atomic_potential(
     pixel_size : scalar_float
         Real space pixel size in Ångstroms
     grid_shape : Tuple[scalar_int, scalar_int], optional
-        Shape of the output grid (height, width). If None, calculated from 
+        Shape of the output grid (height, width). If None, calculated from
         potential_extent.
     center_coords : Float[Array, " 2"], optional
         (x, y) coordinates in Ångstroms where atom should be centered.
@@ -593,7 +593,7 @@ def atomic_potential(
     sampling : scalar_int, optional
         Supersampling factor for increased accuracy. Default is 16
     potential_extent : scalar_float, optional
-        Distance in Ångstroms from atom center to calculate potential. 
+        Distance in Ångstroms from atom center to calculate potential.
         Default is 4.0 Å.
     datafile : str, optional
         Path to CSV file containing Kirkland scattering factors
@@ -718,7 +718,7 @@ def crystal_potential(
 ) -> PotentialSlices:
     """Calculate the multislice potential for a crystal structure.
 
-    Uses an optimized approach: compute atomic potentials once per unique atom 
+    Uses an optimized approach: compute atomic potentials once per unique atom
     type, then use Fourier shifts to position them at their actual coordinates.
 
     Parameters
@@ -741,7 +741,7 @@ def crystal_potential(
     Returns
     -------
     potential_slices : PotentialSlices
-        Structured potential data containing slice arrays and calibration 
+        Structured potential data containing slice arrays and calibration
         information.
 
     Algorithm

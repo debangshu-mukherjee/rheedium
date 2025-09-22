@@ -98,7 +98,10 @@ class CrystalStructure(NamedTuple):
         self,
     ) -> Tuple[
         Tuple[
-            Float[Array, " N 4"], Num[Array, " N 4"], Num[Array, " 3"], Num[Array, " 3"]
+            Float[Array, " N 4"],
+            Num[Array, " N 4"],
+            Num[Array, " 3"],
+            Num[Array, " 3"],
         ],
         None,
     ]:
@@ -117,7 +120,10 @@ class CrystalStructure(NamedTuple):
         cls,
         aux_data,
         children: Tuple[
-            Float[Array, " N 4"], Num[Array, " N 4"], Num[Array, " 3"], Num[Array, " 3"]
+            Float[Array, " N 4"],
+            Num[Array, " N 4"],
+            Num[Array, " 3"],
+            Num[Array, " 3"],
         ],
     ) -> "CrystalStructure":
         return cls(*children)
@@ -176,7 +182,9 @@ def create_crystal_structure(
                 frac_positions.shape[1] == max_cols,
                 lambda: frac_positions,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: frac_positions, lambda: frac_positions)
+                    lax.cond(
+                        False, lambda: frac_positions, lambda: frac_positions
+                    )
                 ),
             )
 
@@ -185,7 +193,9 @@ def create_crystal_structure(
                 cart_positions.shape[1] == max_cols,
                 lambda: cart_positions,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cart_positions, lambda: cart_positions)
+                    lax.cond(
+                        False, lambda: cart_positions, lambda: cart_positions
+                    )
                 ),
             )
 
@@ -207,7 +217,9 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_atom_count() -> Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]:
+        def _check_atom_count() -> (
+            Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]
+        ):
             return lax.cond(
                 frac_positions.shape[0] == cart_positions.shape[0],
                 lambda: (frac_positions, cart_positions),
@@ -220,7 +232,9 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_atomic_numbers() -> Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]:
+        def _check_atomic_numbers() -> (
+            Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]
+        ):
             return lax.cond(
                 jnp.all(frac_positions[:, 3] == cart_positions[:, 3]),
                 lambda: (frac_positions, cart_positions),
@@ -247,7 +261,9 @@ def create_crystal_structure(
             max_angle: scalar_float = 180.0
             return lax.cond(
                 jnp.all(
-                    jnp.logical_and(cell_angles > min_angle, cell_angles < max_angle)
+                    jnp.logical_and(
+                        cell_angles > min_angle, cell_angles < max_angle
+                    )
                 ),
                 lambda: cell_angles,
                 lambda: lax.stop_gradient(
@@ -397,9 +413,15 @@ def create_potential_slices(
     slices: Float[Array, " n_slices height width"] = jnp.asarray(
         slices, dtype=jnp.float64
     )
-    slice_thickness: Float[Array, " "] = jnp.asarray(slice_thickness, dtype=jnp.float64)
-    x_calibration: Float[Array, " "] = jnp.asarray(x_calibration, dtype=jnp.float64)
-    y_calibration: Float[Array, " "] = jnp.asarray(y_calibration, dtype=jnp.float64)
+    slice_thickness: Float[Array, " "] = jnp.asarray(
+        slice_thickness, dtype=jnp.float64
+    )
+    x_calibration: Float[Array, " "] = jnp.asarray(
+        x_calibration, dtype=jnp.float64
+    )
+    y_calibration: Float[Array, " "] = jnp.asarray(
+        y_calibration, dtype=jnp.float64
+    )
 
     def _validate_and_create() -> PotentialSlices:
         max_dims: int = 3
@@ -422,7 +444,9 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_slice_dimensions() -> Float[Array, " n_slices height width"]:
+        def _check_slice_dimensions() -> (
+            Float[Array, " n_slices height width"]
+        ):
             return lax.cond(
                 jnp.logical_and(slices.shape[1] > 0, slices.shape[2] > 0),
                 lambda: slices,
@@ -436,7 +460,9 @@ def create_potential_slices(
                 slice_thickness > 0,
                 lambda: slice_thickness,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: slice_thickness, lambda: slice_thickness)
+                    lax.cond(
+                        False, lambda: slice_thickness, lambda: slice_thickness
+                    )
                 ),
             )
 
@@ -445,7 +471,9 @@ def create_potential_slices(
                 x_calibration > 0,
                 lambda: x_calibration,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: x_calibration, lambda: x_calibration)
+                    lax.cond(
+                        False, lambda: x_calibration, lambda: x_calibration
+                    )
                 ),
             )
 
@@ -454,7 +482,9 @@ def create_potential_slices(
                 y_calibration > 0,
                 lambda: y_calibration,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: y_calibration, lambda: y_calibration)
+                    lax.cond(
+                        False, lambda: y_calibration, lambda: y_calibration
+                    )
                 ),
             )
 
@@ -648,7 +678,9 @@ def make_xyz_data(
     """
 
     positions: Float[Array, " N 3"] = jnp.asarray(positions, dtype=jnp.float64)
-    atomic_numbers: Int[Array, " N"] = jnp.asarray(atomic_numbers, dtype=jnp.int32)
+    atomic_numbers: Int[Array, " N"] = jnp.asarray(
+        atomic_numbers, dtype=jnp.int32
+    )
     if lattice is not None:
         lattice: Float[Array, " 3 3"] = jnp.asarray(lattice, dtype=jnp.float64)
     else:
