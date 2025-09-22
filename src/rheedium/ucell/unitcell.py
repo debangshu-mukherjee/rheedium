@@ -318,15 +318,17 @@ def compute_lengths_angles(
 
     Returns
     -------
-    Tuple[Float[Array, " 3"], Float[Array, " 3"]]
-        Unit cell lengths [a, b, c] in angstroms and unit cell angles
-        [α, β, γ] in degrees.
+    lengths : Float[Array, " 3"]
+        Unit cell lengths [a, b, c] in angstroms
+    angles : Float[Array, " 3"]
+        Unit cell angles [α, β, γ] in degrees
 
     Algorithm
     ---------
-    - Calculate vector lengths
-    - Calculate dot products between vectors
-    - Calculate angles using arccos
+    - Calculate lengths of each vector
+    - Calculate angle between b and c vectors (α)
+    - Calculate angle between a and c vectors (β)
+    - Calculate angle between a and b vectors (γ)
     - Convert angles to degrees
     - Return lengths and angles
 
@@ -348,11 +350,30 @@ def compute_lengths_angles(
     >>> print(f"Cell angles: {angles}")
     """
     lengths: Float[Array, " 3"] = jnp.linalg.norm(vectors, axis=1)
-    dot_products: Float[Array, " 3"] = jnp.einsum("ij,ij->i", vectors, vectors)
-    angles: Float[Array, " 3 3"] = jnp.arccos(
-        dot_products / (lengths[:, None] * lengths[None, :])
+
+    a_vec: Float[Array, " 3"] = vectors[0]
+    b_vec: Float[Array, " 3"] = vectors[1]
+    c_vec: Float[Array, " 3"] = vectors[2]
+
+    cos_alpha: Float[Array, " "] = jnp.dot(b_vec, c_vec) / (
+        lengths[1] * lengths[2]
     )
-    return lengths, jnp.degrees(angles)
+    cos_beta: Float[Array, " "] = jnp.dot(a_vec, c_vec) / (
+        lengths[0] * lengths[2]
+    )
+    cos_gamma: Float[Array, " "] = jnp.dot(a_vec, b_vec) / (
+        lengths[0] * lengths[1]
+    )
+
+    alpha_rad: Float[Array, " "] = jnp.arccos(jnp.clip(cos_alpha, -1.0, 1.0))
+    beta_rad: Float[Array, " "] = jnp.arccos(jnp.clip(cos_beta, -1.0, 1.0))
+    gamma_rad: Float[Array, " "] = jnp.arccos(jnp.clip(cos_gamma, -1.0, 1.0))
+
+    angles: Float[Array, " 3"] = jnp.array(
+        [jnp.rad2deg(alpha_rad), jnp.rad2deg(beta_rad), jnp.rad2deg(gamma_rad)]
+    )
+
+    return lengths, angles
 
 
 @jaxtyped(typechecker=beartype)
@@ -382,9 +403,9 @@ def generate_reciprocal_points(
     Algorithm
     ---------
     - Get cell parameters from crystal structure
-    - Build transformation matrix
+    - Generate reciprocal lattice vectors directly from direct cell
     - Generate h, k, l indices
-    - Transform indices to reciprocal space
+    - Transform indices to reciprocal space using miller_to_reciprocal
     - Return reciprocal vectors
 
     Examples
@@ -407,45 +428,34 @@ def generate_reciprocal_points(
     """
     abc: Num[Array, " 3"] = crystal.cell_lengths
     angles: Num[Array, " 3"] = crystal.cell_angles
-    rec_abc: Float[Array, " 3"]
-    rec_angles: Float[Array, " 3"]
-    rec_abc, rec_angles = reciprocal_unitcell(
-        unitcell_abc=abc,
-        unitcell_angles=angles,
-        in_degrees=in_degrees,
-        out_degrees=False,
+
+    a: Float[Array, " "] = abc[0]
+    b: Float[Array, " "] = abc[1]
+    c: Float[Array, " "] = abc[2]
+    alpha: Float[Array, " "] = angles[0]
+    beta: Float[Array, " "] = angles[1]
+    gamma: Float[Array, " "] = angles[2]
+
+    rec_vectors: Float[Array, " 3 3"] = reciprocal_lattice_vectors(
+        a, b, c, alpha, beta, gamma, in_degrees=in_degrees
     )
 
-    rec_vectors: Float[Array, " 3 3"] = build_cell_vectors(
-        rec_abc[0],
-        rec_abc[1],
-        rec_abc[2],
-        rec_angles[0],
-        rec_angles[1],
-        rec_angles[2],
-    )
-    a_star: Float[Array, " 3"] = rec_vectors[0]
-    b_star: Float[Array, " 3"] = rec_vectors[1]
-    c_star: Float[Array, " 3"] = rec_vectors[2]
-    hs: Num[Array, " n_h"] = jnp.arange(-hmax, hmax + 1)
-    ks: Num[Array, " n_k"] = jnp.arange(-kmax, kmax + 1)
-    ls: Num[Array, " n_l"] = jnp.arange(-lmax, lmax + 1)
-    hh: Num[Array, " n_h n_k n_l"]
-    kk: Num[Array, " n_h n_k n_l"]
-    ll: Num[Array, " n_h n_k n_l"]
+    hs: Int[Array, " n_h"] = jnp.arange(-hmax, hmax + 1)
+    ks: Int[Array, " n_k"] = jnp.arange(-kmax, kmax + 1)
+    ls: Int[Array, " n_l"] = jnp.arange(-lmax, lmax + 1)
+
+    hh: Int[Array, " n_h n_k n_l"]
+    kk: Int[Array, " n_h n_k n_l"]
+    ll: Int[Array, " n_h n_k n_l"]
     hh, kk, ll = jnp.meshgrid(hs, ks, ls, indexing="ij")
-    hkl: Num[Array, " M 3"] = jnp.stack(
+
+    hkl: Int[Array, " M 3"] = jnp.stack(
         [hh.ravel(), kk.ravel(), ll.ravel()], axis=-1
     )
 
-    def _single_g(hkl_1d: Num[Array, " 3"]) -> Float[Array, " 3"]:
-        h_: Float[Array, " "] = hkl_1d[0]
-        k_: Float[Array, " "] = hkl_1d[1]
-        l_: Float[Array, " "] = hkl_1d[2]
-        return (h_ * a_star) + (k_ * b_star) + (l_ * c_star)
+    g_vectors: Float[Array, " M 3"] = miller_to_reciprocal(hkl, rec_vectors)
 
-    g_s: Float[Array, " M 3"] = jax.vmap(_single_g)(hkl)
-    return g_s
+    return g_vectors
 
 
 @jaxtyped(typechecker=beartype)
@@ -609,7 +619,7 @@ def reciprocal_lattice_vectors(
     beta: scalar_float,
     gamma: scalar_float,
     in_degrees: bool = True,
-) -> Float[Array, "3 3"]:
+) -> Float[Array, " 3 3"]:
     """Generate reciprocal lattice basis vectors b₁, b₂, b₃.
 
     Description
@@ -639,7 +649,7 @@ def reciprocal_lattice_vectors(
 
     Returns
     -------
-    reciprocal_vectors : Float[Array, "3 3"]
+    reciprocal_vectors : Float[Array, " 3 3"]
         Reciprocal lattice vectors as rows of 3x3 matrix in 1/Angstroms.
         Each row is a reciprocal basis vector [b₁, b₂, b₃]
 
@@ -663,7 +673,7 @@ def reciprocal_lattice_vectors(
         in_degrees, jnp.deg2rad(gamma), gamma
     )
 
-    direct_vectors: Float[Array, "3 3"] = build_cell_vectors(
+    direct_vectors: Float[Array, " 3 3"] = build_cell_vectors(
         a,
         b,
         c,
@@ -699,7 +709,7 @@ def reciprocal_lattice_vectors(
 @jaxtyped(typechecker=beartype)
 def miller_to_reciprocal(
     hkl: Int[Array, "... 3"],
-    reciprocal_vectors: Float[Array, "3 3"],
+    reciprocal_vectors: Float[Array, " 3 3"],
 ) -> Float[Array, "... 3"]:
     """Convert Miller indices to reciprocal space vectors.
 
@@ -716,7 +726,7 @@ def miller_to_reciprocal(
         Miller indices with shape (..., 3) where the last dimension
         contains [h, k, l] values. Can be a single set of indices or
         a batch of multiple indices.
-    reciprocal_vectors : Float[Array, "3 3"]
+    reciprocal_vectors : Float[Array, " 3 3"]
         Reciprocal lattice basis vectors as rows of 3x3 matrix in
         1/Angstroms, as returned by reciprocal_lattice_vectors function
 
@@ -734,7 +744,7 @@ def miller_to_reciprocal(
     - Compute linear combination h*b₁ + k*b₂ + l*b₃
     - Use einsum for efficient batched computation
     """
-    hkl_float: Float[Array, " ... 3"] = jnp.asarray(hkl, dtype=jnp.float64)
+    hkl_float: Float[Array, "... 3"] = jnp.asarray(hkl, dtype=jnp.float64)
 
     b1_vec: Float[Array, " 3"] = reciprocal_vectors[0]
     b2_vec: Float[Array, " 3"] = reciprocal_vectors[1]
@@ -743,7 +753,8 @@ def miller_to_reciprocal(
     h_component: Float[Array, " ..."] = hkl_float[..., 0]
     k_component: Float[Array, " ..."] = hkl_float[..., 1]
     l_component: Float[Array, " ..."] = hkl_float[..., 2]
-    h_contribution: Float[Array, " ... 3"] = (
+
+    h_contribution: Float[Array, "... 3"] = (
         h_component[..., jnp.newaxis] * b1_vec
     )
     k_contribution: Float[Array, " ... 3"] = (
@@ -753,7 +764,7 @@ def miller_to_reciprocal(
         l_component[..., jnp.newaxis] * b3_vec
     )
 
-    g_vectors: Float[Array, "... 3"] = (
+    g_vectors: Float[Array, " ... 3"] = (
         h_contribution + k_contribution + l_contribution
     )
 
