@@ -2,15 +2,13 @@
 
 Extended Summary
 ----------------
-This module provides functions for crystallographic unit cell operations including
-reciprocal space calculations, lattice transformations, and atom filtering for
-specific zones and thicknesses.
+This module provides functions for crystallographic unit cell operations
+including reciprocal space calculations, lattice transformations, and atom
+filtering for specific zones and thicknesses.
 
 Routine Listings
 ----------------
 reciprocal_unitcell : function
-    Calculate reciprocal unit cell parameters from direct cell parameters
-reciprocal_uc_angles : function
     Calculate reciprocal unit cell angles from direct cell angles
 get_unit_cell_matrix : function
     Build transformation matrix between direct and reciprocal space
@@ -22,6 +20,10 @@ generate_reciprocal_points : function
     Generate reciprocal lattice points for given hkl ranges
 atom_scraper : function
     Filter atoms within specified thickness along zone axis
+reciprocal_lattice_vectors : function
+    Generate reciprocal lattice basis vectors b₁, b₂, b₃
+miller_to_reciprocal : function
+    Convert Miller indices to reciprocal lattice basis vectors
 
 Notes
 -----
@@ -32,7 +34,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
@@ -46,129 +48,6 @@ jax.config.update("jax_enable_x64", True)
 
 @jaxtyped(typechecker=beartype)
 def reciprocal_unitcell(
-    a: scalar_float,
-    b: scalar_float,
-    c: scalar_float,
-    alpha: scalar_float,
-    beta: scalar_float,
-    gamma: scalar_float,
-) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
-    """Calculate reciprocal unit cell parameters from direct cell parameters.
-
-    Parameters
-    ----------
-    a, b, c : scalar_float
-        Direct cell lengths in angstroms.
-    alpha, beta, gamma : scalar_float
-        Direct cell angles in degrees.
-
-    Returns
-    -------
-    Tuple[Float[Array, " 3"], Float[Array, " 3"]]
-        Reciprocal cell lengths and angles. First array contains reciprocal
-        cell lengths [a*, b*, c*] in 1/angstroms. Second array contains
-        reciprocal cell angles [α*, β*, γ*] in degrees.
-
-    Notes
-    -----
-    Algorithm:
-
-    - Calculate cell volume from lattice parameters
-    - Calculate reciprocal lengths using volume
-    - Calculate reciprocal angles using direct angles
-    - Return reciprocal parameters
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate reciprocal cell for a cubic unit cell
-    >>> a_star, angles_star = reciprocal_unitcell(
-    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-    ...     alpha=90.0, beta=90.0, gamma=90.0
-    ... )
-    >>> print(f"Reciprocal lengths: {a_star}")
-    >>> print(f"Reciprocal angles: {angles_star}")
-    """
-    condition_number: Float[Array, " "] = jnp.linalg.cond(
-        jnp.array(
-            [
-                [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
-                [
-                    0,
-                    b * jnp.sin(gamma),
-                    c
-                    * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
-                    / jnp.sin(gamma),
-                ],
-                [
-                    0,
-                    0,
-                    c
-                    * jnp.sqrt(
-                        1
-                        - jnp.cos(alpha) ** 2
-                        - jnp.cos(beta) ** 2
-                        - jnp.cos(gamma) ** 2
-                        + 2 * jnp.cos(alpha) * jnp.cos(beta) * jnp.cos(gamma)
-                    )
-                    / jnp.sin(gamma),
-                ],
-            ]
-        )
-    )
-    condition_criterion: Float[Array, " "] = 1e10
-    is_well_conditioned: Bool[Array, " "] = (
-        condition_number < condition_criterion
-    )
-    reciprocal_cell_uncond: Float[Array, " 3 3"] = (
-        2
-        * jnp.pi
-        * jnp.transpose(
-            jnp.linalg.inv(
-                jnp.array(
-                    [
-                        [a, b * jnp.cos(gamma), c * jnp.cos(beta)],
-                        [
-                            0,
-                            b * jnp.sin(gamma),
-                            c
-                            * (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma))
-                            / jnp.sin(gamma),
-                        ],
-                        [
-                            0,
-                            0,
-                            c
-                            * jnp.sqrt(
-                                1
-                                - jnp.cos(alpha) ** 2
-                                - jnp.cos(beta) ** 2
-                                - jnp.cos(gamma) ** 2
-                                + 2
-                                * jnp.cos(alpha)
-                                * jnp.cos(beta)
-                                * jnp.cos(gamma)
-                            )
-                            / jnp.sin(gamma),
-                        ],
-                    ]
-                )
-            )
-        )
-    )
-    reciprocal_cell: Float[Array, " 3 3"] = jnp.where(
-        is_well_conditioned,
-        reciprocal_cell_uncond,
-        jnp.full_like(reciprocal_cell_uncond, 0.0),
-    )
-    return (reciprocal_cell[0], reciprocal_cell[1])
-
-
-@jaxtyped(typechecker=beartype)
-@jaxtyped(typechecker=beartype)
-def reciprocal_uc_angles(
     a: scalar_float,
     b: scalar_float,
     c: scalar_float,
@@ -440,7 +319,7 @@ def compute_lengths_angles(
     Returns
     -------
     Tuple[Float[Array, " 3"], Float[Array, " 3"]]
-        Unit cell lengths [a, b, c] in angstroms and unit cell angles 
+        Unit cell lengths [a, b, c] in angstroms and unit cell angles
         [α, β, γ] in degrees.
 
     Algorithm
@@ -530,7 +409,7 @@ def generate_reciprocal_points(
     angles: Num[Array, " 3"] = crystal.cell_angles
     rec_abc: Float[Array, " 3"]
     rec_angles: Float[Array, " 3"]
-    rec_abc, rec_angles = reciprocal_uc_angles(
+    rec_abc, rec_angles = reciprocal_unitcell(
         unitcell_abc=abc,
         unitcell_angles=angles,
         in_degrees=in_degrees,
@@ -632,8 +511,9 @@ def atom_scraper(
     )
     d_max: Float[Array, " "] = jnp.max(dot_vals)
     dist_from_top: Float[Array, " n"] = d_max - dot_vals
+    distance_cutoff: Float[Array, " "] = 1e-8
     positive_distances: Float[Array, " m"] = dist_from_top[
-        dist_from_top > 1e-8
+        dist_from_top > distance_cutoff
     ]
     adaptive_eps: Float[Array, " "] = jnp.where(
         positive_distances.size > 0,
@@ -673,11 +553,12 @@ def atom_scraper(
         old_height: Float[Array, " "],
         new_height: Float[Array, " "],
     ) -> Float[Array, " 3"]:
+        height_cutoff: Float[Array, " "] = 1e-32
         proj_mag: Float[Array, " "] = jnp.dot(vec, zone_axis_hat)
         parallel_comp: Float[Array, " 3"] = proj_mag * zone_axis_hat
         perp_comp: Float[Array, " 3"] = vec - parallel_comp
         scale_factor: Float[Array, " "] = jnp.where(
-            old_height < 1e-32, 1.0, new_height / old_height
+            old_height < height_cutoff, 1.0, new_height / old_height
         )
         scaled_parallel: Float[Array, " 3"] = scale_factor * parallel_comp
         return scaled_parallel + perp_comp
@@ -689,7 +570,7 @@ def atom_scraper(
         new_height: Float[Array, " "],
     ) -> Float[Array, " 3"]:
         needs_scaling: Bool[Array, " "] = (
-            jnp.abs(jnp.dot(vec, zone_axis_hat)) > 1e-8
+            jnp.abs(jnp.dot(vec, zone_axis_hat)) > distance_cutoff
         )
         scaled: Float[Array, " 3"] = _scale_vector(
             vec, zone_axis_hat, original_height, new_height
@@ -717,3 +598,163 @@ def atom_scraper(
         cell_angles=new_angles,
     )
     return filtered_crystal
+
+
+@jaxtyped(typechecker=beartype)
+def reciprocal_lattice_vectors(
+    a: scalar_float,
+    b: scalar_float,
+    c: scalar_float,
+    alpha: scalar_float,
+    beta: scalar_float,
+    gamma: scalar_float,
+    in_degrees: bool = True,
+) -> Float[Array, "3 3"]:
+    """Generate reciprocal lattice basis vectors b₁, b₂, b₃.
+
+    Description
+    -----------
+    Computes the three reciprocal lattice basis vectors from direct lattice
+    parameters using the crystallographic relationships:
+    b₁ = 2π(a₂ × a₃)/(a₁ · (a₂ × a₃))
+    b₂ = 2π(a₃ × a₁)/(a₁ · (a₂ × a₃))
+    b₃ = 2π(a₁ × a₂)/(a₁ · (a₂ × a₃))
+
+    Parameters
+    ----------
+    a : scalar_float
+        Direct cell length a in Angstroms
+    b : scalar_float
+        Direct cell length b in Angstroms
+    c : scalar_float
+        Direct cell length c in Angstroms
+    alpha : scalar_float
+        Direct cell angle α (between b and c axes)
+    beta : scalar_float
+        Direct cell angle β (between a and c axes)
+    gamma : scalar_float
+        Direct cell angle γ (between a and b axes)
+    in_degrees : bool
+        If True, input angles are in degrees. Default: True
+
+    Returns
+    -------
+    reciprocal_vectors : Float[Array, "3 3"]
+        Reciprocal lattice vectors as rows of 3x3 matrix in 1/Angstroms.
+        Each row is a reciprocal basis vector [b₁, b₂, b₃]
+
+    Flow
+    ----
+    - Convert angles to radians if needed
+    - Build direct lattice vectors using build_cell_vectors
+    - Extract individual direct vectors a₁, a₂, a₃
+    - Calculate unit cell volume using triple product
+    - Compute cross products for each reciprocal vector
+    - Scale by 2π/volume to get final reciprocal vectors
+    - Stack vectors into 3x3 matrix
+    """
+    alpha_rad: Float[Array, " "] = jnp.where(
+        in_degrees, jnp.deg2rad(alpha), alpha
+    )
+    beta_rad: Float[Array, " "] = jnp.where(
+        in_degrees, jnp.deg2rad(beta), beta
+    )
+    gamma_rad: Float[Array, " "] = jnp.where(
+        in_degrees, jnp.deg2rad(gamma), gamma
+    )
+
+    direct_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        a,
+        b,
+        c,
+        jnp.rad2deg(alpha_rad),
+        jnp.rad2deg(beta_rad),
+        jnp.rad2deg(gamma_rad),
+    )
+
+    a_vec: Float[Array, " 3"] = direct_vectors[0]
+    b_vec: Float[Array, " 3"] = direct_vectors[1]
+    c_vec: Float[Array, " 3"] = direct_vectors[2]
+
+    cross_b_c: Float[Array, " 3"] = jnp.cross(b_vec, c_vec)
+    cross_c_a: Float[Array, " 3"] = jnp.cross(c_vec, a_vec)
+    cross_a_b: Float[Array, " 3"] = jnp.cross(a_vec, b_vec)
+
+    volume: Float[Array, " "] = jnp.dot(a_vec, cross_b_c)
+
+    two_pi: Float[Array, " "] = 2.0 * jnp.pi
+    scale_factor: Float[Array, " "] = two_pi / volume
+
+    b1_vec: Float[Array, " 3"] = scale_factor * cross_b_c
+    b2_vec: Float[Array, " 3"] = scale_factor * cross_c_a
+    b3_vec: Float[Array, " 3"] = scale_factor * cross_a_b
+
+    reciprocal_vectors: Float[Array, " 3 3"] = jnp.stack(
+        [b1_vec, b2_vec, b3_vec], axis=0
+    )
+
+    return reciprocal_vectors
+
+
+@jaxtyped(typechecker=beartype)
+def miller_to_reciprocal(
+    hkl: Int[Array, "... 3"],
+    reciprocal_vectors: Float[Array, "3 3"],
+) -> Float[Array, "... 3"]:
+    """Convert Miller indices to reciprocal space vectors.
+
+    Description
+    -----------
+    Transforms Miller indices (h,k,l) to reciprocal space vectors G
+    using the reciprocal lattice basis vectors. Each reciprocal vector
+    is computed as G = h*b₁ + k*b₂ + l*b₃ where b₁, b₂, b₃ are the
+    reciprocal lattice basis vectors.
+
+    Parameters
+    ----------
+    hkl : Int[Array, "... 3"]
+        Miller indices with shape (..., 3) where the last dimension
+        contains [h, k, l] values. Can be a single set of indices or
+        a batch of multiple indices.
+    reciprocal_vectors : Float[Array, "3 3"]
+        Reciprocal lattice basis vectors as rows of 3x3 matrix in
+        1/Angstroms, as returned by reciprocal_lattice_vectors function
+
+    Returns
+    -------
+    g_vectors : Float[Array, "... 3"]
+        Reciprocal space vectors in 1/Angstroms with same batch shape
+        as input hkl indices
+
+    Flow
+    ----
+    - Cast Miller indices to float for computation
+    - Extract reciprocal basis vectors b₁, b₂, b₃
+    - Extract h, k, l components from input
+    - Compute linear combination h*b₁ + k*b₂ + l*b₃
+    - Use einsum for efficient batched computation
+    """
+    hkl_float: Float[Array, " ... 3"] = jnp.asarray(hkl, dtype=jnp.float64)
+
+    b1_vec: Float[Array, " 3"] = reciprocal_vectors[0]
+    b2_vec: Float[Array, " 3"] = reciprocal_vectors[1]
+    b3_vec: Float[Array, " 3"] = reciprocal_vectors[2]
+
+    h_component: Float[Array, " ..."] = hkl_float[..., 0]
+    k_component: Float[Array, " ..."] = hkl_float[..., 1]
+    l_component: Float[Array, " ..."] = hkl_float[..., 2]
+    h_contribution: Float[Array, " ... 3"] = (
+        h_component[..., jnp.newaxis] * b1_vec
+    )
+    k_contribution: Float[Array, " ... 3"] = (
+        k_component[..., jnp.newaxis] * b2_vec
+    )
+    l_contribution: Float[Array, " ... 3"] = (
+        l_component[..., jnp.newaxis] * b3_vec
+    )
+
+    g_vectors: Float[Array, "... 3"] = (
+        h_contribution + k_contribution + l_contribution
+    )
+
+    return g_vectors
