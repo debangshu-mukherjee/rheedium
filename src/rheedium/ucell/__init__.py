@@ -8,6 +8,8 @@ mathematical functions like Bessel functions used in scattering calculations.
 
 Routine Listings
 ----------------
+bessel_kv : function
+    Modified Bessel function of second kind, arbitrary order
 angle_in_degrees : function
     Calculate angle in degrees between two vectors
 compute_lengths_angles : function
