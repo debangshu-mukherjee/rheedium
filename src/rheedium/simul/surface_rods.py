@@ -82,15 +82,17 @@ def calculate_ctr_intensity(
         CTR intensities for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
 
-    Flow
-    ----
-    - Extract atomic positions and numbers from crystal structure
-    - Build reciprocal lattice vectors from cell parameters
-    - For each (h,k) index, calculate in-plane q vector
-    - For each q_z value, construct full 3D q vector
-    - Calculate structure factor with atomic form factors
-    - Apply roughness damping to intensity
-    - Return intensity array for all rods and q_z values
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Extract atomic positions and numbers from crystal structure
+    2. Build reciprocal lattice vectors from cell parameters
+    3. For each (h,k) index, calculate in-plane q vector
+    4. For each q_z value, construct full 3D q vector
+    5. Calculate structure factor with atomic form factors
+    6. Apply roughness damping to intensity
+    7. Return intensity array for all rods and q_z values
     """
     atomic_positions: Float[Array, " n_atoms 3"] = crystal.cart_positions[
         :, :3
@@ -163,12 +165,14 @@ def roughness_damping(
     damping : Float[Array, " ..."]
         Damping factor exp(-½q_z²σ_h²) between 0 and 1
 
-    Flow
-    ----
-    - Ensure roughness is non-negative
-    - Calculate exponent W = ½q_z²σ_h²
-    - Return exp(-W) damping factor
-    - Handle edge case of zero roughness (no damping)
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Ensure roughness is non-negative
+    2. Calculate exponent W = ½q_z²σ_h²
+    3. Return exp(-W) damping factor
+    4. Handle edge case of zero roughness (no damping)
     """
     sigma: Float[Array, " "] = jnp.maximum(
         jnp.asarray(sigma_height, dtype=jnp.float64), 0.0
@@ -210,13 +214,17 @@ def gaussian_rod_profile(
     profile : Float[Array, " ..."]
         Normalized Gaussian intensity profile perpendicular to rod
 
-    Flow
-    ----
-    - Ensure correlation length is positive (clip to minimum value)
-    - Convert correlation length to reciprocal space width σ_q = 1/ξ
-    - Normalize q_perpendicular by σ_q
-    - Calculate Gaussian profile: exp(-½(q_⊥/σ_q)²)
-    - Return normalized profile with peak value of 1.0
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Ensure correlation length is positive (clip to minimum value)
+    2. Convert correlation length to reciprocal space width σ_q = 1/ξ
+
+    3. Normalize q_perpendicular by σ_q
+    4. Calculate Gaussian profile: exp(-½(q_⊥/σ_q)²)
+
+    5. Return normalized profile with peak value of 1.0
     """
     xi: Float[Array, " "] = jnp.maximum(
         jnp.asarray(correlation_length, dtype=jnp.float64), 1e-10
@@ -255,12 +263,14 @@ def lorentzian_rod_profile(
     profile : Float[Array, " ..."]
         Normalized Lorentzian intensity profile perpendicular to rod
 
-    Flow
-    ----
-    - Ensure correlation length is positive (clip to minimum value)
-    - Calculate product q_⊥ × ξ
-    - Calculate Lorentzian profile: 1/(1 + (q_⊥ξ)²)
-    - Return normalized profile with peak value of 1.0
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Ensure correlation length is positive (clip to minimum value)
+    2. Calculate product q_⊥ × ξ
+    3. Calculate Lorentzian profile: 1/(1 + (q_⊥ξ)²)
+    4. Return normalized profile with peak value of 1.0
     """
     xi: Float[Array, " "] = jnp.maximum(
         jnp.asarray(correlation_length, dtype=jnp.float64), 1e-10
@@ -300,11 +310,13 @@ def rod_profile_function(
     profile : Float[Array, " ..."]
         Normalized intensity profile perpendicular to rod
 
-    Flow
-    ----
-    - Use JAX-safe conditional to select profile type
-    - Call appropriate profile function
-    - Return selected profile
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Use JAX-safe conditional to select profile type
+    2. Call appropriate profile function
+    3. Return selected profile
     """
     is_lorentzian: Bool[Array, " "] = jnp.asarray(
         profile_type == "lorentzian", dtype=jnp.bool_
@@ -351,12 +363,14 @@ def surface_structure_factor(
     structure_factor : Complex[Array, " "]
         Complex structure factor F(q)
 
-    Flow
-    ----
-    - Calculate phase factors exp(iq·r) for each atom
-    - Get atomic scattering factors with Debye-Waller
-    - Sum weighted contributions from all atoms
-    - Return complex structure factor
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Calculate phase factors exp(iq·r) for each atom
+    2. Get atomic scattering factors with Debye-Waller
+    3. Sum weighted contributions from all atoms
+    4. Return complex structure factor
     """
     n_atoms: int = atomic_positions.shape[0]
     phases: Float[Array, " N"] = jnp.einsum(
@@ -427,13 +441,15 @@ def integrated_rod_intensity(
     integrated_intensity : scalar_float
         Total integrated intensity over detector acceptance
 
-    Flow
-    ----
-    - Create q_z array spanning integration range
-    - Calculate CTR intensity at all q_z points
-    - Apply detector acceptance window function
-    - Integrate using trapezoidal rule
-    - Return total integrated intensity
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Create q_z array spanning integration range
+    2. Calculate CTR intensity at all q_z points
+    3. Apply detector acceptance window function
+    4. Integrate using trapezoidal rule
+    5. Return total integrated intensity
     """
     q_z_values: Float[Array, " n_points"] = jnp.linspace(
         q_z_range[0], q_z_range[1], n_integration_points

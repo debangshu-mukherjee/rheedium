@@ -62,14 +62,16 @@ def load_kirkland_parameters(
     b_coeffs : Float[Array, " 6"]
         Width coefficients for Gaussian terms in Ų
 
-    Flow
-    ----
-    - Validate atomic number is in valid range [1, 103]
-    - Load full Kirkland potential parameters matrix
-    - Extract row for specified atomic number
-    - Split into amplitude coefficients (even indices 0,2,4,6,8,10)
-    - Split into width coefficients (odd indices 1,3,5,7,9,11)
-    - Return both coefficient arrays
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Validate atomic number is in valid range [1, 103]
+    2. Load full Kirkland potential parameters matrix
+    3. Extract row for specified atomic number
+    4. Split into amplitude coefficients (even indices 0,2,4,6,8,10)
+    5. Split into width coefficients (odd indices 1,3,5,7,9,11)
+    6. Return both coefficient arrays
     """
     min_atomic_number: Int[Array, " "] = jnp.asarray(1, dtype=jnp.int32)
     max_atomic_number: Int[Array, " "] = jnp.asarray(103, dtype=jnp.int32)
@@ -117,16 +119,16 @@ def kirkland_form_factor(
     form_factor : Float[Array, " ..."]
         Atomic form factor f(q) in electron scattering units
 
-    Flow
-    ----
-    - Load Kirkland parameters for the element
-    - Calculate q/(4π) term used in exponentials
-    - Compute each Gaussian term: aᵢ exp(-bᵢ(q/4π)²)
-    - Sum all six Gaussian contributions
-    - Return total form factor
-
     Notes
     -----
+    The algorithm proceeds as follows:
+
+    1. Load Kirkland parameters for the element
+    2. Calculate q/(4π) term used in exponentials
+    3. Compute each Gaussian term: aᵢ exp(-bᵢ(q/4π)²)
+    4. Sum all six Gaussian contributions
+    5. Return total form factor
+
     Uses the sum of Gaussians approximation:
     f(q) = Σᵢ aᵢ exp(-bᵢ(q/4π)²)
     where i runs from 1 to 6 for the Kirkland parameterization.
@@ -181,17 +183,17 @@ def get_mean_square_displacement(
     mean_square_displacement : scalar_float
         Mean square displacement ⟨u²⟩ in Ų
 
-    Flow
-    ----
-    - Define base Debye-Waller B factor at room temperature
-    - Scale B factor by atomic number (heavier atoms vibrate less)
-    - Apply temperature scaling relative to room temperature
-    - Apply surface enhancement if specified (2x bulk value)
-    - Convert B factor to mean square displacement
-    - Return ⟨u²⟩ value
-
     Notes
     -----
+    The algorithm proceeds as follows:
+
+    1. Define base Debye-Waller B factor at room temperature
+    2. Scale B factor by atomic number (heavier atoms vibrate less)
+    3. Apply temperature scaling relative to room temperature
+    4. Apply surface enhancement if specified (2x bulk value)
+    5. Convert B factor to mean square displacement
+    6. Return ⟨u²⟩ value
+
     Uses simplified Debye model with empirical scaling.
     B = 8π²⟨u²⟩, so ⟨u²⟩ = B/(8π²)
     Surface enhancement is applied ONLY here to avoid double-application.
@@ -250,15 +252,15 @@ def debye_waller_factor(
     dw_factor : Float[Array, " ..."]
         Debye-Waller damping factor exp(-W)
 
-    Flow
-    ----
-    - Validate mean square displacement is non-negative
-    - Calculate W = ½⟨u²⟩q²
-    - Compute exp(-W) damping factor
-    - Return Debye-Waller factor
-
     Notes
     -----
+    The algorithm proceeds as follows:
+
+    1. Validate mean square displacement is non-negative
+    2. Calculate W = ½⟨u²⟩q²
+    3. Compute exp(-W) damping factor
+    4. Return Debye-Waller factor
+
     The Debye-Waller factor is:
     exp(-W) = exp(-½⟨u²⟩q²)
 
@@ -309,15 +311,17 @@ def atomic_scattering_factor(
     scattering_factor : Float[Array, " ..."]
         Total atomic scattering factor f(q)×exp(-W)
 
-    Flow
-    ----
-    - Calculate magnitude of q vector
-    - Compute atomic form factor f(q) using Kirkland parameterization
-    - Calculate mean square displacement for temperature with surface
-      enhancement.
-    - Compute Debye-Waller factor exp(-W) using the MSD
-    - Multiply form factor by Debye-Waller factor
-    - Return combined scattering factor
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Calculate magnitude of q vector
+    2. Compute atomic form factor f(q) using Kirkland parameterization
+    3. Calculate mean square displacement for temperature with surface
+       enhancement.
+    4. Compute Debye-Waller factor exp(-W) using the MSD
+    5. Multiply form factor by Debye-Waller factor
+    6. Return combined scattering factor
 
     Examples
     --------

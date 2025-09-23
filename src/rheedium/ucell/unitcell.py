@@ -91,13 +91,15 @@ def reciprocal_unitcell(
     reciprocal_angles : Float[Array, " 3"]
         Reciprocal cell angles [α*, β*, γ*] in degrees or radians
 
-    Flow
-    ----
-    - Convert input angles to radians if needed
-    - Calculate unit cell volume using triple product formula
-    - Compute reciprocal lengths using volume relationships
-    - Calculate reciprocal angles using crystallographic formulas
-    - Convert output angles to degrees if requested
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Convert input angles to radians if needed
+    2. Calculate unit cell volume using triple product formula
+    3. Compute reciprocal lengths using volume relationships
+    4. Calculate reciprocal angles using crystallographic formulas
+    5. Convert output angles to degrees if requested
     """
     alpha_rad: Float[Array, " "] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
@@ -186,13 +188,15 @@ def get_unit_cell_matrix(
     Float[Array, " 3 3"]
         Transformation matrix from direct to reciprocal space.
 
-    Algorithm
-    ---------
-    - Calculate cell volume from lattice parameters
-    - Calculate reciprocal lengths
-    - Calculate transformation matrix elements
-    - Return 3x3 transformation matrix
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
+    1. Calculate cell volume from lattice parameters
+    2. Calculate reciprocal lengths
+    3. Calculate transformation matrix elements
+    4. Return 3x3 transformation matrix
+    
     Examples
     --------
     >>> import rheedium as rh
@@ -258,15 +262,17 @@ def build_cell_vectors(
     -------
     Float[Array, " 3 3"]
         Unit cell vectors as rows of 3x3 matrix.
+    
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
-    Algorithm
-    ---------
-    - Convert angles to radians
-    - Calculate cosines of angles
-    - Build first vector along x-axis
-    - Build second vector in x-y plane
-    - Build third vector using all angles
-    - Return 3x3 matrix of vectors
+    1. Convert angles to radians
+    2. Calculate cosines of angles
+    3. Build first vector along x-axis
+    4. Build second vector in x-y plane
+    5. Build third vector using all angles
+    6. Return 3x3 matrix of vectors
 
     Examples
     --------
@@ -323,15 +329,17 @@ def compute_lengths_angles(
     angles : Float[Array, " 3"]
         Unit cell angles [α, β, γ] in degrees
 
-    Algorithm
-    ---------
-    - Calculate lengths of each vector
-    - Calculate angle between b and c vectors (α)
-    - Calculate angle between a and c vectors (β)
-    - Calculate angle between a and b vectors (γ)
-    - Convert angles to degrees
-    - Return lengths and angles
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
+    1. Calculate lengths of each vector
+    2. Calculate angle between b and c vectors (α)
+    3. Calculate angle between a and c vectors (β)
+    4. Calculate angle between a and b vectors (γ)
+    5. Convert angles to degrees
+    6. Return lengths and angles
+    
     Examples
     --------
     >>> import rheedium as rh
@@ -400,13 +408,15 @@ def generate_reciprocal_points(
     Float[Array, " M 3"]
         Reciprocal lattice vectors in 1/angstroms.
 
-    Algorithm
-    ---------
-    - Get cell parameters from crystal structure
-    - Generate reciprocal lattice vectors directly from direct cell
-    - Generate h, k, l indices
-    - Transform indices to reciprocal space using miller_to_reciprocal
-    - Return reciprocal vectors
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Get cell parameters from crystal structure
+    2. Generate reciprocal lattice vectors directly from direct cell
+    3. Generate h, k, l indices
+    4. Transform indices to reciprocal space using miller_to_reciprocal
+    5. Return reciprocal vectors
 
     Examples
     --------
@@ -480,14 +490,16 @@ def atom_scraper(
     filtered_crystal : CrystalStructure
         Filtered crystal structure.
 
-    Algorithm
-    ---------
-    - Normalize zone axis
-    - Calculate distances along zone axis
-    - Filter atoms within thickness
-    - Create new crystal structure with filtered atoms
-    - Return filtered crystal
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
+    1. Normalize zone axis
+    2. Calculate distances along zone axis
+    3. Filter atoms within thickness
+    4. Create new crystal structure with filtered atoms
+    5. Return filtered crystal
+    
     Examples
     --------
     >>> import rheedium as rh
@@ -652,16 +664,18 @@ def reciprocal_lattice_vectors(
     reciprocal_vectors : Float[Array, " 3 3"]
         Reciprocal lattice vectors as rows of 3x3 matrix in 1/Angstroms.
         Each row is a reciprocal basis vector [b₁, b₂, b₃]
+    The algorithm proceeds as follows:
 
-    Flow
-    ----
-    - Convert angles to radians if needed
-    - Build direct lattice vectors using build_cell_vectors
-    - Extract individual direct vectors a₁, a₂, a₃
-    - Calculate unit cell volume using triple product
-    - Compute cross products for each reciprocal vector
-    - Scale by 2π/volume to get final reciprocal vectors
-    - Stack vectors into 3x3 matrix
+    1. Convert angles to radians if needed
+    2. Build direct lattice vectors using build_cell_vectors
+
+    3. Extract individual direct vectors a₁, a₂, a₃
+    4. Calculate unit cell volume using triple product
+
+    5. Compute cross products for each reciprocal vector
+    6. Scale by 2π/volume to get final reciprocal vectors
+
+    7. Stack vectors into 3x3 matrix
     """
     alpha_rad: Float[Array, " "] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
@@ -736,13 +750,17 @@ def miller_to_reciprocal(
         Reciprocal space vectors in 1/Angstroms with same batch shape
         as input hkl indices
 
-    Flow
-    ----
-    - Cast Miller indices to float for computation
-    - Extract reciprocal basis vectors b₁, b₂, b₃
-    - Extract h, k, l components from input
-    - Compute linear combination h*b₁ + k*b₂ + l*b₃
-    - Use einsum for efficient batched computation
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Cast Miller indices to float for computation
+    2. Extract reciprocal basis vectors b₁, b₂, b₃
+
+    3. Extract h, k, l components from input
+    4. Compute linear combination h*b₁ + k*b₂ + l*b₃
+
+    5. Use einsum for efficient batched computation
     """
     hkl_float: Float[Array, "... 3"] = jnp.asarray(hkl, dtype=jnp.float64)
 

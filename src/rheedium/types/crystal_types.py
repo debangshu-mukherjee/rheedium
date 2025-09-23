@@ -64,9 +64,6 @@ class CrystalStructure(NamedTuple):
         Unit cell angles [α, β, γ] in degrees, where α is the angle between
         b and c, β is the angle between a and c, and γ is the angle between
         a and b.
-
-    Notes
-    -----
     This class is registered as a PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable and stored
     in JAX arrays for efficient computation.
@@ -143,7 +140,7 @@ def create_crystal_structure(
 
     Parameters
     ----------
-    frac_positions: Float[Array, " N 4"]
+    frac_positions : Num[Array, " N 4"]
         Array of shape (n_atoms, 4) containing atomic positions in fractional
         coordinates.
     cart_positions : Num[Array, " N 4"]
@@ -156,18 +153,13 @@ def create_crystal_structure(
 
     Returns
     -------
-    CrystalStructure
+    validated_crystal_structure : CrystalStructure
         A validated CrystalStructure instance.
 
-    Raises
-    ------
-    ValueError
-        If the input arrays have incompatible shapes or invalid values.
-
-    Algorithm
-    ---------
-    - Convert all inputs to JAX arrays using jnp.asarray
-    - Validate shapes of frac_positions, cart_positions, cell_lengths,
+    Notes
+    -----
+    - Convert all inputs to JAX arrays using jnp.asarray.
+    - Validate shapes of frac_positions, cart_positions, cell_lengths,.
       and cell_angles.
     - Verify number of atoms matches between frac and cart positions
     - Verify atomic numbers match between frac and cart positions
@@ -292,7 +284,8 @@ def create_crystal_structure(
             cell_angles=cell_angles,
         )
 
-    return _validate_and_create()
+    validated_crystal_structure: CrystalStructure = _validate_and_create()
+    return validated_crystal_structure
 
 
 @register_pytree_node_class
@@ -318,9 +311,6 @@ class PotentialSlices(NamedTuple):
     y_calibration : scalar_float
         Real space calibration in the y-direction in Ångstroms per pixel.
         Converts pixel coordinates to physical distances.
-
-    Notes
-    -----
     This class is registered as a PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. The calibration metadata is
     preserved as auxiliary data while slice data can be efficiently processed.
@@ -400,23 +390,19 @@ def create_potential_slices(
 
     Returns
     -------
-    PotentialSlices
+    validated_potential_slices : PotentialSlices
         Validated PotentialSlices instance.
 
-    Raises
-    ------
-    ValueError
-        If array shapes are invalid, calibrations are non-positive,
-        or slice thickness is non-positive.
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
-    Algorithm
-    ---------
-    - Convert inputs to JAX arrays with appropriate dtypes
-    - Validate slice array is 3D
-    - Ensure slice thickness is positive
-    - Ensure calibrations are positive
-    - Check that all slice data is finite
-    - Create and return PotentialSlices instance
+    1. Convert inputs to JAX arrays with appropriate dtypes
+    2. Validate slice array is 3D
+    3. Ensure slice thickness is positive
+    4. Ensure calibrations are positive
+    5. Check that all slice data is finite
+    6. Create and return PotentialSlices instance
     """
     slices: Float[Array, " n_slices height width"] = jnp.asarray(
         slices, dtype=jnp.float64
@@ -519,7 +505,8 @@ def create_potential_slices(
             y_calibration=y_calibration,
         )
 
-    return _validate_and_create()
+    validated_potential_slices: PotentialSlices = _validate_and_create()
+    return validated_potential_slices
 
 
 @register_pytree_node_class
@@ -551,9 +538,6 @@ class XYZData(NamedTuple):
         List of per-atom properties described in the metadata, otherwise None.
     comment : Optional[str]
         The raw comment line from the XYZ file header, otherwise None.
-
-    Notes
-    -----
     This class is registered as a PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. Numerical data is stored as
     JAX arrays while metadata is preserved as auxiliary data. All data is
@@ -674,9 +658,9 @@ def create_xyz_data(
     validated_xyz_data : XYZData
         Validated PyTree structure for XYZ file contents.
 
-    Algorithm
-    ---------
-    - Convert required inputs to JAX arrays with appropriate dtypes:
+    Notes
+    -----
+    - Convert required inputs to JAX arrays with appropriate dtypes
       positions to float64, atomic_numbers to int32, lattice/stress/energy
       to float64 if provided
     - Execute shape validation checks: verify positions has shape (N, 3)

@@ -29,7 +29,7 @@ from beartype.typing import Tuple, Union
 from jaxtyping import Array, Bool, Float, Real, jaxtyped
 
 import rheedium as rh
-from rheedium.types import CrystalStructure
+from rheedium.types import CrystalStructure, create_crystal_structure
 
 jax.config.update("jax_enable_x64", True)
 
@@ -132,7 +132,7 @@ def compute_lengths_angles(
             angle_in_degrees(vectors[2], vectors[0]),
         ]
     )
-    return lengths, angles
+    return (lengths, angles)
 
 
 @jaxtyped(typechecker=beartype)
@@ -141,7 +141,7 @@ def parse_cif_and_scrape(
     zone_axis: Real[Array, " 3"],
     thickness_xyz: Real[Array, " 3"],
 ) -> CrystalStructure:
-    """Parse a CIF file and filter atoms within specified thickness along a zone axis.
+    """Parse a CIF file and filter atoms within specified thickness.
 
     Parse a CIF file, apply symmetry operations to obtain all equivalent
     atomic positions, and scrape (filter) atoms within specified thickness
@@ -162,31 +162,33 @@ def parse_cif_and_scrape(
     Returns
     -------
     filtered_crystal : CrystalStructure
-        Crystal structure containing atoms filtered within the specified thickness.
+        Crystal structure containing atoms filtered within the specified 
+        thickness.
+
 
     Notes
     -----
-    - The provided `zone_axis` is normalized internally.
-    - Current implementation uses thickness only along the zone axis
-      direction (z-component of `thickness_xyz`).
+    - The provided `zone_axis` is normalized internally. Current implementation
+      uses thickness only along the zone axis direction 
+      (z-component of `thickness_xyz`).
     - The `tolerance` parameter is reserved for compatibility and future
       functionality.
+    
+    The algorithm proceeds as follows:
 
-    Algorithm
-    ---------
-    - Parse CIF file to get initial crystal structure
-    - Extract Cartesian positions and atomic numbers
-    - Normalize zone axis vector
-    - Calculate projections of atomic positions onto zone axis
-    - Find minimum and maximum projections
-    - Calculate center projection and half thickness
-    - Create mask for atoms within thickness range
-    - Filter Cartesian positions and atomic numbers using mask
-    - Build cell vectors from crystal parameters
-    - Calculate inverse of cell vectors
-    - Convert filtered Cartesian positions to fractional coordinates
-    - Create new CrystalStructure with filtered positions
-    - Return filtered crystal structure
+    1. Parse CIF file to get initial crystal structure
+    2. Extract Cartesian positions and atomic numbers
+    3. Normalize zone axis vector
+    4. Calculate projections of atomic positions onto zone axis
+    5. Find minimum and maximum projections
+    6. Calculate center projection and half thickness
+    7. Create mask for atoms within thickness range
+    8. Filter Cartesian positions and atomic numbers using mask
+    9. Build cell vectors from crystal parameters
+    10. Calculate inverse of cell vectors
+    11. Convert filtered Cartesian positions to fractional coordinates
+    12. Create new CrystalStructure with filtered positions
+    13. Return filtered crystal structure
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_positions: Float[Array, " n 3"] = crystal.cart_positions[:, :3]
@@ -213,7 +215,7 @@ def parse_cif_and_scrape(
     filtered_frac_positions: Float[Array, " m 3"] = (
         filtered_cart_positions @ cell_inv
     ) % 1.0
-    filtered_crystal: CrystalStructure = rh.types.create_crystal_structure(
+    filtered_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=filtered_frac_positions,
         cart_positions=filtered_cart_positions,
         cell_lengths=crystal.cell_lengths,

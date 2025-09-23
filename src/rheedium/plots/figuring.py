@@ -15,7 +15,8 @@ plot_rheed : function
 
 Notes
 -----
-Visualization functions use matplotlib for rendering and scipy for interpolation.
+Visualization functions use matplotlib for rendering and scipy for
+interpolation.
 """
 
 import jax
@@ -49,13 +50,13 @@ def create_phosphor_colormap(
 
     Returns
     -------
-    matplotlib.colors.LinearSegmentedColormap
+    cmap : LinearSegmentedColormap
         Custom phosphor screen colormap.
 
-    Algorithm
-    ---------
-    - Define color transition points and RGB values from black through dark green,
-      bright green, lighter green, to white bloom
+    Notes
+    -----
+    - Define color transition points and RGB values from black through dark
+      green, bright green, lighter green, to white bloom.
     - Extract positions and RGB values from color definitions
     - Create color channel definitions for red, green, and blue
     - Create and return LinearSegmentedColormap with custom colors
@@ -116,7 +117,8 @@ def plot_rheed(
     Parameters
     ----------
     rheed_pattern : RHEEDPattern
-        Must have `detector_points` of shape (M, 2) and `intensities` of shape (M,).
+        Must have `detector_points` of shape (M, 2) and `intensities`
+        of shape (M,).
     grid_size : int, optional
         Controls how many grid points in Y and Z directions. Default is 200.
     interp_type : str, optional
@@ -127,17 +129,19 @@ def plot_rheed(
     cmap_name : str, optional
         Name for your custom phosphor colormap. Default is 'phosphor'.
 
-    Algorithm
-    ---------
-    - Extract coordinates and intensities from RHEED pattern
-    - Convert JAX arrays to NumPy arrays
-    - Validate interpolation method
-    - Calculate coordinate ranges for grid and create uniform grid points
-    - Interpolate intensities onto grid using griddata
-    - Reshape result to 2D grid
-    - Create phosphor colormap
-    - Create figure and plot with colorbar, labels, and title
-    - Show plot
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Extract coordinates and intensities from RHEED pattern
+    2. Convert JAX arrays to NumPy arrays
+    3. Validate interpolation method
+    4. Calculate coordinate ranges for grid and create uniform grid points
+    5. Interpolate intensities onto grid using griddata
+    6. Reshape result to 2D grid
+    7. Create phosphor colormap
+    8. Create figure and plot with colorbar, labels, and title
+    9. Show plot
 
     Examples
     --------
@@ -160,7 +164,8 @@ def plot_rheed(
         method: str = interp_type
     else:
         raise ValueError(
-            f"interp_type must be one of: 'cubic', 'linear', or 'nearest'. Got: {interp_type}"
+            f"interp_type must be one of: 'cubic', 'linear', or 'nearest'. "
+            f"Got: {interp_type}"
         )
     y_min: float = float(y_np.min())
     y_max: float = float(y_np.max())

@@ -13,12 +13,13 @@ atomic_symbol : function
 kirkland_potentials : function
     Loads Kirkland scattering factors from CSV file
 parse_xyz : function
-    Parses an XYZ file and returns atoms with element symbols and 3D coordinates
-_load_atomic_numbers : function
+    Parses an XYZ file and returns atoms with element symbols and 3D
+    coordinates.
+_load_atomic_numbers : function, internal
     Loads atomic number mapping from JSON file in manifest folder
-_load_kirkland_potentials : function
+_load_kirkland_potentials : function, internal
     Loads Kirkland scattering factors from CSV file
-_parse_xyz_metadata : function
+_parse_xyz_metadata : function, internal
     Internal function to extract metadata from the XYZ comment line
 
 Notes
@@ -54,7 +55,7 @@ jax.config.update("jax_enable_x64", True)
 def _load_atomic_numbers(
     json_path: Optional[Path] = _ATOMS_PATH,
 ) -> Dict[str, int]:
-    """Loads atomic number mapping from JSON file in manifest folder.
+    """Load atomic number mapping from JSON file in manifest folder.
 
     Uses pathlib for OS-independent path handling.
 
@@ -67,13 +68,6 @@ def _load_atomic_numbers(
     -------
     atomic_data : Dict[str, int]
         Dictionary mapping atomic symbols to atomic numbers
-
-    Raises
-    ------
-    FileNotFoundError
-        If JSON file is not found
-    json.JSONDecodeError
-        If JSON file is malformed
     """
     file_path: Path = json_path if json_path is not None else _ATOMS_PATH
     with open(file_path, encoding="utf-8") as file:
@@ -100,30 +94,22 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
     atomic_number : scalar_int
         Atomic number corresponding to the symbol
 
-    Raises
-    ------
-    KeyError
-        If atomic symbol is not found in the mapping
-    TypeError
-        If input is not a string
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
-    Algorithm
-    ---------
-    - Validate input is string
-    - Strip whitespace and ensure proper case
-    - Look up atomic number in preloaded mapping
-    - Return atomic number as scalar integer
+    1. Validate input is string
+    2. Strip whitespace and ensure proper case
+    3. Look up atomic number in preloaded mapping
+    4. Return atomic number as scalar integer
     """
     cleaned_symbol: str = symbol_string.strip()
-
-    if not cleaned_symbol:
-        raise ValueError("Atomic symbol cannot be empty")
-
     normalized_symbol: str = cleaned_symbol.capitalize()
     if normalized_symbol not in _ATOMIC_NUMBERS:
         available_symbols: str = ", ".join(sorted(_ATOMIC_NUMBERS.keys()))
         raise KeyError(
-            f"Atomic symbol '{symbol_string}' not found. Available symbols: {available_symbols}"
+            f"Atomic symbol '{symbol_string}' not found. "
+            f"Available symbols: {available_symbols}"
         )
 
     atomic_number: scalar_int = _ATOMIC_NUMBERS[normalized_symbol]
@@ -147,13 +133,6 @@ def _load_kirkland_csv(
     -------
     kirkland_data : Float[Array, " 103 12"]
         Kirkland potential parameters as JAX array
-
-    Raises
-    ------
-    FileNotFoundError
-        If CSV file is not found
-    ValueError
-        If CSV dimensions are incorrect
     """
     kirkland_numpy: np.ndarray = np.loadtxt(
         file_path, delimiter=",", dtype=np.float64
@@ -173,7 +152,7 @@ _KIRKLAND_POTENTIALS: Float[Array, " 103 12"] = _load_kirkland_csv()
 
 @jaxtyped(typechecker=beartype)
 def kirkland_potentials() -> Float[Array, " 103 12"]:
-    """Returns preloaded Kirkland potential parameters as JAX array.
+    """Return preloaded Kirkland potential parameters as JAX array.
 
     Data is loaded once at module import for optimal performance.
 
@@ -182,17 +161,17 @@ def kirkland_potentials() -> Float[Array, " 103 12"]:
     kirkland_potentials : Float[Array, " 103 12"]
         Kirkland potential parameters for elements 1-103
 
-    Algorithm
-    ---------
-    - Return preloaded JAX array from module-level cache
-    - No file I/O operations for fast access
+    Notes
+    -----
+    Return preloaded JAX array from module-level cache. No file I/O operations
+    for fast access.
     """
     return _KIRKLAND_POTENTIALS
 
 
 @beartype
 def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
-    """Internal function to extract metadata from the XYZ comment line.
+    """Extract metadata from the XYZ comment line.
 
     Parameters
     ----------
@@ -202,12 +181,7 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
     Returns
     -------
     metadata : dict
-        Parsed metadata with optional keys: lattice, stress, energy, properties.
-
-    Raises
-    ------
-    ValueError
-        If lattice or stress tensor dimensions are incorrect
+        Parsed metadata with optional keys: lattice, stress, energy, properties
     """
     metadata: Dict[str, Any] = {}
     num_values_in_lattice: int = 9
@@ -259,10 +233,10 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
 
 @jaxtyped(typechecker=beartype)
 def parse_xyz(file_path: Union[str, Path]) -> XYZData:
-    """Parses an XYZ file and returns a validated XYZData PyTree.
+    """Parse an XYZ file and returns a validated XYZData PyTree.
 
-    Supports both atomic symbols (e.g., "H", "Fe") and atomic numbers (e.g., "1", "26")
-    in the first column of atom data.
+    Supports both atomic symbols (e.g., "H", "Fe") and atomic numbers
+    (e.g., "1", "26") in the first column of atom data.
 
     Parameters
     ----------

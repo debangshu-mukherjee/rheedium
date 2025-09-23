@@ -8,9 +8,10 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
-RHEEDPattern : class
-    Container for RHEED diffraction pattern data with detector points and intensities
-RHEEDImage : class
+RHEEDPattern : PyTree
+    Container for RHEED diffraction pattern data with detector points and
+    intensities.
+RHEEDImage : PyTree
     Container for RHEED image data with pixel coordinates and intensity values
 create_rheed_pattern : function
     Factory function to create RHEEDPattern instances with data validation
@@ -23,36 +24,10 @@ JAX Validation Pattern:
 
 1. Use `jax.lax.cond` for validation instead of Python `if` statements
 2. Validation happens at JIT compilation time, not runtime
-3. Validation functions don't return modified data, they ensure original data is valid
+3. Validation functions don't return modified data, they ensure original data
+    is valid.
 4. Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause
    compilation errors
-
-Example Pattern:
-```python
-def validate_and_create():
-    def check_shape():
-        return lax.cond(
-            data.shape == expected_shape,
-            lambda: data,  # Pass through if valid
-            lambda: lax.stop_gradient(lax.cond(False, lambda: data, lambda: data))  # Fail if invalid
-        )
-
-    # Execute validations (no assignment needed)
-    check_shape()
-    check_values()
-    check_conditions()
-
-    # Return original data (now guaranteed valid)
-    return DataStructure(data=data, ...)
-
-return validate_and_create()
-```
-
-This pattern ensures:
-- JIT compatibility
-- Compile-time error detection
-- Zero runtime validation overhead
-- Type safety through JAX's compilation system
 """
 
 import jax.numpy as jnp
@@ -88,9 +63,6 @@ class RHEEDPattern(NamedTuple):
     intensities : Float[Array, " M"]
         Intensity values for each reflection. Shape (M,) with non-negative
         intensity values.
-
-    Notes
-    -----
     This class is registered as a PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable and
     stored in JAX arrays for efficient RHEED pattern analysis.
@@ -129,6 +101,7 @@ class RHEEDPattern(NamedTuple):
         ],
         None,
     ]:
+        """Flatten the PyTree into a tuple of arrays."""
         return (
             (
                 self.G_indices,
@@ -142,7 +115,7 @@ class RHEEDPattern(NamedTuple):
     @classmethod
     def tree_unflatten(
         cls,
-        aux_data,
+        aux_data: None,
         children: Tuple[
             Int[Array, " N"],
             Float[Array, " M 3"],
@@ -150,6 +123,8 @@ class RHEEDPattern(NamedTuple):
             Float[Array, " M"],
         ],
     ) -> "RHEEDPattern":
+        """Unflatten the PyTree into a RHEEDPattern instance."""
+        del aux_data
         return cls(*children)
 
 
@@ -220,6 +195,7 @@ class RHEEDImage(NamedTuple):
         ],
         None,
     ]:
+        """Flatten the PyTree into a tuple of arrays."""
         return (
             (
                 self.img_array,
@@ -234,7 +210,7 @@ class RHEEDImage(NamedTuple):
     @classmethod
     def tree_unflatten(
         cls,
-        aux_data,
+        aux_data: None,
         children: Tuple[
             Float[Array, " H W"],
             scalar_float,
@@ -243,21 +219,23 @@ class RHEEDImage(NamedTuple):
             scalar_num,
         ],
     ) -> "RHEEDImage":
+        """Unflatten the PyTree into a RHEEDImage instance."""
+        del aux_data
         return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_pattern(
-    G_indices: Int[Array, " N"],
+    g_indices: Int[Array, " N"],
     k_out: Float[Array, " M 3"],
     detector_points: Float[Array, " M 2"],
     intensities: Float[Array, " M"],
 ) -> RHEEDPattern:
-    """Factory function to create a RHEEDPattern instance with data validation.
+    """Create a RHEEDPattern instance with data validation.
 
     Parameters
     ----------
-    G_indices : Int[Array, " N"]
+    g_indices : Int[Array, " N"]
         Indices of reciprocal-lattice vectors that satisfy reflection.
     k_out : Float[Array, " M 3"]
         Outgoing wavevectors (in 1/Å) for those reflections.
@@ -268,47 +246,45 @@ def create_rheed_pattern(
 
     Returns
     -------
-    RHEEDPattern
+    validated_rheed_pattern : RHEEDPattern
         Validated RHEED pattern instance.
 
-    Raises
-    ------
-    ValueError
-        If array shapes are inconsistent or data is invalid.
-
-    Algorithm
-    ---------
-    - Convert inputs to JAX arrays
+    Notes
+    -----
+    - Convert inputs to JAX arrays.
     - Validate array shapes: check k_out has shape (M, 3), detector_points
-      has shape (M, 2), intensities has shape (M,), and G_indices has length M
+      has shape (M, 2), intensities has shape (M,), and g_indices has length M
     - Validate data: ensure intensities are non-negative, k_out vectors are
       non-zero, and detector points are finite
     - Create and return RHEEDPattern instance
     """
-    G_indices: Int[Array, " N"] = jnp.asarray(G_indices, dtype=jnp.int32)
-    k_out: Float[Array, " M 3"] = jnp.asarray(k_out, dtype=jnp.float64)
-    detector_points: Float[Array, " M 2"] = jnp.asarray(
+    g_indices: Int[Array, " nn"] = jnp.asarray(g_indices, dtype=jnp.int32)
+    k_out: Float[Array, " mm 3"] = jnp.asarray(k_out, dtype=jnp.float64)
+    detector_points: Float[Array, " mm 2"] = jnp.asarray(
         detector_points, dtype=jnp.float64
     )
-    intensities: Float[Array, " M"] = jnp.asarray(
+    intensities: Float[Array, " mm"] = jnp.asarray(
         intensities, dtype=jnp.float64
     )
 
     def _validate_and_create() -> RHEEDPattern:
-        M: int = k_out.shape[0]
+        """Validate and create a RHEEDPattern instance."""
+        mm: int = k_out.shape[0]
 
-        def _check_k_out_shape() -> Float[Array, " M 3"]:
+        def _check_k_out_shape() -> Float[Array, " mm 3"]:
+            """Check the shape of the k_out array."""
             return lax.cond(
-                k_out.shape == (M, 3),
+                k_out.shape == (mm, 3),
                 lambda: k_out,
                 lambda: lax.stop_gradient(
                     lax.cond(False, lambda: k_out, lambda: k_out)
                 ),
             )
 
-        def _check_detector_shape() -> Float[Array, " M 2"]:
+        def _check_detector_shape() -> Float[Array, " mm 2"]:
+            """Check the shape of the detector_points array."""
             return lax.cond(
-                detector_points.shape == (M, 2),
+                detector_points.shape == (mm, 2),
                 lambda: detector_points,
                 lambda: lax.stop_gradient(
                     lax.cond(
@@ -317,25 +293,28 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_intensities_shape() -> Float[Array, " M"]:
+        def _check_intensities_shape() -> Float[Array, " mm"]:
+            """Check the shape of the intensities array."""
             return lax.cond(
-                intensities.shape == (M,),
+                intensities.shape == (mm,),
                 lambda: intensities,
                 lambda: lax.stop_gradient(
                     lax.cond(False, lambda: intensities, lambda: intensities)
                 ),
             )
 
-        def _check_g_indices_length() -> Int[Array, " N"]:
+        def _check_g_indices_length() -> Int[Array, " nn"]:
+            """Check the length of the g_indices array."""
             return lax.cond(
-                G_indices.shape[0] == M,
-                lambda: G_indices,
+                g_indices.shape[0] == mm,
+                lambda: g_indices,
                 lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: G_indices, lambda: G_indices)
+                    lax.cond(False, lambda: g_indices, lambda: g_indices)
                 ),
             )
 
-        def _check_intensities_positive() -> Float[Array, " M"]:
+        def _check_intensities_positive() -> Float[Array, " mm"]:
+            """Check the intensities are positive."""
             return lax.cond(
                 jnp.all(intensities >= 0),
                 lambda: intensities,
@@ -344,8 +323,8 @@ def create_rheed_pattern(
                 ),
             )
 
-        # Check k_out vectors non-zero
-        def _check_k_out_nonzero() -> Float[Array, " M 3"]:
+        def _check_k_out_nonzero() -> Float[Array, " mm 3"]:
+            """Check the k_out vectors are non-zero."""
             return lax.cond(
                 jnp.all(jnp.linalg.norm(k_out, axis=1) > 0),
                 lambda: k_out,
@@ -354,7 +333,8 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_detector_finite() -> Float[Array, " M 2"]:
+        def _check_detector_finite() -> Float[Array, " mm 2"]:
+            """Check the detector points are finite."""
             return lax.cond(
                 jnp.all(jnp.isfinite(detector_points)),
                 lambda: detector_points,
@@ -369,19 +349,19 @@ def create_rheed_pattern(
         _check_detector_shape()
         _check_intensities_shape()
         _check_g_indices_length()
-
         _check_intensities_positive()
         _check_k_out_nonzero()
         _check_detector_finite()
 
         return RHEEDPattern(
-            G_indices=G_indices,
+            G_indices=g_indices,
             k_out=k_out,
             detector_points=detector_points,
             intensities=intensities,
         )
 
-    return _validate_and_create()
+    validated_rheed_pattern: RHEEDPattern = _validate_and_create()
+    return validated_rheed_pattern
 
 
 @jaxtyped(typechecker=beartype)
@@ -392,7 +372,7 @@ def create_rheed_image(
     electron_wavelength: scalar_float,
     detector_distance: scalar_num,
 ) -> RHEEDImage:
-    """Factory function to create a RHEEDImage instance with data validation.
+    """Create a RHEEDImage instance with data validation.
 
     Parameters
     ----------
@@ -409,23 +389,21 @@ def create_rheed_image(
 
     Returns
     -------
-    RHEEDImage
+    validated_rheed_image : RHEEDImage
         Validated RHEED image instance.
 
-    Raises
-    ------
-    ValueError
-        If data is invalid or parameters are out of valid ranges.
+    Notes
+    -----
+    The algorithm proceeds as follows:
 
-    Algorithm
-    ---------
-    - Convert inputs to JAX arrays
-    - Validate image array: check it's 2D, all values are finite and non-negative
-    - Validate parameters: check incoming_angle is between 0 and 90 degrees,
-      electron_wavelength is positive, and detector_distance is positive
-    - Validate calibration: if scalar, ensure it's positive; if array, ensure
-      shape is (2,) and all values are positive
-    - Create and return RHEEDImage instance
+    1. Convert inputs to JAX arrays
+    2. Validate image array: check it's 2D, all values are finite and
+       non-negative.
+    3. Validate parameters: check incoming_angle is between 0 and 90 degrees,
+       electron_wavelength is positive, and detector_distance is positive
+    4. Validate calibration: if scalar, ensure it's positive; if array, ensure
+       shape is (2,) and all values are positive
+    5. Create and return RHEEDImage instance
     """
     img_array: Float[Array, " H W"] = jnp.asarray(img_array, dtype=jnp.float64)
     incoming_angle: Float[Array, " "] = jnp.asarray(
@@ -440,11 +418,16 @@ def create_rheed_image(
     detector_distance: Float[Array, " "] = jnp.asarray(
         detector_distance, dtype=jnp.float64
     )
+    max_angle: Int[Array, " "] = jnp.asarray(90, dtype=jnp.int32)
+    image_dimensions: int = 2
 
     def _validate_and_create() -> RHEEDImage:
+        """Validate and create a RHEEDImage instance."""
+
         def _check_2d() -> Float[Array, " H W"]:
+            """Check the image array is 2D."""
             return lax.cond(
-                img_array.ndim == 2,
+                img_array.ndim == image_dimensions,
                 lambda: img_array,
                 lambda: lax.stop_gradient(
                     lax.cond(False, lambda: img_array, lambda: img_array)
@@ -452,6 +435,7 @@ def create_rheed_image(
             )
 
         def _check_finite() -> Float[Array, " H W"]:
+            """Check the image array is finite."""
             return lax.cond(
                 jnp.all(jnp.isfinite(img_array)),
                 lambda: img_array,
@@ -461,6 +445,7 @@ def create_rheed_image(
             )
 
         def _check_nonnegative() -> Float[Array, " H W"]:
+            """Check the image array is non-negative."""
             return lax.cond(
                 jnp.all(img_array >= 0),
                 lambda: img_array,
@@ -470,8 +455,11 @@ def create_rheed_image(
             )
 
         def _check_angle() -> Float[Array, " "]:
+            """Check the incoming angle is between 0 and 90 degrees."""
             return lax.cond(
-                jnp.logical_and(incoming_angle >= 0, incoming_angle <= 90),
+                jnp.logical_and(
+                    incoming_angle >= 0, incoming_angle <= max_angle
+                ),
                 lambda: incoming_angle,
                 lambda: lax.stop_gradient(
                     lax.cond(
@@ -481,6 +469,7 @@ def create_rheed_image(
             )
 
         def _check_wavelength() -> Float[Array, " "]:
+            """Check the electron wavelength is positive."""
             return lax.cond(
                 electron_wavelength > 0,
                 lambda: electron_wavelength,
@@ -494,6 +483,7 @@ def create_rheed_image(
             )
 
         def _check_distance() -> Float[Array, " "]:
+            """Check the detector distance is positive."""
             return lax.cond(
                 detector_distance > 0,
                 lambda: detector_distance,
@@ -509,7 +499,10 @@ def create_rheed_image(
         def _check_calibration() -> (
             Union[Float[Array, " 2"], Float[Array, " "]]
         ):
+            """Check the calibration is positive."""
+
             def _check_scalar_cal() -> Float[Array, " "]:
+                """Check the calibration is positive."""
                 return lax.cond(
                     calibration > 0,
                     lambda: calibration,
@@ -521,6 +514,7 @@ def create_rheed_image(
                 )
 
             def _check_array_cal() -> Float[Array, " 2"]:
+                """Check the calibration is positive."""
                 return lax.cond(
                     jnp.logical_and(
                         calibration.shape == (2,), jnp.all(calibration > 0)
@@ -553,4 +547,5 @@ def create_rheed_image(
             detector_distance=detector_distance,
         )
 
-    return _validate_and_create()
+    validated_rheed_image: RHEEDImage = _validate_and_create()
+    return validated_rheed_image

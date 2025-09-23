@@ -16,8 +16,8 @@ symmetry_expansion : function
 
 Notes
 -----
-All functions return JAX-compatible arrays suitable for automatic differentiation
-and GPU acceleration.
+All functions return JAX-compatible arrays suitable for automatic
+differentiation and GPU acceleration.
 """
 
 import fractions
@@ -56,19 +56,21 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         (range [0,1]) and Cartesian (Ångstroms) coordinates, along with unit
         cell parameters (lengths in Ångstroms, angles in degrees).
 
-    Algorithm
-    ---------
-    - Validate CIF file path and extension
-    - Read CIF file content
-    - Load atomic numbers mapping
-    - Extract unit cell parameters (cell lengths and angles)
-    - Parse atomic positions from atom site loop section
-    - Convert element symbols to atomic numbers
-    - Convert fractional to Cartesian coordinates using cell vectors
-    - Parse symmetry operations from CIF file
-    - Create initial CrystalStructure
-    - Apply symmetry operations to expand positions
-    - Return expanded crystal structure
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Validate CIF file path and extension
+    2. Read CIF file content
+    3. Load atomic numbers mapping
+    4. Extract unit cell parameters (cell lengths and angles)
+    5. Parse atomic positions from atom site loop section
+    6. Convert element symbols to atomic numbers
+    7. Convert fractional to Cartesian coordinates using cell vectors
+    8. Parse symmetry operations from CIF file
+    9. Create initial CrystalStructure
+    10. Apply symmetry operations to expand positions
+    11. Return expanded crystal structure
 
     Examples
     --------
@@ -91,23 +93,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     cif_text: str = cif_path.read_text()
 
     def _extract_param(name: str) -> float:
-        """Extract a numerical parameter from CIF text.
-
-        Parameters
-        ----------
-        name : str
-            Name of the CIF parameter to extract (e.g., '_cell_length_a')
-
-        Returns
-        -------
-        float
-            Extracted numerical value
-
-        Raises
-        ------
-        ValueError
-            If the parameter cannot be found in the CIF text
-        """
+        """Extract a numerical parameter from CIF text."""
         match: Optional[re.Match[str]] = re.search(
             rf"{name}\s+([0-9.]+)", cif_text
         )
@@ -162,7 +148,6 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             frac_x: float = float(tokens[col_indices["_atom_site_fract_x"]])
             frac_y: float = float(tokens[col_indices["_atom_site_fract_y"]])
             frac_z: float = float(tokens[col_indices["_atom_site_fract_z"]])
-            # Use the atomic_symbol function to convert element symbol to atomic number
             atomic_number: int = atomic_symbol(element_symbol)
             positions_list.append([frac_x, frac_y, frac_z, atomic_number])
     if not positions_list:
@@ -216,7 +201,7 @@ def symmetry_expansion(
     sym_ops: List[str],
     tolerance: scalar_float = 1.0,
 ) -> CrystalStructure:
-    """Apply symmetry operations to expand fractional positions and remove duplicates.
+    """Apply symmetry operations to expand fractional positions.
 
     Parameters
     ----------
@@ -234,11 +219,12 @@ def symmetry_expansion(
     CrystalStructure
         Symmetry-expanded crystal structure without duplicates.
 
-    Algorithm
-    ---------
-    - Parse symmetry operations into functions by splitting operation strings
+    Notes
+    -----
+    - Parse symmetry operations into functions by splitting operation strings.
       into components and creating evaluation functions for coefficients
-    - Apply symmetry operations to each atomic position to generate new positions
+    - Apply symmetry operations to each atomic position to generate new
+      positions.
     - Apply modulo 1 to keep positions within unit cell
     - Convert expanded positions to Cartesian coordinates using cell vectors
     - Remove duplicate positions by calculating distances and keeping only

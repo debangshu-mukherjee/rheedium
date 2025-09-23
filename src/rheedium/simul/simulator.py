@@ -73,7 +73,7 @@ def wavelength_ang(
 
     Returns
     -------
-    Float[Array, " ..."]
+    lambda_angstroms : Float[Array, " ..."]
         Electron wavelength in angstroms
 
     Examples
@@ -138,8 +138,6 @@ def incident_wavevector(
 
     Notes
     -----
-    Algorithm:
-
     - Calculate wavevector magnitude as 2π/λ
     - Convert theta from degrees to radians
     - Calculate x-component using cosine of theta
@@ -170,7 +168,7 @@ def project_on_detector(
 
     Returns
     -------
-    Float[Array, " M 2"]
+    coords : Float[Array, " M 2"]
         (M, 2) array of projected [Y, Z] coordinates on the detector
 
     Examples
@@ -193,8 +191,6 @@ def project_on_detector(
 
     Notes
     -----
-    Algorithm:
-
     - Calculate norms of each wavevector
     - Normalize wavevectors to get unit directions
     - Calculate time parameter t for each ray to reach detector
@@ -241,9 +237,10 @@ def find_kinematic_reflections(
 
     Returns
     -------
-    Tuple[Int[Array, " K"], Float[Array, " K 3"]]
-        Allowed indices that will kinematically reflect and
-        outgoing wavevectors (in 1/Å) for those reflections.
+    allowed_indices : Int[Array, " K"]
+        Allowed indices that will kinematically reflect.
+    k_out : Float[Array, " K 3"]
+        Outgoing wavevectors (in 1/Å) for those reflections.
 
     Examples
     --------
@@ -274,15 +271,17 @@ def find_kinematic_reflections(
     >>> print(f"Allowed indices: {indices}")
     >>> print(f"Outgoing wavevectors: {k_out}")
 
-    Algorithm
-    ---------
-    - Calculate wavevector magnitude as 2π/λ
-    - Calculate candidate outgoing wavevectors by adding k_in to each G
-    - Calculate norms of candidate wavevectors
-    - Create mask for wavevectors close to Ewald sphere
-    - Create mask for wavevectors with correct z-sign
-    - Combine masks to get final allowed indices
-    - Return allowed indices and corresponding outgoing wavevectors
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Calculate wavevector magnitude as 2π/λ
+    2. Calculate candidate outgoing wavevectors by adding k_in to each G
+    3. Calculate norms of candidate wavevectors
+    4. Create mask for wavevectors close to Ewald sphere
+    5. Create mask for wavevectors with correct z-sign
+    6. Combine masks to get final allowed indices
+    7. Return allowed indices and corresponding outgoing wavevectors
     """
     k_mag: Float[Array, " "] = 2.0 * jnp.pi / lam_ang
     k_out_candidates: Float[Array, " M 3"] = k_in[None, :] + gs
@@ -350,13 +349,15 @@ def compute_kinematic_intensities(
     ... )
     >>> print(f"Reflection intensities: {intensities}")
 
-    Algorithm
-    ---------
-    - Define inner function to compute intensity for single G vector
-    - Calculate phase factors for each atom position
-    - Sum real and imaginary parts of phase factors
-    - Compute intensity as sum of squared real and imaginary parts
-    - Vectorize computation over all allowed G vectors
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Define inner function to compute intensity for single G vector
+    2. Calculate phase factors for each atom position
+    3. Sum real and imaginary parts of phase factors
+    4. Compute intensity as sum of squared real and imaginary parts
+    5. Vectorize computation over all allowed G vectors
     """
 
     def _intensity_for_g(g_: Float[Array, " 3"]) -> Float[Array, " "]:
@@ -468,18 +469,32 @@ def simulate_rheed_pattern(
     >>> # Plot the pattern
     >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
-    Algorithm
-    ---------
-    - Build real-space cell vectors from cell parameters
-    - Generate reciprocal lattice points up to specified bounds
-    - Calculate electron wavelength from voltage
-    - Build incident wavevector at specified angle
-    - Find G vectors satisfying reflection condition
-    - Project resulting k_out onto detector plane
-    - Extract unique atomic numbers from crystal
-    - Calculate atomic potentials for each element type
-    - Compute structure factors with atomic form factors
-    - Create and return RHEEDPattern with computed data
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Build real-space cell vectors from cell parameters
+    2. Generate reciprocal lattice points up to specified bounds
+    3. Calculate electron wavelength from voltage
+    4. Build incident wavevector at specified angle
+    5. Find G vectors satisfying reflection condition
+    6. Project resulting k_out onto detector plane
+    7. Extract unique atomic numbers from crystal
+    8. Calculate atomic potentials for each element type
+    9. Compute structure factors with atomic form factors
+    10. Create and return RHEEDPattern with computed data
+
+    See Also
+    --------
+    parse_cif : function
+    generate_reciprocal_points : function
+    wavelength_ang : function
+    incident_wavevector : function
+    find_kinematic_reflections : function
+    project_on_detector : function
+    atomic_potential : function
+    crystal_potential : function
+    create_rheed_pattern : function
     """
     gs: Float[Array, " M 3"] = generate_reciprocal_points(
         crystal=crystal,
@@ -603,17 +618,19 @@ def atomic_potential(
     potential : Float[Array, " h w"]
         Projected potential matrix with atom centered at specified coordinates
 
-    Algorithm
-    ---------
-    - Define physical constants and load Kirkland parameters
-    - Determine grid size and center coordinates
-    - Calculate step size for supersampling
-    - Create coordinate grid with atom centered at specified position
-    - Calculate radial distances from atom center
-    - Compute Bessel and Gaussian terms using Kirkland parameters
-    - Combine terms to get total potential
-    - Downsample to target resolution using average pooling
-    - Return final potential matrix
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Define physical constants and load Kirkland parameters
+    2. Determine grid size and center coordinates
+    3. Calculate step size for supersampling
+    4. Create coordinate grid with atom centered at specified position
+    5. Calculate radial distances from atom center
+    6. Compute Bessel and Gaussian terms using Kirkland parameters
+    7. Combine terms to get total potential
+    8. Downsample to target resolution using average pooling
+    9. Return final potential matrix
     """
     a0: Float[Array, " "] = jnp.asarray(0.5292)
     ek: Float[Array, " "] = jnp.asarray(14.4)
@@ -744,21 +761,23 @@ def crystal_potential(
         Structured potential data containing slice arrays and calibration
         information.
 
-    Algorithm
-    ---------
-    - Extract atomic positions and numbers from crystal structure
-    - Find unique atomic numbers and compute their centered potentials once
-    - Calculate z-range and determine number of slices needed
-    - Calculate pixel calibrations and coordinate grids
-    - For each slice:
-        - Find atoms within the slice boundaries
-        - Group atoms by atomic number
-        - For each unique atom type in slice:
-            - Use Fourier shifts to position atoms at their x,y coordinates
-            - Sum shifted potentials for all atoms of this type
-        - Sum contributions from all atom types to get total slice potential
-    - Create PotentialSlices object with slice data and metadata
-    - Return structured potential slices
+    Notes
+    -----
+    The algorithm proceeds as follows:
+
+    1. Extract atomic positions and numbers from crystal structure
+    2. Find unique atomic numbers and compute their centered potentials once
+    3. Calculate z-range and determine number of slices needed
+    4. Calculate pixel calibrations and coordinate grids
+    5. For each slice:
+    6. Find atoms within the slice boundaries
+    7. Group atoms by atomic number
+    8. For each unique atom type in slice:
+    9. Use Fourier shifts to position atoms at their x,y coordinates
+    10. Sum shifted potentials for all atoms of this type
+    11. Sum contributions from all atom types to get total slice potential
+    12. Create PotentialSlices object with slice data and metadata
+    13. Return structured potential slices
     """
     atom_positions: Float[Array, " N 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, " N"] = crystal.cart_positions[:, 3].astype(
@@ -796,29 +815,7 @@ def crystal_potential(
         shift_x: Float[Array, " "],
         shift_y: Float[Array, " "],
     ) -> Float[Array, " h w"]:
-        """Apply Fourier shift theorem to translate potential in real space.
-
-        Parameters
-        ----------
-        potential : Float[Array, " h w"]
-            Input potential to be shifted
-        shift_x : Float[Array, " "]
-            Shift in x-direction in angstroms
-        shift_y : Float[Array, " "]
-            Shift in y-direction in angstroms
-
-        Returns
-        -------
-        shifted_potential : Float[Array, " h w"]
-            Potential shifted to new position
-
-        Algorithm
-        ---------
-        - Convert shifts from physical units to pixel units
-        - Create frequency grids for FFT
-        - Apply phase shift in Fourier domain
-        - Transform back to real space
-        """
+        """Apply Fourier shift theorem to translate potential in real space."""
         shift_pixels_x: Float[Array, " "] = shift_x / x_calibration
         shift_pixels_y: Float[Array, " "] = shift_y / y_calibration
         ky: Float[Array, " h"] = jnp.fft.fftfreq(grid_shape[0], d=1.0)
@@ -841,6 +838,7 @@ def crystal_potential(
     def _calculate_slice_potential(
         slice_idx: Int[Array, " "],
     ) -> Float[Array, " h w"]:
+        """Calculate the potential for a single slice of the crystal."""
         slice_z_start: Float[Array, " "] = z_min + slice_idx * slice_thickness
         slice_z_end: Float[Array, " "] = slice_z_start + slice_thickness
         atoms_in_slice: Bool[Array, " N"] = jnp.logical_and(
@@ -854,6 +852,7 @@ def crystal_potential(
         def _process_atom_type(
             unique_atomic_num: Int[Array, " "],
         ) -> Float[Array, " h w"]:
+            """Process the potential for a single atom type."""
             potential_idx: Int[Array, " "] = jnp.where(
                 unique_atomic_numbers == unique_atomic_num, size=1
             )[0][0]
@@ -870,6 +869,7 @@ def crystal_potential(
             def _shift_single_atom(
                 atom_pos: Float[Array, " 3"],
             ) -> Float[Array, " h w"]:
+                """Shift the potential for a single atom."""
                 shift_x: Float[Array, " "] = atom_pos[0]
                 shift_y: Float[Array, " "] = atom_pos[1]
                 return _fourier_shift_potential(
@@ -879,12 +879,14 @@ def crystal_potential(
             n_atoms_of_type: Int[Array, " "] = positions_of_type.shape[0]
 
             def _compute_type_contribution() -> Float[Array, " h w"]:
+                """Compute the sum of the potential for a single atom type."""
                 shifted_potentials: Float[Array, " K h w"] = jax.vmap(
                     _shift_single_atom
                 )(positions_of_type)
                 return jnp.sum(shifted_potentials, axis=0)
 
             def _return_zero_contribution() -> Float[Array, " h w"]:
+                """Return an empty contribution."""
                 return jnp.zeros(grid_shape, dtype=jnp.float64)
 
             type_contribution: Float[Array, " h w"] = jax.lax.cond(
@@ -897,6 +899,7 @@ def crystal_potential(
         n_atoms_in_slice: Int[Array, " "] = slice_atom_positions.shape[0]
 
         def _compute_slice_sum() -> Float[Array, " h w"]:
+            """Compute the sum of the potential for a single slice."""
             unique_slice_numbers: Int[Array, " V"] = jnp.unique(
                 slice_atomic_numbers
             )
@@ -906,6 +909,7 @@ def crystal_potential(
             return jnp.sum(type_contributions, axis=0)
 
         def _return_empty_slice() -> Float[Array, " h w"]:
+            """Return an empty slice."""
             return jnp.zeros(grid_shape, dtype=jnp.float64)
 
         slice_potential: Float[Array, " h w"] = jax.lax.cond(

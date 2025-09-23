@@ -2,9 +2,9 @@
 
 Extended Summary
 ----------------
-This module provides JAX-compatible implementations of modified Bessel functions
-which are essential for various calculations in crystallography and diffraction
-physics, particularly for atomic potential calculations.
+This module provides JAX-compatible implementations of modified Bessel 
+functions, which are essential for various calculations in crystallography and 
+diffraction physics, particularly for atomic potential calculations.
 
 Routine Listings
 ----------------
@@ -147,6 +147,7 @@ def _bessel_kn_recurrence(
     """
 
     def _compute_kn() -> Float[Array, " ..."]:
+        """Compute K_n(x) using recurrence relation."""
         init: Tuple[Float[Array, " ..."], Float[Array, " ..."]] = (k0, k1)
         max_n: int = 20
         indices: Float[Array, " 19"] = jnp.arange(1, max_n, dtype=jnp.float32)
@@ -158,6 +159,7 @@ def _bessel_kn_recurrence(
             Tuple[Float[Array, " ..."], Float[Array, " ..."]],
             Float[Array, " ..."],
         ]:
+            """Compute K_n(x) using recurrence relation."""
             k_prev2: Float[Array, " ..."]
             k_prev1: Float[Array, " ..."]
             k_prev2, k_prev1 = carry
@@ -347,21 +349,7 @@ def bessel_kv(
 
     Notes
     -----
-    - Valid for v >= 0 and x > 0
-    - Supports broadcasting and autodiff
-    - JIT-safe and VMAP-safe
-    - Uses series expansion for small x (x <= 2.0) and asymptotic expansion
-      for large x
-    - For non-integer v, uses the reflection formula:
-      K_v = π/(2sin(πv)) * (I_{-v} - I_v)
-    - For integer v, uses specialized series expansions and recurrence relations
-    - Special exact formula for v = 0.5: K_{1/2}(x) = sqrt(π/(2x)) * exp(-x)
-    - The transition point between small and large x approximations is set
-      at x = 2.0
-
-    Algorithm
-    ---------
-    - For integer orders n > 1, uses recurrence relations with masked updates
+    For integer orders n > 1, uses recurrence relations with masked updates.
       to only update values within the target range
     """
     v: Float[Array, ""] = jnp.asarray(v)
