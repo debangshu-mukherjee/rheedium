@@ -29,7 +29,7 @@ scattering.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Tuple
+from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.inout.xyz import kirkland_potentials
@@ -157,7 +157,7 @@ def kirkland_form_factor(
 def get_mean_square_displacement(
     atomic_number: scalar_int,
     temperature: scalar_float,
-    is_surface: bool = False,
+    is_surface: Optional[bool] = False,
 ) -> scalar_float:
     """Calculate mean square displacement for thermal vibrations.
 
@@ -173,7 +173,7 @@ def get_mean_square_displacement(
         Atomic number (Z) of the element
     temperature : scalar_float
         Temperature in Kelvin
-    is_surface : bool
+    is_surface : bool, optional
         If True, apply surface enhancement factor. Default: False
 
     Returns
@@ -282,8 +282,8 @@ def debye_waller_factor(
 def atomic_scattering_factor(
     atomic_number: scalar_int,
     q_vector: Float[Array, "... 3"],
-    temperature: scalar_float = 300.0,
-    is_surface: bool = False,
+    temperature: Optional[scalar_float] = 300.0,
+    is_surface: Optional[bool] = False,
 ) -> Float[Array, " ..."]:
     """Calculate combined atomic scattering factor with thermal damping.
 
