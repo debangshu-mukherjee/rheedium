@@ -94,6 +94,12 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
+# Custom sections for Napoleon
+napoleon_custom_sections = [
+    ("Algorithm", "notes_style"),
+    ("Flow", "notes_style"),
+]
+
 # Mock imports for packages that might not be available during doc build
 autodoc_mock_imports = [
     "pandas",
