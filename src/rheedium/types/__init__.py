@@ -16,29 +16,34 @@ create_rheed_image : function
     Factory function to create RHEEDImage instances
 create_rheed_pattern : function
     Factory function to create RHEEDPattern instances
-CrystalStructure : class
+CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
 make_xyz_data : function
     Factory function to create XYZData instances
-PotentialSlices : class
+PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
-RHEEDImage : class
+RHEEDImage : PyTree
     Container for RHEED image data with pixel coordinates and intensity values
-RHEEDPattern : class
-    Container for RHEED diffraction pattern data with detector points and intensities
-XYZData : class
+RHEEDPattern : PyTree
+    Container for RHEED diffraction pattern data with detector points and 
+    intensities.
+scalar_bool : TypeAlias
+    Union type for scalar boolean values (bool or JAX scalar array)
+scalar_float : TypeAlias
+    Union type for scalar float values (float or JAX scalar array)
+scalar_int : TypeAlias
+    Union type for scalar integer values (int or JAX scalar array)
+scalar_num : TypeAlias
+    Union type for scalar numeric values (int, float, or JAX scalar array)
+non_jax_number : TypeAlias
+    Union type for non-JAX numeric values (int or float)
+XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 
-Type Aliases
-------------
-- `scalar_float`:
-    Union type for scalar float values (float or JAX scalar array)
-- `scalar_int`:
-    Union type for scalar integer values (int or JAX scalar array)
-- `scalar_num`:
-    Union type for scalar numeric values (int, float, or JAX scalar array)
-- `non_jax_number`:
-    Union type for non-JAX numeric values (int or float)
+Notes
+-----
+Every PyTree has a corresponding factory function to create the instance. This 
+is because beartype does not support type checking of dataclasses. 
 """
 
 from .crystal_types import (
@@ -53,6 +58,7 @@ from .custom_types import (
     float_image,
     int_image,
     non_jax_number,
+    scalar_bool,
     scalar_float,
     scalar_int,
     scalar_num,
@@ -77,6 +83,7 @@ __all__ = [
     "PotentialSlices",
     "RHEEDImage",
     "RHEEDPattern",
+    "scalar_bool",
     "scalar_float",
     "scalar_int",
     "scalar_num",

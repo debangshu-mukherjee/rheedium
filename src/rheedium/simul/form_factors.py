@@ -32,8 +32,8 @@ from beartype import beartype
 from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Float, Int, jaxtyped
 
-from rheedium.inout.xyz import kirkland_potentials
-from rheedium.types import scalar_float, scalar_int
+from rheedium.inout import kirkland_potentials
+from rheedium.types import scalar_bool, scalar_float, scalar_int
 
 jax.config.update("jax_enable_x64", True)
 
@@ -157,7 +157,7 @@ def kirkland_form_factor(
 def get_mean_square_displacement(
     atomic_number: scalar_int,
     temperature: scalar_float,
-    is_surface: Optional[bool] = False,
+    is_surface: Optional[scalar_bool] = False,
 ) -> scalar_float:
     """Calculate mean square displacement for thermal vibrations.
 
@@ -173,7 +173,7 @@ def get_mean_square_displacement(
         Atomic number (Z) of the element
     temperature : scalar_float
         Temperature in Kelvin
-    is_surface : bool, optional
+    is_surface : scalar_bool, optional
         If True, apply surface enhancement factor. Default: False
 
     Returns
@@ -283,7 +283,7 @@ def atomic_scattering_factor(
     atomic_number: scalar_int,
     q_vector: Float[Array, "... 3"],
     temperature: Optional[scalar_float] = 300.0,
-    is_surface: Optional[bool] = False,
+    is_surface: Optional[scalar_bool] = False,
 ) -> Float[Array, " ..."]:
     """Calculate combined atomic scattering factor with thermal damping.
 
@@ -301,7 +301,7 @@ def atomic_scattering_factor(
         Scattering vector in 1/Å (can be batched)
     temperature : scalar_float, optional
         Temperature in Kelvin. Default: 300.0
-    is_surface : bool, optional
+    is_surface : scalar_bool, optional
         If True, use surface-enhanced thermal vibrations. Default: False
 
     Returns
@@ -313,7 +313,8 @@ def atomic_scattering_factor(
     ----
     - Calculate magnitude of q vector
     - Compute atomic form factor f(q) using Kirkland parameterization
-    - Calculate mean square displacement for temperature with surface enhancement
+    - Calculate mean square displacement for temperature with surface 
+      enhancement.
     - Compute Debye-Waller factor exp(-W) using the MSD
     - Multiply form factor by Debye-Waller factor
     - Return combined scattering factor

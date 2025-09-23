@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.06.25"
+version = "2025.08.31"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -222,7 +222,26 @@ known-third-party = ["jax", "jaxtyping"]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D"]
+"tests/**/*.py" = [
+    "D",      # Ignore all docstring issues
+    "ANN",    # Ignore type annotations (tests often use Any)
+    "S",      # Ignore security issues (tests may use assert, random, etc.)
+    "PLR",    # Ignore refactoring suggestions
+    "ARG",    # Ignore unused arguments
+    "ERA",    # Ignore commented code
+    "B",      # Ignore bugbear warnings
+    "A",      # Ignore shadowing builtins
+    "C4",     # Ignore comprehension issues
+    "PIE",    # Ignore misc lints
+    "PT",     # Ignore pytest style (we use unittest style)
+    "RET",    # Ignore return issues
+    "SIM",    # Ignore simplification suggestions
+    "N",      # Ignore naming conventions
+    "UP",     # Ignore upgrade suggestions
+    "F401",   # Ignore unused imports (tests may import for side effects)
+    "F841",   # Ignore unused variables
+    "PLR2004", # Ignore magic value comparisons
+]
 
 [tool.pydoclint]
 style = "numpy"
