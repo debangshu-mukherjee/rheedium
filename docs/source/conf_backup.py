@@ -3,14 +3,15 @@ import sys
 import tomllib
 from datetime import datetime
 
-# Disable JAX GPU usage during doc building to prevent timeouts
+from beartype.typing import Tuple
+from sphinx.application import Sphinx
+
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["JAX_ENABLE_X64"] = "True"
 os.environ["BUILDING_DOCS"] = "1"
 
-# Add project paths
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
 
@@ -19,7 +20,6 @@ sys.path.insert(0, project_root)
 
 print(f"Added to sys.path: {src_path}")
 
-# Read project metadata from pyproject.toml
 pyproject_path = os.path.join(project_root, "pyproject.toml")
 with open(pyproject_path, "rb") as f:
     pyproject_data = tomllib.load(f)
@@ -36,15 +36,10 @@ author = (
 project_copyright = f"{datetime.now().year}, {author}"
 release = pyproject_data["project"]["version"]
 
-# -- General configuration ---------------------------------------------------
-
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.intersphinx",
-    "sphinx_autodoc_typehints",
     "myst_parser",
 ]
 
@@ -55,8 +50,6 @@ source_suffix = {
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-
-# -- Options for HTML output -------------------------------------------------
 
 html_theme = "furo"
 html_static_path = ["_static"]
@@ -77,9 +70,6 @@ html_theme_options = {
     "sidebar_hide_name": False,
 }
 
-# -- Extension configuration -------------------------------------------------
-
-# Napoleon settings for NumPy style docstrings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = True
@@ -94,7 +84,14 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-# Mock imports for packages that might not be available during doc build
+napoleon_custom_sections = [
+    ("Algorithm", "notes_style"),
+]
+
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+
+# Mock all heavy dependencies to speed up build
 autodoc_mock_imports = [
     "pandas",
     "scipy",
@@ -102,12 +99,18 @@ autodoc_mock_imports = [
     "matplotlib",
     "matplotlib.pyplot",
     "matplotlib.colors",
-    "matplotlib.axes",
-    "matplotlib.figure",
     "gemmi",
+    "jax",
+    "jaxlib",
+    "jax.numpy",
+    "jax.scipy",
+    "jaxtyping",
+    "beartype",
+    "beartype.typing",
+    "nbsphinx",
+    "notebook",
 ]
 
-# Autodoc settings
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
@@ -116,6 +119,9 @@ autodoc_default_options = {
     "inherited-members": False,
     "ignore-module-all": False,
 }
+
+autosummary_generate = True
+autosummary_imported_members = False
 
 autodoc_typehints = "signature"
 autodoc_typehints_format = "short"
@@ -129,10 +135,8 @@ typehints_use_signature_return = True
 autodoc_preserve_defaults = True
 autodoc_inherit_docstrings = True
 
-# Disable nitpicky mode to avoid warnings
 nitpicky = False
 
-# Type aliases for jaxtyping annotations
 napoleon_type_aliases = {
     'Float[Array, " "]': "scalar float",
     'Float[Array, " 3"]': "3D float array",
@@ -142,7 +146,6 @@ napoleon_type_aliases = {
     'Float[Array, " N 4"]': "Nx4 float array",
     'Int[Array, " "]': "scalar int",
     'Int[Array, " N"]': "N int array",
-    'Int[Array, " 2"]': "2-element int array",
     'Num[Array, " N"]': "N numeric array",
     'Bool[Array, " "]': "scalar bool",
     "scalar_float": "float",
@@ -153,7 +156,6 @@ napoleon_type_aliases = {
 typehints_defaults = "comma"
 typehints_type_aliases = napoleon_type_aliases
 
-# Ignore certain types that cause issues
 nitpick_ignore = [
     ("py:class", "Float"),
     ("py:class", "Array"),
@@ -168,14 +170,15 @@ nitpick_ignore = [
     ("py:obj", "jaxtyped"),
 ]
 
-# Intersphinx mapping for cross-references
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "jax": ("https://jax.readthedocs.io/en/latest/", None),
 }
 
-# -- Custom setup ------------------------------------------------------------
+html_css_files = ["custom.css"]
+html_js_files = ["custom.js"]
+
 
 def skip_member(app, what, name, obj, skip, options):
     """
@@ -202,9 +205,7 @@ def skip_member(app, what, name, obj, skip, options):
 def process_signature(
     app, what, name, obj, options, signature, return_annotation
 ):
-    """
-    Process signatures to handle jaxtyping annotations.
-    """
+    """Process signatures to handle jaxtyping annotations."""
     if signature:
         signature = signature.replace('Float[Array, " ', "FloatArray[")
         signature = signature.replace('Int[Array, " ', "IntArray[")
@@ -214,6 +215,6 @@ def process_signature(
     return signature, return_annotation
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip_member)
     app.connect("autodoc-process-signature", process_signature)
