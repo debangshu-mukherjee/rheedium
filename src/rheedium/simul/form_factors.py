@@ -313,7 +313,7 @@ def atomic_scattering_factor(
     ----
     - Calculate magnitude of q vector
     - Compute atomic form factor f(q) using Kirkland parameterization
-    - Calculate mean square displacement for temperature with surface 
+    - Calculate mean square displacement for temperature with surface
       enhancement.
     - Compute Debye-Waller factor exp(-W) using the MSD
     - Multiply form factor by Debye-Waller factor

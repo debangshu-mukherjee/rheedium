@@ -16,16 +16,16 @@ create_rheed_image : function
     Factory function to create RHEEDImage instances
 create_rheed_pattern : function
     Factory function to create RHEEDPattern instances
+create_xyz_data : function
+    Factory function to create XYZData instances
 CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
-make_xyz_data : function
-    Factory function to create XYZData instances
 PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
 RHEEDImage : PyTree
     Container for RHEED image data with pixel coordinates and intensity values
 RHEEDPattern : PyTree
-    Container for RHEED diffraction pattern data with detector points and 
+    Container for RHEED diffraction pattern data with detector points and
     intensities.
 scalar_bool : TypeAlias
     Union type for scalar boolean values (bool or JAX scalar array)
@@ -42,8 +42,8 @@ XYZData : PyTree
 
 Notes
 -----
-Every PyTree has a corresponding factory function to create the instance. This 
-is because beartype does not support type checking of dataclasses. 
+Every PyTree has a corresponding factory function to create the instance. This
+is because beartype does not support type checking of dataclasses.
 """
 
 from .crystal_types import (
@@ -52,7 +52,7 @@ from .crystal_types import (
     XYZData,
     create_crystal_structure,
     create_potential_slices,
-    make_xyz_data,
+    create_xyz_data,
 )
 from .custom_types import (
     float_image,
@@ -75,10 +75,10 @@ __all__ = [
     "create_potential_slices",
     "create_rheed_image",
     "create_rheed_pattern",
+    "create_xyz_data",
     "CrystalStructure",
     "float_image",
     "int_image",
-    "make_xyz_data",
     "non_jax_number",
     "PotentialSlices",
     "RHEEDImage",

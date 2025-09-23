@@ -8,11 +8,11 @@ All structures are PyTrees that support JAX transformations.
 
 Routine Listings
 ----------------
-CrystalStructure : class
+CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
-PotentialSlices : class
+PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
-XYZData : class
+XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 create_crystal_structure : function
     Factory function to create CrystalStructure instances with data validation
@@ -39,12 +39,12 @@ from .custom_types import scalar_float
 
 @register_pytree_node_class
 class CrystalStructure(NamedTuple):
-    """JAX-compatible crystal structure with fractional and Cartesian coordinates.
+    """JAX-compatible Pytree with fractional and Cartesian coordinates.
 
-    This PyTree represents a crystal structure containing atomic positions in both
-    fractional and Cartesian coordinate systems, along with unit cell parameters.
-    It's designed for efficient crystal structure calculations and electron
-    diffraction simulations.
+    This PyTree represents a crystal structure containing atomic positions in
+    both fractional and Cartesian coordinate systems, along with unit cell
+    parameters. It's designed for efficient crystal structure calculations and
+    electron diffraction simulations.
 
     Attributes
     ----------
@@ -105,6 +105,7 @@ class CrystalStructure(NamedTuple):
         ],
         None,
     ]:
+        """Flatten the PyTree into a tuple of arrays."""
         return (
             (
                 self.frac_positions,
@@ -118,7 +119,7 @@ class CrystalStructure(NamedTuple):
     @classmethod
     def tree_unflatten(
         cls,
-        aux_data,
+        aux_data: None,
         children: Tuple[
             Float[Array, " N 4"],
             Num[Array, " N 4"],
@@ -126,6 +127,8 @@ class CrystalStructure(NamedTuple):
             Num[Array, " 3"],
         ],
     ) -> "CrystalStructure":
+        """Unflatten the PyTree into a CrystalStructure instance."""
+        del aux_data
         return cls(*children)
 
 
@@ -136,14 +139,16 @@ def create_crystal_structure(
     cell_lengths: Num[Array, " 3"],
     cell_angles: Num[Array, " 3"],
 ) -> CrystalStructure:
-    """Factory function to create a CrystalStructure instance with type checking.
+    """Create a CrystalStructure PyTree with data validation.
 
     Parameters
     ----------
     frac_positions: Float[Array, " N 4"]
-        Array of shape (n_atoms, 4) containing atomic positions in fractional coordinates.
+        Array of shape (n_atoms, 4) containing atomic positions in fractional
+        coordinates.
     cart_positions : Num[Array, " N 4"]
-        Array of shape (n_atoms, 4) containing atomic positions in Cartesian coordinates.
+        Array of shape (n_atoms, 4) containing atomic positions in Cartesian
+        coordinates.
     cell_lengths : Num[Array, " 3"]
         Unit cell lengths [a, b, c] in Ångstroms.
     cell_angles : Num[Array, " 3"]
@@ -162,7 +167,8 @@ def create_crystal_structure(
     Algorithm
     ---------
     - Convert all inputs to JAX arrays using jnp.asarray
-    - Validate shapes of frac_positions, cart_positions, cell_lengths, and cell_angles
+    - Validate shapes of frac_positions, cart_positions, cell_lengths,
+      and cell_angles.
     - Verify number of atoms matches between frac and cart positions
     - Verify atomic numbers match between frac and cart positions
     - Ensure cell lengths are positive
@@ -293,9 +299,9 @@ def create_crystal_structure(
 class PotentialSlices(NamedTuple):
     """JAX-compatible multislice potential data for electron beam propagation.
 
-    This PyTree represents discretized potential data used in multislice electron
-    diffraction calculations. It contains 3D potential slices with associated
-    calibration information for accurate physical modeling.
+    This PyTree represents discretized potential data used in multislice
+    electron diffraction calculations. It contains 3D potential slices with
+    associated calibration information for accurate physical modeling.
 
     Attributes
     ----------
@@ -346,6 +352,7 @@ class PotentialSlices(NamedTuple):
         Tuple[Float[Array, " n_slices height width"]],
         Tuple[scalar_float, scalar_float, scalar_float],
     ]:
+        """Flatten the PyTree into a tuple of arrays."""
         return (
             (self.slices,),
             (self.slice_thickness, self.x_calibration, self.y_calibration),
@@ -357,6 +364,7 @@ class PotentialSlices(NamedTuple):
         aux_data: Tuple[scalar_float, scalar_float, scalar_float],
         children: Tuple[Float[Array, " n_slices height width"]],
     ) -> "PotentialSlices":
+        """Unflatten the PyTree into a PotentialSlices instance."""
         slice_thickness: scalar_float
         x_calibration: scalar_float
         y_calibration: scalar_float
@@ -377,7 +385,7 @@ def create_potential_slices(
     x_calibration: scalar_float,
     y_calibration: scalar_float,
 ) -> PotentialSlices:
-    """Factory function to create a PotentialSlices instance with data validation.
+    """Create a PotentialSlices PyTree with data validation.
 
     Parameters
     ----------
@@ -557,9 +565,11 @@ class XYZData(NamedTuple):
     >>> import rheedium as rh
     >>>
     >>> # Create XYZ data for water molecule
-    >>> positions = jnp.array([[0.0, 0.0, 0.0], [0.76, 0.59, 0.0], [-0.76, 0.59, 0.0]])
+    >>> positions = jnp.array(
+    ...     [[0.0, 0.0, 0.0], [0.76, 0.59, 0.0], [-0.76, 0.59, 0.0]]
+    ... )
     >>> atomic_numbers = jnp.array([8, 1, 1])  # O, H, H
-    >>> xyz_data = rh.types.make_xyz_data(
+    >>> xyz_data = rh.types.create_xyz_data(
     ...     positions=positions,
     ...     atomic_numbers=atomic_numbers,
     ...     comment="Water molecule"
@@ -586,6 +596,7 @@ class XYZData(NamedTuple):
         ],
         Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
     ]:
+        """Flatten the PyTree into a tuple of arrays."""
         children = (
             self.positions,
             self.atomic_numbers,
@@ -611,6 +622,7 @@ class XYZData(NamedTuple):
             Optional[Float[Array, " "]],
         ],
     ) -> "XYZData":
+        """Unflatten the PyTree into a XYZData instance."""
         positions: Float[Array, " N 3"]
         atomic_numbers: Int[Array, " N"]
         lattice: Optional[Float[Array, " 3 3"]]
@@ -629,7 +641,7 @@ class XYZData(NamedTuple):
 
 
 @jaxtyped(typechecker=beartype)
-def make_xyz_data(
+def create_xyz_data(
     positions: Float[Array, " N 3"],
     atomic_numbers: Int[Array, " N"],
     lattice: Optional[Float[Array, " 3 3"]] = None,
@@ -638,7 +650,7 @@ def make_xyz_data(
     properties: Optional[List[Dict[str, Union[str, int]]]] = None,
     comment: Optional[str] = None,
 ) -> XYZData:
-    """JAX-safe factory function for XYZData with runtime validation.
+    """Create a XYZData PyTree with runtime validation.
 
     Parameters
     ----------
@@ -659,7 +671,7 @@ def make_xyz_data(
 
     Returns
     -------
-    XYZData
+    validated_xyz_data : XYZData
         Validated PyTree structure for XYZ file contents.
 
     Algorithm
@@ -671,12 +683,11 @@ def make_xyz_data(
       and atomic_numbers has shape (N,)
     - Execute value validation checks: ensure all position values are finite
       and atomic numbers are non-negative
-    - Execute optional matrix validation checks: for lattice and stress tensors,
+    - Execute optional matrix validation checks: for lattice and stress tensors
       verify shape is (3, 3) and all values are finite
     - If all validations pass, create and return XYZData instance
     - If any validation fails, raise ValueError with descriptive error message
     """
-
     positions: Float[Array, " N 3"] = jnp.asarray(positions, dtype=jnp.float64)
     atomic_numbers: Int[Array, " N"] = jnp.asarray(
         atomic_numbers, dtype=jnp.int32
@@ -709,7 +720,6 @@ def make_xyz_data(
                 raise ValueError("atomic_numbers must be non-negative")
 
         def _check_optional_matrices() -> None:
-            # We have to use Python if for None checks here as well
             if lattice is not None:
                 if lattice.shape != (3, 3):
                     raise ValueError("lattice must have shape (3, 3)")
@@ -736,4 +746,5 @@ def make_xyz_data(
             comment=comment,
         )
 
-    return _validate_and_create()
+    validated_xyz_data: XYZData = _validate_and_create()
+    return validated_xyz_data

@@ -38,7 +38,7 @@ from beartype import beartype
 from beartype.typing import Any, Dict, Optional, Union
 from jaxtyping import Array, Float, Int, jaxtyped
 
-from rheedium.types import XYZData, make_xyz_data, scalar_int
+from rheedium.types import XYZData, create_xyz_data, scalar_int
 
 _KIRKLAND_PATH: Path = (
     Path(__file__).resolve().parent / "luggage" / "Kirkland_Potentials.csv"
@@ -335,7 +335,7 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
     )
     atomic_z_arr: Int[Array, " N"] = jnp.array(atomic_numbers, dtype=jnp.int32)
 
-    return make_xyz_data(
+    return create_xyz_data(
         positions=positions_arr,
         atomic_numbers=atomic_z_arr,
         lattice=metadata.get("lattice"),

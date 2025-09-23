@@ -35,14 +35,16 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         self.q_magnitudes = jnp.array([0.0, 0.5, 1.0, 2.0, 4.0, 8.0])
         self.temperatures = jnp.array([100.0, 300.0, 600.0])
         # Test q vectors for 3D calculations
-        self.q_vectors_3d = jnp.array([
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [1.0, 1.0, 0.0],
-            [1.0, 1.0, 1.0],
-        ])
+        self.q_vectors_3d = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ]
+        )
         # Batched q vectors for testing vectorization
         self.batch_size = 10
         self.batched_q = jnp.tile(
@@ -281,7 +283,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         # Zero MSD (no thermal vibration)
         dw_zero_msd = var_dw_factor(q_test, 0.0)
-        chex.assert_trees_all_close(dw_zero_msd, jnp.ones_like(q_test), rtol=1e-10)
+        chex.assert_trees_all_close(
+            dw_zero_msd, jnp.ones_like(q_test), rtol=1e-10
+        )
 
         # Very large MSD
         dw_large_msd = var_dw_factor(q_test[1:], 10.0)
@@ -290,7 +294,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         # Negative MSD should be handled safely (clipped to small positive)
         dw_neg_msd = var_dw_factor(q_test, -0.1)
         chex.assert_tree_all_finite(dw_neg_msd)
-        chex.assert_trees_all_close(dw_neg_msd, jnp.ones_like(q_test), rtol=0.1)
+        chex.assert_trees_all_close(
+            dw_neg_msd, jnp.ones_like(q_test), rtol=0.1
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -365,7 +371,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         # Test JIT compilation
         @jax.jit
-        def jitted_form_factor(z: int, q: Float[Array, "..."]) -> Float[Array, "..."]:
+        def jitted_form_factor(
+            z: int, q: Float[Array, "..."]
+        ) -> Float[Array, "..."]:
             return var_form_factor(z, q)
 
         q_test = self.q_magnitudes
@@ -376,7 +384,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         # Test vmap over atomic numbers
         atomic_nums = jnp.array([1, 6, 14, 29, 79])
         q_single = jnp.array(1.0)  # Use scalar q value
-        vmapped_ff = jax.vmap(lambda z: var_form_factor(z, q_single), in_axes=0)
+        vmapped_ff = jax.vmap(
+            lambda z: var_form_factor(z, q_single), in_axes=0
+        )
         f_vmapped = vmapped_ff(atomic_nums)
         # Note: vmap adds an extra dimension, so shape is (5, 1) not (5,)
         chex.assert_shape(f_vmapped, (len(atomic_nums), 1))
@@ -420,7 +430,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         def scattering_fn(z: int, t: float) -> Float[Array, " 1"]:
             return var_scattering(z, q_single, t, False)
 
-        nested_vmap = jax.vmap(jax.vmap(scattering_fn, in_axes=(None, 0)), in_axes=(0, None))
+        nested_vmap = jax.vmap(
+            jax.vmap(scattering_fn, in_axes=(None, 0)), in_axes=(0, None)
+        )
         f_nested = nested_vmap(atomic_nums, temps)
         chex.assert_shape(f_nested, (len(atomic_nums), len(temps), 1))
 
@@ -457,7 +469,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("random_vectors", jax.random.normal(jax.random.PRNGKey(0), (10, 3))),
         ("large_magnitude", jnp.array([[100.0, 0.0, 0.0]])),
     )
-    def test_q_vector_invariance(self, q_vectors: Float[Array, "... 3"]) -> None:
+    def test_q_vector_invariance(
+        self, q_vectors: Float[Array, "... 3"]
+    ) -> None:
         """Test that scattering depends only on |q|, not direction."""
         var_scattering = self.variant(atomic_scattering_factor)
 

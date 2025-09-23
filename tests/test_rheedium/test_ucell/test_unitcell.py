@@ -66,15 +66,27 @@ class test_reciprocal_unitcell(chex.TestCase):
     @chex.all_variants
     @parameterized.parameters(
         {
-            "test_cell": jnp.array([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]),
+            "test_cell": jnp.array(
+                [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]
+            ),
             "expected_reciprocal": jnp.array(
-                [[1.25663706, 0.0, 0.0], [0.0, 1.25663706, 0.0], [0.0, 0.0, 1.25663706]]
+                [
+                    [1.25663706, 0.0, 0.0],
+                    [0.0, 1.25663706, 0.0],
+                    [0.0, 0.0, 1.25663706],
+                ]
             ),  # 2π/5 on diagonal
         },
         {
-            "test_cell": jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]),
+            "test_cell": jnp.array(
+                [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
+            ),
             "expected_reciprocal": jnp.array(
-                [[2.0944271, 0.0, 0.0], [0.0, 1.5708203, 0.0], [0.0, 0.0, 1.2566371]]
+                [
+                    [2.0944271, 0.0, 0.0],
+                    [0.0, 1.5708203, 0.0],
+                    [0.0, 0.0, 1.2566371],
+                ]
             ),  # 2π/[3,4,5]
         },
     )
@@ -101,7 +113,9 @@ class test_reciprocal_unitcell(chex.TestCase):
     @chex.all_variants
     def test_crystallographic_properties(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        unit_cell = jnp.array(
+            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
+        )
         reciprocal = var_reciprocal_unitcell(unit_cell)
 
         # Test orthogonality relations (a* ⊥ b, etc.)
@@ -122,18 +136,25 @@ class test_reciprocal_unitcell(chex.TestCase):
     @chex.all_variants
     def test_returns_float_array_3x3(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        unit_cell = jnp.array(
+            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
+        )
         result = var_reciprocal_unitcell(unit_cell)
         assert isinstance(
             result, jax.Array
         ), "Expected the function to return a JAX Array"
-        assert result.shape == (3, 3), f"Expected shape (3, 3), got {result.shape}"
+        assert result.shape == (
+            3,
+            3,
+        ), f"Expected shape (3, 3), got {result.shape}"
 
     # Test volume conservation
     @chex.all_variants
     def test_volume_conservation(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array([[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]])
+        unit_cell = jnp.array(
+            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
+        )
         reciprocal = var_reciprocal_unitcell(unit_cell)
 
         direct_volume = jnp.abs(jnp.linalg.det(unit_cell))

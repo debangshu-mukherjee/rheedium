@@ -6,9 +6,12 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.rheed_types import (RHEEDImage, RHEEDPattern,
-                                        create_rheed_image,
-                                        create_rheed_pattern)
+from rheedium.types.rheed_types import (
+    RHEEDImage,
+    RHEEDPattern,
+    create_rheed_image,
+    create_rheed_pattern,
+)
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -115,7 +118,9 @@ class TestRHEEDPattern(chex.TestCase):
         detector_points = jnp.ones((n_reflections, 2))
         intensities = jnp.ones(n_reflections)
 
-        result = var_create_and_process(g_indices, k_out, detector_points, intensities)
+        result = var_create_and_process(
+            g_indices, k_out, detector_points, intensities
+        )
         expected = jnp.sum(intensities) + jnp.sum(k_out)
         chex.assert_trees_all_close(result, expected)
 
@@ -176,12 +181,17 @@ class TestRHEEDPattern(chex.TestCase):
 
         vmapped_create = jax.vmap(create_rheed_pattern)
         patterns = vmapped_create(
-            g_indices_batch, k_out_batch, detector_points_batch, intensities_batch
+            g_indices_batch,
+            k_out_batch,
+            detector_points_batch,
+            intensities_batch,
         )
 
         chex.assert_shape(patterns.g_indices, (batch_size, n_reflections))
         chex.assert_shape(patterns.k_out, (batch_size, n_reflections, 3))
-        chex.assert_shape(patterns.detector_points, (batch_size, n_reflections, 2))
+        chex.assert_shape(
+            patterns.detector_points, (batch_size, n_reflections, 2)
+        )
         chex.assert_shape(patterns.intensities, (batch_size, n_reflections))
 
 
@@ -196,7 +206,9 @@ class TestRHEEDImage(chex.TestCase):
     def test_create_rheed_image_valid(self) -> None:
         """Test creation of valid RHEEDImage instances."""
         height, width = 256, 512
-        img_array = jax.random.uniform(self.rng, (height, width), minval=0, maxval=1000)
+        img_array = jax.random.uniform(
+            self.rng, (height, width), minval=0, maxval=1000
+        )
         incoming_angle = 2.0
         calibration = 0.01
         electron_wavelength = 0.037
@@ -214,7 +226,9 @@ class TestRHEEDImage(chex.TestCase):
         chex.assert_shape(image.img_array, (height, width))
         chex.assert_trees_all_equal(image.incoming_angle, incoming_angle)
         chex.assert_trees_all_equal(image.calibration, calibration)
-        chex.assert_trees_all_equal(image.electron_wavelength, electron_wavelength)
+        chex.assert_trees_all_equal(
+            image.electron_wavelength, electron_wavelength
+        )
         chex.assert_trees_all_equal(image.detector_distance, detector_distance)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -239,8 +253,12 @@ class TestRHEEDImage(chex.TestCase):
         reconstructed = tree_util.tree_unflatten(treedef, flat)
 
         chex.assert_trees_all_close(image.img_array, reconstructed.img_array)
-        chex.assert_trees_all_equal(image.incoming_angle, reconstructed.incoming_angle)
-        chex.assert_trees_all_close(image.calibration, reconstructed.calibration)
+        chex.assert_trees_all_equal(
+            image.incoming_angle, reconstructed.incoming_angle
+        )
+        chex.assert_trees_all_close(
+            image.calibration, reconstructed.calibration
+        )
         chex.assert_trees_all_equal(
             image.electron_wavelength, reconstructed.electron_wavelength
         )
@@ -259,7 +277,9 @@ class TestRHEEDImage(chex.TestCase):
         self, height: int, width: int, angle: float, wavelength: float
     ) -> None:
         """Test RHEEDImage with various image sizes and parameters."""
-        img_array = jax.random.uniform(self.rng, (height, width), minval=0, maxval=1000)
+        img_array = jax.random.uniform(
+            self.rng, (height, width), minval=0, maxval=1000
+        )
         calibration = 0.01
         detector_distance = 1000.0
 
@@ -271,11 +291,14 @@ class TestRHEEDImage(chex.TestCase):
         chex.assert_shape(image.img_array, (height, width))
         max_angle = 90
         chex.assert_trees_all_equal(
-            (image.incoming_angle >= 0) & (image.incoming_angle <= max_angle), True
+            (image.incoming_angle >= 0) & (image.incoming_angle <= max_angle),
+            True,
         )
         # Scalar fields are validated in the create_rheed_image function
         chex.assert_trees_all_equal(jnp.all(image.img_array >= 0), True)
-        chex.assert_trees_all_equal(jnp.all(jnp.isfinite(image.img_array)), True)
+        chex.assert_trees_all_equal(
+            jnp.all(jnp.isfinite(image.img_array)), True
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_image_calibration_types(self) -> None:
@@ -345,12 +368,16 @@ class TestRHEEDImage(chex.TestCase):
         wrong_shape_img = jnp.ones((64,))
         # jaxtyping catches type errors before internal validation
         with pytest.raises(TypeCheckError):
-            jax.jit(create_rheed_image)(wrong_shape_img, 2.0, 0.01, 0.037, 1000.0)
+            jax.jit(create_rheed_image)(
+                wrong_shape_img, 2.0, 0.01, 0.037, 1000.0
+            )
 
         img_array = jnp.ones((64, 64))
         invalid_angle = 100.0
         with pytest.raises(ValueError, match=".*angle.*"):
-            jax.jit(create_rheed_image)(img_array, invalid_angle, 0.01, 0.037, 1000.0)
+            jax.jit(create_rheed_image)(
+                img_array, invalid_angle, 0.01, 0.037, 1000.0
+            )
 
         img_array = jnp.ones((64, 64))
         negative_wavelength = -0.037
@@ -395,7 +422,9 @@ class TestRHEEDImage(chex.TestCase):
 
         scaled_image = tree_util.tree_map(scale_intensities, image)
         chex.assert_trees_all_close(scaled_image.img_array, img_array * 2.0)
-        chex.assert_trees_all_equal(scaled_image.incoming_angle, incoming_angle)
+        chex.assert_trees_all_equal(
+            scaled_image.incoming_angle, incoming_angle
+        )
 
 
 class TestRHEEDIntegration(chex.TestCase):
@@ -416,7 +445,9 @@ class TestRHEEDIntegration(chex.TestCase):
             jnp.ones(n_reflections),
         )
 
-        image = create_rheed_image(jnp.ones((128, 256)), 2.0, 0.01, 0.037, 1000.0)
+        image = create_rheed_image(
+            jnp.ones((128, 256)), 2.0, 0.01, 0.037, 1000.0
+        )
 
         # Use variant on a function that processes the combined structure
         def process_combined(p: RHEEDPattern, i: RHEEDImage) -> tuple:
@@ -424,11 +455,13 @@ class TestRHEEDIntegration(chex.TestCase):
             flat, treedef = tree_util.tree_flatten(combined)
             reconstructed = tree_util.tree_unflatten(treedef, flat)
             return (combined, reconstructed)
-        
+
         var_process_combined = self.variant(process_combined)
         combined, reconstructed = var_process_combined(pattern, image)
 
-        chex.assert_trees_all_close(combined["pattern"], reconstructed["pattern"])
+        chex.assert_trees_all_close(
+            combined["pattern"], reconstructed["pattern"]
+        )
         chex.assert_trees_all_close(
             combined["image"].img_array, reconstructed["image"].img_array
         )

@@ -7,9 +7,12 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.crystal_types import (XYZData, create_crystal_structure,
-                                          create_potential_slices,
-                                          make_xyz_data)
+from rheedium.types.crystal_types import (
+    XYZData,
+    create_crystal_structure,
+    create_potential_slices,
+    make_xyz_data,
+)
 
 
 class TestCrystalStructure(chex.TestCase):
@@ -33,7 +36,9 @@ class TestCrystalStructure(chex.TestCase):
         cell_angles = jnp.array([90.0, 90.0, 90.0])
 
         create_fn = self.variant(create_crystal_structure)
-        crystal = create_fn(frac_positions, cart_positions, cell_lengths, cell_angles)
+        crystal = create_fn(
+            frac_positions, cart_positions, cell_lengths, cell_angles
+        )
 
         chex.assert_shape(crystal.frac_positions, (n_atoms, 4))
         chex.assert_shape(crystal.cart_positions, (n_atoms, 4))
@@ -50,7 +55,9 @@ class TestCrystalStructure(chex.TestCase):
         cell_angles = jnp.array([90.0, 90.0, 90.0])
 
         create_fn = self.variant(create_crystal_structure)
-        crystal = create_fn(frac_positions, cart_positions, cell_lengths, cell_angles)
+        crystal = create_fn(
+            frac_positions, cart_positions, cell_lengths, cell_angles
+        )
 
         flat, treedef = tree_util.tree_flatten(crystal)
         reconstructed = tree_util.tree_unflatten(treedef, flat)
@@ -77,7 +84,11 @@ class TestCrystalStructure(chex.TestCase):
 
         lengths, angles = cell_params[cell_type]
         frac_positions = jnp.concatenate(
-            [jnp.array(np.random.rand(n_atoms, 3)), jnp.ones((n_atoms, 1)) * 14], axis=1
+            [
+                jnp.array(np.random.rand(n_atoms, 3)),
+                jnp.ones((n_atoms, 1)) * 14,
+            ],
+            axis=1,
         )
         cart_positions = frac_positions * jnp.concatenate(
             [jnp.array(lengths), jnp.array([1.0])]
@@ -95,7 +106,10 @@ class TestCrystalStructure(chex.TestCase):
         chex.assert_shape(crystal.cart_positions, (n_atoms, 4))
         chex.assert_trees_all_equal(jnp.all(crystal.cell_lengths > 0), True)
         chex.assert_trees_all_equal(
-            jnp.all((crystal.cell_angles > 0) & (crystal.cell_angles < max_angle)), True
+            jnp.all(
+                (crystal.cell_angles > 0) & (crystal.cell_angles < max_angle)
+            ),
+            True,
         )
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -108,8 +122,12 @@ class TestCrystalStructure(chex.TestCase):
             lengths: jnp.ndarray,
             angles: jnp.ndarray,
         ) -> jnp.ndarray:
-            crystal = create_crystal_structure(frac_pos, cart_pos, lengths, angles)
-            return jnp.sum(crystal.frac_positions) + jnp.sum(crystal.cart_positions)
+            crystal = create_crystal_structure(
+                frac_pos, cart_pos, lengths, angles
+            )
+            return jnp.sum(crystal.frac_positions) + jnp.sum(
+                crystal.cart_positions
+            )
 
         jitted_fn = self.variant(create_and_process)
 
@@ -119,7 +137,9 @@ class TestCrystalStructure(chex.TestCase):
         cell_lengths = jnp.array([3.0, 4.0, 5.0])
         cell_angles = jnp.array([90.0, 90.0, 90.0])
 
-        result = jitted_fn(frac_positions, cart_positions, cell_lengths, cell_angles)
+        result = jitted_fn(
+            frac_positions, cart_positions, cell_lengths, cell_angles
+        )
         expected = jnp.sum(frac_positions) + jnp.sum(cart_positions)
         chex.assert_trees_all_close(result, expected)
 
@@ -169,7 +189,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         y_calibration = 0.1
 
         create_fn = self.variant(create_potential_slices)
-        potential = create_fn(slices, slice_thickness, x_calibration, y_calibration)
+        potential = create_fn(
+            slices, slice_thickness, x_calibration, y_calibration
+        )
 
         chex.assert_shape(potential.slices, (n_slices, height, width))
         # Scalar fields are validated in the create_potential_slices function itself
@@ -186,7 +208,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         y_calibration = 0.2
 
         create_fn = self.variant(create_potential_slices)
-        potential = create_fn(slices, slice_thickness, x_calibration, y_calibration)
+        potential = create_fn(
+            slices, slice_thickness, x_calibration, y_calibration
+        )
 
         flat, treedef = tree_util.tree_flatten(potential)
         reconstructed = tree_util.tree_unflatten(treedef, flat)
@@ -225,7 +249,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         def create_and_process(
             slices: jnp.ndarray, thickness: float, x_cal: float, y_cal: float
         ) -> jnp.ndarray:
-            potential = create_potential_slices(slices, thickness, x_cal, y_cal)
+            potential = create_potential_slices(
+                slices, thickness, x_cal, y_cal
+            )
             return jnp.sum(potential.slices) * potential.slice_thickness
 
         jitted_fn = self.variant(create_and_process)
@@ -244,7 +270,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
         def create_with_wrong_shape() -> jnp.ndarray:
             wrong_shape_slices = jnp.ones((10, 32))
-            return jax.jit(create_potential_slices)(wrong_shape_slices, 1.0, 0.1, 0.1)
+            return jax.jit(create_potential_slices)(
+                wrong_shape_slices, 1.0, 0.1, 0.1
+            )
 
         def create_with_negative_thickness() -> jnp.ndarray:
             slices = jnp.ones((10, 32, 32))
@@ -305,13 +333,21 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         lattice = jnp.eye(3) * 10.0
         stress = jax.random.normal(self.rng, (3, 3))
         energy = -100.5
-        properties = [{"atom_id": i, "charge": 0.1 * i} for i in range(n_atoms)]
+        properties = [
+            {"atom_id": i, "charge": 0.1 * i} for i in range(n_atoms)
+        ]
         comment = "Test XYZ structure"
 
         # make_xyz_data is a foreign interface function, use variant without JIT
         make_fn = self.variant(make_xyz_data)
         xyz_data = make_fn(
-            positions, atomic_numbers, lattice, stress, energy, properties, comment
+            positions,
+            atomic_numbers,
+            lattice,
+            stress,
+            energy,
+            properties,
+            comment,
         )
 
         chex.assert_shape(xyz_data.positions, (n_atoms, 3))
@@ -325,19 +361,25 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     @chex.variants(without_jit=True, with_jit=False)
     def test_xyz_data_pytree(self) -> None:
         """Test PyTree registration and operations."""
-        positions = jnp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        positions = jnp.array(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+        )
         atomic_numbers = jnp.array([1, 1, 1])
         lattice = jnp.eye(3)
         energy = -10.0
 
         # make_xyz_data is a foreign interface function, use variant without JIT
         make_fn = self.variant(make_xyz_data)
-        xyz_data = make_fn(positions, atomic_numbers, lattice=lattice, energy=energy)
+        xyz_data = make_fn(
+            positions, atomic_numbers, lattice=lattice, energy=energy
+        )
 
         flat, treedef = tree_util.tree_flatten(xyz_data)
         reconstructed = tree_util.tree_unflatten(treedef, flat)
 
-        chex.assert_trees_all_close(xyz_data.positions, reconstructed.positions)
+        chex.assert_trees_all_close(
+            xyz_data.positions, reconstructed.positions
+        )
         chex.assert_trees_all_close(
             xyz_data.atomic_numbers, reconstructed.atomic_numbers
         )
@@ -399,7 +441,9 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         jitted_fn = self.variant(process_xyz_data)
 
         result = jitted_fn(xyz_data)
-        expected = jnp.sum(xyz_data.positions) + jnp.sum(xyz_data.atomic_numbers)
+        expected = jnp.sum(xyz_data.positions) + jnp.sum(
+            xyz_data.atomic_numbers
+        )
         chex.assert_trees_all_close(result, expected)
 
     def test_xyz_data_validation_errors(self) -> None:
@@ -419,7 +463,9 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
             positions = jnp.ones((5, 3))
             atomic_numbers = jnp.ones(5, dtype=jnp.int32)
             wrong_shape_lattice = jnp.ones((2, 3))
-            return make_xyz_data(positions, atomic_numbers, lattice=wrong_shape_lattice)
+            return make_xyz_data(
+                positions, atomic_numbers, lattice=wrong_shape_lattice
+            )
 
         # jaxtyping catches type errors before internal validation
         with pytest.raises(TypeCheckError):
@@ -470,13 +516,19 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
             jnp.array([90.0, 90.0, 90.0]),
         )
 
-        potential = create_potential_slices(jnp.ones((10, 32, 32)), 2.0, 0.1, 0.1)
+        potential = create_potential_slices(
+            jnp.ones((10, 32, 32)), 2.0, 0.1, 0.1
+        )
 
         xyz_data = make_xyz_data(
             jnp.ones((n_atoms, 3)), jnp.ones(n_atoms, dtype=jnp.int32)
         )
 
-        nested_structure = {"crystal": crystal, "potential": potential, "xyz": xyz_data}
+        nested_structure = {
+            "crystal": crystal,
+            "potential": potential,
+            "xyz": xyz_data,
+        }
 
         flat, treedef = tree_util.tree_flatten(nested_structure)
         reconstructed = tree_util.tree_unflatten(treedef, flat)
@@ -485,7 +537,8 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
             nested_structure["crystal"], reconstructed["crystal"]
         )
         chex.assert_trees_all_close(
-            nested_structure["potential"].slices, reconstructed["potential"].slices
+            nested_structure["potential"].slices,
+            reconstructed["potential"].slices,
         )
         chex.assert_trees_all_close(
             nested_structure["xyz"].positions, reconstructed["xyz"].positions

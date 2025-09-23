@@ -28,7 +28,9 @@ project = pyproject_data["project"]["name"]
 
 authors_data = pyproject_data["project"]["authors"]
 author = (
-    authors_data[0]["name"] if isinstance(authors_data[0], dict) else authors_data[0]
+    authors_data[0]["name"]
+    if isinstance(authors_data[0], dict)
+    else authors_data[0]
 )
 
 project_copyright = f"{datetime.now().year}, {author}"
@@ -38,10 +40,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.intersphinx",
-    # "sphinx_autodoc_typehints",  # Temporarily disabled due to docstring parsing issues
-    "nbsphinx",
     "myst_parser",
 ]
 
@@ -93,6 +91,7 @@ napoleon_custom_sections = [
 nbsphinx_execute = "never"
 nbsphinx_allow_errors = True
 
+# Mock all heavy dependencies to speed up build
 autodoc_mock_imports = [
     "pandas",
     "scipy",
@@ -108,6 +107,8 @@ autodoc_mock_imports = [
     "jaxtyping",
     "beartype",
     "beartype.typing",
+    "nbsphinx",
+    "notebook",
 ]
 
 autodoc_default_options = {
@@ -118,6 +119,9 @@ autodoc_default_options = {
     "inherited-members": False,
     "ignore-module-all": False,
 }
+
+autosummary_generate = True
+autosummary_imported_members = False
 
 autodoc_typehints = "signature"
 autodoc_typehints_format = "short"
@@ -198,7 +202,9 @@ def skip_member(app, what, name, obj, skip, options):
     return skip
 
 
-def process_signature(app, what, name, obj, options, signature, return_annotation):
+def process_signature(
+    app, what, name, obj, options, signature, return_annotation
+):
     """Process signatures to handle jaxtyping annotations."""
     if signature:
         signature = signature.replace('Float[Array, " ', "FloatArray[")
