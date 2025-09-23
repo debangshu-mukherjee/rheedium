@@ -35,8 +35,8 @@ physics.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Optional, Tuple
-from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from beartype.typing import Optional
+from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.types import CrystalStructure, scalar_bool, scalar_float
 
@@ -78,7 +78,7 @@ def calculate_ctr_intensity(
 
     Returns
     -------
-    intensities : Float[Array, "N M"]
+    intensities : Float[Array, " N M"]
         CTR intensities for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
 
@@ -114,7 +114,7 @@ def calculate_ctr_intensity(
         def calculate_at_qz(qz_val: Float[Array, ""]) -> Float[Array, " "]:
             """Calculate intensity at single q_z value."""
             q_vector: Float[Array, " 3"] = jnp.array([q_x, q_y, qz_val])
-            structure_factor: Float[Array, ""] = surface_structure_factor(
+            structure_factor: Complex[Array, ""] = surface_structure_factor(
                 q_vector=q_vector,
                 atomic_positions=atomic_positions,
                 atomic_numbers=atomic_numbers,
@@ -153,14 +153,14 @@ def roughness_damping(
 
     Parameters
     ----------
-    q_z : Float[Array, "..."]
+    q_z : Float[Array, " ..."]
         Perpendicular momentum transfer in 1/Å. Can be scalar or array.
     sigma_height : scalar_float
         RMS surface roughness in Angstroms
 
     Returns
     -------
-    damping : Float[Array, "..."]
+    damping : Float[Array, " ..."]
         Damping factor exp(-½q_z²σ_h²) between 0 and 1
 
     Flow
@@ -187,9 +187,9 @@ def roughness_damping(
 
 @jaxtyped(typechecker=beartype)
 def gaussian_rod_profile(
-    q_perpendicular: Float[Array, "..."],
+    q_perpendicular: Float[Array, " ..."],
     correlation_length: scalar_float,
-) -> Float[Array, "..."]:
+) -> Float[Array, " ..."]:
     """Gaussian lateral width profile of rods due to finite correlation length.
 
     Description
@@ -200,14 +200,14 @@ def gaussian_rod_profile(
 
     Parameters
     ----------
-    q_perpendicular : Float[Array, "..."]
+    q_perpendicular : Float[Array, " ..."]
         Perpendicular distance from rod center in 1/Å
     correlation_length : scalar_float
         Surface correlation length in Angstroms
 
     Returns
     -------
-    profile : Float[Array, "..."]
+    profile : Float[Array, " ..."]
         Normalized Gaussian intensity profile perpendicular to rod
 
     Flow
@@ -232,9 +232,9 @@ def gaussian_rod_profile(
 
 @jaxtyped(typechecker=beartype)
 def lorentzian_rod_profile(
-    q_perpendicular: Float[Array, "..."],
+    q_perpendicular: Float[Array, " ..."],
     correlation_length: scalar_float,
-) -> Float[Array, "..."]:
+) -> Float[Array, " ..."]:
     """Lorentzian lateral width profile of rods with finite correlation length.
 
     Description
@@ -245,14 +245,14 @@ def lorentzian_rod_profile(
 
     Parameters
     ----------
-    q_perpendicular : Float[Array, "..."]
+    q_perpendicular : Float[Array, " ..."]
         Perpendicular distance from rod center in 1/Å
     correlation_length : scalar_float
         Surface correlation length in Angstroms
 
     Returns
     -------
-    profile : Float[Array, "..."]
+    profile : Float[Array, " ..."]
         Normalized Lorentzian intensity profile perpendicular to rod
 
     Flow
@@ -287,7 +287,7 @@ def rod_profile_function(
 
     Parameters
     ----------
-    q_perpendicular : Float[Array, "..."]
+    q_perpendicular : Float[Array, " ..."]
         Perpendicular distance from rod center in 1/Å
     correlation_length : scalar_float
         Surface correlation length in Angstroms
@@ -297,7 +297,7 @@ def rod_profile_function(
 
     Returns
     -------
-    profile : Float[Array, "..."]
+    profile : Float[Array, " ..."]
         Normalized intensity profile perpendicular to rod
 
     Flow
@@ -324,7 +324,7 @@ def surface_structure_factor(
     atomic_numbers: Int[Array, " N"],
     temperature: Optional[scalar_float] = 300.0,
     is_surface: Optional[scalar_bool] = True,
-) -> Float[Array, ""]:
+) -> Complex[Array, " "]:
     """Calculate structure factor for surface with q_z dependence.
 
     Description
@@ -335,11 +335,11 @@ def surface_structure_factor(
 
     Parameters
     ----------
-    q_vector : Float[Array, "3"]
+    q_vector : Float[Array, " 3"]
         3D scattering vector in 1/Å
-    atomic_positions : Float[Array, "N 3"]
+    atomic_positions : Float[Array, " N 3"]
         Cartesian atomic positions in Angstroms
-    atomic_numbers : Int[Array, "N"]
+    atomic_numbers : Int[Array, " N"]
         Atomic numbers for each atom
     temperature : scalar_float, optional
         Temperature in Kelvin. Default: 300.0
@@ -348,7 +348,7 @@ def surface_structure_factor(
 
     Returns
     -------
-    structure_factor : Float[Array, ""]
+    structure_factor : Complex[Array, " "]
         Complex structure factor F(q)
 
     Flow
@@ -362,7 +362,7 @@ def surface_structure_factor(
     phases: Float[Array, " N"] = jnp.einsum(
         "i,ji->j", q_vector, atomic_positions
     )
-    phase_factors: Float[Array, " N"] = jnp.exp(1j * phases)
+    phase_factors: Complex[Array, " N"] = jnp.exp(1j * phases)
 
     def get_atom_scattering(atom_idx: Int[Array, " "]) -> Float[Array, " "]:
         """Get scattering factor for single atom."""
@@ -380,17 +380,17 @@ def surface_structure_factor(
     scattering_factors: Float[Array, " N"] = jax.vmap(get_atom_scattering)(
         atom_indices
     )
-    weighted_contributions: Float[Array, " N"] = (
+    weighted_contributions: Complex[Array, " N"] = (
         scattering_factors * phase_factors
     )
-    structure_factor: Float[Array, ""] = jnp.sum(weighted_contributions)
+    structure_factor: Complex[Array, ""] = jnp.sum(weighted_contributions)
     return structure_factor
 
 
 @jaxtyped(typechecker=beartype)
 def integrated_rod_intensity(
-    hk_index: Tuple[int, int],
-    q_z_range: Tuple[scalar_float, scalar_float],
+    hk_index: Int[Array, " 2"],
+    q_z_range: Float[Array, " 2"],
     crystal: CrystalStructure,
     surface_roughness: scalar_float,
     detector_acceptance: scalar_float,
@@ -407,9 +407,9 @@ def integrated_rod_intensity(
 
     Parameters
     ----------
-    hk_index : Tuple[int, int]
+    hk_index : Int[Array, " 2"]
         In-plane Miller indices (h, k) for the rod
-    q_z_range : Tuple[scalar_float, scalar_float]
+    q_z_range : Float[Array, " 2"]
         Range of q_z values (min, max) in 1/Å to integrate over
     crystal : CrystalStructure
         Crystal structure for calculation
@@ -435,24 +435,19 @@ def integrated_rod_intensity(
     - Integrate using trapezoidal rule
     - Return total integrated intensity
     """
-    q_z_min: Float[Array, ""] = jnp.asarray(q_z_range[0], dtype=jnp.float64)
-    q_z_max: Float[Array, ""] = jnp.asarray(q_z_range[1], dtype=jnp.float64)
     q_z_values: Float[Array, " n_points"] = jnp.linspace(
-        q_z_min, q_z_max, n_integration_points
-    )
-    hk_array: Int[Array, " 1 2"] = jnp.array(
-        [[hk_index[0], hk_index[1]]], dtype=jnp.int32
+        q_z_range[0], q_z_range[1], n_integration_points
     )
     intensities: Float[Array, " 1 n_points"] = calculate_ctr_intensity(
-        hk_indices=hk_array,
+        hk_indices=hk_index[None, :],
         q_z=q_z_values,
         crystal=crystal,
         surface_roughness=surface_roughness,
         temperature=temperature,
     )
     rod_intensities: Float[Array, " n_points"] = intensities[0]
-    q_z_center: Float[Array, ""] = (q_z_min + q_z_max) / 2.0
-    q_z_width: Float[Array, ""] = detector_acceptance
+    q_z_center: Float[Array, " "] = jnp.mean(q_z_values)
+    q_z_width: Float[Array, " "] = detector_acceptance
 
     acceptance_window: Float[Array, " n_points"] = jnp.exp(
         -0.5 * jnp.square((q_z_values - q_z_center) / q_z_width)
@@ -460,7 +455,7 @@ def integrated_rod_intensity(
     weighted_intensities: Float[Array, " n_points"] = (
         rod_intensities * acceptance_window
     )
-    integrated_intensity: Float[Array, " "] = jnp.trapz(
+    integrated_intensity: Float[Array, " "] = jnp.trapezoid(
         weighted_intensities, q_z_values
     )
     return integrated_intensity
