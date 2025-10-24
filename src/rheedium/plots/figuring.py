@@ -185,7 +185,7 @@ def plot_rheed(
         fill_value=0.0,
     )
     intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(
+    phosphor_cmap: LinearSegmentedColormap = create_phosphor_colormap(
         cmap_name
     )
     fig: plt.Figure
