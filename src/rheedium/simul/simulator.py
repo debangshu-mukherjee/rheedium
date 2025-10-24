@@ -41,6 +41,7 @@ from beartype import beartype
 from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
+from rheedium.inout import DEFAULT_KIRKLAND_PATH
 from rheedium.types import (
     CrystalStructure,
     PotentialSlices,
@@ -54,9 +55,7 @@ from rheedium.types import (
 from rheedium.ucell import bessel_kv, generate_reciprocal_points
 
 jax.config.update("jax_enable_x64", True)
-DEFAULT_KIRKLAND_PATH = (
-    Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
-)
+
 
 
 @jaxtyped(typechecker=beartype)
@@ -521,7 +520,7 @@ def simulate_rheed_pattern(
     def _calculate_form_factor_for_atom(
         atomic_num: Float[Array, " "],
     ) -> Float[Array, " n n"]:
-        atomic_num_int: scalar_int = int(atomic_num)
+        atomic_num_int: scalar_int = jnp.array(atomic_num, int)
         return atomic_potential(
             atom_no=atomic_num_int,
             pixel_size=pixel_size,
