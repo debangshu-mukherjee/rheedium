@@ -25,8 +25,13 @@ All parsing functions return JAX-compatible data structures suitable for
 automatic differentiation and GPU acceleration.
 """
 
+import pathlib
 from .cif import parse_cif, symmetry_expansion
 from .xyz import atomic_symbol, kirkland_potentials, parse_xyz
+
+DEFAULT_KIRKLAND_PATH = (
+    pathlib.Path(__file__).parent.resolve() / "luggage" / "Kirkland_Potentials.csv"
+)
 
 __all__ = [
     "atomic_symbol",
@@ -34,4 +39,5 @@ __all__ = [
     "parse_cif",
     "parse_xyz",
     "symmetry_expansion",
+    "DEFAULT_KIKLAND_PATH"
 ]

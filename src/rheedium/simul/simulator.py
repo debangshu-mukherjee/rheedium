@@ -41,6 +41,7 @@ from beartype import beartype
 from beartype.typing import Optional, Tuple, Union
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
+from rheedium.inout import DEFAULT_KIRKLAND_PATH
 from rheedium.types import (
     CrystalStructure,
     PotentialSlices,
@@ -54,9 +55,7 @@ from rheedium.types import (
 from rheedium.ucell import bessel_kv, generate_reciprocal_points
 
 jax.config.update("jax_enable_x64", True)
-DEFAULT_KIRKLAND_PATH = (
-    Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
-)
+
 
 
 @jaxtyped(typechecker=beartype)
@@ -521,7 +520,7 @@ def simulate_rheed_pattern(
     def _calculate_form_factor_for_atom(
         atomic_num: Float[Array, " "],
     ) -> Float[Array, " n n"]:
-        atomic_num_int: scalar_int = int(atomic_num)
+        atomic_num_int: scalar_int = jnp.array(atomic_num, int)
         return atomic_potential(
             atom_no=atomic_num_int,
             pixel_size=pixel_size,
@@ -570,7 +569,7 @@ def simulate_rheed_pattern(
         _compute_structure_factor_with_form_factors
     )(g_allowed)
     pattern: RHEEDPattern = create_rheed_pattern(
-        G_indices=allowed_indices,
+        g_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,
@@ -673,13 +672,13 @@ def atomic_potential(
         (xa - center_x) ** 2 + (ya - center_y) ** 2
     )
     bessel_term1: Float[Array, " h w"] = kirk_params[0] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
     )
     bessel_term2: Float[Array, " h w"] = kirk_params[2] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
     )
     bessel_term3: Float[Array, " h w"] = kirk_params[4] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
     )
     part1: Float[Array, " h w"] = term1 * (
         bessel_term1 + bessel_term2 + bessel_term3
