@@ -569,7 +569,7 @@ def simulate_rheed_pattern(
         _compute_structure_factor_with_form_factors
     )(g_allowed)
     pattern: RHEEDPattern = create_rheed_pattern(
-        G_indices=allowed_indices,
+        g_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,
@@ -672,13 +672,13 @@ def atomic_potential(
         (xa - center_x) ** 2 + (ya - center_y) ** 2
     )
     bessel_term1: Float[Array, " h w"] = kirk_params[0] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
     )
     bessel_term2: Float[Array, " h w"] = kirk_params[2] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
     )
     bessel_term3: Float[Array, " h w"] = kirk_params[4] * bessel_kv(
-        0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
+        0.0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
     )
     part1: Float[Array, " h w"] = term1 * (
         bessel_term1 + bessel_term2 + bessel_term3
