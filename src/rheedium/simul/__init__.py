@@ -15,8 +15,8 @@ atomic_scattering_factor : function
     Combined form factor with Debye-Waller damping
 calculate_ctr_intensity : function
     Calculate continuous intensity along crystal truncation rods
-compute_kinematic_intensities : function
-    Calculate kinematic diffraction intensities for reciprocal lattice points
+compute_kinematic_intensities_with_ctrs : function
+    Calculate kinematic diffraction intensities with CTR contributions
 crystal_potential : function
     Calculate multislice potential for a crystal structure
 debye_waller_factor : function
@@ -61,7 +61,7 @@ from .form_factors import (
 )
 from .simulator import (
     atomic_potential,
-    compute_kinematic_intensities,
+    compute_kinematic_intensities_with_ctrs,
     crystal_potential,
     find_kinematic_reflections,
     incident_wavevector,
@@ -83,7 +83,7 @@ __all__ = [
     "atomic_potential",
     "atomic_scattering_factor",
     "calculate_ctr_intensity",
-    "compute_kinematic_intensities",
+    "compute_kinematic_intensities_with_ctrs",
     "crystal_potential",
     "debye_waller_factor",
     "find_kinematic_reflections",

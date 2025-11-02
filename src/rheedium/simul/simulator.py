@@ -3,9 +3,10 @@
 Extended Summary
 ----------------
 This module provides functions for simulating Reflection High-Energy Electron
-Diffraction (RHEED) patterns using kinematic approximations. It includes
-utilities for calculating electron wavelengths, incident wavevectors,
-diffraction intensities, and complete RHEED patterns from crystal structures.
+Diffraction (RHEED) patterns using kinematic approximations with proper atomic
+form factors and surface physics. It includes utilities for calculating 
+electron wavelengths, incident wavevectors, diffraction intensities with CTRs, 
+and complete RHEED patterns from crystal structures.
 
 Routine Listings
 ----------------
@@ -17,12 +18,12 @@ project_on_detector : function
     Project wavevectors onto detector plane
 find_kinematic_reflections : function
     Find reflections satisfying kinematic conditions
-compute_kinematic_intensities : function
-    Calculate kinematic diffraction intensities
+compute_kinematic_intensities_with_ctrs : function
+    Calculate kinematic intensities with CTR contributions
 simulate_rheed_pattern : function
-    Simulate complete RHEED pattern
+    Simulate complete RHEED pattern with surface physics
 atomic_potential : function
-    Calculate atomic potential for intensity computation
+    Calculate atomic potential for multislice calculations
 crystal_potential : function
     Calculate multislice potential for a crystal structure
 
@@ -53,6 +54,9 @@ from rheedium.types import (
 )
 from rheedium.ucell import bessel_kv, generate_reciprocal_points
 
+from .form_factors import atomic_scattering_factor
+from .surface_rods import integrated_rod_intensity
+
 jax.config.update("jax_enable_x64", True)
 DEFAULT_KIRKLAND_PATH = (
     Path(__file__).resolve().parents[3] / "data" / "Kirkland_Potentials.csv"
@@ -73,364 +77,306 @@ def wavelength_ang(
 
     Returns
     -------
-    lambda_angstroms : Float[Array, " ..."]
-        Electron wavelength in angstroms
+    wavelength : Float[Array, " ..."]
+        Electron wavelength in angstroms.
+
+    Notes
+    -----
+    Uses relativistic corrections for accurate wavelength at high energies.
 
     Examples
     --------
-    >>> import jax.numpy as jnp
     >>> import rheedium as rh
-    >>> energy = jnp.array([10.0, 20.0, 30.0])
-    >>> wavelengths = rh.simul.wavelength_ang(energy)
-    >>> print(wavelengths)
-    [0.12204694 0.08588511 0.06979081]
+    >>> import jax.numpy as jnp
+    >>> lam = rh.simul.wavelength_ang(jnp.asarray(20.0))  # 20 keV
+    >>> print(f"λ = {lam:.4f} Å")
+    λ = 0.0859 Å
     """
-    m: scalar_float = jnp.asarray(9.109383e-31)
-    e: scalar_float = jnp.asarray(1.602177e-19)
-    c: scalar_float = jnp.asarray(299792458.0)
-    h: scalar_float = jnp.asarray(6.62607e-34)
-
-    ev: Float[Array, " ..."] = (
-        jnp.float64(voltage_kv) * jnp.float64(1000.0) * jnp.float64(e)
+    rest_mass_energy_kev: Float[Array, " ..."] = 511.0
+    # Convert kV to V for the formula
+    voltage_v: Float[Array, " ..."] = voltage_kv * 1000.0
+    corrected_voltage: Float[Array, " ..."] = voltage_v * (
+        1.0 + voltage_v / (2.0 * rest_mass_energy_kev * 1000.0)
     )
-    numerator: scalar_float = jnp.multiply(jnp.square(h), jnp.square(c))
-    denominator: Float[Array, " ..."] = jnp.multiply(
-        ev, ((2 * m * jnp.square(c)) + ev)
-    )
-    wavelength_meters: Float[Array, " ..."] = jnp.sqrt(numerator / denominator)
-    lambda_angstroms: Float[Array, " ..."] = (
-        jnp.asarray(1e10) * wavelength_meters
-    )
-    return lambda_angstroms
+    h_over_2me: Float[Array, " ..."] = 12.26
+    wavelength: Float[Array, " ..."] = h_over_2me / jnp.sqrt(corrected_voltage)
+    return wavelength
 
 
 @jaxtyped(typechecker=beartype)
 def incident_wavevector(
-    lam_ang: scalar_float, theta_deg: scalar_float
+    lam_ang: scalar_float,
+    theta_deg: scalar_float,
 ) -> Float[Array, " 3"]:
-    """Build an incident wavevector k_in with magnitude (2π / λ).
-
-    Traveling mostly along +x, with a small angle theta from the x-y plane.
+    """Calculate the incident electron wavevector for RHEED geometry.
 
     Parameters
     ----------
     lam_ang : scalar_float
-        Electron wavelength in angstroms
+        Electron wavelength in angstroms.
     theta_deg : scalar_float
-        Grazing angle in degrees
+        Grazing angle of incidence in degrees.
 
     Returns
     -------
     k_in : Float[Array, " 3"]
-        The 3D incident wavevector (1/angstrom)
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate wavelength for 20 kV electrons
-    >>> lam = rh.ucell.wavelength_ang(20.0)
-    >>>
-    >>> # Calculate incident wavevector at 2 degree grazing angle
-    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
-    >>> print(f"Incident wavevector: {k_in}")
-
-    Notes
-    -----
-    - Calculate wavevector magnitude as 2π/λ
-    - Convert theta from degrees to radians
-    - Calculate x-component using cosine of theta
-    - Calculate z-component using negative sine of theta
-    - Return 3D wavevector array with y-component as 0
+        Incident wavevector [k_x, k_y, k_z] in reciprocal angstroms.
+        Direction along x, perpendicular to surface along z.
     """
-    k_mag: Float[Array, " "] = 2.0 * jnp.pi / lam_ang
-    theta: Float[Array, " "] = jnp.deg2rad(theta_deg)
-    kx: Float[Array, " "] = k_mag * jnp.cos(theta)
-    kz: Float[Array, " "] = -k_mag * jnp.sin(theta)
-    k_in: Float[Array, " 3"] = jnp.array([kx, 0.0, kz], dtype=jnp.float64)
+    k_magnitude: Float[Array, " "] = 2.0 * jnp.pi / lam_ang
+    theta_rad: Float[Array, " "] = jnp.deg2rad(theta_deg)
+    k_x: Float[Array, " "] = k_magnitude * jnp.cos(theta_rad)
+    k_y: Float[Array, " "] = 0.0
+    k_z: Float[Array, " "] = -k_magnitude * jnp.sin(theta_rad)
+    k_in: Float[Array, " 3"] = jnp.array([k_x, k_y, k_z])
     return k_in
 
 
 @jaxtyped(typechecker=beartype)
 def project_on_detector(
-    k_out_set: Float[Array, " M 3"],
+    k_out: Float[Array, " N 3"],
     detector_distance: scalar_float,
-) -> Float[Array, " M 2"]:
-    """Project wavevectors k_out onto a plane at x = detector_distance.
+) -> Float[Array, " N 2"]:
+    """Project output wavevectors onto detector plane.
 
     Parameters
     ----------
-    k_out_set : Float[Array, " M 3"]
-        (M, 3) array of outgoing wavevectors
+    k_out : Float[Array, " N 3"]
+        Array of output wavevectors.
     detector_distance : scalar_float
-        Distance (in angstroms, or same unit) where screen is placed at x = L
+        Distance from sample to detector in angstroms.
 
     Returns
     -------
-    coords : Float[Array, " M 2"]
-        (M, 2) array of projected [Y, Z] coordinates on the detector
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Create some outgoing wavevectors
-    >>> k_out = jnp.array(
-    ...     [
-    ...         [1.0, 0.1, 0.1],  # First reflection
-    ...         [1.0, -0.1, 0.2],  # Second reflection
-    ...         [1.0, 0.2, -0.1],  # Third reflection
-    ...     ]
-    ... )
-    >>>
-    >>> # Project onto detector at 1000 Å distance
-    >>> detector_points = rh.simul.project_on_detector(k_out, 1000.0)
-    >>> print(f"Detector points: {detector_points}")
-
-    Notes
-    -----
-    - Calculate norms of each wavevector
-    - Normalize wavevectors to get unit directions
-    - Calculate time parameter t for each ray to reach detector
-    - Calculate Y coordinates using y-component of direction
-    - Calculate Z coordinates using z-component of direction
-    - Stack Y and Z coordinates into final array
+    detector_coords : Float[Array, " N 2"]
+        [x, y] coordinates on detector plane in angstroms.
     """
-    norms: Float[Array, " M 1"] = jnp.linalg.norm(
-        k_out_set, axis=1, keepdims=True
+    scale_factor: Float[Array, " N"] = detector_distance / (
+        k_out[:, 0] + 1e-10
     )
-    directions: Float[Array, " M 3"] = k_out_set / (norms + 1e-12)
-    t_vals: Float[Array, " M"] = detector_distance / (directions[:, 0] + 1e-12)
-    yy: Float[Array, " M"] = directions[:, 1] * t_vals
-    zz: Float[Array, " M"] = directions[:, 2] * t_vals
-    coords: Float[Array, " M 2"] = jnp.stack([yy, zz], axis=-1)
-    return coords
+    detector_y: Float[Array, " N"] = k_out[:, 1] * scale_factor
+    detector_z: Float[Array, " N"] = k_out[:, 2] * scale_factor
+    detector_coords: Float[Array, " N 2"] = jnp.stack(
+        [detector_y, detector_z], axis=-1
+    )
+    return detector_coords
 
 
 @jaxtyped(typechecker=beartype)
 def find_kinematic_reflections(
     k_in: Float[Array, " 3"],
     gs: Float[Array, " M 3"],
-    lam_ang: Float[Array, " "],
-    z_sign: Optional[scalar_float] = 1.0,
-    tolerance: Optional[scalar_float] = 0.05,
-) -> Tuple[Int[Array, " K"], Float[Array, " K 3"]]:
-    """Find reflections satisfying kinematic scattering conditions.
-
-    Returns indices of G for which ||k_in + G|| ~ 2π/lam.
-    The z-component of (k_in + G) must have the specified sign.
+    z_sign: scalar_float = 1.0,
+    tolerance: scalar_float = 0.05,
+) -> Tuple[Int[Array, " N"], Float[Array, " N 3"]]:
+    """Find kinematically allowed reflections.
 
     Parameters
     ----------
     k_in : Float[Array, " 3"]
-        Incident wavevector (shape 3)
+        Incident wavevector.
     gs : Float[Array, " M 3"]
-        Reciprocal lattice vectors
-    lam_ang : Float[Array, " "]
-        Electron wavelength in angstroms
+        Array of reciprocal lattice vectors.
     z_sign : scalar_float, optional
-        Sign for z-component of k_out. Default is 1.0
+        If +1, keep reflections with positive z in k_out.
+        If -1, keep reflections with negative z.
+        Default: 1.0
     tolerance : scalar_float, optional
-        How close to the Ewald sphere in 1/Å. Default is 0.05
+        Tolerance for reflection condition |k_out| = |k_in|.
+        Default: 0.05
 
     Returns
     -------
-    allowed_indices : Int[Array, " K"]
-        Allowed indices that will kinematically reflect.
-    k_out : Float[Array, " K 3"]
-        Outgoing wavevectors (in 1/Å) for those reflections.
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Calculate incident wavevector
-    >>> lam = rh.ucell.wavelength_ang(20.0)
-    >>> k_in = rh.simul.incident_wavevector(lam, 2.0)
-    >>>
-    >>> # Generate some reciprocal lattice points
-    >>> Gs = jnp.array(
-    ...     [
-    ...         [0, 0, 0],  # (000)
-    ...         [1, 0, 0],  # (100)
-    ...         [0, 1, 0],  # (010)
-    ...         [1, 1, 0],  # (110)
-    ...     ]
-    ... )
-    >>>
-    >>> # Find allowed reflections
-    >>> indices, k_out = rh.simul.find_kinematic_reflections(
-    ...     k_in=k_in,
-    ...     Gs=Gs,
-    ...     lam_ang=lam,
-    ...     tolerance=0.1,  # More lenient tolerance
-    ... )
-    >>> print(f"Allowed indices: {indices}")
-    >>> print(f"Outgoing wavevectors: {k_out}")
-
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Calculate wavevector magnitude as 2π/λ
-    2. Calculate candidate outgoing wavevectors by adding k_in to each G
-    3. Calculate norms of candidate wavevectors
-    4. Create mask for wavevectors close to Ewald sphere
-    5. Create mask for wavevectors with correct z-sign
-    6. Combine masks to get final allowed indices
-    7. Return allowed indices and corresponding outgoing wavevectors
+    allowed_indices : Int[Array, " N"]
+        Indices of allowed reflections in gs array.
+    k_out : Float[Array, " N 3"]
+        Output wavevectors for allowed reflections.
     """
-    k_mag: Float[Array, " "] = 2.0 * jnp.pi / lam_ang
-    k_out_candidates: Float[Array, " M 3"] = k_in[None, :] + gs
-    norms: Float[Array, " M"] = jnp.linalg.norm(k_out_candidates, axis=1)
-    cond_mag: Bool[Array, " M"] = jnp.abs(norms - k_mag) < tolerance
-    cond_z: Bool[Array, " M"] = jnp.sign(k_out_candidates[:, 2]) == jnp.sign(
-        jnp.asarray(z_sign)
+    k_out_all: Float[Array, " M 3"] = k_in + gs
+    k_in_mag: Float[Array, " "] = jnp.linalg.norm(k_in)
+    k_out_mags: Float[Array, " M"] = jnp.linalg.norm(k_out_all, axis=1)
+    elastic_condition: Bool[Array, " M"] = (
+        jnp.abs(k_out_mags - k_in_mag) < tolerance
     )
-    mask: Bool[Array, " M"] = jnp.logical_and(cond_mag, cond_z)
-    allowed_indices: Int[Array, " K"] = jnp.where(mask)[0]
-    k_out: Float[Array, " K 3"] = k_out_candidates[allowed_indices]
-    return (allowed_indices, k_out)
+    z_condition: Bool[Array, " M"] = k_out_all[:, 2] * z_sign > 0
+    allowed: Bool[Array, " M"] = elastic_condition & z_condition
+    allowed_indices: Int[Array, " N"] = jnp.where(allowed, size=gs.shape[0])[0]
+    n_allowed: Int[Array, " "] = jnp.sum(allowed)
+    allowed_indices = allowed_indices[:n_allowed]
+    k_out: Float[Array, " N 3"] = k_out_all[allowed_indices]
+    return allowed_indices, k_out
 
 
 @jaxtyped(typechecker=beartype)
-def compute_kinematic_intensities(
-    positions: Float[Array, " N 3"], g_allowed: Float[Array, " M 3"]
-) -> Float[Array, " M"]:
-    """Compute the kinematic intensity for each reflection.
-
-    Given the atomic Cartesian positions (N,3) and the
-    reciprocal vectors G_allowed (M,3), compute::
-
-        I(G) = | sum_j exp(i G·r_j) |^2
-
-    ignoring atomic form factors, etc.
+def compute_kinematic_intensities_with_ctrs(
+    crystal: CrystalStructure,
+    g_allowed: Float[Array, " N 3"],
+    k_in: Float[Array, " 3"],
+    k_out: Float[Array, " N 3"],
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.5,
+    detector_acceptance: scalar_float = 0.01,
+    surface_fraction: scalar_float = 0.3,
+) -> Float[Array, " N"]:
+    """Calculate kinematic diffraction intensities with CTR contributions.
 
     Parameters
     ----------
-    positions : Float[Array, " N 3"]
-        Atomic positions in Cartesian coordinates.
-    G_allowed : Float[Array, " M 3"]
-        Reciprocal lattice vectors that satisfy reflection condition.
+    crystal : CrystalStructure
+        Crystal structure containing atomic positions and types.
+    g_allowed : Float[Array, " N 3"]
+        Allowed reciprocal lattice vectors.
+    k_in : Float[Array, " 3"]
+        Incident wavevector.
+    k_out : Float[Array, " N 3"]
+        Output wavevectors.
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller factors.
+        Default: 300.0
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in angstroms.
+        Default: 0.5
+    detector_acceptance : scalar_float, optional
+        Detector angular acceptance in reciprocal angstroms.
+        Default: 0.01
+    surface_fraction : scalar_float, optional
+        Fraction of atoms considered as surface atoms.
+        Default: 0.3
 
     Returns
     -------
-    intensities : Float[Array, " M"]
-        Intensities for each reflection.
+    intensities : Float[Array, " N"]
+        Diffraction intensities for each allowed reflection.
 
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Create a simple unit cell with two atoms
-    >>> positions = jnp.array(
-    ...     [
-    ...         [0.0, 0.0, 0.0],  # First atom at origin
-    ...         [0.5, 0.5, 0.5],  # Second atom at cell center
-    ...     ]
-    ... )
-    >>>
-    >>> # Define some allowed G vectors
-    >>> G_allowed = jnp.array(
-    ...     [
-    ...         [1, 0, 0],  # (100)
-    ...         [0, 1, 0],  # (010)
-    ...         [1, 1, 0],  # (110)
-    ...     ]
-    ... )
-    >>>
-    >>> # Calculate intensities
-    >>> intensities = rh.simul.compute_kinematic_intensities(
-    ...     positions=positions, G_allowed=G_allowed
-    ... )
-    >>> print(f"Reflection intensities: {intensities}")
-
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Define inner function to compute intensity for single G vector
-    2. Calculate phase factors for each atom position
-    3. Sum real and imaginary parts of phase factors
-    4. Compute intensity as sum of squared real and imaginary parts
-    5. Vectorize computation over all allowed G vectors
+    Algorithm
+    ---------
+    - Extract atomic positions and numbers from crystal
+    - Determine surface atoms based on z-coordinate
+    - For each allowed reflection:
+        - Calculate momentum transfer q = k_out - k_in
+        - Compute structure factor with proper form factors
+        - Apply Debye-Waller factors (enhanced for surface atoms)
+        - Add CTR contributions for surface reflections
+    - Return normalized intensities
     """
+    atom_positions: Float[Array, " M 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, " M"] = crystal.cart_positions[:, 3].astype(
+        jnp.int32
+    )
+    z_coords: Float[Array, " M"] = atom_positions[:, 2]
+    z_max: scalar_float = jnp.max(z_coords)
+    z_min: scalar_float = jnp.min(z_coords)
+    z_threshold: scalar_float = z_max - surface_fraction * (z_max - z_min)
+    is_surface_atom: Bool[Array, " M"] = z_coords >= z_threshold
 
-    def _intensity_for_g(g_: Float[Array, " 3"]) -> Float[Array, " "]:
-        """Calculate intensity for a single G vector.
+    def _calculate_reflection_intensity(
+        idx: Int[Array, " "],
+    ) -> Float[Array, " "]:
+        g_vec: Float[Array, " 3"] = g_allowed[idx]
+        k_out_vec: Float[Array, " 3"] = k_out[idx]
+        q_vector: Float[Array, " 3"] = k_out_vec - k_in
 
-        Parameters
-        ----------
-        g_ : Float[Array, " 3"]
-            Single reciprocal lattice vector
+        def _atomic_contribution(
+            atom_idx: Int[Array, " "],
+        ) -> Float[Array, " "]:
+            atomic_num: scalar_int = atomic_numbers[atom_idx]
+            atom_pos: Float[Array, " 3"] = atom_positions[atom_idx]
+            is_surface: bool = is_surface_atom[atom_idx]
+            
+            form_factor: scalar_float = atomic_scattering_factor(
+                atomic_number=atomic_num,
+                q_vector=q_vector,
+                temperature=temperature,
+                is_surface=is_surface,
+            )
+            phase: scalar_float = jnp.dot(g_vec, atom_pos)
+            contribution: complex = form_factor * jnp.exp(
+                2.0j * jnp.pi * phase
+            )
+            return contribution
 
-        Returns
-        -------
-        Float[Array, " "]
-            Intensity value for this G vector
-        """
-        phases: Float[Array, " N"] = jnp.einsum("j,ij->i", g_, positions)
-        re: Float[Array, " "] = jnp.sum(jnp.cos(phases))
-        im: Float[Array, " "] = jnp.sum(jnp.sin(phases))
-        return re * re + im * im
+        n_atoms: Int[Array, " "] = atom_positions.shape[0]
+        atom_indices: Int[Array, " M"] = jnp.arange(n_atoms)
+        contributions: Float[Array, " M"] = jax.vmap(_atomic_contribution)(
+            atom_indices
+        )
+        structure_factor: complex = jnp.sum(contributions)
+        
+        # Calculate CTR contribution
+        hk_index: Int[Array, " 2"] = jnp.array(
+            [jnp.round(g_vec[0]).astype(jnp.int32),
+             jnp.round(g_vec[1]).astype(jnp.int32)]
+        )
+        q_z_value: Float[Array, " "] = q_vector[2]
 
-    intensities: Float[Array, " M"] = jax.vmap(_intensity_for_g)(g_allowed)
+        # Define integration range around q_z with detector acceptance
+        q_z_range: Float[Array, " 2"] = jnp.array([
+            q_z_value - detector_acceptance,
+            q_z_value + detector_acceptance
+        ])
+
+        ctr_intensity: scalar_float = integrated_rod_intensity(
+            hk_index=hk_index,
+            q_z_range=q_z_range,
+            crystal=crystal,
+            surface_roughness=surface_roughness,
+            detector_acceptance=detector_acceptance,
+            temperature=temperature,
+        )
+        
+        kinematic_intensity: scalar_float = jnp.abs(structure_factor) ** 2
+        total_intensity: scalar_float = kinematic_intensity + ctr_intensity
+        
+        return total_intensity
+
+    n_reflections: Int[Array, " "] = g_allowed.shape[0]
+    reflection_indices: Int[Array, " N"] = jnp.arange(n_reflections)
+    intensities: Float[Array, " N"] = jax.vmap(
+        _calculate_reflection_intensity
+    )(reflection_indices)
+
     return intensities
 
 
 @jaxtyped(typechecker=beartype)
 def simulate_rheed_pattern(
     crystal: CrystalStructure,
-    voltage_kv: Optional[scalar_num] = 10,
-    theta_deg: Optional[scalar_float] = 1.0,
-    hmax: Optional[scalar_int] = 3,
-    kmax: Optional[scalar_int] = 3,
-    lmax: Optional[scalar_int] = 1,
-    tolerance: Optional[scalar_float] = 0.05,
-    detector_distance: Optional[scalar_num] = 1000.0,
-    z_sign: Optional[scalar_float] = 1.0,
-    pixel_size: Optional[scalar_float] = 0.1,
+    voltage_kv: scalar_num = 10.0,
+    theta_deg: scalar_num = 2.0,
+    hmax: scalar_int = 3,
+    kmax: scalar_int = 3,
+    lmax: scalar_int = 1,
+    tolerance: scalar_float = 0.05,
+    detector_distance: scalar_float = 1000.0,
+    z_sign: scalar_float = 1.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.5,
+    detector_acceptance: scalar_float = 0.01,
+    surface_fraction: scalar_float = 0.3,
 ) -> RHEEDPattern:
-    """Compute a kinematic RHEED pattern for the given crystal.
-
-    Uses atomic form factors from Kirkland potentials for realistic intensities.
-
-    This function combines several steps:
-    1. Generates reciprocal lattice points
-        using :func:`generate_reciprocal_points`
-    2. Calculates incident wavevector using :func:`incident_wavevector`
-    3. Finds allowed reflections using :func:`find_kinematic_reflections`
-    4. Projects points onto detector using :func:`project_on_detector`
-    5. Computes intensities using atomic form factors
-        from :func:`atomic_potential`
+    """Simulate RHEED pattern with proper atomic form factors and CTRs.
 
     Parameters
     ----------
     crystal : CrystalStructure
-        Crystal structure to simulate.
-        Can be created using :func:`rheedium.types.create_crystal_structure`
-        or loaded from a CIF file using :func:`rheedium.inout.parse_cif`
+        Crystal structure with atomic positions and cell parameters.
     voltage_kv : scalar_num, optional
-        Accelerating voltage in kilovolts.
-        Default: 10.0
-    theta_deg : scalar_float, optional
-        Grazing angle in degrees.
-        Default: 1.0
+        Electron beam energy in kiloelectron volts.
+        Default: 20.0
+    theta_deg : scalar_num, optional
+        Grazing angle of incidence in degrees.
+        Default: 2.0
     hmax : scalar_int, optional
-        h Bound on reciprocal lattice indices.
-        Default is 3.
+        Maximum h Miller index for reciprocal point generation.
+        Default: 3
     kmax : scalar_int, optional
-        k Bound on reciprocal lattice indices.
-        Default is 3.
+        Maximum k Miller index for reciprocal point generation.
+        Default: 3
     lmax : scalar_int, optional
-        l Bound on reciprocal lattice indices.
-        Default is 1.
+        Maximum l Miller index for reciprocal point generation.
+        Default: 1
     tolerance : scalar_float, optional
-        How close to the Ewald sphere in 1/Å.
+        Tolerance for reflection condition |k_out| = |k_in|.
         Default: 0.05
     detector_distance : scalar_float, optional
         Distance from sample to detector plane in angstroms.
@@ -438,15 +384,24 @@ def simulate_rheed_pattern(
     z_sign : scalar_float, optional
         If +1, keep reflections with positive z in k_out.
         Default: 1.0
-    pixel_size : scalar_float, optional
-        Pixel size for atomic potential calculation in angstroms.
-        Default: 0.1
+    temperature : scalar_float, optional
+        Temperature in Kelvin for thermal factors.
+        Default: 300.0
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in angstroms.
+        Default: 0.5
+    detector_acceptance : scalar_float, optional
+        Detector angular acceptance in reciprocal angstroms.
+        Default: 0.01
+    surface_fraction : scalar_float, optional
+        Fraction of atoms considered as surface atoms.
+        Default: 0.3
 
     Returns
     -------
     pattern : RHEEDPattern
-        A NamedTuple capturing reflection indices, k_out, and detector coords.
-        Can be visualized using :func:`rheedium.plots.plot_rheed`
+        A NamedTuple capturing reflection indices, k_out, detector coords,
+        and intensities with proper surface physics.
 
     Examples
     --------
@@ -456,46 +411,37 @@ def simulate_rheed_pattern(
     >>> # Load crystal structure from CIF file
     >>> crystal = rh.inout.parse_cif("path/to/crystal.cif")
     >>>
-    >>> # Simulate RHEED pattern
+    >>> # Simulate RHEED pattern with surface physics
     >>> pattern = rh.simul.simulate_rheed_pattern(
     ...     crystal=crystal,
-    ...     voltage_kv=jnp.asarray(20.0),  # 20 kV beam
-    ...     theta_deg=jnp.asarray(2.0),  # 2 degree grazing angle
-    ...     hmax=jnp.asarray(4),  # Generate more reflections
-    ...     kmax=jnp.asarray(4),
-    ...     lmax=jnp.asarray(2),
+    ...     voltage_kv=20.0,
+    ...     theta_deg=2.0,
+    ...     temperature=300.0,
+    ...     surface_roughness=0.8,
     ... )
     >>>
     >>> # Plot the pattern
     >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Build real-space cell vectors from cell parameters
-    2. Generate reciprocal lattice points up to specified bounds
-    3. Calculate electron wavelength from voltage
-    4. Build incident wavevector at specified angle
-    5. Find G vectors satisfying reflection condition
-    6. Project resulting k_out onto detector plane
-    7. Extract unique atomic numbers from crystal
-    8. Calculate atomic potentials for each element type
-    9. Compute structure factors with atomic form factors
-    10. Create and return RHEEDPattern with computed data
-
-    See Also
-    --------
-    parse_cif : function
-    generate_reciprocal_points : function
-    wavelength_ang : function
-    incident_wavevector : function
-    find_kinematic_reflections : function
-    project_on_detector : function
-    atomic_potential : function
-    crystal_potential : function
-    create_rheed_pattern : function
+    Algorithm
+    ---------
+    - Generate reciprocal lattice points up to specified bounds
+    - Calculate electron wavelength from voltage
+    - Build incident wavevector at specified angle
+    - Find G vectors satisfying reflection condition
+    - Project resulting k_out onto detector plane
+    - Calculate intensities with proper atomic form factors
+    - Include CTR contributions for surface reflections
+    - Apply surface-enhanced Debye-Waller factors
+    - Create and return RHEEDPattern with computed data
     """
+    # Convert scalar inputs to JAX arrays
+    voltage_kv = jnp.asarray(voltage_kv)
+    theta_deg = jnp.asarray(theta_deg)
+    hmax = jnp.asarray(hmax, dtype=jnp.int32)
+    kmax = jnp.asarray(kmax, dtype=jnp.int32)
+    lmax = jnp.asarray(lmax, dtype=jnp.int32)
+
     gs: Float[Array, " M 3"] = generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
@@ -508,69 +454,26 @@ def simulate_rheed_pattern(
     allowed_indices: Int[Array, " K"]
     k_out: Float[Array, " K 3"]
     allowed_indices, k_out = find_kinematic_reflections(
-        k_in=k_in, gs=gs, lam_ang=lam_ang, z_sign=z_sign, tolerance=tolerance
+        k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
     )
     detector_points: Float[Array, " K 2"] = project_on_detector(
         k_out, detector_distance
     )
     g_allowed: Float[Array, " K 3"] = gs[allowed_indices]
-    atom_positions: Float[Array, " N 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Float[Array, " N"] = crystal.cart_positions[:, 3]
-    unique_atomic_numbers: Float[Array, " U"] = jnp.unique(atomic_numbers)
 
-    def _calculate_form_factor_for_atom(
-        atomic_num: Float[Array, " "],
-    ) -> Float[Array, " n n"]:
-        atomic_num_int: scalar_int = int(atomic_num)
-        return atomic_potential(
-            atom_no=atomic_num_int,
-            pixel_size=pixel_size,
-            sampling=16,
-            potential_extent=4.0,
-        )
-
-    form_factors: Float[Array, " U n n"] = jax.vmap(
-        _calculate_form_factor_for_atom
-    )(unique_atomic_numbers)
-
-    def _compute_structure_factor_with_form_factors(
-        g_vec: Float[Array, " 3"],
-    ) -> Float[Array, " "]:
-        phases: Float[Array, " N"] = jnp.einsum(
-            "j,ij->i", g_vec, atom_positions
-        )
-
-        def _get_form_factor_for_atom(
-            atom_idx: Int[Array, " "],
-        ) -> Float[Array, " "]:
-            atomic_num: Float[Array, " "] = atomic_numbers[atom_idx]
-            form_factor_idx: Int[Array, " "] = jnp.where(
-                unique_atomic_numbers == atomic_num, size=1
-            )[0][0]
-            form_factor_matrix: Float[Array, " n n"] = form_factors[
-                form_factor_idx
-            ]
-            center_idx: Int[Array, " "] = form_factor_matrix.shape[0] // 2
-            return form_factor_matrix[center_idx, center_idx]
-
-        atom_indices: Int[Array, " N"] = jnp.arange(len(atomic_numbers))
-        form_factor_values: Float[Array, " N"] = jax.vmap(
-            _get_form_factor_for_atom
-        )(atom_indices)
-        complex_amplitudes: Float[Array, " N"] = form_factor_values * jnp.exp(
-            1j * phases
-        )
-        total_amplitude: Float[Array, " "] = jnp.sum(complex_amplitudes)
-        intensity: Float[Array, " "] = jnp.real(
-            total_amplitude * jnp.conj(total_amplitude)
-        )
-        return intensity
-
-    intensities: Float[Array, " K"] = jax.vmap(
-        _compute_structure_factor_with_form_factors
-    )(g_allowed)
+    intensities: Float[Array, " K"] = compute_kinematic_intensities_with_ctrs(
+        crystal=crystal,
+        g_allowed=g_allowed,
+        k_in=k_in,
+        k_out=k_out,
+        temperature=temperature,
+        surface_roughness=surface_roughness,
+        detector_acceptance=detector_acceptance,
+        surface_fraction=surface_fraction,
+    )
+    
     pattern: RHEEDPattern = create_rheed_pattern(
-        G_indices=allowed_indices,
+        g_indices=allowed_indices,
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,

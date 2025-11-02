@@ -14,6 +14,9 @@ notebooks/__pycache__/
 /tests/io/__pycache__/
 /envs/__pycache__/
 /data/
+/.claude/
+/.claude/ROADMAP.md
+/.claude/settings.local.json
 *.py[cod]
 
 # VS Code settings
