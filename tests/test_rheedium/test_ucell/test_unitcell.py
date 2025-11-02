@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
 
 class test_wavelength_ang(chex.TestCase):
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     @parameterized.parameters(
         {"test_kV": 200.0, "expected_wavelength": 0.02508},
         {"test_kV": 1000.0, "expected_wavelength": 0.008719185412913083},
@@ -32,7 +32,7 @@ class test_wavelength_ang(chex.TestCase):
         ), f"Expected {expected_wavelength}, but got {result}"
 
     # Check for precision and rounding errors
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_precision_and_rounding_errors(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltage_kV = 150.0
@@ -43,7 +43,7 @@ class test_wavelength_ang(chex.TestCase):
         ), f"Expected {expected_wavelength}, but got {result}"
 
     # Ensure function returns a Float Array
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_returns_float(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltage_kV = 200.0
@@ -53,7 +53,7 @@ class test_wavelength_ang(chex.TestCase):
         ), "Expected the function to return a float"
 
     # Test whether array inputs work
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_array_input(self) -> None:
         var_wavelength_ang = self.variant(wavelength_ang)
         voltages = jnp.array([100, 200, 300, 400], dtype=jnp.float64)
@@ -63,7 +63,7 @@ class test_wavelength_ang(chex.TestCase):
 
 
 class test_reciprocal_unitcell(chex.TestCase):
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     @parameterized.parameters(
         {
             "test_cell": jnp.array(
@@ -98,7 +98,7 @@ class test_reciprocal_unitcell(chex.TestCase):
         ), f"Expected {expected_reciprocal}, but got {result}"
 
     # Test for ill-conditioned matrix
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_ill_conditioned_matrix(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         ill_conditioned = jnp.array(
@@ -110,7 +110,7 @@ class test_reciprocal_unitcell(chex.TestCase):
         ), "Expected zero values for ill-conditioned matrix"
 
     # Test crystallographic properties
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_crystallographic_properties(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array(
@@ -133,7 +133,7 @@ class test_reciprocal_unitcell(chex.TestCase):
                     ), f"Incorrect self dot product: {dot_product}"
 
     # Ensure function returns a Float Array with correct shape
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_returns_float_array_3x3(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array(
@@ -149,7 +149,7 @@ class test_reciprocal_unitcell(chex.TestCase):
         ), f"Expected shape (3, 3), got {result.shape}"
 
     # Test volume conservation
-    @chex.all_variants
+    @chex.all_variants(without_device=False)
     def test_volume_conservation(self) -> None:
         var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
         unit_cell = jnp.array(

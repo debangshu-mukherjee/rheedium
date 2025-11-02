@@ -9,16 +9,12 @@ and complete diffraction patterns from crystal structures.
 
 Routine Listings
 ----------------
-atomic_potential : function
-    Calculate atomic scattering potential for given atomic number
 atomic_scattering_factor : function
     Combined form factor with Debye-Waller damping
 calculate_ctr_intensity : function
     Calculate continuous intensity along crystal truncation rods
 compute_kinematic_intensities_with_ctrs : function
     Calculate kinematic diffraction intensities with CTR contributions
-crystal_potential : function
-    Calculate multislice potential for a crystal structure
 debye_waller_factor : function
     Calculate Debye-Waller damping factor for thermal vibrations
 find_kinematic_reflections : function
@@ -60,9 +56,7 @@ from .form_factors import (
     load_kirkland_parameters,
 )
 from .simulator import (
-    atomic_potential,
     compute_kinematic_intensities_with_ctrs,
-    crystal_potential,
     find_kinematic_reflections,
     incident_wavevector,
     project_on_detector,
@@ -80,11 +74,9 @@ from .surface_rods import (
 )
 
 __all__ = [
-    "atomic_potential",
     "atomic_scattering_factor",
     "calculate_ctr_intensity",
     "compute_kinematic_intensities_with_ctrs",
-    "crystal_potential",
     "debye_waller_factor",
     "find_kinematic_reflections",
     "gaussian_rod_profile",

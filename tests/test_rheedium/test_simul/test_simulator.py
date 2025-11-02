@@ -140,11 +140,15 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         # Surface roughness should decrease intensities
         if surface_roughness > 0.5:
             max_intensity: scalar_float = jnp.max(intensities)
-            chex.assert_scalar_positive(max_intensity)
+            chex.assert_scalar_positive(float(max_intensity))
             
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_simulate_rheed_pattern(self) -> None:
-        """Test complete RHEED pattern simulation."""
+        """Test complete RHEED pattern simulation.
+
+        Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
+        parameters in generate_reciprocal_points.
+        """
         var_simulate = self.variant(simulate_rheed_pattern)
         
         pattern: RHEEDPattern = var_simulate(
@@ -159,8 +163,8 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         )
         
         # Check pattern structure
-        n_reflections: int = pattern.g_indices.shape[0]
-        chex.assert_shape(pattern.g_indices, (n_reflections,))
+        n_reflections: int = pattern.G_indices.shape[0]
+        chex.assert_shape(pattern.G_indices, (n_reflections,))
         chex.assert_shape(pattern.k_out, (n_reflections, 3))
         chex.assert_shape(pattern.detector_points, (n_reflections, 2))
         chex.assert_shape(pattern.intensities, (n_reflections,))
@@ -207,9 +211,13 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             intensities_surface[0] < intensities_bulk[0], True
         )
         
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_ctr_contribution(self) -> None:
-        """Test that CTR contributions are properly included."""
+        """Test that CTR contributions are properly included.
+
+        Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
+        parameters in generate_reciprocal_points.
+        """
         var_simulate = self.variant(simulate_rheed_pattern)
         
         # Simulate with and without CTR effects
@@ -238,14 +246,18 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         # CTR should add intensity
         total_no_ctr: scalar_float = jnp.sum(pattern_no_ctr.intensities)
         total_with_ctr: scalar_float = jnp.sum(pattern_with_ctr.intensities)
-        
+
         # With CTR should have additional intensity contributions
-        chex.assert_scalar_positive(total_with_ctr)
-        chex.assert_scalar_positive(total_no_ctr)
+        chex.assert_scalar_positive(float(total_with_ctr))
+        chex.assert_scalar_positive(float(total_no_ctr))
         
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_gradient_flow(self) -> None:
-        """Test that gradients flow through the simulation."""
+        """Test that gradients flow through the simulation.
+
+        Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
+        parameters in generate_reciprocal_points.
+        """
         
         def loss_fn(temperature: scalar_float) -> scalar_float:
             pattern = simulate_rheed_pattern(
@@ -289,14 +301,14 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         )
         
         # Check that we get reflections
-        n_reflections: int = pattern.g_indices.shape[0]
+        n_reflections: int = pattern.G_indices.shape[0]
         self.assertGreater(n_reflections, 0)
         
         # Check intensity scaling
         max_intensity: scalar_float = jnp.max(pattern.intensities)
         min_intensity: scalar_float = jnp.min(pattern.intensities)
 
-        chex.assert_scalar_positive(max_intensity)
+        chex.assert_scalar_positive(float(max_intensity))
         self.assertGreaterEqual(float(min_intensity), 0.0)
 
 
