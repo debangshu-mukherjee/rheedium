@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.08.31"
+version = "2025.09.10"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -44,11 +44,15 @@ dependencies = [
     "pandas>=2.3.0",
     "jax>=0.7.0 ; sys_platform == 'win64'",
     "jax>=0.7.0 ; sys_platform == 'darwin'",
-    "jax[cuda12]>=0.7.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "jax>=0.7.0 ; sys_platform == 'linux'",
     "black>=25.1.0",
     "isort>=6.0.1",
 ]
 [project.optional-dependencies]
+cuda = [
+   "jax[cuda12]>=0.7.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+   "nvidia-cudnn-cu12>=9.5.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=3.0.2",
@@ -67,8 +71,13 @@ test = [
     "pytest-xdist>=3.0.0",
     "chex>=0.1.89",
 ]
+notebooks = [
+    "ipywidgets>=8.1.0",
+    "ipykernel>=6.29.5",
+    "nbconvert>=7.16.6",
+]
 dev = [
-    "rheedium[docs,test,notebooks]",
+    "rheedium[docs,test,notebooks,cuda]",
     "black[jupyter]>=25.1.0",
     "build>=1.2.2.post1",
     "twine>=6.1.0",
@@ -76,13 +85,8 @@ dev = [
     "ruff>=0.12.9",
     "twine>=6.0.1",
 ]
-notebooks = [
-    "ipywidgets>=8.1.0",
-    "ipykernel>=6.29.5",
-    "nbconvert>=7.16.6",
-]
 all = [
-    "rheedium[docs,test,dev,notebooks]",
+    "rheedium[docs,test,dev,notebooks,cuda]",
 ]
 
 [tool.coverage.report]

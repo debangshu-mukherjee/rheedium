@@ -325,8 +325,8 @@ def _bessel_k_half(x: Float[Array, " ..."]) -> Float[Array, " ..."]:
     return k_half_result
 
 
-@jaxtyped(typechecker=beartype)
 @jax.jit
+@jaxtyped(typechecker=beartype)
 def bessel_kv(
     v: scalar_float, x: Float[Array, " ..."]
 ) -> Float[Array, " ..."]:
