@@ -17,6 +17,7 @@ notebooks/__pycache__/
 /.claude/
 /.claude/ROADMAP.md
 /.claude/settings.local.json
+/.claude/RHEED_Physics.md
 *.py[cod]
 
 # VS Code settings
