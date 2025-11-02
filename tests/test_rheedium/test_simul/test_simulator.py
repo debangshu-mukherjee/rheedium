@@ -81,7 +81,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 
         return crystal
 
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     def test_wavelength_calculation(self) -> None:
         """Test relativistic wavelength calculation."""
         var_wavelength = self.variant(wavelength_ang)
@@ -96,7 +96,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(wavelengths, expected, rtol=5e-3)
         chex.assert_tree_all_finite(wavelengths)
         
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     @parameterized.named_parameters(
         ("room_temp", 300.0, 0.5, 0.3),
         ("low_temp", 77.0, 0.3, 0.3),
@@ -142,7 +142,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             max_intensity: scalar_float = jnp.max(intensities)
             chex.assert_scalar_positive(max_intensity)
             
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     def test_simulate_rheed_pattern(self) -> None:
         """Test complete RHEED pattern simulation."""
         var_simulate = self.variant(simulate_rheed_pattern)
@@ -171,7 +171,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             jnp.all(pattern.intensities >= 0), True
         )
         
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     def test_surface_enhancement_effect(self) -> None:
         """Test that surface atoms have enhanced thermal motion."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
@@ -207,7 +207,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             intensities_surface[0] < intensities_bulk[0], True
         )
         
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     def test_ctr_contribution(self) -> None:
         """Test that CTR contributions are properly included."""
         var_simulate = self.variant(simulate_rheed_pattern)
@@ -243,7 +243,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(total_with_ctr)
         chex.assert_scalar_positive(total_no_ctr)
         
-    @chex.all_variants()
+    @chex.all_variants(without_device=False)
     def test_gradient_flow(self) -> None:
         """Test that gradients flow through the simulation."""
         
