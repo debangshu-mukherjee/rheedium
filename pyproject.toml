@@ -26,10 +26,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
 ]
 dependencies = [
-    "jaxtyping >= 0.2.21",
+    "jaxtyping >= 0.3.0",
     "chex >= 0.1.85",
     "optax >= 0.1.8",
     "pytest >= 8.0.0",
@@ -202,6 +203,8 @@ ignore = [
     "COM812",
     "D205",
     "D212",
+    "UP037",  # Don't remove quotes from jaxtyping annotations
+    "F821",   # jaxtyping dimension variables (N, M, etc.) are intentionally "undefined"
 ]
 
 [tool.ruff.lint.flake8-bugbear]

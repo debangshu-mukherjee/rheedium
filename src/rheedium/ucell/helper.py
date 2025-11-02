@@ -36,8 +36,8 @@ jax.config.update("jax_enable_x64", True)
 
 @jaxtyped(typechecker=beartype)
 def angle_in_degrees(
-    v1: Float[Array, " n"], v2: Float[Array, " n"]
-) -> Float[Array, " "]:
+    v1: Float[Array, "n"], v2: Float[Array, "n"]
+) -> Float[Array, ""]:
     """Calculate the angle in degrees between two vectors.
 
     As long as the vectors have the same number of elements,
@@ -45,14 +45,14 @@ def angle_in_degrees(
 
     Parameters
     ----------
-    v1 : Float[Array, " n"]
+    v1 : Float[Array, "n"]
         First vector
-    v2 : Float[Array, " n"]
+    v2 : Float[Array, "n"]
         Second vector
 
     Returns
     -------
-    angle : Float[Array, " "]
+    angle : Float[Array, ""]
         Angle between vectors in degrees
 
     Examples
@@ -67,7 +67,7 @@ def angle_in_degrees(
     """
 
     def _check_vector_dimensions() -> (
-        Tuple[Float[Array, " n"], Float[Array, " n"]]
+        Tuple[Float[Array, "n"], Float[Array, "n"]]
     ):
         return jax.lax.cond(
             v1.shape == v2.shape,
@@ -78,7 +78,7 @@ def angle_in_degrees(
         )
 
     _check_vector_dimensions()
-    angle: Float[Array, " "] = (
+    angle: Float[Array, ""] = (
         180.0
         * jnp.arccos(
             jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))
@@ -90,20 +90,20 @@ def angle_in_degrees(
 
 @jaxtyped(typechecker=beartype)
 def compute_lengths_angles(
-    vectors: Float[Array, " 3 3"],
-) -> Tuple[Float[Array, " 3"], Float[Array, " 3"]]:
+    vectors: Float[Array, "3 3"],
+) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
 
     Parameters
     ----------
-    vectors : Float[Array, " 3 3"]
+    vectors : Float[Array, "3 3"]
         Lattice vectors as rows of a 3x3 matrix
 
     Returns
     -------
-    lengths : Float[Array, " 3"]
+    lengths : Float[Array, "3"]
         Unit cell lengths in angstroms
-    angles : Float[Array, " 3"]
+    angles : Float[Array, "3"]
         Unit cell angles in degrees
 
     Examples
@@ -122,10 +122,10 @@ def compute_lengths_angles(
     >>> print(angles)
     [90.0 90.0 90.0]
     """
-    lengths: Float[Array, " 3"] = jnp.array(
+    lengths: Float[Array, "3"] = jnp.array(
         [jnp.linalg.norm(v) for v in vectors]
     )
-    angles: Float[Array, " 3"] = jnp.array(
+    angles: Float[Array, "3"] = jnp.array(
         [
             angle_in_degrees(vectors[0], vectors[1]),
             angle_in_degrees(vectors[1], vectors[2]),
@@ -191,19 +191,19 @@ def parse_cif_and_scrape(
     13. Return filtered crystal structure
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
-    cart_positions: Float[Array, " n 3"] = crystal.cart_positions[:, :3]
-    zone_axis_norm: Float[Array, " "] = jnp.linalg.norm(zone_axis)
-    zone_axis_hat: Float[Array, " 3"] = zone_axis / (zone_axis_norm + 1e-12)
-    projections: Float[Array, " n"] = cart_positions @ zone_axis_hat
-    min_proj: Float[Array, " "] = jnp.min(projections)
-    max_proj: Float[Array, " "] = jnp.max(projections)
-    center_proj: Float[Array, " "] = (max_proj + min_proj) / 2.0
-    half_thickness: Float[Array, " "] = thickness_xyz[2] / 2.0
-    mask: Bool[Array, " n"] = (
+    cart_positions: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
+    zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
+    zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-12)
+    projections: Float[Array, "n"] = cart_positions @ zone_axis_hat
+    min_proj: Float[Array, ""] = jnp.min(projections)
+    max_proj: Float[Array, ""] = jnp.max(projections)
+    center_proj: Float[Array, ""] = (max_proj + min_proj) / 2.0
+    half_thickness: Float[Array, ""] = thickness_xyz[2] / 2.0
+    mask: Bool[Array, "n"] = (
         jnp.abs(projections - center_proj) <= half_thickness
     )
-    filtered_cart_positions: Float[Array, " m 3"] = cart_positions[mask]
-    cell_vectors: Float[Array, " 3 3"] = rh.ucell.build_cell_vectors(
+    filtered_cart_positions: Float[Array, "m 3"] = cart_positions[mask]
+    cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
         crystal.cell_lengths[2],
@@ -211,8 +211,8 @@ def parse_cif_and_scrape(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    cell_inv: Float[Array, " 3 3"] = jnp.linalg.inv(cell_vectors)
-    filtered_frac_positions: Float[Array, " m 3"] = (
+    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
+    filtered_frac_positions: Float[Array, "m 3"] = (
         filtered_cart_positions @ cell_inv
     ) % 1.0
     filtered_crystal: CrystalStructure = create_crystal_structure(

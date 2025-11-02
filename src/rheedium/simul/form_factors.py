@@ -41,7 +41,7 @@ jax.config.update("jax_enable_x64", True)
 @jaxtyped(typechecker=beartype)
 def load_kirkland_parameters(
     atomic_number: scalar_int,
-) -> Tuple[Float[Array, " 6"], Float[Array, " 6"]]:
+) -> Tuple[Float[Array, "6"], Float[Array, "6"]]:
     """Load Kirkland scattering parameters for a given atomic number.
 
     Description
@@ -57,9 +57,9 @@ def load_kirkland_parameters(
 
     Returns
     -------
-    a_coeffs : Float[Array, " 6"]
+    a_coeffs : Float[Array, "6"]
         Amplitude coefficients for Gaussian terms
-    b_coeffs : Float[Array, " 6"]
+    b_coeffs : Float[Array, "6"]
         Width coefficients for Gaussian terms in Ų
 
     Notes
@@ -73,32 +73,32 @@ def load_kirkland_parameters(
     5. Split into width coefficients (odd indices 1,3,5,7,9,11)
     6. Return both coefficient arrays
     """
-    min_atomic_number: Int[Array, " "] = jnp.asarray(1, dtype=jnp.int32)
-    max_atomic_number: Int[Array, " "] = jnp.asarray(103, dtype=jnp.int32)
-    atomic_number_clipped: Int[Array, " "] = jnp.clip(
+    min_atomic_number: Int[Array, ""] = jnp.asarray(1, dtype=jnp.int32)
+    max_atomic_number: Int[Array, ""] = jnp.asarray(103, dtype=jnp.int32)
+    atomic_number_clipped: Int[Array, ""] = jnp.clip(
         jnp.asarray(atomic_number, dtype=jnp.int32),
         min_atomic_number,
         max_atomic_number,
     )
-    kirkland_data: Float[Array, " 103 12"] = kirkland_potentials()
-    atomic_index: Int[Array, " "] = atomic_number_clipped - 1
-    atom_params: Float[Array, " 12"] = kirkland_data[atomic_index]
-    a_indices: Int[Array, " 6"] = jnp.array(
+    kirkland_data: Float[Array, "103 12"] = kirkland_potentials()
+    atomic_index: Int[Array, ""] = atomic_number_clipped - 1
+    atom_params: Float[Array, "12"] = kirkland_data[atomic_index]
+    a_indices: Int[Array, "6"] = jnp.array(
         [0, 2, 4, 6, 8, 10], dtype=jnp.int32
     )
-    b_indices: Int[Array, " 6"] = jnp.array(
+    b_indices: Int[Array, "6"] = jnp.array(
         [1, 3, 5, 7, 9, 11], dtype=jnp.int32
     )
-    a_coeffs: Float[Array, " 6"] = atom_params[a_indices]
-    b_coeffs: Float[Array, " 6"] = atom_params[b_indices]
+    a_coeffs: Float[Array, "6"] = atom_params[a_indices]
+    b_coeffs: Float[Array, "6"] = atom_params[b_indices]
     return a_coeffs, b_coeffs
 
 
 @jaxtyped(typechecker=beartype)
 def kirkland_form_factor(
     atomic_number: scalar_int,
-    q_magnitude: Float[Array, " ..."],
-) -> Float[Array, " ..."]:
+    q_magnitude: Float[Array, "..."],
+) -> Float[Array, "..."]:
     """Calculate atomic form factor f(q) using Kirkland parameterization.
 
     Description
@@ -111,12 +111,12 @@ def kirkland_form_factor(
     ----------
     atomic_number : scalar_int
         Atomic number (Z) of the element (1-103)
-    q_magnitude : Float[Array, " ..."]
+    q_magnitude : Float[Array, "..."]
         Magnitude of scattering vector in 1/Å
 
     Returns
     -------
-    form_factor : Float[Array, " ..."]
+    form_factor : Float[Array, "..."]
         Atomic form factor f(q) in electron scattering units
 
     Notes
@@ -133,25 +133,25 @@ def kirkland_form_factor(
     f(q) = Σᵢ aᵢ exp(-bᵢ(q/4π)²)
     where i runs from 1 to 6 for the Kirkland parameterization.
     """
-    a_coeffs: Float[Array, " 6"]
-    b_coeffs: Float[Array, " 6"]
+    a_coeffs: Float[Array, "6"]
+    b_coeffs: Float[Array, "6"]
     a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
-    four_pi: Float[Array, " "] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
-    q_over_4pi: Float[Array, " ..."] = q_magnitude / four_pi
-    q_over_4pi_squared: Float[Array, " ..."] = jnp.square(q_over_4pi)
+    four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
+    q_over_4pi: Float[Array, "..."] = q_magnitude / four_pi
+    q_over_4pi_squared: Float[Array, "..."] = jnp.square(q_over_4pi)
     expanded_q_squared: Float[Array, "... 1"] = q_over_4pi_squared[
         ..., jnp.newaxis
     ]
-    expanded_b_coeffs: Float[Array, " 1 6"] = b_coeffs[jnp.newaxis, :]
+    expanded_b_coeffs: Float[Array, "1 6"] = b_coeffs[jnp.newaxis, :]
     exponent_terms: Float[Array, "... 6"] = (
         -expanded_b_coeffs * expanded_q_squared
     )
     gaussian_terms: Float[Array, "... 6"] = jnp.exp(exponent_terms)
-    expanded_a_coeffs: Float[Array, " 1 6"] = a_coeffs[jnp.newaxis, :]
+    expanded_a_coeffs: Float[Array, "1 6"] = a_coeffs[jnp.newaxis, :]
     weighted_gaussians: Float[Array, "... 6"] = (
         expanded_a_coeffs * gaussian_terms
     )
-    form_factor: Float[Array, " ..."] = jnp.sum(weighted_gaussians, axis=-1)
+    form_factor: Float[Array, "..."] = jnp.sum(weighted_gaussians, axis=-1)
     return form_factor
 
 
@@ -198,31 +198,31 @@ def get_mean_square_displacement(
     B = 8π²⟨u²⟩, so ⟨u²⟩ = B/(8π²)
     Surface enhancement is applied ONLY here to avoid double-application.
     """
-    room_temperature: Float[Array, " "] = jnp.asarray(300.0, dtype=jnp.float64)
-    base_b_factor: Float[Array, " "] = jnp.asarray(0.5, dtype=jnp.float64)
-    atomic_number_float: Float[Array, " "] = jnp.asarray(
+    room_temperature: Float[Array, ""] = jnp.asarray(300.0, dtype=jnp.float64)
+    base_b_factor: Float[Array, ""] = jnp.asarray(0.5, dtype=jnp.float64)
+    atomic_number_float: Float[Array, ""] = jnp.asarray(
         atomic_number, dtype=jnp.float64
     )
-    atomic_scaling: Float[Array, " "] = jnp.sqrt(
+    atomic_scaling: Float[Array, ""] = jnp.sqrt(
         jnp.asarray(12.0, dtype=jnp.float64) / atomic_number_float
     )
-    temperature_float: Float[Array, " "] = jnp.asarray(
+    temperature_float: Float[Array, ""] = jnp.asarray(
         temperature, dtype=jnp.float64
     )
-    temperature_ratio: Float[Array, " "] = temperature_float / room_temperature
-    b_factor: Float[Array, " "] = (
+    temperature_ratio: Float[Array, ""] = temperature_float / room_temperature
+    b_factor: Float[Array, ""] = (
         base_b_factor * atomic_scaling * temperature_ratio
     )
-    surface_enhancement: Float[Array, " "] = jnp.asarray(
+    surface_enhancement: Float[Array, ""] = jnp.asarray(
         2.0, dtype=jnp.float64
     )
-    enhanced_b_factor: Float[Array, " "] = jnp.where(
+    enhanced_b_factor: Float[Array, ""] = jnp.where(
         is_surface, b_factor * surface_enhancement, b_factor
     )
-    eight_pi_squared: Float[Array, " "] = jnp.asarray(
+    eight_pi_squared: Float[Array, ""] = jnp.asarray(
         8.0 * jnp.pi**2, dtype=jnp.float64
     )
-    mean_square_displacement: Float[Array, " "] = (
+    mean_square_displacement: Float[Array, ""] = (
         enhanced_b_factor / eight_pi_squared
     )
     return mean_square_displacement
@@ -230,9 +230,9 @@ def get_mean_square_displacement(
 
 @jaxtyped(typechecker=beartype)
 def debye_waller_factor(
-    q_magnitude: Float[Array, " ..."],
+    q_magnitude: Float[Array, "..."],
     mean_square_displacement: scalar_float,
-) -> Float[Array, " ..."]:
+) -> Float[Array, "..."]:
     """Calculate Debye-Waller damping factor for thermal vibrations.
 
     Description
@@ -242,14 +242,14 @@ def debye_waller_factor(
 
     Parameters
     ----------
-    q_magnitude : Float[Array, " ..."]
+    q_magnitude : Float[Array, "..."]
         Magnitude of scattering vector in 1/Å
     mean_square_displacement : scalar_float
         Mean square displacement ⟨u²⟩ in Ų
 
     Returns
     -------
-    dw_factor : Float[Array, " ..."]
+    dw_factor : Float[Array, "..."]
         Debye-Waller damping factor exp(-W)
 
     Notes
@@ -268,15 +268,15 @@ def debye_waller_factor(
     mean_square_displacement, NOT in this function, to avoid
     double-application of the enhancement factor.
     """
-    msd: Float[Array, " "] = jnp.asarray(
+    msd: Float[Array, ""] = jnp.asarray(
         mean_square_displacement, dtype=jnp.float64
     )
-    epsilon: Float[Array, " "] = jnp.asarray(1e-10, dtype=jnp.float64)
-    msd_safe: Float[Array, " "] = jnp.maximum(msd, epsilon)
-    q_squared: Float[Array, " ..."] = jnp.square(q_magnitude)
-    half: Float[Array, " "] = jnp.asarray(0.5, dtype=jnp.float64)
-    w_exponent: Float[Array, " ..."] = half * msd_safe * q_squared
-    dw_factor: Float[Array, " ..."] = jnp.exp(-w_exponent)
+    epsilon: Float[Array, ""] = jnp.asarray(1e-10, dtype=jnp.float64)
+    msd_safe: Float[Array, ""] = jnp.maximum(msd, epsilon)
+    q_squared: Float[Array, "..."] = jnp.square(q_magnitude)
+    half: Float[Array, ""] = jnp.asarray(0.5, dtype=jnp.float64)
+    w_exponent: Float[Array, "..."] = half * msd_safe * q_squared
+    dw_factor: Float[Array, "..."] = jnp.exp(-w_exponent)
     return dw_factor
 
 
@@ -286,7 +286,7 @@ def atomic_scattering_factor(
     q_vector: Float[Array, "... 3"],
     temperature: Optional[scalar_float] = 300.0,
     is_surface: Optional[scalar_bool] = False,
-) -> Float[Array, " ..."]:
+) -> Float[Array, "..."]:
     """Calculate combined atomic scattering factor with thermal damping.
 
     Description
@@ -308,7 +308,7 @@ def atomic_scattering_factor(
 
     Returns
     -------
-    scattering_factor : Float[Array, " ..."]
+    scattering_factor : Float[Array, "..."]
         Total atomic scattering factor f(q)×exp(-W)
 
     Notes
@@ -338,15 +338,15 @@ def atomic_scattering_factor(
     ... )
     >>> print(f"Si scattering factor at q=1.0: {f_si:.3f}")
     """
-    q_magnitude: Float[Array, " ..."] = jnp.linalg.norm(q_vector, axis=-1)
-    form_factor: Float[Array, " ..."] = kirkland_form_factor(
+    q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
+    form_factor: Float[Array, "..."] = kirkland_form_factor(
         atomic_number, q_magnitude
     )
     mean_square_disp: scalar_float = get_mean_square_displacement(
         atomic_number, temperature, is_surface
     )
-    dw_factor: Float[Array, " ..."] = debye_waller_factor(
+    dw_factor: Float[Array, "..."] = debye_waller_factor(
         q_magnitude, mean_square_disp
     )
-    scattering_factor: Float[Array, " ..."] = form_factor * dw_factor
+    scattering_factor: Float[Array, "..."] = form_factor * dw_factor
     return scattering_factor

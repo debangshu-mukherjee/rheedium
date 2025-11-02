@@ -48,19 +48,19 @@ class CrystalStructure(NamedTuple):
 
     Attributes
     ----------
-    frac_positions : Num[Array, " N 4"]
+    frac_positions : Num[Array, "N 4"]
         Array of shape (n_atoms, 4) containing atomic positions in fractional
         coordinates. Each row contains [x, y, z, atomic_number] where x, y, z
         are fractional coordinates in the unit cell (range [0,1]) and
         atomic_number is the integer atomic number (Z) of the element.
-    cart_positions : Num[Array, " N 4"]
+    cart_positions : Num[Array, "N 4"]
         Array of shape (n_atoms, 4) containing atomic positions in Cartesian
         coordinates. Each row contains [x, y, z, atomic_number] where x, y, z
         are Cartesian coordinates in Ångstroms and atomic_number is the integer
         atomic number (Z).
-    cell_lengths : Num[Array, " 3"]
+    cell_lengths : Num[Array, "3"]
         Unit cell lengths [a, b, c] in Ångstroms.
-    cell_angles : Num[Array, " 3"]
+    cell_angles : Num[Array, "3"]
         Unit cell angles [α, β, γ] in degrees, where α is the angle between
         b and c, β is the angle between a and c, and γ is the angle between
         a and b.
@@ -86,19 +86,19 @@ class CrystalStructure(NamedTuple):
     ... )
     """
 
-    frac_positions: Num[Array, " N 4"]
-    cart_positions: Num[Array, " N 4"]
-    cell_lengths: Num[Array, " 3"]
-    cell_angles: Num[Array, " 3"]
+    frac_positions: Num[Array, "N 4"]
+    cart_positions: Num[Array, "N 4"]
+    cell_lengths: Num[Array, "3"]
+    cell_angles: Num[Array, "3"]
 
     def tree_flatten(
         self,
     ) -> Tuple[
         Tuple[
-            Float[Array, " N 4"],
-            Num[Array, " N 4"],
-            Num[Array, " 3"],
-            Num[Array, " 3"],
+            Float[Array, "N 4"],
+            Num[Array, "N 4"],
+            Num[Array, "3"],
+            Num[Array, "3"],
         ],
         None,
     ]:
@@ -118,10 +118,10 @@ class CrystalStructure(NamedTuple):
         cls,
         aux_data: None,
         children: Tuple[
-            Float[Array, " N 4"],
-            Num[Array, " N 4"],
-            Num[Array, " 3"],
-            Num[Array, " 3"],
+            Float[Array, "N 4"],
+            Num[Array, "N 4"],
+            Num[Array, "3"],
+            Num[Array, "3"],
         ],
     ) -> "CrystalStructure":
         """Unflatten the PyTree into a CrystalStructure instance."""
@@ -131,24 +131,24 @@ class CrystalStructure(NamedTuple):
 
 @beartype
 def create_crystal_structure(
-    frac_positions: Num[Array, " N 4"],
-    cart_positions: Num[Array, " N 4"],
-    cell_lengths: Num[Array, " 3"],
-    cell_angles: Num[Array, " 3"],
+    frac_positions: Num[Array, "N 4"],
+    cart_positions: Num[Array, "N 4"],
+    cell_lengths: Num[Array, "3"],
+    cell_angles: Num[Array, "3"],
 ) -> CrystalStructure:
     """Create a CrystalStructure PyTree with data validation.
 
     Parameters
     ----------
-    frac_positions : Num[Array, " N 4"]
+    frac_positions : Num[Array, "N 4"]
         Array of shape (n_atoms, 4) containing atomic positions in fractional
         coordinates.
-    cart_positions : Num[Array, " N 4"]
+    cart_positions : Num[Array, "N 4"]
         Array of shape (n_atoms, 4) containing atomic positions in Cartesian
         coordinates.
-    cell_lengths : Num[Array, " 3"]
+    cell_lengths : Num[Array, "3"]
         Unit cell lengths [a, b, c] in Ångstroms.
-    cell_angles : Num[Array, " 3"]
+    cell_angles : Num[Array, "3"]
         Unit cell angles [α, β, γ] in degrees.
 
     Returns
@@ -167,15 +167,15 @@ def create_crystal_structure(
     - Ensure cell angles are between 0 and 180 degrees
     - Create and return CrystalStructure instance with validated data
     """
-    frac_positions: Float[Array, " N 4"] = jnp.asarray(frac_positions)
-    cart_positions: Num[Array, " N 4"] = jnp.asarray(cart_positions)
-    cell_lengths: Num[Array, " 3"] = jnp.asarray(cell_lengths)
-    cell_angles: Num[Array, " 3"] = jnp.asarray(cell_angles)
+    frac_positions: Float[Array, "N 4"] = jnp.asarray(frac_positions)
+    cart_positions: Num[Array, "N 4"] = jnp.asarray(cart_positions)
+    cell_lengths: Num[Array, "3"] = jnp.asarray(cell_lengths)
+    cell_angles: Num[Array, "3"] = jnp.asarray(cell_angles)
 
     def _validate_and_create() -> CrystalStructure:
         max_cols: int = 4
 
-        def _check_frac_shape() -> Float[Array, " N max_cols"]:
+        def _check_frac_shape() -> Float[Array, "N max_cols"]:
             return lax.cond(
                 frac_positions.shape[1] == max_cols,
                 lambda: frac_positions,
@@ -186,7 +186,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cart_shape() -> Num[Array, " N max_cols"]:
+        def _check_cart_shape() -> Num[Array, "N max_cols"]:
             return lax.cond(
                 cart_positions.shape[1] == max_cols,
                 lambda: cart_positions,
@@ -197,7 +197,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cell_lengths_shape() -> Num[Array, " 3"]:
+        def _check_cell_lengths_shape() -> Num[Array, "3"]:
             return lax.cond(
                 cell_lengths.shape == (3,),
                 lambda: cell_lengths,
@@ -206,7 +206,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cell_angles_shape() -> Num[Array, " 3"]:
+        def _check_cell_angles_shape() -> Num[Array, "3"]:
             return lax.cond(
                 cell_angles.shape == (3,),
                 lambda: cell_angles,
@@ -216,7 +216,7 @@ def create_crystal_structure(
             )
 
         def _check_atom_count() -> (
-            Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]
+            Tuple[Float[Array, "N 4"], Num[Array, "N 4"]]
         ):
             return lax.cond(
                 frac_positions.shape[0] == cart_positions.shape[0],
@@ -231,7 +231,7 @@ def create_crystal_structure(
             )
 
         def _check_atomic_numbers() -> (
-            Tuple[Float[Array, " N 4"], Num[Array, " N 4"]]
+            Tuple[Float[Array, "N 4"], Num[Array, "N 4"]]
         ):
             return lax.cond(
                 jnp.all(frac_positions[:, 3] == cart_positions[:, 3]),
@@ -245,7 +245,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cell_lengths_positive() -> Num[Array, " 3"]:
+        def _check_cell_lengths_positive() -> Num[Array, "3"]:
             return lax.cond(
                 jnp.all(cell_lengths > 0),
                 lambda: cell_lengths,
@@ -254,7 +254,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cell_angles_valid() -> Num[Array, " 3"]:
+        def _check_cell_angles_valid() -> Num[Array, "3"]:
             min_angle: scalar_float = 0.0
             max_angle: scalar_float = 180.0
             return lax.cond(
@@ -298,7 +298,7 @@ class PotentialSlices(NamedTuple):
 
     Attributes
     ----------
-    slices : Float[Array, " n_slices height width"]
+    slices : Float[Array, "n_slices height width"]
         3D array containing potential data for each slice. First dimension
         indexes slices, second and third dimensions are spatial coordinates.
         Units: Volts or appropriate potential units.
@@ -331,7 +331,7 @@ class PotentialSlices(NamedTuple):
     ... )
     """
 
-    slices: Float[Array, " n_slices height width"]
+    slices: Float[Array, "n_slices height width"]
     slice_thickness: scalar_float
     x_calibration: scalar_float
     y_calibration: scalar_float
@@ -339,7 +339,7 @@ class PotentialSlices(NamedTuple):
     def tree_flatten(
         self,
     ) -> Tuple[
-        Tuple[Float[Array, " n_slices height width"]],
+        Tuple[Float[Array, "n_slices height width"]],
         Tuple[scalar_float, scalar_float, scalar_float],
     ]:
         """Flatten the PyTree into a tuple of arrays."""
@@ -352,14 +352,14 @@ class PotentialSlices(NamedTuple):
     def tree_unflatten(
         cls,
         aux_data: Tuple[scalar_float, scalar_float, scalar_float],
-        children: Tuple[Float[Array, " n_slices height width"]],
+        children: Tuple[Float[Array, "n_slices height width"]],
     ) -> "PotentialSlices":
         """Unflatten the PyTree into a PotentialSlices instance."""
         slice_thickness: scalar_float
         x_calibration: scalar_float
         y_calibration: scalar_float
         slice_thickness, x_calibration, y_calibration = aux_data
-        slices: Float[Array, " n_slices height width"] = children[0]
+        slices: Float[Array, "n_slices height width"] = children[0]
         return cls(
             slices=slices,
             slice_thickness=slice_thickness,
@@ -370,7 +370,7 @@ class PotentialSlices(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def create_potential_slices(
-    slices: Float[Array, " n_slices height width"],
+    slices: Float[Array, "n_slices height width"],
     slice_thickness: scalar_float,
     x_calibration: scalar_float,
     y_calibration: scalar_float,
@@ -379,7 +379,7 @@ def create_potential_slices(
 
     Parameters
     ----------
-    slices : Float[Array, " n_slices height width"]
+    slices : Float[Array, "n_slices height width"]
         3D array containing potential data for each slice.
     slice_thickness : scalar_float
         Thickness of each slice in Ångstroms.
@@ -404,23 +404,23 @@ def create_potential_slices(
     5. Check that all slice data is finite
     6. Create and return PotentialSlices instance
     """
-    slices: Float[Array, " n_slices height width"] = jnp.asarray(
+    slices: Float[Array, "n_slices height width"] = jnp.asarray(
         slices, dtype=jnp.float64
     )
-    slice_thickness: Float[Array, " "] = jnp.asarray(
+    slice_thickness: Float[Array, ""] = jnp.asarray(
         slice_thickness, dtype=jnp.float64
     )
-    x_calibration: Float[Array, " "] = jnp.asarray(
+    x_calibration: Float[Array, ""] = jnp.asarray(
         x_calibration, dtype=jnp.float64
     )
-    y_calibration: Float[Array, " "] = jnp.asarray(
+    y_calibration: Float[Array, ""] = jnp.asarray(
         y_calibration, dtype=jnp.float64
     )
 
     def _validate_and_create() -> PotentialSlices:
         max_dims: int = 3
 
-        def _check_3d() -> Float[Array, " n_slices height width"]:
+        def _check_3d() -> Float[Array, "n_slices height width"]:
             return lax.cond(
                 slices.ndim == max_dims,
                 lambda: slices,
@@ -429,7 +429,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_slice_count() -> Float[Array, " n_slices height width"]:
+        def _check_slice_count() -> Float[Array, "n_slices height width"]:
             return lax.cond(
                 slices.shape[0] > 0,
                 lambda: slices,
@@ -439,7 +439,7 @@ def create_potential_slices(
             )
 
         def _check_slice_dimensions() -> (
-            Float[Array, " n_slices height width"]
+            Float[Array, "n_slices height width"]
         ):
             return lax.cond(
                 jnp.logical_and(slices.shape[1] > 0, slices.shape[2] > 0),
@@ -449,7 +449,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_thickness() -> Float[Array, " "]:
+        def _check_thickness() -> Float[Array, ""]:
             return lax.cond(
                 slice_thickness > 0,
                 lambda: slice_thickness,
@@ -460,7 +460,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_x_cal() -> Float[Array, " "]:
+        def _check_x_cal() -> Float[Array, ""]:
             return lax.cond(
                 x_calibration > 0,
                 lambda: x_calibration,
@@ -471,7 +471,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_y_cal() -> Float[Array, " "]:
+        def _check_y_cal() -> Float[Array, ""]:
             return lax.cond(
                 y_calibration > 0,
                 lambda: y_calibration,
@@ -482,7 +482,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_finite() -> Float[Array, " n_slices height width"]:
+        def _check_finite() -> Float[Array, "n_slices height width"]:
             return lax.cond(
                 jnp.all(jnp.isfinite(slices)),
                 lambda: slices,
@@ -519,16 +519,16 @@ class XYZData(NamedTuple):
 
     Attributes
     ----------
-    positions : Float[Array, " N 3"]
+    positions : Float[Array, "N 3"]
         Cartesian atomic positions in Ångstroms. Shape (N, 3) where N is
         the number of atoms.
-    atomic_numbers : Int[Array, " N"]
+    atomic_numbers : Int[Array, "N"]
         Atomic numbers (Z) corresponding to each atom. Shape (N,) with
         integer values.
-    lattice : Optional[Float[Array, " 3 3"]]
+    lattice : Optional[Float[Array, "3 3"]]
         Lattice vectors in Ångstroms if present in the XYZ file, otherwise
         None. Shape (3, 3) matrix where each row is a lattice vector.
-    stress : Optional[Float[Array, " 3 3"]]
+    stress : Optional[Float[Array, "3 3"]]
         Symmetric stress tensor if present in the metadata, otherwise None.
         Shape (3, 3) matrix with stress components.
     energy : Optional[scalar_float]
@@ -560,11 +560,11 @@ class XYZData(NamedTuple):
     ... )
     """
 
-    positions: Float[Array, " N 3"]
-    atomic_numbers: Int[Array, " N"]
-    lattice: Optional[Float[Array, " 3 3"]]
-    stress: Optional[Float[Array, " 3 3"]]
-    energy: Optional[Float[Array, " "]]
+    positions: Float[Array, "N 3"]
+    atomic_numbers: Int[Array, "N"]
+    lattice: Optional[Float[Array, "3 3"]]
+    stress: Optional[Float[Array, "3 3"]]
+    energy: Optional[Float[Array, ""]]
     properties: Optional[List[Dict[str, Union[str, int]]]]
     comment: Optional[str]
 
@@ -572,11 +572,11 @@ class XYZData(NamedTuple):
         self,
     ) -> Tuple[
         Tuple[
-            Float[Array, " N 3"],
-            Int[Array, " N"],
-            Optional[Float[Array, " 3 3"]],
-            Optional[Float[Array, " 3 3"]],
-            Optional[Float[Array, " "]],
+            Float[Array, "N 3"],
+            Int[Array, "N"],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, ""]],
         ],
         Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
     ]:
@@ -599,19 +599,19 @@ class XYZData(NamedTuple):
         cls,
         aux_data: Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
         children: Tuple[
-            Float[Array, " N 3"],
-            Int[Array, " N"],
-            Optional[Float[Array, " 3 3"]],
-            Optional[Float[Array, " 3 3"]],
-            Optional[Float[Array, " "]],
+            Float[Array, "N 3"],
+            Int[Array, "N"],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, ""]],
         ],
     ) -> "XYZData":
         """Unflatten the PyTree into a XYZData instance."""
-        positions: Float[Array, " N 3"]
-        atomic_numbers: Int[Array, " N"]
-        lattice: Optional[Float[Array, " 3 3"]]
-        stress: Optional[Float[Array, " 3 3"]]
-        energy: Optional[Float[Array, " "]]
+        positions: Float[Array, "N 3"]
+        atomic_numbers: Int[Array, "N"]
+        lattice: Optional[Float[Array, "3 3"]]
+        stress: Optional[Float[Array, "3 3"]]
+        energy: Optional[Float[Array, ""]]
         positions, atomic_numbers, lattice, stress, energy = children
         return cls(
             positions=positions,
@@ -626,10 +626,10 @@ class XYZData(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def create_xyz_data(
-    positions: Float[Array, " N 3"],
-    atomic_numbers: Int[Array, " N"],
-    lattice: Optional[Float[Array, " 3 3"]] = None,
-    stress: Optional[Float[Array, " 3 3"]] = None,
+    positions: Float[Array, "N 3"],
+    atomic_numbers: Int[Array, "N"],
+    lattice: Optional[Float[Array, "3 3"]] = None,
+    stress: Optional[Float[Array, "3 3"]] = None,
     energy: Optional[scalar_float] = None,
     properties: Optional[List[Dict[str, Union[str, int]]]] = None,
     comment: Optional[str] = None,
@@ -638,13 +638,13 @@ def create_xyz_data(
 
     Parameters
     ----------
-    positions : Float[Array, " N 3"]
+    positions : Float[Array, "N 3"]
         Cartesian positions in Ångstroms.
-    atomic_numbers : Int[Array, " N"]
+    atomic_numbers : Int[Array, "N"]
         Atomic numbers (Z) for each atom.
-    lattice : Optional[Float[Array, " 3 3"]], optional
+    lattice : Optional[Float[Array, "3 3"]], optional
         Lattice vectors (if any).
-    stress : Optional[Float[Array, " 3 3"]], optional
+    stress : Optional[Float[Array, "3 3"]], optional
         Stress tensor (if any).
     energy : Optional[scalar_float], optional
         Total energy (if any).
@@ -672,20 +672,20 @@ def create_xyz_data(
     - If all validations pass, create and return XYZData instance
     - If any validation fails, raise ValueError with descriptive error message
     """
-    positions: Float[Array, " N 3"] = jnp.asarray(positions, dtype=jnp.float64)
-    atomic_numbers: Int[Array, " N"] = jnp.asarray(
+    positions: Float[Array, "N 3"] = jnp.asarray(positions, dtype=jnp.float64)
+    atomic_numbers: Int[Array, "N"] = jnp.asarray(
         atomic_numbers, dtype=jnp.int32
     )
     if lattice is not None:
-        lattice: Float[Array, " 3 3"] = jnp.asarray(lattice, dtype=jnp.float64)
+        lattice: Float[Array, "3 3"] = jnp.asarray(lattice, dtype=jnp.float64)
     else:
-        lattice: Float[Array, " 3 3"] = jnp.eye(3, dtype=jnp.float64)
+        lattice: Float[Array, "3 3"] = jnp.eye(3, dtype=jnp.float64)
 
     if stress is not None:
-        stress: Float[Array, " 3 3"] = jnp.asarray(stress, dtype=jnp.float64)
+        stress: Float[Array, "3 3"] = jnp.asarray(stress, dtype=jnp.float64)
 
     if energy is not None:
-        energy: Float[Array, " "] = jnp.asarray(energy, dtype=jnp.float64)
+        energy: Float[Array, ""] = jnp.asarray(energy, dtype=jnp.float64)
 
     def _validate_and_create() -> XYZData:
         nn: int = positions.shape[0]

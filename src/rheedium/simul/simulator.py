@@ -65,19 +65,19 @@ DEFAULT_KIRKLAND_PATH = (
 
 @jaxtyped(typechecker=beartype)
 def wavelength_ang(
-    voltage_kv: Union[scalar_num, Num[Array, " ..."]],
-) -> Float[Array, " ..."]:
+    voltage_kv: Union[scalar_num, Num[Array, "..."]],
+) -> Float[Array, "..."]:
     """Calculate the relativistic electron wavelength in angstroms.
 
     Parameters
     ----------
-    voltage_kv : Union[scalar_num, Num[Array, " ..."]]
+    voltage_kv : Union[scalar_num, Num[Array, "..."]]
         Electron energy in kiloelectron volts.
         Could be either a scalar or an array.
 
     Returns
     -------
-    wavelength : Float[Array, " ..."]
+    wavelength : Float[Array, "..."]
         Electron wavelength in angstroms.
 
     Notes
@@ -92,14 +92,14 @@ def wavelength_ang(
     >>> print(f"λ = {lam:.4f} Å")
     λ = 0.0859 Å
     """
-    rest_mass_energy_kev: Float[Array, " ..."] = 511.0
+    rest_mass_energy_kev: Float[Array, "..."] = 511.0
     # Convert kV to V for the formula
-    voltage_v: Float[Array, " ..."] = voltage_kv * 1000.0
-    corrected_voltage: Float[Array, " ..."] = voltage_v * (
+    voltage_v: Float[Array, "..."] = voltage_kv * 1000.0
+    corrected_voltage: Float[Array, "..."] = voltage_v * (
         1.0 + voltage_v / (2.0 * rest_mass_energy_kev * 1000.0)
     )
-    h_over_2me: Float[Array, " ..."] = 12.26
-    wavelength: Float[Array, " ..."] = h_over_2me / jnp.sqrt(corrected_voltage)
+    h_over_2me: Float[Array, "..."] = 12.26
+    wavelength: Float[Array, "..."] = h_over_2me / jnp.sqrt(corrected_voltage)
     return wavelength
 
 
@@ -107,7 +107,7 @@ def wavelength_ang(
 def incident_wavevector(
     lam_ang: scalar_float,
     theta_deg: scalar_float,
-) -> Float[Array, " 3"]:
+) -> Float[Array, "3"]:
     """Calculate the incident electron wavevector for RHEED geometry.
 
     Parameters
@@ -119,44 +119,44 @@ def incident_wavevector(
 
     Returns
     -------
-    k_in : Float[Array, " 3"]
+    k_in : Float[Array, "3"]
         Incident wavevector [k_x, k_y, k_z] in reciprocal angstroms.
         Direction along x, perpendicular to surface along z.
     """
-    k_magnitude: Float[Array, " "] = 2.0 * jnp.pi / lam_ang
-    theta_rad: Float[Array, " "] = jnp.deg2rad(theta_deg)
-    k_x: Float[Array, " "] = k_magnitude * jnp.cos(theta_rad)
-    k_y: Float[Array, " "] = 0.0
-    k_z: Float[Array, " "] = -k_magnitude * jnp.sin(theta_rad)
-    k_in: Float[Array, " 3"] = jnp.array([k_x, k_y, k_z])
+    k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
+    theta_rad: Float[Array, ""] = jnp.deg2rad(theta_deg)
+    k_x: Float[Array, ""] = k_magnitude * jnp.cos(theta_rad)
+    k_y: Float[Array, ""] = 0.0
+    k_z: Float[Array, ""] = -k_magnitude * jnp.sin(theta_rad)
+    k_in: Float[Array, "3"] = jnp.array([k_x, k_y, k_z])
     return k_in
 
 
 @jaxtyped(typechecker=beartype)
 def project_on_detector(
-    k_out: Float[Array, " N 3"],
+    k_out: Float[Array, "N 3"],
     detector_distance: scalar_float,
-) -> Float[Array, " N 2"]:
+) -> Float[Array, "N 2"]:
     """Project output wavevectors onto detector plane.
 
     Parameters
     ----------
-    k_out : Float[Array, " N 3"]
+    k_out : Float[Array, "N 3"]
         Array of output wavevectors.
     detector_distance : scalar_float
         Distance from sample to detector in angstroms.
 
     Returns
     -------
-    detector_coords : Float[Array, " N 2"]
+    detector_coords : Float[Array, "N 2"]
         [x, y] coordinates on detector plane in angstroms.
     """
-    scale_factor: Float[Array, " N"] = detector_distance / (
+    scale_factor: Float[Array, "N"] = detector_distance / (
         k_out[:, 0] + 1e-10
     )
-    detector_y: Float[Array, " N"] = k_out[:, 1] * scale_factor
-    detector_z: Float[Array, " N"] = k_out[:, 2] * scale_factor
-    detector_coords: Float[Array, " N 2"] = jnp.stack(
+    detector_y: Float[Array, "N"] = k_out[:, 1] * scale_factor
+    detector_z: Float[Array, "N"] = k_out[:, 2] * scale_factor
+    detector_coords: Float[Array, "N 2"] = jnp.stack(
         [detector_y, detector_z], axis=-1
     )
     return detector_coords
@@ -164,18 +164,18 @@ def project_on_detector(
 
 @jaxtyped(typechecker=beartype)
 def find_kinematic_reflections(
-    k_in: Float[Array, " 3"],
-    gs: Float[Array, " M 3"],
+    k_in: Float[Array, "3"],
+    gs: Float[Array, "M 3"],
     z_sign: scalar_float = 1.0,
     tolerance: scalar_float = 0.05,
-) -> Tuple[Int[Array, " N"], Float[Array, " N 3"]]:
+) -> Tuple[Int[Array, "N"], Float[Array, "N 3"]]:
     """Find kinematically allowed reflections.
 
     Parameters
     ----------
-    k_in : Float[Array, " 3"]
+    k_in : Float[Array, "3"]
         Incident wavevector.
-    gs : Float[Array, " M 3"]
+    gs : Float[Array, "M 3"]
         Array of reciprocal lattice vectors.
     z_sign : scalar_float, optional
         If +1, keep reflections with positive z in k_out.
@@ -187,48 +187,48 @@ def find_kinematic_reflections(
 
     Returns
     -------
-    allowed_indices : Int[Array, " N"]
+    allowed_indices : Int[Array, "N"]
         Indices of allowed reflections in gs array.
-    k_out : Float[Array, " N 3"]
+    k_out : Float[Array, "N 3"]
         Output wavevectors for allowed reflections.
     """
-    k_out_all: Float[Array, " M 3"] = k_in + gs
-    k_in_mag: Float[Array, " "] = jnp.linalg.norm(k_in)
-    k_out_mags: Float[Array, " M"] = jnp.linalg.norm(k_out_all, axis=1)
-    elastic_condition: Bool[Array, " M"] = (
+    k_out_all: Float[Array, "M 3"] = k_in + gs
+    k_in_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
+    k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=1)
+    elastic_condition: Bool[Array, "M"] = (
         jnp.abs(k_out_mags - k_in_mag) < tolerance
     )
-    z_condition: Bool[Array, " M"] = k_out_all[:, 2] * z_sign > 0
-    allowed: Bool[Array, " M"] = elastic_condition & z_condition
-    allowed_indices: Int[Array, " N"] = jnp.where(allowed, size=gs.shape[0])[0]
-    n_allowed: Int[Array, " "] = jnp.sum(allowed)
+    z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
+    allowed: Bool[Array, "M"] = elastic_condition & z_condition
+    allowed_indices: Int[Array, "N"] = jnp.where(allowed, size=gs.shape[0])[0]
+    n_allowed: Int[Array, ""] = jnp.sum(allowed)
     allowed_indices = allowed_indices[:n_allowed]
-    k_out: Float[Array, " N 3"] = k_out_all[allowed_indices]
+    k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
     return allowed_indices, k_out
 
 
 @jaxtyped(typechecker=beartype)
 def compute_kinematic_intensities_with_ctrs(
     crystal: CrystalStructure,
-    g_allowed: Float[Array, " N 3"],
-    k_in: Float[Array, " 3"],
-    k_out: Float[Array, " N 3"],
+    g_allowed: Float[Array, "N 3"],
+    k_in: Float[Array, "3"],
+    k_out: Float[Array, "N 3"],
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.5,
     detector_acceptance: scalar_float = 0.01,
     surface_fraction: scalar_float = 0.3,
-) -> Float[Array, " N"]:
+) -> Float[Array, "N"]:
     """Calculate kinematic diffraction intensities with CTR contributions.
 
     Parameters
     ----------
     crystal : CrystalStructure
         Crystal structure containing atomic positions and types.
-    g_allowed : Float[Array, " N 3"]
+    g_allowed : Float[Array, "N 3"]
         Allowed reciprocal lattice vectors.
-    k_in : Float[Array, " 3"]
+    k_in : Float[Array, "3"]
         Incident wavevector.
-    k_out : Float[Array, " N 3"]
+    k_out : Float[Array, "N 3"]
         Output wavevectors.
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factors.
@@ -245,7 +245,7 @@ def compute_kinematic_intensities_with_ctrs(
 
     Returns
     -------
-    intensities : Float[Array, " N"]
+    intensities : Float[Array, "N"]
         Diffraction intensities for each allowed reflection.
 
     Algorithm
@@ -259,28 +259,28 @@ def compute_kinematic_intensities_with_ctrs(
         - Add CTR contributions for surface reflections
     - Return normalized intensities
     """
-    atom_positions: Float[Array, " M 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Int[Array, " M"] = crystal.cart_positions[:, 3].astype(
+    atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
-    z_coords: Float[Array, " M"] = atom_positions[:, 2]
+    z_coords: Float[Array, "M"] = atom_positions[:, 2]
     z_max: scalar_float = jnp.max(z_coords)
     z_min: scalar_float = jnp.min(z_coords)
     z_threshold: scalar_float = z_max - surface_fraction * (z_max - z_min)
-    is_surface_atom: Bool[Array, " M"] = z_coords >= z_threshold
+    is_surface_atom: Bool[Array, "M"] = z_coords >= z_threshold
 
     def _calculate_reflection_intensity(
-        idx: Int[Array, " "],
-    ) -> Float[Array, " "]:
-        g_vec: Float[Array, " 3"] = g_allowed[idx]
-        k_out_vec: Float[Array, " 3"] = k_out[idx]
-        q_vector: Float[Array, " 3"] = k_out_vec - k_in
+        idx: Int[Array, ""],
+    ) -> Float[Array, ""]:
+        g_vec: Float[Array, "3"] = g_allowed[idx]
+        k_out_vec: Float[Array, "3"] = k_out[idx]
+        q_vector: Float[Array, "3"] = k_out_vec - k_in
 
         def _atomic_contribution(
-            atom_idx: Int[Array, " "],
-        ) -> Float[Array, " "]:
+            atom_idx: Int[Array, ""],
+        ) -> Float[Array, ""]:
             atomic_num: scalar_int = atomic_numbers[atom_idx]
-            atom_pos: Float[Array, " 3"] = atom_positions[atom_idx]
+            atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
             
             form_factor: scalar_float = atomic_scattering_factor(
@@ -295,22 +295,22 @@ def compute_kinematic_intensities_with_ctrs(
             )
             return contribution
 
-        n_atoms: Int[Array, " "] = atom_positions.shape[0]
-        atom_indices: Int[Array, " M"] = jnp.arange(n_atoms)
-        contributions: Float[Array, " M"] = jax.vmap(_atomic_contribution)(
+        n_atoms: Int[Array, ""] = atom_positions.shape[0]
+        atom_indices: Int[Array, "M"] = jnp.arange(n_atoms)
+        contributions: Float[Array, "M"] = jax.vmap(_atomic_contribution)(
             atom_indices
         )
         structure_factor: complex = jnp.sum(contributions)
         
         # Calculate CTR contribution
-        hk_index: Int[Array, " 2"] = jnp.array(
+        hk_index: Int[Array, "2"] = jnp.array(
             [jnp.round(g_vec[0]).astype(jnp.int32),
              jnp.round(g_vec[1]).astype(jnp.int32)]
         )
-        q_z_value: Float[Array, " "] = q_vector[2]
+        q_z_value: Float[Array, ""] = q_vector[2]
 
         # Define integration range around q_z with detector acceptance
-        q_z_range: Float[Array, " 2"] = jnp.array([
+        q_z_range: Float[Array, "2"] = jnp.array([
             q_z_value - detector_acceptance,
             q_z_value + detector_acceptance
         ])
@@ -329,9 +329,9 @@ def compute_kinematic_intensities_with_ctrs(
         
         return total_intensity
 
-    n_reflections: Int[Array, " "] = g_allowed.shape[0]
-    reflection_indices: Int[Array, " N"] = jnp.arange(n_reflections)
-    intensities: Float[Array, " N"] = jax.vmap(
+    n_reflections: Int[Array, ""] = g_allowed.shape[0]
+    reflection_indices: Int[Array, "N"] = jnp.arange(n_reflections)
+    intensities: Float[Array, "N"] = jax.vmap(
         _calculate_reflection_intensity
     )(reflection_indices)
 
@@ -442,26 +442,26 @@ def simulate_rheed_pattern(
     kmax = jnp.asarray(kmax, dtype=jnp.int32)
     lmax = jnp.asarray(lmax, dtype=jnp.int32)
 
-    gs: Float[Array, " M 3"] = generate_reciprocal_points(
+    gs: Float[Array, "M 3"] = generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
         kmax=kmax,
         lmax=lmax,
         in_degrees=True,
     )
-    lam_ang: Float[Array, " "] = wavelength_ang(voltage_kv)
-    k_in: Float[Array, " 3"] = incident_wavevector(lam_ang, theta_deg)
-    allowed_indices: Int[Array, " K"]
-    k_out: Float[Array, " K 3"]
+    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
+    k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg)
+    allowed_indices: Int[Array, "K"]
+    k_out: Float[Array, "K 3"]
     allowed_indices, k_out = find_kinematic_reflections(
         k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
     )
-    detector_points: Float[Array, " K 2"] = project_on_detector(
+    detector_points: Float[Array, "K 2"] = project_on_detector(
         k_out, detector_distance
     )
-    g_allowed: Float[Array, " K 3"] = gs[allowed_indices]
+    g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
 
-    intensities: Float[Array, " K"] = compute_kinematic_intensities_with_ctrs(
+    intensities: Float[Array, "K"] = compute_kinematic_intensities_with_ctrs(
         crystal=crystal,
         g_allowed=g_allowed,
         k_in=k_in,
@@ -486,11 +486,11 @@ def atomic_potential(
     atom_no: scalar_int,
     pixel_size: scalar_float,
     grid_shape: Optional[Tuple[scalar_int, scalar_int]] = None,
-    center_coords: Optional[Float[Array, " 2"]] = None,
+    center_coords: Optional[Float[Array, "2"]] = None,
     sampling: Optional[scalar_int] = 16,
     potential_extent: Optional[scalar_float] = 4.0,
     datafile: Optional[str] = str(DEFAULT_KIRKLAND_PATH),
-) -> Float[Array, " h w"]:
+) -> Float[Array, "h w"]:
     """Calculate the projected Kirklans potential of a single atom.
 
     The potential can be centered at arbitrary coordinates within a
@@ -505,7 +505,7 @@ def atomic_potential(
     grid_shape : Tuple[scalar_int, scalar_int], optional
         Shape of the output grid (height, width). If None, calculated from
         potential_extent.
-    center_coords : Float[Array, " 2"], optional
+    center_coords : Float[Array, "2"], optional
         (x, y) coordinates in Ångstroms where atom should be centered.
         If None, centers at grid center
     sampling : scalar_int, optional
@@ -518,7 +518,7 @@ def atomic_potential(
 
     Returns
     -------
-    potential : Float[Array, " h w"]
+    potential : Float[Array, "h w"]
         Projected potential matrix with atom centered at specified coordinates
 
     Notes
@@ -535,93 +535,93 @@ def atomic_potential(
     8. Downsample to target resolution using average pooling
     9. Return final potential matrix
     """
-    a0: Float[Array, " "] = jnp.asarray(0.5292)
-    ek: Float[Array, " "] = jnp.asarray(14.4)
-    term1: Float[Array, " "] = 4.0 * (jnp.pi**2) * a0 * ek
-    term2: Float[Array, " "] = 2.0 * (jnp.pi**2) * a0 * ek
+    a0: Float[Array, ""] = jnp.asarray(0.5292)
+    ek: Float[Array, ""] = jnp.asarray(14.4)
+    term1: Float[Array, ""] = 4.0 * (jnp.pi**2) * a0 * ek
+    term2: Float[Array, ""] = 2.0 * (jnp.pi**2) * a0 * ek
     kirkland_df: pd.DataFrame = pd.read_csv(datafile, header=None)
-    kirkland_array: Float[Array, " 103 12"] = jnp.array(kirkland_df.values)
-    kirk_params: Float[Array, " 12"] = kirkland_array[atom_no - 1, :]
-    step_size: Float[Array, " "] = pixel_size / sampling
+    kirkland_array: Float[Array, "103 12"] = jnp.array(kirkland_df.values)
+    kirk_params: Float[Array, "12"] = kirkland_array[atom_no - 1, :]
+    step_size: Float[Array, ""] = pixel_size / sampling
     if grid_shape is None:
-        grid_extent: Float[Array, " "] = potential_extent
-        n_points: Int[Array, " "] = jnp.ceil(
+        grid_extent: Float[Array, ""] = potential_extent
+        n_points: Int[Array, ""] = jnp.ceil(
             2.0 * grid_extent / step_size
         ).astype(jnp.int32)
-        grid_height: Int[Array, " "] = n_points
-        grid_width: Int[Array, " "] = n_points
+        grid_height: Int[Array, ""] = n_points
+        grid_width: Int[Array, ""] = n_points
     else:
-        grid_height: Int[Array, " "] = jnp.asarray(
+        grid_height: Int[Array, ""] = jnp.asarray(
             grid_shape[0] * sampling, dtype=jnp.int32
         )
-        grid_width: Int[Array, " "] = jnp.asarray(
+        grid_width: Int[Array, ""] = jnp.asarray(
             grid_shape[1] * sampling, dtype=jnp.int32
         )
     if center_coords is None:
-        center_x: Float[Array, " "] = 0.0
-        center_y: Float[Array, " "] = 0.0
+        center_x: Float[Array, ""] = 0.0
+        center_y: Float[Array, ""] = 0.0
     else:
-        center_x: Float[Array, " "] = center_coords[0]
-        center_y: Float[Array, " "] = center_coords[1]
-    y_coords: Float[Array, " h"] = (
+        center_x: Float[Array, ""] = center_coords[0]
+        center_y: Float[Array, ""] = center_coords[1]
+    y_coords: Float[Array, "h"] = (
         jnp.arange(grid_height) - grid_height // 2
     ) * step_size + center_y
-    x_coords: Float[Array, " w"] = (
+    x_coords: Float[Array, "w"] = (
         jnp.arange(grid_width) - grid_width // 2
     ) * step_size + center_x
-    ya: Float[Array, " h w"]
-    xa: Float[Array, " h w"]
+    ya: Float[Array, "h w"]
+    xa: Float[Array, "h w"]
     ya, xa = jnp.meshgrid(y_coords, x_coords, indexing="ij")
-    r: Float[Array, " h w"] = jnp.sqrt(
+    r: Float[Array, "h w"] = jnp.sqrt(
         (xa - center_x) ** 2 + (ya - center_y) ** 2
     )
-    bessel_term1: Float[Array, " h w"] = kirk_params[0] * bessel_kv(
+    bessel_term1: Float[Array, "h w"] = kirk_params[0] * bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[1]) * r
     )
-    bessel_term2: Float[Array, " h w"] = kirk_params[2] * bessel_kv(
+    bessel_term2: Float[Array, "h w"] = kirk_params[2] * bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[3]) * r
     )
-    bessel_term3: Float[Array, " h w"] = kirk_params[4] * bessel_kv(
+    bessel_term3: Float[Array, "h w"] = kirk_params[4] * bessel_kv(
         0, 2.0 * jnp.pi * jnp.sqrt(kirk_params[5]) * r
     )
-    part1: Float[Array, " h w"] = term1 * (
+    part1: Float[Array, "h w"] = term1 * (
         bessel_term1 + bessel_term2 + bessel_term3
     )
-    gauss_term1: Float[Array, " h w"] = (
+    gauss_term1: Float[Array, "h w"] = (
         kirk_params[6] / kirk_params[7]
     ) * jnp.exp(-(jnp.pi**2 / kirk_params[7]) * r**2)
-    gauss_term2: Float[Array, " h w"] = (
+    gauss_term2: Float[Array, "h w"] = (
         kirk_params[8] / kirk_params[9]
     ) * jnp.exp(-(jnp.pi**2 / kirk_params[9]) * r**2)
-    gauss_term3: Float[Array, " h w"] = (
+    gauss_term3: Float[Array, "h w"] = (
         kirk_params[10] / kirk_params[11]
     ) * jnp.exp(-(jnp.pi**2 / kirk_params[11]) * r**2)
-    part2: Float[Array, " h w"] = term2 * (
+    part2: Float[Array, "h w"] = term2 * (
         gauss_term1 + gauss_term2 + gauss_term3
     )
-    supersampled_potential: Float[Array, " h w"] = part1 + part2
+    supersampled_potential: Float[Array, "h w"] = part1 + part2
     if grid_shape is None:
-        target_height: Int[Array, " "] = grid_height // sampling
-        target_width: Int[Array, " "] = grid_width // sampling
+        target_height: Int[Array, ""] = grid_height // sampling
+        target_width: Int[Array, ""] = grid_width // sampling
     else:
-        target_height: Int[Array, " "] = jnp.asarray(
+        target_height: Int[Array, ""] = jnp.asarray(
             grid_shape[0], dtype=jnp.int32
         )
-        target_width: Int[Array, " "] = jnp.asarray(
+        target_width: Int[Array, ""] = jnp.asarray(
             grid_shape[1], dtype=jnp.int32
         )
-    height: Int[Array, " "] = supersampled_potential.shape[0]
-    width: Int[Array, " "] = supersampled_potential.shape[1]
-    new_height: Int[Array, " "] = (height // sampling) * sampling
-    new_width: Int[Array, " "] = (width // sampling) * sampling
-    cropped: Float[Array, " h_crop w_crop"] = supersampled_potential[
+    height: Int[Array, ""] = supersampled_potential.shape[0]
+    width: Int[Array, ""] = supersampled_potential.shape[1]
+    new_height: Int[Array, ""] = (height // sampling) * sampling
+    new_width: Int[Array, ""] = (width // sampling) * sampling
+    cropped: Float[Array, "h_crop w_crop"] = supersampled_potential[
         :new_height, :new_width
     ]
-    reshaped: Float[Array, " h_new sampling w_new sampling"] = cropped.reshape(
+    reshaped: Float[Array, "h_new sampling w_new sampling"] = cropped.reshape(
         new_height // sampling, sampling, new_width // sampling, sampling
     )
-    potential: Float[Array, " h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
-    potential_resized: Float[Array, " h w"] = potential[
+    potential: Float[Array, "h_new w_new"] = jnp.mean(reshaped, axis=(1, 3))
+    potential_resized: Float[Array, "h w"] = potential[
         :target_height, :target_width
     ]
     return potential_resized
@@ -682,17 +682,17 @@ def crystal_potential(
     12. Create PotentialSlices object with slice data and metadata
     13. Return structured potential slices
     """
-    atom_positions: Float[Array, " N 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Int[Array, " N"] = crystal.cart_positions[:, 3].astype(
+    atom_positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "N"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
-    unique_atomic_numbers: Int[Array, " U"] = jnp.unique(atomic_numbers)
-    y_calibration: Float[Array, " "] = physical_extent[0] / grid_shape[0]
-    x_calibration: Float[Array, " "] = physical_extent[1] / grid_shape[1]
+    unique_atomic_numbers: Int[Array, "U"] = jnp.unique(atomic_numbers)
+    y_calibration: Float[Array, ""] = physical_extent[0] / grid_shape[0]
+    x_calibration: Float[Array, ""] = physical_extent[1] / grid_shape[1]
 
     def _compute_centered_potential(
-        atomic_num: Int[Array, " "],
-    ) -> Float[Array, " h w"]:
+        atomic_num: Int[Array, ""],
+    ) -> Float[Array, "h w"]:
         return atomic_potential(
             atom_no=atomic_num,
             pixel_size=pixel_size,
@@ -701,127 +701,127 @@ def crystal_potential(
             sampling=sampling,
         )
 
-    centered_potentials: Float[Array, " U h w"] = jax.vmap(
+    centered_potentials: Float[Array, "U h w"] = jax.vmap(
         _compute_centered_potential
     )(unique_atomic_numbers)
-    z_coords: Float[Array, " N"] = atom_positions[:, 2]
-    z_min: Float[Array, " "] = jnp.min(z_coords)
-    z_max: Float[Array, " "] = jnp.max(z_coords)
-    z_range: Float[Array, " "] = z_max - z_min
-    n_slices: Int[Array, " "] = jnp.ceil(z_range / slice_thickness).astype(
+    z_coords: Float[Array, "N"] = atom_positions[:, 2]
+    z_min: Float[Array, ""] = jnp.min(z_coords)
+    z_max: Float[Array, ""] = jnp.max(z_coords)
+    z_range: Float[Array, ""] = z_max - z_min
+    n_slices: Int[Array, ""] = jnp.ceil(z_range / slice_thickness).astype(
         jnp.int32
     )
     n_slices = jnp.maximum(n_slices, 1)
 
     def _fourier_shift_potential(
-        potential: Float[Array, " h w"],
-        shift_x: Float[Array, " "],
-        shift_y: Float[Array, " "],
-    ) -> Float[Array, " h w"]:
+        potential: Float[Array, "h w"],
+        shift_x: Float[Array, ""],
+        shift_y: Float[Array, ""],
+    ) -> Float[Array, "h w"]:
         """Apply Fourier shift theorem to translate potential in real space."""
-        shift_pixels_x: Float[Array, " "] = shift_x / x_calibration
-        shift_pixels_y: Float[Array, " "] = shift_y / y_calibration
-        ky: Float[Array, " h"] = jnp.fft.fftfreq(grid_shape[0], d=1.0)
-        kx: Float[Array, " w"] = jnp.fft.fftfreq(grid_shape[1], d=1.0)
-        ky_grid: Float[Array, " h w"]
-        kx_grid: Float[Array, " h w"]
+        shift_pixels_x: Float[Array, ""] = shift_x / x_calibration
+        shift_pixels_y: Float[Array, ""] = shift_y / y_calibration
+        ky: Float[Array, "h"] = jnp.fft.fftfreq(grid_shape[0], d=1.0)
+        kx: Float[Array, "w"] = jnp.fft.fftfreq(grid_shape[1], d=1.0)
+        ky_grid: Float[Array, "h w"]
+        kx_grid: Float[Array, "h w"]
         ky_grid, kx_grid = jnp.meshgrid(ky, kx, indexing="ij")
-        phase_shift: Float[Array, " h w"] = jnp.exp(
+        phase_shift: Float[Array, "h w"] = jnp.exp(
             -2j
             * jnp.pi
             * (kx_grid * shift_pixels_x + ky_grid * shift_pixels_y)
         )
-        potential_fft: Float[Array, " h w"] = jnp.fft.fft2(potential)
-        shifted_fft: Float[Array, " h w"] = potential_fft * phase_shift
-        shifted_potential: Float[Array, " h w"] = jnp.real(
+        potential_fft: Float[Array, "h w"] = jnp.fft.fft2(potential)
+        shifted_fft: Float[Array, "h w"] = potential_fft * phase_shift
+        shifted_potential: Float[Array, "h w"] = jnp.real(
             jnp.fft.ifft2(shifted_fft)
         )
         return shifted_potential
 
     def _calculate_slice_potential(
-        slice_idx: Int[Array, " "],
-    ) -> Float[Array, " h w"]:
+        slice_idx: Int[Array, ""],
+    ) -> Float[Array, "h w"]:
         """Calculate the potential for a single slice of the crystal."""
-        slice_z_start: Float[Array, " "] = z_min + slice_idx * slice_thickness
-        slice_z_end: Float[Array, " "] = slice_z_start + slice_thickness
-        atoms_in_slice: Bool[Array, " N"] = jnp.logical_and(
+        slice_z_start: Float[Array, ""] = z_min + slice_idx * slice_thickness
+        slice_z_end: Float[Array, ""] = slice_z_start + slice_thickness
+        atoms_in_slice: Bool[Array, "N"] = jnp.logical_and(
             z_coords >= slice_z_start, z_coords < slice_z_end
         )
-        slice_atom_positions: Float[Array, " M 3"] = atom_positions[
+        slice_atom_positions: Float[Array, "M 3"] = atom_positions[
             atoms_in_slice
         ]
-        slice_atomic_numbers: Int[Array, " M"] = atomic_numbers[atoms_in_slice]
+        slice_atomic_numbers: Int[Array, "M"] = atomic_numbers[atoms_in_slice]
 
         def _process_atom_type(
-            unique_atomic_num: Int[Array, " "],
-        ) -> Float[Array, " h w"]:
+            unique_atomic_num: Int[Array, ""],
+        ) -> Float[Array, "h w"]:
             """Process the potential for a single atom type."""
-            potential_idx: Int[Array, " "] = jnp.where(
+            potential_idx: Int[Array, ""] = jnp.where(
                 unique_atomic_numbers == unique_atomic_num, size=1
             )[0][0]
-            base_potential: Float[Array, " h w"] = centered_potentials[
+            base_potential: Float[Array, "h w"] = centered_potentials[
                 potential_idx
             ]
-            atoms_of_type: Bool[Array, " M"] = (
+            atoms_of_type: Bool[Array, "M"] = (
                 slice_atomic_numbers == unique_atomic_num
             )
-            positions_of_type: Float[Array, " K 3"] = slice_atom_positions[
+            positions_of_type: Float[Array, "K 3"] = slice_atom_positions[
                 atoms_of_type
             ]
 
             def _shift_single_atom(
-                atom_pos: Float[Array, " 3"],
-            ) -> Float[Array, " h w"]:
+                atom_pos: Float[Array, "3"],
+            ) -> Float[Array, "h w"]:
                 """Shift the potential for a single atom."""
-                shift_x: Float[Array, " "] = atom_pos[0]
-                shift_y: Float[Array, " "] = atom_pos[1]
+                shift_x: Float[Array, ""] = atom_pos[0]
+                shift_y: Float[Array, ""] = atom_pos[1]
                 return _fourier_shift_potential(
                     base_potential, shift_x, shift_y
                 )
 
-            n_atoms_of_type: Int[Array, " "] = positions_of_type.shape[0]
+            n_atoms_of_type: Int[Array, ""] = positions_of_type.shape[0]
 
-            def _compute_type_contribution() -> Float[Array, " h w"]:
+            def _compute_type_contribution() -> Float[Array, "h w"]:
                 """Compute the sum of the potential for a single atom type."""
-                shifted_potentials: Float[Array, " K h w"] = jax.vmap(
+                shifted_potentials: Float[Array, "K h w"] = jax.vmap(
                     _shift_single_atom
                 )(positions_of_type)
                 return jnp.sum(shifted_potentials, axis=0)
 
-            def _return_zero_contribution() -> Float[Array, " h w"]:
+            def _return_zero_contribution() -> Float[Array, "h w"]:
                 """Return an empty contribution."""
                 return jnp.zeros(grid_shape, dtype=jnp.float64)
 
-            type_contribution: Float[Array, " h w"] = jax.lax.cond(
+            type_contribution: Float[Array, "h w"] = jax.lax.cond(
                 n_atoms_of_type > 0,
                 _compute_type_contribution,
                 _return_zero_contribution,
             )
             return type_contribution
 
-        n_atoms_in_slice: Int[Array, " "] = slice_atom_positions.shape[0]
+        n_atoms_in_slice: Int[Array, ""] = slice_atom_positions.shape[0]
 
-        def _compute_slice_sum() -> Float[Array, " h w"]:
+        def _compute_slice_sum() -> Float[Array, "h w"]:
             """Compute the sum of the potential for a single slice."""
-            unique_slice_numbers: Int[Array, " V"] = jnp.unique(
+            unique_slice_numbers: Int[Array, "V"] = jnp.unique(
                 slice_atomic_numbers
             )
-            type_contributions: Float[Array, " V h w"] = jax.vmap(
+            type_contributions: Float[Array, "V h w"] = jax.vmap(
                 _process_atom_type
             )(unique_slice_numbers)
             return jnp.sum(type_contributions, axis=0)
 
-        def _return_empty_slice() -> Float[Array, " h w"]:
+        def _return_empty_slice() -> Float[Array, "h w"]:
             """Return an empty slice."""
             return jnp.zeros(grid_shape, dtype=jnp.float64)
 
-        slice_potential: Float[Array, " h w"] = jax.lax.cond(
+        slice_potential: Float[Array, "h w"] = jax.lax.cond(
             n_atoms_in_slice > 0, _compute_slice_sum, _return_empty_slice
         )
         return slice_potential
 
-    slice_indices: Int[Array, " n_slices"] = jnp.arange(n_slices)
-    slice_arrays: Float[Array, " n_slices h w"] = jax.vmap(
+    slice_indices: Int[Array, "n_slices"] = jnp.arange(n_slices)
+    slice_arrays: Float[Array, "n_slices h w"] = jax.vmap(
         _calculate_slice_potential
     )(slice_indices)
     potential_slices: PotentialSlices = create_potential_slices(

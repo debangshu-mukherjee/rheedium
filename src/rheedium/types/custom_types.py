@@ -32,10 +32,10 @@ and compatibility with JAX transformations.
 from beartype.typing import TypeAlias, Union
 from jaxtyping import Array, Bool, Float, Integer, Num
 
-scalar_float: TypeAlias = Union[float, Float[Array, " "]]
-scalar_int: TypeAlias = Union[int, Integer[Array, " "]]
-scalar_bool: TypeAlias = Union[bool, Bool[Array, " "]]
-scalar_num: TypeAlias = Union[int, float, Num[Array, " "]]
+scalar_float: TypeAlias = Union[float, Float[Array, ""]]
+scalar_int: TypeAlias = Union[int, Integer[Array, ""]]
+scalar_bool: TypeAlias = Union[bool, Bool[Array, ""]]
+scalar_num: TypeAlias = Union[int, float, Num[Array, ""]]
 non_jax_number: TypeAlias = Union[int, float]
-float_image: TypeAlias = Float[Array, " H W"]
-int_image: TypeAlias = Integer[Array, " H W"]
+float_image: TypeAlias = Float[Array, "H W"]
+int_image: TypeAlias = Integer[Array, "H W"]

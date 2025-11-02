@@ -50,17 +50,17 @@ class RHEEDPattern(NamedTuple):
 
     Attributes
     ----------
-    G_indices : Int[Array, " N"]
+    G_indices : Int[Array, "N"]
         Indices of reciprocal-lattice vectors that satisfy reflection
         conditions. Variable length array of integer indices.
-    k_out : Float[Array, " M 3"]
+    k_out : Float[Array, "M 3"]
         Outgoing wavevectors in 1/Å for reflections. Shape (M, 3) where M
         is the number of reflections and each row contains [kx, ky, kz]
         components.
-    detector_points : Float[Array, " M 2"]
+    detector_points : Float[Array, "M 2"]
         Detector coordinates (Y, Z) on the detector plane in Ångstroms.
         Shape (M, 2) where each row contains [y, z] coordinates.
-    intensities : Float[Array, " M"]
+    intensities : Float[Array, "M"]
         Intensity values for each reflection. Shape (M,) with non-negative
         intensity values.
     This class is registered as a PyTree node, making it compatible with JAX
@@ -85,19 +85,19 @@ class RHEEDPattern(NamedTuple):
     ... )
     """
 
-    G_indices: Int[Array, " N"]
-    k_out: Float[Array, " M 3"]
-    detector_points: Float[Array, " M 2"]
-    intensities: Float[Array, " M"]
+    G_indices: Int[Array, "N"]
+    k_out: Float[Array, "M 3"]
+    detector_points: Float[Array, "M 2"]
+    intensities: Float[Array, "M"]
 
     def tree_flatten(
         self,
     ) -> Tuple[
         Tuple[
-            Int[Array, " N"],
-            Float[Array, " M 3"],
-            Float[Array, " M 2"],
-            Float[Array, " M"],
+            Int[Array, "N"],
+            Float[Array, "M 3"],
+            Float[Array, "M 2"],
+            Float[Array, "M"],
         ],
         None,
     ]:
@@ -117,10 +117,10 @@ class RHEEDPattern(NamedTuple):
         cls,
         aux_data: None,
         children: Tuple[
-            Int[Array, " N"],
-            Float[Array, " M 3"],
-            Float[Array, " M 2"],
-            Float[Array, " M"],
+            Int[Array, "N"],
+            Float[Array, "M 3"],
+            Float[Array, "M 2"],
+            Float[Array, "M"],
         ],
     ) -> "RHEEDPattern":
         """Unflatten the PyTree into a RHEEDPattern instance."""
@@ -138,13 +138,13 @@ class RHEEDImage(NamedTuple):
 
     Attributes
     ----------
-    img_array : Float[Array, " H W"]
+    img_array : Float[Array, "H W"]
         2D image array with shape (height, width) containing pixel intensity
         values. Non-negative finite values.
     incoming_angle : scalar_float
         Angle of the incoming electron beam in degrees, typically between
         0 and 90 degrees for grazing incidence geometry.
-    calibration : Union[Float[Array, " 2"], scalar_float]
+    calibration : Union[Float[Array, "2"], scalar_float]
         Calibration factor for converting pixels to physical units. Either
         a scalar (same calibration for both axes) or array of shape (2,)
         with separate [x, y] calibrations in appropriate units per pixel.
@@ -177,9 +177,9 @@ class RHEEDImage(NamedTuple):
     ... )
     """
 
-    img_array: Float[Array, " H W"]
+    img_array: Float[Array, "H W"]
     incoming_angle: scalar_float
-    calibration: Union[Float[Array, " 2"], scalar_float]
+    calibration: Union[Float[Array, "2"], scalar_float]
     electron_wavelength: scalar_float
     detector_distance: scalar_num
 
@@ -187,9 +187,9 @@ class RHEEDImage(NamedTuple):
         self,
     ) -> Tuple[
         Tuple[
-            Float[Array, " H W"],
+            Float[Array, "H W"],
             scalar_float,
-            Union[Float[Array, " 2"], scalar_float],
+            Union[Float[Array, "2"], scalar_float],
             scalar_float,
             scalar_num,
         ],
@@ -212,9 +212,9 @@ class RHEEDImage(NamedTuple):
         cls,
         aux_data: None,
         children: Tuple[
-            Float[Array, " H W"],
+            Float[Array, "H W"],
             scalar_float,
-            Union[Float[Array, " 2"], scalar_float],
+            Union[Float[Array, "2"], scalar_float],
             scalar_float,
             scalar_num,
         ],
@@ -226,22 +226,22 @@ class RHEEDImage(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_pattern(
-    g_indices: Int[Array, " N"],
-    k_out: Float[Array, " M 3"],
-    detector_points: Float[Array, " M 2"],
-    intensities: Float[Array, " M"],
+    g_indices: Int[Array, "N"],
+    k_out: Float[Array, "M 3"],
+    detector_points: Float[Array, "M 2"],
+    intensities: Float[Array, "M"],
 ) -> RHEEDPattern:
     """Create a RHEEDPattern instance with data validation.
 
     Parameters
     ----------
-    g_indices : Int[Array, " N"]
+    g_indices : Int[Array, "N"]
         Indices of reciprocal-lattice vectors that satisfy reflection.
-    k_out : Float[Array, " M 3"]
+    k_out : Float[Array, "M 3"]
         Outgoing wavevectors (in 1/Å) for those reflections.
-    detector_points : Float[Array, " M 2"]
+    detector_points : Float[Array, "M 2"]
         (Y, Z) coordinates on the detector plane, in Ångstroms.
-    intensities : Float[Array, " M"]
+    intensities : Float[Array, "M"]
         Intensities for each reflection.
 
     Returns
@@ -258,12 +258,12 @@ def create_rheed_pattern(
       non-zero, and detector points are finite
     - Create and return RHEEDPattern instance
     """
-    g_indices: Int[Array, " nn"] = jnp.asarray(g_indices, dtype=jnp.int32)
-    k_out: Float[Array, " mm 3"] = jnp.asarray(k_out, dtype=jnp.float64)
-    detector_points: Float[Array, " mm 2"] = jnp.asarray(
+    g_indices: Int[Array, "nn"] = jnp.asarray(g_indices, dtype=jnp.int32)
+    k_out: Float[Array, "mm 3"] = jnp.asarray(k_out, dtype=jnp.float64)
+    detector_points: Float[Array, "mm 2"] = jnp.asarray(
         detector_points, dtype=jnp.float64
     )
-    intensities: Float[Array, " mm"] = jnp.asarray(
+    intensities: Float[Array, "mm"] = jnp.asarray(
         intensities, dtype=jnp.float64
     )
 
@@ -271,7 +271,7 @@ def create_rheed_pattern(
         """Validate and create a RHEEDPattern instance."""
         mm: int = k_out.shape[0]
 
-        def _check_k_out_shape() -> Float[Array, " mm 3"]:
+        def _check_k_out_shape() -> Float[Array, "mm 3"]:
             """Check the shape of the k_out array."""
             return lax.cond(
                 k_out.shape == (mm, 3),
@@ -281,7 +281,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_detector_shape() -> Float[Array, " mm 2"]:
+        def _check_detector_shape() -> Float[Array, "mm 2"]:
             """Check the shape of the detector_points array."""
             return lax.cond(
                 detector_points.shape == (mm, 2),
@@ -293,7 +293,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_intensities_shape() -> Float[Array, " mm"]:
+        def _check_intensities_shape() -> Float[Array, "mm"]:
             """Check the shape of the intensities array."""
             return lax.cond(
                 intensities.shape == (mm,),
@@ -303,7 +303,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_g_indices_length() -> Int[Array, " nn"]:
+        def _check_g_indices_length() -> Int[Array, "nn"]:
             """Check the length of the g_indices array."""
             return lax.cond(
                 g_indices.shape[0] == mm,
@@ -313,7 +313,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_intensities_positive() -> Float[Array, " mm"]:
+        def _check_intensities_positive() -> Float[Array, "mm"]:
             """Check the intensities are positive."""
             return lax.cond(
                 jnp.all(intensities >= 0),
@@ -323,7 +323,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_k_out_nonzero() -> Float[Array, " mm 3"]:
+        def _check_k_out_nonzero() -> Float[Array, "mm 3"]:
             """Check the k_out vectors are non-zero."""
             return lax.cond(
                 jnp.all(jnp.linalg.norm(k_out, axis=1) > 0),
@@ -333,7 +333,7 @@ def create_rheed_pattern(
                 ),
             )
 
-        def _check_detector_finite() -> Float[Array, " mm 2"]:
+        def _check_detector_finite() -> Float[Array, "mm 2"]:
             """Check the detector points are finite."""
             return lax.cond(
                 jnp.all(jnp.isfinite(detector_points)),
@@ -366,9 +366,9 @@ def create_rheed_pattern(
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_image(
-    img_array: Float[Array, " H W"],
+    img_array: Float[Array, "H W"],
     incoming_angle: scalar_float,
-    calibration: Union[Float[Array, " 2"], scalar_float],
+    calibration: Union[Float[Array, "2"], scalar_float],
     electron_wavelength: scalar_float,
     detector_distance: scalar_num,
 ) -> RHEEDImage:
@@ -376,11 +376,11 @@ def create_rheed_image(
 
     Parameters
     ----------
-    img_array : Float[Array, " H W"]
+    img_array : Float[Array, "H W"]
         The image in 2D array format.
     incoming_angle : scalar_float
         The angle of the incoming electron beam in degrees.
-    calibration : Union[Float[Array, " 2"], scalar_float]
+    calibration : Union[Float[Array, "2"], scalar_float]
         Calibration factor for the image, either as a 2D array or a scalar.
     electron_wavelength : scalar_float
         The wavelength of the electrons in Ångstroms.
@@ -405,26 +405,26 @@ def create_rheed_image(
        shape is (2,) and all values are positive
     5. Create and return RHEEDImage instance
     """
-    img_array: Float[Array, " H W"] = jnp.asarray(img_array, dtype=jnp.float64)
-    incoming_angle: Float[Array, " "] = jnp.asarray(
+    img_array: Float[Array, "H W"] = jnp.asarray(img_array, dtype=jnp.float64)
+    incoming_angle: Float[Array, ""] = jnp.asarray(
         incoming_angle, dtype=jnp.float64
     )
-    calibration: Union[Float[Array, " 2"], Float[Array, " "]] = jnp.asarray(
+    calibration: Union[Float[Array, "2"], Float[Array, ""]] = jnp.asarray(
         calibration, dtype=jnp.float64
     )
-    electron_wavelength: Float[Array, " "] = jnp.asarray(
+    electron_wavelength: Float[Array, ""] = jnp.asarray(
         electron_wavelength, dtype=jnp.float64
     )
-    detector_distance: Float[Array, " "] = jnp.asarray(
+    detector_distance: Float[Array, ""] = jnp.asarray(
         detector_distance, dtype=jnp.float64
     )
-    max_angle: Int[Array, " "] = jnp.asarray(90, dtype=jnp.int32)
+    max_angle: Int[Array, ""] = jnp.asarray(90, dtype=jnp.int32)
     image_dimensions: int = 2
 
     def _validate_and_create() -> RHEEDImage:
         """Validate and create a RHEEDImage instance."""
 
-        def _check_2d() -> Float[Array, " H W"]:
+        def _check_2d() -> Float[Array, "H W"]:
             """Check the image array is 2D."""
             return lax.cond(
                 img_array.ndim == image_dimensions,
@@ -434,7 +434,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_finite() -> Float[Array, " H W"]:
+        def _check_finite() -> Float[Array, "H W"]:
             """Check the image array is finite."""
             return lax.cond(
                 jnp.all(jnp.isfinite(img_array)),
@@ -444,7 +444,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_nonnegative() -> Float[Array, " H W"]:
+        def _check_nonnegative() -> Float[Array, "H W"]:
             """Check the image array is non-negative."""
             return lax.cond(
                 jnp.all(img_array >= 0),
@@ -454,7 +454,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_angle() -> Float[Array, " "]:
+        def _check_angle() -> Float[Array, ""]:
             """Check the incoming angle is between 0 and 90 degrees."""
             return lax.cond(
                 jnp.logical_and(
@@ -468,7 +468,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_wavelength() -> Float[Array, " "]:
+        def _check_wavelength() -> Float[Array, ""]:
             """Check the electron wavelength is positive."""
             return lax.cond(
                 electron_wavelength > 0,
@@ -482,7 +482,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_distance() -> Float[Array, " "]:
+        def _check_distance() -> Float[Array, ""]:
             """Check the detector distance is positive."""
             return lax.cond(
                 detector_distance > 0,
@@ -497,11 +497,11 @@ def create_rheed_image(
             )
 
         def _check_calibration() -> (
-            Union[Float[Array, " 2"], Float[Array, " "]]
+            Union[Float[Array, "2"], Float[Array, ""]]
         ):
             """Check the calibration is positive."""
 
-            def _check_scalar_cal() -> Float[Array, " "]:
+            def _check_scalar_cal() -> Float[Array, ""]:
                 """Check the calibration is positive."""
                 return lax.cond(
                     calibration > 0,
@@ -513,7 +513,7 @@ def create_rheed_image(
                     ),
                 )
 
-            def _check_array_cal() -> Float[Array, " 2"]:
+            def _check_array_cal() -> Float[Array, "2"]:
                 """Check the calibration is positive."""
                 return lax.cond(
                     jnp.logical_and(

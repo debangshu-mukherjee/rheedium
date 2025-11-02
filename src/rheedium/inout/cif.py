@@ -107,8 +107,8 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     alpha: float = _extract_param("_cell_angle_alpha")
     beta: float = _extract_param("_cell_angle_beta")
     gamma: float = _extract_param("_cell_angle_gamma")
-    cell_lengths: Num[Array, " 3"] = jnp.array([a, b, c], dtype=jnp.float64)
-    cell_angles: Num[Array, " 3"] = jnp.array(
+    cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
+    cell_angles: Num[Array, "3"] = jnp.array(
         [alpha, beta, gamma], dtype=jnp.float64
     )
     lines: List[str] = cif_text.splitlines()
@@ -152,14 +152,14 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             positions_list.append([frac_x, frac_y, frac_z, atomic_number])
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
-    frac_positions: Float[Array, " N 4"] = jnp.array(
+    frac_positions: Float[Array, "N 4"] = jnp.array(
         positions_list, dtype=jnp.float64
     )
-    cell_vectors: Float[Array, " 3 3"] = build_cell_vectors(
+    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         a, b, c, alpha, beta, gamma
     )
-    cart_coords: Float[Array, " N 3"] = frac_positions[:, :3] @ cell_vectors
-    cart_positions: Float[Array, " N 4"] = jnp.column_stack(
+    cart_coords: Float[Array, "N 3"] = frac_positions[:, :3] @ cell_vectors
+    cart_positions: Float[Array, "N 4"] = jnp.column_stack(
         (cart_coords, frac_positions[:, 3])
     )
     sym_ops: List[str] = []
@@ -242,7 +242,7 @@ def symmetry_expansion(
     Original atoms: 1
     Expanded atoms: 8
     """
-    frac_positions: Float[Array, " N 4"] = crystal.frac_positions
+    frac_positions: Float[Array, "N 4"] = crystal.frac_positions
     expanded_positions: List[Array] = []
 
     def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
@@ -289,25 +289,25 @@ def symmetry_expansion(
             expanded_positions.append(
                 jnp.concatenate([new_xyz, atomic_number[None]])
             )
-    expanded_positions: Float[Array, " N 4"] = jnp.array(expanded_positions)
-    cart_positions: Float[Array, " N 3"] = expanded_positions[
+    expanded_positions: Float[Array, "N 4"] = jnp.array(expanded_positions)
+    cart_positions: Float[Array, "N 3"] = expanded_positions[
         :, :3
     ] @ build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
 
     def _deduplicate(
-        positions: Float[Array, " N 3"], tol: scalar_float
-    ) -> Float[Array, " N 3"]:
+        positions: Float[Array, "N 3"], tol: scalar_float
+    ) -> Float[Array, "N 3"]:
         def _unique_cond(
-            carry: Tuple[Float[Array, " N 3"], Int[Array, " "]],
-            pos: Float[Array, " 3"],
-        ) -> Tuple[Tuple[Float[Array, " N 3"], Int[Array, " "]], None]:
-            unique: Float[Array, " N 3"]
-            count: Int[Array, " "]
+            carry: Tuple[Float[Array, "N 3"], Int[Array, ""]],
+            pos: Float[Array, "3"],
+        ) -> Tuple[Tuple[Float[Array, "N 3"], Int[Array, ""]], None]:
+            unique: Float[Array, "N 3"]
+            count: Int[Array, ""]
             unique, count = carry
-            diff: Float[Array, " N 3"] = unique - pos
-            dist_sq: Float[Array, " N"] = jnp.sum(diff**2, axis=1)
+            diff: Float[Array, "N 3"] = unique - pos
+            dist_sq: Float[Array, "N"] = jnp.sum(diff**2, axis=1)
             is_dup: bool = jnp.any(dist_sq < tol**2)
-            unique: Float[Array, " N 3"] = jax.lax.cond(
+            unique: Float[Array, "N 3"] = jax.lax.cond(
                 is_dup,
                 lambda u: u,
                 lambda u: u.at[count].set(pos),
@@ -316,7 +316,7 @@ def symmetry_expansion(
             count += jnp.logical_not(is_dup)
             return (unique, count), None
 
-        unique_init: Float[Array, " N 3"] = jnp.zeros_like(positions)
+        unique_init: Float[Array, "N 3"] = jnp.zeros_like(positions)
         unique_init = unique_init.at[0].set(positions[0])
         count_init: int = 1
         (unique_final, final_count), _ = jax.lax.scan(
@@ -324,12 +324,12 @@ def symmetry_expansion(
         )
         return unique_final[:final_count]
 
-    unique_cart: Float[Array, " N 3"] = _deduplicate(cart_positions, tolerance)
-    cell_inv: Float[Array, " 3 3"] = jnp.linalg.inv(
+    unique_cart: Float[Array, "N 3"] = _deduplicate(cart_positions, tolerance)
+    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(
         build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
     )
-    unique_frac: Float[Array, " N 3"] = (unique_cart @ cell_inv) % 1.0
-    atomic_numbers: Float[Array, " N"] = expanded_positions[:, 3][
+    unique_frac: Float[Array, "N 3"] = (unique_cart @ cell_inv) % 1.0
+    atomic_numbers: Float[Array, "N"] = expanded_positions[:, 3][
         : unique_cart.shape[0]
     ]
     expanded_crystal: CrystalStructure = create_crystal_structure(

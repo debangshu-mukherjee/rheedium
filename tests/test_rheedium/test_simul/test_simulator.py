@@ -49,7 +49,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         a_si: scalar_float = 5.431  # Si lattice constant in Angstroms
 
         # Si diamond structure fractional positions
-        frac_coords: Float[Array, " 8 3"] = jnp.array([
+        frac_coords: Float[Array, "8 3"] = jnp.array([
             [0.00, 0.00, 0.00],
             [0.25, 0.25, 0.25],
             [0.50, 0.50, 0.00],
@@ -61,14 +61,14 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         ])
 
         # Convert to Cartesian coordinates
-        cart_coords: Float[Array, " 8 3"] = frac_coords * a_si
+        cart_coords: Float[Array, "8 3"] = frac_coords * a_si
 
         # Add atomic numbers (Si = 14)
-        atomic_numbers: Float[Array, " 8"] = jnp.full(8, 14.0)
-        frac_positions: Float[Array, " 8 4"] = jnp.column_stack(
+        atomic_numbers: Float[Array, "8"] = jnp.full(8, 14.0)
+        frac_positions: Float[Array, "8 4"] = jnp.column_stack(
             [frac_coords, atomic_numbers]
         )
-        cart_positions: Float[Array, " 8 4"] = jnp.column_stack(
+        cart_positions: Float[Array, "8 4"] = jnp.column_stack(
             [cart_coords, atomic_numbers]
         )
 
@@ -87,11 +87,11 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         var_wavelength = self.variant(wavelength_ang)
         
         # Test at different voltages
-        voltages_kv: Float[Array, " 3"] = jnp.array([10.0, 20.0, 30.0])
-        wavelengths: Float[Array, " 3"] = jax.vmap(var_wavelength)(voltages_kv)
+        voltages_kv: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
+        wavelengths: Float[Array, "3"] = jax.vmap(var_wavelength)(voltages_kv)
 
         # Expected wavelengths (approximate values in Angstroms)
-        expected: Float[Array, " 3"] = jnp.array([0.1226, 0.0859, 0.0698])
+        expected: Float[Array, "3"] = jnp.array([0.1226, 0.0859, 0.0698])
 
         chex.assert_trees_all_close(wavelengths, expected, rtol=5e-3)
         chex.assert_tree_all_finite(wavelengths)
@@ -114,15 +114,15 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         
         # Set up simple test case
         # 20 keV, 2 degrees
-        k_in: Float[Array, " 3"] = jnp.array([73.0, 0.0, -2.5])
-        g_vectors: Float[Array, " 3 3"] = jnp.array([
+        k_in: Float[Array, "3"] = jnp.array([73.0, 0.0, -2.5])
+        g_vectors: Float[Array, "3 3"] = jnp.array([
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [1.0, 1.0, 0.0],
         ])
-        k_out: Float[Array, " 3 3"] = k_in + g_vectors
+        k_out: Float[Array, "3 3"] = k_in + g_vectors
 
-        intensities: Float[Array, " 3"] = var_compute(
+        intensities: Float[Array, "3"] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
@@ -176,12 +176,12 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         """Test that surface atoms have enhanced thermal motion."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
-        k_in: Float[Array, " 3"] = jnp.array([73.0, 0.0, -2.5])
-        g_vectors: Float[Array, " 1 3"] = jnp.array([[1.0, 0.0, 0.0]])
-        k_out: Float[Array, " 1 3"] = k_in + g_vectors
+        k_in: Float[Array, "3"] = jnp.array([73.0, 0.0, -2.5])
+        g_vectors: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
+        k_out: Float[Array, "1 3"] = k_in + g_vectors
 
         # Compare with and without surface effects
-        intensities_bulk: Float[Array, " 1"] = var_compute(
+        intensities_bulk: Float[Array, "1"] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
@@ -191,7 +191,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             surface_fraction=0.0,  # No surface atoms
         )
 
-        intensities_surface: Float[Array, " 1"] = var_compute(
+        intensities_surface: Float[Array, "1"] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
