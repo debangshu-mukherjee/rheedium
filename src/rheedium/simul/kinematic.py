@@ -90,14 +90,24 @@ def paper_detector_projection(
     # Convert angle to radians
     theta_rad = jnp.deg2rad(theta_deg)
 
-    # Paper's Equation 5: x-coordinate (horizontal)
-    x_d = detector_distance * (k_out[:, 0] / k_out[:, 2])
+    # Note: Our coordinate system has z pointing UP (surface normal)
+    # Both k_in_z and k_out_z are negative (beams going downward to detector)
 
-    # Paper's Equation 6: y-coordinate (vertical)
-    # Includes correction for incident beam offset
-    y_d = (
-        detector_distance * (k_out[:, 1] - k_in[1]) / (k_out[:, 2] - k_in[2])
-        + detector_distance * jnp.tan(theta_rad)
+    # Paper's Equation 5 adapted: x-coordinate (horizontal)
+    # Use -k_out_z since k_out_z < 0 in our convention
+    x_d = detector_distance * (k_out[:, 0] / (-k_out[:, 2]))
+
+    # Paper's Equation 6 adapted: y-coordinate (vertical)
+    # Handle the case where k_out_z ≈ k_in_z (denominator → 0)
+    # This occurs for reflections at the same exit angle as incidence
+    denom = -k_out[:, 2] + k_in[2]  # = -k_out_z - k_in_z
+
+    # For small denominator (specular-like reflections), use simplified projection
+    # Otherwise use paper's formula
+    y_d = jnp.where(
+        jnp.abs(denom) < 1e-6,  # Near-specular
+        detector_distance * jnp.tan(theta_rad),  # Simplified: just the angle offset
+        detector_distance * (k_out[:, 1] - k_in[1]) / denom + detector_distance * jnp.tan(theta_rad)
     )
 
     detector_coords = jnp.stack([x_d, y_d], axis=-1)
