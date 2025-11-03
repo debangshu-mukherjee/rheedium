@@ -16,7 +16,7 @@ from jaxtyping import Array, Float
 
 from rheedium.simul import (
     compute_kinematic_intensities_with_ctrs,
-    simulate_rheed_pattern,
+    kinematic_simulator,
     wavelength_ang,
 )
 from rheedium.types import (
@@ -149,7 +149,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
         parameters in generate_reciprocal_points.
         """
-        var_simulate = self.variant(simulate_rheed_pattern)
+        var_simulate = self.variant(kinematic_simulator)
         
         pattern: RHEEDPattern = var_simulate(
             crystal=self.si_crystal,
@@ -218,8 +218,8 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
         parameters in generate_reciprocal_points.
         """
-        var_simulate = self.variant(simulate_rheed_pattern)
-        
+        var_simulate = self.variant(kinematic_simulator)
+
         # Simulate with and without CTR effects
         pattern_no_ctr: RHEEDPattern = var_simulate(
             crystal=self.si_crystal,
@@ -260,7 +260,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         """
         
         def loss_fn(temperature: scalar_float) -> scalar_float:
-            pattern = simulate_rheed_pattern(
+            pattern = kinematic_simulator(
                 crystal=self.si_crystal,
                 voltage_kv=20.0,
                 theta_deg=2.0,
@@ -290,7 +290,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         temperature: scalar_float,
     ) -> None:
         """Test that known Si reflections appear in the pattern."""
-        pattern: RHEEDPattern = simulate_rheed_pattern(
+        pattern: RHEEDPattern = kinematic_simulator(
             crystal=self.si_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,

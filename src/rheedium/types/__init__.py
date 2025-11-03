@@ -66,15 +66,20 @@ from .custom_types import (
 from .rheed_types import (
     RHEEDImage,
     RHEEDPattern,
+    SlicedCrystal,
+    bulk_to_slice,
     create_rheed_image,
     create_rheed_pattern,
+    create_sliced_crystal,
 )
 
 __all__ = [
+    "bulk_to_slice",
     "create_crystal_structure",
     "create_potential_slices",
     "create_rheed_image",
     "create_rheed_pattern",
+    "create_sliced_crystal",
     "create_xyz_data",
     "CrystalStructure",
     "float_image",
@@ -87,5 +92,6 @@ __all__ = [
     "scalar_float",
     "scalar_int",
     "scalar_num",
+    "SlicedCrystal",
     "XYZData",
 ]

@@ -18,6 +18,7 @@ notebooks/__pycache__/
 /.claude/ROADMAP.md
 /.claude/settings.local.json
 /.claude/RHEED_Physics.md
+/.claude/ROADMAP_multislice.md
 *.py[cod]
 
 # VS Code settings

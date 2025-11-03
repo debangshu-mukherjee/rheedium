@@ -2,10 +2,10 @@
 
 Extended Summary
 ----------------
-This module provides functions for simulating RHEED patterns using kinematic
-approximations with surface physics. It includes utilities for calculating
-electron wavelengths, scattering intensities, crystal truncation rods (CTRs),
-and complete diffraction patterns from crystal structures.
+This module provides functions for simulating RHEED patterns using both kinematic
+and dynamical (multislice) approximations with surface physics. It includes utilities
+for calculating electron wavelengths, scattering intensities, crystal truncation rods
+(CTRs), and complete diffraction patterns from crystal structures.
 
 Routine Listings
 ----------------
@@ -33,15 +33,20 @@ load_kirkland_parameters : function
     Load Kirkland scattering parameters from data file
 lorentzian_rod_profile : function
     Lorentzian lateral width profile of rods due to finite correlation length
+kinematic_simulator : function
+    Complete RHEED pattern simulation from crystal structure (kinematic)
+multislice_propagate : function
+    Propagate electron wave through potential slices using multislice algorithm
+multislice_simulator : function
+    Simulate RHEED pattern from potential slices using multislice (dynamical)
 project_on_detector : function
     Project reciprocal lattice points onto detector screen
 rod_profile_function : function
     Lateral width profile of rods due to finite correlation length
 roughness_damping : function
     Gaussian roughness damping factor for CTR intensities
-simulate_rheed_pattern : function
-    Complete RHEED pattern simulation from crystal structure to detector
-    pattern.
+sliced_crystal_to_potential : function
+    Convert SlicedCrystal to PotentialSlices for multislice simulation
 surface_structure_factor : function
     Calculate structure factor for surface with q_z dependence
 wavelength_ang : function
@@ -59,8 +64,11 @@ from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     find_kinematic_reflections,
     incident_wavevector,
+    kinematic_simulator,
+    multislice_propagate,
+    multislice_simulator,
     project_on_detector,
-    simulate_rheed_pattern,
+    sliced_crystal_to_potential,
     wavelength_ang,
 )
 from .surface_rods import (
@@ -83,13 +91,16 @@ __all__ = [
     "get_mean_square_displacement",
     "incident_wavevector",
     "integrated_rod_intensity",
+    "kinematic_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",
     "lorentzian_rod_profile",
+    "multislice_propagate",
+    "multislice_simulator",
     "project_on_detector",
     "rod_profile_function",
     "roughness_damping",
-    "simulate_rheed_pattern",
+    "sliced_crystal_to_potential",
     "surface_structure_factor",
     "wavelength_ang",
 ]
