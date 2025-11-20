@@ -31,6 +31,7 @@ from .simulator import (
     find_kinematic_reflections,
     incident_wavevector,
     wavelength_ang,
+    project_on_detector,
 )
 
 jax.config.update("jax_enable_x64", True)
@@ -307,7 +308,7 @@ def paper_kinematic_simulator(
     allowed_indices, k_out = find_kinematic_reflections(
         k_in=k_in,
         gs=reciprocal_points,
-        z_sign=-1.0,  # RHEED: downward scattering (k_out_z < 0)
+        z_sign=1.0,  # RHEED: upward scattering (k_out_z > 0)
         tolerance=tolerance,
     )
 
@@ -318,11 +319,10 @@ def paper_kinematic_simulator(
     # STEP 5: Project onto detector screen
     # Following paper's Equations 5-6
     # ========================================================================
-    detector_coords = paper_detector_projection(
+    detector_coords = project_on_detector(
         k_out=k_out,
-        k_in=k_in,
         detector_distance=detector_distance,
-        theta_deg=theta_deg,
+        k_in=k_in,
     )
 
     # ========================================================================
