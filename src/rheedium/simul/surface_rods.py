@@ -52,7 +52,7 @@ def calculate_ctr_intensity(
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
 ) -> Float[Array, "N M"]:
-    """Calculate continuous intensity along crystal truncation rods.
+    """Calculate continuous intensity along crystal truncation rods (CTRs).
 
     Description
     -----------
