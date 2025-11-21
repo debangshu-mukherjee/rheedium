@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
-from rheedium.simul.kinematic import (
+from rheedium.simul.paper_kinematic import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
     make_ewald_sphere,

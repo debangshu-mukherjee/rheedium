@@ -60,10 +60,8 @@ from .form_factors import (
     kirkland_form_factor,
     load_kirkland_parameters,
 )
-from .kinematic import (
-    kinematic_detector_projection,
-    kinematic_simulator,
-    kinematic_structure_factor,
+from .paper_kinematic import (
+    make_ewald_sphere,
     paper_detector_projection,
     paper_kinematic_simulator,
     simple_structure_factor,
@@ -98,12 +96,10 @@ __all__ = [
     "get_mean_square_displacement",
     "incident_wavevector",
     "integrated_rod_intensity",
-    "kinematic_detector_projection",
-    "kinematic_simulator",
-    "kinematic_structure_factor",
     "kirkland_form_factor",
     "load_kirkland_parameters",
     "lorentzian_rod_profile",
+    "make_ewald_sphere",
     "multislice_propagate",
     "multislice_simulator",
     "paper_detector_projection",

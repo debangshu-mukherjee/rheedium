@@ -102,7 +102,6 @@ def paper_detector_projection(
     theta_deg: scalar_float,
 ) -> Float[Array, "N 2"]:
     """Project scattered wavevectors onto detector screen.
-
     Following paper's Equations 5-6 for geometric projection.
 
     Parameters
@@ -174,7 +173,7 @@ def simple_structure_factor(
     atomic_numbers: Int[Array, "M"],
 ) -> Float[Array, ""]:
     """Calculate structure factor for a single reflection.
-
+    
     Following paper's Equation 7: F(G) = Σ_j f_j · exp(i·G·r_j)
 
     Parameters
