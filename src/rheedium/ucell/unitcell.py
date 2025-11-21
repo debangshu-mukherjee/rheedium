@@ -104,9 +104,7 @@ def reciprocal_unitcell(
     alpha_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
     )
-    beta_rad: Float[Array, ""] = jnp.where(
-        in_degrees, jnp.deg2rad(beta), beta
-    )
+    beta_rad: Float[Array, ""] = jnp.where(in_degrees, jnp.deg2rad(beta), beta)
     gamma_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(gamma), gamma
     )
@@ -155,9 +153,7 @@ def reciprocal_unitcell(
         out_degrees, jnp.rad2deg(gamma_star_rad), gamma_star_rad
     )
 
-    reciprocal_lengths: Float[Array, "3"] = jnp.array(
-        [a_star, b_star, c_star]
-    )
+    reciprocal_lengths: Float[Array, "3"] = jnp.array([a_star, b_star, c_star])
     reciprocal_angles: Float[Array, "3"] = jnp.array(
         [alpha_star, beta_star, gamma_star]
     )
@@ -196,7 +192,7 @@ def get_unit_cell_matrix(
     2. Calculate reciprocal lengths
     3. Calculate transformation matrix elements
     4. Return 3x3 transformation matrix
-    
+
     Examples
     --------
     >>> import rheedium as rh
@@ -262,7 +258,7 @@ def build_cell_vectors(
     -------
     Float[Array, "3 3"]
         Unit cell vectors as rows of 3x3 matrix.
-    
+
     Notes
     -----
     The algorithm proceeds as follows:
@@ -339,7 +335,7 @@ def compute_lengths_angles(
     4. Calculate angle between a and b vectors (γ)
     5. Convert angles to degrees
     6. Return lengths and angles
-    
+
     Examples
     --------
     >>> import rheedium as rh
@@ -499,7 +495,7 @@ def atom_scraper(
     3. Filter atoms within thickness
     4. Create new crystal structure with filtered atoms
     5. Return filtered crystal
-    
+
     Examples
     --------
     >>> import rheedium as rh
@@ -680,9 +676,7 @@ def reciprocal_lattice_vectors(
     alpha_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
     )
-    beta_rad: Float[Array, ""] = jnp.where(
-        in_degrees, jnp.deg2rad(beta), beta
-    )
+    beta_rad: Float[Array, ""] = jnp.where(in_degrees, jnp.deg2rad(beta), beta)
     gamma_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(gamma), gamma
     )

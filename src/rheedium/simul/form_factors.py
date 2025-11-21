@@ -213,9 +213,7 @@ def get_mean_square_displacement(
     b_factor: Float[Array, ""] = (
         base_b_factor * atomic_scaling * temperature_ratio
     )
-    surface_enhancement: Float[Array, ""] = jnp.asarray(
-        2.0, dtype=jnp.float64
-    )
+    surface_enhancement: Float[Array, ""] = jnp.asarray(2.0, dtype=jnp.float64)
     enhanced_b_factor: Float[Array, ""] = jnp.where(
         is_surface, b_factor * surface_enhancement, b_factor
     )

@@ -162,18 +162,18 @@ def parse_cif_and_scrape(
     Returns
     -------
     filtered_crystal : CrystalStructure
-        Crystal structure containing atoms filtered within the specified 
+        Crystal structure containing atoms filtered within the specified
         thickness.
 
 
     Notes
     -----
     - The provided `zone_axis` is normalized internally. Current implementation
-      uses thickness only along the zone axis direction 
+      uses thickness only along the zone axis direction
       (z-component of `thickness_xyz`).
     - The `tolerance` parameter is reserved for compatibility and future
       functionality.
-    
+
     The algorithm proceeds as follows:
 
     1. Parse CIF file to get initial crystal structure

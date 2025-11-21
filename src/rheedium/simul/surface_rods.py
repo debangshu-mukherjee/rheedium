@@ -93,9 +93,7 @@ def calculate_ctr_intensity(
     6. Apply roughness damping to intensity
     7. Return intensity array for all rods and q_z values
     """
-    atomic_positions: Float[Array, "n_atoms 3"] = crystal.cart_positions[
-        :, :3
-    ]
+    atomic_positions: Float[Array, "n_atoms 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "n_atoms"] = crystal.cart_positions[
         :, 3
     ].astype(jnp.int32)

@@ -2,8 +2,8 @@
 
 Extended Summary
 ----------------
-This module provides JAX-compatible implementations of modified Bessel 
-functions, which are essential for various calculations in crystallography and 
+This module provides JAX-compatible implementations of modified Bessel
+functions, which are essential for various calculations in crystallography and
 diffraction physics, particularly for atomic potential calculations.
 
 Routine Listings
@@ -254,9 +254,7 @@ def _bessel_kv_small_integer(
     k1: Float[Array, "..."] = log_i1_term + k1_poly / x
 
     kn_result: Float[Array, "..."] = _bessel_kn_recurrence(n, x, k0, k1)
-    pos_v_result: Float[Array, "..."] = jnp.where(
-        v >= 0, kn_result, kn_result
-    )
+    pos_v_result: Float[Array, "..."] = jnp.where(v >= 0, kn_result, kn_result)
     return pos_v_result
 
 
@@ -327,9 +325,7 @@ def _bessel_k_half(x: Float[Array, "..."]) -> Float[Array, "..."]:
 
 @jax.jit
 @jaxtyped(typechecker=beartype)
-def bessel_kv(
-    v: scalar_float, x: Float[Array, "..."]
-) -> Float[Array, "..."]:
+def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     """Compute the modified Bessel function of the second kind K_v(x).
 
     Computes K_v(x) for real order v >= 0 and x > 0, using a numerically stable

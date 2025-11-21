@@ -496,9 +496,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_calibration() -> (
-            Union[Float[Array, "2"], Float[Array, ""]]
-        ):
+        def _check_calibration() -> Union[Float[Array, "2"], Float[Array, ""]]:
             """Check the calibration is positive."""
 
             def _check_scalar_cal() -> Float[Array, ""]:
@@ -730,9 +728,7 @@ def create_sliced_crystal(
             return lax.cond(
                 jnp.logical_and(
                     cart_positions.ndim == 2,
-                    jnp.logical_and(
-                        cart_positions.shape[1] == 4, n_atoms > 0
-                    ),
+                    jnp.logical_and(cart_positions.shape[1] == 4, n_atoms > 0),
                 ),
                 lambda: cart_positions,
                 lambda: lax.stop_gradient(
@@ -980,15 +976,15 @@ def bulk_to_slice(
 
     def _rotation_matrix() -> Float[Array, "3 3"]:
         k: Float[Array, "3"] = rot_axis / (rot_axis_norm + 1e-10)
-        K: Float[Array, "3 3"] = jnp.array([
-            [0.0, -k[2], k[1]],
-            [k[2], 0.0, -k[0]],
-            [-k[1], k[0], 0.0],
-        ])
+        K: Float[Array, "3 3"] = jnp.array(
+            [
+                [0.0, -k[2], k[1]],
+                [k[2], 0.0, -k[0]],
+                [-k[1], k[0], 0.0],
+            ]
+        )
         R: Float[Array, "3 3"] = (
-            jnp.eye(3)
-            + jnp.sin(angle) * K
-            + (1 - jnp.cos(angle)) * (K @ K)
+            jnp.eye(3) + jnp.sin(angle) * K + (1 - jnp.cos(angle)) * (K @ K)
         )
         return R
 
@@ -1066,9 +1062,7 @@ def bulk_to_slice(
     combined_mask: Bool[Array, "M"] = x_mask & y_mask & z_mask
 
     # Select atoms within bounds
-    filtered_positions: Float[Array, "K 3"] = centered_positions[
-        combined_mask
-    ]
+    filtered_positions: Float[Array, "K 3"] = centered_positions[combined_mask]
     filtered_atomic_nums: Float[Array, "K"] = supercell_atomic_nums[
         combined_mask
     ]

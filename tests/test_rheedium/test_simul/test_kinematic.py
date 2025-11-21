@@ -10,12 +10,13 @@ import pytest
 from absl.testing import parameterized
 
 from rheedium.simul.kinematic import (
-    kinematic_detector_projection,
-    kinematic_ewald_sphere,
-    kinematic_incident_wavevector,
-    kinematic_simulator,
-    kinematic_structure_factor,
-    kinematic_wavelength,
+    find_kinematic_reflections as kinematic_ewald_sphere,
+    incident_wavevector as kinematic_incident_wavevector,
+    make_ewald_sphere,
+    paper_detector_projection as kinematic_detector_projection,
+    paper_kinematic_simulator as kinematic_simulator,
+    simple_structure_factor as kinematic_structure_factor,
+    wavelength_ang as kinematic_wavelength,
 )
 from rheedium.types import create_crystal_structure
 
@@ -257,6 +258,41 @@ class TestKinematicSimulator(chex.TestCase):
         # (This is a sanity check, not a strict requirement)
         max_coord = jnp.max(jnp.abs(pattern.detector_points))
         assert max_coord < 10000.0  # Not absurdly large
+
+
+
+class TestMakeEwaldSphere(chex.TestCase):
+    """Test Ewald sphere generation."""
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_ewald_sphere_geometry(self):
+        """Test center and radius calculation."""
+        var_make_sphere = self.variant(make_ewald_sphere)
+
+        # Setup
+        k_mag = 10.0  # 1/Å
+        theta_deg = 2.0
+        phi_deg = 0.0
+
+        center, radius = var_make_sphere(k_mag, theta_deg, phi_deg)
+
+        # Radius should be exactly k_mag
+        chex.assert_trees_all_close(radius, k_mag, rtol=1e-6)
+
+        # Center should be -k_in
+        # k_in magnitude is k_mag
+        center_mag = jnp.linalg.norm(center)
+        chex.assert_trees_all_close(center_mag, k_mag, rtol=1e-6)
+
+        # Check direction for theta=2, phi=0
+        # k_in = [k cos(theta), 0, -k sin(theta)] (approx, check sign convention)
+        # In kinematic.py: k_z = -k * sin(theta)
+        # So center = -k_in = [-kx, -ky, -kz]
+        # center_z = -(-k * sin(theta)) = k * sin(theta) > 0
+        
+        theta_rad = jnp.deg2rad(theta_deg)
+        expected_z = k_mag * jnp.sin(theta_rad)
+        chex.assert_trees_all_close(center[2], expected_z, rtol=1e-6)
 
 
 if __name__ == "__main__":

@@ -4,8 +4,8 @@ Extended Summary
 ----------------
 This module provides functions for simulating Reflection High-Energy Electron
 Diffraction (RHEED) patterns using kinematic approximations with proper atomic
-form factors and surface physics. It includes utilities for calculating 
-electron wavelengths, incident wavevectors, diffraction intensities with CTRs, 
+form factors and surface physics. It includes utilities for calculating
+electron wavelengths, incident wavevectors, diffraction intensities with CTRs,
 and complete RHEED patterns from crystal structures.
 
 Routine Listings
@@ -39,6 +39,7 @@ from rheedium.types import (
     CrystalStructure,
     PotentialSlices,
     RHEEDPattern,
+    SlicedCrystal,
     create_potential_slices,
     create_rheed_pattern,
     scalar_float,
@@ -314,7 +315,7 @@ def compute_kinematic_intensities_with_ctrs(
             atomic_num: scalar_int = atomic_numbers[atom_idx]
             atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
-            
+
             form_factor: scalar_float = atomic_scattering_factor(
                 atomic_number=atomic_num,
                 q_vector=q_vector,
@@ -333,19 +334,20 @@ def compute_kinematic_intensities_with_ctrs(
             atom_indices
         )
         structure_factor: complex = jnp.sum(contributions)
-        
+
         # Calculate CTR contribution
         hk_index: Int[Array, "2"] = jnp.array(
-            [jnp.round(g_vec[0]).astype(jnp.int32),
-             jnp.round(g_vec[1]).astype(jnp.int32)]
+            [
+                jnp.round(g_vec[0]).astype(jnp.int32),
+                jnp.round(g_vec[1]).astype(jnp.int32),
+            ]
         )
         q_z_value: Float[Array, ""] = q_vector[2]
 
         # Define integration range around q_z with detector acceptance
-        q_z_range: Float[Array, "2"] = jnp.array([
-            q_z_value - detector_acceptance,
-            q_z_value + detector_acceptance
-        ])
+        q_z_range: Float[Array, "2"] = jnp.array(
+            [q_z_value - detector_acceptance, q_z_value + detector_acceptance]
+        )
 
         ctr_intensity: scalar_float = integrated_rod_intensity(
             hk_index=hk_index,
@@ -355,17 +357,17 @@ def compute_kinematic_intensities_with_ctrs(
             detector_acceptance=detector_acceptance,
             temperature=temperature,
         )
-        
+
         kinematic_intensity: scalar_float = jnp.abs(structure_factor) ** 2
         total_intensity: scalar_float = kinematic_intensity + ctr_intensity
-        
+
         return total_intensity
 
     n_reflections: Int[Array, ""] = g_allowed.shape[0]
     reflection_indices: Int[Array, "N"] = jnp.arange(n_reflections)
-    intensities: Float[Array, "N"] = jax.vmap(
-        _calculate_reflection_intensity
-    )(reflection_indices)
+    intensities: Float[Array, "N"] = jax.vmap(_calculate_reflection_intensity)(
+        reflection_indices
+    )
 
     return intensities
 
@@ -493,9 +495,13 @@ def kinematic_simulator(
     k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg, phi_deg)
     allowed_indices: Int[Array, "K"]
     k_out: Float[Array, "K 3"]
-    allowed_indices, k_out = find_kinematic_reflections(
-        k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
+    kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
+        find_kinematic_reflections(
+            k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
+        )
     )
+    allowed_indices: Int[Array, "K"] = kr[0]
+    k_out: Float[Array, "K 3"] = kr[1]
     detector_points: Float[Array, "K 2"] = project_on_detector(
         k_out, detector_distance, k_in
     )
@@ -511,7 +517,7 @@ def kinematic_simulator(
         detector_acceptance=detector_acceptance,
         surface_fraction=surface_fraction,
     )
-    
+
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=allowed_indices,
         k_out=k_out,
@@ -523,11 +529,11 @@ def kinematic_simulator(
 
 @jaxtyped(typechecker=beartype)
 def sliced_crystal_to_potential(
-    sliced_crystal: "SlicedCrystal",
+    sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
     pixel_size: scalar_float = 0.1,
     voltage_kv: scalar_float = 20.0,
-) -> "PotentialSlices":
+) -> PotentialSlices:
     """Convert a SlicedCrystal into PotentialSlices for multislice calculation.
 
     This function takes a surface-oriented crystal slab and generates 3D
@@ -678,9 +684,9 @@ def sliced_crystal_to_potential(
 
     # Calculate all slices
     slice_indices: Int[Array, "nz"] = jnp.arange(nz)
-    all_slices: Float[Array, "nz nx ny"] = jax.vmap(_calculate_slice_potential)(
-        slice_indices
-    )
+    all_slices: Float[Array, "nz nx ny"] = jax.vmap(
+        _calculate_slice_potential
+    )(slice_indices)
 
     # Create PotentialSlices
     potential_slices: PotentialSlices = create_potential_slices(
@@ -805,8 +811,7 @@ def multislice_propagate(
 
     # Multislice propagation loop
     def _propagate_one_slice(
-        psi_in: Float[Array, "nx ny"],
-        V_slice: Float[Array, "nx ny"]
+        psi_in: Float[Array, "nx ny"], V_slice: Float[Array, "nx ny"]
     ) -> tuple[Float[Array, "nx ny"], None]:
         """Propagate through one slice: transmit then propagate.
 
@@ -949,11 +954,13 @@ def multislice_simulator(
     # Incident wavevector
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
-    k_in: Float[Array, "3"] = k_mag * jnp.array([
-        jnp.cos(theta_rad) * jnp.cos(phi_rad),
-        jnp.cos(theta_rad) * jnp.sin(phi_rad),
-        jnp.sin(theta_rad),
-    ])
+    k_in: Float[Array, "3"] = k_mag * jnp.array(
+        [
+            jnp.cos(theta_rad) * jnp.cos(phi_rad),
+            jnp.cos(theta_rad) * jnp.sin(phi_rad),
+            jnp.sin(theta_rad),
+        ]
+    )
 
     # For each point in k-space, calculate k_out on Ewald sphere
     # k_out = k_in + G, where G = (kx, ky, kz)
@@ -966,9 +973,7 @@ def multislice_simulator(
 
     # Perpendicular component from Ewald sphere:
     # k_out_z² = k_mag² - k_out_x² - k_out_y²
-    k_out_z_squared: Float[Array, "nx ny"] = (
-        k_mag**2 - k_out_x**2 - k_out_y**2
-    )
+    k_out_z_squared: Float[Array, "nx ny"] = k_mag**2 - k_out_x**2 - k_out_y**2
 
     # Only real solutions (positive k_out_z²) correspond to propagating waves
     # Evanescent waves (k_out_z² < 0) don't reach detector
@@ -1017,16 +1022,18 @@ def multislice_simulator(
     intensity_filtered: Float[Array, "m"] = intensity_flat[nonzero_mask]
 
     # Reconstruct k_out vectors
-    k_out_filtered: Float[Array, "m 3"] = jnp.column_stack([
-        k_out_x_flat[nonzero_mask],
-        k_out_y_flat[nonzero_mask],
-        k_out_z_flat[nonzero_mask],
-    ])
+    k_out_filtered: Float[Array, "m 3"] = jnp.column_stack(
+        [
+            k_out_x_flat[nonzero_mask],
+            k_out_y_flat[nonzero_mask],
+            k_out_z_flat[nonzero_mask],
+        ]
+    )
 
     # Create detector points array
-    detector_points: Float[Array, "m 2"] = jnp.column_stack([
-        det_x_filtered, det_y_filtered
-    ])
+    detector_points: Float[Array, "m 2"] = jnp.column_stack(
+        [det_x_filtered, det_y_filtered]
+    )
 
     # Create dummy g_indices (not well-defined for multislice)
     # Use flattened grid indices instead
@@ -1041,4 +1048,3 @@ def multislice_simulator(
     )
 
     return pattern
-

@@ -438,9 +438,7 @@ def create_potential_slices(
                 ),
             )
 
-        def _check_slice_dimensions() -> (
-            Float[Array, "n_slices height width"]
-        ):
+        def _check_slice_dimensions() -> Float[Array, "n_slices height width"]:
             return lax.cond(
                 jnp.logical_and(slices.shape[1] > 0, slices.shape[2] > 0),
                 lambda: slices,
