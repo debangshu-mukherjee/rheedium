@@ -41,7 +41,7 @@ from rheedium.types import (
     scalar_float,
     scalar_int,
 )
-from rheedium.ucell import generate_reciprocal_points
+from rheedium.ucell import generate_reciprocal_points, reciprocal_lattice_vectors
 
 from .simulator import (
     find_kinematic_reflections,
@@ -369,3 +369,233 @@ def paper_kinematic_simulator(
         intensities=intensities,
     )
     return pattern
+
+
+@jaxtyped(typechecker=beartype)
+def find_ctr_ewald_intersection(
+    h: scalar_int,
+    k: scalar_int,
+    k_in: Float[Array, "3"],
+    recip_a: Float[Array, "3"],
+    recip_b: Float[Array, "3"],
+) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
+    """Find where a crystal truncation rod (h, k, l) intersects the Ewald sphere.
+
+    For a surface, the reciprocal lattice consists of rods extending perpendicular
+    to the surface (along z). Each rod is labeled by in-plane indices (h, k) and
+    has continuous l. This function finds the l value(s) where the rod intersects
+    the Ewald sphere.
+
+    Parameters
+    ----------
+    h : scalar_int
+        In-plane Miller index h.
+    k : scalar_int
+        In-plane Miller index k.
+    k_in : Float[Array, "3"]
+        Incident wavevector.
+    recip_a : Float[Array, "3"]
+        First reciprocal lattice vector (a*).
+    recip_b : Float[Array, "3"]
+        Second reciprocal lattice vector (b*).
+
+    Returns
+    -------
+    l_intersect : Float[Array, ""]
+        The l value where the rod intersects the Ewald sphere (upward scattering).
+    k_out : Float[Array, "3"]
+        The scattered wavevector at the intersection.
+    valid : Float[Array, ""]
+        1.0 if intersection exists and is physical, 0.0 otherwise.
+
+    Notes
+    -----
+    The Ewald sphere condition is: |k_out|² = |k_in|²
+
+    For a CTR at (h, k), the reciprocal space position is:
+        G(l) = h·a* + k·b* + l·c*
+
+    where c* is perpendicular to the surface (along z).
+
+    The scattered wavevector is:
+        k_out = k_in + G(l)
+
+    Substituting and solving for l (with c* = [0, 0, c*_z]):
+        |k_in + h·a* + k·b* + l·c*|² = |k_in|²
+
+    This is a quadratic in l. We want the solution with k_out_z > 0 (upward).
+    """
+    k_mag_sq: Float[Array, ""] = jnp.dot(k_in, k_in)
+    g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
+    k_plus_ghk: Float[Array, "3"] = k_in + g_hk
+    c_star_z: Float[Array, ""] = jnp.linalg.norm(recip_a)
+    a_coef: Float[Array, ""] = c_star_z**2
+    b_coef: Float[Array, ""] = 2.0 * k_plus_ghk[2] * c_star_z
+    c_coef: Float[Array, ""] = jnp.dot(k_plus_ghk, k_plus_ghk) - k_mag_sq
+    discriminant: Float[Array, ""] = b_coef**2 - 4.0 * a_coef * c_coef
+    has_solution: Float[Array, ""] = discriminant >= 0
+    disc_safe: Float[Array, ""] = jnp.maximum(discriminant, 0.0)
+    sqrt_disc: Float[Array, ""] = jnp.sqrt(disc_safe)
+    l1: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
+    l2: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
+    k_out1_z: Float[Array, ""] = k_plus_ghk[2] + l1 * c_star_z
+    k_out2_z: Float[Array, ""] = k_plus_ghk[2] + l2 * c_star_z
+    l_intersect: Float[Array, ""] = jnp.where(k_out1_z > 0, l1, l2)
+    k_out_z_chosen: Float[Array, ""] = jnp.where(k_out1_z > 0, k_out1_z, k_out2_z)
+    valid: Float[Array, ""] = has_solution & (k_out_z_chosen > 0)
+    k_out: Float[Array, "3"] = k_plus_ghk + jnp.array(
+        [0.0, 0.0, l_intersect * c_star_z]
+    )
+    return l_intersect, k_out, valid.astype(jnp.float64)
+
+
+@jaxtyped(typechecker=beartype)
+def streak_simulator(
+    crystal: CrystalStructure,
+    voltage_kv: scalar_float = 20.0,
+    theta_deg: scalar_float = 2.0,
+    hmax: scalar_int = 3,
+    kmax: scalar_int = 3,
+    detector_distance: scalar_float = 100.0,
+    points_per_streak: scalar_int = 50,
+) -> Tuple[Float[Array, "N 2"], Float[Array, "N"], Int[Array, "N 2"]]:
+    """Simulate RHEED streak pattern from crystal truncation rods.
+
+    This function properly models RHEED as diffraction from a surface where
+    the reciprocal lattice consists of continuous rods (CTRs) rather than
+    discrete points. Each rod intersects the Ewald sphere along an arc,
+    producing the characteristic vertical streaks seen in RHEED patterns.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure with atomic positions and cell parameters.
+    voltage_kv : scalar_float, optional
+        Electron beam voltage in kilovolts. Default: 20.0
+    theta_deg : scalar_float, optional
+        Grazing incidence angle in degrees. Default: 2.0
+    hmax : scalar_int, optional
+        Maximum h Miller index. Default: 3
+    kmax : scalar_int, optional
+        Maximum k Miller index. Default: 3
+    detector_distance : scalar_float, optional
+        Sample-to-screen distance in mm. Default: 100.0
+    points_per_streak : scalar_int, optional
+        Number of points to sample along each streak. Default: 50
+
+    Returns
+    -------
+    detector_coords : Float[Array, "N 2"]
+        [x, y] coordinates on detector screen for all streak points.
+    intensities : Float[Array, "N"]
+        Intensity values for each point (includes CTR decay with l).
+    hk_indices : Int[Array, "N 2"]
+        The (h, k) indices for each point, identifying which streak it belongs to.
+
+    Notes
+    -----
+    Physics of RHEED streaks:
+
+    1. Surface breaks translational symmetry in z-direction
+    2. Reciprocal lattice becomes rods: discrete (h,k), continuous l
+    3. Each rod intersects Ewald sphere where |k_in + G|² = |k_in|²
+    4. CTR intensity varies as 1/sin²(πl) for ideal termination
+    5. Projection onto detector creates vertical streaks
+
+    The streak length depends on:
+    - Ewald sphere curvature (electron wavelength)
+    - Grazing angle (determines accessible l range)
+    - Detector geometry
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> crystal = rh.inout.parse_cif("MgO.cif")
+    >>> coords, intensities, hk = rh.simul.streak_simulator(
+    ...     crystal=crystal,
+    ...     voltage_kv=15.0,
+    ...     theta_deg=2.0,
+    ... )
+    >>> # Plot as scatter with varying intensity
+    >>> import matplotlib.pyplot as plt
+    >>> plt.scatter(coords[:, 0], coords[:, 1], c=intensities, s=1)
+    """
+    wavelength: scalar_float = wavelength_ang(voltage_kv)
+    k_in: Float[Array, "3"] = incident_wavevector(wavelength, theta_deg, phi_deg=0.0)
+    k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
+    recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        *crystal.cell_lengths, *crystal.cell_angles, in_degrees=True
+    )
+    recip_a: Float[Array, "3"] = recip_vecs[0]
+    recip_b: Float[Array, "3"] = recip_vecs[1]
+    recip_c: Float[Array, "3"] = recip_vecs[2]
+    c_star_z: Float[Array, ""] = jnp.abs(recip_c[2])
+    h_range: Int[Array, "H"] = jnp.arange(-hmax, hmax + 1, dtype=jnp.int32)
+    k_range: Int[Array, "K"] = jnp.arange(-kmax, kmax + 1, dtype=jnp.int32)
+    hh, kk = jnp.meshgrid(h_range, k_range, indexing="ij")
+    h_flat: Int[Array, "M"] = hh.flatten()
+    k_flat: Int[Array, "M"] = kk.flatten()
+    n_rods: int = h_flat.shape[0]
+    all_detector_coords = []
+    all_intensities = []
+    all_hk_indices = []
+
+    for i in range(n_rods):
+        h_i = h_flat[i]
+        k_i = k_flat[i]
+        g_hk: Float[Array, "3"] = h_i * recip_a + k_i * recip_b
+        k_plus_ghk: Float[Array, "3"] = k_in + g_hk
+        a_coef: Float[Array, ""] = c_star_z**2
+        b_coef: Float[Array, ""] = 2.0 * k_plus_ghk[2] * c_star_z
+        c_coef: Float[Array, ""] = jnp.dot(k_plus_ghk, k_plus_ghk) - k_mag**2
+        discriminant: Float[Array, ""] = b_coef**2 - 4.0 * a_coef * c_coef
+        has_solution = discriminant >= 0
+        if not has_solution:
+            continue
+        sqrt_disc: Float[Array, ""] = jnp.sqrt(jnp.maximum(discriminant, 0.0))
+        l1: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
+        l2: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
+        l_min: Float[Array, ""] = jnp.minimum(l1, l2)
+        l_max: Float[Array, ""] = jnp.maximum(l1, l2)
+        l_values: Float[Array, "P"] = jnp.linspace(
+            l_min - 2.0, l_max + 2.0, points_per_streak
+        )
+        g_points: Float[Array, "P 3"] = g_hk[None, :] + l_values[:, None] * recip_c[
+            None, :
+        ]
+        k_out_points: Float[Array, "P 3"] = k_in[None, :] + g_points
+        k_out_mags: Float[Array, "P"] = jnp.linalg.norm(k_out_points, axis=1)
+        ewald_deviation: Float[Array, "P"] = jnp.abs(k_out_mags - k_mag)
+        tolerance: Float[Array, ""] = 0.3 * k_mag
+        on_ewald: Float[Array, "P"] = ewald_deviation < tolerance
+        upward: Float[Array, "P"] = k_out_points[:, 2] > 0.0
+        valid_mask: Float[Array, "P"] = on_ewald & upward
+        if not jnp.any(valid_mask):
+            continue
+        valid_k_out: Float[Array, "V 3"] = k_out_points[valid_mask]
+        valid_l: Float[Array, "V"] = l_values[valid_mask]
+        det_coords: Float[Array, "V 2"] = project_on_detector(
+            k_out=valid_k_out,
+            detector_distance=detector_distance,
+            k_in=k_in,
+        )
+        l_safe: Float[Array, "V"] = jnp.where(
+            jnp.abs(valid_l) < 0.1, jnp.sign(valid_l) * 0.1 + 0.1, valid_l
+        )
+        ctr_intensity: Float[Array, "V"] = 1.0 / (jnp.sin(jnp.pi * l_safe) ** 2 + 0.01)
+        ctr_intensity = ctr_intensity / ctr_intensity.max()
+        all_detector_coords.append(det_coords)
+        all_intensities.append(ctr_intensity)
+        hk_for_streak: Int[Array, "V 2"] = jnp.tile(
+            jnp.array([h_i, k_i]), (det_coords.shape[0], 1)
+        )
+        all_hk_indices.append(hk_for_streak)
+    if len(all_detector_coords) == 0:
+        empty_coords: Float[Array, "0 2"] = jnp.zeros((0, 2))
+        empty_intensities: Float[Array, "0"] = jnp.zeros((0,))
+        empty_hk: Int[Array, "0 2"] = jnp.zeros((0, 2), dtype=jnp.int32)
+        return empty_coords, empty_intensities, empty_hk
+    detector_coords: Float[Array, "N 2"] = jnp.concatenate(all_detector_coords, axis=0)
+    intensities: Float[Array, "N"] = jnp.concatenate(all_intensities, axis=0)
+    hk_indices: Int[Array, "N 2"] = jnp.concatenate(all_hk_indices, axis=0)
+    return detector_coords, intensities, hk_indices

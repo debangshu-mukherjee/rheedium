@@ -61,10 +61,12 @@ from .form_factors import (
     load_kirkland_parameters,
 )
 from .paper_kinematic import (
+    find_ctr_ewald_intersection,
     make_ewald_sphere,
     paper_detector_projection,
     paper_kinematic_simulator,
     simple_structure_factor,
+    streak_simulator,
 )
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
@@ -99,12 +101,14 @@ __all__ = [
     "kirkland_form_factor",
     "load_kirkland_parameters",
     "lorentzian_rod_profile",
+    "find_ctr_ewald_intersection",
     "make_ewald_sphere",
     "multislice_propagate",
     "multislice_simulator",
     "paper_detector_projection",
     "paper_kinematic_simulator",
     "project_on_detector",
+    "streak_simulator",
     "rod_profile_function",
     "roughness_damping",
     "simple_structure_factor",
