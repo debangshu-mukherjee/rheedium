@@ -45,6 +45,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
+    "nbsphinx",
     "myst_parser",
 ]
 
@@ -55,6 +56,13 @@ source_suffix = {
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# -- nbsphinx configuration --------------------------------------------------
+
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+nbsphinx_input_prompt = "In [%s]:"
+nbsphinx_output_prompt = "Out [%s]:"
 
 # -- Options for HTML output -------------------------------------------------
 

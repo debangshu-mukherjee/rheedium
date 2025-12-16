@@ -9,6 +9,7 @@ Welcome to Rheedium's documentation!
    :caption: Contents:
 
    api
+   tutorials/index
 
 Indices and tables
 ==================

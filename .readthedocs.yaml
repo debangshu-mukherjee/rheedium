@@ -4,9 +4,13 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
+  apt_packages:
+    - pandoc
   jobs:
     pre_build:
       - export JAX_PLATFORMS=cpu
+      - python docs/update_tutorials_index.py
+      - rm -rf docs/source/tutorials && cp -r tutorials docs/source/tutorials
 
 python:
   install:
