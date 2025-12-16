@@ -2543,7 +2543,7 @@ wheels = [
 
 [[package]]
 name = "rheedium"
-version = "2025.9.10"
+version = "2025.9.30"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -2593,6 +2593,27 @@ cuda = [
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 dev = [
+    { name = "black", extra = ["jupyter"] },
+    { name = "build" },
+    { name = "chex" },
+    { name = "furo" },
+    { name = "ipykernel" },
+    { name = "ipywidgets" },
+    { name = "myst-parser" },
+    { name = "nbconvert" },
+    { name = "nbsphinx" },
+    { name = "numpydoc" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "sphinx" },
+    { name = "sphinx-autobuild" },
+    { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-rtd-theme" },
+    { name = "twine" },
+]
+dev-cuda = [
     { name = "black", extra = ["jupyter"] },
     { name = "build" },
     { name = "chex" },
@@ -2676,8 +2697,9 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.5" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0.0" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.0.0" },
+    { name = "rheedium", extras = ["dev", "cuda"], marker = "extra == 'dev-cuda'" },
     { name = "rheedium", extras = ["docs", "test", "dev", "notebooks", "cuda"], marker = "extra == 'all'" },
-    { name = "rheedium", extras = ["docs", "test", "notebooks", "cuda"], marker = "extra == 'dev'" },
+    { name = "rheedium", extras = ["docs", "test", "notebooks"], marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.9" },
     { name = "scipy", specifier = ">=1.14.1" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0.0" },
@@ -2687,7 +2709,7 @@ requires-dist = [
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.1.0" },
 ]
-provides-extras = ["cuda", "docs", "test", "notebooks", "dev", "all"]
+provides-extras = ["cuda", "docs", "test", "notebooks", "dev", "dev-cuda", "all"]
 
 [[package]]
 name = "rich"

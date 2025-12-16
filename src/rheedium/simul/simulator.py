@@ -150,7 +150,7 @@ def project_on_detector(
     k_out : Float[Array, "N 3"]
         Array of output wavevectors.
     detector_distance : scalar_float
-        Distance from sample to detector in angstroms.
+        Distance from sample to detector in mm.
     k_in : Float[Array, "3"]
         Incident wavevector used to determine detector orientation.
         The detector is perpendicular to the in-plane component of k_in.
@@ -158,7 +158,7 @@ def project_on_detector(
     Returns
     -------
     detector_coords : Float[Array, "N 2"]
-        [horizontal, vertical] coordinates on detector plane in angstroms.
+        [horizontal, vertical] coordinates on detector plane in mm.
         Horizontal direction is perpendicular to beam (in surface plane).
         Vertical direction is along surface normal (z-direction).
     """
@@ -419,7 +419,7 @@ def kinematic_simulator(
         Tolerance for reflection condition |k_out| = |k_in|.
         Default: 0.05
     detector_distance : scalar_float, optional
-        Distance from sample to detector plane in angstroms.
+        Distance from sample to detector plane in mm.
         Default: 1000.0
     z_sign : scalar_float, optional
         If -1, keep reflections with negative z in k_out (standard RHEED).

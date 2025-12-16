@@ -58,7 +58,7 @@ class RHEEDPattern(NamedTuple):
         is the number of reflections and each row contains [kx, ky, kz]
         components.
     detector_points : Float[Array, "M 2"]
-        Detector coordinates (Y, Z) on the detector plane in Ångstroms.
+        Detector coordinates (Y, Z) on the detector plane in mm.
         Shape (M, 2) where each row contains [y, z] coordinates.
     intensities : Float[Array, "M"]
         Intensity values for each reflection. Shape (M,) with non-negative
@@ -152,7 +152,7 @@ class RHEEDImage(NamedTuple):
         Wavelength of the electrons in Ångstroms. Determines the diffraction
         geometry and resolution.
     detector_distance : scalar_float
-        Distance from the sample to the detector in Ångstroms. Affects the
+        Distance from the sample to the detector in mm. Affects the
         angular resolution and reciprocal space mapping.
 
     Notes
@@ -240,7 +240,7 @@ def create_rheed_pattern(
     k_out : Float[Array, "M 3"]
         Outgoing wavevectors (in 1/Å) for those reflections.
     detector_points : Float[Array, "M 2"]
-        (Y, Z) coordinates on the detector plane, in Ångstroms.
+        (Y, Z) coordinates on the detector plane, in mm.
     intensities : Float[Array, "M"]
         Intensities for each reflection.
 
@@ -385,7 +385,7 @@ def create_rheed_image(
     electron_wavelength : scalar_float
         The wavelength of the electrons in Ångstroms.
     detector_distance : scalar_num
-        The distance from the sample to the detector in Ångstroms.
+        The distance from the sample to the detector in mm.
 
     Returns
     -------

@@ -78,13 +78,16 @@ notebooks = [
     "nbconvert>=7.16.6",
 ]
 dev = [
-    "rheedium[docs,test,notebooks,cuda]",
+    "rheedium[docs,test,notebooks]",
     "black[jupyter]>=25.1.0",
     "build>=1.2.2.post1",
     "twine>=6.1.0",
     "ipywidgets>=8.1.0",
     "ruff>=0.12.9",
     "twine>=6.0.1",
+]
+dev_cuda = [
+    "rheedium[dev,cuda]",
 ]
 all = [
     "rheedium[docs,test,dev,notebooks,cuda]",
