@@ -11,7 +11,7 @@ from rheedium.types.crystal_types import (
     XYZData,
     create_crystal_structure,
     create_potential_slices,
-    make_xyz_data,
+    create_xyz_data,
 )
 
 
@@ -306,14 +306,14 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         self.rng = jax.random.PRNGKey(42)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_make_xyz_data_minimal(self) -> None:
+    def test_create_xyz_data_minimal(self) -> None:
         """Test creation of XYZData with minimal required fields."""
         n_atoms = 10
         positions = jax.random.normal(self.rng, (n_atoms, 3))
         atomic_numbers = jnp.array([6, 8] * 5)
 
-        # make_xyz_data is a foreign interface function, use variant without JIT
-        make_fn = self.variant(make_xyz_data)
+        # create_xyz_data is a foreign interface function, use variant without JIT
+        make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
         chex.assert_shape(xyz_data.positions, (n_atoms, 3))
@@ -325,7 +325,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(xyz_data.comment, None)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_make_xyz_data_full(self) -> None:
+    def test_create_xyz_data_full(self) -> None:
         """Test creation of XYZData with all optional fields."""
         n_atoms = 5
         positions = jax.random.normal(self.rng, (n_atoms, 3))
@@ -338,8 +338,8 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         ]
         comment = "Test XYZ structure"
 
-        # make_xyz_data is a foreign interface function, use variant without JIT
-        make_fn = self.variant(make_xyz_data)
+        # create_xyz_data is a foreign interface function, use variant without JIT
+        make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(
             positions,
             atomic_numbers,
@@ -368,8 +368,8 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         lattice = jnp.eye(3)
         energy = -10.0
 
-        # make_xyz_data is a foreign interface function, use variant without JIT
-        make_fn = self.variant(make_xyz_data)
+        # create_xyz_data is a foreign interface function, use variant without JIT
+        make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(
             positions, atomic_numbers, lattice=lattice, energy=energy
         )
@@ -412,9 +412,9 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         if include_energy:
             kwargs["energy"] = jax.random.normal(self.rng, ())
 
-        # make_xyz_data is a foreign interface function, use variant without JIT
-        var_make_xyz_data = self.variant(make_xyz_data)
-        xyz_data = var_make_xyz_data(positions, atomic_numbers, **kwargs)
+        # create_xyz_data is a foreign interface function, use variant without JIT
+        var_create_xyz_data = self.variant(create_xyz_data)
+        xyz_data = var_create_xyz_data(positions, atomic_numbers, **kwargs)
 
         chex.assert_shape(xyz_data.positions, (n_atoms, 3))
         chex.assert_shape(xyz_data.atomic_numbers, (n_atoms,))
@@ -428,12 +428,12 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_xyz_data_jit_compilation(self) -> None:
         """Test JIT compilation of operations on XYZData."""
-        # Create XYZData outside JIT since make_xyz_data is a foreign interface
+        # Create XYZData outside JIT since create_xyz_data is a foreign interface
         n_atoms = 5
         positions = jnp.ones((n_atoms, 3))
         atomic_numbers = jnp.ones(n_atoms, dtype=jnp.int32) * 6
         lattice = jnp.eye(3) * 5.0
-        xyz_data = make_xyz_data(positions, atomic_numbers, lattice=lattice)
+        xyz_data = create_xyz_data(positions, atomic_numbers, lattice=lattice)
 
         def process_xyz_data(xyz: XYZData) -> jnp.ndarray:
             return jnp.sum(xyz.positions) + jnp.sum(xyz.atomic_numbers)
@@ -452,18 +452,18 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         def create_with_wrong_shape_positions() -> jnp.ndarray:
             wrong_shape_positions = jnp.ones((5, 4))
             atomic_numbers = jnp.ones(5, dtype=jnp.int32)
-            return make_xyz_data(wrong_shape_positions, atomic_numbers)
+            return create_xyz_data(wrong_shape_positions, atomic_numbers)
 
         def create_with_wrong_count_atomic() -> jnp.ndarray:
             positions = jnp.ones((5, 3))
             wrong_count_atomic = jnp.ones(4, dtype=jnp.int32)
-            return make_xyz_data(positions, wrong_count_atomic)
+            return create_xyz_data(positions, wrong_count_atomic)
 
         def create_with_wrong_shape_lattice() -> jnp.ndarray:
             positions = jnp.ones((5, 3))
             atomic_numbers = jnp.ones(5, dtype=jnp.int32)
             wrong_shape_lattice = jnp.ones((2, 3))
-            return make_xyz_data(
+            return create_xyz_data(
                 positions, atomic_numbers, lattice=wrong_shape_lattice
             )
 
@@ -484,8 +484,8 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         positions = jnp.ones((n_atoms, 3))
         atomic_numbers = jnp.ones(n_atoms, dtype=jnp.int32)
 
-        # make_xyz_data is a foreign interface function, use variant without JIT
-        make_fn = self.variant(make_xyz_data)
+        # create_xyz_data is a foreign interface function, use variant without JIT
+        make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
         def scale_positions(x: jnp.ndarray) -> jnp.ndarray:
@@ -520,7 +520,7 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
             jnp.ones((10, 32, 32)), 2.0, 0.1, 0.1
         )
 
-        xyz_data = make_xyz_data(
+        xyz_data = create_xyz_data(
             jnp.ones((n_atoms, 3)), jnp.ones(n_atoms, dtype=jnp.int32)
         )
 

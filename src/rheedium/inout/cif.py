@@ -179,7 +179,9 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
             continue
         if in_sym_loop and stripped_line and not stripped_line.startswith("_"):
             if "_symmetry_equiv_pos_as_xyz" in sym_loop_columns:
-                xyz_col_idx = sym_loop_columns.index("_symmetry_equiv_pos_as_xyz")
+                xyz_col_idx = sym_loop_columns.index(
+                    "_symmetry_equiv_pos_as_xyz"
+                )
                 match = re.search(r"'([^']+)'", stripped_line)
                 if not match:
                     match = re.search(r'"([^"]+)"', stripped_line)
@@ -192,11 +194,19 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
                         if "," in op:
                             sym_ops.append(op)
             elif not sym_loop_columns:
-                if stripped_line.startswith("'") and stripped_line.endswith("'"):
+                if stripped_line.startswith("'") and stripped_line.endswith(
+                    "'"
+                ):
                     sym_ops.append(stripped_line.strip("'").strip())
-                elif stripped_line.startswith('"') and stripped_line.endswith('"'):
+                elif stripped_line.startswith('"') and stripped_line.endswith(
+                    '"'
+                ):
                     sym_ops.append(stripped_line.strip('"').strip())
-        elif in_sym_loop and stripped_line.startswith("_") and not stripped_line.startswith("_symmetry"):
+        elif (
+            in_sym_loop
+            and stripped_line.startswith("_")
+            and not stripped_line.startswith("_symmetry")
+        ):
             in_sym_loop = False
 
     if not sym_ops:

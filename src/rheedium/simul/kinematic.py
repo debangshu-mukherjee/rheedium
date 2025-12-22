@@ -1,26 +1,26 @@
-"""Kinematic RHEED simulator following arXiv:2207.06642 exactly.
+"""Kinematic RHEED simulator.
 
 Extended Summary
 ----------------
-This module provides a detector projection function that matches the paper's
-equations exactly. It reuses wavelength, wavevector, and Ewald sphere functions
-from simulator.py, only providing the paper-specific detector projection.
+This module provides kinematic RHEED simulation functions including detector
+projection, structure factor calculation, and complete pattern simulation.
+Implements the algorithm from arXiv:2207.06642.
 
 Routine Listings
 ----------------
 make_ewald_sphere : function
     Generate Ewald sphere geometry from scattering parameters
-paper_detector_projection : function
+kinematic_detector_projection : function
     Project scattered wavevectors onto detector screen
 simple_structure_factor : function
     Calculate structure factor for a single reflection
-paper_kinematic_simulator : function
-    Kinematic RHEED simulator following arXiv:2207.06642
+kinematic_simulator : function
+    Kinematic RHEED simulator
 
 Notes
 -----
 Key difference from simulator.py:
-- Uses paper's Equations 5-6 for detector projection
+- Uses Equations 5-6 for detector projection
 - Simplified structure factors (f_j ≈ Z_j instead of Kirkland)
 
 References
@@ -41,12 +41,14 @@ from rheedium.types import (
     scalar_float,
     scalar_int,
 )
-from rheedium.ucell import generate_reciprocal_points, reciprocal_lattice_vectors
+from rheedium.ucell import (
+    generate_reciprocal_points,
+    reciprocal_lattice_vectors,
+)
 
 from .simulator import (
     find_kinematic_reflections,
     incident_wavevector,
-    project_on_detector,
     wavelength_ang,
 )
 
@@ -95,14 +97,15 @@ def make_ewald_sphere(
 
 
 @jaxtyped(typechecker=beartype)
-def paper_detector_projection(
+def kinematic_detector_projection(
     k_out: Float[Array, "N 3"],
     k_in: Float[Array, "3"],
     detector_distance: scalar_float,
     theta_deg: scalar_float,
 ) -> Float[Array, "N 2"]:
     """Project scattered wavevectors onto detector screen.
-    Following paper's Equations 5-6 for geometric projection.
+
+    Implements the inverse of paper's Equations 5-6 for geometric projection.
 
     Parameters
     ----------
@@ -111,7 +114,7 @@ def paper_detector_projection(
     k_in : Float[Array, "3"]
         Incident wavevector
     detector_distance : scalar_float
-        Distance from sample to detector screen (in mm typically)
+        Distance from sample to detector screen (d, in mm typically)
     theta_deg : scalar_float
         Grazing incidence angle in degrees
 
@@ -122,46 +125,72 @@ def paper_detector_projection(
 
     Notes
     -----
-    Paper's Equations 5-6:
+    Paper's Equations 5-6 map detector → reciprocal space:
 
-        x_d = d · (k_out_x / k_out_z)                                [Eq. 5]
+        x = k₀ · x_d / √(d² + x_d² + y_d²)               [Eq. 5]
+        y = k₀ · (-d / √(d² + x_d² + y_d²) + cos θ)      [Eq. 6]
 
-        y_d = d · (k_out_y - k_in_y) / (k_out_z - k_in_z) + d·tan(θ) [Eq. 6]
+    where:
+        - (x_d, y_d) are detector coordinates
+        - (x, y) are momentum transfer components (in reciprocal space)
+        - k₀ = |k_in| is the wavevector magnitude
+        - d is detector distance
+        - θ is grazing incidence angle
+
+    This function implements the **inverse transformation** (reciprocal → detector):
+
+        From Eq. 6: R = d / (cos θ - y/k₀)     where R = √(d² + x_d² + y_d²)
+        From Eq. 5: x_d = x · R / k₀
+        From geometry: y_d = √(R² - d² - x_d²)  (taking positive root for upward)
 
     Geometry:
-        - Detector is vertical screen perpendicular to surface
-        - Located at distance d from sample
-        - x_d is horizontal (perpendicular to incident beam)
-        - y_d is vertical (along surface normal, with offset from θ)
-        - Our coordinate system has z pointing UP (surface normal).
-        - Both k_in_z and k_out_z are negative (beams going down to detector).
-        - For Eq. 5, we use -k_out_z since k_out_z < 0 in our convention.
-
-    The factor d·tan(θ) in Eq. 6 accounts for the detector position
-    relative to the incident beam direction.
-
-    For small denominator in Eq. 6 (specular-like reflections where 
-    k_out_z ≈ k_in_z), we use a simplified projection (just the angle offset) 
-    to avoid division by zero.
+        - Detector is vertical screen perpendicular to beam propagation
+        - Located at distance d from sample along beam direction
+        - x_d is horizontal (perpendicular to incident beam plane)
+        - y_d is vertical (positive = upward from horizon)
+        - x = G_x = k_out_x - k_in_x (horizontal momentum transfer)
+        - y = k_out_z (vertical component of scattered wavevector)
 
     Examples
     --------
-    >>> k_in = jnp.array([73.0, 0.0, 2.5])
-    >>> k_out = jnp.array([[72.8, 1.2, -2.3], [73.2, -0.8, -2.1]])
-    >>> coords = paper_detector_projection(k_out, k_in,
+    >>> k_in = jnp.array([73.0, 0.0, -2.5])
+    >>> k_out = jnp.array([[72.8, 1.2, 2.3], [73.2, -0.8, 2.1]])
+    >>> coords = kinematic_detector_projection(k_out, k_in,
     ...     detector_distance=100.0, theta_deg=2.0)
     >>> print(f"Detector positions: {coords}")
     """
-    denom_threshold: scalar_float = 1e-6
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-    x_d: Float[Array, "N"] = detector_distance * (k_out[:, 0] / (-k_out[:, 2]))
-    denom: Float[Array, "N"] = -k_out[:, 2] + k_in[2]
-    y_d: Float[Array, "N"] = jnp.where(
-        jnp.abs(denom) < denom_threshold,
-        detector_distance * jnp.tan(theta_rad),
-        detector_distance * (k_out[:, 1] - k_in[1]) / denom
-        + detector_distance * jnp.tan(theta_rad),
+    k0: scalar_float = jnp.linalg.norm(k_in)
+
+    # Momentum transfer components in paper's convention
+    # x: horizontal in-plane component of scattering vector
+    # y: vertical component related to out-of-plane scattering
+    # In paper's Eqs, y relates to the z-component of k_out
+    x_recip: Float[Array, "N"] = k_out[:, 0] - k_in[0]  # G_x
+    y_recip: Float[Array, "N"] = k_out[:, 2]  # k_out_z (upward scattered)
+
+    # Inverse of Eq. 6: R = d / (cos(θ) - y/k₀)
+    # Need to handle case where denominator is small
+    cos_theta: scalar_float = jnp.cos(theta_rad)
+    denom: Float[Array, "N"] = cos_theta - y_recip / k0
+
+    # Clamp denominator to avoid division issues (small denom = grazing exit)
+    denom_safe: Float[Array, "N"] = jnp.where(
+        jnp.abs(denom) < 1e-6,
+        jnp.sign(denom) * 1e-6 + 1e-6,  # Small positive value
+        denom,
     )
+
+    R: Float[Array, "N"] = detector_distance / denom_safe
+
+    # From Eq. 5 inverted: x_d = x · R / k₀
+    x_d: Float[Array, "N"] = x_recip * R / k0
+
+    # From geometry: R² = d² + x_d² + y_d²  =>  y_d² = R² - d² - x_d²
+    y_d_squared: Float[Array, "N"] = R**2 - detector_distance**2 - x_d**2
+    # Take positive root (detector above horizon for upward scattering)
+    y_d: Float[Array, "N"] = jnp.sqrt(jnp.maximum(y_d_squared, 0.0))
+
     detector_coords: Float[Array, "N 2"] = jnp.stack([x_d, y_d], axis=-1)
     return detector_coords
 
@@ -173,7 +202,7 @@ def simple_structure_factor(
     atomic_numbers: Int[Array, "M"],
 ) -> Float[Array, ""]:
     """Calculate structure factor for a single reflection.
-    
+
     Following paper's Equation 7: F(G) = Σ_j f_j · exp(i·G·r_j)
 
     Parameters
@@ -206,7 +235,7 @@ def simple_structure_factor(
     Implementation details:
     - Uses vectorized operations (JAX-friendly).
     - Atomic scattering factors are simplified as f_j ≈ Z_j (atomic number).
-    - For more accurate scattering, use Kirkland parameterization 
+    - For more accurate scattering, use Kirkland parameterization
       (see form_factors.py).
     - Calculates phase factors exp(i·G·r_j) for all atoms.
     - Sums contributions: F = Σ f_j · exp(i·G·r_j).
@@ -230,7 +259,7 @@ def simple_structure_factor(
 
 
 @jaxtyped(typechecker=beartype)
-def paper_kinematic_simulator(
+def kinematic_simulator(
     crystal: CrystalStructure,
     voltage_kv: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
@@ -301,7 +330,7 @@ def paper_kinematic_simulator(
     >>> crystal = rh.inout.parse_cif("Si.cif")
     >>>
     >>> # Simulate RHEED pattern
-    >>> pattern = rh.simul.paper_kinematic_simulator(
+    >>> pattern = rh.simul.kinematic_simulator(
     ...     crystal=crystal,
     ...     voltage_kv=20.0,
     ...     theta_deg=2.0,
@@ -346,10 +375,11 @@ def paper_kinematic_simulator(
     reciprocal_allowed: Float[Array, "K 3"] = reciprocal_points[
         allowed_indices
     ]
-    detector_coords: Float[Array, "K 2"] = project_on_detector(
+    detector_coords: Float[Array, "K 2"] = kinematic_detector_projection(
         k_out=k_out,
-        detector_distance=detector_distance,
         k_in=k_in,
+        detector_distance=detector_distance,
+        theta_deg=theta_deg,
     )
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
@@ -441,7 +471,9 @@ def find_ctr_ewald_intersection(
     k_out1_z: Float[Array, ""] = k_plus_ghk[2] + l1 * c_star_z
     k_out2_z: Float[Array, ""] = k_plus_ghk[2] + l2 * c_star_z
     l_intersect: Float[Array, ""] = jnp.where(k_out1_z > 0, l1, l2)
-    k_out_z_chosen: Float[Array, ""] = jnp.where(k_out1_z > 0, k_out1_z, k_out2_z)
+    k_out_z_chosen: Float[Array, ""] = jnp.where(
+        k_out1_z > 0, k_out1_z, k_out2_z
+    )
     valid: Float[Array, ""] = has_solution & (k_out_z_chosen > 0)
     k_out: Float[Array, "3"] = k_plus_ghk + jnp.array(
         [0.0, 0.0, l_intersect * c_star_z]
@@ -521,7 +553,9 @@ def streak_simulator(
     >>> plt.scatter(coords[:, 0], coords[:, 1], c=intensities, s=1)
     """
     wavelength: scalar_float = wavelength_ang(voltage_kv)
-    k_in: Float[Array, "3"] = incident_wavevector(wavelength, theta_deg, phi_deg=0.0)
+    k_in: Float[Array, "3"] = incident_wavevector(
+        wavelength, theta_deg, phi_deg=0.0
+    )
     k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
     recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
         *crystal.cell_lengths, *crystal.cell_angles, in_degrees=True
@@ -560,9 +594,9 @@ def streak_simulator(
         l_values: Float[Array, "P"] = jnp.linspace(
             l_min - 2.0, l_max + 2.0, points_per_streak
         )
-        g_points: Float[Array, "P 3"] = g_hk[None, :] + l_values[:, None] * recip_c[
-            None, :
-        ]
+        g_points: Float[Array, "P 3"] = (
+            g_hk[None, :] + l_values[:, None] * recip_c[None, :]
+        )
         k_out_points: Float[Array, "P 3"] = k_in[None, :] + g_points
         k_out_mags: Float[Array, "P"] = jnp.linalg.norm(k_out_points, axis=1)
         ewald_deviation: Float[Array, "P"] = jnp.abs(k_out_mags - k_mag)
@@ -574,15 +608,18 @@ def streak_simulator(
             continue
         valid_k_out: Float[Array, "V 3"] = k_out_points[valid_mask]
         valid_l: Float[Array, "V"] = l_values[valid_mask]
-        det_coords: Float[Array, "V 2"] = project_on_detector(
+        det_coords: Float[Array, "V 2"] = kinematic_detector_projection(
             k_out=valid_k_out,
-            detector_distance=detector_distance,
             k_in=k_in,
+            detector_distance=detector_distance,
+            theta_deg=theta_deg,
         )
         l_safe: Float[Array, "V"] = jnp.where(
             jnp.abs(valid_l) < 0.1, jnp.sign(valid_l) * 0.1 + 0.1, valid_l
         )
-        ctr_intensity: Float[Array, "V"] = 1.0 / (jnp.sin(jnp.pi * l_safe) ** 2 + 0.01)
+        ctr_intensity: Float[Array, "V"] = 1.0 / (
+            jnp.sin(jnp.pi * l_safe) ** 2 + 0.01
+        )
         ctr_intensity = ctr_intensity / ctr_intensity.max()
         all_detector_coords.append(det_coords)
         all_intensities.append(ctr_intensity)
@@ -595,7 +632,9 @@ def streak_simulator(
         empty_intensities: Float[Array, "0"] = jnp.zeros((0,))
         empty_hk: Int[Array, "0 2"] = jnp.zeros((0, 2), dtype=jnp.int32)
         return empty_coords, empty_intensities, empty_hk
-    detector_coords: Float[Array, "N 2"] = jnp.concatenate(all_detector_coords, axis=0)
+    detector_coords: Float[Array, "N 2"] = jnp.concatenate(
+        all_detector_coords, axis=0
+    )
     intensities: Float[Array, "N"] = jnp.concatenate(all_intensities, axis=0)
     hk_indices: Int[Array, "N 2"] = jnp.concatenate(all_hk_indices, axis=0)
     return detector_coords, intensities, hk_indices

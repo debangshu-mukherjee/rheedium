@@ -1,7 +1,7 @@
-"""Tests for kinematic RHEED simulator following arXiv:2207.06642.
+"""Tests for kinematic RHEED simulator.
 
-This module tests the clean kinematic implementation that closely
-follows the published paper's algorithm.
+This module tests the kinematic RHEED implementation that follows
+the algorithm from arXiv:2207.06642.
 """
 
 from pathlib import Path
@@ -12,17 +12,17 @@ import pytest
 from absl.testing import parameterized
 
 from rheedium.inout import parse_cif
-from rheedium.simul.paper_kinematic import (
+from rheedium.simul.kinematic import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
+    kinematic_detector_projection,
+    kinematic_simulator,
     make_ewald_sphere,
-    paper_detector_projection as kinematic_detector_projection,
-    paper_kinematic_simulator as kinematic_simulator,
     simple_structure_factor as kinematic_structure_factor,
     wavelength_ang as kinematic_wavelength,
 )
 from rheedium.types import create_crystal_structure
-from rheedium.ucell import reciprocal_lattice_vectors, miller_to_reciprocal
+from rheedium.ucell import miller_to_reciprocal, reciprocal_lattice_vectors
 
 
 class TestKinematicWavelength(chex.TestCase):
@@ -118,45 +118,94 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
 
 class TestKinematicDetectorProjection(chex.TestCase):
-    """Test detector projection following paper's Equations 5-6."""
+    """Test detector projection implementing inverse of paper's Equations 5-6.
+
+    Paper's Equations 5-6 map detector → reciprocal space:
+        x = k₀ · x_d / R                    [Eq. 5]
+        y = k₀ · (-d/R + cos θ)             [Eq. 6]
+    where R = √(d² + x_d² + y_d²)
+
+    Our implementation inverts this to map reciprocal → detector:
+        R = d / (cos θ - y/k₀)
+        x_d = x · R / k₀
+        y_d = √(R² - d² - x_d²)
+    """
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_detector_projection_paper_eq5(self):
-        """Test x_d = d · k_x / k_z (Equation 5)."""
+    def test_detector_projection_roundtrip(self):
+        """Test that projection and inverse equations are consistent.
+
+        If we project to detector and then apply paper's Eqs. 5-6,
+        we should recover the original reciprocal space coordinates.
+        """
         var_project = self.variant(kinematic_detector_projection)
 
-        # Setup
-        k_in = jnp.array([73.0, 0.0, 2.5])
-        k_out = jnp.array([[72.5, 1.2, -2.3]])
-        d = 100.0
-        theta_deg = 2.0
-
-        coords = var_project(k_out, k_in, d, theta_deg)
-
-        # Check x-component (Equation 5)
-        expected_x = d * k_out[0, 0] / k_out[0, 2]
-        chex.assert_trees_all_close(coords[0, 0], expected_x, rtol=1e-6)
-
-    @chex.variants(with_jit=True, without_jit=True)
-    def test_detector_projection_paper_eq6(self):
-        """Test y_d = d·(k_y - k_in_y)/(k_z - k_in_z) + d·tan(θ) (Equation 6)."""
-        var_project = self.variant(kinematic_detector_projection)
-
-        # Setup
-        k_in = jnp.array([73.0, 0.0, 2.5])
-        k_out = jnp.array([[72.5, 1.2, -2.3]])
-        d = 100.0
+        # Setup: typical RHEED parameters
         theta_deg = 2.0
         theta_rad = jnp.deg2rad(theta_deg)
+        wavelength = 0.0859  # ~20 keV electrons
+        k0 = 2.0 * jnp.pi / wavelength
+
+        # Incident wavevector: grazing incidence along +x, z pointing down
+        k_in = jnp.array([
+            k0 * jnp.cos(theta_rad), 0.0, -k0 * jnp.sin(theta_rad)
+        ])
+
+        # Scattered wavevector: upward scattering
+        k_out = jnp.array([[k0 * 0.98, 0.5, k0 * 0.05]])
+        d = 100.0
+
+        # Get detector coordinates from our inverse function
+        coords = var_project(k_out, k_in, d, theta_deg)
+        x_d, y_d = coords[0, 0], coords[0, 1]
+
+        # Apply paper's forward equations 5-6 to verify roundtrip
+        R = jnp.sqrt(d**2 + x_d**2 + y_d**2)
+        x_recip_recovered = k0 * x_d / R  # Eq. 5
+        y_recip_recovered = k0 * (-d / R + jnp.cos(theta_rad))  # Eq. 6
+
+        # What we used as input: x_recip = G_x, y_recip = k_out_z
+        x_recip_input = k_out[0, 0] - k_in[0]
+        y_recip_input = k_out[0, 2]
+
+        # The recovered values should match the inputs
+        chex.assert_trees_all_close(
+            x_recip_recovered, x_recip_input, rtol=1e-4
+        )
+        chex.assert_trees_all_close(
+            y_recip_recovered, y_recip_input, rtol=1e-4
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_detector_projection_specular(self):
+        """Test projection for near-specular reflection.
+
+        Specular: k_out_z ≈ k_in_z but with opposite sign.
+        """
+        var_project = self.variant(kinematic_detector_projection)
+
+        theta_deg = 2.0
+        theta_rad = jnp.deg2rad(theta_deg)
+        wavelength = 0.0859
+        k0 = 2.0 * jnp.pi / wavelength
+
+        # Incident: grazing incidence
+        k_in = jnp.array([
+            k0 * jnp.cos(theta_rad), 0.0, -k0 * jnp.sin(theta_rad)
+        ])
+
+        # Near-specular: same angle out, k_out_z positive
+        k_out = jnp.array([[
+            k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)
+        ]])
+        d = 100.0
 
         coords = var_project(k_out, k_in, d, theta_deg)
 
-        # Check y-component (Equation 6)
-        expected_y = (
-            d * (k_out[0, 1] - k_in[1]) / (k_out[0, 2] - k_in[2])
-            + d * jnp.tan(theta_rad)
-        )
-        chex.assert_trees_all_close(coords[0, 1], expected_y, rtol=1e-6)
+        # Specular should be close to x_d = 0 (no horizontal deflection)
+        chex.assert_trees_all_close(coords[0, 0], 0.0, atol=0.1)
+        # y_d should be positive (above horizon)
+        assert coords[0, 1] > 0, "Specular reflection should be above horizon"
 
 
 class TestKinematicStructureFactor(chex.TestCase):

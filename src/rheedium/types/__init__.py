@@ -10,6 +10,8 @@ Routine Listings
 ----------------
 create_crystal_structure : function
     Factory function to create CrystalStructure instances
+create_ewald_data : function
+    Factory function to create EwaldData instances
 create_potential_slices : function
     Factory function to create PotentialSlices instances
 create_rheed_image : function
@@ -20,6 +22,8 @@ create_xyz_data : function
     Factory function to create XYZData instances
 CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
+EwaldData : PyTree
+    Angle-independent Ewald sphere data for RHEED simulation
 PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
 RHEEDImage : PyTree
@@ -48,9 +52,11 @@ is because beartype does not support type checking of dataclasses.
 
 from .crystal_types import (
     CrystalStructure,
+    EwaldData,
     PotentialSlices,
     XYZData,
     create_crystal_structure,
+    create_ewald_data,
     create_potential_slices,
     create_xyz_data,
 )
@@ -76,12 +82,14 @@ from .rheed_types import (
 __all__ = [
     "bulk_to_slice",
     "create_crystal_structure",
+    "create_ewald_data",
     "create_potential_slices",
     "create_rheed_image",
     "create_rheed_pattern",
     "create_sliced_crystal",
     "create_xyz_data",
     "CrystalStructure",
+    "EwaldData",
     "float_image",
     "int_image",
     "non_jax_number",

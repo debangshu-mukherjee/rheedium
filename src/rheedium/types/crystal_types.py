@@ -3,19 +3,24 @@
 Extended Summary
 ----------------
 This module defines JAX-compatible data structures for representing crystal
-structures, potential slices for multislice simulations, and XYZ file data.
-All structures are PyTrees that support JAX transformations.
+structures, potential slices for multislice simulations, XYZ file data, and
+Ewald sphere data for RHEED simulation. All structures are PyTrees that
+support JAX transformations.
 
 Routine Listings
 ----------------
 CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
+EwaldData : PyTree
+    Angle-independent Ewald sphere data for RHEED simulation
 PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
 XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 create_crystal_structure : function
     Factory function to create CrystalStructure instances with data validation
+create_ewald_data : function
+    Factory function to create EwaldData instances with validation
 create_potential_slices : function
     Factory function to create PotentialSlices instances with data validation
 create_xyz_data : function
@@ -32,7 +37,7 @@ from beartype import beartype
 from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Complex, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 
@@ -286,6 +291,180 @@ def create_crystal_structure(
 
     validated_crystal_structure: CrystalStructure = _validate_and_create()
     return validated_crystal_structure
+
+
+@register_pytree_node_class
+class EwaldData(NamedTuple):
+    """Angle-independent Ewald sphere data for RHEED simulation.
+
+    This PyTree contains pre-computed reciprocal lattice geometry and structure
+    factors that depend only on crystal structure and beam voltage, not on
+    beam orientation angles. This enables efficient reuse when scanning beam
+    azimuth or incidence angle.
+
+    Attributes
+    ----------
+    wavelength_ang : Float[Array, ""]
+        Relativistic electron wavelength in Ångstroms.
+    k_magnitude : Float[Array, ""]
+        Magnitude of electron wavevector |k| = 2π/λ in 1/Ångstroms.
+    sphere_radius : Float[Array, ""]
+        Ewald sphere radius in 1/Ångstroms (equals k_magnitude).
+    recip_vectors : Float[Array, "3 3"]
+        Reciprocal lattice basis vectors [b₁, b₂, b₃] as rows.
+    hkl_grid : Int[Array, "N 3"]
+        Miller indices (h, k, l) for all reciprocal lattice points.
+    g_vectors : Float[Array, "N 3"]
+        Reciprocal lattice vectors G in 1/Ångstroms.
+    g_magnitudes : Float[Array, "N"]
+        Magnitudes |G| for each reciprocal lattice vector.
+    structure_factors : Complex[Array, "N"]
+        Complex structure factors F(G) for each reciprocal lattice point.
+    intensities : Float[Array, "N"]
+        Kinematic diffraction intensities I(G) = |F(G)|².
+
+    Notes
+    -----
+    This class is registered as a PyTree node for JAX compatibility. The
+    structure factors include Kirkland atomic form factors and Debye-Waller
+    thermal damping.
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> crystal = rh.inout.parse_cif("MgO.cif")
+    >>> ewald = rh.ucell.build_ewald_data(
+    ...     crystal=crystal,
+    ...     voltage_kv=15.0,
+    ...     hmax=3, kmax=3, lmax=2,
+    ... )
+    >>> print(f"Sphere radius: {ewald.sphere_radius:.2f} 1/Å")
+    """
+
+    wavelength_ang: Float[Array, ""]
+    k_magnitude: Float[Array, ""]
+    sphere_radius: Float[Array, ""]
+    recip_vectors: Float[Array, "3 3"]
+    hkl_grid: Int[Array, "N 3"]
+    g_vectors: Float[Array, "N 3"]
+    g_magnitudes: Float[Array, "N"]
+    structure_factors: Complex[Array, "N"]
+    intensities: Float[Array, "N"]
+
+    def tree_flatten(
+        self,
+    ) -> Tuple[
+        Tuple[
+            Float[Array, ""],
+            Float[Array, ""],
+            Float[Array, ""],
+            Float[Array, "3 3"],
+            Int[Array, "N 3"],
+            Float[Array, "N 3"],
+            Float[Array, "N"],
+            Complex[Array, "N"],
+            Float[Array, "N"],
+        ],
+        None,
+    ]:
+        """Flatten the PyTree into a tuple of arrays."""
+        return (
+            (
+                self.wavelength_ang,
+                self.k_magnitude,
+                self.sphere_radius,
+                self.recip_vectors,
+                self.hkl_grid,
+                self.g_vectors,
+                self.g_magnitudes,
+                self.structure_factors,
+                self.intensities,
+            ),
+            None,
+        )
+
+    @classmethod
+    def tree_unflatten(
+        cls,
+        aux_data: None,
+        children: Tuple[
+            Float[Array, ""],
+            Float[Array, ""],
+            Float[Array, ""],
+            Float[Array, "3 3"],
+            Int[Array, "N 3"],
+            Float[Array, "N 3"],
+            Float[Array, "N"],
+            Complex[Array, "N"],
+            Float[Array, "N"],
+        ],
+    ) -> "EwaldData":
+        """Unflatten the PyTree into an EwaldData instance."""
+        del aux_data
+        return cls(*children)
+
+
+@jaxtyped(typechecker=beartype)
+def create_ewald_data(
+    wavelength_ang: Float[Array, ""],
+    k_magnitude: Float[Array, ""],
+    sphere_radius: Float[Array, ""],
+    recip_vectors: Float[Array, "3 3"],
+    hkl_grid: Int[Array, "N 3"],
+    g_vectors: Float[Array, "N 3"],
+    g_magnitudes: Float[Array, "N"],
+    structure_factors: Complex[Array, "N"],
+    intensities: Float[Array, "N"],
+) -> EwaldData:
+    """Create an EwaldData PyTree with validation.
+
+    Parameters
+    ----------
+    wavelength_ang : Float[Array, ""]
+        Electron wavelength in Ångstroms.
+    k_magnitude : Float[Array, ""]
+        Wavevector magnitude |k| = 2π/λ in 1/Ångstroms.
+    sphere_radius : Float[Array, ""]
+        Ewald sphere radius in 1/Ångstroms.
+    recip_vectors : Float[Array, "3 3"]
+        Reciprocal lattice basis vectors as 3×3 matrix.
+    hkl_grid : Int[Array, "N 3"]
+        Miller indices for N reciprocal lattice points.
+    g_vectors : Float[Array, "N 3"]
+        Reciprocal lattice vectors for N points.
+    g_magnitudes : Float[Array, "N"]
+        Magnitudes of N reciprocal vectors.
+    structure_factors : Complex[Array, "N"]
+        Complex structure factors for N points.
+    intensities : Float[Array, "N"]
+        Diffraction intensities for N points.
+
+    Returns
+    -------
+    ewald_data : EwaldData
+        Validated EwaldData PyTree instance.
+    """
+    wavelength_ang = jnp.asarray(wavelength_ang, dtype=jnp.float64)
+    k_magnitude = jnp.asarray(k_magnitude, dtype=jnp.float64)
+    sphere_radius = jnp.asarray(sphere_radius, dtype=jnp.float64)
+    recip_vectors = jnp.asarray(recip_vectors, dtype=jnp.float64)
+    hkl_grid = jnp.asarray(hkl_grid, dtype=jnp.int32)
+    g_vectors = jnp.asarray(g_vectors, dtype=jnp.float64)
+    g_magnitudes = jnp.asarray(g_magnitudes, dtype=jnp.float64)
+    structure_factors = jnp.asarray(structure_factors, dtype=jnp.complex128)
+    intensities = jnp.asarray(intensities, dtype=jnp.float64)
+
+    return EwaldData(
+        wavelength_ang=wavelength_ang,
+        k_magnitude=k_magnitude,
+        sphere_radius=sphere_radius,
+        recip_vectors=recip_vectors,
+        hkl_grid=hkl_grid,
+        g_vectors=g_vectors,
+        g_magnitudes=g_magnitudes,
+        structure_factors=structure_factors,
+        intensities=intensities,
+    )
 
 
 @register_pytree_node_class

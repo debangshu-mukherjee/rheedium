@@ -53,6 +53,7 @@ wavelength_ang : function
     Calculate electron wavelength in angstroms
 """
 
+from .ewald import build_ewald_data, ewald_allowed_reflections
 from .form_factors import (
     atomic_scattering_factor,
     debye_waller_factor,
@@ -60,11 +61,11 @@ from .form_factors import (
     kirkland_form_factor,
     load_kirkland_parameters,
 )
-from .paper_kinematic import (
+from .kinematic import (
     find_ctr_ewald_intersection,
+    kinematic_detector_projection,
+    kinematic_simulator,
     make_ewald_sphere,
-    paper_detector_projection,
-    paper_kinematic_simulator,
     simple_structure_factor,
     streak_simulator,
 )
@@ -90,29 +91,31 @@ from .surface_rods import (
 
 __all__ = [
     "atomic_scattering_factor",
+    "build_ewald_data",
     "calculate_ctr_intensity",
+    "ewald_allowed_reflections",
     "compute_kinematic_intensities_with_ctrs",
     "debye_waller_factor",
+    "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "incident_wavevector",
     "integrated_rod_intensity",
+    "kinematic_detector_projection",
+    "kinematic_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",
     "lorentzian_rod_profile",
-    "find_ctr_ewald_intersection",
     "make_ewald_sphere",
     "multislice_propagate",
     "multislice_simulator",
-    "paper_detector_projection",
-    "paper_kinematic_simulator",
     "project_on_detector",
-    "streak_simulator",
     "rod_profile_function",
     "roughness_damping",
     "simple_structure_factor",
     "sliced_crystal_to_potential",
+    "streak_simulator",
     "surface_structure_factor",
     "wavelength_ang",
 ]
