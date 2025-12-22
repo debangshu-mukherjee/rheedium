@@ -23,12 +23,11 @@ import jax
 import matplotlib.pyplot as plt
 import numpy as np
 from beartype import beartype
-from beartype.typing import Any, List, Optional, Tuple
+from beartype.typing import List, Optional, Tuple
 from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
-import rheedium as rh
 from rheedium.types import RHEEDPattern, scalar_float
 
 jax.config.update("jax_enable_x64", True)
@@ -106,103 +105,111 @@ def create_phosphor_colormap(
 @beartype
 def plot_rheed(
     rheed_pattern: RHEEDPattern,
-    grid_size: Optional[int] = 200,
-    interp_type: Optional[str] = "cubic",
+    grid_size: int = 200,
+    interp_type: str = "gaussian",
     cmap_name: Optional[str] = "phosphor",
+    spot_width: float = 0.08,
+    figsize: Tuple[float, float] = (8, 10),
+    x_extent: Optional[Tuple[float, float]] = None,
+    y_extent: Optional[Tuple[float, float]] = None,
 ) -> None:
-    """Interpolate the RHEED spots onto a uniform grid using various methods.
+    """Plot RHEED pattern with multiple rendering options.
 
-    Then display using the phosphor colormap.
+    Description
+    -----------
+    Renders RHEED pattern to 2D image using interpolation or Gaussian
+    broadening, then displays with phosphor-screen colormap.
 
     Parameters
     ----------
     rheed_pattern : RHEEDPattern
-        Must have `detector_points` of shape (M, 2) and `intensities`
-        of shape (M,).
+        Pattern with detector_points (N, 2) and intensities (N,).
     grid_size : int, optional
-        Controls how many grid points in Y and Z directions. Default is 200.
+        Number of pixels along each axis. Default: 200
     interp_type : str, optional
-        Which interpolation approach to use. Default is "cubic". Options are:
-        - "cubic" => calls griddata(..., method="cubic")
-        - "linear" => calls griddata(..., method="linear")
-        - "nearest" => calls griddata(..., method="nearest")
+        Rendering method. Default: "gaussian"
+        - "gaussian": Sum of Gaussian spots (realistic, recommended)
+        - "cubic": Cubic interpolation
+        - "linear": Linear interpolation
+        - "nearest": Nearest neighbor
     cmap_name : str, optional
-        Name for your custom phosphor colormap. Default is 'phosphor'.
-
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Extract coordinates and intensities from RHEED pattern
-    2. Convert JAX arrays to NumPy arrays
-    3. Validate interpolation method
-    4. Calculate coordinate ranges for grid and create uniform grid points
-    5. Interpolate intensities onto grid using griddata
-    6. Reshape result to 2D grid
-    7. Create phosphor colormap
-    8. Create figure and plot with colorbar, labels, and title
-    9. Show plot
-
-    Examples
-    --------
-    >>> from rheedium.plots.figuring import plot_rheed
-    >>> from rheedium.types.rheed_types import RHEEDPattern
-    >>> import jax.numpy as jnp
-    >>> # Create a simple RHEED pattern
-    >>> points = jnp.array([[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]])
-    >>> intensities = jnp.array([1.0, 0.5, 0.5, 0.5, 0.5])
-    >>> pattern = RHEEDPattern(points=points, intensities=intensities)
-    >>> # Plot the pattern
-    >>> plot_rheed(pattern, figsize=(6, 6))
-    >>> plt.show()
+        Colormap name. Default: "phosphor"
+    spot_width : float, optional
+        Gaussian spot width in mm (only for interp_type="gaussian").
+        Default: 0.08
+    figsize : Tuple[float, float], optional
+        Figure size. Default: (8, 10)
+    x_extent : Tuple[float, float], optional
+        X-axis range (min, max) in mm. Default: auto from data with padding
+    y_extent : Tuple[float, float], optional
+        Y-axis range (min, max) in mm. Default: auto from data with padding
     """
-    coords: Float[np.ndarray, " mm 2"] = rheed_pattern.detector_points
-    y_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 0])
-    z_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 1])
-    i_np: Float[np.ndarray, " mm"] = np.asarray(rheed_pattern.intensities)
-    if interp_type in ("cubic", "linear", "nearest"):
-        method: str = interp_type
+    coords: Float[np.ndarray, "N 2"] = np.asarray(rheed_pattern.detector_points)
+    x_np: Float[np.ndarray, "N"] = coords[:, 0]
+    y_np: Float[np.ndarray, "N"] = coords[:, 1]
+    i_np: Float[np.ndarray, "N"] = np.asarray(rheed_pattern.intensities)
+
+    if x_extent is None:
+        x_min: float = float(x_np.min()) - 0.5
+        x_max: float = float(x_np.max()) + 0.5
+    else:
+        x_min, x_max = x_extent
+
+    if y_extent is None:
+        y_min: float = float(y_np.min()) - 0.5
+        y_max: float = float(y_np.max()) + 0.5
+    else:
+        y_min, y_max = y_extent
+
+    x_axis: Float[np.ndarray, "W"] = np.linspace(x_min, x_max, grid_size)
+    y_axis: Float[np.ndarray, "H"] = np.linspace(y_min, y_max, grid_size)
+
+    if interp_type == "gaussian":
+        xx: Float[np.ndarray, "H W"]
+        yy: Float[np.ndarray, "H W"]
+        xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
+        image: Float[np.ndarray, "H W"] = np.zeros((grid_size, grid_size))
+
+        for idx in range(len(i_np)):
+            x0: float = x_np[idx]
+            y0: float = y_np[idx]
+            i0: float = i_np[idx]
+            image += i0 * np.exp(
+                -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width ** 2)
+            )
+
+    elif interp_type in ("cubic", "linear", "nearest"):
+        points: Float[np.ndarray, "N 2"] = np.column_stack([x_np, y_np])
+        xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
+        grid_points: Float[np.ndarray, "M 2"] = np.column_stack(
+            [xx.ravel(), yy.ravel()]
+        )
+        image_flat: Float[np.ndarray, "M"] = griddata(
+            points, i_np, grid_points, method=interp_type, fill_value=0.0
+        )
+        image = image_flat.reshape((grid_size, grid_size))
+
     else:
         raise ValueError(
-            f"interp_type must be one of: 'cubic', 'linear', or 'nearest'. "
+            f"interp_type must be 'gaussian', 'cubic', 'linear', or 'nearest'."
             f"Got: {interp_type}"
         )
-    y_min: float = float(y_np.min())
-    y_max: float = float(y_np.max())
-    z_min: float = float(z_np.min())
-    z_max: float = float(z_np.max())
-    y_lin: np.ndarray = np.linspace(y_min, y_max, grid_size)
-    z_lin: np.ndarray = np.linspace(z_min, z_max, grid_size)
-    yg: np.ndarray
-    zg: np.ndarray
-    yg, zg = np.meshgrid(y_lin, z_lin, indexing="xy")
-    grid_points: np.ndarray = np.column_stack([yg.ravel(), zg.ravel()])
-    interpolated: np.ndarray = griddata(
-        points=(y_np, z_np),
-        values=i_np,
-        xi=grid_points,
-        method=method,
-        fill_value=0.0,
-    )
-    intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap: LinearSegmentedColormap = create_phosphor_colormap(
-        cmap_name
-    )
-    fig: plt.Figure
-    ax: plt.Axes
-    fig, ax = plt.subplots(figsize=(6, 6))
-    cax: Any = ax.imshow(
-        intensity_grid.T,
+
+    if cmap_name == "phosphor":
+        cmap = create_phosphor_colormap()
+    else:
+        cmap = plt.get_cmap(cmap_name)
+
+    _, ax = plt.subplots(figsize=figsize)
+    im = ax.imshow(
+        image,
+        extent=[x_min, x_max, y_min, y_max],
         origin="lower",
-        cmap=phosphor_cmap,
-        extent=[y_min, y_max, z_min, z_max],
-        aspect="equal",
-        interpolation="bilinear",
+        cmap=cmap,
+        aspect="auto",
     )
-    cbar: Any = fig.colorbar(cax, ax=ax)
-    cbar.set_label("Interpolated Intensity (arb. units)")
-    ax.set_title(f"RHEED Pattern ({method} interpolation)")
     ax.set_xlabel("x_d (mm)")
     ax.set_ylabel("y_d (mm)")
-    plt.tight_layout()
+    ax.set_title(f"RHEED Pattern ({interp_type})")
+    plt.colorbar(im, ax=ax, label="Intensity (arb. units)")
     plt.show()

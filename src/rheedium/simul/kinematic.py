@@ -350,8 +350,8 @@ def find_ctr_ewald_intersection(
         The l value at intersection (NaN if no valid intersection).
     k_out : Float[Array, "3"]
         Outgoing wavevector at intersection.
-    excitation_error : Float[Array, ""]
-        Deviation from exact Ewald condition.
+    valid : Float[Array, ""]
+        1.0 if intersection exists and is physical, 0.0 otherwise.
     """
     g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
     c_star: Float[Array, "3"] = recip_c
@@ -376,13 +376,12 @@ def find_ctr_ewald_intersection(
     any_valid: Float[Array, ""] = valid_plus | valid_minus
     l_intersect = jnp.where(any_valid, l_intersect, jnp.nan)
     k_out = jnp.where(any_valid, k_out, jnp.nan)
-    k_out_mag: Float[Array, ""] = jnp.linalg.norm(k_out)
-    excitation_error: Float[Array, ""] = k_out_mag - jnp.sqrt(k_mag_sq)
-    return l_intersect, k_out, excitation_error
+    valid: Float[Array, ""] = any_valid.astype(jnp.float64)
+    return l_intersect, k_out, valid
 
 
 @jaxtyped(typechecker=beartype)
-def kinematic_ctr_simulator(  # noqa: 0915
+def kinematic_ctr_simulator(
     crystal: CrystalStructure,
     voltage_kv: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
@@ -390,16 +389,17 @@ def kinematic_ctr_simulator(  # noqa: 0915
     hmax: scalar_int = 3,
     kmax: scalar_int = 3,
     detector_distance: scalar_float = 100.0,
-    n_points_per_rod: scalar_int = 50,
-    tolerance: scalar_float = 0.3,
+    l_min: scalar_float = 0.0,
+    l_max: scalar_float = 5.0,
+    n_points_per_rod: scalar_int = 100,
 ) -> RHEEDPattern:
-    """RHEED simulation using 2D surface lattice with crystal truncation rods.
+    """RHEED simulation with continuous CTR streaks.
 
     Description
     -----------
-    Simulates RHEED pattern by finding intersections of reciprocal lattice
-    rods with the Ewald sphere. Applies structure factor to enforce
-    extinction rules (e.g., FCC forbidden reflections).
+    Generates vertical streaks by sampling l continuously along each
+    allowed (h,k) rod. Applies structure factor extinction and CTR
+    intensity modulation.
 
     Parameters
     ----------
@@ -417,139 +417,97 @@ def kinematic_ctr_simulator(  # noqa: 0915
         Maximum k Miller index. Default: 3
     detector_distance : scalar_float, optional
         Sample-to-screen distance in mm. Default: 100.0
+    l_min : scalar_float, optional
+        Minimum l value to sample along rods. Default: 0.0
+    l_max : scalar_float, optional
+        Maximum l value to sample along rods. Default: 5.0
     n_points_per_rod : scalar_int, optional
-        Number of l points to sample per rod. Default: 50
-    tolerance : scalar_float, optional
-        Tolerance for Ewald sphere intersection. Default: 0.3
+        Number of l points to sample per rod. Default: 100
 
     Returns
     -------
     pattern : RHEEDPattern
         RHEED pattern with streak positions and intensities.
 
-    Flow
-    ----
-    1. Compute wavelength and incident wavevector from beam parameters
-    2. Generate 2D reciprocal lattice (h, k) grid
-    3. For each (h, k) rod, find intersection with Ewald sphere
-    4. Calculate structure factor F(G) at intersection (enforces extinctions)
-    5. Compute CTR modulation 1/sin²(πl)
-    6. Final intensity = |F(G)|² × CTR modulation
-    7. Project k_out onto detector
-
     Notes
     -----
-    This function is JIT-compatible using jax.lax.scan for the rod loop.
+    This function is fully JAX-compatible using jax.vmap for the rod loop.
     Fixed-size output arrays are used with masking for invalid entries.
     """
-    wavelength: scalar_float = wavelength_ang(voltage_kv)
-    k_in: Float[Array, "3"] = incident_wavevector(
-        wavelength, theta_deg, phi_deg
-    )
-    k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
-    recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+    k_in = incident_wavevector(wavelength_ang(voltage_kv), theta_deg, phi_deg)
+    recip_vecs = reciprocal_lattice_vectors(
         *crystal.cell_lengths, *crystal.cell_angles, in_degrees=True
     )
-    recip_a: Float[Array, "3"] = recip_vecs[0]
-    recip_b: Float[Array, "3"] = recip_vecs[1]
-    recip_c: Float[Array, "3"] = recip_vecs[2]
-    atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
-        jnp.int32
-    )
-    h_range: Int[Array, "H"] = jnp.arange(-hmax, hmax + 1, dtype=jnp.int32)
-    k_range: Int[Array, "K"] = jnp.arange(-kmax, kmax + 1, dtype=jnp.int32)
-    hh, kk = jnp.meshgrid(h_range, k_range, indexing="ij")
-    h_flat: Int[Array, "N"] = hh.flatten()
-    k_flat: Int[Array, "N"] = kk.flatten()
-    n_rods: int = h_flat.shape[0]
+    recip_a, recip_b, recip_c = recip_vecs[0], recip_vecs[1], recip_vecs[2]
+    atom_pos = crystal.cart_positions[:, :3]
+    atom_z = crystal.cart_positions[:, 3].astype(jnp.int32)
 
-    def _process_rod(
-        rod_idx: Int[Array, ""],
-    ) -> tuple[
+    hh, kk = jnp.meshgrid(
+        jnp.arange(-hmax, hmax + 1, dtype=jnp.int32),
+        jnp.arange(-kmax, kmax + 1, dtype=jnp.int32),
+        indexing="ij",
+    )
+    h_flat, k_flat = hh.flatten(), kk.flatten()
+    n_rods = h_flat.shape[0]
+    l_values = jnp.linspace(l_min, l_max, n_points_per_rod)
+
+    def _process_rod(rod_idx: Int[Array, ""]) -> Tuple[
         Float[Array, "P 2"],
         Float[Array, "P 3"],
         Float[Array, "P"],
         Bool[Array, "P"],
     ]:
-        h: Int[Array, ""] = h_flat[rod_idx]
-        k: Int[Array, ""] = k_flat[rod_idx]
-        g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
-        l_intersect, _, intersection_valid = find_ctr_ewald_intersection(
-            h=h,
-            k=k,
-            k_in=k_in,
-            recip_a=recip_a,
-            recip_b=recip_b,
-            recip_c=recip_c,
+        """Process single rod: (det_coords, k_out, intensity, valid)."""
+        h, k = h_flat[rod_idx], k_flat[rod_idx]
+        g_hk = h * recip_a + k * recip_b
+        # Test SF at l=0.5 to check extinction
+        g_test = g_hk + 0.5 * recip_c
+        sf_test = simple_structure_factor(g_test, atom_pos, atom_z)
+        sf_valid = sf_test >= 1.0
+        # Compute G and k_out for all l values
+        g_vecs = g_hk + l_values[:, None] * recip_c
+        k_out_vecs = k_in + g_vecs
+        point_valid = (k_out_vecs[:, 2] > 0) & sf_valid
+        # Detector projection
+        scale = detector_distance / (k_out_vecs[:, 0] + 1e-10)
+        det_coords = jnp.stack(
+            [k_out_vecs[:, 1] * scale, k_out_vecs[:, 2] * scale], axis=-1
         )
-        rod_valid: Bool[Array, ""] = intersection_valid > 0.5
-        g_vec: Float[Array, "3"] = g_hk + l_intersect * recip_c
-        sf_intensity: Float[Array, ""] = simple_structure_factor(
-            g_vec, atom_positions, atomic_numbers
+        # CTR modulation with regularization near l=0
+        l_eps = 0.1
+        l_safe = jnp.where(
+            jnp.abs(l_values) < l_eps,
+            jnp.sign(l_values) * l_eps + l_eps,
+            l_values,
         )
-        sf_valid: Bool[Array, ""] = sf_intensity >= 1.0
-        l_min: Float[Array, ""] = l_intersect - 0.5
-        l_max: Float[Array, ""] = l_intersect + 0.5
-        l_values: Float[Array, "P"] = jnp.linspace(
-            l_min, l_max, n_points_per_rod
-        )
-        g_vecs: Float[Array, "P 3"] = (
-            g_hk[jnp.newaxis, :]
-            + l_values[:, jnp.newaxis] * recip_c[jnp.newaxis, :]
-        )
-        k_out_vecs: Float[Array, "P 3"] = k_in + g_vecs
-        k_out_mags: Float[Array, "P"] = jnp.linalg.norm(k_out_vecs, axis=1)
-        point_valid: Bool[Array, "P"] = (
-            jnp.abs(k_out_mags - k_mag) < tolerance
-        ) & (k_out_vecs[:, 2] > 0)
-        scale: Float[Array, "P"] = detector_distance / (
-            k_out_vecs[:, 0] + 1e-10
-        )
-        det_x: Float[Array, "P"] = k_out_vecs[:, 1] * scale
-        det_y: Float[Array, "P"] = k_out_vecs[:, 2] * scale
-        det_coords: Float[Array, "P 2"] = jnp.stack([det_x, det_y], axis=-1)
-        l_safe: Float[Array, "P"] = jnp.where(
-            jnp.abs(l_values) < 0.1, jnp.sign(l_values) * 0.1 + 0.1, l_values
-        )
-        ctr_modulation: Float[Array, "P"] = 1.0 / (
-            jnp.sin(jnp.pi * l_safe) ** 2 + 0.01
-        )
-        intensity: Float[Array, "P"] = sf_intensity * ctr_modulation
-        intensity_max: Float[Array, ""] = jnp.maximum(
-            jnp.max(intensity), 1e-10
-        )
-        intensity = intensity / intensity_max
-        valid_mask: Bool[Array, "P"] = rod_valid & sf_valid & point_valid
-        return det_coords, k_out_vecs, intensity, valid_mask
+        ctr_mod = 1.0 / (jnp.sin(jnp.pi * l_safe) ** 2 + 0.01)
+        intensity = sf_test * ctr_mod
+        intensity = intensity / jnp.maximum(jnp.max(intensity), 1e-10)
+        return det_coords, k_out_vecs, intensity, point_valid
 
-    rod_indices: Int[Array, "N"] = jnp.arange(n_rods, dtype=jnp.int32)
-    all_det_coords, all_k_out, all_intensities, all_valid = jax.vmap(
-        _process_rod
-    )(rod_indices)
-    rod_idx_expanded: Int[Array, "N P"] = jnp.broadcast_to(
-        rod_indices[:, jnp.newaxis], (n_rods, n_points_per_rod)
-    )
-    det_coords_flat: Float[Array, "NP 2"] = all_det_coords.reshape(-1, 2)
-    k_out_flat: Float[Array, "NP 3"] = all_k_out.reshape(-1, 3)
-    intensities_flat: Float[Array, "NP"] = all_intensities.reshape(-1)
-    valid_flat: Bool[Array, "NP"] = all_valid.reshape(-1)
-    rod_idx_flat: Int[Array, "NP"] = rod_idx_expanded.reshape(-1)
-    n_total: int = n_rods * n_points_per_rod
-    valid_indices: Int[Array, "NP"] = jnp.where(
-        valid_flat, size=n_total, fill_value=-1
-    )[0]
-    safe_indices: Int[Array, "NP"] = jnp.maximum(valid_indices, 0)
-    detector_coords: Float[Array, "NP 2"] = det_coords_flat[safe_indices]
-    k_out_all: Float[Array, "NP 3"] = k_out_flat[safe_indices]
-    intensities: Float[Array, "NP"] = intensities_flat[safe_indices]
-    g_indices: Int[Array, "NP"] = rod_idx_flat[safe_indices]
-    output_valid: Bool[Array, "NP"] = valid_indices >= 0
-    intensities = jnp.where(output_valid, intensities, 0.0)
-    pattern: RHEEDPattern = create_rheed_pattern(
+    # Process all rods in parallel with vmap
+    rod_indices = jnp.arange(n_rods, dtype=jnp.int32)
+    all_det, all_kout, all_int, all_valid = jax.vmap(_process_rod)(rod_indices)
+
+    # Flatten and filter valid points
+    shape = (n_rods, n_points_per_rod)
+    rod_idx_exp = jnp.broadcast_to(rod_indices[:, None], shape)
+    det_flat, kout_flat = all_det.reshape(-1, 2), all_kout.reshape(-1, 3)
+    int_flat, valid_flat = all_int.reshape(-1), all_valid.reshape(-1)
+    idx_flat = rod_idx_exp.reshape(-1)
+
+    n_total = n_rods * n_points_per_rod
+    valid_idx = jnp.where(valid_flat, size=n_total, fill_value=-1)[0]
+    safe_idx = jnp.maximum(valid_idx, 0)
+
+    det_coords = det_flat[safe_idx]
+    k_out_all = kout_flat[safe_idx]
+    intensities = jnp.where(valid_idx >= 0, int_flat[safe_idx], 0.0)
+    g_indices = idx_flat[safe_idx]
+
+    return create_rheed_pattern(
         g_indices=g_indices,
         k_out=k_out_all,
-        detector_points=detector_coords,
+        detector_points=det_coords,
         intensities=intensities,
     )
-    return pattern
