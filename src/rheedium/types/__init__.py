@@ -8,6 +8,8 @@ that support JAX transformations and automatic differentiation.
 
 Routine Listings
 ----------------
+bulk_to_slice : function
+    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation
 create_crystal_structure : function
     Factory function to create CrystalStructure instances
 create_ewald_data : function
@@ -18,12 +20,20 @@ create_rheed_image : function
     Factory function to create RHEEDImage instances
 create_rheed_pattern : function
     Factory function to create RHEEDPattern instances
+create_sliced_crystal : function
+    Factory function to create SlicedCrystal instances
 create_xyz_data : function
     Factory function to create XYZData instances
 CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
 EwaldData : PyTree
     Angle-independent Ewald sphere data for RHEED simulation
+float_image : TypeAlias
+    Type alias for float-valued 2D image arrays
+int_image : TypeAlias
+    Type alias for integer-valued 2D image arrays
+non_jax_number : TypeAlias
+    Union type for non-JAX numeric values (int or float)
 PotentialSlices : PyTree
     JAX-compatible data structure for representing multislice potential data
 RHEEDImage : PyTree
@@ -39,8 +49,8 @@ scalar_int : TypeAlias
     Union type for scalar integer values (int or JAX scalar array)
 scalar_num : TypeAlias
     Union type for scalar numeric values (int, float, or JAX scalar array)
-non_jax_number : TypeAlias
-    Union type for non-JAX numeric values (int or float)
+SlicedCrystal : PyTree
+    JAX-compatible crystal structure sliced for multislice simulation
 XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 

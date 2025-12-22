@@ -489,7 +489,8 @@ def kinematic_simulator(
     allowed_indices: Int[Array, "K"] = kr[0]
     k_out: Float[Array, "K 3"] = kr[1]
     detector_points: Float[Array, "K 2"] = project_on_detector(
-        k_out, detector_distance,
+        k_out,
+        detector_distance,
     )
     g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
 

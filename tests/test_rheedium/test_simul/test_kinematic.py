@@ -141,10 +141,9 @@ class TestKinematicDetectorProjection(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_detector_projection_roundtrip(self):
-        """Test that projection and inverse equations are consistent.
+        """Test that ray-tracing projection gives reasonable coordinates.
 
-        If we project to detector and then apply paper's Eqs. 5-6,
-        we should recover the original reciprocal space coordinates.
+        The simplified projection uses: x_d = k_y * d / k_x, y_d = k_z * d / k_x
         """
         var_project = self.variant(kinematic_detector_projection)
 
@@ -154,43 +153,26 @@ class TestKinematicDetectorProjection(chex.TestCase):
         wavelength = 0.0859  # ~20 keV electrons
         k0 = 2.0 * jnp.pi / wavelength
 
-        # Incident wavevector: grazing incidence along +x, z pointing down
-        k_in = jnp.array([
-            k0 * jnp.cos(theta_rad), 0.0, -k0 * jnp.sin(theta_rad)
-        ])
-
-        # Scattered wavevector: upward scattering
+        # Scattered wavevector: forward + upward scattering
         k_out = jnp.array([[k0 * 0.98, 0.5, k0 * 0.05]])
         d = 100.0
 
-        # Get detector coordinates from our inverse function
-        coords = var_project(k_out, k_in, d, theta_deg)
+        # Get detector coordinates
+        coords = var_project(k_out, d)
         x_d, y_d = coords[0, 0], coords[0, 1]
 
-        # Apply paper's forward equations 5-6 to verify roundtrip
-        R = jnp.sqrt(d**2 + x_d**2 + y_d**2)
-        x_recip_recovered = k0 * x_d / R  # Eq. 5
-        y_recip_recovered = k0 * (-d / R + jnp.cos(theta_rad))  # Eq. 6
+        # Verify ray-tracing geometry: x_d = k_y * d / k_x
+        expected_x = k_out[0, 1] * d / k_out[0, 0]
+        expected_y = k_out[0, 2] * d / k_out[0, 0]
 
-        # What we use as input (corrected convention):
-        # x = k_out_y (perpendicular to scattering plane)
-        # y = k0*cos(θ) - k_out_x (deviation from forward scattering)
-        x_recip_input = k_out[0, 1]
-        y_recip_input = k0 * jnp.cos(theta_rad) - k_out[0, 0]
-
-        # The recovered values should match the inputs
-        chex.assert_trees_all_close(
-            x_recip_recovered, x_recip_input, rtol=1e-4
-        )
-        chex.assert_trees_all_close(
-            y_recip_recovered, y_recip_input, rtol=1e-4
-        )
+        chex.assert_trees_all_close(x_d, expected_x, rtol=1e-4)
+        chex.assert_trees_all_close(y_d, expected_y, rtol=1e-4)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_detector_projection_specular(self):
         """Test projection for near-specular reflection.
 
-        Specular: k_out_z ≈ k_in_z but with opposite sign.
+        Specular: k_out_z ≈ |k_in_z| but positive (upward).
         """
         var_project = self.variant(kinematic_detector_projection)
 
@@ -199,18 +181,13 @@ class TestKinematicDetectorProjection(chex.TestCase):
         wavelength = 0.0859
         k0 = 2.0 * jnp.pi / wavelength
 
-        # Incident: grazing incidence
-        k_in = jnp.array([
-            k0 * jnp.cos(theta_rad), 0.0, -k0 * jnp.sin(theta_rad)
-        ])
-
-        # Near-specular: same angle out, k_out_z positive
+        # Near-specular: same angle out, k_out_z positive, k_out_y = 0
         k_out = jnp.array([[
             k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)
         ]])
         d = 100.0
 
-        coords = var_project(k_out, k_in, d, theta_deg)
+        coords = var_project(k_out, d)
 
         # Specular should be close to x_d = 0 (no horizontal deflection)
         chex.assert_trees_all_close(coords[0, 0], 0.0, atol=0.1)
