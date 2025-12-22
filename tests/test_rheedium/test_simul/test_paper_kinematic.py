@@ -4,11 +4,14 @@ This module tests the clean kinematic implementation that closely
 follows the published paper's algorithm.
 """
 
+from pathlib import Path
+
 import chex
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
+from rheedium.inout import parse_cif
 from rheedium.simul.paper_kinematic import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
@@ -19,6 +22,7 @@ from rheedium.simul.paper_kinematic import (
     wavelength_ang as kinematic_wavelength,
 )
 from rheedium.types import create_crystal_structure
+from rheedium.ucell import reciprocal_lattice_vectors, miller_to_reciprocal
 
 
 class TestKinematicWavelength(chex.TestCase):
@@ -293,6 +297,272 @@ class TestMakeEwaldSphere(chex.TestCase):
         theta_rad = jnp.deg2rad(theta_deg)
         expected_z = k_mag * jnp.sin(theta_rad)
         chex.assert_trees_all_close(center[2], expected_z, rtol=1e-6)
+
+
+class TestMgOExtinctionRules(chex.TestCase):
+    """Test FCC extinction rules using MgO structure.
+
+    MgO has rocksalt (FCC) structure. The structure factor extinction rule
+    for FCC requires Miller indices to be ALL ODD or ALL EVEN for non-zero
+    intensity. Mixed indices like (1,0,0), (2,1,0) must have zero intensity.
+
+    This is a critical validation test for the structure factor calculation.
+    Reference: Paper Figure 2 shows MgO(001) pattern where (10) is missing.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Load MgO crystal structure from CIF file."""
+        test_data_dir = Path(__file__).parent.parent.parent / "test_data"
+        cif_path = test_data_dir / "MgO.cif"
+        cls.mgo_crystal = parse_cif(cif_path)
+
+        # Get reciprocal lattice vectors for MgO
+        cls.recip_vectors = reciprocal_lattice_vectors(
+            *cls.mgo_crystal.cell_lengths,
+            *cls.mgo_crystal.cell_angles,
+            in_degrees=True,
+        )
+
+    def _get_structure_factor_intensity(self, h: int, k: int, l: int) -> float:
+        """Calculate structure factor intensity for given Miller indices."""
+        hkl = jnp.array([[h, k, l]])
+        g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
+
+        atom_positions = self.mgo_crystal.cart_positions[:, :3]
+        atomic_numbers = self.mgo_crystal.cart_positions[:, 3].astype(jnp.int32)
+
+        intensity = kinematic_structure_factor(g_vector, atom_positions, atomic_numbers)
+        return float(intensity)
+
+    def test_mgo_allowed_reflections_nonzero(self):
+        """Test that allowed FCC reflections have non-zero intensity.
+
+        For FCC: (h,k,l) all even or all odd => allowed
+        Examples: (1,1,1), (2,0,0), (2,2,0), (2,2,2)
+        """
+        # All odd indices - should be allowed
+        all_odd_cases = [
+            (1, 1, 1),
+            (1, 1, 3),
+            (3, 1, 1),
+        ]
+        for h, k, l in all_odd_cases:
+            intensity = self._get_structure_factor_intensity(h, k, l)
+            assert intensity > 1.0, (
+                f"FCC allowed reflection ({h},{k},{l}) should have non-zero "
+                f"intensity, got {intensity}"
+            )
+
+        # All even indices - should be allowed
+        all_even_cases = [
+            (2, 0, 0),
+            (2, 2, 0),
+            (2, 2, 2),
+            (4, 0, 0),
+        ]
+        for h, k, l in all_even_cases:
+            intensity = self._get_structure_factor_intensity(h, k, l)
+            assert intensity > 1.0, (
+                f"FCC allowed reflection ({h},{k},{l}) should have non-zero "
+                f"intensity, got {intensity}"
+            )
+
+    def test_mgo_forbidden_reflections_zero(self):
+        """Test that forbidden FCC reflections have zero intensity.
+
+        For FCC: mixed indices (not all even, not all odd) => forbidden
+        Examples: (1,0,0), (1,1,0), (2,1,0), (2,1,1)
+
+        This is the CRITICAL test - if (1,0,0) shows non-zero intensity,
+        the structure factor calculation is fundamentally wrong.
+        """
+        forbidden_cases = [
+            (1, 0, 0),  # Paper explicitly shows this is missing
+            (0, 1, 0),
+            (0, 0, 1),
+            (1, 1, 0),
+            (1, 0, 1),
+            (0, 1, 1),
+            (2, 1, 0),
+            (2, 0, 1),
+            (0, 2, 1),
+            (2, 1, 1),
+            (1, 2, 1),
+            (1, 1, 2),
+            (3, 0, 0),
+            (3, 1, 0),
+            (3, 2, 1),
+        ]
+
+        tolerance = 1e-6  # Numerical tolerance for "zero"
+
+        for h, k, l in forbidden_cases:
+            intensity = self._get_structure_factor_intensity(h, k, l)
+            assert intensity < tolerance, (
+                f"FCC forbidden reflection ({h},{k},{l}) should have zero "
+                f"intensity, got {intensity}. "
+                f"This indicates the structure factor calculation is WRONG."
+            )
+
+    def test_mgo_origin_reflection(self):
+        """Test that (0,0,0) reflection gives expected intensity.
+
+        F(0,0,0) = sum of all atomic scattering factors
+        For simplified f_j = Z_j: F = Z_Mg + Z_O = 12 + 8 = 20 per formula unit
+        With 8 atoms in conventional cell (4 Mg + 4 O):
+        F = 4*12 + 4*8 = 48 + 32 = 80
+        I = |F|² = 6400
+        """
+        intensity = self._get_structure_factor_intensity(0, 0, 0)
+        # 8 atoms total: 4 Mg (Z=12) + 4 O (Z=8)
+        expected_f = 4 * 12 + 4 * 8  # = 80
+        expected_intensity = expected_f ** 2  # = 6400
+
+        chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
+
+
+class TestSrTiO3StructureFactor(chex.TestCase):
+    """Test structure factor for SrTiO3 perovskite structure.
+
+    SrTiO3 has the perovskite structure (space group Pm-3m, #221).
+    The perovskite structure has cubic symmetry with a 5-atom basis:
+    - Sr at corner-centered position (0.5, 0.5, 0.5)
+    - Ti at origin (0, 0, 0)
+    - O at face-centered positions (0, 0, 0.5), (0.5, 0, 0), (0, 0.5, 0)
+
+    Unlike FCC (which has systematic extinctions for mixed indices),
+    perovskite has no lattice-based extinctions - all (h,k,l) reflections
+    are allowed. The intensity variations come from the atomic basis.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Load SrTiO3 crystal structure from CIF file."""
+        test_data_dir = Path(__file__).parent.parent.parent / "test_data"
+        cif_path = test_data_dir / "SrTiO3.cif"
+        cls.sto_crystal = parse_cif(cif_path)
+
+        # Verify we got the right number of atoms
+        assert len(cls.sto_crystal.cart_positions) == 5, (
+            f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
+        )
+
+        # Get reciprocal lattice vectors
+        cls.recip_vectors = reciprocal_lattice_vectors(
+            *cls.sto_crystal.cell_lengths,
+            *cls.sto_crystal.cell_angles,
+            in_degrees=True,
+        )
+
+    def _get_structure_factor_intensity(self, h: int, k: int, l: int) -> float:
+        """Calculate structure factor intensity for given Miller indices."""
+        hkl = jnp.array([[h, k, l]])
+        g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
+
+        atom_positions = self.sto_crystal.cart_positions[:, :3]
+        atomic_numbers = self.sto_crystal.cart_positions[:, 3].astype(jnp.int32)
+
+        intensity = kinematic_structure_factor(g_vector, atom_positions, atomic_numbers)
+        return float(intensity)
+
+    def test_sto_origin_reflection(self):
+        """Test that (0,0,0) reflection gives expected intensity.
+
+        F(0,0,0) = sum of all atomic scattering factors
+        For simplified f_j = Z_j:
+        F = Z_Sr + Z_Ti + 3*Z_O = 38 + 22 + 3*8 = 84
+        I = |F|² = 7056
+        """
+        intensity = self._get_structure_factor_intensity(0, 0, 0)
+        expected_f = 38 + 22 + 3 * 8  # = 84
+        expected_intensity = expected_f ** 2  # = 7056
+
+        chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
+
+    def test_sto_100_reflection(self):
+        """Test (1,0,0) reflection intensity.
+
+        For perovskite with:
+        - Sr at (0.5, 0.5, 0.5): phase = exp(i*pi) = -1
+        - Ti at (0, 0, 0): phase = exp(0) = 1
+        - O at (0, 0, 0.5): phase = exp(0) = 1
+        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
+        - O at (0, 0.5, 0): phase = exp(0) = 1
+
+        F = -38 + 22 + 8 - 8 + 8 = -8
+        I = 64
+        """
+        intensity = self._get_structure_factor_intensity(1, 0, 0)
+        # F = -Z_Sr + Z_Ti + Z_O - Z_O + Z_O = -38 + 22 + 8 - 8 + 8 = -8
+        expected_f = -38 + 22 + 8 - 8 + 8  # = -8
+        expected_intensity = expected_f ** 2  # = 64
+
+        chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
+
+    def test_sto_110_reflection(self):
+        """Test (1,1,0) reflection intensity.
+
+        For (1,1,0):
+        - Sr at (0.5, 0.5, 0.5): phase = exp(i*2*pi*0.5) * exp(i*2*pi*0.5) = exp(i*2*pi) = 1
+        - Ti at (0, 0, 0): phase = 1
+        - O at (0, 0, 0.5): phase = 1
+        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
+        - O at (0, 0.5, 0): phase = exp(i*pi) = -1
+
+        F = 38 + 22 + 8 - 8 - 8 = 52
+        I = 2704
+        """
+        intensity = self._get_structure_factor_intensity(1, 1, 0)
+        expected_f = 38 + 22 + 8 - 8 - 8  # = 52
+        expected_intensity = expected_f ** 2  # = 2704
+
+        chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
+
+    def test_sto_111_reflection(self):
+        """Test (1,1,1) reflection intensity.
+
+        For (1,1,1):
+        - Sr at (0.5, 0.5, 0.5): phase = exp(i*3*pi) = -1
+        - Ti at (0, 0, 0): phase = 1
+        - O at (0, 0, 0.5): phase = exp(i*pi) = -1
+        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
+        - O at (0, 0.5, 0): phase = exp(i*pi) = -1
+
+        F = -38 + 22 - 8 - 8 - 8 = -40
+        I = 1600
+        """
+        intensity = self._get_structure_factor_intensity(1, 1, 1)
+        expected_f = -38 + 22 - 8 - 8 - 8  # = -40
+        expected_intensity = expected_f ** 2  # = 1600
+
+        chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
+
+    def test_sto_all_reflections_nonzero(self):
+        """Test that various reflections have non-zero intensity.
+
+        Unlike FCC, perovskite has no systematic extinctions from the lattice.
+        All reflections should have some intensity (though values vary
+        based on the atomic basis phases).
+        """
+        test_cases = [
+            (1, 0, 0),
+            (1, 1, 0),
+            (1, 1, 1),
+            (2, 0, 0),
+            (2, 1, 0),
+            (2, 1, 1),
+            (2, 2, 0),
+            (2, 2, 1),
+            (3, 0, 0),
+        ]
+
+        for h, k, l in test_cases:
+            intensity = self._get_structure_factor_intensity(h, k, l)
+            assert intensity > 0.1, (
+                f"Perovskite reflection ({h},{k},{l}) should have non-zero "
+                f"intensity, got {intensity}"
+            )
 
 
 if __name__ == "__main__":

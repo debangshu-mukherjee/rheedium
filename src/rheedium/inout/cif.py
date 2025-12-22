@@ -28,7 +28,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Callable, Dict, List, Optional, Tuple, Union
-from jaxtyping import Array, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 from rheedium.inout.xyz import atomic_symbol
 from rheedium.types import (
@@ -165,20 +165,39 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     sym_ops: List[str] = []
     lines = cif_text.splitlines()
     collect_sym_ops: bool = False
+    sym_loop_columns: List[str] = []
+    in_sym_loop: bool = False
     for line in lines:
         stripped_line: str = line.strip()
-        if stripped_line.startswith("_symmetry_equiv_pos_as_xyz"):
-            collect_sym_ops = True
+        if stripped_line.lower().startswith("loop_"):
+            in_sym_loop = False
+            sym_loop_columns = []
             continue
-        if collect_sym_ops:
-            if stripped_line.startswith("'") and stripped_line.endswith("'"):
-                op_clean: str = stripped_line.strip("'").strip()
-                sym_ops.append(op_clean)
-            elif stripped_line.startswith('"') and stripped_line.endswith('"'):
-                op_clean: str = stripped_line.strip('"').strip()
-                sym_ops.append(op_clean)
-            elif sym_ops:
-                break
+        if stripped_line.startswith("_symmetry_equiv_pos"):
+            sym_loop_columns.append(stripped_line)
+            in_sym_loop = True
+            continue
+        if in_sym_loop and stripped_line and not stripped_line.startswith("_"):
+            if "_symmetry_equiv_pos_as_xyz" in sym_loop_columns:
+                xyz_col_idx = sym_loop_columns.index("_symmetry_equiv_pos_as_xyz")
+                match = re.search(r"'([^']+)'", stripped_line)
+                if not match:
+                    match = re.search(r'"([^"]+)"', stripped_line)
+                if match:
+                    sym_ops.append(match.group(1).strip())
+                else:
+                    tokens = stripped_line.split()
+                    if len(tokens) > xyz_col_idx:
+                        op = tokens[xyz_col_idx].strip("'\"")
+                        if "," in op:
+                            sym_ops.append(op)
+            elif not sym_loop_columns:
+                if stripped_line.startswith("'") and stripped_line.endswith("'"):
+                    sym_ops.append(stripped_line.strip("'").strip())
+                elif stripped_line.startswith('"') and stripped_line.endswith('"'):
+                    sym_ops.append(stripped_line.strip('"').strip())
+        elif in_sym_loop and stripped_line.startswith("_") and not stripped_line.startswith("_symmetry"):
+            in_sym_loop = False
 
     if not sym_ops:
         sym_ops = ["x,y,z"]
@@ -190,7 +209,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cell_angles=cell_angles,
     )
     expanded_crystal: CrystalStructure = symmetry_expansion(
-        crystal, sym_ops, tolerance=1.0
+        crystal, sym_ops, tolerance=0.5
     )
     return expanded_crystal
 
@@ -265,11 +284,12 @@ def symmetry_expansion(
                     for var in ("x", "y", "z"):
                         if var in term:
                             part: str = term.split(var)[0]
-                            coeff = (
-                                float(fractions.Fraction(part))
-                                if part
-                                else 1.0
-                            )
+                            if part == "-":
+                                coeff = -1.0
+                            elif part:
+                                coeff = float(fractions.Fraction(part))
+                            else:
+                                coeff = 1.0
                             total += coeff * replacements[var]
                             break
                     else:
@@ -290,48 +310,55 @@ def symmetry_expansion(
                 jnp.concatenate([new_xyz, atomic_number[None]])
             )
     expanded_positions: Float[Array, "N 4"] = jnp.array(expanded_positions)
-    cart_positions: Float[Array, "N 3"] = expanded_positions[
-        :, :3
-    ] @ build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
+    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        *crystal.cell_lengths, *crystal.cell_angles
+    )
+    cart_coords: Float[Array, "N 3"] = expanded_positions[:, :3] @ cell_vectors
+    cart_with_z: Float[Array, "N 4"] = jnp.column_stack(
+        [cart_coords, expanded_positions[:, 3]]
+    )
 
-    def _deduplicate(
-        positions: Float[Array, "N 3"], tol: scalar_float
-    ) -> Float[Array, "N 3"]:
+    def _deduplicate_with_z(
+        positions_with_z: Float[Array, "N 4"], tol: scalar_float
+    ) -> Float[Array, "M 4"]:
         def _unique_cond(
-            carry: Tuple[Float[Array, "N 3"], Int[Array, ""]],
-            pos: Float[Array, "3"],
-        ) -> Tuple[Tuple[Float[Array, "N 3"], Int[Array, ""]], None]:
-            unique: Float[Array, "N 3"]
+            carry: Tuple[Float[Array, "N 4"], Int[Array, ""]],
+            pos_z: Float[Array, "4"],
+        ) -> Tuple[Tuple[Float[Array, "N 4"], Int[Array, ""]], None]:
+            unique: Float[Array, "N 4"]
             count: Int[Array, ""]
             unique, count = carry
-            diff: Float[Array, "N 3"] = unique - pos
+            pos: Float[Array, "3"] = pos_z[:3]
+            diff: Float[Array, "N 3"] = unique[:, :3] - pos
             dist_sq: Float[Array, "N"] = jnp.sum(diff**2, axis=1)
-            is_dup: bool = jnp.any(dist_sq < tol**2)
-            unique: Float[Array, "N 3"] = jax.lax.cond(
+            n_positions: int = positions_with_z.shape[0]
+            indices: Int[Array, "N"] = jnp.arange(n_positions)
+            valid_mask: Bool[Array, "N"] = indices < count
+            is_dup: bool = jnp.any((dist_sq < tol**2) & valid_mask)
+            unique = jax.lax.cond(
                 is_dup,
                 lambda u: u,
-                lambda u: u.at[count].set(pos),
+                lambda u: u.at[count].set(pos_z),
                 unique,
             )
             count += jnp.logical_not(is_dup)
             return (unique, count), None
 
-        unique_init: Float[Array, "N 3"] = jnp.zeros_like(positions)
-        unique_init = unique_init.at[0].set(positions[0])
+        unique_init: Float[Array, "N 4"] = jnp.zeros_like(positions_with_z)
+        unique_init = unique_init.at[0].set(positions_with_z[0])
         count_init: int = 1
         (unique_final, final_count), _ = jax.lax.scan(
-            _unique_cond, (unique_init, count_init), positions[1:]
+            _unique_cond, (unique_init, count_init), positions_with_z[1:]
         )
         return unique_final[:final_count]
 
-    unique_cart: Float[Array, "N 3"] = _deduplicate(cart_positions, tolerance)
-    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(
-        build_cell_vectors(*crystal.cell_lengths, *crystal.cell_angles)
+    unique_cart_with_z: Float[Array, "M 4"] = _deduplicate_with_z(
+        cart_with_z, tolerance
     )
-    unique_frac: Float[Array, "N 3"] = (unique_cart @ cell_inv) % 1.0
-    atomic_numbers: Float[Array, "N"] = expanded_positions[:, 3][
-        : unique_cart.shape[0]
-    ]
+    unique_cart: Float[Array, "M 3"] = unique_cart_with_z[:, :3]
+    atomic_numbers: Float[Array, "M"] = unique_cart_with_z[:, 3]
+    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
+    unique_frac: Float[Array, "M 3"] = (unique_cart @ cell_inv) % 1.0
     expanded_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
         cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),
