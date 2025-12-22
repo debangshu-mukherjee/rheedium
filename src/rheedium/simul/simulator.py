@@ -220,10 +220,19 @@ def find_kinematic_reflections(
 
     Returns
     -------
-    allowed_indices : Int[Array, "N"]
-        Indices of allowed reflections in gs array.
-    k_out : Float[Array, "N 3"]
-        Output wavevectors for allowed reflections.
+    allowed_indices : Int[Array, "M"]
+        Indices of allowed reflections in gs array. Invalid entries are -1.
+        Use `allowed_indices >= 0` to filter valid results.
+    k_out : Float[Array, "M 3"]
+        Output wavevectors for allowed reflections. Invalid entries
+        correspond to `allowed_indices == -1`.
+
+    Notes
+    -----
+    Returns fixed-size arrays for JIT compatibility. Filter results using:
+        valid_mask = allowed_indices >= 0
+        valid_indices = allowed_indices[valid_mask]
+        valid_k_out = k_out[valid_mask]
     """
     k_out_all: Float[Array, "M 3"] = k_in + gs
     k_in_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
@@ -233,10 +242,13 @@ def find_kinematic_reflections(
     )
     z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
     allowed: Bool[Array, "M"] = elastic_condition & z_condition
-    allowed_indices: Int[Array, "N"] = jnp.where(allowed, size=gs.shape[0])[0]
-    n_allowed: Int[Array, ""] = jnp.sum(allowed)
-    allowed_indices = allowed_indices[:n_allowed]
-    k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
+    # Use fixed-size output for JIT compatibility; -1 marks invalid entries
+    allowed_indices: Int[Array, "M"] = jnp.where(
+        allowed, size=gs.shape[0], fill_value=-1
+    )[0]
+    # Index k_out_all with clamped indices (invalid entries get index 0)
+    safe_indices: Int[Array, "M"] = jnp.maximum(allowed_indices, 0)
+    k_out: Float[Array, "M 3"] = k_out_all[safe_indices]
     return allowed_indices, k_out
 
 
