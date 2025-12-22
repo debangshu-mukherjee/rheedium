@@ -16,9 +16,9 @@ from jaxtyping import Array, Float
 
 from rheedium.simul import (
     compute_kinematic_intensities_with_ctrs,
-    kinematic_simulator,
     wavelength_ang,
 )
+from rheedium.simul.simulator import kinematic_simulator
 from rheedium.types import (
     CrystalStructure,
     RHEEDPattern,

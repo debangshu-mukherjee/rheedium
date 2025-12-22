@@ -141,54 +141,28 @@ def incident_wavevector(
 def project_on_detector(
     k_out: Float[Array, "N 3"],
     detector_distance: scalar_float,
-    k_in: Float[Array, "3"],
 ) -> Float[Array, "N 2"]:
     """Project output wavevectors onto detector plane.
+
+    Description
+    -----------
+    Ray-tracing projection to vertical detector screen at distance d.
 
     Parameters
     ----------
     k_out : Float[Array, "N 3"]
-        Array of output wavevectors.
+        Output wavevectors.
     detector_distance : scalar_float
         Distance from sample to detector in mm.
-    k_in : Float[Array, "3"]
-        Incident wavevector used to determine detector orientation.
-        The detector is perpendicular to the in-plane component of k_in.
 
     Returns
     -------
     detector_coords : Float[Array, "N 2"]
-        [horizontal, vertical] coordinates on detector plane in mm.
-        Horizontal direction is perpendicular to beam (in surface plane).
-        Vertical direction is along surface normal (z-direction).
+        [horizontal, vertical] coordinates on detector in mm.
     """
-    # Get the in-plane (x-y) component of the incident beam direction
-    beam_direction_xy: Float[Array, "2"] = k_in[:2]
-    beam_mag_xy: Float[Array, ""] = jnp.linalg.norm(beam_direction_xy) + 1e-10
-
-    # Normalized in-plane beam direction
-    beam_unit_xy: Float[Array, "2"] = beam_direction_xy / beam_mag_xy
-
-    # For detector projection: use the dominant in-plane direction
-    # If beam is along x (phi=0), project onto y-z plane (detector sees y, z)
-    # If beam is along y (phi=90), project onto x-z plane (detector sees x, z)
-
-    # Calculate scale factor based on the in-plane beam component
-    k_parallel: Float[Array, "N"] = (
-        k_out[:, 0] * beam_unit_xy[0] + k_out[:, 1] * beam_unit_xy[1]
-    )
-    scale_factor: Float[Array, "N"] = detector_distance / (k_parallel + 1e-10)
-
-    # Horizontal detector coordinate: perpendicular to beam in x-y plane
-    # For phi=0 (beam along x): perpendicular is y-direction
-    # For phi=90 (beam along y): perpendicular is x-direction
-    detector_h: Float[Array, "N"] = (
-        k_out[:, 0] * (-beam_unit_xy[1]) + k_out[:, 1] * beam_unit_xy[0]
-    ) * scale_factor
-
-    # Vertical detector coordinate: always z-direction
-    detector_v: Float[Array, "N"] = k_out[:, 2] * scale_factor
-
+    scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
+    detector_h: Float[Array, "N"] = k_out[:, 1] * scale
+    detector_v: Float[Array, "N"] = k_out[:, 2] * scale
     detector_coords: Float[Array, "N 2"] = jnp.stack(
         [detector_h, detector_v], axis=-1
     )
@@ -334,10 +308,10 @@ def compute_kinematic_intensities_with_ctrs(
                 temperature=temperature,
                 is_surface=is_surface,
             )
+            # G vectors from generate_reciprocal_points already include 2π factor
+            # (via reciprocal_lattice_vectors), so phase = G · r directly
             phase: scalar_float = jnp.dot(g_vec, atom_pos)
-            contribution: complex = form_factor * jnp.exp(
-                2.0j * jnp.pi * phase
-            )
+            contribution: complex = form_factor * jnp.exp(1j * phase)
             return contribution
 
         n_atoms: Int[Array, ""] = atom_positions.shape[0]
@@ -515,7 +489,7 @@ def kinematic_simulator(
     allowed_indices: Int[Array, "K"] = kr[0]
     k_out: Float[Array, "K 3"] = kr[1]
     detector_points: Float[Array, "K 2"] = project_on_detector(
-        k_out, detector_distance, k_in
+        k_out, detector_distance,
     )
     g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
 
@@ -633,9 +607,9 @@ def sliced_crystal_to_potential(
     y_coords: Float[Array, "ny"] = jnp.linspace(0, y_extent, ny)
 
     # Create meshgrid for potential calculation
-    X: Float[Array, "nx ny"]
-    Y: Float[Array, "nx ny"]
-    X, Y = jnp.meshgrid(x_coords, y_coords, indexing="ij")
+    xx: Float[Array, "nx ny"]
+    yy: Float[Array, "nx ny"]
+    xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
 
     # Calculate wavelength and interaction constant
     wavelength: Float[Array, ""] = wavelength_ang(voltage_kv)
@@ -666,24 +640,24 @@ def sliced_crystal_to_potential(
             """
             # Get position and atomic number
             pos: Float[Array, "3"] = positions[atom_idx]
-            Z: Float[Array, ""] = atomic_numbers[atom_idx]
+            z_number: Float[Array, ""] = atomic_numbers[atom_idx]
             is_in_slice: Bool[Array, ""] = in_slice[atom_idx]
 
             # Distance from atom to each grid point
-            dx: Float[Array, "nx ny"] = X - pos[0]
-            dy: Float[Array, "nx ny"] = Y - pos[1]
+            dx: Float[Array, "nx ny"] = xx - pos[0]
+            dy: Float[Array, "nx ny"] = yy - pos[1]
             r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2 + 1e-10)
 
             # Projected potential (simplified Doyle-Turner approximation)
             # V(r) ~ Z / r * exp(-a*r^2) for each Gaussian in scattering factor
             # For simplicity, use screened Coulomb potential
             a: Float[Array, ""] = 0.5  # Screening parameter (Å^-2)
-            V: Float[Array, "nx ny"] = (
-                Z * sigma * jnp.exp(-a * r**2) / (r + 1e-10)
+            atom_potential: Float[Array, "nx ny"] = (
+                z_number * sigma * jnp.exp(-a * r**2) / (r + 1e-10)
             )
 
             # Zero out contribution if atom not in slice
-            return jnp.where(is_in_slice, V, 0.0)
+            return jnp.where(is_in_slice, atom_potential, 0.0)
 
         # Sum contributions from ALL atoms (masked by in_slice)
         atom_indices: Int[Array, "N"] = jnp.arange(n_atoms)

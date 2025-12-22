@@ -324,19 +324,25 @@ def ewald_allowed_reflections(
     build_ewald_data : Build EwaldData from crystal structure
     kinematic_detector_projection : Project reflections to detector coordinates
     """
-    theta_rad: Float[Array, ""] = jnp.deg2rad(jnp.asarray(theta_deg, dtype=jnp.float64))
-    phi_rad: Float[Array, ""] = jnp.deg2rad(jnp.asarray(phi_deg, dtype=jnp.float64))
+    theta_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(theta_deg, dtype=jnp.float64)
+    )
+    phi_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(phi_deg, dtype=jnp.float64)
+    )
 
     k_mag: Float[Array, ""] = ewald.k_magnitude
 
     # Incident wavevector: grazing incidence from (cos(phi), sin(phi), 0) direction
     # tilted up by theta from the surface (z=0 plane)
     # k_in points INTO the surface, so z-component is negative
-    k_in: Float[Array, "3"] = k_mag * jnp.array([
-        jnp.cos(theta_rad) * jnp.cos(phi_rad),
-        jnp.cos(theta_rad) * jnp.sin(phi_rad),
-        -jnp.sin(theta_rad),
-    ])
+    k_in: Float[Array, "3"] = k_mag * jnp.array(
+        [
+            jnp.cos(theta_rad) * jnp.cos(phi_rad),
+            jnp.cos(theta_rad) * jnp.sin(phi_rad),
+            -jnp.sin(theta_rad),
+        ]
+    )
 
     # Compute all k_out = k_in + G
     g_vecs: Float[Array, "M 3"] = ewald.g_vectors
@@ -347,10 +353,14 @@ def ewald_allowed_reflections(
     relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
 
     # Ewald condition satisfied AND upward scattering (k_out_z > 0)
-    is_allowed: Bool[Array, "M"] = (relative_error < tolerance) & (k_out_all[:, 2] > 0)
+    is_allowed: Bool[Array, "M"] = (relative_error < tolerance) & (
+        k_out_all[:, 2] > 0
+    )
 
     # Get indices of allowed reflections
-    allowed_indices: Int[Array, "N"] = jnp.where(is_allowed, size=g_vecs.shape[0], fill_value=-1)[0]
+    allowed_indices: Int[Array, "N"] = jnp.where(
+        is_allowed, size=g_vecs.shape[0], fill_value=-1
+    )[0]
 
     # Filter out padding (-1 values)
     valid_mask: Bool[Array, "N"] = allowed_indices >= 0

@@ -99,108 +99,32 @@ def make_ewald_sphere(
 @jaxtyped(typechecker=beartype)
 def kinematic_detector_projection(
     k_out: Float[Array, "N 3"],
-    k_in: Float[Array, "3"],
     detector_distance: scalar_float,
-    theta_deg: scalar_float,
 ) -> Float[Array, "N 2"]:
     """Project scattered wavevectors onto detector screen.
 
-    Implements the inverse of paper's Equations 5-6 for geometric projection.
+    Description
+    -----------
+    Simple ray-tracing projection from sample to vertical detector screen.
+    Detector is perpendicular to beam propagation direction at distance d.
 
     Parameters
     ----------
     k_out : Float[Array, "N 3"]
-        Scattered wavevectors
-    k_in : Float[Array, "3"]
-        Incident wavevector
+        Scattered wavevectors [kx, ky, kz] in 1/Å.
     detector_distance : scalar_float
-        Distance from sample to detector screen (d, in mm typically)
-    theta_deg : scalar_float
-        Grazing incidence angle in degrees
+        Sample-to-detector distance in mm.
 
     Returns
     -------
     detector_coords : Float[Array, "N 2"]
-        [x_d, y_d] coordinates on detector screen
-
-    Notes
-    -----
-    Paper's Equations 5-6 map detector → reciprocal space:
-
-        x = k₀ · x_d / √(d² + x_d² + y_d²)               [Eq. 5]
-        y = k₀ · (-d / √(d² + x_d² + y_d²) + cos θ)      [Eq. 6]
-
-    where:
-        - (x_d, y_d) are detector coordinates
-        - (x, y) are momentum transfer components (in reciprocal space)
-        - k₀ = |k_in| is the wavevector magnitude
-        - d is detector distance
-        - θ is grazing incidence angle
-
-    This function implements the **inverse transformation** (reciprocal → detector):
-
-        From Eq. 6: R = d / (cos θ - y/k₀)     where R = √(d² + x_d² + y_d²)
-        From Eq. 5: x_d = x · R / k₀
-        From geometry: y_d = √(R² - d² - x_d²)  (taking positive root for upward)
-
-    Geometry:
-        - Detector is vertical screen perpendicular to beam propagation
-        - Located at distance d from sample along beam direction
-        - x_d is horizontal (perpendicular to incident beam plane)
-        - y_d is vertical (positive = upward from horizon)
-        - x = G_x = k_out_x - k_in_x (horizontal momentum transfer)
-        - y = k_out_z (vertical component of scattered wavevector)
-
-    Examples
-    --------
-    >>> k_in = jnp.array([73.0, 0.0, -2.5])
-    >>> k_out = jnp.array([[72.8, 1.2, 2.3], [73.2, -0.8, 2.1]])
-    >>> coords = kinematic_detector_projection(k_out, k_in,
-    ...     detector_distance=100.0, theta_deg=2.0)
-    >>> print(f"Detector positions: {coords}")
+        [x_d, y_d] detector coordinates in mm.
+        x_d: horizontal (perpendicular to scattering plane)
+        y_d: vertical (upward from sample plane)
     """
-    theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-    k0: scalar_float = jnp.linalg.norm(k_in)
-    cos_theta: scalar_float = jnp.cos(theta_rad)
-
-    # Paper's (x, y) convention derived from ray tracing to vertical detector:
-    #
-    # Sample coordinates: x along beam, y perpendicular horizontal, z up
-    # Detector is vertical at horizontal distance d along beam direction.
-    #
-    # For k_out = (k_x, k_y, k_z), ray hits detector at:
-    #   t = d / k_x  (time parameter)
-    #   detector position: (d, k_y * t, k_z * t)
-    #
-    # Paper's (x, y) are related to k_out components:
-    #   x = k_out_y  (perpendicular to scattering plane)
-    #   y = k0*cos(θ) - k_out_x  (deviation from forward scattering)
-    #
-    # At specular reflection (k_out_x = k0*cos(θ), k_out_y = 0): x = 0, y = 0
-    x_recip: Float[Array, "N"] = k_out[:, 1]  # k_out_y
-    y_recip: Float[Array, "N"] = k0 * cos_theta - k_out[:, 0]  # k0*cos(θ) - k_out_x
-
-    # Inverse of Eq. 6: R = d / (cos(θ) - y/k₀)
-    # Need to handle case where denominator is small
-    denom: Float[Array, "N"] = cos_theta - y_recip / k0
-
-    # Clamp denominator to avoid division issues (small denom = grazing exit)
-    denom_safe: Float[Array, "N"] = jnp.where(
-        jnp.abs(denom) < 1e-6,
-        jnp.sign(denom) * 1e-6 + 1e-6,  # Small positive value
-        denom,
-    )
-
-    R: Float[Array, "N"] = detector_distance / denom_safe
-
-    # From Eq. 5 inverted: x_d = x · R / k₀
-    x_d: Float[Array, "N"] = x_recip * R / k0
-
-    # From geometry: R² = d² + x_d² + y_d²  =>  y_d² = R² - d² - x_d²
-    y_d_squared: Float[Array, "N"] = R**2 - detector_distance**2 - x_d**2
-    # Take positive root (detector above horizon for upward scattering)
-    y_d: Float[Array, "N"] = jnp.sqrt(jnp.maximum(y_d_squared, 0.0))
-
+    scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
+    x_d: Float[Array, "N"] = k_out[:, 1] * scale
+    y_d: Float[Array, "N"] = k_out[:, 2] * scale
     detector_coords: Float[Array, "N 2"] = jnp.stack([x_d, y_d], axis=-1)
     return detector_coords
 
@@ -363,9 +287,7 @@ def kinematic_spot_simulator(
     ]
     detector_coords: Float[Array, "K 2"] = kinematic_detector_projection(
         k_out=k_out,
-        k_in=k_in,
         detector_distance=detector_distance,
-        theta_deg=theta_deg,
     )
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
@@ -603,9 +525,7 @@ def kinematic_ctr_simulator(
         valid_l: Float[Array, "V"] = l_values[valid_mask]
         det_coords: Float[Array, "V 2"] = kinematic_detector_projection(
             k_out=valid_k_out,
-            k_in=k_in,
             detector_distance=detector_distance,
-            theta_deg=theta_deg,
         )
         # CTR intensity: 1/sin²(πl) with regularization
         l_safe: Float[Array, "V"] = jnp.where(
