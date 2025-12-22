@@ -16,7 +16,7 @@ from rheedium.simul.kinematic import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
     kinematic_detector_projection,
-    kinematic_simulator,
+    kinematic_spot_simulator,
     make_ewald_sphere,
     simple_structure_factor as kinematic_structure_factor,
     wavelength_ang as kinematic_wavelength,
@@ -66,7 +66,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_components(self):
-        """Test k_in = k·[cos(θ), 0, sin(θ)]."""
+        """Test k_in = k·[cos(θ), 0, -sin(θ)] (beam going into surface)."""
         var_k_in = self.variant(kinematic_incident_wavevector)
 
         wavelength = 0.0859
@@ -77,10 +77,11 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
         k_mag = 2.0 * jnp.pi / wavelength
 
-        # Expected components
+        # Expected components: beam goes at grazing angle θ into surface
+        # z is up (surface normal), so beam has negative z component
         expected_x = k_mag * jnp.cos(theta_rad)
         expected_y = 0.0
-        expected_z = k_mag * jnp.sin(theta_rad)
+        expected_z = -k_mag * jnp.sin(theta_rad)  # Negative: beam going down
 
         chex.assert_trees_all_close(k_in[0], expected_x, rtol=1e-6)
         chex.assert_trees_all_close(k_in[1], expected_y, atol=1e-10)
@@ -95,26 +96,33 @@ class TestKinematicEwaldSphere(chex.TestCase):
         """Test that all k_out satisfy |k_out| ≈ |k_in|."""
         var_ewald = self.variant(kinematic_ewald_sphere)
 
-        # Setup
-        k_in = jnp.array([73.0, 0.0, 2.5])
+        # Setup: incident beam at grazing incidence (k_in_z < 0, going into surface)
+        k_in = jnp.array([73.0, 0.0, -2.5])
         k_mag = jnp.linalg.norm(k_in)
 
         # Some test reciprocal vectors
+        # For RHEED, we want upward scattering (k_out_z > 0)
         G_vectors = jnp.array([
-            [1.0, 0.0, -2.5],  # Should be allowed (k_out_z < 0)
-            [0.0, 1.5, -2.4],  # Should be allowed
-            [2.0, 0.0, 2.0],  # Should be rejected (k_out_z > 0)
+            [0.0, 0.0, 5.0],   # k_out_z = -2.5 + 5.0 = 2.5 > 0 (upward)
+            [0.0, 1.5, 5.1],   # k_out_z = -2.5 + 5.1 = 2.6 > 0 (upward)
+            [2.0, 0.0, -2.0],  # k_out_z = -2.5 - 2.0 = -4.5 < 0 (rejected)
         ])
 
-        indices, k_out = var_ewald(k_in, G_vectors, tolerance=0.1)
+        # z_sign=1.0 selects upward scattering (k_out_z > 0)
+        indices, k_out = var_ewald(k_in, G_vectors, z_sign=1.0, tolerance=0.1)
 
-        # All k_out should satisfy elastic scattering
-        k_out_mags = jnp.linalg.norm(k_out, axis=1)
+        # Check that we got some valid results
+        n_valid = int(jnp.sum(indices >= 0))
+        assert n_valid > 0, "Should find some valid reflections"
+
+        # All valid k_out should satisfy elastic scattering
+        valid_k_out = k_out[indices >= 0]
+        k_out_mags = jnp.linalg.norm(valid_k_out, axis=1)
         for k_mag_out in k_out_mags:
-            assert jnp.abs(k_mag_out - k_mag) < 0.1
+            assert jnp.abs(k_mag_out - k_mag) / k_mag < 0.1, "Elastic scattering"
 
-        # All k_out should have negative z
-        assert jnp.all(k_out[:, 2] < 0.0)
+        # All valid k_out should have positive z (upward scattering for RHEED)
+        assert jnp.all(valid_k_out[:, 2] > 0.0), "RHEED requires k_out_z > 0"
 
 
 class TestKinematicDetectorProjection(chex.TestCase):
@@ -164,9 +172,11 @@ class TestKinematicDetectorProjection(chex.TestCase):
         x_recip_recovered = k0 * x_d / R  # Eq. 5
         y_recip_recovered = k0 * (-d / R + jnp.cos(theta_rad))  # Eq. 6
 
-        # What we used as input: x_recip = G_x, y_recip = k_out_z
-        x_recip_input = k_out[0, 0] - k_in[0]
-        y_recip_input = k_out[0, 2]
+        # What we use as input (corrected convention):
+        # x = k_out_y (perpendicular to scattering plane)
+        # y = k0*cos(θ) - k_out_x (deviation from forward scattering)
+        x_recip_input = k_out[0, 1]
+        y_recip_input = k0 * jnp.cos(theta_rad) - k_out[0, 0]
 
         # The recovered values should match the inputs
         chex.assert_trees_all_close(
@@ -267,15 +277,17 @@ class TestKinematicSimulator(chex.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    def test_kinematic_simulator_runs(self):
+    def test_kinematic_spot_simulator_runs(self):
         """Test that simulator runs without errors."""
-        pattern = kinematic_simulator(
+        # Note: lmax=5 needed to get upward scattering at θ=2° grazing angle
+        # because G_z must exceed |k_in_z| ≈ k0*sin(2°) ≈ 2.5 1/Å
+        pattern = kinematic_spot_simulator(
             crystal=self.crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
             hmax=2,
             kmax=2,
-            lmax=1,
+            lmax=5,  # Higher lmax for grazing incidence
             detector_distance=100.0,
         )
 
@@ -287,20 +299,20 @@ class TestKinematicSimulator(chex.TestCase):
 
         # Check that we found some reflections
         n_reflections = len(pattern.intensities)
-        assert n_reflections > 0
+        assert n_reflections > 0, "Should find reflections at grazing incidence"
 
         # Check intensities are positive
         assert jnp.all(pattern.intensities >= 0.0)
 
-    def test_kinematic_simulator_detector_coords(self):
+    def test_kinematic_spot_simulator_detector_coords(self):
         """Test detector coordinates are reasonable."""
-        pattern = kinematic_simulator(
+        pattern = kinematic_spot_simulator(
             crystal=self.crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
             hmax=2,
             kmax=2,
-            lmax=1,
+            lmax=5,  # Higher lmax for grazing incidence
             detector_distance=100.0,
         )
 

@@ -161,17 +161,27 @@ def kinematic_detector_projection(
     """
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     k0: scalar_float = jnp.linalg.norm(k_in)
+    cos_theta: scalar_float = jnp.cos(theta_rad)
 
-    # Momentum transfer components in paper's convention
-    # x: horizontal in-plane component of scattering vector
-    # y: vertical component related to out-of-plane scattering
-    # In paper's Eqs, y relates to the z-component of k_out
-    x_recip: Float[Array, "N"] = k_out[:, 0] - k_in[0]  # G_x
-    y_recip: Float[Array, "N"] = k_out[:, 2]  # k_out_z (upward scattered)
+    # Paper's (x, y) convention derived from ray tracing to vertical detector:
+    #
+    # Sample coordinates: x along beam, y perpendicular horizontal, z up
+    # Detector is vertical at horizontal distance d along beam direction.
+    #
+    # For k_out = (k_x, k_y, k_z), ray hits detector at:
+    #   t = d / k_x  (time parameter)
+    #   detector position: (d, k_y * t, k_z * t)
+    #
+    # Paper's (x, y) are related to k_out components:
+    #   x = k_out_y  (perpendicular to scattering plane)
+    #   y = k0*cos(θ) - k_out_x  (deviation from forward scattering)
+    #
+    # At specular reflection (k_out_x = k0*cos(θ), k_out_y = 0): x = 0, y = 0
+    x_recip: Float[Array, "N"] = k_out[:, 1]  # k_out_y
+    y_recip: Float[Array, "N"] = k0 * cos_theta - k_out[:, 0]  # k0*cos(θ) - k_out_x
 
     # Inverse of Eq. 6: R = d / (cos(θ) - y/k₀)
     # Need to handle case where denominator is small
-    cos_theta: scalar_float = jnp.cos(theta_rad)
     denom: Float[Array, "N"] = cos_theta - y_recip / k0
 
     # Clamp denominator to avoid division issues (small denom = grazing exit)
@@ -259,7 +269,7 @@ def simple_structure_factor(
 
 
 @jaxtyped(typechecker=beartype)
-def kinematic_simulator(
+def kinematic_spot_simulator(
     crystal: CrystalStructure,
     voltage_kv: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
@@ -269,14 +279,16 @@ def kinematic_simulator(
     detector_distance: scalar_float = 100.0,
     tolerance: scalar_float = 0.05,
 ) -> RHEEDPattern:
-    """Kinematic RHEED simulator following arXiv:2207.06642.
+    """Kinematic RHEED spot simulator using discrete 3D reciprocal lattice.
 
-    Clean implementation matching the paper's step-by-step algorithm.
+    Simulates RHEED pattern as discrete spots where integer (h,k,l) reciprocal
+    lattice points intersect the Ewald sphere. Useful for bulk-like diffraction
+    or when only spot positions matter.
 
     Parameters
     ----------
     crystal : CrystalStructure
-        Crystal structure with atomic positions and cell parameters
+        Crystal structure with atomic positions and cell parameters.
     voltage_kv : scalar_float, optional
         Electron beam voltage in kilovolts. Default: 20.0
     theta_deg : scalar_float, optional
@@ -295,64 +307,38 @@ def kinematic_simulator(
     Returns
     -------
     pattern : RHEEDPattern
-        RHEED diffraction pattern with reflection positions and intensities
+        RHEED diffraction pattern with spot positions and intensities.
 
     Notes
     -----
-    This is a pedagogical implementation following the published paper.
-    For production use with full surface physics (Debye-Waller factors,
-    CTRs, surface roughness), see `simulator.py:simulate_rheed_pattern()`.
+    This simulator treats the reciprocal lattice as discrete 3D points.
+    For surface-sensitive RHEED with continuous crystal truncation rods
+    (CTRs) and streak patterns, use `kinematic_ctr_simulator` instead.
 
-    Algorithm (following paper)
-    ---------------------------
+    Algorithm
+    ---------
     1. Generate reciprocal lattice G(h,k,l) up to (hmax, kmax, lmax)
-       (Following paper's Equations 1-3).
     2. Calculate electron wavelength λ from voltage
-       (Relativistic de Broglie wavelength from simulator.py).
     3. Build incident wavevector k_in from θ and λ
-       (k_in = (2π/λ) × [cos(θ), 0, sin(θ)] from simulator.py).
-    4. Find allowed reflections (Ewald sphere construction)
-       (Following paper's Equation 4: k_out = k_in + G with |k_out| = |k_in|).
-       (Using find_kinematic_reflections from simulator.py).
-       (RHEED: upward scattering, k_out_z > 0).
-    5. Project k_out onto detector screen using geometric formulas
-       (Following paper's Equations 5-6).
+    4. Find allowed reflections via Ewald sphere construction
+    5. Project k_out onto detector screen
     6. Calculate intensities I = |F(G)|² using structure factors
-       (Following paper's Equation 7).
-    7. Return structured pattern.
 
     Examples
     --------
     >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>>
-    >>> # Load crystal
-    >>> crystal = rh.inout.parse_cif("Si.cif")
-    >>>
-    >>> # Simulate RHEED pattern
-    >>> pattern = rh.simul.kinematic_simulator(
+    >>> crystal = rh.inout.parse_cif("MgO.cif")
+    >>> pattern = rh.simul.kinematic_spot_simulator(
     ...     crystal=crystal,
     ...     voltage_kv=20.0,
     ...     theta_deg=2.0,
-    ...     hmax=3,
-    ...     kmax=3,
-    ...     lmax=1,
-    ...     detector_distance=100.0
+    ...     hmax=3, kmax=3, lmax=5,
     ... )
-    >>>
-    >>> print(f"Number of reflections: {len(pattern.intensities)}")
-    >>> print(f"Detector coordinates: {pattern.detector_points}")
-    >>> print(f"Intensities: {pattern.intensities}")
+    >>> print(f"Found {len(pattern.intensities)} spots")
 
     See Also
     --------
-    simulate_rheed_pattern : Full simulator with surface physics
-    multislice_simulator : Dynamical diffraction simulator
-
-    References
-    ----------
-    .. [1] arXiv:2207.06642 - "A Python program for simulating RHEED patterns"
-    .. [2] Ichimiya & Cohen. "Reflection High-Energy Electron Diffraction"
+    kinematic_ctr_simulator : CTR-based simulator with streaks
     """
     reciprocal_points: Float[Array, "M 3"] = generate_reciprocal_points(
         crystal=crystal,
@@ -482,21 +468,22 @@ def find_ctr_ewald_intersection(
 
 
 @jaxtyped(typechecker=beartype)
-def streak_simulator(
+def kinematic_ctr_simulator(
     crystal: CrystalStructure,
     voltage_kv: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
     hmax: scalar_int = 3,
     kmax: scalar_int = 3,
     detector_distance: scalar_float = 100.0,
-    points_per_streak: scalar_int = 50,
-) -> Tuple[Float[Array, "N 2"], Float[Array, "N"], Int[Array, "N 2"]]:
-    """Simulate RHEED streak pattern from crystal truncation rods.
+    points_per_rod: scalar_int = 50,
+    tolerance: scalar_float = 0.3,
+) -> RHEEDPattern:
+    """Kinematic RHEED simulator using continuous crystal truncation rods.
 
-    This function properly models RHEED as diffraction from a surface where
-    the reciprocal lattice consists of continuous rods (CTRs) rather than
-    discrete points. Each rod intersects the Ewald sphere along an arc,
-    producing the characteristic vertical streaks seen in RHEED patterns.
+    Models RHEED as diffraction from a surface where the reciprocal lattice
+    consists of continuous rods (CTRs) rather than discrete points. Each rod
+    intersects the Ewald sphere along an arc, producing the characteristic
+    vertical streaks seen in RHEED patterns.
 
     Parameters
     ----------
@@ -512,17 +499,15 @@ def streak_simulator(
         Maximum k Miller index. Default: 3
     detector_distance : scalar_float, optional
         Sample-to-screen distance in mm. Default: 100.0
-    points_per_streak : scalar_int, optional
-        Number of points to sample along each streak. Default: 50
+    points_per_rod : scalar_int, optional
+        Number of points to sample along each CTR. Default: 50
+    tolerance : scalar_float, optional
+        Fractional tolerance for Ewald sphere condition. Default: 0.3
 
     Returns
     -------
-    detector_coords : Float[Array, "N 2"]
-        [x, y] coordinates on detector screen for all streak points.
-    intensities : Float[Array, "N"]
-        Intensity values for each point (includes CTR decay with l).
-    hk_indices : Int[Array, "N 2"]
-        The (h, k) indices for each point, identifying which streak it belongs to.
+    pattern : RHEEDPattern
+        RHEED diffraction pattern with streak positions and CTR intensities.
 
     Notes
     -----
@@ -543,14 +528,20 @@ def streak_simulator(
     --------
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
-    >>> coords, intensities, hk = rh.simul.streak_simulator(
+    >>> pattern = rh.simul.kinematic_ctr_simulator(
     ...     crystal=crystal,
     ...     voltage_kv=15.0,
     ...     theta_deg=2.0,
     ... )
-    >>> # Plot as scatter with varying intensity
+    >>> # Plot streaks
     >>> import matplotlib.pyplot as plt
-    >>> plt.scatter(coords[:, 0], coords[:, 1], c=intensities, s=1)
+    >>> plt.scatter(pattern.detector_points[:, 0],
+    ...             pattern.detector_points[:, 1],
+    ...             c=pattern.intensities, s=1)
+
+    See Also
+    --------
+    kinematic_spot_simulator : Discrete spot-based simulator
     """
     wavelength: scalar_float = wavelength_ang(voltage_kv)
     k_in: Float[Array, "3"] = incident_wavevector(
@@ -570,9 +561,11 @@ def streak_simulator(
     h_flat: Int[Array, "M"] = hh.flatten()
     k_flat: Int[Array, "M"] = kk.flatten()
     n_rods: int = h_flat.shape[0]
+
     all_detector_coords = []
+    all_k_out = []
     all_intensities = []
-    all_hk_indices = []
+    all_indices = []
 
     for i in range(n_rods):
         h_i = h_flat[i]
@@ -592,7 +585,7 @@ def streak_simulator(
         l_min: Float[Array, ""] = jnp.minimum(l1, l2)
         l_max: Float[Array, ""] = jnp.maximum(l1, l2)
         l_values: Float[Array, "P"] = jnp.linspace(
-            l_min - 2.0, l_max + 2.0, points_per_streak
+            l_min - 2.0, l_max + 2.0, points_per_rod
         )
         g_points: Float[Array, "P 3"] = (
             g_hk[None, :] + l_values[:, None] * recip_c[None, :]
@@ -600,8 +593,8 @@ def streak_simulator(
         k_out_points: Float[Array, "P 3"] = k_in[None, :] + g_points
         k_out_mags: Float[Array, "P"] = jnp.linalg.norm(k_out_points, axis=1)
         ewald_deviation: Float[Array, "P"] = jnp.abs(k_out_mags - k_mag)
-        tolerance: Float[Array, ""] = 0.3 * k_mag
-        on_ewald: Float[Array, "P"] = ewald_deviation < tolerance
+        tol_abs: Float[Array, ""] = tolerance * k_mag
+        on_ewald: Float[Array, "P"] = ewald_deviation < tol_abs
         upward: Float[Array, "P"] = k_out_points[:, 2] > 0.0
         valid_mask: Float[Array, "P"] = on_ewald & upward
         if not jnp.any(valid_mask):
@@ -614,27 +607,45 @@ def streak_simulator(
             detector_distance=detector_distance,
             theta_deg=theta_deg,
         )
+        # CTR intensity: 1/sin²(πl) with regularization
         l_safe: Float[Array, "V"] = jnp.where(
             jnp.abs(valid_l) < 0.1, jnp.sign(valid_l) * 0.1 + 0.1, valid_l
         )
         ctr_intensity: Float[Array, "V"] = 1.0 / (
             jnp.sin(jnp.pi * l_safe) ** 2 + 0.01
         )
-        ctr_intensity = ctr_intensity / ctr_intensity.max()
+        ctr_intensity = ctr_intensity / jnp.maximum(ctr_intensity.max(), 1e-10)
+
         all_detector_coords.append(det_coords)
+        all_k_out.append(valid_k_out)
         all_intensities.append(ctr_intensity)
-        hk_for_streak: Int[Array, "V 2"] = jnp.tile(
-            jnp.array([h_i, k_i]), (det_coords.shape[0], 1)
+        # Use rod index i as the g_index for each point on this rod
+        rod_indices: Int[Array, "V"] = jnp.full(
+            (det_coords.shape[0],), i, dtype=jnp.int32
         )
-        all_hk_indices.append(hk_for_streak)
+        all_indices.append(rod_indices)
+
     if len(all_detector_coords) == 0:
-        empty_coords: Float[Array, "0 2"] = jnp.zeros((0, 2))
-        empty_intensities: Float[Array, "0"] = jnp.zeros((0,))
-        empty_hk: Int[Array, "0 2"] = jnp.zeros((0, 2), dtype=jnp.int32)
-        return empty_coords, empty_intensities, empty_hk
+        # Return empty pattern
+        pattern: RHEEDPattern = create_rheed_pattern(
+            g_indices=jnp.zeros((0,), dtype=jnp.int32),
+            k_out=jnp.zeros((0, 3)),
+            detector_points=jnp.zeros((0, 2)),
+            intensities=jnp.zeros((0,)),
+        )
+        return pattern
+
     detector_coords: Float[Array, "N 2"] = jnp.concatenate(
         all_detector_coords, axis=0
     )
+    k_out_all: Float[Array, "N 3"] = jnp.concatenate(all_k_out, axis=0)
     intensities: Float[Array, "N"] = jnp.concatenate(all_intensities, axis=0)
-    hk_indices: Int[Array, "N 2"] = jnp.concatenate(all_hk_indices, axis=0)
-    return detector_coords, intensities, hk_indices
+    g_indices: Int[Array, "N"] = jnp.concatenate(all_indices, axis=0)
+
+    pattern: RHEEDPattern = create_rheed_pattern(
+        g_indices=g_indices,
+        k_out=k_out_all,
+        detector_points=detector_coords,
+        intensities=intensities,
+    )
+    return pattern

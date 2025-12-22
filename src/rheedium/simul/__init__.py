@@ -33,8 +33,10 @@ load_kirkland_parameters : function
     Load Kirkland scattering parameters from data file
 lorentzian_rod_profile : function
     Lorentzian lateral width profile of rods due to finite correlation length
-kinematic_simulator : function
-    Complete RHEED pattern simulation from crystal structure (kinematic)
+kinematic_ctr_simulator : function
+    RHEED simulation using continuous crystal truncation rods (streaks)
+kinematic_spot_simulator : function
+    RHEED simulation using discrete 3D reciprocal lattice (spots)
 multislice_propagate : function
     Propagate electron wave through potential slices using multislice algorithm
 multislice_simulator : function
@@ -63,11 +65,11 @@ from .form_factors import (
 )
 from .kinematic import (
     find_ctr_ewald_intersection,
+    kinematic_ctr_simulator,
     kinematic_detector_projection,
-    kinematic_simulator,
+    kinematic_spot_simulator,
     make_ewald_sphere,
     simple_structure_factor,
-    streak_simulator,
 )
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
@@ -102,8 +104,9 @@ __all__ = [
     "get_mean_square_displacement",
     "incident_wavevector",
     "integrated_rod_intensity",
+    "kinematic_ctr_simulator",
     "kinematic_detector_projection",
-    "kinematic_simulator",
+    "kinematic_spot_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",
     "lorentzian_rod_profile",
@@ -115,7 +118,6 @@ __all__ = [
     "roughness_damping",
     "simple_structure_factor",
     "sliced_crystal_to_potential",
-    "streak_simulator",
     "surface_structure_factor",
     "wavelength_ang",
 ]
