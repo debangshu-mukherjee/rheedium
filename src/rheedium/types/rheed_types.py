@@ -8,15 +8,21 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
+bulk_to_slice : function
+    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation
+create_rheed_image : function
+    Factory function to create RHEEDImage instances with data validation
+create_rheed_pattern : function
+    Factory function to create RHEEDPattern instances with data validation
+create_sliced_crystal : function
+    Factory function to create SlicedCrystal instances with data validation
+RHEEDImage : PyTree
+    Container for RHEED image data with pixel coordinates and intensity values
 RHEEDPattern : PyTree
     Container for RHEED diffraction pattern data with detector points and
     intensities.
-RHEEDImage : PyTree
-    Container for RHEED image data with pixel coordinates and intensity values
-create_rheed_pattern : function
-    Factory function to create RHEEDPattern instances with data validation
-create_rheed_image : function
-    Factory function to create RHEEDImage instances with data validation
+SlicedCrystal : PyTree
+    JAX-compatible crystal structure sliced for multislice simulation
 
 Notes
 -----

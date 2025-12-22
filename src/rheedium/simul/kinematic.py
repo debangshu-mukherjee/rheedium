@@ -8,14 +8,18 @@ Implements the algorithm from arXiv:2207.06642.
 
 Routine Listings
 ----------------
-make_ewald_sphere : function
-    Generate Ewald sphere geometry from scattering parameters
+find_ctr_ewald_intersection : function
+    Find where a crystal truncation rod intersects the Ewald sphere
+kinematic_ctr_simulator : function
+    RHEED simulation using continuous crystal truncation rods (streaks)
 kinematic_detector_projection : function
     Project scattered wavevectors onto detector screen
+kinematic_spot_simulator : function
+    RHEED simulation using discrete 3D reciprocal lattice (spots)
+make_ewald_sphere : function
+    Generate Ewald sphere geometry from scattering parameters
 simple_structure_factor : function
     Calculate structure factor for a single reflection
-kinematic_simulator : function
-    Kinematic RHEED simulator
 
 Notes
 -----
@@ -316,77 +320,65 @@ def find_ctr_ewald_intersection(
     k_in: Float[Array, "3"],
     recip_a: Float[Array, "3"],
     recip_b: Float[Array, "3"],
+    recip_c: Float[Array, "3"],
 ) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
-    """Find where a crystal truncation rod (h, k, l) intersects the Ewald sphere.
+    """Find where a crystal truncation rod intersects the Ewald sphere.
 
-    For a surface, the reciprocal lattice consists of rods extending perpendicular
-    to the surface (along z). Each rod is labeled by in-plane indices (h, k) and
-    has continuous l. This function finds the l value(s) where the rod intersects
-    the Ewald sphere.
+    Description
+    -----------
+    Solves quadratic equation for rod-sphere intersection and returns
+    the solution with upward scattering (k_out_z > 0).
 
     Parameters
     ----------
     h : scalar_int
-        In-plane Miller index h.
+        Miller index h for the rod.
     k : scalar_int
-        In-plane Miller index k.
+        Miller index k for the rod.
     k_in : Float[Array, "3"]
         Incident wavevector.
     recip_a : Float[Array, "3"]
         First reciprocal lattice vector (a*).
     recip_b : Float[Array, "3"]
         Second reciprocal lattice vector (b*).
+    recip_c : Float[Array, "3"]
+        Third reciprocal lattice vector (c*), defines rod direction.
 
     Returns
     -------
     l_intersect : Float[Array, ""]
-        The l value where the rod intersects the Ewald sphere (upward scattering).
+        The l value at intersection (NaN if no valid intersection).
     k_out : Float[Array, "3"]
-        The scattered wavevector at the intersection.
-    valid : Float[Array, ""]
-        1.0 if intersection exists and is physical, 0.0 otherwise.
-
-    Notes
-    -----
-    The Ewald sphere condition is: |k_out|² = |k_in|²
-
-    For a CTR at (h, k), the reciprocal space position is:
-        G(l) = h·a* + k·b* + l·c*
-
-    where c* is perpendicular to the surface (along z).
-
-    The scattered wavevector is:
-        k_out = k_in + G(l)
-
-    Substituting and solving for l (with c* = [0, 0, c*_z]):
-        |k_in + h·a* + k·b* + l·c*|² = |k_in|²
-
-    This is a quadratic in l. We want the solution with k_out_z > 0 (upward).
+        Outgoing wavevector at intersection.
+    excitation_error : Float[Array, ""]
+        Deviation from exact Ewald condition.
     """
-    k_mag_sq: Float[Array, ""] = jnp.dot(k_in, k_in)
     g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
-    k_plus_ghk: Float[Array, "3"] = k_in + g_hk
-    c_star_z: Float[Array, ""] = jnp.linalg.norm(recip_a)
-    a_coef: Float[Array, ""] = c_star_z**2
-    b_coef: Float[Array, ""] = 2.0 * k_plus_ghk[2] * c_star_z
-    c_coef: Float[Array, ""] = jnp.dot(k_plus_ghk, k_plus_ghk) - k_mag_sq
+    c_star: Float[Array, "3"] = recip_c
+    k_mag_sq: Float[Array, ""] = jnp.dot(k_in, k_in)
+    p_vec: Float[Array, "3"] = k_in + g_hk
+    a_coef: Float[Array, ""] = jnp.dot(c_star, c_star)
+    b_coef: Float[Array, ""] = 2.0 * jnp.dot(p_vec, c_star)
+    c_coef: Float[Array, ""] = jnp.dot(p_vec, p_vec) - k_mag_sq
     discriminant: Float[Array, ""] = b_coef**2 - 4.0 * a_coef * c_coef
-    has_solution: Float[Array, ""] = discriminant >= 0
-    disc_safe: Float[Array, ""] = jnp.maximum(discriminant, 0.0)
-    sqrt_disc: Float[Array, ""] = jnp.sqrt(disc_safe)
-    l1: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
-    l2: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
-    k_out1_z: Float[Array, ""] = k_plus_ghk[2] + l1 * c_star_z
-    k_out2_z: Float[Array, ""] = k_plus_ghk[2] + l2 * c_star_z
-    l_intersect: Float[Array, ""] = jnp.where(k_out1_z > 0, l1, l2)
-    k_out_z_chosen: Float[Array, ""] = jnp.where(
-        k_out1_z > 0, k_out1_z, k_out2_z
+    sqrt_disc: Float[Array, ""] = jnp.sqrt(jnp.maximum(discriminant, 0.0))
+    l_plus: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
+    l_minus: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
+    k_out_plus: Float[Array, "3"] = p_vec + l_plus * c_star
+    k_out_minus: Float[Array, "3"] = p_vec + l_minus * c_star
+    valid_plus: Float[Array, ""] = (discriminant >= 0) & (k_out_plus[2] > 0)
+    valid_minus: Float[Array, ""] = (discriminant >= 0) & (k_out_minus[2] > 0)
+    use_plus: Float[Array, ""] = valid_plus & (
+        ~valid_minus | (k_out_plus[2] > k_out_minus[2])
     )
-    valid: Float[Array, ""] = has_solution & (k_out_z_chosen > 0)
-    k_out: Float[Array, "3"] = k_plus_ghk + jnp.array(
-        [0.0, 0.0, l_intersect * c_star_z]
-    )
-    return l_intersect, k_out, valid.astype(jnp.float64)
+    l_intersect: Float[Array, ""] = jnp.where(use_plus, l_plus, l_minus)
+    k_out: Float[Array, "3"] = jnp.where(use_plus, k_out_plus, k_out_minus)
+    any_valid: Float[Array, ""] = valid_plus | valid_minus
+    l_intersect = jnp.where(any_valid, l_intersect, jnp.nan)
+    k_out = jnp.where(any_valid, k_out, jnp.nan)
+    k_out_mag: Float[Array, ""] = jnp.linalg.norm(k_out)
+    excitation_error: Float[Array, ""] = k_out_mag - jnp.sqrt(k_mag_sq)
+    return l_intersect, k_out, excitation_error
 
 
 @jaxtyped(typechecker=beartype)
@@ -483,10 +475,13 @@ def kinematic_ctr_simulator(  # noqa: 0915
         h: Int[Array, ""] = h_flat[rod_idx]
         k: Int[Array, ""] = k_flat[rod_idx]
         g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
-        l_intersect, _, intersection_valid = (
-            find_ctr_ewald_intersection(
-                h=h, k=k, k_in=k_in, recip_a=recip_a, recip_b=recip_b
-            )
+        l_intersect, _, intersection_valid = find_ctr_ewald_intersection(
+            h=h,
+            k=k,
+            k_in=k_in,
+            recip_a=recip_a,
+            recip_b=recip_b,
+            recip_c=recip_c,
         )
         rod_valid: Bool[Array, ""] = intersection_valid > 0.5
         g_vec: Float[Array, "3"] = g_hk + l_intersect * recip_c

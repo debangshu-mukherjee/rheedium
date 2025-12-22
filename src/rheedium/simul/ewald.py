@@ -11,6 +11,8 @@ Routine Listings
 ----------------
 build_ewald_data : function
     Build EwaldData from CrystalStructure, voltage, and lattice bounds
+ewald_allowed_reflections : function
+    Find reflections satisfying Ewald sphere condition for given beam angles
 
 Notes
 -----

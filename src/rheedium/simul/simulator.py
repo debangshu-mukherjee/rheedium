@@ -10,18 +10,24 @@ and complete RHEED patterns from crystal structures.
 
 Routine Listings
 ----------------
-wavelength_ang : function
-    Calculate electron wavelength in angstroms
-incident_wavevector : function
-    Calculate incident electron wavevector
-project_on_detector : function
-    Project wavevectors onto detector plane
-find_kinematic_reflections : function
-    Find reflections satisfying kinematic conditions
 compute_kinematic_intensities_with_ctrs : function
     Calculate kinematic intensities with CTR contributions
-simulate_rheed_pattern : function
-    Simulate complete RHEED pattern with surface physics
+find_kinematic_reflections : function
+    Find reflections satisfying kinematic conditions
+incident_wavevector : function
+    Calculate incident electron wavevector
+kinematic_simulator : function
+    Simulate complete RHEED pattern using kinematic approximation
+multislice_propagate : function
+    Propagate electron wave through potential slices using multislice algorithm
+multislice_simulator : function
+    Simulate RHEED pattern from potential slices using multislice (dynamical)
+project_on_detector : function
+    Project wavevectors onto detector plane
+sliced_crystal_to_potential : function
+    Convert SlicedCrystal to PotentialSlices for multislice simulation
+wavelength_ang : function
+    Calculate electron wavelength in angstroms
 
 Notes
 -----
