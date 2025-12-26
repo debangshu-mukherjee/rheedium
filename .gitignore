@@ -19,7 +19,15 @@ notebooks/__pycache__/
 /.claude/settings.local.json
 /.claude/RHEED_Physics.md
 /.claude/ROADMAP_multislice.md
+/.claude/XYZ_CIF_Unite.md
+/.claude/ROADMAP.md
+
 *.py[cod]
+/openspec/
+/openspec/*
+/openspec/.ipynb_checkpoints/
+/openspec/spec/*
+/openspec/changes/*
 
 # VS Code settings
 /.vscode

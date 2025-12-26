@@ -279,16 +279,18 @@ def kinematic_spot_simulator(
     k_in: Float[Array, "3"] = incident_wavevector(
         wavelength, theta_deg, phi_deg=0.0
     )
-    kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
-        find_kinematic_reflections(
-            k_in=k_in, gs=reciprocal_points, z_sign=1.0, tolerance=tolerance
-        )
+    all_indices, all_k_out = find_kinematic_reflections(
+        k_in=k_in, gs=reciprocal_points, z_sign=1.0, tolerance=tolerance
     )
-    allowed_indices: Int[Array, "K"] = kr[0]
-    k_out: Float[Array, "K 3"] = kr[1]
+
+    # Filter to valid reflections only (indices >= 0)
+    valid_mask: Bool[Array, "M"] = all_indices >= 0
+    allowed_indices: Int[Array, "K"] = all_indices[valid_mask]
+    k_out: Float[Array, "K 3"] = all_k_out[valid_mask]
     reciprocal_allowed: Float[Array, "K 3"] = reciprocal_points[
         allowed_indices
     ]
+
     detector_coords: Float[Array, "K 2"] = kinematic_detector_projection(
         k_out=k_out,
         detector_distance=detector_distance,
