@@ -30,18 +30,9 @@ jobs:
     - name: Count lines of code
       id: loc
       run: |
-        # Run pygount and get the summary
-        uv run pygount --format=summary src/rheedium > loc_summary.txt
-        cat loc_summary.txt
-
-        # Extract Python logical lines (code lines, not comments/empty)
-        # pygount summary format: Language | Files | % | Code | % | Comment | % | Empty | %
-        LOGICAL_LOC=$(uv run pygount --format=summary src/rheedium | grep -E "^Python" | awk '{print $4}')
-
-        # If no Python line found, try alternative parsing
-        if [ -z "$LOGICAL_LOC" ]; then
-          LOGICAL_LOC=$(uv run pygount --format=summary src/rheedium | tail -n 2 | head -n 1 | awk '{print $4}')
-        fi
+        # Run pygount with cloc-xml format for reliable parsing
+        # Extract total code lines from the <total> element
+        LOGICAL_LOC=$(uv run pygount --format=cloc-xml src/rheedium | grep -oP '<total[^>]*code="\K[0-9]+')
 
         echo "Logical lines of code: $LOGICAL_LOC"
         echo "loc=$LOGICAL_LOC" >> $GITHUB_OUTPUT
