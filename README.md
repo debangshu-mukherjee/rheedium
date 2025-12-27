@@ -11,15 +11,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![jax_badge](https://tinyurl.com/mucknrvu)](https://docs.jax.dev/)
 
-**High-Performance RHEED Pattern Simulation for Crystal Surface Analysis**
-
-*A JAX-accelerated Python package for realistic Reflection High-Energy Electron Diffraction (RHEED) pattern simulation using kinematic theory and atomic form factors.*
-
-</div>
-
 ## Overview
 
-Rheedium is a modern computational framework for simulating RHEED patterns with scientific rigor and computational efficiency. Built on JAX for automatic differentiation and GPU acceleration, it provides researchers with tools to:
+Rheedium is a JAX based computational framework for simulating RHEED patterns with automatic differentiation capabilities and GPU acceleration.
 
 ## License
 
