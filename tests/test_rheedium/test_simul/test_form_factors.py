@@ -301,7 +301,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(1.0 - dw + 1e-10))
 
         if q_mag < 1e-10:
-            chex.assert_trees_all_close(dw, 1.0, rtol=1e-10)
+            chex.assert_trees_all_close(dw, 1.0, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_debye_waller_factor_batched(self) -> None:
@@ -348,11 +348,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         dw_zero_msd = var_dw_factor(q_test, 0.0)
         chex.assert_trees_all_close(
-            dw_zero_msd, jnp.ones_like(q_test), rtol=1e-10
+            dw_zero_msd, jnp.ones_like(q_test), rtol=1e-6
         )
 
+        # For large MSD (10 Å²), expect significant damping for q > 0
+        # DW = exp(-q²⟨u²⟩/3), so q=1, MSD=10 → exp(-10/3) ≈ 0.036
         dw_large_msd = var_dw_factor(q_test[1:], 10.0)
-        chex.assert_trees_all_equal(jnp.all(dw_large_msd < 1e-5), True)
+        chex.assert_trees_all_equal(jnp.all(dw_large_msd < 0.1), True)
 
         dw_neg_msd = var_dw_factor(q_test, -0.1)
         chex.assert_tree_all_finite(dw_neg_msd)

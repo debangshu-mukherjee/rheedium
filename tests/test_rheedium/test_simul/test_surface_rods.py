@@ -494,7 +494,6 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_scalar_positive(float(relative_reduction))
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         ("narrow_range", (0.0, 1.0), 0.1),
         ("wide_range", (0.0, 5.0), 0.5),
@@ -515,10 +514,12 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         angular resolution. Verifies that integrated intensity is a positive
         scalar value, essential for comparing with experimental
         measurements.
-        """
-        var_integrated = self.variant(integrated_rod_intensity)
 
-        integrated = var_integrated(
+        Note: This function has built-in JIT with static_argnames for
+        n_integration_points, so we call it directly instead of using
+        self.variant() to avoid double-JIT issues.
+        """
+        integrated = integrated_rod_intensity(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             q_z_range=jnp.array(q_z_range, dtype=jnp.float64),
             crystal=self.test_crystal,
