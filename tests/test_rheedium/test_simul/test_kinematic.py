@@ -15,12 +15,12 @@ from rheedium.inout import parse_cif
 from rheedium.simul.kinematic import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
-    kinematic_detector_projection,
     kinematic_spot_simulator,
     make_ewald_sphere,
     simple_structure_factor as kinematic_structure_factor,
     wavelength_ang as kinematic_wavelength,
 )
+from rheedium.simul.simulator import project_on_detector
 from rheedium.types import create_crystal_structure
 from rheedium.ucell import miller_to_reciprocal, reciprocal_lattice_vectors
 
@@ -125,7 +125,7 @@ class TestKinematicEwaldSphere(chex.TestCase):
         assert jnp.all(valid_k_out[:, 2] > 0.0), "RHEED requires k_out_z > 0"
 
 
-class TestKinematicDetectorProjection(chex.TestCase):
+class TestDetectorProjection(chex.TestCase):
     """Test detector projection implementing inverse of paper's Equations 5-6.
 
     Paper's Equations 5-6 map detector → reciprocal space:
@@ -145,7 +145,7 @@ class TestKinematicDetectorProjection(chex.TestCase):
 
         The simplified projection uses: x_d = k_y * d / k_x, y_d = k_z * d / k_x
         """
-        var_project = self.variant(kinematic_detector_projection)
+        var_project = self.variant(project_on_detector)
 
         # Setup: typical RHEED parameters
         theta_deg = 2.0
@@ -174,7 +174,7 @@ class TestKinematicDetectorProjection(chex.TestCase):
 
         Specular: k_out_z ≈ |k_in_z| but positive (upward).
         """
-        var_project = self.variant(kinematic_detector_projection)
+        var_project = self.variant(project_on_detector)
 
         theta_deg = 2.0
         theta_rad = jnp.deg2rad(theta_deg)

@@ -2,8 +2,8 @@
 
 Extended Summary
 ----------------
-This module provides kinematic RHEED simulation functions including detector
-projection, structure factor calculation, and complete pattern simulation.
+This module provides kinematic RHEED simulation functions including
+structure factor calculation, and complete pattern simulation.
 Implements the algorithm from arXiv:2207.06642.
 
 Routine Listings
@@ -12,8 +12,6 @@ find_ctr_ewald_intersection : function
     Find where a crystal truncation rod intersects the Ewald sphere
 kinematic_ctr_simulator : function
     RHEED simulation using continuous crystal truncation rods (streaks)
-kinematic_detector_projection : function
-    Project scattered wavevectors onto detector screen
 kinematic_spot_simulator : function
     RHEED simulation using discrete 3D reciprocal lattice (spots)
 make_ewald_sphere : function
@@ -24,8 +22,8 @@ simple_structure_factor : function
 Notes
 -----
 Key difference from simulator.py:
-- Uses Equations 5-6 for detector projection
 - Simplified structure factors (f_j ≈ Z_j instead of Kirkland)
+- For detector projection, use :func:`project_on_detector` from simulator
 
 References
 ----------
@@ -51,7 +49,7 @@ from rheedium.ucell import (
 )
 
 from .simul_utils import incident_wavevector, wavelength_ang
-from .simulator import find_kinematic_reflections
+from .simulator import find_kinematic_reflections, project_on_detector
 
 jax.config.update("jax_enable_x64", True)
 
@@ -95,39 +93,6 @@ def make_ewald_sphere(
     center: Float[Array, "3"] = -k_in
     radius: scalar_float = wavevector_magnitude
     return center, radius
-
-
-@jaxtyped(typechecker=beartype)
-def kinematic_detector_projection(
-    k_out: Float[Array, "N 3"],
-    detector_distance: scalar_float,
-) -> Float[Array, "N 2"]:
-    """Project scattered wavevectors onto detector screen.
-
-    Description
-    -----------
-    Simple ray-tracing projection from sample to vertical detector screen.
-    Detector is perpendicular to beam propagation direction at distance d.
-
-    Parameters
-    ----------
-    k_out : Float[Array, "N 3"]
-        Scattered wavevectors [kx, ky, kz] in 1/Å.
-    detector_distance : scalar_float
-        Sample-to-detector distance in mm.
-
-    Returns
-    -------
-    detector_coords : Float[Array, "N 2"]
-        [x_d, y_d] detector coordinates in mm.
-        x_d: horizontal (perpendicular to scattering plane)
-        y_d: vertical (upward from sample plane)
-    """
-    scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
-    x_d: Float[Array, "N"] = k_out[:, 1] * scale
-    y_d: Float[Array, "N"] = k_out[:, 2] * scale
-    detector_coords: Float[Array, "N 2"] = jnp.stack([x_d, y_d], axis=-1)
-    return detector_coords
 
 
 @jaxtyped(typechecker=beartype)
@@ -301,7 +266,7 @@ def kinematic_spot_simulator(
         allowed_indices
     ]
 
-    detector_coords: Float[Array, "K 2"] = kinematic_detector_projection(
+    detector_coords: Float[Array, "K 2"] = project_on_detector(
         k_out=k_out,
         detector_distance=detector_distance,
     )

@@ -43,8 +43,8 @@ integrated_rod_intensity : function
     Integrate CTR intensity over finite detector acceptance
 kinematic_ctr_simulator : function
     RHEED simulation using continuous crystal truncation rods (streaks)
-kinematic_detector_projection : function
-    Project outgoing wavevectors onto 2D detector screen
+kinematic_simulator : function
+    Simulate RHEED pattern with proper atomic form factors and CTRs
 kinematic_spot_simulator : function
     RHEED simulation using discrete 3D reciprocal lattice (spots)
 kirkland_form_factor : function
@@ -95,7 +95,6 @@ from .form_factors import (
 from .kinematic import (
     find_ctr_ewald_intersection,
     kinematic_ctr_simulator,
-    kinematic_detector_projection,
     kinematic_spot_simulator,
     make_ewald_sphere,
     simple_structure_factor,
@@ -138,7 +137,6 @@ __all__ = [
     "incident_wavevector",
     "integrated_rod_intensity",
     "kinematic_ctr_simulator",
-    "kinematic_detector_projection",
     "kinematic_simulator",
     "kinematic_spot_simulator",
     "kirkland_form_factor",
