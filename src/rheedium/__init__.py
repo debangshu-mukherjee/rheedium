@@ -32,7 +32,7 @@ Examples
 Notes
 -----
 All computations are JAX-compatible and support automatic differentiation
-for gradient-based optimization of crystal structures and simulation 
+for gradient-based optimization of crystal structures and simulation
 parameters.
 """
 

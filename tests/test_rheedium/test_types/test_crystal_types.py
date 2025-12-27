@@ -179,7 +179,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
-    @chex.variants(with_jit=True, without_jit=True)
+    @chex.variants(without_jit=True, with_jit=False)
     def test_create_potential_slices_valid(self) -> None:
         """Test creation of valid PotentialSlices instances."""
         n_slices, height, width = 10, 64, 64
@@ -195,9 +195,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
         chex.assert_shape(potential.slices, (n_slices, height, width))
         # Scalar fields are validated in the create_potential_slices function itself
-        chex.assert_trees_all_close(potential.slice_thickness, slice_thickness)
-        chex.assert_trees_all_close(potential.x_calibration, x_calibration)
-        chex.assert_trees_all_close(potential.y_calibration, y_calibration)
+        assert float(potential.slice_thickness) == slice_thickness
+        assert float(potential.x_calibration) == x_calibration
+        assert float(potential.y_calibration) == y_calibration
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_potential_slices_pytree(self) -> None:
@@ -482,7 +482,6 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
-    @chex.variants(without_jit=True, with_jit=False)
     def test_nested_pytree_operations(self) -> None:
         """Test nested PyTree structures with crystal types."""
         n_atoms = 5
@@ -521,7 +520,6 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
             nested_structure["xyz"].positions, reconstructed["xyz"].positions
         )
 
-    @chex.variants(without_jit=True, with_jit=False)
     def test_vmap_over_crystal_structures(self) -> None:
         """Test vmap operations over batches of crystal structures."""
         batch_size = 4

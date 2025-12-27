@@ -189,10 +189,11 @@ def parse_cif_and_scrape(
     13. Return filtered crystal structure
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
-    cart_positions: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
+    cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Float[Array, "n 1"] = crystal.cart_positions[:, 3:4]
     zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
     zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-12)
-    projections: Float[Array, "n"] = cart_positions @ zone_axis_hat
+    projections: Float[Array, "n"] = cart_xyz @ zone_axis_hat
     min_proj: Float[Array, ""] = jnp.min(projections)
     max_proj: Float[Array, ""] = jnp.max(projections)
     center_proj: Float[Array, ""] = (max_proj + min_proj) / 2.0
@@ -200,7 +201,8 @@ def parse_cif_and_scrape(
     mask: Bool[Array, "n"] = (
         jnp.abs(projections - center_proj) <= half_thickness
     )
-    filtered_cart_positions: Float[Array, "m 3"] = cart_positions[mask]
+    filtered_cart_xyz: Float[Array, "m 3"] = cart_xyz[mask]
+    filtered_atomic_numbers: Float[Array, "m 1"] = atomic_numbers[mask]
     cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -210,9 +212,15 @@ def parse_cif_and_scrape(
         crystal.cell_angles[2],
     )
     cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
-    filtered_frac_positions: Float[Array, "m 3"] = (
-        filtered_cart_positions @ cell_inv
+    filtered_frac_xyz: Float[Array, "m 3"] = (
+        filtered_cart_xyz @ cell_inv
     ) % 1.0
+    filtered_frac_positions: Float[Array, "m 4"] = jnp.concatenate(
+        [filtered_frac_xyz, filtered_atomic_numbers], axis=1
+    )
+    filtered_cart_positions: Float[Array, "m 4"] = jnp.concatenate(
+        [filtered_cart_xyz, filtered_atomic_numbers], axis=1
+    )
     filtered_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=filtered_frac_positions,
         cart_positions=filtered_cart_positions,

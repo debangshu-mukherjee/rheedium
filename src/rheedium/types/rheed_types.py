@@ -504,35 +504,14 @@ def create_rheed_image(
 
         def _check_calibration() -> Union[Float[Array, "2"], Float[Array, ""]]:
             """Check the calibration is positive."""
-
-            def _check_scalar_cal() -> Float[Array, ""]:
-                """Check the calibration is positive."""
-                return lax.cond(
-                    calibration > 0,
-                    lambda: calibration,
-                    lambda: lax.stop_gradient(
-                        lax.cond(
-                            False, lambda: calibration, lambda: calibration
-                        )
-                    ),
-                )
-
-            def _check_array_cal() -> Float[Array, "2"]:
-                """Check the calibration is positive."""
-                return lax.cond(
-                    jnp.logical_and(
-                        calibration.shape == (2,), jnp.all(calibration > 0)
-                    ),
-                    lambda: calibration,
-                    lambda: lax.stop_gradient(
-                        lax.cond(
-                            False, lambda: calibration, lambda: calibration
-                        )
-                    ),
-                )
-
+            # Use jnp.all to ensure scalar predicate regardless of calibration shape
+            # Both branches are traced by JAX, so both predicates must be scalar
             return lax.cond(
-                calibration.ndim == 0, _check_scalar_cal, _check_array_cal
+                jnp.all(calibration > 0),
+                lambda: calibration,
+                lambda: lax.stop_gradient(
+                    lax.cond(False, lambda: calibration, lambda: calibration)
+                ),
             )
 
         _check_2d()

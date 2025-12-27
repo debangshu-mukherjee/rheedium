@@ -39,7 +39,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
@@ -629,13 +629,13 @@ def sliced_crystal_to_potential(
     return potential_slices
 
 
-@beartype
+@jaxtyped(typechecker=beartype)
 def multislice_propagate(
     potential_slices: PotentialSlices,
     voltage_kv: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
-) -> Array:
+) -> Complex[Array, "nx ny"]:
     """Propagate electron wave through potential slices.
 
     This implements the multislice algorithm for dynamical electron
@@ -664,7 +664,7 @@ def multislice_propagate(
 
     Returns
     -------
-    exit_wave : Float[Array, "nx ny"]
+    exit_wave : Complex[Array, "nx ny"]
         Complex exit wave after propagation through all slices
 
     Notes
@@ -687,7 +687,7 @@ def multislice_propagate(
        Microscopy, 2nd ed.
     .. [2] Cowley & Moodie (1957). Acta Cryst. 10, 609-619.
     """
-    v_slices: Float[Array, "nz nx ny"] = potential_slices.slices
+    v_slices: Float[Array, " nz nx ny"] = potential_slices.slices
     dz: scalar_float = potential_slices.slice_thickness
     dx: scalar_float = potential_slices.x_calibration
     dy: scalar_float = potential_slices.y_calibration
@@ -696,43 +696,44 @@ def multislice_propagate(
     lam_ang: scalar_float = wavelength_ang(voltage_kv)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
     sigma: scalar_float = 2.0 * jnp.pi / (lam_ang * voltage_kv * 1000.0)
-    x: Float[Array, "nx"] = jnp.arange(nx) * dx
-    y: Float[Array, "ny"] = jnp.arange(ny) * dy
-    kx: Float[Array, "nx"] = jnp.fft.fftfreq(nx, dx)
-    ky: Float[Array, "ny"] = jnp.fft.fftfreq(ny, dy)
-    kx_grid: Float[Array, "nx ny"]
-    ky_grid: Float[Array, "nx ny"]
+    x: Float[Array, " nx"] = jnp.arange(nx) * dx
+    y: Float[Array, " ny"] = jnp.arange(ny) * dy
+    kx: Float[Array, " nx"] = jnp.fft.fftfreq(nx, dx)
+    ky: Float[Array, " ny"] = jnp.fft.fftfreq(ny, dy)
+    kx_grid: Float[Array, " nx ny"]
+    ky_grid: Float[Array, " nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
     k_in_x: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.cos(phi_rad)
     k_in_y: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.sin(phi_rad)
-    x_grid: Float[Array, "nx ny"]
-    y_grid: Float[Array, "nx ny"]
+    x_grid: Float[Array, " nx ny"]
+    y_grid: Float[Array, " nx ny"]
     x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
     phase_init: Float[Array, "nx ny"] = k_in_x * x_grid + k_in_y * y_grid
-    psi: Float[Array, "nx ny"] = jnp.exp(1j * phase_init)
-    propagator: Float[Array, "nx ny"] = jnp.exp(
+    psi: Complex[Array, "nx ny"] = jnp.exp(1j * phase_init)
+    propagator: Complex[Array, "nx ny"] = jnp.exp(
         -1j * jnp.pi * lam_ang * dz * (kx_grid**2 + ky_grid**2)
     )
 
     def _propagate_one_slice(
-        psi_in: Float[Array, "nx ny"], v_slice: Float[Array, "nx ny"]
-    ) -> tuple[Float[Array, "nx ny"], None]:
+        psi_in: Complex[Array, "nx ny"],
+        v_slice: Float[Array, "nx ny"],
+    ) -> tuple[Complex[Array, "nx ny"], None]:
         """Propagate through one slice: transmit then propagate."""
-        transmission: Float[Array, "nx ny"] = jnp.exp(1j * sigma * v_slice)
-        psi_transmitted: Float[Array, "nx ny"] = psi_in * transmission
-        psi_k: Float[Array, "nx ny"] = jnp.fft.fft2(psi_transmitted)
-        psi_k_propagated: Float[Array, "nx ny"] = psi_k * propagator
-        psi_out: Float[Array, "nx ny"] = jnp.fft.ifft2(psi_k_propagated)
+        transmission: Complex[Array, "nx ny"] = jnp.exp(1j * sigma * v_slice)
+        psi_transmitted: Complex[Array, "nx ny"] = psi_in * transmission
+        psi_k: Complex[Array, "nx ny"] = jnp.fft.fft2(psi_transmitted)
+        psi_k_propagated: Complex[Array, "nx ny"] = psi_k * propagator
+        psi_out: Complex[Array, "nx ny"] = jnp.fft.ifft2(psi_k_propagated)
         return psi_out, None
 
-    psi_exit: Float[Array, "nx ny"]
+    psi_exit: Complex[Array, "nx ny"]
     psi_exit, _ = jax.lax.scan(_propagate_one_slice, psi, v_slices)
     return psi_exit
 
 
-@beartype
+@jaxtyped(typechecker=beartype)
 def multislice_simulator(
     potential_slices: PotentialSlices,
     voltage_kv: scalar_float,
@@ -802,13 +803,13 @@ def multislice_simulator(
     .. [2] Ichimiya & Cohen (2004). Reflection High-Energy Electron
        Diffraction
     """
-    exit_wave: Float[Array, "nx ny"] = multislice_propagate(
+    exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
         potential_slices=potential_slices,
         voltage_kv=voltage_kv,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
     )
-    exit_wave_k: Float[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
+    exit_wave_k: Complex[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
     nx: int = potential_slices.slices.shape[1]
     ny: int = potential_slices.slices.shape[2]
     dx: scalar_float = potential_slices.x_calibration
@@ -832,7 +833,7 @@ def multislice_simulator(
     k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid
     k_out_y: Float[Array, "nx ny"] = k_in[1] + ky_grid
     k_out_z_squared: Float[Array, "nx ny"] = k_mag**2 - k_out_x**2 - k_out_y**2
-    valid_mask: Float[Array, "nx ny"] = k_out_z_squared > 0
+    valid_mask: Bool[Array, "nx ny"] = k_out_z_squared > 0
     k_out_z: Float[Array, "nx ny"] = jnp.where(
         valid_mask, jnp.sqrt(k_out_z_squared), 0.0
     )
@@ -852,7 +853,7 @@ def multislice_simulator(
     k_out_x_flat: Float[Array, "n"] = k_out_x.ravel()
     k_out_y_flat: Float[Array, "n"] = k_out_y.ravel()
     k_out_z_flat: Float[Array, "n"] = k_out_z.ravel()
-    nonzero_mask: Float[Array, "n"] = intensity_flat > 0
+    nonzero_mask: Bool[Array, "n"] = intensity_flat > 0
     det_x_filtered: Float[Array, "m"] = det_x_flat[nonzero_mask]
     det_y_filtered: Float[Array, "m"] = det_y_flat[nonzero_mask]
     intensity_filtered: Float[Array, "m"] = intensity_flat[nonzero_mask]

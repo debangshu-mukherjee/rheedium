@@ -136,8 +136,8 @@ class CrystalStructure(NamedTuple):
 
 @beartype
 def create_crystal_structure(
-    frac_positions: Num[Array, "N 4"],
-    cart_positions: Num[Array, "N 4"],
+    frac_positions: Num[Array, "... 4"],
+    cart_positions: Num[Array, "... 4"],
     cell_lengths: Num[Array, "3"],
     cell_angles: Num[Array, "3"],
 ) -> CrystalStructure:
@@ -145,10 +145,10 @@ def create_crystal_structure(
 
     Parameters
     ----------
-    frac_positions : Num[Array, "N 4"]
+    frac_positions : Num[Array, "... 4"]
         Array of shape (n_atoms, 4) containing atomic positions in fractional
         coordinates.
-    cart_positions : Num[Array, "N 4"]
+    cart_positions : Num[Array, "... 4"]
         Array of shape (n_atoms, 4) containing atomic positions in Cartesian
         coordinates.
     cell_lengths : Num[Array, "3"]
@@ -172,15 +172,15 @@ def create_crystal_structure(
     - Ensure cell angles are between 0 and 180 degrees
     - Create and return CrystalStructure instance with validated data
     """
-    frac_positions: Float[Array, "N 4"] = jnp.asarray(frac_positions)
-    cart_positions: Num[Array, "N 4"] = jnp.asarray(cart_positions)
+    frac_positions: Float[Array, "... 4"] = jnp.asarray(frac_positions)
+    cart_positions: Num[Array, "... 4"] = jnp.asarray(cart_positions)
     cell_lengths: Num[Array, "3"] = jnp.asarray(cell_lengths)
     cell_angles: Num[Array, "3"] = jnp.asarray(cell_angles)
 
     def _validate_and_create() -> CrystalStructure:
         max_cols: int = 4
 
-        def _check_frac_shape() -> Float[Array, "N max_cols"]:
+        def _check_frac_shape() -> Float[Array, "... max_cols"]:
             return lax.cond(
                 frac_positions.shape[1] == max_cols,
                 lambda: frac_positions,
@@ -191,7 +191,7 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_cart_shape() -> Num[Array, "N max_cols"]:
+        def _check_cart_shape() -> Num[Array, "... max_cols"]:
             return lax.cond(
                 cart_positions.shape[1] == max_cols,
                 lambda: cart_positions,
@@ -221,7 +221,7 @@ def create_crystal_structure(
             )
 
         def _check_atom_count() -> (
-            Tuple[Float[Array, "N 4"], Num[Array, "N 4"]]
+            Tuple[Float[Array, "... 4"], Num[Array, "... 4"]]
         ):
             return lax.cond(
                 frac_positions.shape[0] == cart_positions.shape[0],
@@ -236,7 +236,7 @@ def create_crystal_structure(
             )
 
         def _check_atomic_numbers() -> (
-            Tuple[Float[Array, "N 4"], Num[Array, "N 4"]]
+            Tuple[Float[Array, "... 4"], Num[Array, "... 4"]]
         ):
             return lax.cond(
                 jnp.all(frac_positions[:, 3] == cart_positions[:, 3]),

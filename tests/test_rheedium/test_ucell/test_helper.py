@@ -267,7 +267,7 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Check that we got a CrystalStructure
-        chex.assert_type(filtered_crystal, CrystalStructure)
+        assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check that atoms were filtered (should have fewer than 10)
         n_atoms = filtered_crystal.cart_positions.shape[0]
@@ -294,7 +294,7 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Check valid crystal structure
-        chex.assert_type(filtered_crystal, CrystalStructure)
+        assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check we have some atoms
         n_atoms = filtered_crystal.cart_positions.shape[0]
@@ -327,8 +327,8 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Both should produce valid crystals
-        chex.assert_type(crystal1, CrystalStructure)
-        chex.assert_type(crystal2, CrystalStructure)
+        assert isinstance(crystal1, CrystalStructure)
+        assert isinstance(crystal2, CrystalStructure)
 
         # Crystal2 should have more or equal atoms than crystal1
         n_atoms1 = crystal1.cart_positions.shape[0]
@@ -336,22 +336,24 @@ Si10 Si 0.5 0.5 0.9
         chex.assert_scalar_positive(int(n_atoms1))
         chex.assert_scalar_positive(int(n_atoms2))
         # More thickness should include more or equal atoms
-        assert int(n_atoms2) >= int(n_atoms1), (
-            "More thickness should include more or equal atoms"
-        )
+        assert int(n_atoms2) >= int(
+            n_atoms1
+        ), "More thickness should include more or equal atoms"
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thin_slice(self) -> None:
-        """Test with very thin slice thickness."""
+        """Test with thin slice that includes some atoms."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness_xyz = jnp.array([5.0, 5.0, 0.5])  # Very thin slice
+        # Atoms are at z=0,1,2,...,9 Å, center is at 4.5 Å
+        # A 2.5 Å slice (half_thickness=1.25) centered at 4.5 captures atoms at 4 and 5
+        thickness_xyz = jnp.array([5.0, 5.0, 2.5])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness_xyz
         )
 
-        # Should still have at least one atom
+        # Should have at least one atom
         n_atoms = filtered_crystal.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
 
