@@ -219,22 +219,26 @@ class TestDeduplicatePositions(chex.TestCase):
 
     def test_removes_duplicates(self) -> None:
         """Duplicate positions within tolerance are removed."""
-        positions = jnp.array([
-            [0.0, 0.0, 0.0, 14.0],
-            [0.001, 0.001, 0.001, 14.0],
-            [1.0, 1.0, 1.0, 8.0],
-        ])
+        positions = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [0.001, 0.001, 0.001, 14.0],
+                [1.0, 1.0, 1.0, 8.0],
+            ]
+        )
         unique = _deduplicate_positions(positions, tol=0.1)
 
         assert unique.shape[0] == 2
 
     def test_keeps_distinct_atoms(self) -> None:
         """Distinct positions are preserved."""
-        positions = jnp.array([
-            [0.0, 0.0, 0.0, 14.0],
-            [2.0, 2.0, 2.0, 8.0],
-            [4.0, 4.0, 4.0, 14.0],
-        ])
+        positions = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [2.0, 2.0, 2.0, 8.0],
+                [4.0, 4.0, 4.0, 14.0],
+            ]
+        )
         unique = _deduplicate_positions(positions, tol=0.5)
 
         assert unique.shape[0] == 3

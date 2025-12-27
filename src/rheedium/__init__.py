@@ -38,7 +38,7 @@ for gradient-based optimization of crystal structures and simulation parameters.
 import os
 from importlib.metadata import version
 
-# Enable multi-threaded CPU execution for JAX 
+# Enable multi-threaded CPU execution for JAX
 # must be set before importing JAX
 os.environ.setdefault(
     "XLA_FLAGS",

@@ -428,7 +428,9 @@ def ewald_allowed_reflections(
 
         # Extract allowed k_out and intensities weighted by overlap
         k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
-        base_intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
+        base_intensities: Float[Array, "N"] = ewald.intensities[
+            allowed_indices
+        ]
         overlap_weights: Float[Array, "N"] = overlap[allowed_indices]
         intensities: Float[Array, "N"] = base_intensities * overlap_weights
 
@@ -438,7 +440,9 @@ def ewald_allowed_reflections(
         relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
 
         # Ewald condition satisfied AND upward scattering
-        is_allowed: Bool[Array, "M"] = (relative_error < tolerance) & upward_mask
+        is_allowed: Bool[Array, "M"] = (
+            relative_error < tolerance
+        ) & upward_mask
 
         # Get indices of allowed reflections
         allowed_indices: Int[Array, "N"] = jnp.where(

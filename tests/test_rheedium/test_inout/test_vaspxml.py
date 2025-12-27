@@ -220,11 +220,13 @@ class TestExtractStress(chex.TestCase):
         stress = _extract_stress(calculation)
 
         assert stress is not None
-        expected = jnp.array([
-            [1.0, 0.1, 0.2],
-            [0.1, 2.0, 0.3],
-            [0.2, 0.3, 3.0],
-        ])
+        expected = jnp.array(
+            [
+                [1.0, 0.1, 0.2],
+                [0.1, 2.0, 0.3],
+                [0.2, 0.3, 3.0],
+            ]
+        )
         chex.assert_trees_all_close(stress, expected, atol=1e-10)
 
     def test_missing_stress(self) -> None:
@@ -298,7 +300,9 @@ class TestParseVaspxml(chex.TestCase):
             assert isinstance(xyz_data, XYZData)
             assert xyz_data.positions.shape == (2, 3)
             assert xyz_data.energy is not None
-            chex.assert_trees_all_close(xyz_data.energy, -12.34567890, atol=1e-6)
+            chex.assert_trees_all_close(
+                xyz_data.energy, -12.34567890, atol=1e-6
+            )
             assert xyz_data.stress is not None
             assert xyz_data.lattice is not None
 
@@ -480,11 +484,10 @@ class TestVaspxmlRoundtrip(chex.TestCase):
 
             # Lattice from XYZData should give same cell lengths
             from rheedium.inout.crystal import lattice_to_cell_params
+
             lengths, angles = lattice_to_cell_params(xyz_data.lattice)
 
             chex.assert_trees_all_close(
                 lengths, crystal.cell_lengths, atol=1e-6
             )
-            chex.assert_trees_all_close(
-                angles, crystal.cell_angles, atol=1e-6
-            )
+            chex.assert_trees_all_close(angles, crystal.cell_angles, atol=1e-6)

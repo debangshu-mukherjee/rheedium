@@ -176,9 +176,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_gaussian = self.variant(gaussian_rod_profile)
 
-        profile_values = var_gaussian(
-            self.q_perp_values, correlation_length
-        )
+        profile_values = var_gaussian(self.q_perp_values, correlation_length)
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -210,9 +208,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_lorentzian = self.variant(lorentzian_rod_profile)
 
-        profile_values = var_lorentzian(
-            self.q_perp_values, correlation_length
-        )
+        profile_values = var_lorentzian(self.q_perp_values, correlation_length)
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -635,12 +631,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         correlation = 50.0
 
-        gaussian_profile = var_gaussian(
-            self.q_perp_values, correlation
-        )
-        lorentzian_profile = var_lorentzian(
-            self.q_perp_values, correlation
-        )
+        gaussian_profile = var_gaussian(self.q_perp_values, correlation)
+        lorentzian_profile = var_lorentzian(self.q_perp_values, correlation)
 
         chex.assert_trees_all_close(
             gaussian_profile[0], lorentzian_profile[0], rtol=1e-10

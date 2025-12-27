@@ -88,9 +88,7 @@ class TestLatticeToCellParams(chex.TestCase):
         lattice = jnp.array([[a, 0, 0], [0, a, 0], [0, 0, c]])
         lengths, angles = lattice_to_cell_params(lattice)
 
-        chex.assert_trees_all_close(
-            lengths, jnp.array([a, a, c]), atol=1e-10
-        )
+        chex.assert_trees_all_close(lengths, jnp.array([a, a, c]), atol=1e-10)
         chex.assert_trees_all_close(
             angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-10
         )
@@ -243,16 +241,16 @@ class TestXyzToCrystal(chex.TestCase):
         crystal = xyz_to_crystal(xyz_data)
 
         # Check hexagonal angles
-        chex.assert_trees_all_close(
-            crystal.cell_angles[2], 120.0, atol=1e-5
-        )
+        chex.assert_trees_all_close(crystal.cell_angles[2], 120.0, atol=1e-5)
         chex.assert_trees_all_close(
             crystal.cell_angles[:2], jnp.array([90.0, 90.0]), atol=1e-5
         )
 
     def test_preserves_atomic_numbers(self) -> None:
         """Atomic numbers correctly transferred to 4th column."""
-        positions = jnp.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
+        positions = jnp.array(
+            [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
+        )
         atomic_numbers = jnp.array([26, 8, 14])  # Fe, O, Si
 
         xyz_data = create_xyz_data(
@@ -463,9 +461,7 @@ class TestCrystalRoundtrip(chex.TestCase):
         lengths, angles = lattice_to_cell_params(lattice)
 
         # Lengths should match
-        chex.assert_trees_all_close(
-            lengths, jnp.array([a, b, c]), atol=1e-10
-        )
+        chex.assert_trees_all_close(lengths, jnp.array([a, b, c]), atol=1e-10)
 
         # Angles should be 90 deg
         chex.assert_trees_all_close(

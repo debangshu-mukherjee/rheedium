@@ -184,7 +184,9 @@ def extent_to_rod_sigma(
 
     # σ_q = 2π / (L × √(2π)) for FWHM matching sinc²
     sqrt_2pi: Float[Array, ""] = jnp.sqrt(2.0 * jnp.pi)
-    rod_sigma: Float[Array, "2"] = (2.0 * jnp.pi) / (extent_safe[:2] * sqrt_2pi)
+    rod_sigma: Float[Array, "2"] = (2.0 * jnp.pi) / (
+        extent_safe[:2] * sqrt_2pi
+    )
 
     return rod_sigma
 
@@ -344,7 +346,7 @@ def rod_ewald_overlap(
     sigma_eff_sq: Float[Array, ""] = rod_sigma_mean**2 + shell_sigma**2
 
     # Gaussian overlap factor
-    overlap: Float[Array, "N"] = jnp.exp(-d_perp**2 / (2.0 * sigma_eff_sq))
+    overlap: Float[Array, "N"] = jnp.exp(-(d_perp**2) / (2.0 * sigma_eff_sq))
 
     return overlap
 
@@ -443,6 +445,8 @@ def finite_domain_intensities(
     )
 
     # Weight base intensities by overlap
-    modified_intensities: Float[Array, "N"] = ewald.intensities * overlap_factors
+    modified_intensities: Float[Array, "N"] = (
+        ewald.intensities * overlap_factors
+    )
 
     return overlap_factors, modified_intensities

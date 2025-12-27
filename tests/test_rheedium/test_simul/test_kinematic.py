@@ -34,7 +34,9 @@ class TestKinematicWavelength(chex.TestCase):
         ("20kV", 20.0, 0.0859),
         ("30kV", 30.0, 0.0698),
     )
-    def test_wavelength_values(self, voltage_kv: float, expected_lambda: float):
+    def test_wavelength_values(
+        self, voltage_kv: float, expected_lambda: float
+    ):
         """Test wavelength calculation matches expected values."""
         var_wavelength = self.variant(kinematic_wavelength)
 
@@ -102,11 +104,13 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
         # Some test reciprocal vectors
         # For RHEED, we want upward scattering (k_out_z > 0)
-        G_vectors = jnp.array([
-            [0.0, 0.0, 5.0],   # k_out_z = -2.5 + 5.0 = 2.5 > 0 (upward)
-            [0.0, 1.5, 5.1],   # k_out_z = -2.5 + 5.1 = 2.6 > 0 (upward)
-            [2.0, 0.0, -2.0],  # k_out_z = -2.5 - 2.0 = -4.5 < 0 (rejected)
-        ])
+        G_vectors = jnp.array(
+            [
+                [0.0, 0.0, 5.0],  # k_out_z = -2.5 + 5.0 = 2.5 > 0 (upward)
+                [0.0, 1.5, 5.1],  # k_out_z = -2.5 + 5.1 = 2.6 > 0 (upward)
+                [2.0, 0.0, -2.0],  # k_out_z = -2.5 - 2.0 = -4.5 < 0 (rejected)
+            ]
+        )
 
         # z_sign=1.0 selects upward scattering (k_out_z > 0)
         indices, k_out = var_ewald(k_in, G_vectors, z_sign=1.0, tolerance=0.1)
@@ -119,7 +123,9 @@ class TestKinematicEwaldSphere(chex.TestCase):
         valid_k_out = k_out[indices >= 0]
         k_out_mags = jnp.linalg.norm(valid_k_out, axis=1)
         for k_mag_out in k_out_mags:
-            assert jnp.abs(k_mag_out - k_mag) / k_mag < 0.1, "Elastic scattering"
+            assert (
+                jnp.abs(k_mag_out - k_mag) / k_mag < 0.1
+            ), "Elastic scattering"
 
         # All valid k_out should have positive z (upward scattering for RHEED)
         assert jnp.all(valid_k_out[:, 2] > 0.0), "RHEED requires k_out_z > 0"
@@ -182,9 +188,9 @@ class TestDetectorProjection(chex.TestCase):
         k0 = 2.0 * jnp.pi / wavelength
 
         # Near-specular: same angle out, k_out_z positive, k_out_y = 0
-        k_out = jnp.array([[
-            k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)
-        ]])
+        k_out = jnp.array(
+            [[k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)]]
+        )
         d = 100.0
 
         coords = var_project(k_out, d)
@@ -221,10 +227,12 @@ class TestKinematicStructureFactor(chex.TestCase):
 
         # Simple cubic with two atoms (like diamond basis)
         G = jnp.array([2.0, 0.0, 0.0])  # (100) type reflection
-        positions = jnp.array([
-            [0.0, 0.0, 0.0],
-            [0.5, 0.5, 0.5],  # Diamond basis
-        ])
+        positions = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],  # Diamond basis
+            ]
+        )
         atomic_nums = jnp.array([14, 14])
 
         intensity = var_sf(G, positions, atomic_nums)
@@ -245,7 +253,9 @@ class TestKinematicSimulator(chex.TestCase):
         # Simple cubic Silicon crystal
         a_si = 5.43  # Silicon lattice constant
         frac_pos = jnp.array([[0.0, 0.0, 0.0, 14.0]])  # One Si atom at origin
-        cart_pos = jnp.array([[0.0, 0.0, 0.0, 14.0]])  # Cartesian same for origin
+        cart_pos = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0]]
+        )  # Cartesian same for origin
 
         self.crystal = create_crystal_structure(
             frac_positions=frac_pos,
@@ -276,7 +286,9 @@ class TestKinematicSimulator(chex.TestCase):
 
         # Check that we found some reflections
         n_reflections = len(pattern.intensities)
-        assert n_reflections > 0, "Should find reflections at grazing incidence"
+        assert (
+            n_reflections > 0
+        ), "Should find reflections at grazing incidence"
 
         # Check intensities are positive
         assert jnp.all(pattern.intensities >= 0.0)
@@ -300,7 +312,6 @@ class TestKinematicSimulator(chex.TestCase):
         # (This is a sanity check, not a strict requirement)
         max_coord = jnp.max(jnp.abs(pattern.detector_points))
         assert max_coord < 10000.0  # Not absurdly large
-
 
 
 class TestMakeEwaldSphere(chex.TestCase):
@@ -331,7 +342,7 @@ class TestMakeEwaldSphere(chex.TestCase):
         # In kinematic.py: k_z = -k * sin(theta)
         # So center = -k_in = [-kx, -ky, -kz]
         # center_z = -(-k * sin(theta)) = k * sin(theta) > 0
-        
+
         theta_rad = jnp.deg2rad(theta_deg)
         expected_z = k_mag * jnp.sin(theta_rad)
         chex.assert_trees_all_close(center[2], expected_z, rtol=1e-6)
@@ -368,9 +379,13 @@ class TestMgOExtinctionRules(chex.TestCase):
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.mgo_crystal.cart_positions[:, :3]
-        atomic_numbers = self.mgo_crystal.cart_positions[:, 3].astype(jnp.int32)
+        atomic_numbers = self.mgo_crystal.cart_positions[:, 3].astype(
+            jnp.int32
+        )
 
-        intensity = kinematic_structure_factor(g_vector, atom_positions, atomic_numbers)
+        intensity = kinematic_structure_factor(
+            g_vector, atom_positions, atomic_numbers
+        )
         return float(intensity)
 
     def test_mgo_allowed_reflections_nonzero(self):
@@ -455,7 +470,7 @@ class TestMgOExtinctionRules(chex.TestCase):
         intensity = self._get_structure_factor_intensity(0, 0, 0)
         # 8 atoms total: 4 Mg (Z=12) + 4 O (Z=8)
         expected_f = 4 * 12 + 4 * 8  # = 80
-        expected_intensity = expected_f ** 2  # = 6400
+        expected_intensity = expected_f**2  # = 6400
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -482,9 +497,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         cls.sto_crystal = parse_cif(cif_path)
 
         # Verify we got the right number of atoms
-        assert len(cls.sto_crystal.cart_positions) == 5, (
-            f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
-        )
+        assert (
+            len(cls.sto_crystal.cart_positions) == 5
+        ), f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
 
         # Get reciprocal lattice vectors
         cls.recip_vectors = reciprocal_lattice_vectors(
@@ -499,9 +514,13 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.sto_crystal.cart_positions[:, :3]
-        atomic_numbers = self.sto_crystal.cart_positions[:, 3].astype(jnp.int32)
+        atomic_numbers = self.sto_crystal.cart_positions[:, 3].astype(
+            jnp.int32
+        )
 
-        intensity = kinematic_structure_factor(g_vector, atom_positions, atomic_numbers)
+        intensity = kinematic_structure_factor(
+            g_vector, atom_positions, atomic_numbers
+        )
         return float(intensity)
 
     def test_sto_origin_reflection(self):
@@ -514,7 +533,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         """
         intensity = self._get_structure_factor_intensity(0, 0, 0)
         expected_f = 38 + 22 + 3 * 8  # = 84
-        expected_intensity = expected_f ** 2  # = 7056
+        expected_intensity = expected_f**2  # = 7056
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -534,7 +553,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         intensity = self._get_structure_factor_intensity(1, 0, 0)
         # F = -Z_Sr + Z_Ti + Z_O - Z_O + Z_O = -38 + 22 + 8 - 8 + 8 = -8
         expected_f = -38 + 22 + 8 - 8 + 8  # = -8
-        expected_intensity = expected_f ** 2  # = 64
+        expected_intensity = expected_f**2  # = 64
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -553,7 +572,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         """
         intensity = self._get_structure_factor_intensity(1, 1, 0)
         expected_f = 38 + 22 + 8 - 8 - 8  # = 52
-        expected_intensity = expected_f ** 2  # = 2704
+        expected_intensity = expected_f**2  # = 2704
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -572,7 +591,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         """
         intensity = self._get_structure_factor_intensity(1, 1, 1)
         expected_f = -38 + 22 - 8 - 8 - 8  # = -40
-        expected_intensity = expected_f ** 2  # = 1600
+        expected_intensity = expected_f**2  # = 1600
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 

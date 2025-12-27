@@ -72,7 +72,9 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
         chex.assert_shape(extent, (3,))
         # Single atom has zero extent, but minimum is enforced
-        chex.assert_trees_all_close(extent, jnp.array([1.0, 1.0, 1.0]), rtol=1e-10)
+        chex.assert_trees_all_close(
+            extent, jnp.array([1.0, 1.0, 1.0]), rtol=1e-10
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_cube_extent(self) -> None:
@@ -85,7 +87,9 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         extent = var_compute(self.cube_positions, padding_ang=0.0)
 
         chex.assert_shape(extent, (3,))
-        chex.assert_trees_all_close(extent, jnp.array([10.0, 10.0, 10.0]), rtol=1e-10)
+        chex.assert_trees_all_close(
+            extent, jnp.array([10.0, 10.0, 10.0]), rtol=1e-10
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_slab_extent(self) -> None:
@@ -98,7 +102,9 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         extent = var_compute(self.slab_positions, padding_ang=0.0)
 
         chex.assert_shape(extent, (3,))
-        chex.assert_trees_all_close(extent, jnp.array([20.0, 15.0, 5.0]), rtol=1e-10)
+        chex.assert_trees_all_close(
+            extent, jnp.array([20.0, 15.0, 5.0]), rtol=1e-10
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -178,7 +184,9 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         sigma = var_sigma(self.medium_extent)
 
         expected = 2.0 * jnp.pi / (100.0 * jnp.sqrt(2.0 * jnp.pi))
-        chex.assert_trees_all_close(sigma, jnp.array([expected, expected]), rtol=1e-6)
+        chex.assert_trees_all_close(
+            sigma, jnp.array([expected, expected]), rtol=1e-6
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_positive_output(self) -> None:
@@ -293,7 +301,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
         # G vector that satisfies Ewald condition (roughly)
         # k_out = k_in + G should have |k_out| ≈ |k_in|
-        self.g_on_sphere = jnp.array([[0.0, 0.0, 2.0 * self.k_magnitude * jnp.sin(theta_rad)]])
+        self.g_on_sphere = jnp.array(
+            [[0.0, 0.0, 2.0 * self.k_magnitude * jnp.sin(theta_rad)]]
+        )
 
         # G vector far from Ewald sphere
         self.g_off_sphere = jnp.array([[10.0, 10.0, 10.0]])
@@ -663,7 +673,9 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         dE_E = 1e-4
         dtheta = 1e-3
 
-        sigma = var_shell(k, energy_spread_frac=dE_E, beam_divergence_rad=dtheta)
+        sigma = var_shell(
+            k, energy_spread_frac=dE_E, beam_divergence_rad=dtheta
+        )
 
         expected = k * jnp.sqrt((dE_E / 2.0) ** 2 + dtheta**2)
         chex.assert_trees_all_close(sigma, expected, rtol=1e-6)
@@ -695,7 +707,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         # |k_out| = k + delta
         # d = ||k_out| - k| = delta
         d = delta_k
-        sigma_eff_sq = (0.05**2 + 0.07**2)  # Simplified: use mean rod sigma
-        expected = jnp.exp(-d**2 / (2.0 * sigma_eff_sq))
+        sigma_eff_sq = 0.05**2 + 0.07**2  # Simplified: use mean rod sigma
+        expected = jnp.exp(-(d**2) / (2.0 * sigma_eff_sq))
 
         chex.assert_trees_all_close(overlap[0], expected, rtol=1e-3)

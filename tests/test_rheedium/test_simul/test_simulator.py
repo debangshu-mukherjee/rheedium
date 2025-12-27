@@ -34,10 +34,10 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        
+
         # Create simple Si(111) structure for testing
         self.si_crystal = self._create_si111_crystal()
-        
+
     def _create_si111_crystal(self) -> CrystalStructure:
         """Create a simple Si(111) crystal structure.
 
@@ -49,16 +49,18 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         a_si: scalar_float = 5.431  # Si lattice constant in Angstroms
 
         # Si diamond structure fractional positions
-        frac_coords: Float[Array, "8 3"] = jnp.array([
-            [0.00, 0.00, 0.00],
-            [0.25, 0.25, 0.25],
-            [0.50, 0.50, 0.00],
-            [0.75, 0.75, 0.25],
-            [0.50, 0.00, 0.50],
-            [0.75, 0.25, 0.75],
-            [0.00, 0.50, 0.50],
-            [0.25, 0.75, 0.75],
-        ])
+        frac_coords: Float[Array, "8 3"] = jnp.array(
+            [
+                [0.00, 0.00, 0.00],
+                [0.25, 0.25, 0.25],
+                [0.50, 0.50, 0.00],
+                [0.75, 0.75, 0.25],
+                [0.50, 0.00, 0.50],
+                [0.75, 0.25, 0.75],
+                [0.00, 0.50, 0.50],
+                [0.25, 0.75, 0.75],
+            ]
+        )
 
         # Convert to Cartesian coordinates
         cart_coords: Float[Array, "8 3"] = frac_coords * a_si
@@ -85,7 +87,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
     def test_wavelength_calculation(self) -> None:
         """Test relativistic wavelength calculation."""
         var_wavelength = self.variant(wavelength_ang)
-        
+
         # Test at different voltages
         voltages_kv: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
         wavelengths: Float[Array, "3"] = jax.vmap(var_wavelength)(voltages_kv)
@@ -95,7 +97,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_close(wavelengths, expected, rtol=5e-3)
         chex.assert_tree_all_finite(wavelengths)
-        
+
     @chex.all_variants(without_device=False)
     @parameterized.named_parameters(
         ("room_temp", 300.0, 0.5, 0.3),
@@ -111,15 +113,17 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Test intensity calculation with CTR contributions."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
-        
+
         # Set up simple test case
         # 20 keV, 2 degrees
         k_in: Float[Array, "3"] = jnp.array([73.0, 0.0, -2.5])
-        g_vectors: Float[Array, "3 3"] = jnp.array([
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0],
-        ])
+        g_vectors: Float[Array, "3 3"] = jnp.array(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ]
+        )
         k_out: Float[Array, "3 3"] = k_in + g_vectors
 
         intensities: Float[Array, "3"] = var_compute(
@@ -131,17 +135,17 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             surface_roughness=surface_roughness,
             surface_fraction=surface_fraction,
         )
-        
+
         # Check properties
         chex.assert_shape(intensities, (3,))
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
-        
+
         # Surface roughness should decrease intensities
         if surface_roughness > 0.5:
             max_intensity: scalar_float = jnp.max(intensities)
             chex.assert_scalar_positive(float(max_intensity))
-            
+
     @chex.variants(with_device=True, without_jit=True)
     def test_simulate_rheed_pattern(self) -> None:
         """Test complete RHEED pattern simulation.
@@ -150,7 +154,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         parameters in generate_reciprocal_points.
         """
         var_simulate = self.variant(kinematic_simulator)
-        
+
         pattern: RHEEDPattern = var_simulate(
             crystal=self.si_crystal,
             voltage_kv=20.0,
@@ -161,20 +165,18 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
             surface_roughness=0.5,
         )
-        
+
         # Check pattern structure
         n_reflections: int = pattern.G_indices.shape[0]
         chex.assert_shape(pattern.G_indices, (n_reflections,))
         chex.assert_shape(pattern.k_out, (n_reflections, 3))
         chex.assert_shape(pattern.detector_points, (n_reflections, 2))
         chex.assert_shape(pattern.intensities, (n_reflections,))
-        
+
         # Check physical constraints
         chex.assert_tree_all_finite(pattern.intensities)
-        chex.assert_trees_all_equal(
-            jnp.all(pattern.intensities >= 0), True
-        )
-        
+        chex.assert_trees_all_equal(jnp.all(pattern.intensities >= 0), True)
+
     @chex.all_variants(without_device=False)
     def test_surface_enhancement_effect(self) -> None:
         """Test that surface atoms have enhanced thermal motion."""
@@ -210,7 +212,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(
             intensities_surface[0] < intensities_bulk[0], True
         )
-        
+
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_contribution(self) -> None:
         """Test that CTR contributions are properly included.
@@ -231,7 +233,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             surface_roughness=0.0,
             detector_acceptance=0.0,  # No CTR integration
         )
-        
+
         pattern_with_ctr: RHEEDPattern = var_simulate(
             crystal=self.si_crystal,
             voltage_kv=20.0,
@@ -242,7 +244,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             surface_roughness=0.5,
             detector_acceptance=0.01,  # Include CTR integration
         )
-        
+
         # CTR should add intensity
         total_no_ctr: scalar_float = jnp.sum(pattern_no_ctr.intensities)
         total_with_ctr: scalar_float = jnp.sum(pattern_with_ctr.intensities)
@@ -250,7 +252,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         # With CTR should have additional intensity contributions
         chex.assert_scalar_positive(float(total_with_ctr))
         chex.assert_scalar_positive(float(total_no_ctr))
-        
+
     @chex.variants(with_device=True, without_jit=True)
     def test_gradient_flow(self) -> None:
         """Test that gradients flow through the simulation.
@@ -258,7 +260,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         Note: JIT compilation is not compatible with dynamic hmax/kmax/lmax
         parameters in generate_reciprocal_points.
         """
-        
+
         def loss_fn(temperature: scalar_float) -> scalar_float:
             pattern = kinematic_simulator(
                 crystal=self.si_crystal,
@@ -270,14 +272,14 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
                 temperature=temperature,
             )
             return jnp.sum(pattern.intensities)
-        
+
         var_grad_fn = self.variant(jax.grad(loss_fn))
         gradient: scalar_float = var_grad_fn(300.0)
-        
+
         # Gradient should be non-zero (temperature affects intensities)
         chex.assert_tree_all_finite(gradient)
         self.assertNotEqual(gradient, 0.0)
-        
+
     @parameterized.named_parameters(
         ("si_111", [1, 1, 1], 14, 300.0),
         ("si_100", [1, 0, 0], 14, 300.0),
@@ -299,11 +301,11 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             lmax=max(miller_indices),
             temperature=temperature,
         )
-        
+
         # Check that we get reflections
         n_reflections: int = pattern.G_indices.shape[0]
         self.assertGreater(n_reflections, 0)
-        
+
         # Check intensity scaling
         max_intensity: scalar_float = jnp.max(pattern.intensities)
         min_intensity: scalar_float = jnp.min(pattern.intensities)

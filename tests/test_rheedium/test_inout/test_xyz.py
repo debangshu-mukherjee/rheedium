@@ -94,11 +94,13 @@ class TestParseXyzMetadata(chex.TestCase):
         metadata = _parse_xyz_metadata(line)
 
         assert "lattice" in metadata
-        expected = jnp.array([
-            [4.2, 0.0, 0.0],
-            [0.0, 4.2, 0.0],
-            [0.0, 0.0, 4.2],
-        ])
+        expected = jnp.array(
+            [
+                [4.2, 0.0, 0.0],
+                [0.0, 4.2, 0.0],
+                [0.0, 0.0, 4.2],
+            ]
+        )
         chex.assert_trees_all_close(metadata["lattice"], expected, atol=1e-10)
 
     def test_stress_extraction(self) -> None:
@@ -218,9 +220,7 @@ O  2.1 2.1 2.1
             data = parse_xyz(xyz_file)
 
             assert data.lattice is not None
-            chex.assert_trees_all_close(
-                data.lattice[0, 0], 4.2, atol=1e-10
-            )
+            chex.assert_trees_all_close(data.lattice[0, 0], 4.2, atol=1e-10)
 
     def test_atomic_numbers_as_symbols(self) -> None:
         """XYZ with atomic numbers instead of symbols."""

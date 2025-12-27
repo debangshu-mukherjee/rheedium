@@ -9,6 +9,7 @@ This section contains interactive Jupyter notebooks demonstrating how to use Rhe
 
    01_kinematic_MgO
    02_kinematic_SrTiO3
+   03_finite_domain
 
 .. note::
 

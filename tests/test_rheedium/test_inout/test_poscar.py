@@ -175,7 +175,11 @@ class TestParsePoscarPositions(chex.TestCase):
         lattice = jnp.eye(3) * 4.0
         with pytest.raises(ValueError, match="file ends"):
             _parse_poscar_positions(
-                lines, start_idx=0, n_atoms=2, is_cartesian=False, lattice=lattice
+                lines,
+                start_idx=0,
+                n_atoms=2,
+                is_cartesian=False,
+                lattice=lattice,
             )
 
 

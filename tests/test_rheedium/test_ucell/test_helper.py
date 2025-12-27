@@ -102,7 +102,7 @@ class TestAngleInDegrees(chex.TestCase):
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1, v2)
 
-        chex.assert_scalar_in(angle, 0.0, 180.0)
+        chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
 
 class TestComputeLengthsAngles(chex.TestCase):
@@ -336,11 +336,8 @@ Si10 Si 0.5 0.5 0.9
         chex.assert_scalar_positive(int(n_atoms1))
         chex.assert_scalar_positive(int(n_atoms2))
         # More thickness should include more or equal atoms
-        chex.assert_comparison(
-            n_atoms2,
-            n_atoms1,
-            ">=",
-            custom_message="More thickness should include more or equal atoms",
+        assert int(n_atoms2) >= int(n_atoms1), (
+            "More thickness should include more or equal atoms"
         )
 
     @chex.variants(without_jit=True, with_jit=False)
@@ -371,7 +368,7 @@ Si10 Si 0.5 0.5 0.9
 
         # Should include all 10 atoms
         n_atoms = filtered_crystal.cart_positions.shape[0]
-        chex.assert_scalar(int(n_atoms), 10)
+        assert int(n_atoms) == 10, f"Expected 10 atoms, got {n_atoms}"
 
 
 if __name__ == "__main__":

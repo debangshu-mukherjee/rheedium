@@ -94,6 +94,7 @@ def _extract_cell_params(
     >>> a
     5.43
     """
+
     def _extract_param(name: str) -> float:
         match: Optional[re.Match[str]] = re.search(
             rf"{name}\s+([0-9.]+)", cif_text
@@ -413,6 +414,7 @@ def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
     >>> result
     Array([-0.25, 0.5, 0.5], dtype=float64)
     """
+
     def _op(pos: Array) -> Array:
         replacements: Dict[str, float] = {
             "x": pos[0],
@@ -463,7 +465,7 @@ def _apply_symmetry_ops(
     Parameters
     ----------
     frac_positions : Float[Array, "N 4"]
-        Array of shape (N, 4) containing 
+        Array of shape (N, 4) containing
         [frac_x, frac_y, frac_z, atomic_number] for each atom.
     sym_ops : List[str]
         List of symmetry operation strings (e.g., ["x,y,z", "-x,-y,z"]).

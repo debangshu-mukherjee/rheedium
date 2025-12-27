@@ -144,7 +144,9 @@ def plot_rheed(
     y_extent : Tuple[float, float], optional
         Y-axis range (min, max) in mm. Default: auto from data with padding
     """
-    coords: Float[np.ndarray, "N 2"] = np.asarray(rheed_pattern.detector_points)
+    coords: Float[np.ndarray, "N 2"] = np.asarray(
+        rheed_pattern.detector_points
+    )
     x_np: Float[np.ndarray, "N"] = coords[:, 0]
     y_np: Float[np.ndarray, "N"] = coords[:, 1]
     i_np: Float[np.ndarray, "N"] = np.asarray(rheed_pattern.intensities)
@@ -175,7 +177,7 @@ def plot_rheed(
             y0: float = y_np[idx]
             i0: float = i_np[idx]
             image += i0 * np.exp(
-                -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width ** 2)
+                -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width**2)
             )
 
     elif interp_type in ("cubic", "linear", "nearest"):

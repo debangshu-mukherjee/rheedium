@@ -113,7 +113,9 @@ def _parse_poscar_header(
         if not species:
             raise ValueError("Invalid POSCAR: empty species line (line 6)")
     except IndexError as err:
-        raise ValueError("Invalid POSCAR: missing species line (line 6)") from err
+        raise ValueError(
+            "Invalid POSCAR: missing species line (line 6)"
+        ) from err
 
     try:
         counts: List[int] = [int(x) for x in lines[6].split()]

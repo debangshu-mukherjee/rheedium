@@ -117,9 +117,7 @@ def from_ase(atoms: Any) -> CrystalStructure:
             "Please define a valid unit cell."
         )
 
-    lattice: Float[Array, "3 3"] = jnp.asarray(
-        cell[:], dtype=jnp.float64
-    )
+    lattice: Float[Array, "3 3"] = jnp.asarray(cell[:], dtype=jnp.float64)
     positions: Float[Array, "N 3"] = jnp.asarray(
         atoms.get_positions(), dtype=jnp.float64
     )

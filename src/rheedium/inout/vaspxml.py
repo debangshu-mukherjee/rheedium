@@ -190,7 +190,9 @@ def _extract_forces(
     if not force_rows:
         return None
 
-    forces: Float[Array, "n_atoms 3"] = jnp.array(force_rows, dtype=jnp.float64)
+    forces: Float[Array, "n_atoms 3"] = jnp.array(
+        force_rows, dtype=jnp.float64
+    )
     return forces
 
 
@@ -383,9 +385,7 @@ def parse_vaspxml(
     if include_forces:
         properties = None
         if forces is not None:
-            properties = [
-                {"name": "forces", "type": "R", "count": 3}
-            ]
+            properties = [{"name": "forces", "type": "R", "count": 3}]
 
         return create_xyz_data(
             positions=cart_positions,

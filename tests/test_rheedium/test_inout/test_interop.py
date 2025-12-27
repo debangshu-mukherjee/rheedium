@@ -22,14 +22,18 @@ from rheedium.types import CrystalStructure, create_crystal_structure
 
 def _make_simple_crystal() -> CrystalStructure:
     """Create a simple test crystal (MgO rock salt)."""
-    frac_positions = jnp.array([
-        [0.0, 0.0, 0.0, 12.0],  # Mg
-        [0.5, 0.5, 0.5, 8.0],   # O
-    ])
-    cart_positions = jnp.array([
-        [0.0, 0.0, 0.0, 12.0],
-        [2.105, 2.105, 2.105, 8.0],
-    ])
+    frac_positions = jnp.array(
+        [
+            [0.0, 0.0, 0.0, 12.0],  # Mg
+            [0.5, 0.5, 0.5, 8.0],  # O
+        ]
+    )
+    cart_positions = jnp.array(
+        [
+            [0.0, 0.0, 0.0, 12.0],
+            [2.105, 2.105, 2.105, 8.0],
+        ]
+    )
     cell_lengths = jnp.array([4.21, 4.21, 4.21])
     cell_angles = jnp.array([90.0, 90.0, 90.0])
 
@@ -210,9 +214,7 @@ class TestPymatgenInterop(chex.TestCase):
         crystal = from_pymatgen(structure)
 
         # Hexagonal: gamma = 120 degrees
-        chex.assert_trees_all_close(
-            crystal.cell_angles[2], 120.0, atol=1e-1
-        )
+        chex.assert_trees_all_close(crystal.cell_angles[2], 120.0, atol=1e-1)
 
     def test_from_pymatgen_wrong_type(self) -> None:
         """Non-Structure input raises TypeError."""
@@ -241,7 +243,11 @@ class TestPymatgenInterop(chex.TestCase):
             atol=1e-3,
         )
         np.testing.assert_allclose(
-            [structure.lattice.alpha, structure.lattice.beta, structure.lattice.gamma],
+            [
+                structure.lattice.alpha,
+                structure.lattice.beta,
+                structure.lattice.gamma,
+            ],
             [90.0, 90.0, 90.0],
             atol=1e-3,
         )
@@ -268,7 +274,9 @@ class TestPymatgenInterop(chex.TestCase):
         )
 
         # Species should match
-        assert [s.specie.symbol for s in original] == [s.specie.symbol for s in recovered]
+        assert [s.specie.symbol for s in original] == [
+            s.specie.symbol for s in recovered
+        ]
 
         # Fractional coordinates should match
         np.testing.assert_allclose(
