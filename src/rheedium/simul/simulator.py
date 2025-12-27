@@ -38,8 +38,8 @@ gradient-based optimization and inverse problems.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Tuple, Union
-from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
+from beartype.typing import Tuple
+from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
@@ -54,93 +54,16 @@ from rheedium.types import (
 )
 from rheedium.ucell import generate_reciprocal_points
 
+from .finite_domain import (
+    compute_shell_sigma,
+    extent_to_rod_sigma,
+    rod_ewald_overlap,
+)
 from .form_factors import atomic_scattering_factor
+from .simul_utils import incident_wavevector, wavelength_ang
 from .surface_rods import integrated_rod_intensity
 
 jax.config.update("jax_enable_x64", True)
-
-
-@jaxtyped(typechecker=beartype)
-def wavelength_ang(
-    voltage_kv: Union[scalar_num, Num[Array, "..."]],
-) -> Float[Array, "..."]:
-    """Calculate the relativistic electron wavelength in angstroms.
-
-    Parameters
-    ----------
-    voltage_kv : Union[scalar_num, Num[Array, "..."]]
-        Electron energy in kiloelectron volts.
-        Could be either a scalar or an array.
-
-    Returns
-    -------
-    wavelength : Float[Array, "..."]
-        Electron wavelength in angstroms.
-
-    Notes
-    -----
-    Uses relativistic corrections for accurate wavelength at high energies.
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> import jax.numpy as jnp
-    >>> lam = rh.simul.wavelength_ang(jnp.asarray(20.0))  # 20 keV
-    >>> print(f"λ = {lam:.4f} Å")
-    λ = 0.0859 Å
-    """
-    rest_mass_energy_kev: Float[Array, "..."] = 511.0
-    # Convert kV to V for the formula
-    voltage_v: Float[Array, "..."] = voltage_kv * 1000.0
-    corrected_voltage: Float[Array, "..."] = voltage_v * (
-        1.0 + voltage_v / (2.0 * rest_mass_energy_kev * 1000.0)
-    )
-    h_over_2me: Float[Array, "..."] = 12.26
-    wavelength: Float[Array, "..."] = h_over_2me / jnp.sqrt(corrected_voltage)
-    return wavelength
-
-
-@jaxtyped(typechecker=beartype)
-def incident_wavevector(
-    lam_ang: scalar_float,
-    theta_deg: scalar_float,
-    phi_deg: scalar_float = 0.0,
-) -> Float[Array, "3"]:
-    """Calculate the incident electron wavevector for RHEED geometry.
-
-    Parameters
-    ----------
-    lam_ang : scalar_float
-        Electron wavelength in angstroms.
-    theta_deg : scalar_float
-        Grazing angle of incidence in degrees (angle from surface).
-    phi_deg : scalar_float, optional
-        Azimuthal angle in degrees (in-plane rotation).
-        phi=0: beam along +x axis (default, gives horizontal streaks)
-        phi=90: beam along +y axis (gives vertical streaks)
-        Default: 0.0
-
-    Returns
-    -------
-    k_in : Float[Array, "3"]
-        Incident wavevector [k_x, k_y, k_z] in reciprocal angstroms.
-        The beam propagates in the surface plane at azimuthal angle phi,
-        with a downward z-component determined by the grazing angle theta.
-    """
-    k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
-    theta_rad: Float[Array, ""] = jnp.deg2rad(theta_deg)
-    phi_rad: Float[Array, ""] = jnp.deg2rad(phi_deg)
-
-    # In-plane component magnitude
-    k_parallel: Float[Array, ""] = k_magnitude * jnp.cos(theta_rad)
-
-    # Split in-plane component into x and y based on azimuthal angle
-    k_x: Float[Array, ""] = k_parallel * jnp.cos(phi_rad)
-    k_y: Float[Array, ""] = k_parallel * jnp.sin(phi_rad)
-    k_z: Float[Array, ""] = -k_magnitude * jnp.sin(theta_rad)
-
-    k_in: Float[Array, "3"] = jnp.array([k_x, k_y, k_z])
-    return k_in
 
 
 @jaxtyped(typechecker=beartype)
@@ -150,9 +73,10 @@ def project_on_detector(
 ) -> Float[Array, "N 2"]:
     """Project output wavevectors onto detector plane.
 
-    Description
-    -----------
-    Ray-tracing projection to vertical detector screen at distance d.
+    Uses ray-tracing projection to a vertical detector screen at distance d.
+    The scale factor is computed as d/k_x (with small epsilon to avoid
+    division by zero), then multiplied by k_y and k_z to get horizontal
+    and vertical detector coordinates.
 
     Parameters
     ----------
@@ -183,6 +107,11 @@ def find_kinematic_reflections(
     tolerance: scalar_float = 0.05,
 ) -> Tuple[Int[Array, "N"], Float[Array, "N 3"]]:
     """Find kinematically allowed reflections.
+
+    Computes k_out = k_in + G for all reciprocal lattice vectors G, then
+    filters based on elastic scattering condition |k_out| ≈ |k_in| and
+    z-direction constraint. Returns fixed-size arrays for JIT compatibility,
+    with -1 marking invalid entries.
 
     Parameters
     ----------
@@ -222,11 +151,9 @@ def find_kinematic_reflections(
     )
     z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
     allowed: Bool[Array, "M"] = elastic_condition & z_condition
-    # Use fixed-size output for JIT compatibility; -1 marks invalid entries
     allowed_indices: Int[Array, "M"] = jnp.where(
         allowed, size=gs.shape[0], fill_value=-1
     )[0]
-    # Index k_out_all with clamped indices (invalid entries get index 0)
     safe_indices: Int[Array, "M"] = jnp.maximum(allowed_indices, 0)
     k_out: Float[Array, "M 3"] = k_out_all[safe_indices]
     return allowed_indices, k_out
@@ -244,6 +171,11 @@ def compute_kinematic_intensities_with_ctrs(
     surface_fraction: scalar_float = 0.3,
 ) -> Float[Array, "N"]:
     """Calculate kinematic diffraction intensities with CTR contributions.
+
+    For each reflection, computes the structure factor by summing atomic
+    contributions (form factor × phase factor). The phase is computed as
+    G·r where G vectors already include the 2π factor from reciprocal
+    lattice generation. CTR intensity is added to the kinematic intensity.
 
     Parameters
     ----------
@@ -307,15 +239,12 @@ def compute_kinematic_intensities_with_ctrs(
             atomic_num: scalar_int = atomic_numbers[atom_idx]
             atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
-
             form_factor: scalar_float = atomic_scattering_factor(
                 atomic_number=atomic_num,
                 q_vector=q_vector,
                 temperature=temperature,
                 is_surface=is_surface,
             )
-            # G vectors from generate_reciprocal_points already include
-            # 2π factor (via reciprocal_lattice_vectors), so phase = G · r
             phase: scalar_float = jnp.dot(g_vec, atom_pos)
             contribution: complex = form_factor * jnp.exp(1j * phase)
             return contribution
@@ -326,8 +255,6 @@ def compute_kinematic_intensities_with_ctrs(
             atom_indices
         )
         structure_factor: complex = jnp.sum(contributions)
-
-        # Calculate CTR contribution
         hk_index: Int[Array, "2"] = jnp.array(
             [
                 jnp.round(g_vec[0]).astype(jnp.int32),
@@ -335,12 +262,9 @@ def compute_kinematic_intensities_with_ctrs(
             ]
         )
         q_z_value: Float[Array, ""] = q_vector[2]
-
-        # Define integration range around q_z with detector acceptance
         q_z_range: Float[Array, "2"] = jnp.array(
             [q_z_value - detector_acceptance, q_z_value + detector_acceptance]
         )
-
         ctr_intensity: scalar_float = integrated_rod_intensity(
             hk_index=hk_index,
             q_z_range=q_z_range,
@@ -349,10 +273,8 @@ def compute_kinematic_intensities_with_ctrs(
             detector_acceptance=detector_acceptance,
             temperature=temperature,
         )
-
         kinematic_intensity: scalar_float = jnp.abs(structure_factor) ** 2
         total_intensity: scalar_float = kinematic_intensity + ctr_intensity
-
         return total_intensity
 
     n_reflections: Int[Array, ""] = g_allowed.shape[0]
@@ -360,12 +282,11 @@ def compute_kinematic_intensities_with_ctrs(
     intensities: Float[Array, "N"] = jax.vmap(_calculate_reflection_intensity)(
         reflection_indices
     )
-
     return intensities
 
 
 @jaxtyped(typechecker=beartype)
-def kinematic_simulator(
+def kinematic_simulator(  # noqa: PLR0913
     crystal: CrystalStructure,
     voltage_kv: scalar_num = 10.0,
     theta_deg: scalar_num = 2.0,
@@ -489,14 +410,12 @@ def kinematic_simulator(
     - Apply surface-enhanced Debye-Waller factors
     - Create and return RHEEDPattern with computed data
     """
-    # Convert scalar inputs to JAX arrays
     voltage_kv = jnp.asarray(voltage_kv)
     theta_deg = jnp.asarray(theta_deg)
     phi_deg = jnp.asarray(phi_deg)
     hmax = jnp.asarray(hmax, dtype=jnp.int32)
     kmax = jnp.asarray(kmax, dtype=jnp.int32)
     lmax = jnp.asarray(lmax, dtype=jnp.int32)
-
     gs: Float[Array, "M 3"] = generate_reciprocal_points(
         crystal=crystal,
         hmax=hmax,
@@ -507,22 +426,10 @@ def kinematic_simulator(
     lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
     k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg, phi_deg)
     k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
-
-    # Compute all k_out = k_in + G
     k_out_all: Float[Array, "M 3"] = k_in + gs
-
-    # Check for scattering direction (z_sign determines upward vs downward)
     z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
 
     if domain_extent_ang is not None:
-        # Finite domain mode: compute continuous overlap weights
-        # Use local import to avoid circular dependency
-        from .finite_domain import (
-            compute_shell_sigma,
-            extent_to_rod_sigma,
-            rod_ewald_overlap,
-        )
-
         domain_arr: Float[Array, "3"] = jnp.asarray(
             domain_extent_ang, dtype=jnp.float64
         )
@@ -532,8 +439,6 @@ def kinematic_simulator(
             energy_spread_frac=energy_spread_frac,
             beam_divergence_rad=beam_divergence_rad,
         )
-
-        # Compute overlap factors for all G vectors
         overlap: Float[Array, "M"] = rod_ewald_overlap(
             g_vectors=gs,
             k_in=k_in,
@@ -541,26 +446,16 @@ def kinematic_simulator(
             rod_sigma=rod_sigma,
             shell_sigma=shell_sigma,
         )
-
-        # Apply z-direction mask to overlap
         overlap = jnp.where(z_condition, overlap, 0.0)
-
-        # Filter by overlap threshold
         overlap_threshold: float = 1e-6
         is_allowed: Bool[Array, "M"] = overlap > overlap_threshold
-
-        # Get indices of allowed reflections
         allowed_indices: Int[Array, "K"] = jnp.where(
             is_allowed, size=gs.shape[0], fill_value=-1
         )[0]
-
-        # Extract allowed k_out
         k_out: Float[Array, "K 3"] = k_out_all[allowed_indices]
         g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
         overlap_weights: Float[Array, "K"] = overlap[allowed_indices]
-
     else:
-        # Binary mode: use tolerance-based filtering (original behavior)
         kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
             find_kinematic_reflections(
                 k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
@@ -575,7 +470,6 @@ def kinematic_simulator(
         k_out,
         detector_distance,
     )
-
     intensities: Float[Array, "K"] = compute_kinematic_intensities_with_ctrs(
         crystal=crystal,
         g_allowed=g_allowed,
@@ -586,11 +480,8 @@ def kinematic_simulator(
         detector_acceptance=detector_acceptance,
         surface_fraction=surface_fraction,
     )
-
-    # Apply overlap weighting in finite domain mode
     if overlap_weights is not None:
         intensities = intensities * overlap_weights
-
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=allowed_indices,
         k_out=k_out,
@@ -613,6 +504,11 @@ def sliced_crystal_to_potential(
     potential slices suitable for multislice electron diffraction simulations.
     The potential is calculated from atomic positions using proper scattering
     factors and projected onto a discrete grid.
+
+    The interaction constant sigma = 2*pi*m*e*lambda/h^2 is computed in
+    simplified form as 2*pi/(lambda*V) with units 1/(Volt*Angstrom^2).
+    Each atom contributes a screened Coulomb potential V(r) ~ Z/r*exp(-a*r^2)
+    where a=0.5 Å^-2 is the screening parameter.
 
     Parameters
     ----------
@@ -672,102 +568,66 @@ def sliced_crystal_to_potential(
     ...     pixel_size=0.1
     ... )
     """
-    # Convert inputs to JAX arrays
     slice_thickness = jnp.asarray(slice_thickness, dtype=jnp.float64)
     pixel_size = jnp.asarray(pixel_size, dtype=jnp.float64)
     voltage_kv = jnp.asarray(voltage_kv, dtype=jnp.float64)
-
-    # Extract crystal information
     positions: Float[Array, "N 3"] = sliced_crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "N"] = sliced_crystal.cart_positions[:, 3]
     x_extent: Float[Array, ""] = sliced_crystal.x_extent
     y_extent: Float[Array, ""] = sliced_crystal.y_extent
     depth: Float[Array, ""] = sliced_crystal.depth
-
-    # Calculate grid dimensions
     nx: int = int(jnp.ceil(x_extent / pixel_size))
     ny: int = int(jnp.ceil(y_extent / pixel_size))
     nz: int = int(jnp.ceil(depth / slice_thickness))
-
-    # Create coordinate grids
     x_coords: Float[Array, "nx"] = jnp.linspace(0, x_extent, nx)
     y_coords: Float[Array, "ny"] = jnp.linspace(0, y_extent, ny)
-
-    # Create meshgrid for potential calculation
     xx: Float[Array, "nx ny"]
     yy: Float[Array, "nx ny"]
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
-
-    # Calculate wavelength and interaction constant
     wavelength: Float[Array, ""] = wavelength_ang(voltage_kv)
-
-    # Interaction constant sigma = (2 * pi * m * e * lambda) / h^2
-    # For practical calculations, use simplified form
     sigma: Float[Array, ""] = 2.0 * jnp.pi / (wavelength * voltage_kv * 1000.0)
-
-    # Number of atoms
     n_atoms: int = positions.shape[0]
 
     def _calculate_slice_potential(slice_idx: int) -> Float[Array, "nx ny"]:
         """Calculate potential for a single slice."""
         z_start: Float[Array, ""] = slice_idx * slice_thickness
         z_end: Float[Array, ""] = (slice_idx + 1) * slice_thickness
-
-        # Select atoms in this slice
         z_positions: Float[Array, "N"] = positions[:, 2]
         in_slice: Bool[Array, "N"] = jnp.logical_and(
             z_positions >= z_start, z_positions < z_end
         )
 
         def _atom_contribution(atom_idx: int) -> Float[Array, "nx ny"]:
-            """Calculate contribution from single atom to potential.
-
-            Uses masked computation to handle atoms outside slice.
-            """
-            # Get position and atomic number
+            """Calculate contribution from single atom to potential."""
             pos: Float[Array, "3"] = positions[atom_idx]
             z_number: Float[Array, ""] = atomic_numbers[atom_idx]
             is_in_slice: Bool[Array, ""] = in_slice[atom_idx]
-
-            # Distance from atom to each grid point
             dx: Float[Array, "nx ny"] = xx - pos[0]
             dy: Float[Array, "nx ny"] = yy - pos[1]
             r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2 + 1e-10)
-
-            # Projected potential (simplified Doyle-Turner approximation)
-            # V(r) ~ Z / r * exp(-a*r^2) for each Gaussian in scattering factor
-            # For simplicity, use screened Coulomb potential
-            a: Float[Array, ""] = 0.5  # Screening parameter (Å^-2)
+            a: Float[Array, ""] = 0.5
             atom_potential: Float[Array, "nx ny"] = (
                 z_number * sigma * jnp.exp(-a * r**2) / (r + 1e-10)
             )
-
-            # Zero out contribution if atom not in slice
             return jnp.where(is_in_slice, atom_potential, 0.0)
 
-        # Sum contributions from ALL atoms (masked by in_slice)
         atom_indices: Int[Array, "N"] = jnp.arange(n_atoms)
         contributions: Float[Array, "N nx ny"] = jax.vmap(_atom_contribution)(
             atom_indices
         )
         slice_potential: Float[Array, "nx ny"] = jnp.sum(contributions, axis=0)
-
         return slice_potential
 
-    # Calculate all slices
     slice_indices: Int[Array, "nz"] = jnp.arange(nz)
     all_slices: Float[Array, "nz nx ny"] = jax.vmap(
         _calculate_slice_potential
     )(slice_indices)
-
-    # Create PotentialSlices
     potential_slices: PotentialSlices = create_potential_slices(
         slices=all_slices,
         slice_thickness=slice_thickness,
         x_calibration=pixel_size,
         y_calibration=pixel_size,
     )
-
     return potential_slices
 
 
@@ -778,12 +638,19 @@ def multislice_propagate(
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
 ) -> Array:
-    """Propagate electron wave through potential slices using multislice algorithm.
+    """Propagate electron wave through potential slices.
 
-    This implements the multislice algorithm for dynamical electron diffraction,
-    which accounts for multiple scattering events. The algorithm alternates between:
+    This implements the multislice algorithm for dynamical electron
+    diffraction, which accounts for multiple scattering events. The
+    algorithm alternates between:
     1. Transmission through a slice: ψ' = ψ × exp(iσV)
-    2. Fresnel propagation to next slice: ψ → FFT⁻¹[FFT[ψ] × P(kx,ky)]
+    2. Fresnel propagation: ψ → FFT⁻¹[FFT[ψ] × P(kx,ky)]
+
+    The interaction constant σ = 2π/(λV) is computed in simplified form
+    suitable for high-energy electrons. The Fresnel propagator in reciprocal
+    space is P(kx,ky) = exp(-iπλΔz(kx² + ky²)) which accounts for free-space
+    propagation between slices. The initial wave is a tilted plane wave with
+    phase k_in_x*x + k_in_y*y at z=0.
 
     Parameters
     ----------
@@ -818,106 +685,52 @@ def multislice_propagate(
 
     References
     ----------
-    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron Microscopy, 2nd ed.
+    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron
+       Microscopy, 2nd ed.
     .. [2] Cowley & Moodie (1957). Acta Cryst. 10, 609-619.
     """
-    # Extract potential array and parameters
-    V_slices: Float[Array, "nz nx ny"] = potential_slices.slices
+    v_slices: Float[Array, "nz nx ny"] = potential_slices.slices
     dz: scalar_float = potential_slices.slice_thickness
     dx: scalar_float = potential_slices.x_calibration
     dy: scalar_float = potential_slices.y_calibration
-    nz: int = V_slices.shape[0]
-    nx: int = V_slices.shape[1]
-    ny: int = V_slices.shape[2]
-
-    # Calculate electron wavelength
+    nx: int = v_slices.shape[1]
+    ny: int = v_slices.shape[2]
     lam_ang: scalar_float = wavelength_ang(voltage_kv)
-
-    # Wave magnitude k = 2π/λ
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-
-    # Calculate interaction constant σ = 2π/(λV)
-    # This is a simplified form suitable for high-energy electrons
-    # Units: 1/(Volt·Angstrom²)
-    # Full form: σ = 2πme/(h²k), but for practical calculations we use:
     sigma: scalar_float = 2.0 * jnp.pi / (lam_ang * voltage_kv * 1000.0)
-
-    # Set up coordinate grids in real space
     x: Float[Array, "nx"] = jnp.arange(nx) * dx
     y: Float[Array, "ny"] = jnp.arange(ny) * dy
-
-    # Set up reciprocal space coordinates
-    # kx, ky are in units of 1/Angstrom
     kx: Float[Array, "nx"] = jnp.fft.fftfreq(nx, dx)
     ky: Float[Array, "ny"] = jnp.fft.fftfreq(ny, dy)
-    KX: Float[Array, "nx ny"]
-    KY: Float[Array, "nx ny"]
-    KX, KY = jnp.meshgrid(kx, ky, indexing="ij")
-
-    # Initialize incident wave as tilted plane wave
-    # For RHEED, we have grazing incidence at angle theta_deg
-    # The wave propagates at angle theta from the surface
+    kx_grid: Float[Array, "nx ny"]
+    ky_grid: Float[Array, "nx ny"]
+    kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
-
-    # Incident wavevector components
     k_in_x: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.cos(phi_rad)
     k_in_y: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.sin(phi_rad)
-    k_in_z: scalar_float = k_mag * jnp.sin(theta_rad)
-
-    # Create initial tilted plane wave: exp(i*k_in·r)
-    X: Float[Array, "nx ny"]
-    Y: Float[Array, "nx ny"]
-    X, Y = jnp.meshgrid(x, y, indexing="ij")
-
-    # Initial wave has phase corresponding to propagation direction
-    # At z=0, phase is k_in_x*x + k_in_y*y
-    psi: Float[Array, "nx ny"] = jnp.exp(1j * (k_in_x * X + k_in_y * Y))
-
-    # Fresnel propagator in reciprocal space
-    # P(kx,ky) = exp(-iπλΔz(kx² + ky²))
-    # This accounts for free-space propagation between slices
+    x_grid: Float[Array, "nx ny"]
+    y_grid: Float[Array, "nx ny"]
+    x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
+    phase_init: Float[Array, "nx ny"] = k_in_x * x_grid + k_in_y * y_grid
+    psi: Float[Array, "nx ny"] = jnp.exp(1j * phase_init)
     propagator: Float[Array, "nx ny"] = jnp.exp(
-        -1j * jnp.pi * lam_ang * dz * (KX**2 + KY**2)
+        -1j * jnp.pi * lam_ang * dz * (kx_grid**2 + ky_grid**2)
     )
 
-    # Multislice propagation loop
     def _propagate_one_slice(
-        psi_in: Float[Array, "nx ny"], V_slice: Float[Array, "nx ny"]
+        psi_in: Float[Array, "nx ny"], v_slice: Float[Array, "nx ny"]
     ) -> tuple[Float[Array, "nx ny"], None]:
-        """Propagate through one slice: transmit then propagate.
-
-        Parameters
-        ----------
-        psi_in : Float[Array, "nx ny"]
-            Input wavefunction
-        V_slice : Float[Array, "nx ny"]
-            Potential for this slice
-
-        Returns
-        -------
-        psi_out : Float[Array, "nx ny"]
-            Output wavefunction after transmission and propagation
-        None
-            Dummy return for scan compatibility
-        """
-        # Step 1: Transmission through slice
-        # T(x,y) = exp(iσV(x,y))
-        transmission: Float[Array, "nx ny"] = jnp.exp(1j * sigma * V_slice)
+        """Propagate through one slice: transmit then propagate."""
+        transmission: Float[Array, "nx ny"] = jnp.exp(1j * sigma * v_slice)
         psi_transmitted: Float[Array, "nx ny"] = psi_in * transmission
-
-        # Step 2: Fresnel propagation to next slice
-        # ψ(z+Δz) = FFT⁻¹[FFT[ψ(z)] × P(kx,ky)]
         psi_k: Float[Array, "nx ny"] = jnp.fft.fft2(psi_transmitted)
         psi_k_propagated: Float[Array, "nx ny"] = psi_k * propagator
         psi_out: Float[Array, "nx ny"] = jnp.fft.ifft2(psi_k_propagated)
-
         return psi_out, None
 
-    # Propagate through all slices using scan for efficiency
     psi_exit: Float[Array, "nx ny"]
-    psi_exit, _ = jax.lax.scan(_propagate_one_slice, psi, V_slices)
-
+    psi_exit, _ = jax.lax.scan(_propagate_one_slice, psi, v_slices)
     return psi_exit
 
 
@@ -928,19 +741,21 @@ def multislice_simulator(
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     detector_distance: scalar_float = 100.0,
-    detector_width: scalar_float = 100.0,
-    detector_height: scalar_float = 100.0,
-    detector_pixels_x: int = 512,
-    detector_pixels_y: int = 512,
 ) -> RHEEDPattern:
     """Simulate RHEED pattern from potential slices using multislice algorithm.
 
     This function implements the complete multislice RHEED simulation pipeline:
     1. Propagate electron wave through crystal (multislice_propagate)
-    2. Extract exit wave at surface
-    3. Apply Ewald sphere constraint for elastic scattering
-    4. Project diffracted beams onto detector screen
-    5. Calculate intensity distribution
+    2. Fourier transform exit wave to get reciprocal space amplitude
+    3. Apply Ewald sphere constraint for elastic scattering where
+       |k_out| = |k_in| = 2π/λ
+    4. Project diffracted beams onto detector using angle approximation
+       θ_x ≈ k_x/k_z, θ_y ≈ k_y/k_z
+    5. Calculate intensity as |amplitude|²
+
+    The Ewald sphere constraint gives k_out_z² = k_mag² - k_out_x² - k_out_y².
+    Only real solutions (positive k_out_z²) correspond to propagating waves;
+    evanescent waves don't reach the detector.
 
     Parameters
     ----------
@@ -954,19 +769,13 @@ def multislice_simulator(
         Azimuthal angle of incident beam in degrees (default: 0.0)
     detector_distance : scalar_float, optional
         Distance from sample to detector screen in mm (default: 100.0)
-    detector_width : scalar_float, optional
-        Physical width of detector in mm (default: 100.0)
-    detector_height : scalar_float, optional
-        Physical height of detector in mm (default: 100.0)
-    detector_pixels_x : int, optional
-        Number of detector pixels in x direction (default: 512)
-    detector_pixels_y : int, optional
-        Number of detector pixels in y direction (default: 512)
 
     Returns
     -------
     pattern : RHEEDPattern
-        RHEED diffraction pattern with detector coordinates and intensities
+        RHEED diffraction pattern with detector coordinates and intensities.
+        The g_indices field contains flattened grid indices since Miller
+        indices are not well-defined for multislice simulation.
 
     Notes
     -----
@@ -990,40 +799,29 @@ def multislice_simulator(
 
     References
     ----------
-    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron Microscopy, 2nd ed.
-    .. [2] Ichimiya & Cohen (2004). Reflection High-Energy Electron Diffraction
+    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron
+       Microscopy, 2nd ed.
+    .. [2] Ichimiya & Cohen (2004). Reflection High-Energy Electron
+       Diffraction
     """
-    # Step 1: Propagate through crystal to get exit wave
     exit_wave: Float[Array, "nx ny"] = multislice_propagate(
         potential_slices=potential_slices,
         voltage_kv=voltage_kv,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
     )
-
-    # Step 2: Fourier transform to get reciprocal space amplitude
-    # The exit wave in real space becomes diffraction amplitude in k-space
     exit_wave_k: Float[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
-
-    # Get grid parameters
     nx: int = potential_slices.slices.shape[1]
     ny: int = potential_slices.slices.shape[2]
     dx: scalar_float = potential_slices.x_calibration
     dy: scalar_float = potential_slices.y_calibration
-
-    # Reciprocal space sampling
     kx: Float[Array, "nx"] = jnp.fft.fftfreq(nx, dx)
     ky: Float[Array, "ny"] = jnp.fft.fftfreq(ny, dy)
-    KX: Float[Array, "nx ny"]
-    KY: Float[Array, "nx ny"]
-    KX, KY = jnp.meshgrid(kx, ky, indexing="ij")
-
-    # Step 3: Apply Ewald sphere constraint
-    # For elastic scattering: |k_out| = |k_in| = 2π/λ
+    kx_grid: Float[Array, "nx ny"]
+    ky_grid: Float[Array, "nx ny"]
+    kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     lam_ang: scalar_float = wavelength_ang(voltage_kv)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-
-    # Incident wavevector
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
     k_in: Float[Array, "3"] = k_mag * jnp.array(
@@ -1033,67 +831,33 @@ def multislice_simulator(
             jnp.sin(theta_rad),
         ]
     )
-
-    # For each point in k-space, calculate k_out on Ewald sphere
-    # k_out = k_in + G, where G = (kx, ky, kz)
-    # Constraint: |k_out|² = k_mag²
-    # This gives: kz = f(kx, ky)
-
-    # Parallel components are direct: k_out_x = k_in_x + kx, k_out_y = k_in_y + ky
-    k_out_x: Float[Array, "nx ny"] = k_in[0] + KX
-    k_out_y: Float[Array, "nx ny"] = k_in[1] + KY
-
-    # Perpendicular component from Ewald sphere:
-    # k_out_z² = k_mag² - k_out_x² - k_out_y²
+    k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid
+    k_out_y: Float[Array, "nx ny"] = k_in[1] + ky_grid
     k_out_z_squared: Float[Array, "nx ny"] = k_mag**2 - k_out_x**2 - k_out_y**2
-
-    # Only real solutions (positive k_out_z²) correspond to propagating waves
-    # Evanescent waves (k_out_z² < 0) don't reach detector
     valid_mask: Float[Array, "nx ny"] = k_out_z_squared > 0
     k_out_z: Float[Array, "nx ny"] = jnp.where(
         valid_mask, jnp.sqrt(k_out_z_squared), 0.0
     )
-
-    # Step 4: Project onto detector
-    # For RHEED, detector is typically perpendicular to incident beam
-    # We use similar triangle geometry to project k-space to detector
-
-    # Convert k-space coordinates to angles
-    # For small angles: θ_x ≈ k_x / k_z, θ_y ≈ k_y / k_z
     theta_x: Float[Array, "nx ny"] = jnp.where(
         valid_mask, k_out_x / k_out_z, 0.0
     )
     theta_y: Float[Array, "nx ny"] = jnp.where(
         valid_mask, k_out_y / k_out_z, 0.0
     )
-
-    # Detector position in mm
-    # Origin at center of detector
     det_x: Float[Array, "nx ny"] = detector_distance * theta_x
     det_y: Float[Array, "nx ny"] = detector_distance * theta_y
-
-    # Step 5: Calculate intensity on detector
-    # Intensity = |amplitude|²
     intensity_k: Float[Array, "nx ny"] = jnp.abs(exit_wave_k) ** 2
-
-    # Apply mask for evanescent waves
     intensity_k = jnp.where(valid_mask, intensity_k, 0.0)
-
-    # Flatten arrays for RHEEDPattern output
     det_x_flat: Float[Array, "n"] = det_x.ravel()
     det_y_flat: Float[Array, "n"] = det_y.ravel()
     intensity_flat: Float[Array, "n"] = intensity_k.ravel()
     k_out_x_flat: Float[Array, "n"] = k_out_x.ravel()
     k_out_y_flat: Float[Array, "n"] = k_out_y.ravel()
     k_out_z_flat: Float[Array, "n"] = k_out_z.ravel()
-
-    # Filter out zero intensities for efficiency
     nonzero_mask: Float[Array, "n"] = intensity_flat > 0
     det_x_filtered: Float[Array, "m"] = det_x_flat[nonzero_mask]
     det_y_filtered: Float[Array, "m"] = det_y_flat[nonzero_mask]
     intensity_filtered: Float[Array, "m"] = intensity_flat[nonzero_mask]
-
-    # Reconstruct k_out vectors
     k_out_filtered: Float[Array, "m 3"] = jnp.column_stack(
         [
             k_out_x_flat[nonzero_mask],
@@ -1101,22 +865,14 @@ def multislice_simulator(
             k_out_z_flat[nonzero_mask],
         ]
     )
-
-    # Create detector points array
     detector_points: Float[Array, "m 2"] = jnp.column_stack(
         [det_x_filtered, det_y_filtered]
     )
-
-    # Create dummy g_indices (not well-defined for multislice)
-    # Use flattened grid indices instead
     grid_indices: Int[Array, "m"] = jnp.where(nonzero_mask)[0]
-
-    # Create RHEEDPattern
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=grid_indices,
         k_out=k_out_filtered,
         detector_points=detector_points,
         intensities=intensity_filtered,
     )
-
     return pattern

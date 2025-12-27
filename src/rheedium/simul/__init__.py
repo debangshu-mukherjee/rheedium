@@ -100,15 +100,15 @@ from .kinematic import (
     make_ewald_sphere,
     simple_structure_factor,
 )
+from .simul_utils import incident_wavevector, wavelength_ang
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     find_kinematic_reflections,
-    incident_wavevector,
+    kinematic_simulator,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
     sliced_crystal_to_potential,
-    wavelength_ang,
 )
 from .surface_rods import (
     calculate_ctr_intensity,
@@ -139,6 +139,7 @@ __all__ = [
     "integrated_rod_intensity",
     "kinematic_ctr_simulator",
     "kinematic_detector_projection",
+    "kinematic_simulator",
     "kinematic_spot_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",

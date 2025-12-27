@@ -40,12 +40,17 @@ from rheedium.ucell import (
     reciprocal_lattice_vectors,
 )
 
+from .finite_domain import (
+    compute_shell_sigma,
+    extent_to_rod_sigma,
+    rod_ewald_overlap,
+)
 from .form_factors import (
     debye_waller_factor,
     get_mean_square_displacement,
     kirkland_form_factor,
 )
-from .simulator import wavelength_ang
+from .simul_utils import wavelength_ang
 
 jax.config.update("jax_enable_x64", True)
 

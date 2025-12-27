@@ -50,11 +50,8 @@ from rheedium.ucell import (
     reciprocal_lattice_vectors,
 )
 
-from .simulator import (
-    find_kinematic_reflections,
-    incident_wavevector,
-    wavelength_ang,
-)
+from .simul_utils import incident_wavevector, wavelength_ang
+from .simulator import find_kinematic_reflections
 
 jax.config.update("jax_enable_x64", True)
 

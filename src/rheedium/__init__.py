@@ -35,7 +35,31 @@ All computations are JAX-compatible and support automatic differentiation
 for gradient-based optimization of crystal structures and simulation parameters.
 """
 
-from . import inout, plots, recon, simul, types, ucell
+import os
+from importlib.metadata import version
+
+# Enable multi-threaded CPU execution for JAX 
+# must be set before importing JAX
+os.environ.setdefault(
+    "XLA_FLAGS",
+    "--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=0",
+)
+
+# Enable 64-bit precision in JAX must be set before importing submodules
+import jax  # noqa: E402
+
+jax.config.update("jax_enable_x64", True)
+
+from . import (  # noqa: E402, I001
+    inout,
+    plots,
+    recon,
+    simul,
+    types,
+    ucell,
+)
+
+__version__: str = version("rheedium")
 
 __all__ = [
     "inout",

@@ -62,7 +62,7 @@ from rheedium.types import (
     scalar_float,
 )
 
-from .simulator import incident_wavevector, wavelength_ang
+from .simul_utils import incident_wavevector, wavelength_ang
 
 jax.config.update("jax_enable_x64", True)
 
