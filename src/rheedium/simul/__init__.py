@@ -15,16 +15,24 @@ build_ewald_data : function
     Build angle-independent EwaldData from crystal and beam parameters
 calculate_ctr_intensity : function
     Calculate continuous intensity along crystal truncation rods
+compute_domain_extent : function
+    Compute domain extent from atomic positions bounding box
 compute_kinematic_intensities_with_ctrs : function
     Calculate kinematic diffraction intensities with CTR contributions
+compute_shell_sigma : function
+    Compute Ewald shell Gaussian thickness from beam parameters
 debye_waller_factor : function
     Calculate Debye-Waller damping factor for thermal vibrations
 ewald_allowed_reflections : function
     Find reflections satisfying Ewald sphere condition for given beam angles
+extent_to_rod_sigma : function
+    Convert domain extent to reciprocal-space rod widths
 find_ctr_ewald_intersection : function
     Find intersection of CTR with Ewald sphere for given (h, k) rod
 find_kinematic_reflections : function
     Find kinematically allowed reflections for given experimental conditions
+finite_domain_intensities : function
+    Compute intensities with finite domain broadening
 gaussian_rod_profile : function
     Gaussian lateral width profile of rods due to finite correlation length
 get_mean_square_displacement : function
@@ -53,6 +61,8 @@ multislice_simulator : function
     Simulate RHEED pattern from potential slices using multislice (dynamical)
 project_on_detector : function
     Project reciprocal lattice points onto detector screen
+rod_ewald_overlap : function
+    Compute overlap between broadened rods and Ewald shell
 rod_profile_function : function
     Lateral width profile of rods due to finite correlation length
 roughness_damping : function
@@ -68,6 +78,13 @@ wavelength_ang : function
 """
 
 from .ewald import build_ewald_data, ewald_allowed_reflections
+from .finite_domain import (
+    compute_domain_extent,
+    compute_shell_sigma,
+    extent_to_rod_sigma,
+    finite_domain_intensities,
+    rod_ewald_overlap,
+)
 from .form_factors import (
     atomic_scattering_factor,
     debye_waller_factor,
@@ -107,11 +124,15 @@ __all__ = [
     "atomic_scattering_factor",
     "build_ewald_data",
     "calculate_ctr_intensity",
-    "ewald_allowed_reflections",
+    "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
+    "compute_shell_sigma",
     "debye_waller_factor",
+    "ewald_allowed_reflections",
+    "extent_to_rod_sigma",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
+    "finite_domain_intensities",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "incident_wavevector",
@@ -126,6 +147,7 @@ __all__ = [
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",
+    "rod_ewald_overlap",
     "rod_profile_function",
     "roughness_damping",
     "simple_structure_factor",
