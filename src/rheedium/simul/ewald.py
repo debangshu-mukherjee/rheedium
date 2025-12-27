@@ -62,7 +62,10 @@ def _compute_structure_factor_single(
     -----------
     Calculates the crystallographic structure factor including Kirkland
     atomic form factors and Debye-Waller thermal damping:
-        F(G) = Σⱼ fⱼ(|G|) · exp(-Wⱼ) · exp(i·G·rⱼ)
+
+    .. math::
+
+        F(G) = \sum_j f_j(|G|) \cdot \exp(-W_j) \cdot \exp(i \cdot G \cdot r_j)
 
     Parameters
     ----------
@@ -82,8 +85,8 @@ def _compute_structure_factor_single(
 
     Flow
     ----
-    1. Compute |G| for form factor lookup
-    2. For each atom: compute f(|G|), Debye-Waller, and phase
+    1. Compute :math:`|G|` for form factor lookup
+    2. For each atom: compute :math:`f(|G|)`, Debye-Waller, and phase
     3. Sum all atomic contributions
     """
     g_magnitude: Float[Array, ""] = jnp.linalg.norm(g_vector)
@@ -165,13 +168,13 @@ def build_ewald_data(
     Flow
     ----
     1. Compute relativistic electron wavelength from voltage
-    2. Calculate wavevector magnitude k = 2π/λ (= sphere radius)
+    2. Calculate wavevector magnitude :math:`k = 2\pi/\lambda` (= sphere radius)
     3. Generate reciprocal lattice basis vectors from crystal cell
     4. Create Miller index grid for specified (hmax, kmax, lmax)
     5. Transform Miller indices to reciprocal space vectors G
-    6. Compute |G| for each reciprocal point
+    6. Compute :math:`|G|` for each reciprocal point
     7. Calculate structure factors F(G) with form factors and DW
-    8. Compute intensities I(G) = |F(G)|²
+    8. Compute intensities :math:`I(G) = |F(G)|^2`
     9. Package into EwaldData PyTree
 
     Examples
@@ -185,7 +188,7 @@ def build_ewald_data(
     ...     temperature=300.0
     ... )
     >>> print(f"λ = {float(ewald.wavelength_ang):.4f} Å")
-    >>> print(f"|k| = {float(ewald.k_magnitude):.2f} 1/Å")
+    >>> print(f"k_mag = {float(ewald.k_magnitude):.2f} 1/Å")
     >>> print(f"N_G = {ewald.g_vectors.shape[0]}")
 
     See Also
@@ -289,7 +292,7 @@ def ewald_allowed_reflections(
         0 degrees = beam along x-axis.
     tolerance : scalar_float, optional
         Fractional tolerance for Ewald sphere intersection condition
-        ||k_out| - |k_in|| / |k_in| < tolerance.
+        :math:`||k_{out}| - |k_{in}|| / |k_{in}| <` tolerance.
         Default: 0.05 (5%).
 
     Returns
@@ -299,14 +302,14 @@ def ewald_allowed_reflections(
     k_out : Float[Array, "N 3"]
         Outgoing wavevectors for allowed reflections.
     intensities : Float[Array, "N"]
-        Structure factor intensities I(G) = |F(G)|² for allowed reflections.
+        Structure factor intensities :math:`I(G) = |F(G)|^2` for allowed reflections.
 
     Flow
     ----
-    1. Compute incident wavevector k_in from theta, phi, and |k|
-    2. For each G vector: compute k_out = k_in + G
-    3. Check Ewald condition: |k_out| ≈ |k_in|
-    4. Filter to reflections with upward scattering (k_out_z > 0)
+    1. Compute incident wavevector :math:`k_{in}` from theta, phi, and :math:`|k|`
+    2. For each G vector: compute :math:`k_{out} = k_{in} + G`
+    3. Check Ewald condition: :math:`|k_{out}| \approx |k_{in}|`
+    4. Filter to reflections with upward scattering (:math:`k_{out,z} > 0`)
     5. Return allowed indices, k_out vectors, and intensities
 
     Examples

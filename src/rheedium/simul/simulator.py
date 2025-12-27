@@ -195,7 +195,7 @@ def find_kinematic_reflections(
         If -1, keep reflections with negative z.
         Default: 1.0
     tolerance : scalar_float, optional
-        Tolerance for reflection condition |k_out| = |k_in|.
+        Tolerance for reflection condition :math:`|k_{out}| = |k_{in}|`.
         Default: 0.05
 
     Returns
@@ -408,7 +408,7 @@ def kinematic_simulator(
         Maximum l Miller index for reciprocal point generation.
         Default: 1
     tolerance : scalar_float, optional
-        Tolerance for reflection condition |k_out| = |k_in|.
+        Tolerance for reflection condition :math:`|k_{out}| = |k_{in}|`.
         Default: 0.05
     detector_distance : scalar_float, optional
         Distance from sample to detector plane in mm.
@@ -901,7 +901,7 @@ def multislice_simulator(
     for thick samples and strong scattering conditions.
 
     For RHEED geometry, the exit wave is projected onto the Ewald sphere
-    to satisfy elastic scattering constraint |k_out| = |k_in|.
+    to satisfy elastic scattering constraint :math:`|k_{out}| = |k_{in}|`.
 
     See Also
     --------

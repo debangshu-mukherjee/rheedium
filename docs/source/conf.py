@@ -204,6 +204,12 @@ def skip_member(app, what, name, obj, skip, options):
         return True
     if name.startswith("_") and not name.startswith("__"):
         return True
+
+    # Skip NamedTuple field descriptors to avoid duplicate object descriptions
+    # when both class attributes and module-level data entries are documented
+    if what == "data" and hasattr(obj, "_field_types"):
+        return True
+
     return skip
 
 

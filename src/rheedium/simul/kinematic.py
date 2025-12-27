@@ -139,9 +139,13 @@ def simple_structure_factor(
     atom_positions: Float[Array, "M 3"],
     atomic_numbers: Int[Array, "M"],
 ) -> Float[Array, ""]:
-    """Calculate structure factor for a single reflection.
+    r"""Calculate structure factor for a single reflection.
 
-    Following paper's Equation 7: F(G) = Σ_j f_j · exp(i·G·r_j)
+    Following paper's Equation 7:
+
+    .. math::
+
+        F(G) = \sum_j f_j \cdot \exp(i \cdot G \cdot r_j)
 
     Parameters
     ----------
@@ -155,28 +159,37 @@ def simple_structure_factor(
     Returns
     -------
     intensity : Float[Array, ""]
-        Diffraction intensity I = |F(G)|²
+        Diffraction intensity :math:`I = |F(G)|^2`
 
     Notes
     -----
-    Structure factor:
-        F(G) = Σ_j f_j(G) · exp(i·G·r_j)  [Paper's Eq. 7]
+    Structure factor (Paper's Eq. 7):
+
+    .. math::
+
+        F(G) = \sum_j f_j(G) \cdot \exp(i \cdot G \cdot r_j)
 
     where:
-        - f_j(G) = atomic scattering factor for atom j
-        - r_j = position of atom j
-        - Sum over all atoms in unit cell
+
+    - :math:`f_j(G)` = atomic scattering factor for atom j
+    - :math:`r_j` = position of atom j
+    - Sum over all atoms in unit cell
 
     Intensity:
-        I(G) = |F(G)|²
+
+    .. math::
+
+        I(G) = |F(G)|^2
 
     Implementation details:
+
     - Uses vectorized operations (JAX-friendly).
-    - Atomic scattering factors are simplified as f_j ≈ Z_j (atomic number).
+    - Atomic scattering factors are simplified as :math:`f_j \approx Z_j`
+      (atomic number).
     - For more accurate scattering, use Kirkland parameterization
       (see form_factors.py).
-    - Calculates phase factors exp(i·G·r_j) for all atoms.
-    - Sums contributions: F = Σ f_j · exp(i·G·r_j).
+    - Calculates phase factors :math:`\exp(i \cdot G \cdot r_j)` for all atoms.
+    - Sums contributions: :math:`F = \sum f_j \cdot \exp(i \cdot G \cdot r_j)`.
 
     Examples
     --------
@@ -250,7 +263,7 @@ def kinematic_spot_simulator(
     3. Build incident wavevector k_in from θ and λ
     4. Find allowed reflections via Ewald sphere construction
     5. Project k_out onto detector screen
-    6. Calculate intensities I = |F(G)|² using structure factors
+    6. Calculate intensities :math:`I = |F(G)|^2` using structure factors
 
     Examples
     --------

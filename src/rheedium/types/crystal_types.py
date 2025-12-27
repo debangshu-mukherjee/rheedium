@@ -307,7 +307,7 @@ class EwaldData(NamedTuple):
     wavelength_ang : Float[Array, ""]
         Relativistic electron wavelength in Ångstroms.
     k_magnitude : Float[Array, ""]
-        Magnitude of electron wavevector |k| = 2π/λ in 1/Ångstroms.
+        Magnitude of electron wavevector :math:`|k| = 2\pi/\lambda` in 1/Ångstroms.
     sphere_radius : Float[Array, ""]
         Ewald sphere radius in 1/Ångstroms (equals k_magnitude).
     recip_vectors : Float[Array, "3 3"]
@@ -317,11 +317,11 @@ class EwaldData(NamedTuple):
     g_vectors : Float[Array, "N 3"]
         Reciprocal lattice vectors G in 1/Ångstroms.
     g_magnitudes : Float[Array, "N"]
-        Magnitudes |G| for each reciprocal lattice vector.
+        Magnitudes :math:`|G|` for each reciprocal lattice vector.
     structure_factors : Complex[Array, "N"]
         Complex structure factors F(G) for each reciprocal lattice point.
     intensities : Float[Array, "N"]
-        Kinematic diffraction intensities I(G) = |F(G)|².
+        Kinematic diffraction intensities :math:`I(G) = |F(G)|^2`.
 
     Notes
     -----
@@ -423,7 +423,7 @@ def create_ewald_data(
     wavelength_ang : Float[Array, ""]
         Electron wavelength in Ångstroms.
     k_magnitude : Float[Array, ""]
-        Wavevector magnitude |k| = 2π/λ in 1/Ångstroms.
+        Wavevector magnitude :math:`|k| = 2\pi/\lambda` in 1/Ångstroms.
     sphere_radius : Float[Array, ""]
         Ewald sphere radius in 1/Ångstroms.
     recip_vectors : Float[Array, "3 3"]
