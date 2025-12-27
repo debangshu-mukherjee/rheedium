@@ -26,7 +26,6 @@ Form factors use the Kirkland parameterization optimized for electron
 scattering.
 """
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional, Tuple
@@ -34,8 +33,6 @@ from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.inout import kirkland_potentials
 from rheedium.types import scalar_bool, scalar_float, scalar_int
-
-jax.config.update("jax_enable_x64", True)
 
 
 @jaxtyped(typechecker=beartype)

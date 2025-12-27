@@ -43,8 +43,6 @@ from rheedium.types import CrystalStructure, scalar_bool, scalar_float
 
 from .form_factors import atomic_scattering_factor
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def calculate_ctr_intensity(

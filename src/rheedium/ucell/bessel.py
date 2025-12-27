@@ -31,8 +31,6 @@ from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import scalar_float
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def _bessel_iv_series(

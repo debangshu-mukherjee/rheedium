@@ -168,7 +168,7 @@ class TestComputeLengthsAngles(chex.TestCase):
         chex.assert_shape(angles, (3,))
 
         # Lengths should be positive
-        chex.assert_trees_all_positive(lengths)
+        chex.assert_trees_all_equal(jnp.all(lengths > 0), True)
 
         # Angles should be between 0 and 180
         for angle in angles:

@@ -64,8 +64,6 @@ from rheedium.types import (
 
 from .simul_utils import incident_wavevector, wavelength_ang
 
-jax.config.update("jax_enable_x64", True)
-
 # Minimum extent to avoid division by zero (in Ångstroms)
 _MIN_EXTENT_ANG: float = 1.0
 

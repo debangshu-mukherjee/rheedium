@@ -52,8 +52,6 @@ from .form_factors import (
 )
 from .simul_utils import wavelength_ang
 
-jax.config.update("jax_enable_x64", True)
-
 
 def _compute_structure_factor_single(
     g_vector: Float[Array, "3"],

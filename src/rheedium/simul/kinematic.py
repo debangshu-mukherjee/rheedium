@@ -51,8 +51,6 @@ from rheedium.ucell import (
 from .simul_utils import incident_wavevector, wavelength_ang
 from .simulator import find_kinematic_reflections, project_on_detector
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def make_ewald_sphere(

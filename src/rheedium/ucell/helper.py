@@ -31,8 +31,6 @@ from jaxtyping import Array, Bool, Float, Real, jaxtyped
 import rheedium as rh
 from rheedium.types import CrystalStructure, create_crystal_structure
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def angle_in_degrees(

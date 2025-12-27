@@ -19,7 +19,6 @@ Visualization functions use matplotlib for rendering and scipy for
 interpolation.
 """
 
-import jax
 import matplotlib.pyplot as plt
 import numpy as np
 from beartype import beartype
@@ -29,8 +28,6 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.interpolate import griddata
 
 from rheedium.types import RHEEDPattern, scalar_float
-
-jax.config.update("jax_enable_x64", True)
 
 
 @beartype

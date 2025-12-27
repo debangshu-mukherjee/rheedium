@@ -43,8 +43,6 @@ from rheedium.types import (
     scalar_int,
 )
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def reciprocal_unitcell(

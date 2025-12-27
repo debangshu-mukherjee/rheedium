@@ -63,8 +63,6 @@ from .form_factors import atomic_scattering_factor
 from .simul_utils import incident_wavevector, wavelength_ang
 from .surface_rods import integrated_rod_intensity
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def project_on_detector(

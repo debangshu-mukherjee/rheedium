@@ -27,8 +27,6 @@ from jaxtyping import Array, Float, Num, jaxtyped
 
 from rheedium.types import scalar_float, scalar_num
 
-jax.config.update("jax_enable_x64", True)
-
 
 @jaxtyped(typechecker=beartype)
 def wavelength_ang(
