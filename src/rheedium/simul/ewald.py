@@ -269,15 +269,21 @@ def ewald_allowed_reflections(
     theta_deg: scalar_float,
     phi_deg: scalar_float,
     tolerance: scalar_float = 0.05,
+    domain_extent_ang: Float[Array, "3"] | None = None,
+    energy_spread_frac: scalar_float = 1e-4,
+    beam_divergence_rad: scalar_float = 1e-3,
 ) -> tuple[Int[Array, "N"], Float[Array, "N 3"], Float[Array, "N"]]:
     """Find reflections satisfying Ewald sphere condition for given beam angles.
 
     Description
     -----------
     Given pre-computed EwaldData and beam orientation angles, find which
-    reciprocal lattice points lie on the Ewald sphere (within tolerance).
-    Returns indices of allowed reflections, their outgoing wavevectors,
-    and structure factor intensities.
+    reciprocal lattice points lie on the Ewald sphere. Supports two modes:
+
+    1. **Binary mode** (default): Returns reflections within tolerance of
+       exact Ewald sphere intersection.
+    2. **Finite domain mode**: Returns all reflections with continuous
+       overlap-weighted intensities based on domain size and beam parameters.
 
     Parameters
     ----------
@@ -293,27 +299,42 @@ def ewald_allowed_reflections(
     tolerance : scalar_float, optional
         Fractional tolerance for Ewald sphere intersection condition
         :math:`||k_{out}| - |k_{in}|| / |k_{in}| <` tolerance.
+        Only used in binary mode (when domain_extent_ang is None).
         Default: 0.05 (5%).
+    domain_extent_ang : Float[Array, "3"], optional
+        Physical domain size [Lx, Ly, Lz] in Ångstroms. If provided, enables
+        finite domain mode with continuous overlap weighting. Default: None
+    energy_spread_frac : scalar_float, optional
+        Fractional energy spread ΔE/E for shell thickness calculation.
+        Only used in finite domain mode. Default: 1e-4
+    beam_divergence_rad : scalar_float, optional
+        Beam angular divergence in radians for shell thickness calculation.
+        Only used in finite domain mode. Default: 1e-3
 
     Returns
     -------
     allowed_indices : Int[Array, "N"]
         Indices into ewald.hkl_grid for allowed reflections.
+        In binary mode, only indices within tolerance are valid (rest are -1).
+        In finite domain mode, all indices with k_out_z > 0 are included.
     k_out : Float[Array, "N 3"]
         Outgoing wavevectors for allowed reflections.
     intensities : Float[Array, "N"]
-        Structure factor intensities :math:`I(G) = |F(G)|^2` for allowed reflections.
+        Structure factor intensities. In binary mode: :math:`I(G) = |F(G)|^2`.
+        In finite domain mode: :math:`I(G) = |F(G)|^2 \\times \\text{overlap}`.
 
     Flow
     ----
     1. Compute incident wavevector :math:`k_{in}` from theta, phi, and :math:`|k|`
     2. For each G vector: compute :math:`k_{out} = k_{in} + G`
-    3. Check Ewald condition: :math:`|k_{out}| \approx |k_{in}|`
+    3. Check Ewald condition (binary) or compute overlap (finite domain)
     4. Filter to reflections with upward scattering (:math:`k_{out,z} > 0`)
     5. Return allowed indices, k_out vectors, and intensities
 
     Examples
     --------
+    Binary mode (default):
+
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> ewald = rh.simul.build_ewald_data(crystal, voltage_kv=15.0, hmax=3, kmax=3, lmax=2)
@@ -322,12 +343,22 @@ def ewald_allowed_reflections(
     ...     theta_deg=2.0,
     ...     phi_deg=0.0,
     ... )
-    >>> print(f"Found {len(indices)} allowed reflections")
+
+    Finite domain mode:
+
+    >>> import jax.numpy as jnp
+    >>> domain = jnp.array([100., 100., 50.])  # 100x100x50 Å domain
+    >>> indices, k_out, intensities = rh.simul.ewald_allowed_reflections(
+    ...     ewald=ewald,
+    ...     theta_deg=2.0,
+    ...     phi_deg=0.0,
+    ...     domain_extent_ang=domain,
+    ... )
 
     See Also
     --------
     build_ewald_data : Build EwaldData from crystal structure
-    kinematic_detector_projection : Project reflections to detector coordinates
+    finite_domain_intensities : Alternative API for finite domain physics
     """
     theta_rad: Float[Array, ""] = jnp.deg2rad(
         jnp.asarray(theta_deg, dtype=jnp.float64)
@@ -353,26 +384,64 @@ def ewald_allowed_reflections(
     g_vecs: Float[Array, "M 3"] = ewald.g_vectors
     k_out_all: Float[Array, "M 3"] = k_in + g_vecs
 
-    # Check Ewald sphere condition: |k_out| ≈ |k_in|
-    k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=-1)
-    relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
+    # Check for upward scattering (k_out_z > 0)
+    upward_mask: Bool[Array, "M"] = k_out_all[:, 2] > 0
 
-    # Ewald condition satisfied AND upward scattering (k_out_z > 0)
-    is_allowed: Bool[Array, "M"] = (relative_error < tolerance) & (
-        k_out_all[:, 2] > 0
-    )
+    if domain_extent_ang is not None:
+        # Finite domain mode: compute continuous overlap weights
+        domain_arr: Float[Array, "3"] = jnp.asarray(
+            domain_extent_ang, dtype=jnp.float64
+        )
+        rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_arr)
+        shell_sigma: Float[Array, ""] = compute_shell_sigma(
+            k_magnitude=k_mag,
+            energy_spread_frac=energy_spread_frac,
+            beam_divergence_rad=beam_divergence_rad,
+        )
 
-    # Get indices of allowed reflections
-    allowed_indices: Int[Array, "N"] = jnp.where(
-        is_allowed, size=g_vecs.shape[0], fill_value=-1
-    )[0]
+        # Compute overlap factors for all G vectors
+        overlap: Float[Array, "M"] = rod_ewald_overlap(
+            g_vectors=g_vecs,
+            k_in=k_in,
+            k_magnitude=k_mag,
+            rod_sigma=rod_sigma,
+            shell_sigma=shell_sigma,
+        )
 
-    # Filter out padding (-1 values)
-    valid_mask: Bool[Array, "N"] = allowed_indices >= 0
-    n_valid: Int[Array, ""] = jnp.sum(valid_mask)
+        # Apply upward scattering mask to overlap
+        overlap = jnp.where(upward_mask, overlap, 0.0)
 
-    # Extract allowed k_out and intensities
-    k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
-    intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
+        # In finite domain mode, return all indices with nonzero overlap
+        # Use threshold to filter very small overlaps for efficiency
+        overlap_threshold: float = 1e-6
+        is_allowed: Bool[Array, "M"] = overlap > overlap_threshold
+
+        # Get indices of allowed reflections
+        allowed_indices: Int[Array, "N"] = jnp.where(
+            is_allowed, size=g_vecs.shape[0], fill_value=-1
+        )[0]
+
+        # Extract allowed k_out and intensities weighted by overlap
+        k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
+        base_intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
+        overlap_weights: Float[Array, "N"] = overlap[allowed_indices]
+        intensities: Float[Array, "N"] = base_intensities * overlap_weights
+
+    else:
+        # Binary mode: use tolerance-based filtering (original behavior)
+        k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=-1)
+        relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
+
+        # Ewald condition satisfied AND upward scattering
+        is_allowed: Bool[Array, "M"] = (relative_error < tolerance) & upward_mask
+
+        # Get indices of allowed reflections
+        allowed_indices: Int[Array, "N"] = jnp.where(
+            is_allowed, size=g_vecs.shape[0], fill_value=-1
+        )[0]
+
+        # Extract allowed k_out and intensities (no overlap weighting)
+        k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
+        intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
 
     return allowed_indices, k_out, intensities

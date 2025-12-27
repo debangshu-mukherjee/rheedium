@@ -314,8 +314,8 @@ def compute_kinematic_intensities_with_ctrs(
                 temperature=temperature,
                 is_surface=is_surface,
             )
-            # G vectors from generate_reciprocal_points already include 2π factor
-            # (via reciprocal_lattice_vectors), so phase = G · r directly
+            # G vectors from generate_reciprocal_points already include
+            # 2π factor (via reciprocal_lattice_vectors), so phase = G · r
             phase: scalar_float = jnp.dot(g_vec, atom_pos)
             contribution: complex = form_factor * jnp.exp(1j * phase)
             return contribution
@@ -380,8 +380,18 @@ def kinematic_simulator(
     surface_roughness: scalar_float = 0.5,
     detector_acceptance: scalar_float = 0.01,
     surface_fraction: scalar_float = 0.3,
+    domain_extent_ang: Float[Array, "3"] | None = None,
+    energy_spread_frac: scalar_float = 1e-4,
+    beam_divergence_rad: scalar_float = 1e-3,
 ) -> RHEEDPattern:
     """Simulate RHEED pattern with proper atomic form factors and CTRs.
+
+    Supports two modes for Ewald sphere intersection:
+
+    1. **Binary mode** (default): Uses tolerance-based filtering for
+       reflections satisfying |k_out| ≈ |k_in|.
+    2. **Finite domain mode**: Uses continuous overlap weighting based on
+       domain size and beam parameters.
 
     Parameters
     ----------
@@ -389,7 +399,7 @@ def kinematic_simulator(
         Crystal structure with atomic positions and cell parameters.
     voltage_kv : scalar_num, optional
         Electron beam energy in kiloelectron volts.
-        Default: 20.0
+        Default: 10.0
     theta_deg : scalar_num, optional
         Grazing angle of incidence in degrees (angle from surface).
         Default: 2.0
@@ -409,6 +419,7 @@ def kinematic_simulator(
         Default: 1
     tolerance : scalar_float, optional
         Tolerance for reflection condition :math:`|k_{out}| = |k_{in}|`.
+        Only used in binary mode (when domain_extent_ang is None).
         Default: 0.05
     detector_distance : scalar_float, optional
         Distance from sample to detector plane in mm.
@@ -429,6 +440,16 @@ def kinematic_simulator(
     surface_fraction : scalar_float, optional
         Fraction of atoms considered as surface atoms.
         Default: 0.3
+    domain_extent_ang : Float[Array, "3"], optional
+        Physical domain size [Lx, Ly, Lz] in Ångstroms. If provided, enables
+        finite domain mode with continuous overlap weighting instead of
+        binary tolerance-based filtering. Default: None
+    energy_spread_frac : scalar_float, optional
+        Fractional energy spread ΔE/E for Ewald shell thickness.
+        Only used in finite domain mode. Default: 1e-4
+    beam_divergence_rad : scalar_float, optional
+        Beam angular divergence in radians for Ewald shell thickness.
+        Only used in finite domain mode. Default: 1e-3
 
     Returns
     -------
@@ -485,20 +506,75 @@ def kinematic_simulator(
     )
     lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
     k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg, phi_deg)
-    allowed_indices: Int[Array, "K"]
-    k_out: Float[Array, "K 3"]
-    kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
-        find_kinematic_reflections(
-            k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
+    k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
+
+    # Compute all k_out = k_in + G
+    k_out_all: Float[Array, "M 3"] = k_in + gs
+
+    # Check for scattering direction (z_sign determines upward vs downward)
+    z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
+
+    if domain_extent_ang is not None:
+        # Finite domain mode: compute continuous overlap weights
+        # Use local import to avoid circular dependency
+        from .finite_domain import (
+            compute_shell_sigma,
+            extent_to_rod_sigma,
+            rod_ewald_overlap,
         )
-    )
-    allowed_indices: Int[Array, "K"] = kr[0]
-    k_out: Float[Array, "K 3"] = kr[1]
+
+        domain_arr: Float[Array, "3"] = jnp.asarray(
+            domain_extent_ang, dtype=jnp.float64
+        )
+        rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_arr)
+        shell_sigma: Float[Array, ""] = compute_shell_sigma(
+            k_magnitude=k_mag,
+            energy_spread_frac=energy_spread_frac,
+            beam_divergence_rad=beam_divergence_rad,
+        )
+
+        # Compute overlap factors for all G vectors
+        overlap: Float[Array, "M"] = rod_ewald_overlap(
+            g_vectors=gs,
+            k_in=k_in,
+            k_magnitude=k_mag,
+            rod_sigma=rod_sigma,
+            shell_sigma=shell_sigma,
+        )
+
+        # Apply z-direction mask to overlap
+        overlap = jnp.where(z_condition, overlap, 0.0)
+
+        # Filter by overlap threshold
+        overlap_threshold: float = 1e-6
+        is_allowed: Bool[Array, "M"] = overlap > overlap_threshold
+
+        # Get indices of allowed reflections
+        allowed_indices: Int[Array, "K"] = jnp.where(
+            is_allowed, size=gs.shape[0], fill_value=-1
+        )[0]
+
+        # Extract allowed k_out
+        k_out: Float[Array, "K 3"] = k_out_all[allowed_indices]
+        g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
+        overlap_weights: Float[Array, "K"] = overlap[allowed_indices]
+
+    else:
+        # Binary mode: use tolerance-based filtering (original behavior)
+        kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
+            find_kinematic_reflections(
+                k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
+            )
+        )
+        allowed_indices: Int[Array, "K"] = kr[0]
+        k_out: Float[Array, "K 3"] = kr[1]
+        g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
+        overlap_weights = None
+
     detector_points: Float[Array, "K 2"] = project_on_detector(
         k_out,
         detector_distance,
     )
-    g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
 
     intensities: Float[Array, "K"] = compute_kinematic_intensities_with_ctrs(
         crystal=crystal,
@@ -510,6 +586,10 @@ def kinematic_simulator(
         detector_acceptance=detector_acceptance,
         surface_fraction=surface_fraction,
     )
+
+    # Apply overlap weighting in finite domain mode
+    if overlap_weights is not None:
+        intensities = intensities * overlap_weights
 
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=allowed_indices,
@@ -623,7 +703,6 @@ def sliced_crystal_to_potential(
 
     # Interaction constant sigma = (2 * pi * m * e * lambda) / h^2
     # For practical calculations, use simplified form
-    # Units: 1/Volt-Angstrom^2
     sigma: Float[Array, ""] = 2.0 * jnp.pi / (wavelength * voltage_kv * 1000.0)
 
     # Number of atoms

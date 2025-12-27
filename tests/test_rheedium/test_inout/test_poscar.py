@@ -103,7 +103,7 @@ class TestParsePoscarHeader(chex.TestCase):
             "Si",
             "1",
         ]
-        with pytest.raises(ValueError, match="3 components"):
+        with pytest.raises(ValueError, match="lattice vector"):
             _parse_poscar_header(lines)
 
     def test_mismatched_species_counts(self) -> None:
@@ -117,7 +117,7 @@ class TestParsePoscarHeader(chex.TestCase):
             "Si O",  # 2 species
             "1",  # Only 1 count
         ]
-        with pytest.raises(ValueError, match="does not match"):
+        with pytest.raises(ValueError, match="atom counts"):
             _parse_poscar_header(lines)
 
 

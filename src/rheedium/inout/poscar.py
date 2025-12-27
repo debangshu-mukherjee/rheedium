@@ -305,16 +305,15 @@ def parse_poscar(
     n_atoms: int = sum(counts)
 
     line_idx: int = 7
-    has_selective_dynamics: bool = False
 
+    # Skip optional "Selective dynamics" line
     if lines[line_idx].strip().lower().startswith("s"):
-        has_selective_dynamics = True
         line_idx += 1
 
     coord_line: str = lines[line_idx].strip().lower()
     if coord_line.startswith("d"):
         is_cartesian: bool = False
-    elif coord_line.startswith("c") or coord_line.startswith("k"):
+    elif coord_line.startswith(("c", "k")):
         is_cartesian = True
     else:
         raise ValueError(
@@ -329,7 +328,7 @@ def parse_poscar(
     )
 
     atomic_numbers_list: List[int] = []
-    for sp, count in zip(species, counts):
+    for sp, count in zip(species, counts, strict=True):
         z: int = atomic_symbol(sp)
         atomic_numbers_list.extend([z] * count)
 

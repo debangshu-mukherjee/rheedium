@@ -326,11 +326,11 @@ def xyz_to_crystal(
 def parse_crystal(
     file_path: Union[str, Path],
 ) -> CrystalStructure:
-    """Parse CIF or XYZ file into simulation-ready CrystalStructure.
+    """Parse CIF, XYZ, or POSCAR file into simulation-ready CrystalStructure.
 
     Provides a unified interface for loading crystal structures from common
-    file formats. Auto-detects the format based on file extension and
-    delegates to the appropriate parser.
+    file formats. Auto-detects the format based on file extension or filename
+    and delegates to the appropriate parser.
 
     Parameters
     ----------
@@ -339,6 +339,8 @@ def parse_crystal(
 
         - ``.cif`` : Crystallographic Information File
         - ``.xyz`` : XYZ coordinate file (standard or extended format)
+        - ``POSCAR``, ``CONTCAR`` : VASP structure files (by filename)
+        - ``.poscar``, ``.contcar`` : VASP structure files (by extension)
 
         Can be a string path or pathlib.Path object.
 
@@ -357,7 +359,7 @@ def parse_crystal(
     FileNotFoundError
         If the specified file does not exist.
     ValueError
-        If file format is not supported (extension not .cif or .xyz).
+        If file format is not supported.
         Also raised by underlying parsers for malformed files.
 
     Notes
@@ -378,6 +380,12 @@ def parse_crystal(
     - Falls back to inferring cell from atomic bounding box + padding
     - Converts Cartesian to fractional coordinates
 
+    **POSCAR/CONTCAR files**:
+
+    - Supports VASP 5.x format with species line
+    - Handles both Direct (fractional) and Cartesian coordinates
+    - Applies scaling factor to lattice vectors
+
     This function is the recommended entry point for loading crystal
     structures, as it handles format detection automatically.
 
@@ -396,6 +404,12 @@ def parse_crystal(
     >>> crystal.frac_positions.shape
     (100, 4)
 
+    Load a POSCAR file:
+
+    >>> crystal = rh.inout.parse_crystal("POSCAR")
+    >>> crystal.cell_lengths
+    Array([5.43, 5.43, 5.43], dtype=float64)
+
     Works with pathlib.Path:
 
     >>> from pathlib import Path
@@ -407,6 +421,7 @@ def parse_crystal(
         raise FileNotFoundError(f"Crystal file not found: {path}")
 
     suffix: str = path.suffix.lower()
+    name: str = path.name.upper()
 
     if suffix == ".cif":
         return parse_cif(path)
@@ -415,7 +430,12 @@ def parse_crystal(
         xyz_data: XYZData = parse_xyz(path)
         return xyz_to_crystal(xyz_data)
 
-    supported: str = ".cif, .xyz"
+    if name in ("POSCAR", "CONTCAR") or suffix in (".poscar", ".contcar"):
+        from .poscar import parse_poscar
+
+        return parse_poscar(path)
+
+    supported: str = ".cif, .xyz, POSCAR, CONTCAR"
     raise ValueError(
         f"Unsupported file format '{suffix}'. Supported: {supported}"
     )
