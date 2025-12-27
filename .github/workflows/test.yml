@@ -33,8 +33,7 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
       
     - name: Install dependencies
-      run: |
-        uv sync --extra test --extra dev
+      run: uv sync --extra dev
         
     - name: Lint with black
       run: |

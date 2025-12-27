@@ -1,0 +1,67 @@
+name: Lines of Code
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  count-loc:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: uv sync --extra dev
+
+    - name: Count lines of code
+      id: loc
+      run: |
+        # Run pygount and get the summary
+        uv run pygount --format=summary src/rheedium > loc_summary.txt
+        cat loc_summary.txt
+
+        # Extract Python logical lines (code lines, not comments/empty)
+        # pygount summary format: Language | Files | % | Code | % | Comment | % | Empty | %
+        LOGICAL_LOC=$(uv run pygount --format=summary src/rheedium | grep -E "^Python" | awk '{print $4}')
+
+        # If no Python line found, try alternative parsing
+        if [ -z "$LOGICAL_LOC" ]; then
+          LOGICAL_LOC=$(uv run pygount --format=summary src/rheedium | tail -n 2 | head -n 1 | awk '{print $4}')
+        fi
+
+        echo "Logical lines of code: $LOGICAL_LOC"
+        echo "loc=$LOGICAL_LOC" >> $GITHUB_OUTPUT
+
+    - name: Create LOC badge JSON
+      run: |
+        mkdir -p .github/badges
+        cat > .github/badges/loc.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "lines of code",
+          "message": "${{ steps.loc.outputs.loc }}",
+          "color": "blue"
+        }
+        EOF
+
+    - name: Commit badge data
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .github/badges/loc.json
+        git diff --staged --quiet || git commit -m "Update LOC badge [skip ci]"
+        git push

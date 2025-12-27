@@ -10,6 +10,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14757400.svg)](https://doi.org/10.5281/zenodo.14757400)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![jax_badge](https://tinyurl.com/mucknrvu)](https://docs.jax.dev/)
+[![Lines of Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/.github/badges/loc.json)](https://github.com/debangshu-mukherjee/rheedium)
 
 ## Overview
 
