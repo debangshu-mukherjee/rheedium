@@ -16,6 +16,22 @@
 
 Rheedium is a JAX based computational framework for simulating RHEED patterns with automatic differentiation capabilities and GPU acceleration.
 
+## Documentation
+
+### Theory and Architecture Guides
+
+- [Kinematic Scattering](docs/guides/kinematic-scattering.md) - Diffraction theory, structure factors, and intensity calculations
+- [Ewald Sphere](docs/guides/ewald-sphere.md) - Geometric diffraction conditions in reciprocal space
+- [Form Factors](docs/guides/form-factors.md) - Atomic scattering amplitudes and thermal (Debye-Waller) effects
+- [Surface Rods](docs/guides/surface-rods.md) - Crystal truncation rods, roughness, and finite domain effects
+- [Data Wrangling](docs/guides/data-wrangling.md) - Parsing XYZ, CIF, and POSCAR files
+- [Unit Cell](docs/guides/unit-cell.md) - Lattice vectors, reciprocal space, and surface slabs
+- [PyTree Architecture](docs/guides/pytree-architecture.md) - JAX data structures for GPU acceleration
+
+### API Reference
+
+See the [full API documentation](https://rheedium.readthedocs.io/) on Read the Docs.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/debangshu-mukherjee/rheedium/blob/main/LICENSE) file for details.

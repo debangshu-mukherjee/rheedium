@@ -34,6 +34,13 @@ def wavelength_ang(
 ) -> Float[Array, "..."]:
     """Calculate the relativistic electron wavelength in angstroms.
 
+    Uses the full relativistic de Broglie wavelength formula:
+
+        lambda = h / sqrt(2 * m_e * e * V * (1 + e*V / (2 * m_e * c^2)))
+
+    This is more accurate than simplified approximations, especially at
+    higher voltages (>=30 keV) where the difference can be several percent.
+
     Parameters
     ----------
     voltage_kv : Union[scalar_num, Num[Array, "..."]]
@@ -47,7 +54,16 @@ def wavelength_ang(
 
     Notes
     -----
-    Uses relativistic corrections for accurate wavelength at high energies.
+    Physical constants used:
+    - h = 6.62607015e-34 J·s (Planck constant, exact)
+    - m_e = 9.1093837015e-31 kg (electron mass)
+    - e = 1.602176634e-19 C (elementary charge, exact)
+    - c = 299792458 m/s (speed of light, exact)
+
+    The formula simplifies to:
+        lambda(Å) = 12.2643 / sqrt(V * (1 + 0.978476e-6 * V))
+
+    where V is in volts and the coefficient 0.978476e-6 = e / (2 * m_e * c^2).
 
     Examples
     --------
@@ -57,14 +73,25 @@ def wavelength_ang(
     >>> print(f"λ = {lam:.4f} Å")
     λ = 0.0859 Å
     """
-    rest_mass_energy_kev: Float[Array, "..."] = 511.0
-    # Convert kV to V for the formula
-    voltage_v: Float[Array, "..."] = voltage_kv * 1000.0
+    # Convert kV to V
+    voltage_v: Float[Array, "..."] = jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+
+    # Exact relativistic correction coefficient: e / (2 * m_e * c^2)
+    # = 1.602176634e-19 / (2 * 9.1093837015e-31 * (299792458)^2)
+    # = 0.978476e-6 V^-1
+    relativistic_coeff: float = 0.978476e-6
+
+    # Relativistically corrected voltage: V * (1 + e*V / (2*m_e*c^2))
     corrected_voltage: Float[Array, "..."] = voltage_v * (
-        1.0 + voltage_v / (2.0 * rest_mass_energy_kev * 1000.0)
+        1.0 + relativistic_coeff * voltage_v
     )
-    h_over_2me: Float[Array, "..."] = 12.26
-    wavelength: Float[Array, "..."] = h_over_2me / jnp.sqrt(corrected_voltage)
+
+    # h / sqrt(2 * m_e * e) in Å·V^0.5 units
+    # = 6.62607015e-34 / sqrt(2 * 9.1093837015e-31 * 1.602176634e-19)
+    # = 12.2643 Å·V^0.5
+    h_over_sqrt_2me: float = 12.2643
+
+    wavelength: Float[Array, "..."] = h_over_sqrt_2me / jnp.sqrt(corrected_voltage)
     return wavelength
 
 

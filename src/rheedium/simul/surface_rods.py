@@ -51,6 +51,7 @@ def calculate_ctr_intensity(
     crystal: CrystalStructure,
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
+    is_surface_atom: Bool[Array, "n_atoms"] | None = None,
 ) -> Float[Array, "N M"]:
     """Calculate continuous intensity along crystal truncation rods (CTRs).
 
@@ -74,6 +75,11 @@ def calculate_ctr_intensity(
         RMS surface roughness σ_h in Angstroms
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
+    is_surface_atom : Bool[Array, "n_atoms"] | None, optional
+        Per-atom boolean mask indicating which atoms are surface atoms.
+        If None, no surface enhancement is applied (all atoms treated as
+        bulk). This prevents double-application when used with kinematic
+        calculations that already apply surface enhancement.
 
     Returns
     -------
@@ -97,9 +103,17 @@ def calculate_ctr_intensity(
     atomic_numbers: Int[Array, "n_atoms"] = crystal.cart_positions[
         :, 3
     ].astype(jnp.int32)
+    n_atoms: int = atomic_positions.shape[0]
     cell_lengths: Float[Array, "3"] = crystal.cell_lengths
     reciprocal_a: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[0]
     reciprocal_b: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[1]
+
+    # Default: no surface enhancement (prevents double-application)
+    surface_mask: Bool[Array, "n_atoms"] = (
+        jnp.zeros(n_atoms, dtype=jnp.bool_)
+        if is_surface_atom is None
+        else is_surface_atom
+    )
 
     def calculate_single_rod_intensity(
         hk: Int[Array, "2"],
@@ -118,7 +132,7 @@ def calculate_ctr_intensity(
                 atomic_positions=atomic_positions,
                 atomic_numbers=atomic_numbers,
                 temperature=temperature,
-                is_surface=True,
+                is_surface_atom=surface_mask,
             )
             damping: Float[Array, ""] = roughness_damping(
                 q_z=qz_val, sigma_height=surface_roughness
@@ -332,15 +346,15 @@ def surface_structure_factor(
     atomic_positions: Float[Array, "N 3"],
     atomic_numbers: Int[Array, "N"],
     temperature: scalar_float = 300.0,
-    is_surface: scalar_bool = True,
+    is_surface_atom: Bool[Array, "N"] | None = None,
 ) -> Complex[Array, ""]:
     """Calculate structure factor for surface with q_z dependence.
 
     Description
     -----------
     Computes the complex structure factor F(q) for a surface, including
-    atomic form factors and Debye-Waller factors. Surface atoms are
-    treated with enhanced thermal vibrations.
+    atomic form factors and Debye-Waller factors. Surface atoms can be
+    treated with enhanced thermal vibrations via per-atom masking.
 
     Parameters
     ----------
@@ -352,8 +366,11 @@ def surface_structure_factor(
         Atomic numbers for each atom
     temperature : scalar_float, optional
         Temperature in Kelvin. Default: 300.0
-    is_surface : scalar_bool, optional
-        If True, use surface-enhanced thermal factors. Default: True
+    is_surface_atom : Bool[Array, "N"] | None, optional
+        Per-atom boolean mask indicating which atoms are surface atoms.
+        Surface atoms receive enhanced Debye-Waller factors.
+        If None, all atoms are treated as bulk (no enhancement).
+        Default: None (prevents double-application with kinematic path)
 
     Returns
     -------
@@ -365,11 +382,19 @@ def surface_structure_factor(
     The algorithm proceeds as follows:
 
     1. Calculate phase factors exp(iq·r) for each atom
-    2. Get atomic scattering factors with Debye-Waller
+    2. Get atomic scattering factors with Debye-Waller (per-atom surface flag)
     3. Sum weighted contributions from all atoms
     4. Return complex structure factor
     """
     n_atoms: int = atomic_positions.shape[0]
+
+    # Default: no surface enhancement
+    surface_mask: Bool[Array, "N"] = (
+        jnp.zeros(n_atoms, dtype=jnp.bool_)
+        if is_surface_atom is None
+        else is_surface_atom
+    )
+
     phases: Float[Array, "N"] = jnp.einsum(
         "i,ji->j", q_vector, atomic_positions
     )
@@ -378,12 +403,13 @@ def surface_structure_factor(
     def get_atom_scattering(atom_idx: Int[Array, ""]) -> Float[Array, ""]:
         """Get scattering factor for single atom."""
         atomic_num: Int[Array, ""] = atomic_numbers[atom_idx]
+        is_surf: Bool[Array, ""] = surface_mask[atom_idx]
         q_vec_expanded: Float[Array, "1 3"] = q_vector[jnp.newaxis, :]
         scattering: Float[Array, "1"] = atomic_scattering_factor(
             atomic_number=atomic_num,
             q_vector=q_vec_expanded,
             temperature=temperature,
-            is_surface=is_surface,
+            is_surface=is_surf,
         )
         return jnp.squeeze(scattering)
 
