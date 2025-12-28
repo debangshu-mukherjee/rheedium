@@ -391,6 +391,6 @@ where $M_j$ is atomic mass and $N_A$ is Avogadro's number.
 
 ## Key Source Files
 
-- [`ucell/unitcell.py`](../../src/rheedium/ucell/unitcell.py) - Lattice construction, reciprocal space
-- [`ucell/helper.py`](../../src/rheedium/ucell/helper.py) - Supercells, surface slabs, atom scraping
-- [`types/rheed_types.py`](../../src/rheedium/types/rheed_types.py) - SlicedCrystal definition
+- `ucell/unitcell.py` - Lattice construction, reciprocal space
+- `ucell/helper.py` - Supercells, surface slabs, atom scraping
+- `types/rheed_types.py` - SlicedCrystal definition

@@ -403,9 +403,9 @@ This enables parsing files with element symbols rather than atomic numbers.
 
 ## Key Source Files
 
-- [`inout/xyz.py`](../../src/rheedium/inout/xyz.py) - XYZ parsing
-- [`inout/cif.py`](../../src/rheedium/inout/cif.py) - CIF parsing and symmetry expansion
-- [`inout/crystal.py`](../../src/rheedium/inout/crystal.py) - Unified interface, XYZ→Crystal conversion
-- [`inout/poscar.py`](../../src/rheedium/inout/poscar.py) - VASP format support
-- [`ucell/unitcell.py`](../../src/rheedium/ucell/unitcell.py) - Cell vector construction
-- [`inout/luggage/atom_numbers.json`](../../src/rheedium/inout/luggage/atom_numbers.json) - Element lookup table
+- `inout/xyz.py` - XYZ parsing
+- `inout/cif.py` - CIF parsing and symmetry expansion
+- `inout/crystal.py` - Unified interface, XYZ→Crystal conversion
+- `inout/poscar.py` - VASP format support
+- `ucell/unitcell.py` - Cell vector construction
+- `inout/luggage/atom_numbers.json` - Element lookup table

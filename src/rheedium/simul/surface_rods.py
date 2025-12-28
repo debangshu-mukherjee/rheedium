@@ -434,6 +434,7 @@ def integrated_rod_intensity(
     detector_acceptance: scalar_float,
     n_integration_points: int = 50,
     temperature: scalar_float = 300.0,
+    is_surface_atom: Bool[Array, "n_atoms"] | None = None,
 ) -> scalar_float:
     """Integrate CTR intensity over finite detector acceptance.
 
@@ -459,6 +460,9 @@ def integrated_rod_intensity(
         Number of integration points. Default: 50
     temperature : scalar_float, optional
         Temperature in Kelvin. Default: 300.0
+    is_surface_atom : Bool[Array, "n_atoms"] | None, optional
+        Per-atom boolean mask indicating which atoms are surface atoms.
+        If None, no surface enhancement is applied. Default: None
 
     Returns
     -------
@@ -484,6 +488,7 @@ def integrated_rod_intensity(
         crystal=crystal,
         surface_roughness=surface_roughness,
         temperature=temperature,
+        is_surface_atom=is_surface_atom,
     )
     rod_intensities: Float[Array, "n_points"] = intensities[0]
     q_z_center: Float[Array, ""] = jnp.mean(q_z_values)

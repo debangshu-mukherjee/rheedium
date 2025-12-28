@@ -253,5 +253,5 @@ f_total_600 = f_Si * dw_600
 
 ## Key Source Files
 
-- [`simul/form_factors.py`](../../src/rheedium/simul/form_factors.py) - Form factor and Debye-Waller implementations
-- [`inout/luggage/Kirkland_Potentials.csv`](../../src/rheedium/inout/luggage/Kirkland_Potentials.csv) - Kirkland coefficient table
+- `simul/form_factors.py` - Form factor and Debye-Waller implementations
+- `inout/luggage/Kirkland_Potentials.csv` - Kirkland coefficient table

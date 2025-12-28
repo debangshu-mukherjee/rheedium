@@ -357,6 +357,6 @@ intensities_rough = intensities * damping
 
 ## Key Source Files
 
-- [`simul/surface_rods.py`](../../src/rheedium/simul/surface_rods.py) - CTR intensity and roughness
-- [`simul/finite_domain.py`](../../src/rheedium/simul/finite_domain.py) - Domain and beam broadening
-- [`simul/kinematic.py`](../../src/rheedium/simul/kinematic.py) - CTR simulator
+- `simul/surface_rods.py` - CTR intensity and roughness
+- `simul/finite_domain.py` - Domain and beam broadening
+- `simul/kinematic.py` - CTR simulator

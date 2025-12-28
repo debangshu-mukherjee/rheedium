@@ -258,6 +258,6 @@ RHEEDPattern
 
 ## Key Source Files
 
-- [`simul/kinematic.py`](../../src/rheedium/simul/kinematic.py) - Main simulation functions
-- [`simul/simulator.py`](../../src/rheedium/simul/simulator.py) - Intensity calculations with CTRs
-- [`simul/simul_utils.py`](../../src/rheedium/simul/simul_utils.py) - Wavelength and wavevector utilities
+- `simul/kinematic.py` - Main simulation functions
+- `simul/simulator.py` - Intensity calculations with CTRs
+- `simul/simul_utils.py` - Wavelength and wavevector utilities

@@ -308,6 +308,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
             jnp.int32
         )
+        # Convert scalar is_surface to per-atom mask
+        n_atoms = atomic_positions.shape[0]
+        is_surface_atom = jnp.full((n_atoms,), is_surface)
 
         for q_vec in q_vectors:
             f_struct = var_structure_factor(
@@ -315,7 +318,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
                 atomic_positions=atomic_positions,
                 atomic_numbers=atomic_numbers,
                 temperature=temperature,
-                is_surface=is_surface,
+                is_surface_atom=is_surface_atom,
             )
 
             chex.assert_shape(f_struct, ())
@@ -341,6 +344,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
             jnp.int32
         )
+        # All bulk atoms (no surface enhancement)
+        n_atoms = atomic_positions.shape[0]
+        is_surface_atom = jnp.full((n_atoms,), False)
 
         q_vec = jnp.array([1.0, 0.5, 0.3])
         q_vec_neg = -q_vec
@@ -350,7 +356,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
             temperature=300.0,
-            is_surface=False,
+            is_surface_atom=is_surface_atom,
         )
 
         f_neg = var_structure_factor(
@@ -358,7 +364,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
             temperature=300.0,
-            is_surface=False,
+            is_surface_atom=is_surface_atom,
         )
 
         chex.assert_trees_all_close(f_neg, jnp.conj(f_pos), rtol=1e-8)
@@ -677,6 +683,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         q_vec = jnp.array([0.0, 0.0, 1.0])
 
+        # Create per-atom surface mask (all True for this test)
+        n_atoms = self.test_crystal.cart_positions.shape[0]
+        is_surface_atom = jnp.ones(n_atoms, dtype=jnp.bool_)
         f_struct = var_structure(
             q_vector=q_vec,
             atomic_positions=self.test_crystal.cart_positions[:, :3],
@@ -684,7 +693,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
                 jnp.int32
             ),
             temperature=300.0,
-            is_surface=True,
+            is_surface_atom=is_surface_atom,
         )
 
         damping = var_damping(q_z=jnp.array(1.0), sigma_height=0.5)
