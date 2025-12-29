@@ -11,3 +11,4 @@ Complete API documentation for all rheedium modules.
    inout
    ucell
    types
+   plots

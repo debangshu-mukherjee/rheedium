@@ -61,7 +61,10 @@ from .finite_domain import (
     extent_to_rod_sigma,
     rod_ewald_overlap,
 )
-from .form_factors import atomic_scattering_factor
+from .form_factors import (
+    atomic_scattering_factor,
+    kirkland_projected_potential,
+)
 from .simul_utils import incident_wavevector, wavelength_ang
 from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 
@@ -588,13 +591,13 @@ def sliced_crystal_to_potential(
 
     This function takes a surface-oriented crystal slab and generates 3D
     potential slices suitable for multislice electron diffraction simulations.
-    The potential is calculated from atomic positions using proper scattering
-    factors and projected onto a discrete grid.
+    The potential is calculated from atomic positions using the Kirkland
+    parameterization for accurate projected atomic potentials.
 
     The interaction constant sigma = 2*pi*m*e*lambda/h^2 is computed in
     simplified form as 2*pi/(lambda*V) with units 1/(Volt*Angstrom^2).
-    Each atom contributes a screened Coulomb potential V(r) ~ Z/r*exp(-a*r^2)
-    where a=0.5 Å^-2 is the screening parameter.
+    Each atom contributes a projected potential using Kirkland parameters,
+    which provides accurate scattering for all elements 1-103.
 
     Parameters
     ----------
@@ -684,16 +687,21 @@ def sliced_crystal_to_potential(
         )
 
         def _atom_contribution(atom_idx: int) -> Float[Array, "nx ny"]:
-            """Calculate contribution from single atom to potential."""
+            """Calculate contribution from single atom to potential.
+
+            Uses Kirkland parameterization for accurate projected potentials.
+            """
             pos: Float[Array, "3"] = positions[atom_idx]
-            z_number: Float[Array, ""] = atomic_numbers[atom_idx]
+            z_number: Int[Array, ""] = atomic_numbers[atom_idx].astype(
+                jnp.int32
+            )
             is_in_slice: Bool[Array, ""] = in_slice[atom_idx]
             dx: Float[Array, "nx ny"] = xx - pos[0]
             dy: Float[Array, "nx ny"] = yy - pos[1]
-            r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2 + 1e-10)
-            a: Float[Array, ""] = 0.5
+            r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2)
+            # Use Kirkland parameterization for projected potential
             atom_potential: Float[Array, "nx ny"] = (
-                z_number * sigma * jnp.exp(-a * r**2) / (r + 1e-10)
+                sigma * kirkland_projected_potential(z_number, r)
             )
             return jnp.where(is_in_slice, atom_potential, 0.0)
 
@@ -723,6 +731,8 @@ def multislice_propagate(
     voltage_kv: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
+    inner_potential_v0: scalar_float = 0.0,
+    bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> Complex[Array, "nx ny"]:
     """Propagate electron wave through potential slices.
 
@@ -749,6 +759,17 @@ def multislice_propagate(
     phi_deg : scalar_float, optional
         Azimuthal angle of incident beam in degrees (default: 0.0)
         phi=0: beam along +x axis, phi=90: beam along +y axis
+    inner_potential_v0 : scalar_float, optional
+        Inner (mean) potential of the crystal in volts (default: 0.0).
+        This causes refraction at the surface. Typical values are 10-20 V
+        for most materials. When non-zero, the electron wavelength inside
+        the crystal is shortened, and the beam refracts at the surface
+        according to Snell's law for electrons.
+    bandwidth_limit : scalar_float, optional
+        Fraction of Nyquist frequency to retain (default: 2/3).
+        Applied as a low-pass filter in Fourier space to prevent aliasing
+        artifacts from the non-linear transmission function. A value of
+        2/3 is standard; use 1.0 to disable bandwidth limiting.
 
     Returns
     -------
@@ -791,15 +812,44 @@ def multislice_propagate(
     kx_grid: Float[Array, " nx ny"]
     ky_grid: Float[Array, " nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
+
+    # Apply surface refraction using inner potential
+    # The effective accelerating voltage inside crystal is V + V0
+    # This modifies the wavelength and grazing angle
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
-    k_in_x: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.cos(phi_rad)
-    k_in_y: scalar_float = k_mag * jnp.cos(theta_rad) * jnp.sin(phi_rad)
+
+    # Refraction at surface: sin(theta_in)/sin(theta_crystal) = sqrt(1 + V0/V)
+    # For small angles: theta_crystal ≈ theta_in * sqrt(1 + V0/V)
+    voltage_v: scalar_float = voltage_kv * 1000.0
+    refraction_factor: scalar_float = jnp.sqrt(
+        1.0 + inner_potential_v0 / voltage_v
+    )
+    theta_crystal: scalar_float = theta_rad * refraction_factor
+
+    k_in_x: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.cos(phi_rad)
+    k_in_y: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.sin(phi_rad)
     x_grid: Float[Array, " nx ny"]
     y_grid: Float[Array, " nx ny"]
     x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
     phase_init: Float[Array, "nx ny"] = k_in_x * x_grid + k_in_y * y_grid
     psi: Complex[Array, "nx ny"] = jnp.exp(1j * phase_init)
+
+    # Create bandwidth limiting aperture in Fourier space
+    # This prevents aliasing from the non-linear transmission function
+    kx_max: scalar_float = 0.5 / dx  # Nyquist frequency in x
+    ky_max: scalar_float = 0.5 / dy  # Nyquist frequency in y
+    k_cutoff_x: scalar_float = bandwidth_limit * kx_max
+    k_cutoff_y: scalar_float = bandwidth_limit * ky_max
+    # Smooth (Gaussian) aperture to avoid ringing
+    bandwidth_aperture: Float[Array, "nx ny"] = jnp.exp(
+        -0.5
+        * (
+            (jnp.abs(kx_grid) / k_cutoff_x) ** 8
+            + (jnp.abs(ky_grid) / k_cutoff_y) ** 8
+        )
+    )
+
     propagator: Complex[Array, "nx ny"] = jnp.exp(
         -1j * jnp.pi * lam_ang * dz * (kx_grid**2 + ky_grid**2)
     )
@@ -812,7 +862,10 @@ def multislice_propagate(
         transmission: Complex[Array, "nx ny"] = jnp.exp(1j * sigma * v_slice)
         psi_transmitted: Complex[Array, "nx ny"] = psi_in * transmission
         psi_k: Complex[Array, "nx ny"] = jnp.fft.fft2(psi_transmitted)
-        psi_k_propagated: Complex[Array, "nx ny"] = psi_k * propagator
+        # Apply bandwidth limiting and propagator
+        psi_k_propagated: Complex[Array, "nx ny"] = (
+            psi_k * propagator * bandwidth_aperture
+        )
         psi_out: Complex[Array, "nx ny"] = jnp.fft.ifft2(psi_k_propagated)
         return psi_out, None
 
@@ -828,6 +881,8 @@ def multislice_simulator(
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     detector_distance: scalar_float = 100.0,
+    inner_potential_v0: scalar_float = 0.0,
+    bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> RHEEDPattern:
     """Simulate RHEED pattern from potential slices using multislice algorithm.
 
@@ -856,6 +911,12 @@ def multislice_simulator(
         Azimuthal angle of incident beam in degrees (default: 0.0)
     detector_distance : scalar_float, optional
         Distance from sample to detector screen in mm (default: 100.0)
+    inner_potential_v0 : scalar_float, optional
+        Inner (mean) potential of the crystal in volts (default: 0.0).
+        This causes refraction at the surface. Typical values are 10-20 V.
+    bandwidth_limit : scalar_float, optional
+        Fraction of Nyquist frequency to retain (default: 2/3).
+        Applied as a low-pass filter to prevent aliasing artifacts.
 
     Returns
     -------
@@ -896,6 +957,8 @@ def multislice_simulator(
         voltage_kv=voltage_kv,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
+        inner_potential_v0=inner_potential_v0,
+        bandwidth_limit=bandwidth_limit,
     )
     exit_wave_k: Complex[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
     nx: int = potential_slices.slices.shape[1]

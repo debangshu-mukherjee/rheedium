@@ -88,6 +88,7 @@ dev = [
     "ruff>=0.12.9",
     "twine>=6.0.1",
     "pygount>=3.1.0",
+    "pre-commit>=4.5.1",
 ]
 dev_cuda = [
     "rheedium[dev,cuda]",

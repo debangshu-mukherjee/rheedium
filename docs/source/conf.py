@@ -54,6 +54,12 @@ source_suffix = {
     ".md": None,
 }
 
+# MyST-Parser configuration for LaTeX math rendering
+myst_enable_extensions = [
+    "dollarmath",  # Enable $...$ and $$...$$ math delimiters
+    "amsmath",  # Enable LaTeX math environments like \begin{equation}
+]
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -184,6 +190,7 @@ intersphinx_mapping = {
 }
 
 # -- Custom setup ------------------------------------------------------------
+
 
 def skip_member(app, what, name, obj, skip, options):
     """
