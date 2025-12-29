@@ -12,6 +12,9 @@ Routine Listings
 calculate_ctr_intensity : function
     Calculate continuous intensity along crystal truncation rods with form
     factors.
+calculate_ctr_amplitude : function
+    Calculate complex amplitude along crystal truncation rods (for coherent
+    mixing with kinematic scattering).
 gaussian_rod_profile : function
     Gaussian lateral width profile of rods due to finite correlation length
 lorentzian_rod_profile : function
@@ -24,6 +27,9 @@ surface_structure_factor : function
     Calculate structure factor for surface with q_z dependence
 integrated_rod_intensity : function
     Integrate CTR intensity over finite detector acceptance
+integrated_ctr_amplitude : function
+    Integrate CTR amplitude over finite detector acceptance (for coherent
+    mixing)
 
 Notes
 -----
@@ -149,6 +155,180 @@ def calculate_ctr_intensity(
         calculate_single_rod_intensity
     )(hk_indices)
     return all_intensities
+
+
+@jaxtyped(typechecker=beartype)
+def calculate_ctr_amplitude(
+    hk_indices: Int[Array, "N 2"],
+    q_z: Float[Array, "M"],
+    crystal: CrystalStructure,
+    surface_roughness: scalar_float,
+    temperature: scalar_float = 300.0,
+    is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+) -> Complex[Array, "N M"]:
+    """Calculate complex amplitude along crystal truncation rods (CTRs).
+
+    Description
+    -----------
+    Computes the complex amplitude (structure factor × roughness damping)
+    along CTRs for given in-plane reciprocal lattice points (h,k). This is
+    used for coherent mixing with kinematic scattering amplitudes.
+
+    Parameters
+    ----------
+    hk_indices : Int[Array, "N 2"]
+        In-plane Miller indices (h,k) for each rod. Shape (N, 2) where
+        N is the number of rods to calculate.
+    q_z : Float[Array, "M"]
+        Perpendicular momentum transfer values in 1/Å where amplitude
+        is calculated. Shape (M,) for M points along each rod.
+    crystal : CrystalStructure
+        Crystal structure containing atomic positions and cell parameters
+    surface_roughness : scalar_float
+        RMS surface roughness σ_h in Angstroms
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller factors. Default: 300.0
+    is_surface_atom : Bool[Array, "n_atoms"] | None, optional
+        Per-atom boolean mask indicating which atoms are surface atoms.
+        If None, no surface enhancement is applied. Default: None
+
+    Returns
+    -------
+    amplitudes : Complex[Array, "N M"]
+        CTR complex amplitudes for each (h,k) rod at each q_z value.
+        Shape (N, M) where N is number of rods, M is number of q_z points.
+
+    Notes
+    -----
+    The amplitude is: F(q) × sqrt(D(q_z)), where F is the structure factor
+    and D is the roughness damping. The sqrt is used because intensity is
+    |amplitude|², so |F × sqrt(D)|² = |F|² × D.
+    """
+    atomic_positions: Float[Array, "n_atoms 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "n_atoms"] = crystal.cart_positions[
+        :, 3
+    ].astype(jnp.int32)
+    n_atoms: int = atomic_positions.shape[0]
+    cell_lengths: Float[Array, "3"] = crystal.cell_lengths
+    reciprocal_a: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[0]
+    reciprocal_b: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[1]
+
+    # Default: no surface enhancement (prevents double-application)
+    surface_mask: Bool[Array, "n_atoms"] = (
+        jnp.zeros(n_atoms, dtype=jnp.bool_)
+        if is_surface_atom is None
+        else is_surface_atom
+    )
+
+    def calculate_single_rod_amplitude(
+        hk: Int[Array, "2"],
+    ) -> Complex[Array, "M"]:
+        """Calculate amplitude for a single (h,k) rod at all q_z values."""
+        h_val: Float[Array, ""] = jnp.float64(hk[0])
+        k_val: Float[Array, ""] = jnp.float64(hk[1])
+        q_x: Float[Array, ""] = h_val * reciprocal_a
+        q_y: Float[Array, ""] = k_val * reciprocal_b
+
+        def calculate_at_qz(qz_val: Float[Array, ""]) -> Complex[Array, ""]:
+            """Calculate amplitude at single q_z value."""
+            q_vector: Float[Array, "3"] = jnp.array([q_x, q_y, qz_val])
+            structure_factor: Complex[Array, ""] = surface_structure_factor(
+                q_vector=q_vector,
+                atomic_positions=atomic_positions,
+                atomic_numbers=atomic_numbers,
+                temperature=temperature,
+                is_surface_atom=surface_mask,
+            )
+            damping: Float[Array, ""] = roughness_damping(
+                q_z=qz_val, sigma_height=surface_roughness
+            )
+            # Use sqrt of damping since intensity = |amplitude|²
+            amplitude: Complex[Array, ""] = structure_factor * jnp.sqrt(
+                damping
+            )
+            return amplitude
+
+        rod_amplitudes: Complex[Array, "M"] = jax.vmap(calculate_at_qz)(q_z)
+        return rod_amplitudes
+
+    all_amplitudes: Complex[Array, "N M"] = jax.vmap(
+        calculate_single_rod_amplitude
+    )(hk_indices)
+    return all_amplitudes
+
+
+@jaxtyped(typechecker=beartype)
+def integrated_ctr_amplitude(
+    hk_index: Int[Array, "2"],
+    q_z_range: Float[Array, "2"],
+    crystal: CrystalStructure,
+    surface_roughness: scalar_float,
+    detector_acceptance: scalar_float,
+    n_integration_points: int = 50,
+    temperature: scalar_float = 300.0,
+    is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+) -> Complex[Array, ""]:
+    """Integrate CTR amplitude over finite detector acceptance.
+
+    Description
+    -----------
+    Calculates an effective complex amplitude for a detector with finite
+    angular acceptance by coherently averaging CTR amplitudes over a range
+    of q_z values. This is used for coherent mixing with kinematic scattering.
+
+    Parameters
+    ----------
+    hk_index : Int[Array, "2"]
+        In-plane Miller indices (h, k) for the rod
+    q_z_range : Float[Array, "2"]
+        Range of q_z values (min, max) in 1/Å to integrate over
+    crystal : CrystalStructure
+        Crystal structure for calculation
+    surface_roughness : scalar_float
+        RMS surface roughness in Angstroms
+    detector_acceptance : scalar_float
+        Angular acceptance of detector in radians
+    n_integration_points : int, optional
+        Number of integration points. Default: 50
+    temperature : scalar_float, optional
+        Temperature in Kelvin. Default: 300.0
+    is_surface_atom : Bool[Array, "n_atoms"] | None, optional
+        Per-atom boolean mask indicating which atoms are surface atoms.
+        If None, no surface enhancement is applied. Default: None
+
+    Returns
+    -------
+    integrated_amplitude : Complex[Array, ""]
+        Coherently averaged complex amplitude over detector acceptance
+    """
+    q_z_values: Float[Array, "n_points"] = jnp.linspace(
+        q_z_range[0], q_z_range[1], n_integration_points
+    )
+    amplitudes: Complex[Array, "1 n_points"] = calculate_ctr_amplitude(
+        hk_indices=hk_index[None, :],
+        q_z=q_z_values,
+        crystal=crystal,
+        surface_roughness=surface_roughness,
+        temperature=temperature,
+        is_surface_atom=is_surface_atom,
+    )
+    rod_amplitudes: Complex[Array, "n_points"] = amplitudes[0]
+    q_z_center: Float[Array, ""] = jnp.mean(q_z_values)
+    q_z_width: Float[Array, ""] = detector_acceptance
+
+    acceptance_window: Float[Array, "n_points"] = jnp.exp(
+        -0.5 * jnp.square((q_z_values - q_z_center) / q_z_width)
+    )
+    # Normalize the window so |integrated|² corresponds to intensity
+    window_sum: Float[Array, ""] = jnp.sum(acceptance_window)
+    normalized_window: Float[Array, "n_points"] = (
+        acceptance_window / window_sum
+    )
+    # Coherent sum: weighted average of complex amplitudes
+    integrated_amplitude: Complex[Array, ""] = jnp.sum(
+        rod_amplitudes * normalized_window
+    )
+    return integrated_amplitude
 
 
 @jaxtyped(typechecker=beartype)

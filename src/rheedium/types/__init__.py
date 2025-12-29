@@ -24,6 +24,8 @@ create_sliced_crystal : function
     Factory function to create SlicedCrystal instances
 create_xyz_data : function
     Factory function to create XYZData instances
+identify_surface_atoms : function
+    Identify surface atoms using configurable methods
 CrystalStructure : PyTree
     JAX-compatible crystal structure with fractional and Cartesian coordinates
 EwaldData : PyTree
@@ -51,6 +53,8 @@ scalar_num : TypeAlias
     Union type for scalar numeric values (int, float, or JAX scalar array)
 SlicedCrystal : PyTree
     JAX-compatible crystal structure sliced for multislice simulation
+SurfaceConfig : NamedTuple
+    Configuration for surface atom identification method and parameters
 XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 
@@ -83,10 +87,12 @@ from .rheed_types import (
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
+    SurfaceConfig,
     bulk_to_slice,
     create_rheed_image,
     create_rheed_pattern,
     create_sliced_crystal,
+    identify_surface_atoms,
 )
 
 __all__ = [
@@ -101,6 +107,7 @@ __all__ = [
     "CrystalStructure",
     "EwaldData",
     "float_image",
+    "identify_surface_atoms",
     "int_image",
     "non_jax_number",
     "PotentialSlices",
@@ -111,5 +118,6 @@ __all__ = [
     "scalar_int",
     "scalar_num",
     "SlicedCrystal",
+    "SurfaceConfig",
     "XYZData",
 ]

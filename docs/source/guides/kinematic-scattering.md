@@ -39,6 +39,13 @@ where:
 
 The relativistic correction $eV/(2m_0c^2)$ is small but non-negligible for accurate simulations.
 
+```{figure} figures/wavelength_vs_voltage.svg
+:alt: Electron wavelength vs accelerating voltage
+:width: 80%
+
+Relativistic electron wavelength as a function of accelerating voltage. The dashed line shows the non-relativistic approximation, which overestimates the wavelength by several percent at typical RHEED energies.
+```
+
 ### Implementation
 
 In rheedium, wavelength calculation is in `simul/simul_utils.py`:
@@ -74,6 +81,13 @@ Each term in the sum represents:
 1. **Scattering amplitude** $f_j$: How strongly atom $j$ scatters electrons (depends on atomic number and scattering angle)
 2. **Thermal damping** $\exp(-W_j)$: Reduction due to thermal vibrations (stronger at large $|\mathbf{G}|$)
 3. **Phase factor** $\exp(i\mathbf{G}\cdot\mathbf{r}_j)$: Interference from atom positions
+
+```{figure} figures/structure_factor_phases.svg
+:alt: Structure factor phase diagram
+:width: 70%
+
+Argand diagram showing how phase factors from different atoms combine to form the total structure factor. Each arrow represents one atom's contribution, and their vector sum gives $F(\mathbf{G})$.
+```
 
 ### Extinction Rules
 
@@ -162,6 +176,13 @@ The $1/\sin^2(\pi l)$ factor produces:
 - **Divergence at integer $l$**: Bragg peaks from bulk periodicity
 - **Finite intensity between Bragg peaks**: Surface truncation rods
 - **Minimum at half-integer $l$**: Anti-Bragg conditions
+
+```{figure} figures/ctr_intensity_profile.svg
+:alt: Crystal truncation rod intensity profile
+:width: 85%
+
+CTR intensity profile showing the characteristic $1/\sin^2(\pi l)$ modulation. Intensity diverges at Bragg peak positions (integer $l$) and reaches minima at anti-Bragg conditions.
+```
 
 ### Implementation
 

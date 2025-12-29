@@ -39,6 +39,13 @@ The Gaussian sum approximates the Fourier transform of the atomic potential:
 - **Large $q$ (backscattering)**: Narrow Gaussians ($b_i$ small) dominate
 - **Each term**: Represents different length scales of the atomic potential
 
+```{figure} figures/element_comparison.svg
+:alt: Atomic form factors for different elements
+:width: 80%
+
+Kirkland atomic form factors $f(q)$ for selected elements. Heavier elements scatter more strongly, but all form factors decrease with increasing momentum transfer as smaller length scales are probed.
+```
+
 ### Implementation
 
 ```python
@@ -99,6 +106,13 @@ $$
 | $T \to 0$ | $\langle u^2 \rangle \to u_0^2$ (zero-point motion) |
 | $T$ increases | $\langle u^2 \rangle$ grows linearly |
 | High $T$ | Large damping of high-$q$ reflections |
+
+```{figure} figures/debye_waller_damping.svg
+:alt: Debye-Waller damping at different temperatures
+:width: 80%
+
+Debye-Waller damping factor $\exp(-W)$ for silicon at different temperatures. Higher temperatures increase atomic vibrations, causing stronger damping especially at large momentum transfer.
+```
 
 ### Temperature Dependence
 
@@ -177,22 +191,11 @@ Each atom contributes:
 
 The form factor and Debye-Waller factor combine to produce q-dependent scattering:
 
-```
-                                    Si at 300 K
-Scattering     │
-amplitude      │
-               │╲
-            1.0│ ╲
-               │  ╲
-               │   ╲   f(q) × exp(-W)
-               │    ╲
-            0.5│     ╲
-               │      ╲
-               │       ╲____
-               │            ────────
-            0.0│                     ─────────
-               └──────────────────────────────────
-               0         2         4         6    q (Å⁻¹)
+```{figure} figures/combined_scattering.svg
+:alt: Combined form factor and Debye-Waller scattering
+:width: 80%
+
+Combined atomic scattering factor showing the form factor alone (blue) and with Debye-Waller damping at 300 K (red). The shaded region shows how thermal effects reduce scattering at high $q$.
 ```
 
 - **Low q**: Form factor dominates, $f \approx$ constant

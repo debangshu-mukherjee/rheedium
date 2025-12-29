@@ -46,8 +46,10 @@ from rheedium.types import (
     PotentialSlices,
     RHEEDPattern,
     SlicedCrystal,
+    SurfaceConfig,
     create_potential_slices,
     create_rheed_pattern,
+    identify_surface_atoms,
     scalar_float,
     scalar_int,
     scalar_num,
@@ -61,7 +63,7 @@ from .finite_domain import (
 )
 from .form_factors import atomic_scattering_factor
 from .simul_utils import incident_wavevector, wavelength_ang
-from .surface_rods import integrated_rod_intensity
+from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 
 
 @jaxtyped(typechecker=beartype)
@@ -158,7 +160,7 @@ def find_kinematic_reflections(
 
 
 @jaxtyped(typechecker=beartype)
-def compute_kinematic_intensities_with_ctrs(
+def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     crystal: CrystalStructure,
     g_allowed: Float[Array, "N 3"],
     k_in: Float[Array, "3"],
@@ -167,13 +169,18 @@ def compute_kinematic_intensities_with_ctrs(
     surface_roughness: scalar_float = 0.5,
     detector_acceptance: scalar_float = 0.01,
     surface_fraction: scalar_float = 0.3,
+    surface_config: SurfaceConfig | None = None,
+    ctr_mixing_mode: str = "incoherent",
+    ctr_weight: scalar_float = 1.0,
+    hk_tolerance: scalar_float = 0.1,
 ) -> Float[Array, "N"]:
     """Calculate kinematic diffraction intensities with CTR contributions.
 
     For each reflection, computes the structure factor by summing atomic
     contributions (form factor × phase factor). The phase is computed as
     G·r where G vectors already include the 2π factor from reciprocal
-    lattice generation. CTR intensity is added to the kinematic intensity.
+    lattice generation. CTR contributions are mixed according to the
+    specified mode.
 
     Parameters
     ----------
@@ -195,8 +202,27 @@ def compute_kinematic_intensities_with_ctrs(
         Detector angular acceptance in reciprocal angstroms.
         Default: 0.01
     surface_fraction : scalar_float, optional
-        Fraction of atoms considered as surface atoms.
+        Fraction of atoms considered as surface atoms (for backward
+        compatibility). Used only if surface_config is None.
         Default: 0.3
+    surface_config : SurfaceConfig | None, optional
+        Configuration for surface atom identification. Supports multiple
+        methods: "height" (default), "coordination", "layers", "explicit".
+        If None, uses height-based method with surface_fraction parameter.
+    ctr_mixing_mode : str, optional
+        How to combine kinematic and CTR contributions:
+        - "coherent": Add complex amplitudes, then square (interference)
+        - "incoherent": Add intensities directly (no interference)
+        - "none": Only kinematic scattering, no CTR contribution
+        Default: "incoherent"
+    ctr_weight : scalar_float, optional
+        Weight factor for CTR contribution (0.0-1.0). Controls the
+        relative strength of streak vs spot intensity.
+        Default: 1.0
+    hk_tolerance : scalar_float, optional
+        Tolerance for validating near-integer h,k indices. CTR is only
+        applied when |h - round(h)| < tolerance and same for k.
+        Default: 0.1
 
     Returns
     -------
@@ -206,23 +232,42 @@ def compute_kinematic_intensities_with_ctrs(
     Algorithm
     ---------
     - Extract atomic positions and numbers from crystal
-    - Determine surface atoms based on z-coordinate
+    - Identify surface atoms using configured method
     - For each allowed reflection:
         - Calculate momentum transfer q = k_out - k_in
         - Compute structure factor with proper form factors
         - Apply Debye-Waller factors (enhanced for surface atoms)
-        - Add CTR contributions for surface reflections
-    - Return normalized intensities
+        - Validate h,k are near-integer before applying CTR
+        - Mix CTR and kinematic contributions according to mode
+    - Return intensities
+
+    Notes
+    -----
+    The coherent mode is physically more accurate as it accounts for
+    interference between kinematic scattering and CTR contributions.
+    However, incoherent mode may be more stable numerically and is
+    the historical default behavior.
+
+    Surface atom identification supports multiple strategies:
+    - "height": Top fraction by z-coordinate (simple, fast)
+    - "coordination": Atoms with fewer neighbors (better for steps)
+    - "layers": Topmost N complete layers (good for flat surfaces)
+    - "explicit": User-provided mask (full control)
     """
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
-    z_coords: Float[Array, "M"] = atom_positions[:, 2]
-    z_max: scalar_float = jnp.max(z_coords)
-    z_min: scalar_float = jnp.min(z_coords)
-    z_threshold: scalar_float = z_max - surface_fraction * (z_max - z_min)
-    is_surface_atom: Bool[Array, "M"] = z_coords >= z_threshold
+
+    # Use provided config or create one from surface_fraction for compatibility
+    config: SurfaceConfig = (
+        surface_config
+        if surface_config is not None
+        else SurfaceConfig(method="height", height_fraction=surface_fraction)
+    )
+    is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
+        atom_positions, config
+    )
 
     def _calculate_reflection_intensity(
         idx: Int[Array, ""],
@@ -233,7 +278,7 @@ def compute_kinematic_intensities_with_ctrs(
 
         def _atomic_contribution(
             atom_idx: Int[Array, ""],
-        ) -> Float[Array, ""]:
+        ) -> Complex[Array, ""]:
             atomic_num: scalar_int = atomic_numbers[atom_idx]
             atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
@@ -244,35 +289,78 @@ def compute_kinematic_intensities_with_ctrs(
                 is_surface=is_surface,
             )
             phase: scalar_float = jnp.dot(g_vec, atom_pos)
-            contribution: complex = form_factor * jnp.exp(1j * phase)
+            contribution: Complex[Array, ""] = form_factor * jnp.exp(
+                1j * phase
+            )
             return contribution
 
         n_atoms: Int[Array, ""] = atom_positions.shape[0]
         atom_indices: Int[Array, "M"] = jnp.arange(n_atoms)
-        contributions: Float[Array, "M"] = jax.vmap(_atomic_contribution)(
+        contributions: Complex[Array, "M"] = jax.vmap(_atomic_contribution)(
             atom_indices
         )
-        structure_factor: complex = jnp.sum(contributions)
+        structure_factor: Complex[Array, ""] = jnp.sum(contributions)
+
+        # Validate h,k are near-integer before applying CTR
+        h_val: Float[Array, ""] = g_vec[0]
+        k_val: Float[Array, ""] = g_vec[1]
+        h_deviation: Float[Array, ""] = jnp.abs(h_val - jnp.round(h_val))
+        k_deviation: Float[Array, ""] = jnp.abs(k_val - jnp.round(k_val))
+        is_near_integer: Bool[Array, ""] = (h_deviation < hk_tolerance) & (
+            k_deviation < hk_tolerance
+        )
+
         hk_index: Int[Array, "2"] = jnp.array(
             [
-                jnp.round(g_vec[0]).astype(jnp.int32),
-                jnp.round(g_vec[1]).astype(jnp.int32),
+                jnp.round(h_val).astype(jnp.int32),
+                jnp.round(k_val).astype(jnp.int32),
             ]
         )
         q_z_value: Float[Array, ""] = q_vector[2]
         q_z_range: Float[Array, "2"] = jnp.array(
             [q_z_value - detector_acceptance, q_z_value + detector_acceptance]
         )
-        ctr_intensity: scalar_float = integrated_rod_intensity(
-            hk_index=hk_index,
-            q_z_range=q_z_range,
-            crystal=crystal,
-            surface_roughness=surface_roughness,
-            detector_acceptance=detector_acceptance,
-            temperature=temperature,
-        )
-        kinematic_intensity: scalar_float = jnp.abs(structure_factor) ** 2
-        total_intensity: scalar_float = kinematic_intensity + ctr_intensity
+
+        # Calculate intensity based on mixing mode
+        kinematic_intensity: Float[Array, ""] = jnp.abs(structure_factor) ** 2
+
+        if ctr_mixing_mode == "none":
+            # No CTR contribution
+            total_intensity: Float[Array, ""] = kinematic_intensity
+        elif ctr_mixing_mode == "coherent":
+            # Coherent mixing: add complex amplitudes, then square
+            ctr_amplitude: Complex[Array, ""] = integrated_ctr_amplitude(
+                hk_index=hk_index,
+                q_z_range=q_z_range,
+                crystal=crystal,
+                surface_roughness=surface_roughness,
+                detector_acceptance=detector_acceptance,
+                temperature=temperature,
+            )
+            # Apply weight and near-integer mask
+            weighted_ctr: Complex[Array, ""] = (
+                ctr_weight * ctr_amplitude * is_near_integer
+            )
+            total_amplitude: Complex[Array, ""] = (
+                structure_factor + weighted_ctr
+            )
+            total_intensity = jnp.abs(total_amplitude) ** 2
+        else:
+            # Incoherent mixing (default): add intensities
+            ctr_intensity: Float[Array, ""] = integrated_rod_intensity(
+                hk_index=hk_index,
+                q_z_range=q_z_range,
+                crystal=crystal,
+                surface_roughness=surface_roughness,
+                detector_acceptance=detector_acceptance,
+                temperature=temperature,
+            )
+            # Apply weight and near-integer mask
+            weighted_ctr_intensity: Float[Array, ""] = (
+                ctr_weight * ctr_intensity * is_near_integer
+            )
+            total_intensity = kinematic_intensity + weighted_ctr_intensity
+
         return total_intensity
 
     n_reflections: Int[Array, ""] = g_allowed.shape[0]

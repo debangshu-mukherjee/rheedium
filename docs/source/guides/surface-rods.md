@@ -55,6 +55,13 @@ where:
 
 The divergence at integer $l$ is regularized by the crystal's finite thickness and instrumental broadening.
 
+```{figure} figures/ctr_origin_diagram.svg
+:alt: Origin of crystal truncation rods
+:width: 100%
+
+Origin of crystal truncation rods: (left) bulk crystal with 3D periodicity, (center) surface truncation breaks z-periodicity, (right) reciprocal space shows continuous rods instead of discrete points.
+```
+
 ## Surface Roughness
 
 Real surfaces are not perfectly flat. Surface roughness modifies the CTR intensity.
@@ -86,6 +93,13 @@ $$
 - **Smooth surface** ($\sigma_h \to 0$): No damping, sharp CTRs
 - **Rough surface** (large $\sigma_h$): Strong damping at high $q_z$
 - **Typical values**: $\sigma_h \approx 1$–$5$ Å for epitaxial surfaces
+
+```{figure} figures/roughness_damping.svg
+:alt: Surface roughness damping
+:width: 80%
+
+Surface roughness damping factor for different RMS roughness values $\sigma_h$. Rougher surfaces show stronger attenuation of CTR intensity at large momentum transfer $q_z$.
+```
 
 ### Implementation
 
@@ -123,6 +137,13 @@ I(q_\perp) \propto \frac{1}{1 + (q_\perp \xi)^2}
 $$
 
 This profile arises from surfaces with random defect distributions.
+
+```{figure} figures/rod_broadening.svg
+:alt: Rod broadening from finite domain size
+:width: 80%
+
+Lateral rod profiles for different coherent domain sizes. Smaller domains produce broader rods in reciprocal space, following the Fourier uncertainty relation.
+```
 
 ### Choosing a Profile
 

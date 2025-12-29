@@ -57,6 +57,13 @@ where:
 
 The small grazing angle creates a nearly tangent intersection with reciprocal lattice rods, producing elongated streaks in the RHEED pattern.
 
+```{figure} figures/grazing_incidence_geometry.svg
+:alt: RHEED grazing incidence geometry
+:width: 85%
+
+RHEED grazing incidence geometry showing the beam arriving at angle $\theta$ from the surface. The specularly diffracted beam exits at the same angle on the opposite side.
+```
+
 ## Binary Mode
 
 The simplest Ewald model uses a **tolerance-based criterion** for sphere intersection:
@@ -236,37 +243,29 @@ overlap, weighted_intensities = finite_domain_intensities(
 # overlap values range from 0 (no intersection) to 1 (exact)
 ```
 
-## RHEED Geometry Diagram
+## Ewald Sphere Visualizations
 
+The Ewald sphere construction can be viewed from multiple angles to understand the geometry:
+
+```{figure} figures/ewald_sphere_2d.svg
+:alt: Ewald sphere 2D cross-section
+:width: 90%
+
+2D cross-section (xz plane) of the Ewald sphere construction. The incident beam comes from the left at grazing angle, and the sphere intersects vertical reciprocal lattice rods. Each intersection corresponds to a diffraction spot.
 ```
-Side View (xz plane, φ=0):
 
-                    z ↑
-                      │
-                      │     Ewald
-                      │     sphere
-           ╭──────────┼──────────╮
-          ╱           │           ╲
-         ╱            │            ╲
-        │      ●──────┼──────●      │   ← Reciprocal
-        │      │      │      │      │     lattice rods
-        │      │      │      │      │
-       ╱       │      │      │       ╲
-      ╱        │      │      │        ╲
-     │         │      │      │         │
-     │         ●──────┼──────●         │
-     │               (0,0)             │
-      ╲                               ╱
-       ╲    θ ↗                      ╱
-        ╲   ╱ k_in                  ╱
-         ╲╱───────────────────────╱───→ x
-          ╲                      ╱     (beam direction)
-           ╲                    ╱
-            ╰──────────────────╯
+```{figure} figures/ewald_sphere_3d_perspective.svg
+:alt: Ewald sphere 3D perspective view
+:width: 80%
 
-        ↑
-    Detector sees intersections
-    where sphere crosses rods
+3D perspective view of the Ewald sphere with reciprocal lattice rods. The partial sphere surface shows where the beam energy constrains possible scattering directions.
+```
+
+```{figure} figures/ewald_sphere_3d_top.svg
+:alt: Ewald sphere 3D top view
+:width: 80%
+
+Top-down view looking along the surface normal. The circular intersection of the Ewald sphere with the plane of rod positions determines which reflections appear on the RHEED screen.
 ```
 
 ## Key Source Files

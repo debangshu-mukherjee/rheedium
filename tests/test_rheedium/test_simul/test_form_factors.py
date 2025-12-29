@@ -239,12 +239,17 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         displacement:
         1. MSD increases with temperature (100K < 300K < 600K for Si) due
            to increased thermal energy and vibrational amplitude.
-        2. MSD decreases with atomic mass (H > C > Au at 300K) since
-           lighter atoms vibrate with larger amplitude for the same
-           thermal energy.
+        2. For elements with similar Debye temperatures, MSD decreases
+           with atomic mass (Al > Fe at 300K) since heavier atoms vibrate
+           with smaller amplitude for the same thermal energy.
         3. Surface enhancement factor is consistent (exactly 2.0) across
            different elements, reflecting the systematic reduction in
            coordination number at surfaces.
+
+        Note: With element-specific Debye temperatures, the simple mass
+        ordering (lighter = larger MSD) doesn't always hold. For example,
+        carbon (Θ_D=2230K, very stiff diamond bonds) has smaller MSD than
+        gold (Θ_D=165K, soft metallic bonds) despite being lighter.
         """
         var_get_msd = self.variant(get_mean_square_displacement)
 
@@ -255,12 +260,12 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(msd_si_300 - msd_si_100))
         chex.assert_scalar_positive(float(msd_si_600 - msd_si_300))
 
-        msd_h = var_get_msd(1, 300.0, False)
-        msd_c = var_get_msd(6, 300.0, False)
-        msd_au = var_get_msd(79, 300.0, False)
+        # For mass scaling test, use elements with similar Debye temperatures
+        # so that mass effect dominates: Al (Θ_D=428K) vs Fe (Θ_D=470K)
+        msd_al = var_get_msd(13, 300.0, False)  # Al: mass=27, Θ_D=428K
+        msd_fe = var_get_msd(26, 300.0, False)  # Fe: mass=56, Θ_D=470K
 
-        chex.assert_scalar_positive(float(msd_h - msd_c))
-        chex.assert_scalar_positive(float(msd_c - msd_au))
+        chex.assert_scalar_positive(float(msd_al - msd_fe))
 
         for z in [1, 14, 79]:
             msd_bulk = var_get_msd(z, 300.0, False)

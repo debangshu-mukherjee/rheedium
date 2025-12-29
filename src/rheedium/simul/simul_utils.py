@@ -74,7 +74,9 @@ def wavelength_ang(
     λ = 0.0859 Å
     """
     # Convert kV to V
-    voltage_v: Float[Array, "..."] = jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+    voltage_v: Float[Array, "..."] = (
+        jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+    )
 
     # Exact relativistic correction coefficient: e / (2 * m_e * c^2)
     # = 1.602176634e-19 / (2 * 9.1093837015e-31 * (299792458)^2)
@@ -91,7 +93,9 @@ def wavelength_ang(
     # = 12.2643 Å·V^0.5
     h_over_sqrt_2me: float = 12.2643
 
-    wavelength: Float[Array, "..."] = h_over_sqrt_2me / jnp.sqrt(corrected_voltage)
+    wavelength: Float[Array, "..."] = h_over_sqrt_2me / jnp.sqrt(
+        corrected_voltage
+    )
     return wavelength
 
 

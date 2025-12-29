@@ -16,6 +16,9 @@ create_rheed_pattern : function
     Factory function to create RHEEDPattern instances with data validation
 create_sliced_crystal : function
     Factory function to create SlicedCrystal instances with data validation
+identify_surface_atoms : function
+    Identify surface atoms using configurable methods (height, coordination,
+    layers, or explicit mask)
 RHEEDImage : PyTree
     Container for RHEED image data with pixel coordinates and intensity values
 RHEEDPattern : PyTree
@@ -23,6 +26,8 @@ RHEEDPattern : PyTree
     intensities.
 SlicedCrystal : PyTree
     JAX-compatible crystal structure sliced for multislice simulation
+SurfaceConfig : NamedTuple
+    Configuration for surface atom identification method and parameters
 
 Notes
 -----
@@ -1075,3 +1080,164 @@ def bulk_to_slice(
     )
 
     return sliced_crystal
+
+
+class SurfaceConfig(NamedTuple):
+    """Configuration for surface atom identification.
+
+    This NamedTuple specifies how to identify which atoms are considered
+    surface atoms for enhanced Debye-Waller factors in RHEED simulations.
+
+    Attributes
+    ----------
+    method : str
+        Surface identification method:
+        - "height": top fraction by z-coordinate (default)
+        - "coordination": atoms with fewer neighbors than bulk
+        - "layers": atoms in topmost N complete layers
+        - "explicit": user-provided surface mask
+    height_fraction : float
+        For "height" method: fraction of z-range considered surface.
+        Default: 0.3 (top 30% of atoms by height)
+    coordination_cutoff : float
+        For "coordination" method: cutoff distance in Angstroms for
+        counting neighbors. Default: 3.0
+    coordination_threshold : int
+        For "coordination" method: atoms with fewer than this many
+        neighbors are considered surface. Default: 8 (typical for FCC)
+    n_layers : int
+        For "layers" method: number of topmost layers considered
+        surface. Default: 1
+    layer_tolerance : float
+        For "layers" method: tolerance for grouping atoms into layers
+        in Angstroms. Default: 0.5
+    explicit_mask : Bool[Array, "N"] | None
+        For "explicit" method: user-provided boolean mask. Must have
+        same length as number of atoms. Default: None
+    """
+
+    method: str = "height"
+    height_fraction: float = 0.3
+    coordination_cutoff: float = 3.0
+    coordination_threshold: int = 8
+    n_layers: int = 1
+    layer_tolerance: float = 0.5
+    explicit_mask: Bool[Array, "N"] | None = None
+
+
+@jaxtyped(typechecker=beartype)
+def identify_surface_atoms(
+    atom_positions: Float[Array, "N 3"],
+    config: SurfaceConfig = SurfaceConfig(),
+) -> Bool[Array, "N"]:
+    """Identify surface atoms using the specified method.
+
+    Parameters
+    ----------
+    atom_positions : Float[Array, "N 3"]
+        Cartesian atomic positions in Angstroms, shape (N, 3).
+    config : SurfaceConfig, optional
+        Surface identification configuration. Default: SurfaceConfig()
+        with height-based method at 30% fraction.
+
+    Returns
+    -------
+    is_surface : Bool[Array, "N"]
+        Boolean mask indicating which atoms are surface atoms.
+
+    Notes
+    -----
+    Available methods:
+
+    - **height**: Uses z-coordinate threshold. Atoms in the top
+      `height_fraction` of the z-range are marked as surface.
+
+    - **coordination**: Uses neighbor counting. Atoms with fewer than
+      `coordination_threshold` neighbors within `coordination_cutoff`
+      distance are marked as surface. This is more physical for
+      reconstructed or stepped surfaces.
+
+    - **layers**: Identifies discrete atomic layers by z-coordinate and
+      marks the topmost `n_layers` as surface. Uses `layer_tolerance`
+      to group atoms into layers.
+
+    - **explicit**: Uses user-provided mask directly from
+      `config.explicit_mask`.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from rheedium.types import SurfaceConfig, identify_surface_atoms
+    >>> positions = jnp.array([[0, 0, 0], [0, 0, 1], [0, 0, 2]])
+    >>> # Height-based (default)
+    >>> mask = identify_surface_atoms(positions)
+    >>> # Coordination-based
+    >>> config = SurfaceConfig(method="coordination", coordination_cutoff=2.5)
+    >>> mask = identify_surface_atoms(positions, config)
+    """
+    n_atoms: int = atom_positions.shape[0]
+    z_coords: Float[Array, "N"] = atom_positions[:, 2]
+
+    if config.method == "explicit":
+        # Use explicit mask if provided
+        if config.explicit_mask is not None:
+            return config.explicit_mask
+        # Fallback to height method if no mask provided
+        z_max: Float[Array, ""] = jnp.max(z_coords)
+        z_min: Float[Array, ""] = jnp.min(z_coords)
+        z_threshold: Float[Array, ""] = z_max - config.height_fraction * (
+            z_max - z_min
+        )
+        return z_coords >= z_threshold
+
+    elif config.method == "coordination":
+        # Coordination-based: count neighbors for each atom
+        # Compute pairwise distances
+        diff: Float[Array, "N N 3"] = (
+            atom_positions[:, None, :] - atom_positions[None, :, :]
+        )
+        distances: Float[Array, "N N"] = jnp.sqrt(jnp.sum(diff**2, axis=-1))
+
+        # Count neighbors within cutoff (excluding self)
+        neighbor_mask: Bool[Array, "N N"] = (
+            distances < config.coordination_cutoff
+        ) & (distances > 0.1)
+        neighbor_counts: Int[Array, "N"] = jnp.sum(neighbor_mask, axis=-1)
+
+        # Surface atoms have fewer neighbors than threshold
+        is_surface: Bool[Array, "N"] = (
+            neighbor_counts < config.coordination_threshold
+        )
+        return is_surface
+
+    elif config.method == "layers":
+        # Layer-based: identify discrete z-layers and mark top N
+        # Sort z-coordinates to find layer boundaries
+        z_sorted: Float[Array, "N"] = jnp.sort(z_coords)
+
+        # Find layer boundaries using tolerance
+        z_diffs: Float[Array, "N-1"] = jnp.diff(z_sorted)
+        layer_breaks: Bool[Array, "N-1"] = z_diffs > config.layer_tolerance
+
+        # Assign layer indices (0 = bottom, higher = top)
+        layer_indices: Int[Array, "N"] = jnp.cumsum(
+            jnp.concatenate([jnp.array([0]), layer_breaks.astype(jnp.int32)])
+        )
+
+        # Map back to original atom order
+        sort_indices: Int[Array, "N"] = jnp.argsort(z_coords)
+        atom_layers: Int[Array, "N"] = jnp.zeros(n_atoms, dtype=jnp.int32)
+        atom_layers = atom_layers.at[sort_indices].set(layer_indices)
+
+        # Mark top n_layers as surface
+        max_layer: Int[Array, ""] = jnp.max(atom_layers)
+        is_surface = atom_layers >= (max_layer - config.n_layers + 1)
+        return is_surface
+
+    else:
+        # Default: height-based method
+        z_max = jnp.max(z_coords)
+        z_min = jnp.min(z_coords)
+        z_threshold = z_max - config.height_fraction * (z_max - z_min)
+        is_surface = z_coords >= z_threshold
+        return is_surface

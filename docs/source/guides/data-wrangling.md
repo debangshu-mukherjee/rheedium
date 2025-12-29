@@ -208,6 +208,13 @@ crystal_full = symmetry_expansion(
 
 ## Coordinate Transformations
 
+```{figure} figures/coordinate_systems.svg
+:alt: Fractional vs Cartesian coordinates
+:width: 100%
+
+Comparison of fractional and Cartesian coordinate systems. Fractional coordinates express positions as fractions of lattice vectors, while Cartesian coordinates use absolute distances.
+```
+
 ### Fractional to Cartesian
 
 $$
@@ -319,49 +326,11 @@ The dual coordinate representation enables:
 
 ## Data Flow Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        INPUT FILES                               │
-├─────────────────────────────────────────────────────────────────┤
-│  XYZ File          CIF File              POSCAR/CONTCAR         │
-│  ├─ Atom count     ├─ Cell parameters    ├─ Lattice vectors     │
-│  ├─ Comment        ├─ Fractional coords  ├─ Species list        │
-│  └─ Coordinates    ├─ Symmetry ops       └─ Coordinates         │
-│                    └─ Space group                                │
-└───────────┬────────────────┬──────────────────┬─────────────────┘
-            │                │                  │
-            ▼                ▼                  ▼
-┌───────────────────────────────────────────────────────────────┐
-│                      PARSING LAYER                             │
-├───────────────────────────────────────────────────────────────┤
-│  parse_xyz()       parse_cif()           parse_poscar()        │
-│       │                 │                      │               │
-│       ▼                 ▼                      │               │
-│   XYZData          ┌────────────┐              │               │
-│       │            │ Symmetry   │              │               │
-│       │            │ Expansion  │              │               │
-│       ▼            └─────┬──────┘              │               │
-│  xyz_to_crystal()        │                     │               │
-│       │                  │                     │               │
-└───────┴──────────────────┴─────────────────────┴───────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    CrystalStructure (PyTree)                     │
-├─────────────────────────────────────────────────────────────────┤
-│  frac_positions: [N, 4]    Fractional coords + atomic number    │
-│  cart_positions: [N, 4]    Cartesian coords + atomic number     │
-│  cell_lengths: [3]         a, b, c in Ångstroms                 │
-│  cell_angles: [3]          α, β, γ in degrees                   │
-└─────────────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      SIMULATION                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  build_ewald_data()  →  kinematic_spot_simulator()              │
-│                      →  kinematic_ctr_simulator()               │
-└─────────────────────────────────────────────────────────────────┘
+```{figure} figures/data_flow_diagram.svg
+:alt: Data processing pipeline
+:width: 100%
+
+Data processing pipeline from input files (XYZ, CIF, POSCAR) through parsing functions to `CrystalStructure` and finally to RHEED simulation.
 ```
 
 ## POSCAR/CONTCAR Support

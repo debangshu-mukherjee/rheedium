@@ -238,6 +238,13 @@ expanded = jax.tree_map(
 
 ## Data Flow Through PyTrees
 
+```{figure} figures/pytree_hierarchy.svg
+:alt: PyTree hierarchy and data flow
+:width: 100%
+
+Data flow through rheedium's PyTree structures, from input file parsing through `CrystalStructure` and `EwaldData` to the final `RHEEDPattern` output.
+```
+
 ```
 Input Files (CIF, XYZ, POSCAR)
         ↓

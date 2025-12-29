@@ -30,6 +30,13 @@ c \sqrt{1 - \cos^2\beta - \left(\frac{\cos\alpha - \cos\beta\cos\gamma}{\sin\gam
 \end{pmatrix}
 $$
 
+```{figure} figures/lattice_vector_construction.svg
+:alt: Lattice vector construction
+:width: 70%
+
+3D visualization of unit cell lattice vectors $\mathbf{a}$ (red), $\mathbf{b}$ (green), and $\mathbf{c}$ (blue) for a cubic cell. The vectors form the edges of the parallelepiped unit cell.
+```
+
 ### Implementation
 
 ```python
@@ -161,6 +168,13 @@ $$
 Square brackets $[hkl]$ denote directions (parallel to $h\mathbf{a} + k\mathbf{b} + l\mathbf{c}$).
 
 For RHEED, the **surface normal** is typically along $[001]$ (the $\mathbf{c}$-axis).
+
+```{figure} figures/miller_indices.svg
+:alt: Miller index planes
+:width: 100%
+
+Miller index planes in a cubic unit cell: (100), (110), and (111). Each plane is perpendicular to the corresponding reciprocal lattice vector.
+```
 
 ## Supercell Generation
 
