@@ -532,9 +532,12 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
             y_extent=15.0,
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_output_shape(self) -> None:
-        """Test that output potential has expected shape."""
+        """Test that output potential has expected shape.
+
+        Note: JIT compilation not supported due to dynamic grid dimensions.
+        """
         var_convert = self.variant(sliced_crystal_to_potential)
 
         potential: PotentialSlices = var_convert(
@@ -550,14 +553,17 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
         nz_expected: int = int(jnp.ceil(5.0 / 2.0))
         self.assertEqual(potential.slices.shape[0], nz_expected)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("thin", 1.0),
         ("medium", 2.0),
         ("thick", 5.0),
     )
     def test_slice_thickness_variation(self, thickness: float) -> None:
-        """Test potential generation with different slice thicknesses."""
+        """Test potential generation with different slice thicknesses.
+
+        Note: JIT compilation not supported due to dynamic grid dimensions.
+        """
         var_convert = self.variant(sliced_crystal_to_potential)
 
         potential: PotentialSlices = var_convert(
@@ -572,14 +578,17 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
         expected_nz: int = int(jnp.ceil(5.0 / thickness))
         self.assertEqual(potential.slices.shape[0], expected_nz)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("fine", 0.1),
         ("medium", 0.5),
         ("coarse", 1.0),
     )
     def test_pixel_size_variation(self, pixel_size: float) -> None:
-        """Test potential generation with different pixel sizes."""
+        """Test potential generation with different pixel sizes.
+
+        Note: JIT compilation not supported due to dynamic grid dimensions.
+        """
         var_convert = self.variant(sliced_crystal_to_potential)
 
         potential: PotentialSlices = var_convert(
@@ -596,14 +605,17 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
         self.assertEqual(potential.slices.shape[1], expected_nx)
         self.assertEqual(potential.slices.shape[2], expected_ny)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("low", 10.0),
         ("medium", 20.0),
         ("high", 30.0),
     )
     def test_voltage_variation(self, voltage: float) -> None:
-        """Test potential generation at different voltages."""
+        """Test potential generation at different voltages.
+
+        Note: JIT compilation not supported due to dynamic grid dimensions.
+        """
         var_convert = self.variant(sliced_crystal_to_potential)
 
         potential: PotentialSlices = var_convert(
@@ -615,9 +627,12 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(potential.slices)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_calibration_stored(self) -> None:
-        """Test that calibration values are stored correctly."""
+        """Test that calibration values are stored correctly.
+
+        Note: JIT compilation not supported due to dynamic grid dimensions.
+        """
         var_convert = self.variant(sliced_crystal_to_potential)
 
         pixel_size: float = 0.3
@@ -838,9 +853,12 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
             y_calibration=0.5,
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_returns_rheed_pattern(self) -> None:
-        """Test that simulator returns valid RHEEDPattern."""
+        """Test that simulator returns valid RHEEDPattern.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -853,9 +871,12 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(pattern.intensities)
         chex.assert_trees_all_equal(jnp.all(pattern.intensities >= 0), True)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_pattern_shapes_consistent(self) -> None:
-        """Test that all pattern arrays have consistent shapes."""
+        """Test that all pattern arrays have consistent shapes.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -869,14 +890,17 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(pattern.detector_points, (n, 2))
         chex.assert_shape(pattern.intensities, (n,))
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("close", 50.0),
         ("medium", 100.0),
         ("far", 500.0),
     )
     def test_detector_distance_variation(self, distance: float) -> None:
-        """Test simulation at different detector distances."""
+        """Test simulation at different detector distances.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -888,14 +912,17 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(pattern.detector_points)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("low", 10.0),
         ("medium", 20.0),
         ("high", 30.0),
     )
     def test_voltage_variation(self, voltage: float) -> None:
-        """Test simulation at different voltages."""
+        """Test simulation at different voltages.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -906,14 +933,17 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(pattern.intensities)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
         ("shallow", 1.0),
         ("medium", 2.0),
         ("steep", 5.0),
     )
     def test_angle_variation(self, theta: float) -> None:
-        """Test simulation at different grazing angles."""
+        """Test simulation at different grazing angles.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -924,9 +954,12 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(pattern.intensities)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_ewald_sphere_constraint(self) -> None:
-        """Test that output wavevectors approximately satisfy Ewald sphere."""
+        """Test that output wavevectors approximately satisfy Ewald sphere.
+
+        Note: JIT not supported due to dynamic array sizes.
+        """
         var_simulate = self.variant(multislice_simulator)
 
         pattern: RHEEDPattern = var_simulate(
@@ -1147,9 +1180,12 @@ class TestComputeKinematicIntensitiesExtended(
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_none(self) -> None:
-        """Test intensity calculation with no CTR contribution."""
+        """Test intensity calculation with no CTR contribution.
+
+        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
         intensities: Float[Array, "3"] = var_compute(
@@ -1164,9 +1200,12 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_coherent(self) -> None:
-        """Test intensity calculation with coherent CTR mixing."""
+        """Test intensity calculation with coherent CTR mixing.
+
+        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
         intensities: Float[Array, "3"] = var_compute(
@@ -1181,9 +1220,12 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_incoherent(self) -> None:
-        """Test intensity calculation with incoherent CTR mixing."""
+        """Test intensity calculation with incoherent CTR mixing.
+
+        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
         intensities: Float[Array, "3"] = var_compute(
@@ -1218,9 +1260,12 @@ class TestComputeKinematicIntensitiesExtended(
 
         chex.assert_tree_all_finite(intensities)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_surface_config_height(self) -> None:
-        """Test with height-based surface atom identification."""
+        """Test with height-based surface atom identification.
+
+        Note: JIT not supported due to SurfaceConfig with string method.
+        """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
         config = SurfaceConfig(method="height", height_fraction=0.3)
@@ -1235,12 +1280,15 @@ class TestComputeKinematicIntensitiesExtended(
 
         chex.assert_tree_all_finite(intensities)
 
-    @chex.all_variants(without_device=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_surface_config_layers(self) -> None:
-        """Test with layer-based surface atom identification."""
+        """Test with layer-based surface atom identification.
+
+        Note: JIT not supported due to SurfaceConfig with string method.
+        """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
-        config = SurfaceConfig(method="layers", num_surface_layers=1)
+        config = SurfaceConfig(method="layers", n_layers=1)
 
         intensities: Float[Array, "3"] = var_compute(
             crystal=self.si_crystal,
