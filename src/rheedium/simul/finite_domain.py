@@ -358,9 +358,9 @@ def rod_ewald_overlap(
     # σ_rod_eff² = (σx·cos(φ))² + (σy·sin(φ))²
     rod_sigma_x: Float[Array, ""] = rod_sigma[0]
     rod_sigma_y: Float[Array, ""] = rod_sigma[1]
-    rod_sigma_eff_sq: Float[Array, "N"] = (
-        (rod_sigma_x * cos_phi) ** 2 + (rod_sigma_y * sin_phi) ** 2
-    )
+    rod_sigma_eff_sq: Float[Array, "N"] = (rod_sigma_x * cos_phi) ** 2 + (
+        rod_sigma_y * sin_phi
+    ) ** 2
 
     # For nearly vertical k_out, use average rod sigma
     is_vertical: Bool[Array, "N"] = k_out_xy_mag < 1e-8
