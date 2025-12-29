@@ -60,6 +60,21 @@ myst_enable_extensions = [
     "amsmath",  # Enable LaTeX math environments like \begin{equation}
 ]
 
+# MathJax configuration to ensure math renders on first page load
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+mathjax3_config = {
+    "startup": {
+        "ready": "() => { MathJax.startup.defaultReady(); MathJax.startup.promise.then(() => { console.log('MathJax initial typesetting complete'); }); }"
+    },
+    "tex": {
+        "inlineMath": [["$", "$"], ["\\(", "\\)"]],
+        "displayMath": [["$$", "$$"], ["\\[", "\\]"]],
+    },
+    "options": {
+        "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area",
+    },
+}
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 

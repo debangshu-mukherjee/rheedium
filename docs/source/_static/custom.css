@@ -197,3 +197,25 @@ html[data-theme="auto"] dl.field-list code.literal {
 .field-list dd {
     margin-left: 2em;
 }
+
+/* MathJax sans-serif styling to match body text */
+mjx-container {
+    font-family: var(--font-sans) !important;
+}
+
+mjx-container[jax="CHTML"] {
+    font-family: var(--font-sans) !important;
+}
+
+.MathJax {
+    font-family: var(--font-sans) !important;
+}
+
+/* MathJax 3 specific selectors */
+mjx-math {
+    font-family: var(--font-sans) !important;
+}
+
+mjx-mi, mjx-mn, mjx-mo, mjx-mtext {
+    font-family: var(--font-sans) !important;
+}
