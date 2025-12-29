@@ -536,13 +536,17 @@ def atom_scraper(
         jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
         1e-3,
     )
+    # Project thickness onto zone axis to get scalar thickness along that direction
+    thickness_along_axis: Float[Array, ""] = jnp.abs(
+        jnp.dot(thickness, zone_axis_hat)
+    )
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
-        thickness, jnp.asarray(0.0), atol=1e-8
+        thickness_along_axis, jnp.asarray(0.0), atol=1e-8
     )
     mask: Bool[Array, "n"] = jnp.where(
         is_top_layer_mode,
         dist_from_top <= adaptive_eps,
-        dist_from_top <= thickness,
+        dist_from_top <= thickness_along_axis,
     )
 
     def _gather_valid_positions(
@@ -560,7 +564,7 @@ def atom_scraper(
     new_height: Float[Array, ""] = jnp.where(
         is_top_layer_mode,
         adaptive_eps,
-        jnp.minimum(thickness, original_height),
+        jnp.minimum(thickness_along_axis, original_height),
     )
 
     def _scale_vector(

@@ -100,13 +100,15 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
 
     Converts a chemical element symbol to its corresponding atomic number
     using a preloaded mapping for fast lookup. The function is case-insensitive
-    and handles whitespace.
+    and handles whitespace. Also handles ionic notation (e.g., "Bi3+", "O2-")
+    by stripping charge information.
 
     Parameters
     ----------
     symbol_string : str
         Chemical symbol for the element (e.g., "H", "He", "Li", "Fe").
         Case-insensitive; leading/trailing whitespace is stripped.
+        Ionic notation like "Bi3+", "Fe2+", "O2-" is also supported.
 
     Returns
     -------
@@ -126,8 +128,14 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
     26
     >>> atomic_symbol("  Au  ")
     79
+    >>> atomic_symbol("Bi3+")
+    83
+    >>> atomic_symbol("O2-")
+    8
     """
     cleaned_symbol: str = symbol_string.strip()
+    # Strip ionic charge notation (e.g., "Bi3+" -> "Bi", "O2-" -> "O")
+    cleaned_symbol = re.sub(r"[0-9]*[+-]$", "", cleaned_symbol)
     normalized_symbol: str = cleaned_symbol.capitalize()
     if normalized_symbol not in _ATOMIC_NUMBERS:
         available_symbols: str = ", ".join(sorted(_ATOMIC_NUMBERS.keys()))

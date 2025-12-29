@@ -53,6 +53,35 @@ from rheedium.types import (
 from rheedium.ucell import build_cell_vectors
 
 
+def _strip_esd(value_str: str) -> float:
+    """Strip estimated standard deviation from CIF numeric value.
+
+    CIF files often include uncertainties in parentheses, e.g., "0.25000(5)"
+    or "5.4307(12)". This function removes the parenthetical part and
+    returns the numeric value.
+
+    Parameters
+    ----------
+    value_str : str
+        Numeric string, possibly with ESD in parentheses.
+
+    Returns
+    -------
+    value : float
+        The numeric value with ESD stripped.
+
+    Examples
+    --------
+    >>> _strip_esd("0.25000(5)")
+    0.25
+    >>> _strip_esd("5.4307(12)")
+    5.4307
+    >>> _strip_esd("90.0")
+    90.0
+    """
+    return float(re.sub(r"\([^)]*\)", "", value_str))
+
+
 @beartype
 def _extract_cell_params(
     cif_text: str,
@@ -97,10 +126,10 @@ def _extract_cell_params(
 
     def _extract_param(name: str) -> float:
         match: Optional[re.Match[str]] = re.search(
-            rf"{name}\s+([0-9.]+)", cif_text
+            rf"{name}\s+([0-9.]+(?:\([0-9]+\))?)", cif_text
         )
         if match:
-            return float(match.group(1))
+            return _strip_esd(match.group(1))
         raise ValueError(f"Failed to parse {name} from CIF.")
 
     a: float = _extract_param("_cell_length_a")
@@ -177,9 +206,9 @@ def _parse_atom_positions(
             col: atom_site_columns.index(col) for col in required_cols
         }
         element_symbol: str = tokens[col_indices["_atom_site_type_symbol"]]
-        frac_x: float = float(tokens[col_indices["_atom_site_fract_x"]])
-        frac_y: float = float(tokens[col_indices["_atom_site_fract_y"]])
-        frac_z: float = float(tokens[col_indices["_atom_site_fract_z"]])
+        frac_x: float = _strip_esd(tokens[col_indices["_atom_site_fract_x"]])
+        frac_y: float = _strip_esd(tokens[col_indices["_atom_site_fract_y"]])
+        frac_z: float = _strip_esd(tokens[col_indices["_atom_site_fract_z"]])
         atomic_number: float = float(atomic_symbol(element_symbol))
         positions_list.append([frac_x, frac_y, frac_z, atomic_number])
 
