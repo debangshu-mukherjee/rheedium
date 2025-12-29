@@ -32,8 +32,7 @@ parse_vaspxml_trajectory : function
 parse_xyz : function
     Parses XYZ files and returns atoms with element symbols and 3D coordinates.
 symmetry_expansion : function
-    Apply symmetry operations to expand fractional positions and remove
-    duplicates.
+    Apply symmetry operations to expand fractional positions.
 to_ase : function
     Convert CrystalStructure to ASE Atoms.
 to_pymatgen : function

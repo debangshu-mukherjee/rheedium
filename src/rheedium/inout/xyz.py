@@ -41,12 +41,9 @@ from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import XYZData, create_xyz_data, scalar_int
 
-_KIRKLAND_PATH: Path = (
-    Path(__file__).resolve().parent / "luggage" / "Kirkland_Potentials.csv"
-)
-_ATOMS_PATH: Path = (
-    Path(__file__).resolve().parent / "luggage" / "atom_numbers.json"
-)
+_LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
+_KIRKLAND_PATH: Path = _LUGGAGE_DIR / "Kirkland_Potentials.csv"
+_ATOMS_PATH: Path = _LUGGAGE_DIR / "atom_numbers.json"
 
 
 @beartype
@@ -63,7 +60,7 @@ def _load_atomic_numbers(
     ----------
     json_path : Optional[Path], optional
         Path to JSON file containing atomic number mapping. If None,
-        defaults to the bundled atom_numbers.json file in the luggage
+        defaults to the bundled atom_numbers.json file in the _luggage
         directory. Default: None
 
     Returns
@@ -161,7 +158,7 @@ def _load_kirkland_csv(
     ----------
     file_path : Optional[Path], optional
         Path to CSV file containing Kirkland parameters. If None, defaults
-        to the bundled Kirkland_Potentials.csv file in the luggage directory.
+        to the bundled Kirkland_Potentials.csv file in the _luggage directory.
         Default: None
 
     Returns

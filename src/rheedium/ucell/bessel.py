@@ -8,14 +8,22 @@ diffraction physics, particularly for atomic potential calculations.
 
 Routine Listings
 ----------------
-bessel_kv : function
-    Computes the modified Bessel function of the second kind K_v(x)
 _bessel_iv_series : function, internal
-    Computes I_v(x) using series expansion for Bessel function
+    Computes I_v(x) using series expansion for Bessel function.
 _bessel_k0_series : function, internal
-    Computes K_0(x) using series expansion
+    Computes K_0(x) using series expansion.
 _bessel_kn_recurrence : function, internal
-    Computes K_n(x) using recurrence relation
+    Computes K_n(x) using recurrence relation.
+_bessel_kv_small_non_integer : function, internal
+    Computes K_v(x) for small x and non-integer v.
+_bessel_kv_small_integer : function, internal
+    Computes K_v(x) for small x and integer v.
+_bessel_kv_large : function, internal
+    Asymptotic expansion for K_v(x) for large x.
+_bessel_k_half : function, internal
+    Computes special case K_{1/2}(x).
+bessel_kv : function
+    Computes the modified Bessel function of the second kind K_v(x).
 
 Notes
 -----

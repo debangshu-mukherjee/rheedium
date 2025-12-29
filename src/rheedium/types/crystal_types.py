@@ -10,21 +10,21 @@ support JAX transformations.
 Routine Listings
 ----------------
 CrystalStructure : PyTree
-    JAX-compatible crystal structure with fractional and Cartesian coordinates
-EwaldData : PyTree
-    Angle-independent Ewald sphere data for RHEED simulation
-PotentialSlices : PyTree
-    JAX-compatible data structure for representing multislice potential data
-XYZData : PyTree
-    A PyTree for XYZ file data with atomic positions and metadata
+    JAX-compatible crystal structure with fractional and Cartesian coordinates.
 create_crystal_structure : function
-    Factory function to create CrystalStructure instances with data validation
+    Factory function to create CrystalStructure instances with data validation.
+EwaldData : PyTree
+    Angle-independent Ewald sphere data for RHEED simulation.
 create_ewald_data : function
-    Factory function to create EwaldData instances with validation
+    Factory function to create EwaldData instances with validation.
+PotentialSlices : PyTree
+    JAX-compatible data structure for representing multislice potential data.
 create_potential_slices : function
-    Factory function to create PotentialSlices instances with data validation
+    Factory function to create PotentialSlices instances with data validation.
+XYZData : PyTree
+    A PyTree for XYZ file data with atomic positions and metadata.
 create_xyz_data : function
-    Factory function to create XYZData instances with data validation
+    Factory function to create XYZData instances with data validation.
 
 Notes
 -----

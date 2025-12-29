@@ -9,10 +9,8 @@ asymmetric units.
 
 Routine Listings
 ----------------
-parse_cif : function
-    Parse CIF file into JAX-compatible CrystalStructure.
-symmetry_expansion : function
-    Apply symmetry operations to expand fractional positions.
+_strip_esd : function, internal
+    Strip estimated standard deviation from CIF value string.
 _extract_cell_params : function, internal
     Extract unit cell parameters from CIF text.
 _parse_atom_positions : function, internal
@@ -21,12 +19,16 @@ _extract_sym_op_from_line : function, internal
     Extract symmetry operation from a single line.
 _parse_symmetry_ops : function, internal
     Parse symmetry operations from CIF file.
+parse_cif : function
+    Parse CIF file into JAX-compatible CrystalStructure.
 _parse_sym_op : function, internal
     Parse a symmetry operation string into a callable function.
 _apply_symmetry_ops : function, internal
     Apply symmetry operations to fractional positions.
 _deduplicate_positions : function, internal
     Remove duplicate positions within tolerance.
+symmetry_expansion : function
+    Apply symmetry operations to expand fractional positions.
 
 Notes
 -----

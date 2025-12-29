@@ -8,26 +8,26 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
-bulk_to_slice : function
-    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation
-create_rheed_image : function
-    Factory function to create RHEEDImage instances with data validation
-create_rheed_pattern : function
-    Factory function to create RHEEDPattern instances with data validation
-create_sliced_crystal : function
-    Factory function to create SlicedCrystal instances with data validation
-identify_surface_atoms : function
-    Identify surface atoms using configurable methods (height, coordination,
-    layers, or explicit mask)
-RHEEDImage : PyTree
-    Container for RHEED image data with pixel coordinates and intensity values
 RHEEDPattern : PyTree
-    Container for RHEED diffraction pattern data with detector points and
-    intensities.
+    Container for RHEED diffraction pattern data with detector points.
+RHEEDImage : PyTree
+    Container for RHEED image data with pixel coordinates and intensity values.
+create_rheed_pattern : function
+    Factory function to create RHEEDPattern instances with data validation.
+create_rheed_image : function
+    Factory function to create RHEEDImage instances with data validation.
 SlicedCrystal : PyTree
-    JAX-compatible crystal structure sliced for multislice simulation
+    JAX-compatible crystal structure sliced for multislice simulation.
+create_sliced_crystal : function
+    Factory function to create SlicedCrystal instances with data validation.
+bulk_to_slice : function
+    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation.
 SurfaceConfig : NamedTuple
-    Configuration for surface atom identification method and parameters
+    Configuration for surface atom identification method and parameters.
+identify_surface_atoms : function
+    Identify surface atoms using configurable methods.
+DetectorGeometry : NamedTuple
+    Configuration for RHEED detector geometry.
 
 Notes
 -----

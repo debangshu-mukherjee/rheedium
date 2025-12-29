@@ -9,11 +9,11 @@ structure filtering based on geometric criteria.
 Routine Listings
 ----------------
 angle_in_degrees : function
-    Calculate the angle in degrees between two vectors
+    Calculate the angle in degrees between two vectors.
 compute_lengths_angles : function
-    Compute unit cell lengths and angles from lattice vectors
+    Compute unit cell lengths and angles from lattice vectors.
 parse_cif_and_scrape : function
-    Parse CIF file and filter atoms within specified thickness
+    Parse CIF file and filter atoms within specified thickness.
 
 Notes
 -----

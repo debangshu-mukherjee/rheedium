@@ -9,21 +9,21 @@ filtering for specific zones and thicknesses.
 Routine Listings
 ----------------
 reciprocal_unitcell : function
-    Calculate reciprocal unit cell angles from direct cell angles
+    Calculate reciprocal unit cell parameters from direct cell parameters.
 get_unit_cell_matrix : function
-    Build transformation matrix between direct and reciprocal space
+    Build transformation matrix between direct and reciprocal space.
 build_cell_vectors : function
-    Construct unit cell vectors from lengths and angles
+    Construct unit cell vectors from lengths and angles.
 compute_lengths_angles : function
-    Compute unit cell lengths and angles from lattice vectors
+    Compute unit cell lengths and angles from lattice vectors.
 generate_reciprocal_points : function
-    Generate reciprocal lattice points for given hkl ranges
+    Generate reciprocal lattice points for given hkl ranges.
 atom_scraper : function
-    Filter atoms within specified thickness along zone axis
+    Filter atoms within specified thickness along zone axis.
 reciprocal_lattice_vectors : function
-    Generate reciprocal lattice basis vectors b₁, b₂, b₃
+    Generate reciprocal lattice basis vectors b₁, b₂, b₃.
 miller_to_reciprocal : function
-    Convert Miller indices to reciprocal lattice basis vectors
+    Convert Miller indices to reciprocal space vectors.
 
 Notes
 -----
