@@ -61,6 +61,8 @@ multislice_simulator : function
     Simulate RHEED pattern from potential slices using multislice (dynamical)
 project_on_detector : function
     Project reciprocal lattice points onto detector screen
+project_on_detector_geometry : function
+    Project reciprocal lattice points with full detector geometry support
 rod_ewald_overlap : function
     Compute overlap between broadened rods and Ewald shell
 rod_profile_function : function
@@ -107,6 +109,7 @@ from .simulator import (
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
+    project_on_detector_geometry,
     sliced_crystal_to_potential,
 )
 from .surface_rods import (
@@ -146,6 +149,7 @@ __all__ = [
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",
+    "project_on_detector_geometry",
     "rod_ewald_overlap",
     "rod_profile_function",
     "roughness_damping",

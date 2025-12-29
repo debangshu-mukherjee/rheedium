@@ -1,5 +1,5 @@
 /* Import fonts from Google Fonts or use local fonts */
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;600&family=Source+Code+Pro:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;700&family=Source+Code+Pro:wght@400;500;600&display=swap');
 
 /* Font definitions */
 :root {
@@ -10,7 +10,7 @@
 /* Base font settings */
 body, html {
     font-family: var(--font-sans);
-    font-weight: 300; /* Light weight for Source Sans */
+    font-weight: 400; /* Regular weight for Source Sans */
 }
 
 /* Headings and bold text */
@@ -20,25 +20,25 @@ strong, b,
 .caption-text,
 dt {
     font-family: var(--font-sans);
-    font-weight: 600; /* Semibold weight for Source Sans */
+    font-weight: 700; /* Bold weight for Source Sans */
 }
 
 /* Navigation and menu items */
-.nav-item, 
+.nav-item,
 .toctree-l1 > a,
 .toctree-l2 > a,
 .toctree-l3 > a,
 .sidebar-brand,
 .navbar-nav {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
 }
 
 /* Bold navigation items */
 .nav-item.active,
 .toctree-l1.current > a,
 .toctree-l2.current > a {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* Monospace elements */
@@ -80,11 +80,11 @@ code.literal,
 /* Tables */
 table, th, td {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
 }
 
 th {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* Admonitions and notes */
@@ -94,14 +94,14 @@ th {
 .danger .admonition-title,
 .error .admonition-title {
     font-family: var(--font-sans);
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .admonition,
 .note,
 .warning {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
 }
 
 /* Previous custom styles */

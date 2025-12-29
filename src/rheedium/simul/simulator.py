@@ -43,6 +43,7 @@ from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
+    DetectorGeometry,
     PotentialSlices,
     RHEEDPattern,
     SlicedCrystal,
@@ -96,6 +97,119 @@ def project_on_detector(
     scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
     detector_h: Float[Array, "N"] = k_out[:, 1] * scale
     detector_v: Float[Array, "N"] = k_out[:, 2] * scale
+    detector_coords: Float[Array, "N 2"] = jnp.stack(
+        [detector_h, detector_v], axis=-1
+    )
+    return detector_coords
+
+
+@jaxtyped(typechecker=beartype)
+def project_on_detector_geometry(
+    k_out: Float[Array, "N 3"],
+    geometry: DetectorGeometry,
+) -> Float[Array, "N 2"]:
+    """Project output wavevectors onto detector with full geometry support.
+
+    This function extends the basic projection to support tilted and curved
+    detector screens. For a flat, untilted detector at the default distance,
+    this is equivalent to `project_on_detector`.
+
+    Parameters
+    ----------
+    k_out : Float[Array, "N 3"]
+        Output wavevectors in 1/Å. Shape (N, 3) where each row is [kx, ky, kz].
+    geometry : DetectorGeometry
+        Detector geometry configuration specifying distance, tilt, curvature,
+        and center offsets.
+
+    Returns
+    -------
+    detector_coords : Float[Array, "N 2"]
+        [horizontal, vertical] coordinates on detector in mm.
+
+    Notes
+    -----
+    The projection accounts for:
+
+    1. **Tilt**: When tilt_angle != 0, the detector plane is rotated about
+       the horizontal (y) axis. The plane normal becomes
+       n = (cos(tilt), 0, sin(tilt)) instead of (1, 0, 0).
+
+    2. **Curvature**: For finite curvature_radius, the detector is a cylinder
+       with axis along y. Points are projected onto this cylinder surface.
+
+    3. **Offsets**: center_offset_h and center_offset_v shift the coordinate
+       system origin on the detector.
+
+    For small tilt angles and infinite curvature, this reduces to the simple
+    ray-tracing formula used in `project_on_detector`.
+    """
+    distance: float = geometry.distance
+    tilt_rad: Float[Array, ""] = jnp.deg2rad(geometry.tilt_angle)
+    curvature: float = geometry.curvature_radius
+    offset_h: float = geometry.center_offset_h
+    offset_v: float = geometry.center_offset_v
+
+    # Extract wavevector components
+    kx: Float[Array, "N"] = k_out[:, 0]
+    ky: Float[Array, "N"] = k_out[:, 1]
+    kz: Float[Array, "N"] = k_out[:, 2]
+
+    # For tilted detector, the plane equation is:
+    # x*cos(tilt) + z*sin(tilt) = distance
+    # Ray from origin: r(t) = t * k_out
+    # Intersection: t = distance / (kx*cos(tilt) + kz*sin(tilt))
+    cos_tilt: Float[Array, ""] = jnp.cos(tilt_rad)
+    sin_tilt: Float[Array, ""] = jnp.sin(tilt_rad)
+
+    # Denominator with small epsilon for numerical stability
+    denom: Float[Array, "N"] = kx * cos_tilt + kz * sin_tilt + 1e-10
+    t_intersect: Float[Array, "N"] = distance / denom
+
+    # Intersection point in 3D
+    x_int: Float[Array, "N"] = kx * t_intersect
+    y_int: Float[Array, "N"] = ky * t_intersect
+    z_int: Float[Array, "N"] = kz * t_intersect
+
+    # For flat detector: horizontal = y, vertical = z (rotated by tilt)
+    # In tilted coordinates, vertical is along the plane
+    detector_h: Float[Array, "N"] = y_int
+    detector_v: Float[Array, "N"] = -x_int * sin_tilt + z_int * cos_tilt
+
+    # Apply curvature correction for cylindrical detector
+    # For cylinder with axis along y, radius R:
+    # The arc length corresponds to the angle subtended
+    is_curved: Bool[Array, ""] = jnp.isfinite(curvature)
+
+    def _apply_curvature(
+        coords: tuple[Float[Array, "N"], Float[Array, "N"]],
+    ) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
+        """Apply cylindrical curvature correction."""
+        h, v = coords
+        # Angle from center: theta = h / R (small angle approx)
+        # Corrected h = R * sin(h/R) for exact treatment
+        # For practical purposes, use arc-length parametrization
+        theta: Float[Array, "N"] = h / curvature
+        h_curved: Float[Array, "N"] = curvature * jnp.sin(theta)
+        return h_curved, v
+
+    def _no_curvature(
+        coords: tuple[Float[Array, "N"], Float[Array, "N"]],
+    ) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
+        """No curvature correction for flat detector."""
+        return coords
+
+    detector_h, detector_v = jax.lax.cond(
+        is_curved,
+        _apply_curvature,
+        _no_curvature,
+        (detector_h, detector_v),
+    )
+
+    # Apply center offsets
+    detector_h = detector_h - offset_h
+    detector_v = detector_v - offset_v
+
     detector_coords: Float[Array, "N 2"] = jnp.stack(
         [detector_h, detector_v], axis=-1
     )

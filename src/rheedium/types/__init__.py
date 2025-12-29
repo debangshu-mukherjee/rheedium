@@ -55,6 +55,8 @@ SlicedCrystal : PyTree
     JAX-compatible crystal structure sliced for multislice simulation
 SurfaceConfig : NamedTuple
     Configuration for surface atom identification method and parameters
+DetectorGeometry : NamedTuple
+    Configuration for RHEED detector geometry (tilt, curvature, offsets)
 XYZData : PyTree
     A PyTree for XYZ file data with atomic positions and metadata
 
@@ -84,6 +86,7 @@ from .custom_types import (
     scalar_num,
 )
 from .rheed_types import (
+    DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
@@ -105,6 +108,7 @@ __all__ = [
     "create_sliced_crystal",
     "create_xyz_data",
     "CrystalStructure",
+    "DetectorGeometry",
     "EwaldData",
     "float_image",
     "identify_surface_atoms",
