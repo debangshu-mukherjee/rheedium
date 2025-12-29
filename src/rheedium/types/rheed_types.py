@@ -1241,3 +1241,52 @@ def identify_surface_atoms(
         z_threshold = z_max - config.height_fraction * (z_max - z_min)
         is_surface = z_coords >= z_threshold
         return is_surface
+
+
+class DetectorGeometry(NamedTuple):
+    """Configuration for RHEED detector geometry.
+
+    This NamedTuple specifies the geometry of the detector screen for
+    accurate projection of diffracted beams. Supports flat, tilted, and
+    curved detector screens.
+
+    Attributes
+    ----------
+    distance : float
+        Perpendicular distance from sample to detector center in mm.
+        Default: 100.0
+    tilt_angle : float
+        Tilt angle of the detector about the horizontal axis in degrees.
+        Positive tilt rotates the top of the screen away from the sample.
+        Default: 0.0 (vertical screen)
+    curvature_radius : float
+        Radius of curvature of the detector screen in mm.
+        Use jnp.inf for flat screen. Default: jnp.inf (flat)
+    center_offset_h : float
+        Horizontal offset of detector center from beam axis in mm.
+        Positive values shift the detector right. Default: 0.0
+    center_offset_v : float
+        Vertical offset of detector center from beam axis in mm.
+        Positive values shift the detector up. Default: 0.0
+
+    Notes
+    -----
+    For a standard RHEED setup:
+    - The beam travels predominantly along +x (into the sample surface)
+    - The detector is placed in the yz-plane at x = distance
+    - Horizontal corresponds to y-direction, vertical to z-direction
+
+    The tilt angle accounts for common experimental setups where the
+    phosphor screen is not perfectly perpendicular to the nominal beam
+    direction.
+
+    For curved screens (e.g., cylindrical CCD detector arrays), the
+    curvature_radius determines the cylinder radius. Points on the
+    detector surface lie on this cylinder.
+    """
+
+    distance: float = 100.0
+    tilt_angle: float = 0.0
+    curvature_radius: float = float("inf")
+    center_offset_h: float = 0.0
+    center_offset_v: float = 0.0
