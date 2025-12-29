@@ -55,7 +55,7 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Bool, Float, jaxtyped
 
 from rheedium.types import (
     EwaldData,
@@ -306,18 +306,20 @@ def rod_ewald_overlap(
     The algorithm proceeds as follows:
 
     1. Compute outgoing wavevector: k_out = k_in + G
-    2. Calculate elastic scattering deviation: d = ||k_out| - |k_in||
-    3. Compute effective Gaussian width: σ_eff² = σ_rod² + σ_shell²
+    2. Compute true perpendicular distance to Ewald sphere
+    3. Compute anisotropic effective width based on rod orientation
     4. Evaluate overlap: exp(-d²/(2σ_eff²))
 
-    The perpendicular distance from rod center to Ewald sphere is
-    approximated by the magnitude deviation |k_out| - |k_in|. This is
-    exact for small deviations and a good approximation for RHEED
-    geometry where the Ewald sphere is nearly flat.
+    The perpendicular distance to the Ewald sphere is computed as the
+    difference between |k_out| and |k_in|, projected onto the radial
+    direction. For a sphere centered at origin with radius |k|, the
+    perpendicular distance from point k_out is |k_out| - |k|.
 
-    For the effective σ, we use the average of rod_sigma components
-    since rods are approximately circular in the xy plane for most
-    crystal structures.
+    For anisotropic rods, the effective width depends on the angle
+    between the k_out direction and the rod axes. The rod width in the
+    direction of k_out is computed using the projection:
+        σ_rod_eff² = (σx·cos(φ))² + (σy·sin(φ))²
+    where φ is the azimuthal angle of k_out in the xy plane.
 
     Examples
     --------
@@ -335,13 +337,40 @@ def rod_ewald_overlap(
     # Magnitude of k_out
     k_out_mag: Float[Array, "N"] = jnp.linalg.norm(k_out, axis=-1)
 
-    # Deviation from elastic scattering condition
+    # True perpendicular distance to Ewald sphere
+    # The Ewald sphere has radius |k_in| centered at origin of reciprocal space
+    # The perpendicular distance is simply |k_out| - |k_in|
     d_perp: Float[Array, "N"] = jnp.abs(k_out_mag - k_magnitude)
 
-    # Effective Gaussian width (combine rod and shell in quadrature)
-    # Use mean of rod_sigma components for approximately circular rods
-    rod_sigma_mean: Float[Array, ""] = jnp.mean(rod_sigma)
-    sigma_eff_sq: Float[Array, ""] = rod_sigma_mean**2 + shell_sigma**2
+    # Compute anisotropic rod width in the direction of k_out
+    # For rods oriented along z, the effective width depends on the
+    # projection of k_out onto the xy plane
+    k_out_xy: Float[Array, "N 2"] = k_out[:, :2]
+    k_out_xy_mag: Float[Array, "N"] = jnp.linalg.norm(k_out_xy, axis=-1)
+    # Avoid division by zero for vertical rods
+    k_out_xy_mag_safe: Float[Array, "N"] = jnp.maximum(k_out_xy_mag, 1e-10)
+
+    # Direction cosines in xy plane
+    cos_phi: Float[Array, "N"] = k_out[:, 0] / k_out_xy_mag_safe
+    sin_phi: Float[Array, "N"] = k_out[:, 1] / k_out_xy_mag_safe
+
+    # Effective rod width in the xy projection direction
+    # σ_rod_eff² = (σx·cos(φ))² + (σy·sin(φ))²
+    rod_sigma_x: Float[Array, ""] = rod_sigma[0]
+    rod_sigma_y: Float[Array, ""] = rod_sigma[1]
+    rod_sigma_eff_sq: Float[Array, "N"] = (
+        (rod_sigma_x * cos_phi) ** 2 + (rod_sigma_y * sin_phi) ** 2
+    )
+
+    # For nearly vertical k_out, use average rod sigma
+    is_vertical: Bool[Array, "N"] = k_out_xy_mag < 1e-8
+    rod_sigma_mean_sq: Float[Array, ""] = (rod_sigma_x**2 + rod_sigma_y**2) / 2
+    rod_sigma_eff_sq = jnp.where(
+        is_vertical, rod_sigma_mean_sq, rod_sigma_eff_sq
+    )
+
+    # Effective total width (combine rod and shell in quadrature)
+    sigma_eff_sq: Float[Array, "N"] = rod_sigma_eff_sq + shell_sigma**2
 
     # Gaussian overlap factor
     overlap: Float[Array, "N"] = jnp.exp(-(d_perp**2) / (2.0 * sigma_eff_sq))
