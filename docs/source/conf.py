@@ -10,6 +10,21 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["JAX_ENABLE_X64"] = "True"
 os.environ["BUILDING_DOCS"] = "1"
 
+
+# Make jaxtyped decorator a no-op during doc building to preserve docstrings
+# This MUST be done before any rheedium imports
+def _noop_decorator(*args, **kwargs):
+    """No-op decorator for documentation building."""
+    if len(args) == 1 and callable(args[0]) and not kwargs:
+        return args[0]
+    return lambda fn: fn
+
+
+import jaxtyping
+
+jaxtyping.jaxtyped = _noop_decorator
+
+
 # Add project paths
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
@@ -133,6 +148,8 @@ autodoc_mock_imports = [
     "matplotlib.colors",
     "matplotlib.axes",
     "matplotlib.figure",
+    "mpl_toolkits",
+    "mpl_toolkits.mplot3d",
     "gemmi",
 ]
 
