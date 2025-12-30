@@ -64,7 +64,6 @@ from rheedium.types import (
 
 from .simul_utils import incident_wavevector, wavelength_ang
 
-# Minimum extent to avoid division by zero (in Ångstroms)
 _MIN_EXTENT_ANG: float = 1.0
 
 
@@ -115,17 +114,17 @@ def compute_domain_extent(
     >>> extent = compute_domain_extent(positions)
     >>> extent
     Array([10., 10.,  5.], dtype=float64)
+
+    See Also
+    --------
+    extent_to_rod_sigma : Convert extent to reciprocal-space widths
+    finite_domain_intensities : Full intensity calculation
     """
     padding_arr: Float[Array, ""] = jnp.asarray(padding_ang, dtype=jnp.float64)
-
     min_coords: Float[Array, "3"] = jnp.min(positions, axis=0)
     max_coords: Float[Array, "3"] = jnp.max(positions, axis=0)
-
     extent: Float[Array, "3"] = max_coords - min_coords + 2.0 * padding_arr
-
-    # Enforce minimum extent to avoid division by zero
     extent = jnp.maximum(extent, _MIN_EXTENT_ANG)
-
     return extent
 
 
@@ -170,18 +169,19 @@ def extent_to_rod_sigma(
     >>> sigma = extent_to_rod_sigma(extent)
     >>> sigma  # Approximately [0.025, 0.025] 1/Å
     Array([0.02506628, 0.02506628], dtype=float64)
+
+    See Also
+    --------
+    compute_domain_extent : Calculate extent from atomic positions
+    rod_ewald_overlap : Use rod widths in overlap calculation
     """
-    # Enforce minimum extent
     extent_safe: Float[Array, "3"] = jnp.maximum(
         domain_extent_ang, _MIN_EXTENT_ANG
     )
-
-    # σ_q = 2π / (L × √(2π)) for FWHM matching sinc²
     sqrt_2pi: Float[Array, ""] = jnp.sqrt(2.0 * jnp.pi)
     rod_sigma: Float[Array, "2"] = (2.0 * jnp.pi) / (
         extent_safe[:2] * sqrt_2pi
     )
-
     return rod_sigma
 
 
@@ -239,6 +239,11 @@ def compute_shell_sigma(
     >>> sigma = compute_shell_sigma(k, energy_spread_frac=1e-4)
     >>> sigma  # ~0.07 1/Å
     Array(0.07303659, dtype=float64)
+
+    See Also
+    --------
+    rod_ewald_overlap : Use shell width in overlap calculation
+    finite_domain_intensities : Full intensity calculation
     """
     energy_spread_arr: Float[Array, ""] = jnp.asarray(
         energy_spread_frac, dtype=jnp.float64
@@ -246,15 +251,10 @@ def compute_shell_sigma(
     divergence_arr: Float[Array, ""] = jnp.asarray(
         beam_divergence_rad, dtype=jnp.float64
     )
-
-    # Δk/k from energy spread: ΔE/(2E) since k ∝ √E
     dk_over_k_energy: Float[Array, ""] = energy_spread_arr / 2.0
-
-    # Combined in quadrature
     shell_sigma: Float[Array, ""] = k_magnitude * jnp.sqrt(
         dk_over_k_energy**2 + divergence_arr**2
     )
-
     return shell_sigma
 
 
@@ -322,51 +322,33 @@ def rod_ewald_overlap(
     >>> rod_sigma = jnp.array([0.05, 0.05])
     >>> shell_sigma = jnp.array(0.07)
     >>> overlap = rod_ewald_overlap(g_vecs, k_in, k_mag, rod_sigma, shell_sigma)
+
+    See Also
+    --------
+    extent_to_rod_sigma : Calculate rod widths from domain size
+    compute_shell_sigma : Calculate shell width from beam parameters
+    finite_domain_intensities : Full intensity calculation
     """
-    # Compute k_out = k_in + G for all G vectors
     k_out: Float[Array, "N 3"] = k_in + g_vectors
-
-    # Magnitude of k_out
     k_out_mag: Float[Array, "N"] = jnp.linalg.norm(k_out, axis=-1)
-
-    # True perpendicular distance to Ewald sphere
-    # The Ewald sphere has radius |k_in| centered at origin of reciprocal space
-    # The perpendicular distance is simply |k_out| - |k_in|
     d_perp: Float[Array, "N"] = jnp.abs(k_out_mag - k_magnitude)
-
-    # Compute anisotropic rod width in the direction of k_out
-    # For rods oriented along z, the effective width depends on the
-    # projection of k_out onto the xy plane
     k_out_xy: Float[Array, "N 2"] = k_out[:, :2]
     k_out_xy_mag: Float[Array, "N"] = jnp.linalg.norm(k_out_xy, axis=-1)
-    # Avoid division by zero for vertical rods
     k_out_xy_mag_safe: Float[Array, "N"] = jnp.maximum(k_out_xy_mag, 1e-10)
-
-    # Direction cosines in xy plane
     cos_phi: Float[Array, "N"] = k_out[:, 0] / k_out_xy_mag_safe
     sin_phi: Float[Array, "N"] = k_out[:, 1] / k_out_xy_mag_safe
-
-    # Effective rod width in the xy projection direction
-    # σ_rod_eff² = (σx·cos(φ))² + (σy·sin(φ))²
     rod_sigma_x: Float[Array, ""] = rod_sigma[0]
     rod_sigma_y: Float[Array, ""] = rod_sigma[1]
     rod_sigma_eff_sq: Float[Array, "N"] = (rod_sigma_x * cos_phi) ** 2 + (
         rod_sigma_y * sin_phi
     ) ** 2
-
-    # For nearly vertical k_out, use average rod sigma
     is_vertical: Bool[Array, "N"] = k_out_xy_mag < 1e-8
     rod_sigma_mean_sq: Float[Array, ""] = (rod_sigma_x**2 + rod_sigma_y**2) / 2
     rod_sigma_eff_sq = jnp.where(
         is_vertical, rod_sigma_mean_sq, rod_sigma_eff_sq
     )
-
-    # Effective total width (combine rod and shell in quadrature)
     sigma_eff_sq: Float[Array, "N"] = rod_sigma_eff_sq + shell_sigma**2
-
-    # Gaussian overlap factor
     overlap: Float[Array, "N"] = jnp.exp(-(d_perp**2) / (2.0 * sigma_eff_sq))
-
     return overlap
 
 
@@ -434,25 +416,25 @@ def finite_domain_intensities(
     >>> overlap, intensities = rh.simul.finite_domain_intensities(
     ...     ewald, theta_deg=2.0, phi_deg=0.0, domain_extent_ang=domain
     ... )
+
+    See Also
+    --------
+    build_ewald_data : Create EwaldData for input
+    ewald_allowed_reflections : Alternative with binary Ewald condition
+    compute_domain_extent : Calculate domain extent from positions
+    extent_to_rod_sigma : Rod width calculation
+    compute_shell_sigma : Shell thickness calculation
+    rod_ewald_overlap : Core overlap calculation
     """
-    # Build incident wavevector
-    lam_ang: Float[Array, ""] = wavelength_ang(
-        jnp.asarray(ewald.k_magnitude * ewald.wavelength_ang / (2.0 * jnp.pi))
-    )
-    # Actually we have wavelength directly in ewald
     k_in: Float[Array, "3"] = incident_wavevector(
         ewald.wavelength_ang, theta_deg, phi_deg
     )
-
-    # Compute rod and shell widths
     rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_extent_ang)
     shell_sigma: Float[Array, ""] = compute_shell_sigma(
         k_magnitude=ewald.k_magnitude,
         energy_spread_frac=energy_spread_frac,
         beam_divergence_rad=beam_divergence_rad,
     )
-
-    # Calculate overlap factors
     overlap_factors: Float[Array, "N"] = rod_ewald_overlap(
         g_vectors=ewald.g_vectors,
         k_in=k_in,
@@ -460,10 +442,7 @@ def finite_domain_intensities(
         rod_sigma=rod_sigma,
         shell_sigma=shell_sigma,
     )
-
-    # Weight base intensities by overlap
     modified_intensities: Float[Array, "N"] = (
         ewald.intensities * overlap_factors
     )
-
     return overlap_factors, modified_intensities

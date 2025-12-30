@@ -93,6 +93,10 @@ def project_on_detector(
     -------
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
+
+    See Also
+    --------
+    project_on_detector_geometry : Projection with tilt and curvature support.
     """
     scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
     detector_h: Float[Array, "N"] = k_out[:, 1] * scale
@@ -143,42 +147,28 @@ def project_on_detector_geometry(
 
     For small tilt angles and infinite curvature, this reduces to the simple
     ray-tracing formula used in `project_on_detector`.
+
+    See Also
+    --------
+    project_on_detector : Simple projection for flat, untilted detectors.
     """
     distance: float = geometry.distance
     tilt_rad: Float[Array, ""] = jnp.deg2rad(geometry.tilt_angle)
     curvature: float = geometry.curvature_radius
     offset_h: float = geometry.center_offset_h
     offset_v: float = geometry.center_offset_v
-
-    # Extract wavevector components
     kx: Float[Array, "N"] = k_out[:, 0]
     ky: Float[Array, "N"] = k_out[:, 1]
     kz: Float[Array, "N"] = k_out[:, 2]
-
-    # For tilted detector, the plane equation is:
-    # x*cos(tilt) + z*sin(tilt) = distance
-    # Ray from origin: r(t) = t * k_out
-    # Intersection: t = distance / (kx*cos(tilt) + kz*sin(tilt))
     cos_tilt: Float[Array, ""] = jnp.cos(tilt_rad)
     sin_tilt: Float[Array, ""] = jnp.sin(tilt_rad)
-
-    # Denominator with small epsilon for numerical stability
     denom: Float[Array, "N"] = kx * cos_tilt + kz * sin_tilt + 1e-10
     t_intersect: Float[Array, "N"] = distance / denom
-
-    # Intersection point in 3D
     x_int: Float[Array, "N"] = kx * t_intersect
     y_int: Float[Array, "N"] = ky * t_intersect
     z_int: Float[Array, "N"] = kz * t_intersect
-
-    # For flat detector: horizontal = y, vertical = z (rotated by tilt)
-    # In tilted coordinates, vertical is along the plane
     detector_h: Float[Array, "N"] = y_int
     detector_v: Float[Array, "N"] = -x_int * sin_tilt + z_int * cos_tilt
-
-    # Apply curvature correction for cylindrical detector
-    # For cylinder with axis along y, radius R:
-    # The arc length corresponds to the angle subtended
     is_curved: Bool[Array, ""] = jnp.isfinite(curvature)
 
     def _apply_curvature(
@@ -186,9 +176,6 @@ def project_on_detector_geometry(
     ) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
         """Apply cylindrical curvature correction."""
         h, v = coords
-        # Angle from center: theta = h / R (small angle approx)
-        # Corrected h = R * sin(h/R) for exact treatment
-        # For practical purposes, use arc-length parametrization
         theta: Float[Array, "N"] = h / curvature
         h_curved: Float[Array, "N"] = curvature * jnp.sin(theta)
         return h_curved, v
@@ -205,11 +192,8 @@ def project_on_detector_geometry(
         _no_curvature,
         (detector_h, detector_v),
     )
-
-    # Apply center offsets
     detector_h = detector_h - offset_h
     detector_v = detector_v - offset_v
-
     detector_coords: Float[Array, "N 2"] = jnp.stack(
         [detector_h, detector_v], axis=-1
     )
@@ -259,6 +243,11 @@ def find_kinematic_reflections(
         valid_mask = allowed_indices >= 0
         valid_indices = allowed_indices[valid_mask]
         valid_k_out = k_out[valid_mask]
+
+    See Also
+    --------
+    incident_wavevector : Calculate incident wavevector from angles.
+    generate_reciprocal_points : Generate reciprocal lattice vectors.
     """
     k_out_all: Float[Array, "M 3"] = k_in + gs
     k_in_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
@@ -370,6 +359,13 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     - "coordination": Atoms with fewer neighbors (better for steps)
     - "layers": Topmost N complete layers (good for flat surfaces)
     - "explicit": User-provided mask (full control)
+
+    See Also
+    --------
+    atomic_scattering_factor : Compute form factors with Debye-Waller.
+    integrated_ctr_amplitude : CTR amplitude for coherent mixing.
+    integrated_rod_intensity : CTR intensity for incoherent mixing.
+    identify_surface_atoms : Identify surface atoms from positions.
     """
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
@@ -612,6 +608,17 @@ def kinematic_simulator(  # noqa: PLR0913
     - Include CTR contributions for surface reflections
     - Apply surface-enhanced Debye-Waller factors
     - Create and return RHEEDPattern with computed data
+
+    See Also
+    --------
+    generate_reciprocal_points : Generate reciprocal lattice vectors.
+    wavelength_ang : Compute electron wavelength from voltage.
+    incident_wavevector : Calculate incident wavevector from angles.
+    find_kinematic_reflections : Find allowed reflections.
+    project_on_detector : Project k_out onto detector plane.
+    compute_kinematic_intensities_with_ctrs : Compute intensities.
+    extent_to_rod_sigma : Convert domain size to rod broadening.
+    rod_ewald_overlap : Compute overlap weights for finite domains.
     """
     voltage_kv = jnp.asarray(voltage_kv)
     theta_deg = jnp.asarray(theta_deg)
@@ -750,6 +757,14 @@ def sliced_crystal_to_potential(
     - Assumes independent atom approximation
     - Periodic boundary conditions in x-y plane
     - Non-periodic in z-direction (surface slab)
+
+    See Also
+    --------
+    wavelength_ang : Compute electron wavelength from voltage.
+    kirkland_projected_potential : Projected atomic potential calculation.
+    create_potential_slices : Create PotentialSlices from array.
+    multislice_propagate : Propagate wave through potential slices.
+    multislice_simulator : Complete multislice RHEED simulation.
 
     Examples
     --------
@@ -904,6 +919,12 @@ def multislice_propagate(
     2. Propagate through slices perpendicular to surface normal
     3. Account for the projection of k_in onto the surface
 
+    See Also
+    --------
+    wavelength_ang : Compute electron wavelength from voltage.
+    sliced_crystal_to_potential : Create potential slices from crystal.
+    multislice_simulator : Complete multislice RHEED simulation.
+
     References
     ----------
     .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron
@@ -926,21 +947,13 @@ def multislice_propagate(
     kx_grid: Float[Array, " nx ny"]
     ky_grid: Float[Array, " nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
-
-    # Apply surface refraction using inner potential
-    # The effective accelerating voltage inside crystal is V + V0
-    # This modifies the wavelength and grazing angle
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
-
-    # Refraction at surface: sin(theta_in)/sin(theta_crystal) = sqrt(1 + V0/V)
-    # For small angles: theta_crystal ≈ theta_in * sqrt(1 + V0/V)
     voltage_v: scalar_float = voltage_kv * 1000.0
     refraction_factor: scalar_float = jnp.sqrt(
         1.0 + inner_potential_v0 / voltage_v
     )
     theta_crystal: scalar_float = theta_rad * refraction_factor
-
     k_in_x: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.cos(phi_rad)
     k_in_y: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.sin(phi_rad)
     x_grid: Float[Array, " nx ny"]
@@ -948,14 +961,10 @@ def multislice_propagate(
     x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
     phase_init: Float[Array, "nx ny"] = k_in_x * x_grid + k_in_y * y_grid
     psi: Complex[Array, "nx ny"] = jnp.exp(1j * phase_init)
-
-    # Create bandwidth limiting aperture in Fourier space
-    # This prevents aliasing from the non-linear transmission function
-    kx_max: scalar_float = 0.5 / dx  # Nyquist frequency in x
-    ky_max: scalar_float = 0.5 / dy  # Nyquist frequency in y
+    kx_max: scalar_float = 0.5 / dx
+    ky_max: scalar_float = 0.5 / dy
     k_cutoff_x: scalar_float = bandwidth_limit * kx_max
     k_cutoff_y: scalar_float = bandwidth_limit * ky_max
-    # Smooth (Gaussian) aperture to avoid ringing
     bandwidth_aperture: Float[Array, "nx ny"] = jnp.exp(
         -0.5
         * (
@@ -963,7 +972,6 @@ def multislice_propagate(
             + (jnp.abs(ky_grid) / k_cutoff_y) ** 8
         )
     )
-
     propagator: Complex[Array, "nx ny"] = jnp.exp(
         -1j * jnp.pi * lam_ang * dz * (kx_grid**2 + ky_grid**2)
     )
@@ -976,7 +984,6 @@ def multislice_propagate(
         transmission: Complex[Array, "nx ny"] = jnp.exp(1j * sigma * v_slice)
         psi_transmitted: Complex[Array, "nx ny"] = psi_in * transmission
         psi_k: Complex[Array, "nx ny"] = jnp.fft.fft2(psi_transmitted)
-        # Apply bandwidth limiting and propagator
         psi_k_propagated: Complex[Array, "nx ny"] = (
             psi_k * propagator * bandwidth_aperture
         )

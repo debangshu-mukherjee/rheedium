@@ -189,6 +189,12 @@ def load_kirkland_parameters(
     4. Split into amplitude coefficients (even indices 0,2,4,6,8,10)
     5. Split into width coefficients (odd indices 1,3,5,7,9,11)
     6. Return both coefficient arrays
+
+    See Also
+    --------
+    kirkland_form_factor : Compute form factor using these parameters
+    kirkland_projected_potential : Compute projected potential
+    rheedium.inout.kirkland_potentials : Load raw Kirkland data from file
     """
     min_atomic_number: Int[Array, ""] = jnp.asarray(1, dtype=jnp.int32)
     max_atomic_number: Int[Array, ""] = jnp.asarray(103, dtype=jnp.int32)
@@ -247,6 +253,12 @@ def kirkland_form_factor(
     Uses the sum of Gaussians approximation:
     f(q) = Σᵢ aᵢ exp(-bᵢ(q/4π)²)
     where i runs from 1 to 6 for the Kirkland parameterization.
+
+    See Also
+    --------
+    load_kirkland_parameters : Load the Kirkland coefficients
+    atomic_scattering_factor : Form factor with Debye-Waller damping
+    debye_waller_factor : Thermal damping factor
     """
     a_coeffs: Float[Array, "6"]
     b_coeffs: Float[Array, "6"]
@@ -310,46 +322,31 @@ def kirkland_projected_potential(
     - e = elementary charge
     - Kirkland uses different units, so we include a conversion
 
+    See Also
+    --------
+    load_kirkland_parameters : Load the Kirkland coefficients
+    kirkland_form_factor : Reciprocal-space form factor
+
     References
     ----------
     Kirkland, E.J. "Advanced Computing in Electron Microscopy" (2010)
     """
-    # Load Kirkland parameters
     a_coeffs: Float[Array, "6"]
     b_coeffs: Float[Array, "6"]
     a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
-
-    # Physical constants
-    # Conversion factor for Kirkland parameterization to Volt·Angstrom
-    # V(r) = Σ aᵢ × K₀(2π·r·√bᵢ) where the coefficients give V·Å²
     two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
-
-    # Avoid division by zero at r=0
     r_safe: Float[Array, "..."] = jnp.maximum(r, 1e-10)
-
-    # Compute potential as sum of Gaussian approximations
-    # For numerical stability, we use a Gaussian approximation:
-    # K₀(x) ≈ -ln(x/2) - γ for small x, ≈ √(π/2x)exp(-x) for large x
-    # Here we use a Gaussian form that matches the integral behavior
     expanded_r: Float[Array, "... 1"] = r_safe[..., jnp.newaxis]
     expanded_b_coeffs: Float[Array, "1 6"] = b_coeffs[jnp.newaxis, :]
     expanded_a_coeffs: Float[Array, "1 6"] = a_coeffs[jnp.newaxis, :]
-
-    # Kirkland form: V(r) = Σ aᵢ/(bᵢ) × exp(-πr²/bᵢ) (Gaussian approximation)
-    # This integrates to give the correct form factor in reciprocal space
     exponent_terms: Float[Array, "... 6"] = (
         -jnp.pi * expanded_r**2 / expanded_b_coeffs
     )
     gaussian_terms: Float[Array, "... 6"] = jnp.exp(exponent_terms)
-
-    # Weight by aᵢ/bᵢ to get proper normalization
     weighted_terms: Float[Array, "... 6"] = (
         expanded_a_coeffs / expanded_b_coeffs * gaussian_terms
     )
-
-    # Sum contributions and scale by 2π (from Fourier relationship)
     potential: Float[Array, "..."] = two_pi * jnp.sum(weighted_terms, axis=-1)
-
     return potential
 
 
@@ -402,35 +399,32 @@ def get_mean_square_displacement(
     the generic scaling ⟨u²⟩ ∝ sqrt(12/Z) * T / 300K.
 
     Surface enhancement is applied ONLY here to avoid double-application.
-    """
-    # Physical constants in SI units
-    hbar: float = 1.054571817e-34  # J·s (reduced Planck constant)
-    k_B: float = 1.380649e-23  # J/K (Boltzmann constant)
-    amu_to_kg: float = 1.66053906660e-27  # kg per amu
 
-    # Get element-specific properties
+    See Also
+    --------
+    get_debye_temperature : Element-specific Debye temperatures
+    get_atomic_mass : Atomic masses for MSD calculation
+    debye_waller_factor : Convert MSD to damping factor
+    """
+    hbar: float = 1.054571817e-34
+    k_b: float = 1.380649e-23
+    amu_to_kg: float = 1.66053906660e-27
     theta_d: Float[Array, ""] = get_debye_temperature(atomic_number)
     mass_amu: Float[Array, ""] = get_atomic_mass(atomic_number)
     mass_kg: Float[Array, ""] = mass_amu * amu_to_kg
-
     temperature_float: Float[Array, ""] = jnp.asarray(
         temperature, dtype=jnp.float64
     )
     atomic_number_float: Float[Array, ""] = jnp.asarray(
         atomic_number, dtype=jnp.float64
     )
-
-    # Debye model MSD calculation (high-temperature approximation)
-    # ⟨u²⟩ = 3 * hbar² * T / (m * k_B * Θ_D²)
-    # Convert to Ų (1 m² = 1e20 Ų)
     m2_to_ang2: float = 1e20
 
     def debye_msd() -> Float[Array, ""]:
         """Calculate MSD using Debye model with element-specific Θ_D."""
-        # Add small epsilon to avoid division by zero
         theta_d_safe: Float[Array, ""] = jnp.maximum(theta_d, 1.0)
         numerator: Float[Array, ""] = 3.0 * hbar**2 * temperature_float
-        denominator: Float[Array, ""] = mass_kg * k_B * theta_d_safe**2
+        denominator: Float[Array, ""] = mass_kg * k_b * theta_d_safe**2
         msd_m2: Float[Array, ""] = numerator / denominator
         return msd_m2 * m2_to_ang2
 
@@ -444,20 +438,16 @@ def get_mean_square_displacement(
         eight_pi_sq: Float[Array, ""] = 8.0 * jnp.pi**2
         return b_factor / eight_pi_sq
 
-    # Use Debye model if Θ_D is available, otherwise use fallback
     has_debye_temp: Float[Array, ""] = theta_d > 0.0
     msd: Float[Array, ""] = jnp.where(
         has_debye_temp, debye_msd(), fallback_msd()
     )
-
-    # Apply surface enhancement
     surface_factor: Float[Array, ""] = jnp.asarray(
         surface_enhancement, dtype=jnp.float64
     )
     mean_square_displacement: Float[Array, ""] = jnp.where(
         is_surface, msd * surface_factor, msd
     )
-
     return mean_square_displacement
 
 
@@ -498,6 +488,11 @@ def debye_waller_factor(
     Surface enhancement should be applied when calculating the
     mean_square_displacement, NOT in this function, to avoid
     double-application of the enhancement factor.
+
+    See Also
+    --------
+    get_mean_square_displacement : Calculate MSD from temperature
+    atomic_scattering_factor : Combines form factor with Debye-Waller
     """
     msd: Float[Array, ""] = jnp.asarray(
         mean_square_displacement, dtype=jnp.float64
@@ -566,6 +561,12 @@ def atomic_scattering_factor(
     ...     is_surface=False
     ... )
     >>> print(f"Si scattering factor at q=1.0: {f_si:.3f}")
+
+    See Also
+    --------
+    kirkland_form_factor : Calculate form factor without thermal damping
+    get_mean_square_displacement : Calculate thermal displacement
+    debye_waller_factor : Calculate thermal damping factor
     """
     q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
     form_factor: Float[Array, "..."] = kirkland_form_factor(

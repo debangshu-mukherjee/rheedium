@@ -97,6 +97,11 @@ def reciprocal_unitcell(
     3. Compute reciprocal lengths using volume relationships
     4. Calculate reciprocal angles using crystallographic formulas
     5. Convert output angles to degrees if requested
+
+    See Also
+    --------
+    reciprocal_lattice_vectors : Generate reciprocal basis vectors.
+    build_cell_vectors : Build direct lattice vectors.
     """
     alpha_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
@@ -206,6 +211,11 @@ def get_unit_cell_matrix(
     >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
     >>> recip_vec = direct_vec @ matrix
     >>> print(f"Reciprocal vector: {recip_vec}")
+
+    See Also
+    --------
+    build_cell_vectors : Build direct lattice vectors from parameters.
+    reciprocal_lattice_vectors : Generate reciprocal basis vectors.
     """
     alpha_rad: Float[Array, ""] = jnp.radians(alpha)
     beta_rad: Float[Array, ""] = jnp.radians(beta)
@@ -282,6 +292,11 @@ def build_cell_vectors(
     >>> # Calculate cell volume
     >>> volume = jnp.linalg.det(vectors)
     >>> print(f"Cell volume: {volume}")
+
+    See Also
+    --------
+    compute_lengths_angles : Inverse operation from vectors to parameters.
+    reciprocal_lattice_vectors : Build reciprocal lattice vectors.
     """
     alpha_rad: Float[Array, ""] = jnp.radians(alpha)
     beta_rad: Float[Array, ""] = jnp.radians(beta)
@@ -349,6 +364,10 @@ def compute_lengths_angles(
     >>> lengths, angles = compute_lengths_angles(vectors)
     >>> print(f"Cell lengths: {lengths}")
     >>> print(f"Cell angles: {angles}")
+
+    See Also
+    --------
+    build_cell_vectors : Inverse operation from parameters to vectors.
     """
     lengths: Float[Array, "3"] = jnp.linalg.norm(vectors, axis=1)
 
@@ -428,6 +447,11 @@ def generate_reciprocal_points(
     ... )
     >>> print(f"Number of G vectors: {len(G_vectors)}")
     >>> print(f"First few G vectors:\n{G_vectors[:5]}")
+
+    See Also
+    --------
+    reciprocal_lattice_vectors : Generate reciprocal basis vectors.
+    miller_to_reciprocal : Convert Miller indices to G vectors.
     """
     abc: Num[Array, "3"] = crystal.cell_lengths
     angles: Num[Array, "3"] = crystal.cell_angles
@@ -509,6 +533,12 @@ def atom_scraper(
     ... )
     >>> print(f"Original atoms: {len(crystal.frac_positions)}")
     >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")
+
+    See Also
+    --------
+    build_cell_vectors : Construct unit cell vectors.
+    compute_lengths_angles : Compute cell parameters from vectors.
+    create_crystal_structure : Create filtered crystal structure.
     """
     orig_cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         crystal.cell_lengths[0],
@@ -671,6 +701,12 @@ def reciprocal_lattice_vectors(
     6. Scale by 2π/volume to get final reciprocal vectors
 
     7. Stack vectors into 3x3 matrix
+
+    See Also
+    --------
+    build_cell_vectors : Build direct lattice vectors.
+    reciprocal_unitcell : Compute reciprocal cell parameters.
+    miller_to_reciprocal : Convert Miller indices to G vectors.
     """
     alpha_rad: Float[Array, ""] = jnp.where(
         in_degrees, jnp.deg2rad(alpha), alpha
@@ -752,6 +788,11 @@ def miller_to_reciprocal(
     4. Compute linear combination h*b₁ + k*b₂ + l*b₃
 
     5. Use einsum for efficient batched computation
+
+    See Also
+    --------
+    reciprocal_lattice_vectors : Generate reciprocal basis vectors.
+    generate_reciprocal_points : Generate G vectors from crystal structure.
     """
     hkl_float: Float[Array, "... 3"] = jnp.asarray(hkl, dtype=jnp.float64)
 

@@ -102,6 +102,12 @@ def calculate_ctr_intensity(
     5. Calculate structure factor with atomic form factors
     6. Apply roughness damping to intensity
     7. Return intensity array for all rods and q_z values
+
+    See Also
+    --------
+    calculate_ctr_amplitude : Complex amplitude version for coherent mixing
+    surface_structure_factor : Per-q structure factor calculation
+    roughness_damping : Surface roughness attenuation
     """
     atomic_positions: Float[Array, "n_atoms 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "n_atoms"] = crystal.cart_positions[
@@ -199,6 +205,12 @@ def calculate_ctr_amplitude(
     The amplitude is: F(q) × sqrt(D(q_z)), where F is the structure factor
     and D is the roughness damping. The sqrt is used because intensity is
     |amplitude|², so |F × sqrt(D)|² = |F|² × D.
+
+    See Also
+    --------
+    calculate_ctr_intensity : Intensity version (amplitude squared)
+    integrated_ctr_amplitude : Detector-integrated amplitude
+    surface_structure_factor : Per-q structure factor
     """
     atomic_positions: Float[Array, "n_atoms 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "n_atoms"] = crystal.cart_positions[
@@ -356,6 +368,11 @@ def roughness_damping(
     2. Calculate exponent W = ½q_z²σ_h²
     3. Return exp(-W) damping factor
     4. Handle edge case of zero roughness (no damping)
+
+    See Also
+    --------
+    calculate_ctr_intensity : Uses roughness damping for CTR intensities
+    debye_waller_factor : Similar damping for thermal vibrations
     """
     sigma: Float[Array, ""] = jnp.maximum(
         jnp.asarray(sigma_height, dtype=jnp.float64), 0.0
@@ -549,6 +566,11 @@ def surface_structure_factor(
     2. Get atomic scattering factors with Debye-Waller (per-atom surface flag)
     3. Sum weighted contributions from all atoms
     4. Return complex structure factor
+
+    See Also
+    --------
+    atomic_scattering_factor : Per-atom form factor with thermal damping
+    calculate_ctr_intensity : Uses structure factor for CTR calculation
     """
     n_atoms: int = atomic_positions.shape[0]
 

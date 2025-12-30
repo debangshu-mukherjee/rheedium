@@ -375,16 +375,10 @@ def ewald_allowed_reflections(
             -jnp.sin(theta_rad),
         ]
     )
-
-    # Compute all k_out = k_in + G
     g_vecs: Float[Array, "M 3"] = ewald.g_vectors
     k_out_all: Float[Array, "M 3"] = k_in + g_vecs
-
-    # Check for upward scattering (k_out_z > 0)
     upward_mask: Bool[Array, "M"] = k_out_all[:, 2] > 0
-
     if domain_extent_ang is not None:
-        # Finite domain mode: compute continuous overlap weights
         domain_arr: Float[Array, "3"] = jnp.asarray(
             domain_extent_ang, dtype=jnp.float64
         )
@@ -394,8 +388,6 @@ def ewald_allowed_reflections(
             energy_spread_frac=energy_spread_frac,
             beam_divergence_rad=beam_divergence_rad,
         )
-
-        # Compute overlap factors for all G vectors
         overlap: Float[Array, "M"] = rod_ewald_overlap(
             g_vectors=g_vecs,
             k_in=k_in,
@@ -403,45 +395,27 @@ def ewald_allowed_reflections(
             rod_sigma=rod_sigma,
             shell_sigma=shell_sigma,
         )
-
-        # Apply upward scattering mask to overlap
         overlap = jnp.where(upward_mask, overlap, 0.0)
-
-        # In finite domain mode, return all indices with nonzero overlap
-        # Use threshold to filter very small overlaps for efficiency
         overlap_threshold: float = 1e-6
         is_allowed: Bool[Array, "M"] = overlap > overlap_threshold
-
-        # Get indices of allowed reflections
         allowed_indices: Int[Array, "N"] = jnp.where(
             is_allowed, size=g_vecs.shape[0], fill_value=-1
         )[0]
-
-        # Extract allowed k_out and intensities weighted by overlap
         k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
         base_intensities: Float[Array, "N"] = ewald.intensities[
             allowed_indices
         ]
         overlap_weights: Float[Array, "N"] = overlap[allowed_indices]
         intensities: Float[Array, "N"] = base_intensities * overlap_weights
-
     else:
-        # Binary mode: use tolerance-based filtering (original behavior)
         k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=-1)
         relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
-
-        # Ewald condition satisfied AND upward scattering
         is_allowed: Bool[Array, "M"] = (
             relative_error < tolerance
         ) & upward_mask
-
-        # Get indices of allowed reflections
         allowed_indices: Int[Array, "N"] = jnp.where(
             is_allowed, size=g_vecs.shape[0], fill_value=-1
         )[0]
-
-        # Extract allowed k_out and intensities (no overlap weighting)
         k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
         intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
-
     return allowed_indices, k_out, intensities

@@ -83,6 +83,11 @@ def make_ewald_sphere(
     - Incident wavevector k_in is calculated from wavelength and angles.
     - Ewald sphere center is at -k_in.
     - Radius is simply the magnitude k.
+
+    See Also
+    --------
+    incident_wavevector : Calculate incident wavevector from angles
+    build_ewald_data : Pre-compute full Ewald geometry for efficiency
     """
     wavelength: scalar_float = 2.0 * jnp.pi / wavevector_magnitude
     k_in: Float[Array, "3"] = incident_wavevector(
@@ -158,6 +163,11 @@ def simple_structure_factor(
     >>> atomic_nums = jnp.array([14, 14])  # Silicon
     >>> I = simple_structure_factor(G, positions, atomic_nums)
     >>> print(f"I(100) = {I:.2f}")
+
+    See Also
+    --------
+    atomic_scattering_factor : Accurate form factor with thermal damping
+    surface_structure_factor : Structure factor for CTR calculations
     """
     f_j: Float[Array, "M"] = atomic_numbers.astype(jnp.float64)
     dot_products: Float[Array, "M"] = jnp.dot(
@@ -404,6 +414,12 @@ def kinematic_ctr_simulator(
     -----
     This function is fully JAX-compatible using jax.vmap for the rod loop.
     Fixed-size output arrays are used with masking for invalid entries.
+
+    See Also
+    --------
+    kinematic_spot_simulator : Discrete 3D reciprocal lattice spots
+    calculate_ctr_intensity : CTR intensity calculation
+    find_ctr_ewald_intersection : Rod-sphere intersection geometry
     """
     k_in = incident_wavevector(wavelength_ang(voltage_kv), theta_deg, phi_deg)
     recip_vecs = reciprocal_lattice_vectors(

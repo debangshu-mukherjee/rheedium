@@ -188,6 +188,11 @@ def plot_form_factors(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    See Also
+    --------
+    kirkland_form_factor : Compute atomic form factor for element.
+    plot_debye_waller : Plot thermal damping factors.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 6))
@@ -244,6 +249,12 @@ def plot_debye_waller(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    See Also
+    --------
+    debye_waller_factor : Compute thermal damping factor.
+    get_mean_square_displacement : Get MSD for element and temperature.
+    plot_form_factors : Plot atomic form factors.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 6))
@@ -806,6 +817,11 @@ def plot_crystal_structure_3d(
     -------
     ax : Axes3D
         The 3D matplotlib axes with the plot.
+
+    See Also
+    --------
+    view_atoms : Plot atoms from CrystalStructure object.
+    plot_unit_cell_3d : Plot unit cell vectors.
     """
     if ax is None:
         fig = plt.figure(figsize=(10, 8))
@@ -1081,6 +1097,12 @@ def view_atoms(
     >>> ax = rh.plots.view_atoms(crystal, elev=30, azim=60)
     >>> import matplotlib.pyplot as plt
     >>> plt.savefig("crystal_view.png", dpi=150)
+
+    See Also
+    --------
+    plot_crystal_structure_3d : Plot structure from raw arrays.
+    plot_unit_cell_3d : Plot unit cell vectors.
+    parse_cif : Load crystal structure from CIF file.
     """
     if ax is None:
         fig = plt.figure(figsize=figsize)
