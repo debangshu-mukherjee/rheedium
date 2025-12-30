@@ -59,7 +59,7 @@ def _compute_structure_factor_single(
     atomic_numbers: Int[Array, "M"],
     temperature: scalar_float,
 ) -> Complex[Array, ""]:
-    """Compute structure factor F(G) for a single reciprocal vector.
+    r"""Compute structure factor F(G) for a single reciprocal vector.
 
     Description
     -----------
@@ -134,7 +134,7 @@ def build_ewald_data(
     lmax: scalar_int,
     temperature: scalar_float = 300.0,
 ) -> EwaldData:
-    """Build angle-independent EwaldData from crystal and beam parameters.
+    r"""Build angle-independent EwaldData from crystal and beam parameters.
 
     Description
     -----------
@@ -171,7 +171,8 @@ def build_ewald_data(
     Flow
     ----
     1. Compute relativistic electron wavelength from voltage
-    2. Calculate wavevector magnitude :math:`k = 2\pi/\lambda` (= sphere radius)
+    2. Calculate wavevector magnitude
+       :math:`k = 2\pi/\lambda` (= sphere radius)
     3. Generate reciprocal lattice basis vectors from crystal cell
     4. Create Miller index grid for specified (hmax, kmax, lmax)
     5. Transform Miller indices to reciprocal space vectors G
@@ -276,7 +277,7 @@ def ewald_allowed_reflections(
     energy_spread_frac: scalar_float = 1e-4,
     beam_divergence_rad: scalar_float = 1e-3,
 ) -> tuple[Int[Array, "N"], Float[Array, "N 3"], Float[Array, "N"]]:
-    """Find reflections satisfying Ewald sphere condition for given beam angles.
+    r"""Find reflections satisfying Ewald sphere condition at beam angles.
 
     Description
     -----------
@@ -328,7 +329,8 @@ def ewald_allowed_reflections(
 
     Flow
     ----
-    1. Compute incident wavevector :math:`k_{in}` from theta, phi, and :math:`|k|`
+    1. Compute incident wavevector
+    :math:`k_{in}` from theta, phi, and :math:`|k|`
     2. For each G vector: compute :math:`k_{out} = k_{in} + G`
     3. Check Ewald condition (binary) or compute overlap (finite domain)
     4. Filter to reflections with upward scattering (:math:`k_{out,z} > 0`)
@@ -340,7 +342,9 @@ def ewald_allowed_reflections(
 
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
-    >>> ewald = rh.simul.build_ewald_data(crystal, voltage_kv=15.0, hmax=3, kmax=3, lmax=2)
+    >>> ewald = rh.simul.build_ewald_data(crystal,
+                                          voltage_kv=15.0,
+                                          hmax=3, kmax=3, lmax=2)
     >>> indices, k_out, intensities = rh.simul.ewald_allowed_reflections(
     ...     ewald=ewald,
     ...     theta_deg=2.0,
@@ -369,12 +373,7 @@ def ewald_allowed_reflections(
     phi_rad: Float[Array, ""] = jnp.deg2rad(
         jnp.asarray(phi_deg, dtype=jnp.float64)
     )
-
     k_mag: Float[Array, ""] = ewald.k_magnitude
-
-    # Incident wavevector: grazing incidence from (cos(phi), sin(phi), 0) direction
-    # tilted up by theta from the surface (z=0 plane)
-    # k_in points INTO the surface, so z-component is negative
     k_in: Float[Array, "3"] = k_mag * jnp.array(
         [
             jnp.cos(theta_rad) * jnp.cos(phi_rad),
