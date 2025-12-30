@@ -9,74 +9,74 @@ for calculating electron wavelengths, scattering intensities, crystal truncation
 
 Routine Listings
 ----------------
-atomic_scattering_factor : function
-    Combined form factor with Debye-Waller damping
-build_ewald_data : function
-    Build angle-independent EwaldData from crystal and beam parameters
-calculate_ctr_intensity : function
-    Calculate continuous intensity along crystal truncation rods
-compute_domain_extent : function
-    Compute domain extent from atomic positions bounding box
-compute_kinematic_intensities_with_ctrs : function
-    Calculate kinematic diffraction intensities with CTR contributions
-compute_shell_sigma : function
-    Compute Ewald shell Gaussian thickness from beam parameters
-debye_waller_factor : function
-    Calculate Debye-Waller damping factor for thermal vibrations
-ewald_allowed_reflections : function
-    Find reflections satisfying Ewald sphere condition for given beam angles
-extent_to_rod_sigma : function
-    Convert domain extent to reciprocal-space rod widths
-find_ctr_ewald_intersection : function
-    Find intersection of CTR with Ewald sphere for given (h, k) rod
-find_kinematic_reflections : function
-    Find kinematically allowed reflections for given experimental conditions
-finite_domain_intensities : function
-    Compute intensities with finite domain broadening
-gaussian_rod_profile : function
-    Gaussian lateral width profile of rods due to finite correlation length
-get_mean_square_displacement : function
-    Calculate mean square displacement for given temperature
-incident_wavevector : function
-    Calculate incident electron wavevector from beam parameters
-integrated_rod_intensity : function
-    Integrate CTR intensity over finite detector acceptance
-kinematic_ctr_simulator : function
-    RHEED simulation using continuous crystal truncation rods (streaks)
-kinematic_simulator : function
-    Simulate RHEED pattern with proper atomic form factors and CTRs
-kinematic_spot_simulator : function
-    RHEED simulation using discrete 3D reciprocal lattice (spots)
-kirkland_form_factor : function
-    Calculate atomic form factor f(q) using Kirkland parameterization
-load_kirkland_parameters : function
-    Load Kirkland scattering parameters from data file
-lorentzian_rod_profile : function
-    Lorentzian lateral width profile of rods due to finite correlation length
-make_ewald_sphere : function
-    Create incident wavevector k_in from beam parameters
-multislice_propagate : function
-    Propagate electron wave through potential slices using multislice algorithm
-multislice_simulator : function
-    Simulate RHEED pattern from potential slices using multislice (dynamical)
-project_on_detector : function
-    Project reciprocal lattice points onto detector screen
-project_on_detector_geometry : function
-    Project reciprocal lattice points with full detector geometry support
-rod_ewald_overlap : function
-    Compute overlap between broadened rods and Ewald shell
-rod_profile_function : function
-    Lateral width profile of rods due to finite correlation length
-roughness_damping : function
-    Gaussian roughness damping factor for CTR intensities
-simple_structure_factor : function
-    Calculate structure factor F(G) for given G vector and atomic positions
-sliced_crystal_to_potential : function
-    Convert SlicedCrystal to PotentialSlices for multislice simulation
-surface_structure_factor : function
-    Calculate structure factor for surface with q_z dependence
-wavelength_ang : function
-    Calculate electron wavelength in angstroms
+:func:`atomic_scattering_factor`
+    Combined form factor with Debye-Waller damping.
+:func:`build_ewald_data`
+    Build angle-independent EwaldData from crystal and beam parameters.
+:func:`calculate_ctr_intensity`
+    Calculate continuous intensity along crystal truncation rods.
+:func:`compute_domain_extent`
+    Compute domain extent from atomic positions bounding box.
+:func:`compute_kinematic_intensities_with_ctrs`
+    Calculate kinematic diffraction intensities with CTR contributions.
+:func:`compute_shell_sigma`
+    Compute Ewald shell Gaussian thickness from beam parameters.
+:func:`debye_waller_factor`
+    Calculate Debye-Waller damping factor for thermal vibrations.
+:func:`ewald_allowed_reflections`
+    Find reflections satisfying Ewald sphere condition for given beam angles.
+:func:`extent_to_rod_sigma`
+    Convert domain extent to reciprocal-space rod widths.
+:func:`find_ctr_ewald_intersection`
+    Find intersection of CTR with Ewald sphere for given (h, k) rod.
+:func:`find_kinematic_reflections`
+    Find kinematically allowed reflections for given experimental conditions.
+:func:`finite_domain_intensities`
+    Compute intensities with finite domain broadening.
+:func:`gaussian_rod_profile`
+    Gaussian lateral width profile of rods due to finite correlation length.
+:func:`get_mean_square_displacement`
+    Calculate mean square displacement for given temperature.
+:func:`incident_wavevector`
+    Calculate incident electron wavevector from beam parameters.
+:func:`integrated_rod_intensity`
+    Integrate CTR intensity over finite detector acceptance.
+:func:`kinematic_ctr_simulator`
+    RHEED simulation using continuous crystal truncation rods (streaks).
+:func:`kinematic_simulator`
+    Simulate RHEED pattern with proper atomic form factors and CTRs.
+:func:`kinematic_spot_simulator`
+    RHEED simulation using discrete 3D reciprocal lattice (spots).
+:func:`kirkland_form_factor`
+    Calculate atomic form factor f(q) using Kirkland parameterization.
+:func:`load_kirkland_parameters`
+    Load Kirkland scattering parameters from data file.
+:func:`lorentzian_rod_profile`
+    Lorentzian lateral width profile of rods due to finite correlation length.
+:func:`make_ewald_sphere`
+    Create incident wavevector k_in from beam parameters.
+:func:`multislice_propagate`
+    Propagate electron wave through potential slices using multislice algorithm.
+:func:`multislice_simulator`
+    Simulate RHEED pattern from potential slices using multislice (dynamical).
+:func:`project_on_detector`
+    Project reciprocal lattice points onto detector screen.
+:func:`project_on_detector_geometry`
+    Project reciprocal lattice points with full detector geometry support.
+:func:`rod_ewald_overlap`
+    Compute overlap between broadened rods and Ewald shell.
+:func:`rod_profile_function`
+    Lateral width profile of rods due to finite correlation length.
+:func:`roughness_damping`
+    Gaussian roughness damping factor for CTR intensities.
+:func:`simple_structure_factor`
+    Calculate structure factor F(G) for given G vector and atomic positions.
+:func:`sliced_crystal_to_potential`
+    Convert SlicedCrystal to PotentialSlices for multislice simulation.
+:func:`surface_structure_factor`
+    Calculate structure factor for surface with q_z dependence.
+:func:`wavelength_ang`
+    Calculate electron wavelength in angstroms.
 """
 
 from .ewald import build_ewald_data, ewald_allowed_reflections

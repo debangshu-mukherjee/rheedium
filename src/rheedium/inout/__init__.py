@@ -9,35 +9,35 @@ provides interoperability with ASE and pymatgen libraries.
 
 Routine Listings
 ----------------
-atomic_symbol : function
+:func:`atomic_symbol`
     Returns atomic number for given atomic symbol string.
-from_ase : function
+:func:`from_ase`
     Convert ASE Atoms to CrystalStructure.
-from_pymatgen : function
+:func:`from_pymatgen`
     Convert pymatgen Structure to CrystalStructure.
-kirkland_potentials : function
+:func:`kirkland_potentials`
     Loads Kirkland scattering factors from CSV file.
-lattice_to_cell_params : function
+:func:`lattice_to_cell_params`
     Convert 3x3 lattice vectors to crystallographic cell parameters.
-parse_cif : function
+:func:`parse_cif`
     Parse a CIF file into a JAX-compatible CrystalStructure.
-parse_crystal : function
+:func:`parse_crystal`
     Parse CIF, XYZ, or POSCAR file into simulation-ready CrystalStructure.
-parse_poscar : function
+:func:`parse_poscar`
     Parse VASP POSCAR/CONTCAR file into CrystalStructure.
-parse_vaspxml : function
+:func:`parse_vaspxml`
     Parse vasprun.xml for structure with optional metadata.
-parse_vaspxml_trajectory : function
+:func:`parse_vaspxml_trajectory`
     Parse full trajectory from vasprun.xml.
-parse_xyz : function
+:func:`parse_xyz`
     Parses XYZ files and returns atoms with element symbols and 3D coordinates.
-symmetry_expansion : function
+:func:`symmetry_expansion`
     Apply symmetry operations to expand fractional positions.
-to_ase : function
+:func:`to_ase`
     Convert CrystalStructure to ASE Atoms.
-to_pymatgen : function
+:func:`to_pymatgen`
     Convert CrystalStructure to pymatgen Structure.
-xyz_to_crystal : function
+:func:`xyz_to_crystal`
     Convert XYZData to CrystalStructure for simulation.
 
 Notes

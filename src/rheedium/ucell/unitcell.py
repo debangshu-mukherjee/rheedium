@@ -39,6 +39,7 @@ from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 from rheedium.types import (
     CrystalStructure,
     create_crystal_structure,
+    scalar_bool,
     scalar_float,
     scalar_int,
 )
@@ -52,8 +53,8 @@ def reciprocal_unitcell(
     alpha: scalar_float,
     beta: scalar_float,
     gamma: scalar_float,
-    in_degrees: bool = True,
-    out_degrees: bool = True,
+    in_degrees: scalar_bool = True,
+    out_degrees: scalar_bool = True,
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """
     Calculate reciprocal unit cell parameters from direct cell parameters.
@@ -384,7 +385,7 @@ def generate_reciprocal_points(
     hmax: scalar_int,
     kmax: scalar_int,
     lmax: scalar_int,
-    in_degrees: bool = True,
+    in_degrees: scalar_bool = True,
 ) -> Float[Array, "M 3"]:
     r"""Generate reciprocal-lattice vectors based on the crystal structure.
 
@@ -628,7 +629,7 @@ def reciprocal_lattice_vectors(
     alpha: scalar_float,
     beta: scalar_float,
     gamma: scalar_float,
-    in_degrees: bool = True,
+    in_degrees: scalar_bool = True,
 ) -> Float[Array, "3 3"]:
     """Generate reciprocal lattice basis vectors b₁, b₂, b₃.
 

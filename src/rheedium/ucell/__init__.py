@@ -8,28 +8,28 @@ mathematical functions like Bessel functions used in scattering calculations.
 
 Routine Listings
 ----------------
-angle_in_degrees : function
-    Calculate angle in degrees between two vectors
-atom_scraper : function
-    Filter atoms within specified depth from surface along zone axis
-bessel_kv : function
-    Modified Bessel function of second kind, arbitrary order
-build_cell_vectors : function
-    Convert lattice parameters to Cartesian cell vectors
-compute_lengths_angles : function
-    Extract lattice parameters from cell vectors
-generate_reciprocal_points : function
-    Generate reciprocal lattice points for given Miller indices
-get_unit_cell_matrix : function
-    Build transformation matrix from lattice parameters
-miller_to_reciprocal : function
-    Convert Miller indices to reciprocal lattice basis vectors
-parse_cif_and_scrape : function
-    Parse CIF file and filter atoms within penetration depth
-reciprocal_lattice_vectors : function
-    Generate reciprocal lattice basis vectors b₁, b₂, b₃
-reciprocal_unitcell : function
-    Calculate reciprocal unit cell from direct cell vectors
+:func:`angle_in_degrees`
+    Calculate angle in degrees between two vectors.
+:func:`atom_scraper`
+    Filter atoms within specified depth from surface along zone axis.
+:func:`bessel_kv`
+    Modified Bessel function of second kind, arbitrary order.
+:func:`build_cell_vectors`
+    Convert lattice parameters to Cartesian cell vectors.
+:func:`compute_lengths_angles`
+    Extract lattice parameters from cell vectors.
+:func:`generate_reciprocal_points`
+    Generate reciprocal lattice points for given Miller indices.
+:func:`get_unit_cell_matrix`
+    Build transformation matrix from lattice parameters.
+:func:`miller_to_reciprocal`
+    Convert Miller indices to reciprocal lattice basis vectors.
+:func:`parse_cif_and_scrape`
+    Parse CIF file and filter atoms within penetration depth.
+:func:`reciprocal_lattice_vectors`
+    Generate reciprocal lattice basis vectors b₁, b₂, b₃.
+:func:`reciprocal_unitcell`
+    Calculate reciprocal unit cell from direct cell vectors.
 """
 
 from .bessel import bessel_kv

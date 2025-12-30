@@ -117,7 +117,6 @@ class TestDiagramPlots:
         ax = plot_ctr_profile(
             l_range=(-2.0, 2.0),
             n_points=200,
-            c_spacing=5.0,
         )
         assert isinstance(ax, Axes)
 

@@ -9,18 +9,18 @@ learning applications in materials science and surface physics.
 
 Routine Listings
 ----------------
-inout : module
-    Data input/output operations for crystal structures and RHEED images
-plots : module
-    Visualization tools for RHEED patterns and crystal structures
-recon : module
-    Surface reconstruction analysis and modeling utilities
-simul : module
-    RHEED pattern simulation using kinematic diffraction theory
-types : module
-    Custom type definitions and data structures for JAX compatibility
-ucell : module
-    Unit cell and crystallographic computation utilities
+:mod:`inout`
+    Data input/output operations for crystal structures and RHEED images.
+:mod:`plots`
+    Visualization tools for RHEED patterns and crystal structures.
+:mod:`recon`
+    Surface reconstruction analysis and modeling utilities.
+:mod:`simul`
+    RHEED pattern simulation using kinematic diffraction theory.
+:mod:`types`
+    Custom type definitions and data structures for JAX compatibility.
+:mod:`ucell`
+    Unit cell and crystallographic computation utilities.
 
 Examples
 --------

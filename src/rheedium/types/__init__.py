@@ -8,57 +8,57 @@ that support JAX transformations and automatic differentiation.
 
 Routine Listings
 ----------------
-bulk_to_slice : function
-    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation
-create_crystal_structure : function
-    Factory function to create CrystalStructure instances
-create_ewald_data : function
-    Factory function to create EwaldData instances
-create_potential_slices : function
-    Factory function to create PotentialSlices instances
-create_rheed_image : function
-    Factory function to create RHEEDImage instances
-create_rheed_pattern : function
-    Factory function to create RHEEDPattern instances
-create_sliced_crystal : function
-    Factory function to create SlicedCrystal instances
-create_xyz_data : function
-    Factory function to create XYZData instances
-identify_surface_atoms : function
-    Identify surface atoms using configurable methods
-CrystalStructure : PyTree
-    JAX-compatible crystal structure with fractional and Cartesian coordinates
-EwaldData : PyTree
-    Angle-independent Ewald sphere data for RHEED simulation
-float_image : TypeAlias
-    Type alias for float-valued 2D image arrays
-int_image : TypeAlias
-    Type alias for integer-valued 2D image arrays
-non_jax_number : TypeAlias
-    Union type for non-JAX numeric values (int or float)
-PotentialSlices : PyTree
-    JAX-compatible data structure for representing multislice potential data
-RHEEDImage : PyTree
-    Container for RHEED image data with pixel coordinates and intensity values
-RHEEDPattern : PyTree
+:func:`bulk_to_slice`
+    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation.
+:func:`create_crystal_structure`
+    Factory function to create CrystalStructure instances.
+:func:`create_ewald_data`
+    Factory function to create EwaldData instances.
+:func:`create_potential_slices`
+    Factory function to create PotentialSlices instances.
+:func:`create_rheed_image`
+    Factory function to create RHEEDImage instances.
+:func:`create_rheed_pattern`
+    Factory function to create RHEEDPattern instances.
+:func:`create_sliced_crystal`
+    Factory function to create SlicedCrystal instances.
+:func:`create_xyz_data`
+    Factory function to create XYZData instances.
+:func:`identify_surface_atoms`
+    Identify surface atoms using configurable methods.
+:class:`CrystalStructure`
+    JAX-compatible crystal structure with fractional and Cartesian coordinates.
+:class:`DetectorGeometry`
+    Configuration for RHEED detector geometry (tilt, curvature, offsets).
+:class:`EwaldData`
+    Angle-independent Ewald sphere data for RHEED simulation.
+:obj:`float_image`
+    Type alias for float-valued 2D image arrays.
+:obj:`int_image`
+    Type alias for integer-valued 2D image arrays.
+:obj:`non_jax_number`
+    Union type for non-JAX numeric values (int or float).
+:class:`PotentialSlices`
+    JAX-compatible data structure for representing multislice potential data.
+:class:`RHEEDImage`
+    Container for RHEED image data with pixel coordinates and intensity values.
+:class:`RHEEDPattern`
     Container for RHEED diffraction pattern data with detector points and
     intensities.
-scalar_bool : TypeAlias
-    Union type for scalar boolean values (bool or JAX scalar array)
-scalar_float : TypeAlias
-    Union type for scalar float values (float or JAX scalar array)
-scalar_int : TypeAlias
-    Union type for scalar integer values (int or JAX scalar array)
-scalar_num : TypeAlias
-    Union type for scalar numeric values (int, float, or JAX scalar array)
-SlicedCrystal : PyTree
-    JAX-compatible crystal structure sliced for multislice simulation
-SurfaceConfig : NamedTuple
-    Configuration for surface atom identification method and parameters
-DetectorGeometry : NamedTuple
-    Configuration for RHEED detector geometry (tilt, curvature, offsets)
-XYZData : PyTree
-    A PyTree for XYZ file data with atomic positions and metadata
+:obj:`scalar_bool`
+    Union type for scalar boolean values (bool or JAX scalar array).
+:obj:`scalar_float`
+    Union type for scalar float values (float or JAX scalar array).
+:obj:`scalar_int`
+    Union type for scalar integer values (int or JAX scalar array).
+:obj:`scalar_num`
+    Union type for scalar numeric values (int, float, or JAX scalar array).
+:class:`SlicedCrystal`
+    JAX-compatible crystal structure sliced for multislice simulation.
+:class:`SurfaceConfig`
+    Configuration for surface atom identification method and parameters.
+:class:`XYZData`
+    A PyTree for XYZ file data with atomic positions and metadata.
 
 Notes
 -----

@@ -9,35 +9,35 @@ setups, as well as pedagogical diagrams for documentation.
 
 Routine Listings
 ----------------
-create_phosphor_colormap : function
+:func:`create_phosphor_colormap`
     Create a custom colormap that simulates a phosphor screen appearance.
-plot_crystal_structure_3d : function
+:func:`plot_crystal_structure_3d`
     Plot 3D crystal structure with atomic positions.
-plot_ctr_profile : function
+:func:`plot_ctr_profile`
     Plot crystal truncation rod intensity profile.
-plot_debye_waller : function
+:func:`plot_debye_waller`
     Plot Debye-Waller damping factor at different temperatures.
-plot_ewald_sphere_2d : function
+:func:`plot_ewald_sphere_2d`
     Plot 2D cross-section of Ewald sphere construction.
-plot_ewald_sphere_3d : function
+:func:`plot_ewald_sphere_3d`
     Plot 3D visualization of Ewald sphere with reciprocal rods.
-plot_form_factors : function
+:func:`plot_form_factors`
     Plot atomic form factors f(q) for multiple elements.
-plot_grazing_incidence_geometry : function
+:func:`plot_grazing_incidence_geometry`
     Plot grazing incidence geometry diagram for RHEED.
-plot_rheed : function
+:func:`plot_rheed`
     Interpolate RHEED spots onto a uniform grid and display.
-plot_rod_broadening : function
+:func:`plot_rod_broadening`
     Plot lateral rod broadening for different correlation lengths.
-plot_roughness_damping : function
+:func:`plot_roughness_damping`
     Plot surface roughness damping for different roughness values.
-plot_structure_factor_phases : function
+:func:`plot_structure_factor_phases`
     Plot Argand diagram showing structure factor phase contributions.
-plot_unit_cell_3d : function
+:func:`plot_unit_cell_3d`
     Plot 3D unit cell with lattice vectors.
-plot_wavelength_curve : function
+:func:`plot_wavelength_curve`
     Plot electron wavelength vs accelerating voltage.
-view_atoms : function
+:func:`view_atoms`
     View atoms in a CrystalStructure with 3D visualization.
 
 Notes
