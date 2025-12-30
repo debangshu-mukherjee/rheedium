@@ -59,8 +59,6 @@ def reciprocal_unitcell(
     """
     Calculate reciprocal unit cell parameters from direct cell parameters.
 
-    Description
-    -----------
     Computes reciprocal lattice parameters (a*, b*, c*, α*, β*, γ*) from
     direct lattice parameters using crystallographic relationships.
 
@@ -298,7 +296,7 @@ def build_cell_vectors(
         / jnp.sin(gamma_rad)
     )
     c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
-    c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, a_min=0.0))
+    c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, min=0.0))
     c_vec: Float[Array, "3"] = jnp.array([c_x, c_y, c_z])
     cell_vectors: Float[Array, "3 3"] = jnp.stack(
         [a_vec, b_vec, c_vec], axis=0
@@ -633,8 +631,6 @@ def reciprocal_lattice_vectors(
 ) -> Float[Array, "3 3"]:
     """Generate reciprocal lattice basis vectors b₁, b₂, b₃.
 
-    Description
-    -----------
     Computes the three reciprocal lattice basis vectors from direct lattice
     parameters using the crystallographic relationships:
     b₁ = 2π(a₂ × a₃)/(a₁ · (a₂ × a₃))
@@ -724,8 +720,6 @@ def miller_to_reciprocal(
 ) -> Float[Array, "... 3"]:
     """Convert Miller indices to reciprocal space vectors.
 
-    Description
-    -----------
     Transforms Miller indices (h,k,l) to reciprocal space vectors G
     using the reciprocal lattice basis vectors. Each reciprocal vector
     is computed as G = h*b₁ + k*b₂ + l*b₃ where b₁, b₂, b₃ are the

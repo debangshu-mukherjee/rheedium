@@ -299,8 +299,6 @@ def find_ctr_ewald_intersection(
 ) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
     """Find where a crystal truncation rod intersects the Ewald sphere.
 
-    Description
-    -----------
     Solves quadratic equation for rod-sphere intersection and returns
     the solution with upward scattering (k_out_z > 0).
 
@@ -370,8 +368,6 @@ def kinematic_ctr_simulator(
 ) -> RHEEDPattern:
     """RHEED simulation with continuous CTR streaks.
 
-    Description
-    -----------
     Generates vertical streaks by sampling l continuously along each
     allowed (h,k) rod. Applies structure factor extinction and CTR
     intensity modulation.

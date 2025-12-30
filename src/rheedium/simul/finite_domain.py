@@ -50,7 +50,7 @@ References
 
 from __future__ import annotations
 
-from typing import Tuple
+from beartype.typing import Tuple
 
 import jax
 import jax.numpy as jnp
@@ -75,8 +75,6 @@ def compute_domain_extent(
 ) -> Float[Array, "3"]:
     """Compute domain extent from atomic positions bounding box.
 
-    Description
-    -----------
     Calculates the physical extent of a coherent scattering domain as the
     bounding box of atomic positions plus optional padding. This extent
     determines the reciprocal-space rod broadening via the Fourier
@@ -137,8 +135,6 @@ def extent_to_rod_sigma(
 ) -> Float[Array, "2"]:
     """Convert domain extent to reciprocal-space rod Gaussian widths.
 
-    Description
-    -----------
     Computes the Gaussian σ for reciprocal lattice rod profiles from
     real-space domain size. Uses the Fourier uncertainty relation with
     a conversion factor that matches the FWHM of a sinc² profile.
@@ -197,8 +193,6 @@ def compute_shell_sigma(
 ) -> Float[Array, ""]:
     """Compute Ewald shell Gaussian thickness from beam parameters.
 
-    Description
-    -----------
     Calculates the Gaussian width of the Ewald shell due to energy spread
     and beam angular divergence. These instrumental factors cause the
     Ewald "sphere" to have finite thickness, allowing partial intensity
@@ -274,8 +268,6 @@ def rod_ewald_overlap(
 ) -> Float[Array, "N"]:
     """Compute overlap between broadened rods and Ewald shell.
 
-    Description
-    -----------
     Calculates the intensity contribution from finite-width reciprocal
     lattice rods intersecting a finite-thickness Ewald shell. Both are
     modeled as Gaussians for analytic evaluation. This replaces the
@@ -389,8 +381,6 @@ def finite_domain_intensities(
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Compute diffraction intensities with finite domain broadening.
 
-    Description
-    -----------
     Calculates kinematic diffraction intensities accounting for finite
     coherent domain size and beam parameters. The base intensities from
     EwaldData are weighted by the rod-Ewald overlap factors.

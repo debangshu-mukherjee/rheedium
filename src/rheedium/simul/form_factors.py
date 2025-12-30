@@ -163,8 +163,6 @@ def load_kirkland_parameters(
 ) -> Tuple[Float[Array, "6"], Float[Array, "6"]]:
     """Load Kirkland scattering parameters for a given atomic number.
 
-    Description
-    -----------
     Extracts the Kirkland parameterization coefficients for atomic form
     factors from the preloaded data. The Kirkland model uses 6 Gaussian
     terms to approximate the atomic scattering factor.
@@ -220,8 +218,6 @@ def kirkland_form_factor(
 ) -> Float[Array, "..."]:
     """Calculate atomic form factor f(q) using Kirkland parameterization.
 
-    Description
-    -----------
     Computes the atomic scattering factor for electrons using the Kirkland
     parameterization, which represents the form factor as a sum of Gaussians.
     This is optimized for electron diffraction calculations.
@@ -281,8 +277,6 @@ def kirkland_projected_potential(
 ) -> Float[Array, "..."]:
     """Calculate projected atomic potential using Kirkland parameterization.
 
-    Description
-    -----------
     Computes the 2D projected atomic potential for multislice calculations
     using Kirkland parameterization. This is the integral of the 3D atomic
     potential along the beam direction.
@@ -474,8 +468,6 @@ def debye_waller_factor(
 ) -> Float[Array, "..."]:
     """Calculate Debye-Waller damping factor for thermal vibrations.
 
-    Description
-    -----------
     Computes the Debye-Waller temperature factor that accounts for
     reduction in scattering intensity due to thermal atomic vibrations.
 
@@ -528,8 +520,6 @@ def atomic_scattering_factor(
 ) -> Float[Array, "..."]:
     """Calculate combined atomic scattering factor with thermal damping.
 
-    Description
-    -----------
     Computes the total atomic scattering factor by combining the
     q-dependent form factor with the Debye-Waller temperature factor.
     This gives the effective scattering amplitude including thermal effects.

@@ -61,8 +61,6 @@ def _compute_structure_factor_single(
 ) -> Complex[Array, ""]:
     r"""Compute structure factor F(G) for a single reciprocal vector.
 
-    Description
-    -----------
     Calculates the crystallographic structure factor including Kirkland
     atomic form factors and Debye-Waller thermal damping:
 
@@ -136,8 +134,6 @@ def build_ewald_data(
 ) -> EwaldData:
     r"""Build angle-independent EwaldData from crystal and beam parameters.
 
-    Description
-    -----------
     Constructs an EwaldData PyTree containing all angle-independent quantities
     needed for RHEED simulation: Ewald sphere geometry, reciprocal lattice
     points, and pre-computed structure factors with atomic form factors and
@@ -279,8 +275,6 @@ def ewald_allowed_reflections(
 ) -> tuple[Int[Array, "N"], Float[Array, "N 3"], Float[Array, "N"]]:
     r"""Find reflections satisfying Ewald sphere condition at beam angles.
 
-    Description
-    -----------
     Given pre-computed EwaldData and beam orientation angles, find which
     reciprocal lattice points lie on the Ewald sphere. Supports two modes:
 

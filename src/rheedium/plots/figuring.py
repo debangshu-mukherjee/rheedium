@@ -112,8 +112,6 @@ def plot_rheed(
 ) -> None:
     """Plot RHEED pattern with multiple rendering options.
 
-    Description
-    -----------
     Renders RHEED pattern to 2D image using interpolation or Gaussian
     broadening, then displays with phosphor-screen colormap.
 

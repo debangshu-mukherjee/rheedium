@@ -1221,7 +1221,13 @@ def identify_surface_atoms(
 
         # Assign layer indices (0 = bottom, higher = top)
         layer_indices: Int[Array, "N"] = jnp.cumsum(
-            jnp.concatenate([jnp.array([0]), layer_breaks.astype(jnp.int32)])
+            jnp.concatenate(
+                [
+                    jnp.array([0], dtype=jnp.int32),
+                    layer_breaks.astype(jnp.int32),
+                ]
+            ),
+            dtype=jnp.int32,
         )
 
         # Map back to original atom order

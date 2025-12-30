@@ -61,8 +61,6 @@ def calculate_ctr_intensity(
 ) -> Float[Array, "N M"]:
     """Calculate continuous intensity along crystal truncation rods (CTRs).
 
-    Description
-    -----------
     Computes the intensity distribution along CTRs for given in-plane
     reciprocal lattice points (h,k). The intensity varies continuously
     along q_z due to the finite crystal thickness and surface termination.
@@ -168,8 +166,6 @@ def calculate_ctr_amplitude(
 ) -> Complex[Array, "N M"]:
     """Calculate complex amplitude along crystal truncation rods (CTRs).
 
-    Description
-    -----------
     Computes the complex amplitude (structure factor × roughness damping)
     along CTRs for given in-plane reciprocal lattice points (h,k). This is
     used for coherent mixing with kinematic scattering amplitudes.
@@ -270,8 +266,6 @@ def integrated_ctr_amplitude(
 ) -> Complex[Array, ""]:
     """Integrate CTR amplitude over finite detector acceptance.
 
-    Description
-    -----------
     Calculates an effective complex amplitude for a detector with finite
     angular acceptance by coherently averaging CTR amplitudes over a range
     of q_z values. This is used for coherent mixing with kinematic scattering.
@@ -338,8 +332,6 @@ def roughness_damping(
 ) -> Float[Array, "..."]:
     """Gaussian roughness damping factor for CTR intensities.
 
-    Description
-    -----------
     Calculates the damping factor due to surface roughness, which
     reduces the CTR intensity especially at large q_z values. Assumes
     Gaussian height distribution with RMS roughness σ_h.
@@ -387,8 +379,6 @@ def gaussian_rod_profile(
 ) -> Float[Array, "..."]:
     """Gaussian lateral width profile of rods due to finite correlation length.
 
-    Description
-    -----------
     Calculates the Gaussian lateral intensity profile of CTRs perpendicular
     to the rod direction. The width in reciprocal space is inversely
     proportional to the real-space correlation length.
@@ -436,8 +426,6 @@ def lorentzian_rod_profile(
 ) -> Float[Array, "..."]:
     """Lorentzian lateral width profile of rods with finite correlation length.
 
-    Description
-    -----------
     Calculates the Lorentzian lateral intensity profile of CTRs perpendicular
     to the rod direction. This profile corresponds to exponentially decaying
     surface correlations.
@@ -479,8 +467,6 @@ def rod_profile_function(
 ) -> Float[Array, "..."]:
     """Lateral width profile of rods due to finite correlation length.
 
-    Description
-    -----------
     Calculates the lateral intensity profile of CTRs perpendicular to
     the rod direction using JAX-safe conditional logic. Finite correlation
     length of surface features causes rods to have finite width in reciprocal
@@ -530,8 +516,6 @@ def surface_structure_factor(
 ) -> Complex[Array, ""]:
     """Calculate structure factor for surface with q_z dependence.
 
-    Description
-    -----------
     Computes the complex structure factor F(q) for a surface, including
     atomic form factors and Debye-Waller factors. Surface atoms can be
     treated with enhanced thermal vibrations via per-atom masking.
@@ -618,8 +602,6 @@ def integrated_rod_intensity(
 ) -> scalar_float:
     """Integrate CTR intensity over finite detector acceptance.
 
-    Description
-    -----------
     Calculates the total intensity collected by a detector with finite
     angular acceptance by integrating the CTR intensity over a range
     of q_z values. This accounts for the finite detector pixel size.

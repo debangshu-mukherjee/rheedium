@@ -20,3 +20,4 @@ Interactive Jupyter notebooks demonstrating how to use Rheedium for RHEED patter
    01_kinematic_MgO
    02_kinematic_SrTiO3
    03_finite_domain
+   04_bi2se3_temperature
