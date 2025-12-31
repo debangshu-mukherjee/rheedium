@@ -349,29 +349,24 @@ Layer selection directly impacts the RHEED pattern. Here's how different layer c
 
 ```python
 import rheedium as rh
-import matplotlib.pyplot as plt
-from rheedium.types.rheed_types import SurfaceConfig
 
-# Load crystal and build Ewald data
+# Load crystal structure
 crystal = rh.io.parse_cif("SrTiO3.cif")
-ewald = rh.kinematic.build_ewald_data(crystal, voltage_kv=15.0, hkl_max=5)
 
 # Compare different surface depths
-fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 fractions = [0.1, 0.3, 0.5]
 
-for ax, frac in zip(axes, fractions):
-    pattern = rh.kinematic.kinematic_simulator(
+for frac in fractions:
+    pattern = rh.simul.kinematic_simulator(
         crystal,
-        ewald,
+        voltage_kv=15.0,
         theta_deg=2.0,
+        hmax=5,
+        kmax=5,
         surface_fraction=frac,
+        surface_roughness=0.3,
     )
-    rh.plots.plot_rheed(pattern, ax=ax, cmap_name="phosphor")
-    ax.set_title(f"Surface fraction = {frac}")
-
-plt.suptitle("Effect of Surface Depth on RHEED Pattern")
-plt.savefig("layer_depth_comparison.svg", bbox_inches="tight")
+    rh.plots.plot_rheed(pattern, cmap_name="phosphor")
 ```
 
 ```{figure} figures/layer_depth_comparison.svg
@@ -384,25 +379,34 @@ RHEED patterns showing how `surface_fraction` controls the depth of atoms contri
 ### Layer-Based vs. Height-Based Selection
 
 ```python
-# Compare selection methods
-fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+import rheedium as rh
+from rheedium.types.rheed_types import SurfaceConfig
 
-# Height-based (default)
-pattern_height = rh.kinematic.kinematic_simulator(
-    crystal, ewald, theta_deg=2.0, surface_fraction=0.2
+crystal = rh.io.parse_cif("SrTiO3.cif")
+
+# Default selection (uses surface_fraction)
+pattern_default = rh.simul.ewald_simulator(
+    crystal,
+    voltage_kv=15.0,
+    theta_deg=2.0,
+    hmax=5,
+    kmax=5,
+    surface_roughness=0.3,
 )
-rh.plots.plot_rheed(pattern_height, ax=axes[0], cmap_name="phosphor")
-axes[0].set_title("Height-based selection")
+rh.plots.plot_rheed(pattern_default, cmap_name="phosphor")
 
-# Layer-based
+# Layer-based selection (uses SurfaceConfig)
 config = SurfaceConfig(method="layers", n_layers=2)
-pattern_layers = rh.kinematic.kinematic_simulator(
-    crystal, ewald, theta_deg=2.0, surface_config=config
+pattern_layers = rh.simul.ewald_simulator(
+    crystal,
+    voltage_kv=15.0,
+    theta_deg=2.0,
+    hmax=5,
+    kmax=5,
+    surface_config=config,
+    surface_roughness=0.3,
 )
-rh.plots.plot_rheed(pattern_layers, ax=axes[1], cmap_name="phosphor")
-axes[1].set_title("Layer-based selection (2 layers)")
-
-plt.savefig("selection_method_comparison.svg", bbox_inches="tight")
+rh.plots.plot_rheed(pattern_layers, cmap_name="phosphor")
 ```
 
 ```{figure} figures/selection_method_comparison.svg

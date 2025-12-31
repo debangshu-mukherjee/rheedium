@@ -273,6 +273,6 @@ This allows functions to accept either Python primitives or JAX arrays transpare
 
 ## Key Source Files
 
-- [`types/crystal_types.py`](../../src/rheedium/types/crystal_types.py) - Crystal and Ewald PyTrees
-- [`types/rheed_types.py`](../../src/rheedium/types/rheed_types.py) - RHEED pattern and image PyTrees
-- [`types/custom_types.py`](../../src/rheedium/types/custom_types.py) - Type aliases
+- [`types/crystal_types.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/types/crystal_types.py) - Crystal and Ewald PyTrees
+- [`types/rheed_types.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/types/rheed_types.py) - RHEED pattern and image PyTrees
+- [`types/custom_types.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/types/custom_types.py) - Type aliases

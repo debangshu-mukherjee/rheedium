@@ -356,6 +356,6 @@ plt.show()
 
 ## Key Source Files
 
-- [`simul/ewald.py`](../../src/rheedium/simul/ewald.py) - Ewald sphere geometry and `build_ewald_data()`
-- [`simul/finite_domain.py`](../../src/rheedium/simul/finite_domain.py) - Finite domain overlap calculations
-- [`simul/simul_utils.py`](../../src/rheedium/simul/simul_utils.py) - Wavevector utilities
+- [`simul/ewald.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/ewald.py) - Ewald sphere geometry and `build_ewald_data()`
+- [`simul/finite_domain.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/finite_domain.py) - Finite domain overlap calculations
+- [`simul/simul_utils.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simul_utils.py) - Wavevector utilities

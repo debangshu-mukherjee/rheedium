@@ -428,6 +428,6 @@ pattern = kinematic_spot_simulator(slab, ewald, theta_deg=2.0)
 
 ## Key Source Files
 
-- [`ucell/unitcell.py`](../../src/rheedium/ucell/unitcell.py) - Lattice construction, reciprocal space
-- [`ucell/helper.py`](../../src/rheedium/ucell/helper.py) - Supercells, surface slabs, atom scraping
-- [`types/rheed_types.py`](../../src/rheedium/types/rheed_types.py) - SlicedCrystal definition
+- [`ucell/unitcell.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/ucell/unitcell.py) - Lattice construction, reciprocal space
+- [`ucell/helper.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/ucell/helper.py) - Supercells, surface slabs, atom scraping
+- [`types/rheed_types.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/types/rheed_types.py) - SlicedCrystal definition

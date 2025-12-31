@@ -387,7 +387,7 @@ rh.plots.plot_rheed(pattern, grid_size=300)
 
 ## Key Source Files
 
-- [`simul/simulator.py`](../../src/rheedium/simul/simulator.py) - `kinematic_simulator` with angle parameters
-- [`simul/simul_utils.py`](../../src/rheedium/simul/simul_utils.py) - `incident_wavevector` calculation
-- [`types/crystal_types.py`](../../src/rheedium/types/crystal_types.py) - `bulk_to_slice` for surface reorientation
-- [`plots/figuring.py`](../../src/rheedium/plots/figuring.py) - `plot_rheed` visualization
+- [`simul/simulator.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simulator.py) - `kinematic_simulator` with angle parameters
+- [`simul/simul_utils.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simul_utils.py) - `incident_wavevector` calculation
+- [`types/crystal_types.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/types/crystal_types.py) - `bulk_to_slice` for surface reorientation
+- [`plots/figuring.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/plots/figuring.py) - `plot_rheed` visualization

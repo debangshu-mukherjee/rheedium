@@ -318,38 +318,28 @@ The kinematic theory produces actual diffraction patterns. Here's a complete exa
 
 ```python
 import rheedium as rh
-import matplotlib.pyplot as plt
 
 # Load crystal structure
 crystal = rh.io.parse_cif("MgO.cif")
 
-# Build Ewald data (angle-independent)
-ewald = rh.kinematic.build_ewald_data(
+# Simulate at 2° grazing incidence
+pattern = rh.simul.kinematic_simulator(
     crystal,
     voltage_kv=15.0,
-    hkl_max=5,
-)
-
-# Simulate at 2° grazing incidence
-pattern = rh.kinematic.kinematic_simulator(
-    crystal,
-    ewald,
     theta_deg=2.0,
     phi_deg=0.0,
-    roughness=0.1,
+    hmax=5,
+    kmax=5,
+    surface_roughness=0.3,
 )
 
 # Render the pattern
-fig, ax = plt.subplots(figsize=(10, 8))
 rh.plots.plot_rheed(
     pattern,
     grid_size=400,
     spot_width=0.03,
     cmap_name="phosphor",
-    ax=ax,
 )
-ax.set_title("MgO RHEED Pattern (θ=2°, [100] azimuth)")
-plt.savefig("mgo_rheed_pattern.svg", bbox_inches="tight")
 ```
 
 ```{figure} figures/mgo_kinematic_rheed.svg
@@ -364,21 +354,22 @@ Simulated MgO RHEED pattern at 2° grazing incidence along the [100] azimuth. Th
 The structure factor determines which reflections are allowed and their intensities:
 
 ```python
+import rheedium as rh
+
 # Compare rock salt (MgO) vs. perovskite (SrTiO3) patterns
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-
-for ax, cif_file, title in zip(
-    axes,
-    ["MgO.cif", "SrTiO3.cif"],
-    ["Rock salt (MgO)", "Perovskite (SrTiO₃)"]
-):
+for cif_file, title in [
+    ("MgO.cif", "Rock salt (MgO)"),
+    ("SrTiO3.cif", "Perovskite (SrTiO₃)")
+]:
     crystal = rh.io.parse_cif(cif_file)
-    ewald = rh.kinematic.build_ewald_data(crystal, voltage_kv=15.0, hkl_max=5)
-    pattern = rh.kinematic.kinematic_simulator(crystal, ewald, theta_deg=2.0)
-    rh.plots.plot_rheed(pattern, ax=ax, cmap_name="phosphor")
-    ax.set_title(title)
-
-plt.savefig("structure_factor_comparison.svg", bbox_inches="tight")
+    pattern = rh.simul.kinematic_simulator(
+        crystal,
+        voltage_kv=15.0,
+        theta_deg=2.0,
+        hmax=5,
+        kmax=5,
+    )
+    rh.plots.plot_rheed(pattern, cmap_name="phosphor")
 ```
 
 ```{figure} figures/structure_factor_comparison.svg

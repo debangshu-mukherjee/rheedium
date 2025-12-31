@@ -312,6 +312,6 @@ Each step is implemented in rheedium's `simul` module and produces data structur
 
 ## Key Source Files
 
-- [`simul/kinematic.py`](../../src/rheedium/simul/kinematic.py) - Main simulation functions
-- [`simul/simulator.py`](../../src/rheedium/simul/simulator.py) - Intensity calculations with CTRs
-- [`simul/simul_utils.py`](../../src/rheedium/simul/simul_utils.py) - Wavelength and wavevector utilities
+- [`simul/kinematic.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/kinematic.py) - Main simulation functions
+- [`simul/simulator.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simulator.py) - Intensity calculations with CTRs
+- [`simul/simul_utils.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simul_utils.py) - Wavelength and wavevector utilities

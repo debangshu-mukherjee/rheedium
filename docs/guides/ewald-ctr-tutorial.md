@@ -543,7 +543,7 @@ This approach produces physically accurate RHEED patterns that correctly represe
 
 ## Key Source Files
 
-- [`simul/simulator.py`](../../src/rheedium/simul/simulator.py) — `ewald_simulator` and `find_ctr_ewald_intersection`
-- [`simul/form_factors.py`](../../src/rheedium/simul/form_factors.py) — Kirkland atomic form factors
-- [`simul/surface_rods.py`](../../src/rheedium/simul/surface_rods.py) — CTR intensity calculations
-- [`simul/simul_utils.py`](../../src/rheedium/simul/simul_utils.py) — Wavelength and wavevector utilities
+- [`simul/simulator.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simulator.py) — `ewald_simulator` and `find_ctr_ewald_intersection`
+- [`simul/form_factors.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/form_factors.py) — Kirkland atomic form factors
+- [`simul/surface_rods.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/surface_rods.py) — CTR intensity calculations
+- [`simul/simul_utils.py`](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/simul/simul_utils.py) — Wavelength and wavevector utilities

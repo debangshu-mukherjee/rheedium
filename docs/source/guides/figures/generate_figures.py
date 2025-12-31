@@ -84,7 +84,9 @@ def generate_kinematic_figures() -> None:
     plt.figure(figsize=FIGSIZE_TALL)
     # Simple perovskite-like positions
     positions = [(0.0, 0.0), (0.5, 0.5), (0.5, 0.0), (0.0, 0.5)]
-    plot_structure_factor_phases(atom_positions_2d=positions, g_vector=(1.0, 1.0))
+    plot_structure_factor_phases(
+        atom_positions_2d=positions, g_vector=(1.0, 1.0)
+    )
     save_fig("structure_factor_phases.png")
 
 
@@ -107,19 +109,25 @@ def generate_ewald_figures() -> None:
     # 2. 3D front view (elev=0, azim=0)
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
-    plot_ewald_sphere_3d(voltage_kv=15.0, theta_deg=2.0, elev=0.0, azim=0.0, ax=ax)
+    plot_ewald_sphere_3d(
+        voltage_kv=15.0, theta_deg=2.0, elev=0.0, azim=0.0, ax=ax
+    )
     save_fig("ewald_sphere_3d_front.png")
 
     # 3. 3D perspective view (elev=20, azim=45)
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
-    plot_ewald_sphere_3d(voltage_kv=15.0, theta_deg=2.0, elev=20.0, azim=45.0, ax=ax)
+    plot_ewald_sphere_3d(
+        voltage_kv=15.0, theta_deg=2.0, elev=20.0, azim=45.0, ax=ax
+    )
     save_fig("ewald_sphere_3d_perspective.png")
 
     # 4. 3D top view (elev=90, azim=0)
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
-    plot_ewald_sphere_3d(voltage_kv=15.0, theta_deg=2.0, elev=90.0, azim=0.0, ax=ax)
+    plot_ewald_sphere_3d(
+        voltage_kv=15.0, theta_deg=2.0, elev=90.0, azim=0.0, ax=ax
+    )
     save_fig("ewald_sphere_3d_top.png")
 
     # 5. Grazing incidence geometry
@@ -327,7 +335,9 @@ def generate_unit_cell_figures() -> None:
     save_fig("crystal_structure_example.png")
 
     # 4. Miller indices diagram (conceptual)
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), subplot_kw={"projection": "3d"})
+    fig, axes = plt.subplots(
+        1, 3, figsize=(15, 5), subplot_kw={"projection": "3d"}
+    )
 
     for idx, (hkl, title) in enumerate(
         [((1, 0, 0), "(100)"), ((1, 1, 0), "(110)"), ((1, 1, 1), "(111)")]
@@ -352,15 +362,21 @@ def generate_unit_cell_figures() -> None:
             xx = np.linspace(0, cell, 2)
             yy = cell - xx
             zz = np.array([[0, 0], [cell, cell]])
-            ax.plot_surface(xx[:, np.newaxis] * np.ones((2, 2)),
-                          yy[:, np.newaxis] * np.ones((2, 2)),
-                          zz, alpha=0.5, color="green")
+            ax.plot_surface(
+                xx[:, np.newaxis] * np.ones((2, 2)),
+                yy[:, np.newaxis] * np.ones((2, 2)),
+                zz,
+                alpha=0.5,
+                color="green",
+            )
         elif hkl == (1, 1, 1):
             # (111) plane - triangle
             from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
             verts = [[(cell, 0, 0), (0, cell, 0), (0, 0, cell)]]
-            ax.add_collection3d(Poly3DCollection(verts, alpha=0.5, color="red"))
+            ax.add_collection3d(
+                Poly3DCollection(verts, alpha=0.5, color="red")
+            )
 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
@@ -494,11 +510,25 @@ def generate_data_wrangling_figures() -> None:
 
     for x, y, w, h, label in boxes:
         color = colors.get(label, "#FFFFFF")
-        rect = plt.Rectangle((x, y), w, h, fill=True, facecolor=color,
-                              edgecolor="black", linewidth=2)
+        rect = plt.Rectangle(
+            (x, y),
+            w,
+            h,
+            fill=True,
+            facecolor=color,
+            edgecolor="black",
+            linewidth=2,
+        )
         ax.add_patch(rect)
-        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
-                fontsize=10, fontweight="bold")
+        ax.text(
+            x + w / 2,
+            y + h / 2,
+            label,
+            ha="center",
+            va="center",
+            fontsize=10,
+            fontweight="bold",
+        )
 
     # Draw arrows
     arrows = [
@@ -541,8 +571,15 @@ def generate_pytree_figures() -> None:
     ax.axis("off")
 
     # Level 0: Root
-    ax.text(0.5, 0.95, "rheedium Data Structures", ha="center", va="center",
-            fontsize=16, fontweight="bold")
+    ax.text(
+        0.5,
+        0.95,
+        "rheedium Data Structures",
+        ha="center",
+        va="center",
+        fontsize=16,
+        fontweight="bold",
+    )
 
     # Level 1: Main categories
     categories = [
@@ -551,10 +588,25 @@ def generate_pytree_figures() -> None:
         (0.8, 0.78, "Output Data"),
     ]
     for x, y, label in categories:
-        rect = plt.Rectangle((x - 0.08, y - 0.04), 0.16, 0.08, fill=True,
-                              facecolor="#E8F4FD", edgecolor="black", linewidth=2)
+        rect = plt.Rectangle(
+            (x - 0.08, y - 0.04),
+            0.16,
+            0.08,
+            fill=True,
+            facecolor="#E8F4FD",
+            edgecolor="black",
+            linewidth=2,
+        )
         ax.add_patch(rect)
-        ax.text(x, y, label, ha="center", va="center", fontsize=11, fontweight="bold")
+        ax.text(
+            x,
+            y,
+            label,
+            ha="center",
+            va="center",
+            fontsize=11,
+            fontweight="bold",
+        )
 
     # Level 2: PyTree types
     pytrees = [
@@ -570,8 +622,15 @@ def generate_pytree_figures() -> None:
     ]
 
     for x, y, label, color in pytrees:
-        rect = plt.Rectangle((x - 0.07, y - 0.04), 0.14, 0.08, fill=True,
-                              facecolor=color, edgecolor="black", linewidth=1.5)
+        rect = plt.Rectangle(
+            (x - 0.07, y - 0.04),
+            0.14,
+            0.08,
+            fill=True,
+            facecolor=color,
+            edgecolor="black",
+            linewidth=1.5,
+        )
         ax.add_patch(rect)
         ax.text(x, y, label, ha="center", va="center", fontsize=9)
 
@@ -580,7 +639,11 @@ def generate_pytree_figures() -> None:
         # XYZData
         (0.12, 0.42, "positions\natomic_numbers\nlattice"),
         # CrystalStructure
-        (0.42, 0.42, "frac_positions\ncart_positions\ncell_lengths\ncell_angles"),
+        (
+            0.42,
+            0.42,
+            "frac_positions\ncart_positions\ncell_lengths\ncell_angles",
+        ),
         # EwaldData
         (0.58, 0.42, "wavelength\ng_vectors\nstructure_factors"),
         # RHEEDPattern
@@ -588,8 +651,16 @@ def generate_pytree_figures() -> None:
     ]
 
     for x, y, text in attrs:
-        ax.text(x, y, text, ha="center", va="top", fontsize=8,
-                family="monospace", linespacing=1.5)
+        ax.text(
+            x,
+            y,
+            text,
+            ha="center",
+            va="top",
+            fontsize=8,
+            family="monospace",
+            linespacing=1.5,
+        )
 
     # Draw connecting lines
     connections = [
@@ -624,14 +695,226 @@ def generate_pytree_figures() -> None:
     )
 
     # Legend
-    ax.text(0.5, 0.18, "Workflow: Parse → Build Crystal → Compute Ewald → Simulate",
-            ha="center", va="center", fontsize=11, style="italic", color="blue")
+    ax.text(
+        0.5,
+        0.18,
+        "Workflow: Parse → Build Crystal → Compute Ewald → Simulate",
+        ha="center",
+        va="center",
+        fontsize=11,
+        style="italic",
+        color="blue",
+    )
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_title("PyTree Data Structure Hierarchy", fontsize=14, pad=20)
 
     save_fig("pytree_hierarchy.png")
+
+
+# =============================================================================
+# RHEED Pattern Figures
+# =============================================================================
+
+
+def _render_rheed_to_image(
+    rheed_pattern, grid_size: int = 300, spot_width: float = 0.04
+):
+    """Render RHEED pattern to a 2D image array for subplotting."""
+    coords = np.asarray(rheed_pattern.detector_points)
+    x_np = coords[:, 0]
+    y_np = coords[:, 1]
+    i_np = np.asarray(rheed_pattern.intensities)
+
+    x_min = float(x_np.min()) - 0.5
+    x_max = float(x_np.max()) + 0.5
+    y_min = float(y_np.min()) - 0.5
+    y_max = float(y_np.max()) + 0.5
+
+    x_axis = np.linspace(x_min, x_max, grid_size)
+    y_axis = np.linspace(y_min, y_max, grid_size)
+    xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
+    image = np.zeros((grid_size, grid_size))
+
+    for idx in range(len(i_np)):
+        x0 = x_np[idx]
+        y0 = y_np[idx]
+        i0 = i_np[idx]
+        image += i0 * np.exp(
+            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width**2)
+        )
+
+    extent = [x_min, x_max, y_min, y_max]
+    return image, extent
+
+
+def generate_rheed_pattern_figures() -> None:
+    """Generate RHEED pattern figures for guides."""
+    print("\nGenerating RHEED pattern figures...")
+
+    from rheedium.inout.cif import parse_cif
+    from rheedium.plots.figuring import create_phosphor_colormap
+    from rheedium.simul.simulator import ewald_simulator, kinematic_simulator
+    from rheedium.types.rheed_types import SurfaceConfig
+
+    # Use test CIF files
+    test_data_dir = (
+        Path(__file__).parent.parent.parent.parent.parent
+        / "tests"
+        / "test_data"
+    )
+    mgo_cif = test_data_dir / "MgO.cif"
+    srtio3_cif = test_data_dir / "SrTiO3.cif"
+
+    cmap = create_phosphor_colormap()
+
+    # 1. MgO kinematic RHEED pattern
+    print("  Generating MgO RHEED pattern...")
+    mgo_crystal = parse_cif(str(mgo_cif))
+    mgo_pattern = kinematic_simulator(
+        mgo_crystal,
+        voltage_kv=15.0,
+        theta_deg=2.0,
+        phi_deg=0.0,
+        hmax=5,
+        kmax=5,
+        lmax=3,
+        surface_roughness=0.3,
+    )
+
+    fig, ax = plt.subplots(figsize=FIGSIZE_TALL)
+    image, extent = _render_rheed_to_image(
+        mgo_pattern, grid_size=400, spot_width=0.04
+    )
+    ax.imshow(image, extent=extent, origin="lower", cmap=cmap, aspect="auto")
+    ax.set_xlabel("x_d (mm)")
+    ax.set_ylabel("y_d (mm)")
+    ax.set_title("MgO RHEED Pattern (θ=2°, φ=0°)", fontsize=14)
+    save_fig("mgo_kinematic_rheed.svg")
+
+    # 2. Structure factor comparison: MgO vs SrTiO3
+    print("  Generating structure factor comparison...")
+    srtio3_crystal = parse_cif(str(srtio3_cif))
+    srtio3_pattern = kinematic_simulator(
+        srtio3_crystal,
+        voltage_kv=15.0,
+        theta_deg=2.0,
+        phi_deg=0.0,
+        hmax=5,
+        kmax=5,
+        lmax=3,
+        surface_roughness=0.3,
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    image_mgo, extent_mgo = _render_rheed_to_image(
+        mgo_pattern, grid_size=350, spot_width=0.04
+    )
+    axes[0].imshow(
+        image_mgo, extent=extent_mgo, origin="lower", cmap=cmap, aspect="auto"
+    )
+    axes[0].set_xlabel("x_d (mm)")
+    axes[0].set_ylabel("y_d (mm)")
+    axes[0].set_title("Rock Salt (MgO)", fontsize=12)
+
+    image_sto, extent_sto = _render_rheed_to_image(
+        srtio3_pattern, grid_size=350, spot_width=0.04
+    )
+    axes[1].imshow(
+        image_sto, extent=extent_sto, origin="lower", cmap=cmap, aspect="auto"
+    )
+    axes[1].set_xlabel("x_d (mm)")
+    axes[1].set_ylabel("y_d (mm)")
+    axes[1].set_title("Perovskite (SrTiO₃)", fontsize=12)
+
+    plt.suptitle("Structure Factor Comparison", fontsize=14, y=1.02)
+    plt.tight_layout()
+    save_fig("structure_factor_comparison.svg")
+
+    # 3. Layer depth comparison (surface_fraction effect)
+    print("  Generating layer depth comparison...")
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fractions = [0.1, 0.3, 0.5]
+
+    for ax, frac in zip(axes, fractions):
+        pattern = kinematic_simulator(
+            srtio3_crystal,
+            voltage_kv=15.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=5,
+            kmax=5,
+            lmax=3,
+            surface_fraction=frac,
+            surface_roughness=0.3,
+        )
+        image, extent = _render_rheed_to_image(
+            pattern, grid_size=300, spot_width=0.04
+        )
+        ax.imshow(
+            image, extent=extent, origin="lower", cmap=cmap, aspect="auto"
+        )
+        ax.set_xlabel("x_d (mm)")
+        ax.set_ylabel("y_d (mm)")
+        ax.set_title(f"surface_fraction = {frac}", fontsize=12)
+
+    plt.suptitle(
+        "Effect of Surface Depth on RHEED Pattern", fontsize=14, y=1.02
+    )
+    plt.tight_layout()
+    save_fig("layer_depth_comparison.svg")
+
+    # 4. Selection method comparison using ewald_simulator (supports surface_config)
+    print("  Generating selection method comparison...")
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Default selection with ewald_simulator
+    pattern_height = ewald_simulator(
+        srtio3_crystal,
+        voltage_kv=15.0,
+        theta_deg=2.0,
+        phi_deg=0.0,
+        hmax=5,
+        kmax=5,
+        surface_roughness=0.3,
+    )
+    image_h, extent_h = _render_rheed_to_image(
+        pattern_height, grid_size=350, spot_width=0.04
+    )
+    axes[0].imshow(
+        image_h, extent=extent_h, origin="lower", cmap=cmap, aspect="auto"
+    )
+    axes[0].set_xlabel("x_d (mm)")
+    axes[0].set_ylabel("y_d (mm)")
+    axes[0].set_title("Default selection", fontsize=12)
+
+    # Layer-based using SurfaceConfig
+    config = SurfaceConfig(method="layers", n_layers=2)
+    pattern_layers = ewald_simulator(
+        srtio3_crystal,
+        voltage_kv=15.0,
+        theta_deg=2.0,
+        phi_deg=0.0,
+        hmax=5,
+        kmax=5,
+        surface_config=config,
+        surface_roughness=0.3,
+    )
+    image_l, extent_l = _render_rheed_to_image(
+        pattern_layers, grid_size=350, spot_width=0.04
+    )
+    axes[1].imshow(
+        image_l, extent=extent_l, origin="lower", cmap=cmap, aspect="auto"
+    )
+    axes[1].set_xlabel("x_d (mm)")
+    axes[1].set_ylabel("y_d (mm)")
+    axes[1].set_title("Layer-based selection (2 layers)", fontsize=12)
+
+    plt.suptitle("Surface Atom Selection Methods", fontsize=14, y=1.02)
+    plt.tight_layout()
+    save_fig("selection_method_comparison.svg")
 
 
 # =============================================================================
@@ -653,6 +936,7 @@ def main() -> None:
     generate_unit_cell_figures()
     generate_data_wrangling_figures()
     generate_pytree_figures()
+    generate_rheed_pattern_figures()
 
     print("\n" + "=" * 60)
     print("Figure generation complete!")
