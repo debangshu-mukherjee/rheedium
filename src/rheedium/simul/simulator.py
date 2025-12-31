@@ -55,7 +55,10 @@ from rheedium.types import (
     scalar_int,
     scalar_num,
 )
-from rheedium.ucell import generate_reciprocal_points
+from rheedium.ucell import (
+    generate_reciprocal_points,
+    reciprocal_lattice_vectors,
+)
 
 from .finite_domain import (
     compute_shell_sigma,
@@ -66,7 +69,11 @@ from .form_factors import (
     atomic_scattering_factor,
     kirkland_projected_potential,
 )
-from .simul_utils import incident_wavevector, wavelength_ang
+from .simul_utils import (
+    incident_wavevector,
+    interaction_constant,
+    wavelength_ang,
+)
 from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 
 
@@ -271,6 +278,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     g_allowed: Float[Array, "N 3"],
     k_in: Float[Array, "3"],
     k_out: Float[Array, "N 3"],
+    hkl_indices: Int[Array, "N 3"] | None = None,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.5,
     detector_acceptance: scalar_float = 0.01,
@@ -298,6 +306,10 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
         Incident wavevector.
     k_out : Float[Array, "N 3"]
         Output wavevectors.
+    hkl_indices : Int[Array, "N 3"] | None, optional
+        Miller indices corresponding to each G vector. If provided, these
+        are used directly for CTR gating. If None, indices are recovered
+        from g_allowed using the reciprocal lattice basis.
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factors.
         Default: 300.0
@@ -371,6 +383,18 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    # Recover Miller indices for CTR gating; prefer explicit indices when given
+    hkl_all: Float[Array, "N 3"]
+    if hkl_indices is not None:
+        hkl_all = jnp.asarray(hkl_indices, dtype=jnp.float64)
+    else:
+        recip_vecs = reciprocal_lattice_vectors(
+            *crystal.cell_lengths,
+            *crystal.cell_angles,
+            in_degrees=True,
+        )
+        inv_recip: Float[Array, "3 3"] = jnp.linalg.inv(recip_vecs)
+        hkl_all = jnp.matmul(g_allowed, inv_recip)
 
     # Use provided config or create one from surface_fraction for compatibility
     config: SurfaceConfig = (
@@ -415,8 +439,8 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
         structure_factor: Complex[Array, ""] = jnp.sum(contributions)
 
         # Validate h,k are near-integer before applying CTR
-        h_val: Float[Array, ""] = g_vec[0]
-        k_val: Float[Array, ""] = g_vec[1]
+        h_val: Float[Array, ""] = hkl_all[idx, 0]
+        k_val: Float[Array, ""] = hkl_all[idx, 1]
         h_deviation: Float[Array, ""] = jnp.abs(h_val - jnp.round(h_val))
         k_deviation: Float[Array, ""] = jnp.abs(k_val - jnp.round(k_val))
         is_near_integer: Bool[Array, ""] = (h_deviation < hk_tolerance) & (
@@ -495,7 +519,7 @@ def kinematic_simulator(  # noqa: PLR0913
     lmax: scalar_int = 1,
     tolerance: scalar_float = 0.05,
     detector_distance: scalar_float = 1000.0,
-    z_sign: scalar_float = -1.0,
+    z_sign: scalar_float = 1.0,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.5,
     detector_acceptance: scalar_float = 0.01,
@@ -545,9 +569,9 @@ def kinematic_simulator(  # noqa: PLR0913
         Distance from sample to detector plane in mm.
         Default: 1000.0
     z_sign : scalar_float, optional
-        If -1, keep reflections with negative z in k_out (standard RHEED).
-        If +1, keep reflections with positive z.
-        Default: -1.0
+        If -1, keep reflections with negative z in k_out (back-scattered).
+        If +1, keep reflections with positive z (standard RHEED detection).
+        Default: +1.0
     temperature : scalar_float, optional
         Temperature in Kelvin for thermal factors.
         Default: 300.0
@@ -633,6 +657,17 @@ def kinematic_simulator(  # noqa: PLR0913
         lmax=lmax,
         in_degrees=True,
     )
+    # Keep Miller index grid aligned with generated reciprocal points
+    hs: Int[Array, "n_h"] = jnp.arange(-hmax, hmax + 1, dtype=jnp.int32)
+    ks: Int[Array, "n_k"] = jnp.arange(-kmax, kmax + 1, dtype=jnp.int32)
+    ls: Int[Array, "n_l"] = jnp.arange(-lmax, lmax + 1, dtype=jnp.int32)
+    hh: Int[Array, "n_h n_k n_l"]
+    kk: Int[Array, "n_h n_k n_l"]
+    ll: Int[Array, "n_h n_k n_l"]
+    hh, kk, ll = jnp.meshgrid(hs, ks, ls, indexing="ij")
+    hkl_grid: Int[Array, "M 3"] = jnp.stack(
+        [hh.ravel(), kk.ravel(), ll.ravel()], axis=-1
+    )
     lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
     k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg, phi_deg)
     k_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
@@ -664,6 +699,7 @@ def kinematic_simulator(  # noqa: PLR0913
         )[0]
         k_out: Float[Array, "K 3"] = k_out_all[allowed_indices]
         g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
+        hkl_allowed: Int[Array, "K 3"] = hkl_grid[allowed_indices]
         overlap_weights: Float[Array, "K"] = overlap[allowed_indices]
     else:
         kr: Tuple[Int[Array, "K"], Float[Array, "K 3"]] = (
@@ -671,9 +707,13 @@ def kinematic_simulator(  # noqa: PLR0913
                 k_in=k_in, gs=gs, z_sign=z_sign, tolerance=tolerance
             )
         )
-        allowed_indices: Int[Array, "K"] = kr[0]
-        k_out: Float[Array, "K 3"] = kr[1]
+        all_indices: Int[Array, "K"] = kr[0]
+        all_k_out: Float[Array, "K 3"] = kr[1]
+        valid_mask: Bool[Array, "K"] = all_indices >= 0
+        allowed_indices: Int[Array, "K"] = all_indices[valid_mask]
+        k_out: Float[Array, "K 3"] = all_k_out[valid_mask]
         g_allowed: Float[Array, "K 3"] = gs[allowed_indices]
+        hkl_allowed: Int[Array, "K 3"] = hkl_grid[allowed_indices]
         overlap_weights = None
 
     detector_points: Float[Array, "K 2"] = project_on_detector(
@@ -685,6 +725,7 @@ def kinematic_simulator(  # noqa: PLR0913
         g_allowed=g_allowed,
         k_in=k_in,
         k_out=k_out,
+        hkl_indices=hkl_allowed,
         temperature=temperature,
         surface_roughness=surface_roughness,
         detector_acceptance=detector_acceptance,
@@ -803,7 +844,7 @@ def sliced_crystal_to_potential(
     yy: Float[Array, "nx ny"]
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
     wavelength: Float[Array, ""] = wavelength_ang(voltage_kv)
-    sigma: Float[Array, ""] = 2.0 * jnp.pi / (wavelength * voltage_kv * 1000.0)
+    sigma: Float[Array, ""] = interaction_constant(voltage_kv, wavelength)
     n_atoms: int = positions.shape[0]
 
     def _calculate_slice_potential(slice_idx: int) -> Float[Array, "nx ny"]:
@@ -939,7 +980,7 @@ def multislice_propagate(
     ny: int = v_slices.shape[2]
     lam_ang: scalar_float = wavelength_ang(voltage_kv)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-    sigma: scalar_float = 2.0 * jnp.pi / (lam_ang * voltage_kv * 1000.0)
+    sigma: scalar_float = interaction_constant(voltage_kv, lam_ang)
     x: Float[Array, " nx"] = jnp.arange(nx) * dx
     y: Float[Array, " ny"] = jnp.arange(ny) * dy
     kx: Float[Array, " nx"] = jnp.fft.fftfreq(nx, dx)

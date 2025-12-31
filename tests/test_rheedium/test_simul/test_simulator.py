@@ -19,6 +19,7 @@ from jaxtyping import Array, Complex, Float, Int
 
 from rheedium.simul import (
     compute_kinematic_intensities_with_ctrs,
+    interaction_constant,
     wavelength_ang,
 )
 from rheedium.simul.simulator import (
@@ -115,6 +116,25 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(wavelengths)
 
     @chex.all_variants(without_device=False)
+    def test_interaction_constant(self) -> None:
+        """Test relativistic interaction constant against reference values."""
+        var_sigma = self.variant(interaction_constant)
+
+        voltages_kv: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
+        wavelengths: Float[Array, "3"] = jax.vmap(wavelength_ang)(voltages_kv)
+        sigmas: Float[Array, "3"] = jax.vmap(var_sigma)(
+            voltages_kv, wavelengths
+        )
+
+        # Reference values computed from full relativistic formula (1/(V·Å))
+        expected: Float[Array, "3"] = jnp.array(
+            [0.0025738, 0.0018283, 0.0014993]
+        )
+
+        chex.assert_trees_all_close(sigmas, expected, rtol=5e-4, atol=5e-6)
+        chex.assert_tree_all_finite(sigmas)
+
+    @chex.all_variants(without_device=False)
     @parameterized.named_parameters(
         ("room_temp", 300.0, 0.5, 0.3),
         ("low_temp", 77.0, 0.3, 0.3),
@@ -178,6 +198,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=1,
+            z_sign=-1.0,  # Forward-scattered beams for discrete (h,k,l) testing
             temperature=300.0,
             surface_roughness=0.5,
         )
@@ -246,6 +267,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=0,  # No out-of-plane component
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             surface_roughness=0.0,
             detector_acceptance=0.0,  # No CTR integration
         )
@@ -257,6 +279,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=1,  # Allow out-of-plane
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             surface_roughness=0.5,
             detector_acceptance=0.01,  # Include CTR integration
         )
@@ -285,6 +308,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
                 hmax=1,
                 kmax=1,
                 lmax=0,
+                z_sign=-1.0,  # Forward-scattered beams for discrete testing
                 temperature=temperature,
             )
             return jnp.sum(pattern.intensities)
@@ -315,6 +339,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             hmax=max(miller_indices),
             kmax=max(miller_indices),
             lmax=max(miller_indices),
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             temperature=temperature,
         )
 
@@ -328,6 +353,25 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_scalar_positive(float(max_intensity))
         self.assertGreaterEqual(float(min_intensity), 0.0)
+
+    def test_default_z_sign_is_upward(self) -> None:
+        """Default kinematic_simulator should keep upward-scattered beams."""
+        # Note: lmax must be >= 3 to get upward-scattered (reflected) beams
+        # At 20kV and 2deg grazing, |k_in_z| ~ 2.55 Å^-1, so need l >= 3
+        # for G_z > |k_in_z| to get positive k_out_z
+        pattern: RHEEDPattern = kinematic_simulator(
+            crystal=self.si_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            hmax=2,
+            kmax=2,
+            lmax=3,
+            tolerance=0.2,
+        )
+
+        # Should produce reflections and all k_out z-components positive
+        self.assertGreater(pattern.k_out.shape[0], 0)
+        self.assertTrue(jnp.all(pattern.k_out[:, 2] > 0.0))
 
 
 class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
@@ -1033,6 +1077,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=1,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             domain_extent_ang=None,  # Binary mode
         )
 
@@ -1051,6 +1096,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=1,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             domain_extent_ang=jnp.array([100.0, 100.0, 20.0]),
         )
 
@@ -1074,6 +1120,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=1,
             kmax=1,
             lmax=0,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             temperature=temperature,
         )
 
@@ -1097,6 +1144,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=1,
             kmax=1,
             lmax=0,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             surface_roughness=roughness,
         )
 
@@ -1114,6 +1162,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=1,
             kmax=1,
             lmax=0,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             tolerance=0.5,  # Loose tolerance to get more reflections
         )
 
@@ -1124,6 +1173,7 @@ class TestKinematicSimulatorExtended(chex.TestCase, parameterized.TestCase):
             hmax=2,
             kmax=2,
             lmax=1,
+            z_sign=-1.0,  # Forward-scattered beams for discrete testing
             tolerance=0.5,
         )
 
@@ -1319,6 +1369,42 @@ class TestComputeKinematicIntensitiesExtended(
         )
 
         chex.assert_tree_all_finite(intensities)
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_ctr_gating_uses_explicit_hkl(self) -> None:
+        """Explicit hkl indices should enable CTR when |G| would miss tolerance."""
+        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+
+        hkls: Int[Array, "3 3"] = jnp.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [1, 1, 0],
+            ],
+            dtype=jnp.int32,
+        )
+
+        # Tight tolerance makes derived indices miss near-integer check
+        intens_no_hkl: Float[Array, "3"] = var_compute(
+            crystal=self.si_crystal,
+            g_allowed=self.g_vectors,
+            k_in=self.k_in,
+            k_out=self.k_out,
+            hk_tolerance=0.01,
+        )
+        intens_with_hkl: Float[Array, "3"] = var_compute(
+            crystal=self.si_crystal,
+            g_allowed=self.g_vectors,
+            k_in=self.k_in,
+            k_out=self.k_out,
+            hkl_indices=hkls,
+            hk_tolerance=0.01,
+        )
+
+        total_no: float = float(jnp.sum(intens_no_hkl))
+        total_with: float = float(jnp.sum(intens_with_hkl))
+
+        self.assertGreater(total_with, total_no)
 
 
 if __name__ == "__main__":

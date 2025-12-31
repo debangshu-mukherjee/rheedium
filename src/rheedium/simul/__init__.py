@@ -2,10 +2,11 @@
 
 Extended Summary
 ----------------
-This module provides functions for simulating RHEED patterns using both kinematic
-and dynamical (multislice) approximations with surface physics. It includes utilities
-for calculating electron wavelengths, scattering intensities, crystal truncation rods
-(CTRs), and complete diffraction patterns from crystal structures.
+This module provides functions for simulating RHEED patterns using both
+kinematic and dynamical (multislice) approximations with surface physics. It
+includes utilities for calculating electron wavelengths, scattering
+intensities, crystal truncation rods (CTRs), and complete diffraction patterns
+from crystal structures.
 
 Routine Listings
 ----------------
@@ -56,7 +57,7 @@ Routine Listings
 :func:`make_ewald_sphere`
     Create incident wavevector k_in from beam parameters.
 :func:`multislice_propagate`
-    Propagate electron wave through potential slices using multislice algorithm.
+    Propagate electron wave through potential slices via multislice.
 :func:`multislice_simulator`
     Simulate RHEED pattern from potential slices using multislice (dynamical).
 :func:`project_on_detector`
@@ -101,7 +102,11 @@ from .kinematic import (
     make_ewald_sphere,
     simple_structure_factor,
 )
-from .simul_utils import incident_wavevector, wavelength_ang
+from .simul_utils import (
+    incident_wavevector,
+    interaction_constant,
+    wavelength_ang,
+)
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     find_kinematic_reflections,
@@ -138,6 +143,7 @@ __all__ = [
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "incident_wavevector",
+    "interaction_constant",
     "integrated_rod_intensity",
     "kinematic_ctr_simulator",
     "kinematic_simulator",

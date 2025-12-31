@@ -140,3 +140,45 @@ def incident_wavevector(
 
     k_in: Float[Array, "3"] = jnp.array([k_x, k_y, k_z])
     return k_in
+
+
+@jaxtyped(typechecker=beartype)
+def interaction_constant(
+    voltage_kv: scalar_float,
+    wavelength_ang: scalar_float,
+) -> Float[Array, ""]:
+    """Relativistic electron interaction constant σ in 1/(V·Å).
+
+    Parameters
+    ----------
+    voltage_kv : scalar_float
+        Accelerating voltage in kilovolts.
+    wavelength_ang : scalar_float
+        Relativistic electron wavelength in angstroms.
+
+    Returns
+    -------
+    sigma : Float[Array, ""]
+        Interaction constant σ (1 / (Volt · Ångstrom)).
+    """
+    voltage_v: Float[Array, ""] = (
+        jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+    )
+    lam_m: Float[Array, ""] = (
+        jnp.asarray(wavelength_ang, dtype=jnp.float64) * 1e-10
+    )
+    # Physical constants (SI)
+    h: float = 6.62607015e-34  # Planck constant (J·s)
+    m_e: float = 9.1093837015e-31  # electron mass (kg)
+    e_charge: float = 1.602176634e-19  # elementary charge (C)
+    c: float = 299792458.0  # speed of light (m/s)
+
+    gamma: Float[Array, ""] = 1.0 + (e_charge * voltage_v) / (m_e * c * c)
+    beta: Float[Array, ""] = 1.0 + (e_charge * voltage_v) / (2.0 * m_e * c * c)
+    sigma_si: Float[Array, ""] = (
+        2.0 * jnp.pi * m_e * e_charge * lam_m / (h**2)
+    ) * (gamma / beta)
+
+    # Convert from 1/(V·m) to 1/(V·Å)
+    sigma_ang: Float[Array, ""] = sigma_si * 1e-10
+    return sigma_ang

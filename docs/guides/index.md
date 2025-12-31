@@ -20,6 +20,8 @@ These guides are written for **physics researchers** working with RHEED who want
 | [Ewald Sphere](ewald-sphere.md) | Geometric diffraction conditions in reciprocal space |
 | [Form Factors](form-factors.md) | Atomic scattering amplitudes and thermal (Debye-Waller) effects |
 | [Surface Rods](surface-rods.md) | Crystal truncation rods, roughness damping, and finite domain effects |
+| [Layer Control](layer-control.md) | Controlling which atomic layers contribute to RHEED patterns |
+| [Arbitrary Directions](arbitrary-directions.md) | Simulating RHEED from any azimuth or surface orientation |
 
 ### Data and Architecture
 
