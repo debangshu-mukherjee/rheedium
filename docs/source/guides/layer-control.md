@@ -343,6 +343,75 @@ Different surface selections can break or preserve symmetry:
 | Non-(001) surfaces | `bulk_to_slice` | `bulk_to_slice(crystal, orientation, depth)` |
 | Full control | Explicit mask | `SurfaceConfig(method="explicit", explicit_mask=mask)` |
 
+## Visualizing Layer Control Effects
+
+Layer selection directly impacts the RHEED pattern. Here's how different layer configurations affect the diffraction:
+
+```python
+import rheedium as rh
+import matplotlib.pyplot as plt
+from rheedium.types.rheed_types import SurfaceConfig
+
+# Load crystal and build Ewald data
+crystal = rh.io.parse_cif("SrTiO3.cif")
+ewald = rh.kinematic.build_ewald_data(crystal, voltage_kv=15.0, hkl_max=5)
+
+# Compare different surface depths
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+fractions = [0.1, 0.3, 0.5]
+
+for ax, frac in zip(axes, fractions):
+    pattern = rh.kinematic.kinematic_simulator(
+        crystal,
+        ewald,
+        theta_deg=2.0,
+        surface_fraction=frac,
+    )
+    rh.plots.plot_rheed(pattern, ax=ax, cmap_name="phosphor")
+    ax.set_title(f"Surface fraction = {frac}")
+
+plt.suptitle("Effect of Surface Depth on RHEED Pattern")
+plt.savefig("layer_depth_comparison.svg", bbox_inches="tight")
+```
+
+```{figure} figures/layer_depth_comparison.svg
+:alt: Effect of surface depth on RHEED patterns
+:width: 100%
+
+RHEED patterns showing how `surface_fraction` controls the depth of atoms contributing to diffraction. Smaller fractions (surface-sensitive) show enhanced surface reconstruction features, while larger fractions include more bulk contributions.
+```
+
+### Layer-Based vs. Height-Based Selection
+
+```python
+# Compare selection methods
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+# Height-based (default)
+pattern_height = rh.kinematic.kinematic_simulator(
+    crystal, ewald, theta_deg=2.0, surface_fraction=0.2
+)
+rh.plots.plot_rheed(pattern_height, ax=axes[0], cmap_name="phosphor")
+axes[0].set_title("Height-based selection")
+
+# Layer-based
+config = SurfaceConfig(method="layers", n_layers=2)
+pattern_layers = rh.kinematic.kinematic_simulator(
+    crystal, ewald, theta_deg=2.0, surface_config=config
+)
+rh.plots.plot_rheed(pattern_layers, ax=axes[1], cmap_name="phosphor")
+axes[1].set_title("Layer-based selection (2 layers)")
+
+plt.savefig("selection_method_comparison.svg", bbox_inches="tight")
+```
+
+```{figure} figures/selection_method_comparison.svg
+:alt: Comparison of height-based vs layer-based selection
+:width: 90%
+
+Comparison of surface atom selection methods. Height-based selection (left) uses a continuous depth cutoff, while layer-based selection (right) preserves complete atomic layers, maintaining stoichiometry for multi-element crystals.
+```
+
 ## Key Source Files
 
 - [`types/rheed_types.py`](../../src/rheedium/types/rheed_types.py) - `SurfaceConfig` and `identify_surface_atoms`

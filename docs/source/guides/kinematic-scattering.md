@@ -312,6 +312,82 @@ CrystalStructure
 RHEEDPattern
 ```
 
+## Visualizing the RHEED Pattern
+
+The kinematic theory produces actual diffraction patterns. Here's a complete example from CIF file to rendered pattern:
+
+```python
+import rheedium as rh
+import matplotlib.pyplot as plt
+
+# Load crystal structure
+crystal = rh.io.parse_cif("MgO.cif")
+
+# Build Ewald data (angle-independent)
+ewald = rh.kinematic.build_ewald_data(
+    crystal,
+    voltage_kv=15.0,
+    hkl_max=5,
+)
+
+# Simulate at 2° grazing incidence
+pattern = rh.kinematic.kinematic_simulator(
+    crystal,
+    ewald,
+    theta_deg=2.0,
+    phi_deg=0.0,
+    roughness=0.1,
+)
+
+# Render the pattern
+fig, ax = plt.subplots(figsize=(10, 8))
+rh.plots.plot_rheed(
+    pattern,
+    grid_size=400,
+    spot_width=0.03,
+    cmap_name="phosphor",
+    ax=ax,
+)
+ax.set_title("MgO RHEED Pattern (θ=2°, [100] azimuth)")
+plt.savefig("mgo_rheed_pattern.svg", bbox_inches="tight")
+```
+
+```{figure} figures/mgo_kinematic_rheed.svg
+:alt: MgO kinematic RHEED pattern
+:width: 80%
+
+Simulated MgO RHEED pattern at 2° grazing incidence along the [100] azimuth. The vertical Laue zones and horizontal Kikuchi lines arise from kinematic scattering theory. Spot intensities are modulated by the structure factor $|F(\mathbf{G})|^2$.
+```
+
+### Effect of Structure Factor on Pattern
+
+The structure factor determines which reflections are allowed and their intensities:
+
+```python
+# Compare rock salt (MgO) vs. perovskite (SrTiO3) patterns
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+for ax, cif_file, title in zip(
+    axes,
+    ["MgO.cif", "SrTiO3.cif"],
+    ["Rock salt (MgO)", "Perovskite (SrTiO₃)"]
+):
+    crystal = rh.io.parse_cif(cif_file)
+    ewald = rh.kinematic.build_ewald_data(crystal, voltage_kv=15.0, hkl_max=5)
+    pattern = rh.kinematic.kinematic_simulator(crystal, ewald, theta_deg=2.0)
+    rh.plots.plot_rheed(pattern, ax=ax, cmap_name="phosphor")
+    ax.set_title(title)
+
+plt.savefig("structure_factor_comparison.svg", bbox_inches="tight")
+```
+
+```{figure} figures/structure_factor_comparison.svg
+:alt: Structure factor comparison between MgO and SrTiO3
+:width: 100%
+
+RHEED patterns from two crystal structures demonstrating how the structure factor $F(\mathbf{G})$ controls spot positions and intensities. MgO (rock salt) shows systematic absences different from SrTiO₃ (perovskite).
+```
+
 ## Key Source Files
 
 - `simul/kinematic.py` - Main simulation functions
