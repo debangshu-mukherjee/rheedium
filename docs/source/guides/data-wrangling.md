@@ -11,6 +11,13 @@ Rheedium supports multiple crystallographic file formats for input data. This gu
 | CIF | `.cif` | Crystallography databases | Symmetry operations, space groups |
 | POSCAR/CONTCAR | `POSCAR`, `CONTCAR` | VASP input/output | DFT calculations |
 
+```{figure} figures/crystal_structure_example.svg
+:alt: Crystal structure visualization
+:width: 90%
+
+Example crystal structure showing atomic positions within a unit cell. Rheedium parses these structures from various file formats and converts them to a unified `CrystalStructure` representation.
+```
+
 ## XYZ File Format
 
 ### Standard XYZ
@@ -171,6 +178,13 @@ cell_angles = crystal.cell_angles        # Float[Array, "3"]
 ```
 
 Note: Position arrays have shape `[N, 4]` where the 4th column is atomic number.
+
+```{figure} figures/unit_cell_orthorhombic.svg
+:alt: Unit cell with lattice vectors
+:width: 80%
+
+Unit cell showing the relationship between cell parameters $(a, b, c, \alpha, \beta, \gamma)$ and the lattice vectors. CIF files specify these parameters which rheedium uses to construct the full 3D lattice.
+```
 
 ## Symmetry Expansion
 
@@ -369,6 +383,13 @@ z = atomic_number_from_symbol("si")  # Case-insensitive, returns 14
 ```
 
 This enables parsing files with element symbols rather than atomic numbers.
+
+```{figure} figures/pytree_hierarchy.svg
+:alt: PyTree data structure hierarchy
+:width: 100%
+
+Hierarchy of data structures in rheedium. Input files are parsed into intermediate structures (`XYZData`, etc.) then converted to `CrystalStructure`, which feeds into the simulation pipeline producing `RHEEDPattern` output.
+```
 
 ## Key Source Files
 

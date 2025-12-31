@@ -2,6 +2,13 @@
 
 This guide provides a complete walkthrough of simulating RHEED patterns from first principles using the `ewald_simulator`. We use Si(111) as a concrete example to illustrate the physics at each step.
 
+```{figure} figures/ewald_sphere_3d_front.svg
+:alt: Ewald sphere 3D front view
+:width: 100%
+
+Front view of the Ewald sphere construction in 3D reciprocal space, showing the geometric relationship between the incident wavevector, crystal truncation rods, and diffraction condition.
+```
+
 ## Overview: Why Surface Diffraction is Different
 
 In **bulk X-ray diffraction**, the crystal is periodic in all three dimensions, producing discrete Bragg peaks at reciprocal lattice points $(h, k, l)$ where all indices are integers.
@@ -49,6 +56,13 @@ plt.savefig("bulk_vs_surface.png", dpi=150)
 ![Bulk vs Surface Reciprocal Space](figures/ctr_origin_diagram.svg)
 
 ## The Physics Step by Step
+
+```{figure} figures/lattice_vector_construction.svg
+:alt: Lattice vector construction
+:width: 80%
+
+Lattice vector construction for a cubic unit cell. The Si diamond structure is built on this cubic lattice with a two-atom basis.
+```
 
 ### Step 1: Define the Crystal Structure
 
@@ -121,6 +135,13 @@ Any reciprocal lattice vector is:
 $$
 \mathbf{G}_{hkl} = h\mathbf{a}^* + k\mathbf{b}^* + l\mathbf{c}^*
 $$
+
+```{figure} figures/wavelength_vs_voltage.svg
+:alt: Electron wavelength vs voltage
+:width: 85%
+
+Electron wavelength as a function of accelerating voltage. Higher voltages produce shorter wavelengths and larger Ewald sphere radii, affecting the diffraction geometry.
+```
 
 ### Step 3: Calculate the Electron Wavelength and Wavevector
 
@@ -282,6 +303,13 @@ where:
 
 Rheedium uses **Kirkland parameterization** for accurate electron form factors.
 
+```{figure} figures/form_factor_curves.svg
+:alt: Atomic form factors
+:width: 85%
+
+Kirkland electron atomic form factors for different elements. The form factor determines how strongly each atom type scatters electrons as a function of momentum transfer.
+```
+
 #### Debye-Waller Factor
 
 Thermal vibrations reduce intensity:
@@ -291,6 +319,13 @@ f_{\text{eff}}(q) = f(q) \times \exp\left(-\frac{B q^2}{16\pi^2}\right)
 $$
 
 where $B = 8\pi^2 \langle u^2 \rangle$ is the temperature factor.
+
+```{figure} figures/debye_waller_damping.svg
+:alt: Debye-Waller damping
+:width: 80%
+
+Debye-Waller thermal damping factor at different temperatures. Higher temperatures increase atomic vibrations, reducing diffracted intensity especially at large momentum transfer.
+```
 
 #### CTR Modulation
 
@@ -441,6 +476,13 @@ The RHEED pattern for Si(111) at $\phi = 0°$ shows:
 3. **Intensity modulation** along each streak — the CTR profile
 4. **Streak broadening** — finite coherent domain size (if applicable)
 
+```{figure} figures/coordinate_systems.svg
+:alt: Coordinate systems in RHEED
+:width: 90%
+
+Coordinate systems used in RHEED: real-space crystal coordinates, reciprocal-space diffraction vectors, and detector-plane projection. Understanding these transformations is key to interpreting simulated patterns.
+```
+
 ## Key Physical Insights
 
 ### Why Rods Instead of Spots?
@@ -528,6 +570,111 @@ Different azimuths reveal different symmetry elements:
 - $\phi = 0°$ (along [100]): Shows 2-fold symmetry
 - $\phi = 45°$ (along [110]): Different streak spacing
 - $\phi = 90°$ (along [010]): Equivalent to 0° for cubic
+
+## Visualizing the RHEED Pattern
+
+The ultimate output of rheedium is a simulated RHEED pattern. The `plot_rheed` function renders the diffraction spots with realistic broadening:
+
+```python
+import rheedium as rh
+import matplotlib.pyplot as plt
+
+# Using the pattern from our Si(111) simulation
+fig, ax = plt.subplots(figsize=(10, 8))
+rh.plots.plot_rheed(
+    pattern,
+    grid_size=400,        # Image resolution
+    spot_width=0.03,      # Gaussian broadening (smaller = sharper)
+    cmap_name="phosphor", # Green phosphor screen colormap
+    ax=ax,
+)
+ax.set_title("Si(111) RHEED Pattern — φ = 0°, θ = 2°", fontsize=14)
+plt.savefig("si_rheed_pattern.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+### Comparing Different Azimuths
+
+The pattern changes dramatically with azimuthal angle. Here's how to visualize multiple orientations:
+
+```python
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+azimuths = [0, 30, 45]
+
+for ax, phi in zip(axes, azimuths):
+    pattern = ewald_simulator(
+        crystal=si_crystal,
+        voltage_kv=20.0,
+        theta_deg=2.0,
+        phi_deg=float(phi),
+        hmax=5, kmax=5,
+        detector_distance=1000.0,
+        temperature=300.0,
+        surface_roughness=0.5,
+    )
+
+    rh.plots.plot_rheed(
+        pattern,
+        grid_size=300,
+        spot_width=0.04,
+        cmap_name="phosphor",
+        ax=ax,
+    )
+    ax.set_title(f"φ = {phi}°", fontsize=12)
+
+plt.suptitle("Si(111) RHEED Patterns at Different Azimuths", fontsize=14)
+plt.tight_layout()
+plt.savefig("si_azimuthal_comparison.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+### What You Should See
+
+The simulated RHEED patterns exhibit the key features expected from surface diffraction:
+
+| Feature | Physical Origin |
+|---------|----------------|
+| **Vertical streaks** | CTR rods intersecting Ewald sphere |
+| **Streak spacing** | In-plane reciprocal lattice spacing |
+| **Intensity variation along streaks** | CTR modulation $\propto 1/\sin^2(\pi l)$ |
+| **Central bright streak** | Specular reflection (0,0) rod |
+| **Laue zones** | Higher-order diffraction from (±h, 0) rods |
+| **Streak broadening** | Finite domain size, beam divergence |
+
+### Effect of Surface Roughness
+
+Surface roughness damps high-$q_z$ intensity. Compare smooth vs rough surfaces:
+
+```python
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+for ax, roughness in zip(axes, [0.0, 2.0]):
+    pattern = ewald_simulator(
+        crystal=si_crystal,
+        voltage_kv=20.0,
+        theta_deg=2.0,
+        phi_deg=0.0,
+        hmax=5, kmax=5,
+        detector_distance=1000.0,
+        temperature=300.0,
+        surface_roughness=roughness,
+    )
+
+    rh.plots.plot_rheed(pattern, grid_size=300, ax=ax)
+    ax.set_title(f"σ = {roughness} Å", fontsize=12)
+
+plt.suptitle("Effect of Surface Roughness on RHEED Pattern", fontsize=14)
+plt.tight_layout()
+plt.savefig("roughness_comparison.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+The rough surface pattern shows:
+- Weaker intensity at the top of the screen (high $q_z$)
+- Relatively unchanged intensity near the shadow edge (low $q_z$)
+- This is exactly the $\exp(-\sigma^2 q_z^2)$ damping predicted by theory
 
 ## Summary
 

@@ -12,6 +12,13 @@ Kinematic theory assumes that electrons scatter **at most once** as they travers
 
 For quantitative analysis of strong reflections or thick samples, dynamical (multiple scattering) theory is required, but kinematic theory captures the essential physics of RHEED patterns.
 
+```{figure} figures/grazing_incidence_geometry.svg
+:alt: RHEED grazing incidence geometry
+:width: 100%
+
+RHEED geometry showing the electron beam arriving at grazing angle $\theta$ from the sample surface. The surface-sensitive nature of RHEED arises from this shallow incident angle, which limits electron penetration to just a few atomic layers.
+```
+
 ## Relativistic Electron Wavelength
 
 At RHEED energies (typically 10-30 keV), electrons are mildly relativistic. The de Broglie wavelength must include relativistic corrections:
@@ -113,6 +120,13 @@ This assumes:
 - Incoherent summation over thermal vibrations (absorbed in Debye-Waller factor)
 - No absorption or anomalous dispersion
 
+```{figure} figures/form_factor_curves.svg
+:alt: Atomic form factors vs momentum transfer
+:width: 85%
+
+Atomic form factors $f(q)$ for several elements showing how scattering amplitude decreases with momentum transfer. Heavier elements scatter more strongly, but all form factors approach zero at high $q$.
+```
+
 ## Simplified vs Full Structure Factors
 
 Rheedium provides two approaches for structure factor calculation:
@@ -143,6 +157,13 @@ $$
 
 See [Form Factors](form-factors.md) for details on the Kirkland parameterization.
 
+```{figure} figures/debye_waller_damping.svg
+:alt: Debye-Waller thermal damping
+:width: 80%
+
+Debye-Waller damping factor $\exp(-W)$ at different temperatures. Higher temperatures increase atomic vibrations, causing stronger damping of high-$q$ reflections and reducing the intensity of high-order diffraction spots.
+```
+
 ## Crystal Truncation Rods (CTRs)
 
 For surface-sensitive RHEED, the reciprocal lattice consists of continuous **rods** perpendicular to the surface, not discrete points. This arises from the abrupt surface termination.
@@ -162,6 +183,13 @@ $$
 $$
 
 The Fourier transform of the step function is proportional to $1/q_z$, creating continuous intensity along the surface-normal direction.
+
+```{figure} figures/ctr_origin_diagram.svg
+:alt: Origin of crystal truncation rods
+:width: 100%
+
+Origin of crystal truncation rods: (left) bulk crystal with 3D periodicity produces discrete Bragg peaks, (center) surface truncation breaks z-periodicity, (right) reciprocal space shows continuous rods instead of discrete points.
+```
 
 ### CTR Intensity Modulation
 
@@ -231,6 +259,13 @@ $$
 $$
 
 The small $\theta$ creates a nearly tangent intersection of the Ewald sphere with reciprocal lattice rods, producing the characteristic streaked RHEED pattern.
+
+```{figure} figures/ewald_sphere_2d.svg
+:alt: Ewald sphere 2D cross-section
+:width: 90%
+
+2D cross-section of the Ewald sphere construction in RHEED geometry. The incident beam (red arrow) arrives at grazing angle, and the sphere intersects vertical reciprocal lattice rods. Each intersection corresponds to a diffraction spot on the detector.
+```
 
 ## Detector Projection
 

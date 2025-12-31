@@ -2,6 +2,13 @@
 
 RHEED is inherently surface-sensitive due to the grazing incidence geometry. This guide covers the different approaches available in rheedium for controlling which atomic layers contribute to the simulated diffraction pattern.
 
+```{figure} figures/grazing_incidence_geometry.svg
+:alt: RHEED grazing incidence geometry
+:width: 100%
+
+RHEED geometry showing electrons arriving at grazing angle, which limits penetration depth and makes the technique highly surface-sensitive. Layer control determines which atoms contribute to the simulated diffraction pattern.
+```
+
 ## Why Layer Control Matters
 
 In RHEED, electrons penetrate only a few nanometers into the surface due to:
@@ -244,6 +251,13 @@ pattern = rh.simul.kinematic_simulator(
 
 ## Physical Effects of Layer Control
 
+```{figure} figures/crystal_structure_example.svg
+:alt: Crystal structure with surface layers
+:width: 90%
+
+Visualization of a crystal structure showing how surface atoms (top layers) differ from bulk atoms in their environment and thermal behavior.
+```
+
 ### On Debye-Waller Factors
 
 Surface atoms have enhanced thermal vibrations compared to bulk:
@@ -272,7 +286,12 @@ plt.savefig("surface_debye_waller.png", dpi=150, bbox_inches="tight")
 plt.show()
 ```
 
-![Debye-Waller Damping](figures/debye_waller_damping.svg)
+```{figure} figures/debye_waller_damping.svg
+:alt: Debye-Waller damping comparison
+:width: 85%
+
+Debye-Waller damping factor for bulk vs surface atoms. Surface atoms with enhanced thermal vibrations show stronger intensity reduction at high momentum transfer.
+```
 
 ### On CTR Intensities
 
@@ -298,7 +317,12 @@ plt.savefig("ctr_profile.png", dpi=150, bbox_inches="tight")
 plt.show()
 ```
 
-![CTR Intensity Profile](figures/ctr_intensity_profile.svg)
+```{figure} figures/ctr_intensity_profile.svg
+:alt: CTR intensity profile
+:width: 90%
+
+Crystal Truncation Rod intensity profile showing the characteristic $1/\sin^2(\pi l)$ modulation. Intensity diverges at integer $l$ (Bragg peaks) and has minima at half-integer $l$ (anti-Bragg condition).
+```
 
 ### On Pattern Symmetry
 

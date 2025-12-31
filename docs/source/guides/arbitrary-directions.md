@@ -2,6 +2,13 @@
 
 RHEED patterns depend strongly on the crystallographic direction of the incident electron beam. This guide covers how to simulate RHEED from any azimuthal direction or surface orientation using rheedium.
 
+```{figure} figures/ewald_sphere_3d_top.svg
+:alt: Ewald sphere top view
+:width: 90%
+
+Top-down view of the Ewald sphere showing how different azimuthal angles $\phi$ change which reciprocal lattice rods are intersected. Rotating the beam direction probes different in-plane periodicities.
+```
+
 ## Beam Direction Parameters
 
 The `kinematic_simulator` function accepts two angle parameters that control the beam direction:
@@ -111,6 +118,13 @@ for phi in phi_values:
         phi_deg=float(phi),
     )
     patterns.append(pattern)
+```
+
+```{figure} figures/miller_indices.svg
+:alt: Miller index planes
+:width: 100%
+
+Miller index planes in a cubic unit cell: (100), (110), and (111). Each surface orientation corresponds to a specific set of Miller indices defining the crystal plane parallel to the surface.
 ```
 
 ## Non-(001) Surface Orientations
@@ -304,6 +318,13 @@ for ax, phi in zip(axes, [0, 45, 90]):
 
 plt.tight_layout()
 plt.show()
+```
+
+```{figure} figures/ewald_sphere_3d_perspective.svg
+:alt: 3D Ewald sphere perspective
+:width: 90%
+
+3D perspective view of the Ewald sphere with reciprocal lattice rods. The combination of surface orientation and azimuthal angle determines which rods the sphere intersects and thus which reflections appear in the RHEED pattern.
 ```
 
 ## Physical Considerations

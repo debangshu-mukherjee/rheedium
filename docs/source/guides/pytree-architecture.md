@@ -2,6 +2,13 @@
 
 Rheedium uses JAX PyTrees as the foundation for all data structures, enabling GPU acceleration, automatic differentiation, and efficient functional transformations across the entire simulation pipeline.
 
+```{figure} figures/data_flow_diagram.svg
+:alt: Data flow through rheedium
+:width: 100%
+
+Data flow through rheedium's PyTree-based architecture, from input file parsing through simulation to pattern output. Each box represents a PyTree-registered data structure that can be JIT-compiled and transformed.
+```
+
 ## What Are PyTrees?
 
 A PyTree is JAX's abstraction for nested data structures containing arrays. Any Python object registered as a PyTree can be:
@@ -33,6 +40,13 @@ Rheedium defines 7 PyTree-registered classes across two modules:
 | `RHEEDPattern` | Computed diffraction pattern output | `G_indices`, `k_out`, `detector_points`, `intensities` |
 | `RHEEDImage` | Experimental RHEED image data | `img_array`, `incoming_angle`, `calibration`, `detector_distance` |
 | `SlicedCrystal` | Surface-oriented slab for simulation | `cart_positions`, `orientation`, `depth`, `x_extent`, `y_extent` |
+
+```{figure} figures/crystal_structure_example.svg
+:alt: Crystal structure PyTree
+:width: 85%
+
+A crystal structure visualization showing the data stored in a `CrystalStructure` PyTree: atomic positions, cell parameters, and atomic numbers are all stored as JAX arrays that can be transformed together.
+```
 
 ## Registration Pattern
 

@@ -85,6 +85,13 @@ $$
 \cos\gamma = \frac{\mathbf{a} \cdot \mathbf{b}}{ab}
 $$
 
+```{figure} figures/unit_cell_orthorhombic.svg
+:alt: Orthorhombic unit cell
+:width: 80%
+
+An orthorhombic unit cell showing the three lattice vectors $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ with all angles at 90°. Different crystal systems have different constraints on the lengths and angles.
+```
+
 ## Reciprocal Lattice
 
 ### Definition

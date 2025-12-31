@@ -32,6 +32,13 @@ $$
 
 This $1/q_z$ dependence creates continuous intensity along rods perpendicular to the surface.
 
+```{figure} figures/ewald_sphere_2d.svg
+:alt: Ewald sphere with CTR rods
+:width: 100%
+
+The Ewald sphere intersects crystal truncation rods at non-integer $l$ values. Each intersection produces a diffraction spot, with intensity modulated by the CTR profile along the rod.
+```
+
 ### CTR Intensity Profile
 
 For a surface-terminated crystal, the intensity along a rod at fixed $(h, k)$ varies as:
@@ -174,6 +181,13 @@ This follows from the Fourier uncertainty relation.
 | 10 Å | 0.25 Å$^{-1}$ |
 
 Small domains produce broad, diffuse rods.
+
+```{figure} figures/ewald_sphere_3d_perspective.svg
+:alt: 3D Ewald sphere with rods
+:width: 90%
+
+3D view of the Ewald sphere intersecting a grid of crystal truncation rods. The sphere's curvature determines which rods are intercepted at each azimuthal angle, affecting the pattern of visible reflections.
+```
 
 ### Implementation
 

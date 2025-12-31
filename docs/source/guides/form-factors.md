@@ -13,6 +13,13 @@ Unlike X-ray scattering (which probes electron density), electron scattering pro
 | $q$-dependence | Falls off faster | Falls off slower |
 | Light elements | Weak scattering | Relatively stronger |
 
+```{figure} figures/form_factor_curves.svg
+:alt: Form factor comparison
+:width: 90%
+
+Comparison of atomic form factors $f(q)$ for different elements. The curves show the characteristic falloff with increasing momentum transfer, with heavier elements exhibiting stronger scattering amplitudes across all $q$ values.
+```
+
 ## Kirkland Parameterization
 
 Electron form factors are parameterized as a sum of six Gaussians:
@@ -153,6 +160,13 @@ This enhancement:
 - Can be toggled in rheedium simulations
 - Is particularly important for grazing-incidence RHEED
 
+```{figure} figures/roughness_damping.svg
+:alt: Surface roughness effects on scattering
+:width: 85%
+
+Surface roughness damping factor for different RMS roughness values. Surface atoms with enhanced vibrations and rough surfaces both reduce diffraction intensity at high momentum transfer, similar to the Debye-Waller effect.
+```
+
 ## Combined Atomic Scattering Factor
 
 The total atomic scattering amplitude combines form factor and thermal damping:
@@ -227,6 +241,13 @@ At elevated temperatures:
 - High-order reflections become much weaker
 - Pattern becomes dominated by low-order spots
 - Surface atoms show enhanced damping
+
+```{figure} figures/structure_factor_phases.svg
+:alt: Structure factor phase diagram
+:width: 80%
+
+Argand diagram showing how atomic contributions combine to form the total structure factor. Each atom's phase factor $\exp(i\mathbf{G}\cdot\mathbf{r}_j)$ determines its contribution direction, and the vector sum gives $F(\mathbf{G})$.
+```
 
 ## Example: Silicon Form Factor
 

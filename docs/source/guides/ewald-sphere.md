@@ -41,6 +41,13 @@ where $\mathbf{k}_{\text{out}} = \mathbf{k}_{\text{in}} + \mathbf{G}$.
 
 This is the **elastic scattering condition**: the scattered electron has the same energy as the incident electron.
 
+```{figure} figures/ewald_sphere_3d_front.svg
+:alt: Ewald sphere 3D front view
+:width: 90%
+
+Front view of the Ewald sphere construction in 3D reciprocal space. The sphere (blue) has its center at the tip of $-\mathbf{k}_{in}$ and radius $|k| = 2\pi/\lambda$. Diffraction occurs where the sphere intersects reciprocal lattice points or rods.
+```
+
 ## Incident Wavevector
 
 In RHEED geometry, electrons arrive at grazing angle $\theta$ with azimuthal orientation $\phi$:
@@ -115,6 +122,13 @@ $$
 $$
 
 This follows from the Fourier uncertainty relation: $\Delta x \cdot \Delta k \approx 2\pi$.
+
+```{figure} figures/rod_broadening.svg
+:alt: Rod broadening from finite domain size
+:width: 85%
+
+Lateral rod profiles for different coherent domain sizes. Smaller domains produce broader rods in reciprocal space, following the Fourier uncertainty relation $\Delta x \cdot \Delta k \approx 2\pi$.
+```
 
 ### Ewald Shell Thickness
 
@@ -249,23 +263,30 @@ The Ewald sphere construction can be viewed from multiple angles to understand t
 
 ```{figure} figures/ewald_sphere_2d.svg
 :alt: Ewald sphere 2D cross-section
-:width: 90%
+:width: 100%
 
 2D cross-section (xz plane) of the Ewald sphere construction. The incident beam comes from the left at grazing angle, and the sphere intersects vertical reciprocal lattice rods. Each intersection corresponds to a diffraction spot.
 ```
 
 ```{figure} figures/ewald_sphere_3d_perspective.svg
 :alt: Ewald sphere 3D perspective view
-:width: 80%
+:width: 90%
 
 3D perspective view of the Ewald sphere with reciprocal lattice rods. The partial sphere surface shows where the beam energy constrains possible scattering directions.
 ```
 
 ```{figure} figures/ewald_sphere_3d_top.svg
 :alt: Ewald sphere 3D top view
-:width: 80%
+:width: 90%
 
 Top-down view looking along the surface normal. The circular intersection of the Ewald sphere with the plane of rod positions determines which reflections appear on the RHEED screen.
+```
+
+```{figure} figures/wavelength_vs_voltage.svg
+:alt: Electron wavelength vs voltage
+:width: 80%
+
+Electron wavelength as a function of accelerating voltage. The Ewald sphere radius $|k| = 2\pi/\lambda$ increases with voltage, affecting which reflections satisfy the diffraction condition at a given geometry.
 ```
 
 ## Key Source Files
