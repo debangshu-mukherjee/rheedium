@@ -6,13 +6,17 @@ Rheedium
 
 .. toctree::
    :maxdepth: 2
-   :caption: Theory & Architecture
+   :caption: Guides
    :hidden:
 
+   guides/index
+   guides/ewald-ctr-tutorial
    guides/kinematic-scattering
    guides/ewald-sphere
    guides/form-factors
    guides/surface-rods
+   guides/layer-control
+   guides/arbitrary-directions
    guides/data-wrangling
    guides/unit-cell
    guides/pytree-architecture

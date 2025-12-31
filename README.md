@@ -18,15 +18,23 @@ Rheedium is a JAX based computational framework for simulating RHEED patterns wi
 
 ## Documentation
 
-### Theory and Architecture Guides
+### Guides
 
+- [Guides Overview](https://rheedium.readthedocs.io/en/latest/guides/index.html) - Complete guide index
+- [Ewald-CTR Tutorial](https://rheedium.readthedocs.io/en/latest/guides/ewald-ctr-tutorial.html) - Complete walkthrough from Ewald sphere to CTR rods
 - [Kinematic Scattering](https://rheedium.readthedocs.io/en/latest/guides/kinematic-scattering.html) - Diffraction theory, structure factors, and intensity calculations
 - [Ewald Sphere](https://rheedium.readthedocs.io/en/latest/guides/ewald-sphere.html) - Geometric diffraction conditions in reciprocal space
 - [Form Factors](https://rheedium.readthedocs.io/en/latest/guides/form-factors.html) - Atomic scattering amplitudes and thermal (Debye-Waller) effects
 - [Surface Rods](https://rheedium.readthedocs.io/en/latest/guides/surface-rods.html) - Crystal truncation rods, roughness, and finite domain effects
+- [Layer Control](https://rheedium.readthedocs.io/en/latest/guides/layer-control.html) - Controlling which atomic layers contribute to patterns
+- [Arbitrary Directions](https://rheedium.readthedocs.io/en/latest/guides/arbitrary-directions.html) - Simulating RHEED from any azimuth or surface orientation
 - [Data Wrangling](https://rheedium.readthedocs.io/en/latest/guides/data-wrangling.html) - Parsing XYZ, CIF, and POSCAR files
 - [Unit Cell](https://rheedium.readthedocs.io/en/latest/guides/unit-cell.html) - Lattice vectors, reciprocal space, and surface slabs
 - [PyTree Architecture](https://rheedium.readthedocs.io/en/latest/guides/pytree-architecture.html) - JAX data structures for GPU acceleration
+
+### Tutorials
+
+See the [tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.html) for hands-on examples.
 
 ### API Reference
 
@@ -41,7 +49,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 If you use Rheedium in your research, please cite:
 
 ```bibtex
-@software{rheedium2024,
+@software{rheedium_software,
   title={Rheedium: High-Performance RHEED Pattern Simulation},
   author={Mukherjee, Debangshu},
   year={2025},

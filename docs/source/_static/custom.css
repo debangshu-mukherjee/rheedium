@@ -198,24 +198,17 @@ html[data-theme="auto"] dl.field-list code.literal {
     margin-left: 2em;
 }
 
-/* MathJax sans-serif styling to match body text */
+/* MathJax styling - DO NOT override fonts as MathJax needs its own math fonts
+ * for proper rendering of mathematical symbols (Greek letters, operators, etc.)
+ * Only style the container for spacing/sizing if needed
+ */
 mjx-container {
-    font-family: var(--font-sans) !important;
+    /* Allow MathJax to handle its own font rendering */
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
-mjx-container[jax="CHTML"] {
-    font-family: var(--font-sans) !important;
-}
-
-.MathJax {
-    font-family: var(--font-sans) !important;
-}
-
-/* MathJax 3 specific selectors */
-mjx-math {
-    font-family: var(--font-sans) !important;
-}
-
-mjx-mi, mjx-mn, mjx-mo, mjx-mtext {
-    font-family: var(--font-sans) !important;
+/* Ensure math blocks have proper spacing */
+mjx-container[display="true"] {
+    margin: 1em 0;
 }

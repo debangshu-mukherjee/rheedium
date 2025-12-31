@@ -73,20 +73,28 @@ source_suffix = {
 myst_enable_extensions = [
     "dollarmath",  # Enable $...$ and $$...$$ math delimiters
     "amsmath",  # Enable LaTeX math environments like \begin{equation}
+    "colon_fence",  # Enable ::: and ```{directive} fenced directives
 ]
 
-# MathJax configuration to ensure math renders on first page load
+# Ensure MyST parses all dollar-delimited math correctly
+myst_dmath_double_inline = True
+
+# MathJax configuration to ensure math renders properly
 mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 mathjax3_config = {
-    "startup": {
-        "ready": "() => { MathJax.startup.defaultReady(); MathJax.startup.promise.then(() => { console.log('MathJax initial typesetting complete'); }); }"
-    },
     "tex": {
         "inlineMath": [["$", "$"], ["\\(", "\\)"]],
         "displayMath": [["$$", "$$"], ["\\[", "\\]"]],
+        "processEscapes": True,
+        "processEnvironments": True,
     },
     "options": {
-        "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area",
+        "ignoreHtmlClass": "tex2jax_ignore",
+        "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area|content",
+    },
+    "chtml": {
+        "scale": 1.0,
+        "minScale": 0.5,
     },
 }
 
