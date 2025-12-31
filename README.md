@@ -1,4 +1,4 @@
-# Rheedium
+# Rheedium [(Documentation)](https://rheedium.readthedocs.io/en/latest/)
 
 [![PyPI Downloads](https://static.pepy.tech/badge/rheedium)](https://pepy.tech/projects/rheedium)
 [![License](https://img.shields.io/pypi/l/rheedium.svg)](https://github.com/debangshu-mukherjee/rheedium/blob/main/LICENSE)
@@ -16,7 +16,17 @@
 
 Rheedium is a JAX based computational framework for simulating RHEED patterns with automatic differentiation capabilities and GPU acceleration.
 
-## Documentation
+To install **rheedium**
+
+```bash
+pip install rheedium
+```
+
+or clone it as:
+
+```bash
+git clone git@github.com:debangshu-mukherjee/rheedium.git
+```
 
 ### Guides
 
