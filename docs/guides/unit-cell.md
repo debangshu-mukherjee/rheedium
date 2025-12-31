@@ -8,6 +8,8 @@ This guide covers crystallographic operations on unit cells: lattice vector cons
 
 Given cell parameters $(a, b, c, \alpha, \beta, \gamma)$, rheedium constructs lattice vectors in the standard crystallographic convention:
 
+![Lattice Vector Construction](../source/guides/figures/lattice_vector_construction.svg)
+
 - $\mathbf{a}$ along the $x$-axis
 - $\mathbf{b}$ in the $xy$-plane
 - $\mathbf{c}$ determined by angles
@@ -147,6 +149,26 @@ $$
 \mathbf{G}_{hkl} = h\mathbf{a}^* + k\mathbf{b}^* + l\mathbf{c}^*
 $$
 
+### Visualization
+
+```python
+from rheedium.plots import plot_unit_cell_3d
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection="3d")
+plot_unit_cell_3d(
+    a=4.0, b=4.0, c=4.0,
+    alpha=90.0, beta=90.0, gamma=90.0,
+    show_miller_planes=[(1, 0, 0), (1, 1, 0), (1, 1, 1)],
+    ax=ax,
+)
+plt.savefig("miller_indices.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Miller Indices](../source/guides/figures/miller_indices.svg)
+
 ### Physical Interpretation
 
 | Indices | Meaning |
@@ -262,6 +284,27 @@ class SlicedCrystal(NamedTuple):
     y_extent: float                       # Lateral size in y (Å)
 ```
 
+### Example Crystal Structure
+
+A perovskite unit cell visualization:
+
+```python
+from rheedium.plots import plot_crystal_structure_3d
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection="3d")
+plot_crystal_structure_3d(
+    structure_type="perovskite",  # "rocksalt", "perovskite", "diamond", etc.
+    a=3.905,                       # Lattice constant (Å)
+    ax=ax,
+)
+plt.savefig("crystal_structure.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Crystal Structure Example](../source/guides/figures/crystal_structure_example.svg)
+
 ## Atom Scraping by Depth
 
 For RHEED, only atoms near the surface contribute to scattering:
@@ -349,44 +392,38 @@ where $M_j$ is atomic mass and $N_A$ is Avogadro's number.
 
 ## Workflow: Bulk to Surface Simulation
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     1. LOAD BULK CRYSTAL                         │
-├─────────────────────────────────────────────────────────────────┤
-│  crystal = parse_cif("bulk.cif")                                │
-│  • Cell parameters: a, b, c, α, β, γ                            │
-│  • Atomic positions: frac_positions, cart_positions             │
-└───────────────────────────────────┬─────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  2. BUILD SURFACE SLAB                           │
-├─────────────────────────────────────────────────────────────────┤
-│  slab = build_surface_slab(                                     │
-│      crystal,                                                   │
-│      orientation=[0, 0, 1],  # (001) surface                    │
-│      depth=50.0,             # 50 Å thick                       │
-│  )                                                              │
-│  • Rotate to align [001] with z-axis                            │
-│  • Create supercell for in-plane periodicity                    │
-└───────────────────────────────────┬─────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  3. GENERATE RECIPROCAL SPACE                    │
-├─────────────────────────────────────────────────────────────────┤
-│  recip = reciprocal_lattice_vectors(slab.cell_vectors)          │
-│  hkl, g_vectors = generate_reciprocal_points(recip, ...)        │
-│  • Reciprocal lattice for diffraction geometry                  │
-└───────────────────────────────────┬─────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    4. RHEED SIMULATION                           │
-├─────────────────────────────────────────────────────────────────┤
-│  ewald = build_ewald_data(slab, voltage_kv=15.0, ...)           │
-│  pattern = kinematic_spot_simulator(slab, ewald, theta=2.0)     │
-└─────────────────────────────────────────────────────────────────┘
+The workflow from bulk crystal to RHEED simulation:
+
+![Data Flow Diagram](../source/guides/figures/data_flow_diagram.svg)
+
+The key steps are:
+
+1. **Load bulk crystal**: Parse CIF/XYZ file to get cell parameters and atomic positions
+2. **Build surface slab**: Rotate crystal to align desired surface normal with z-axis
+3. **Generate reciprocal space**: Construct reciprocal lattice vectors and G-vector grid
+4. **RHEED simulation**: Build Ewald data and run kinematic simulation
+
+```python
+from rheedium.inout import parse_cif
+from rheedium.ucell import build_surface_slab, reciprocal_lattice_vectors
+from rheedium.simul import build_ewald_data, kinematic_spot_simulator
+
+# 1. Load bulk crystal
+crystal = parse_cif("bulk.cif")
+
+# 2. Build surface slab
+slab = build_surface_slab(
+    crystal,
+    orientation=[0, 0, 1],  # (001) surface
+    depth=50.0,             # 50 Å thick
+)
+
+# 3. Generate reciprocal space
+recip = reciprocal_lattice_vectors(slab.cell_vectors)
+
+# 4. RHEED simulation
+ewald = build_ewald_data(slab, voltage_kv=15.0)
+pattern = kinematic_spot_simulator(slab, ewald, theta_deg=2.0)
 ```
 
 ## Key Source Files

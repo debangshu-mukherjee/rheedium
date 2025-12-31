@@ -236,38 +236,123 @@ overlap, weighted_intensities = finite_domain_intensities(
 # overlap values range from 0 (no intersection) to 1 (exact)
 ```
 
-## RHEED Geometry Diagram
+## RHEED Geometry Visualization
 
+### 2D Side View
+
+The Ewald sphere construction can be visualized in the $xz$ plane (side view) to show how the sphere intersects crystal truncation rods:
+
+```python
+from rheedium.plots import plot_ewald_sphere_2d
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(12, 8))
+plot_ewald_sphere_2d(
+    voltage_kv=20.0,        # Accelerating voltage
+    theta_deg=2.0,          # Grazing angle
+    lattice_spacing=3.905,  # SrTiO3 lattice constant (Å)
+    n_rods=9,               # Number of CTR rods to show
+    ax=ax,
+)
+plt.savefig("ewald_sphere_2d.png", dpi=150, bbox_inches="tight")
+plt.show()
 ```
-Side View (xz plane, φ=0):
 
-                    z ↑
-                      │
-                      │     Ewald
-                      │     sphere
-           ╭──────────┼──────────╮
-          ╱           │           ╲
-         ╱            │            ╲
-        │      ●──────┼──────●      │   ← Reciprocal
-        │      │      │      │      │     lattice rods
-        │      │      │      │      │
-       ╱       │      │      │       ╲
-      ╱        │      │      │        ╲
-     │         │      │      │         │
-     │         ●──────┼──────●         │
-     │               (0,0)             │
-      ╲                               ╱
-       ╲    θ ↗                      ╱
-        ╲   ╱ k_in                  ╱
-         ╲╱───────────────────────╱───→ x
-          ╲                      ╱     (beam direction)
-           ╲                    ╱
-            ╰──────────────────╯
+![Ewald Sphere 2D Construction](../source/guides/figures/ewald_sphere_2d.svg)
 
-        ↑
-    Detector sees intersections
-    where sphere crosses rods
+The figure shows:
+
+- **Ewald sphere** (blue arc): Radius $|\mathbf{k}| = 2\pi/\lambda$
+- **Incident wavevector** $\mathbf{k}_{\text{in}}$: Points from sphere center toward origin
+- **CTR rods** (vertical lines): Extend from each reciprocal lattice point
+- **Intersections** (colored dots): Where sphere crosses rods—these produce diffraction streaks
+
+### 3D Perspective View
+
+For a complete picture of the diffraction geometry, including azimuthal effects:
+
+```python
+from rheedium.plots import plot_ewald_sphere_3d
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(14, 10))
+ax = fig.add_subplot(111, projection="3d")
+plot_ewald_sphere_3d(
+    voltage_kv=20.0,
+    theta_deg=2.0,
+    phi_deg=0.0,            # Azimuthal angle
+    lattice_spacing=3.905,
+    n_rods_h=5,             # Rods in h direction
+    n_rods_k=5,             # Rods in k direction
+    elev=25,                # Viewing elevation
+    azim=-60,               # Viewing azimuth
+    ax=ax,
+)
+plt.savefig("ewald_sphere_3d.png", dpi=150, bbox_inches="tight")
+plt.show()
 ```
+
+![Ewald Sphere 3D Perspective](../source/guides/figures/ewald_sphere_3d_perspective.svg)
+
+The 3D view reveals:
+
+- How rods from the 2D reciprocal lattice extend perpendicular to the surface
+- The nearly tangent intersection geometry at grazing incidence
+- Why RHEED produces streaks rather than spots
+
+### Front View (Detector Perspective)
+
+Viewing along the beam direction shows what the detector sees:
+
+```python
+from rheedium.plots import plot_ewald_sphere_3d
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection="3d")
+plot_ewald_sphere_3d(
+    voltage_kv=20.0,
+    theta_deg=2.0,
+    phi_deg=0.0,
+    lattice_spacing=3.905,
+    n_rods_h=5,
+    n_rods_k=5,
+    elev=0,                 # Looking horizontal
+    azim=0,                 # Along beam direction
+    ax=ax,
+)
+plt.savefig("ewald_front_view.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Ewald Sphere Front View](../source/guides/figures/ewald_sphere_3d_front.svg)
+
+### Top View (Plan View)
+
+Looking down on the surface shows the azimuthal geometry:
+
+```python
+from rheedium.plots import plot_ewald_sphere_3d
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(12, 12))
+ax = fig.add_subplot(111, projection="3d")
+plot_ewald_sphere_3d(
+    voltage_kv=20.0,
+    theta_deg=2.0,
+    phi_deg=0.0,
+    lattice_spacing=3.905,
+    n_rods_h=5,
+    n_rods_k=5,
+    elev=90,                # Looking straight down
+    azim=0,
+    ax=ax,
+)
+plt.savefig("ewald_top_view.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Ewald Sphere Top View](../source/guides/figures/ewald_sphere_3d_top.svg)
 
 ## Key Source Files
 

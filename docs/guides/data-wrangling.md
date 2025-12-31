@@ -208,6 +208,10 @@ crystal_full = symmetry_expansion(
 
 ## Coordinate Transformations
 
+The relationship between fractional and Cartesian coordinates:
+
+![Coordinate Systems](../source/guides/figures/coordinate_systems.svg)
+
 ### Fractional to Cartesian
 
 $$
@@ -319,50 +323,16 @@ The dual coordinate representation enables:
 
 ## Data Flow Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        INPUT FILES                               │
-├─────────────────────────────────────────────────────────────────┤
-│  XYZ File          CIF File              POSCAR/CONTCAR         │
-│  ├─ Atom count     ├─ Cell parameters    ├─ Lattice vectors     │
-│  ├─ Comment        ├─ Fractional coords  ├─ Species list        │
-│  └─ Coordinates    ├─ Symmetry ops       └─ Coordinates         │
-│                    └─ Space group                                │
-└───────────┬────────────────┬──────────────────┬─────────────────┘
-            │                │                  │
-            ▼                ▼                  ▼
-┌───────────────────────────────────────────────────────────────┐
-│                      PARSING LAYER                             │
-├───────────────────────────────────────────────────────────────┤
-│  parse_xyz()       parse_cif()           parse_poscar()        │
-│       │                 │                      │               │
-│       ▼                 ▼                      │               │
-│   XYZData          ┌────────────┐              │               │
-│       │            │ Symmetry   │              │               │
-│       │            │ Expansion  │              │               │
-│       ▼            └─────┬──────┘              │               │
-│  xyz_to_crystal()        │                     │               │
-│       │                  │                     │               │
-└───────┴──────────────────┴─────────────────────┴───────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    CrystalStructure (PyTree)                     │
-├─────────────────────────────────────────────────────────────────┤
-│  frac_positions: [N, 4]    Fractional coords + atomic number    │
-│  cart_positions: [N, 4]    Cartesian coords + atomic number     │
-│  cell_lengths: [3]         a, b, c in Ångstroms                 │
-│  cell_angles: [3]          α, β, γ in degrees                   │
-└─────────────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      SIMULATION                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  build_ewald_data()  →  kinematic_spot_simulator()              │
-│                      →  kinematic_ctr_simulator()               │
-└─────────────────────────────────────────────────────────────────┘
-```
+The data processing pipeline from input files to simulation:
+
+![Data Flow Diagram](../source/guides/figures/data_flow_diagram.svg)
+
+The pipeline illustrates:
+
+1. **Input Files**: XYZ, CIF, or POSCAR/CONTCAR formats with their specific metadata
+2. **Parsing Layer**: Format-specific parsers that extract atomic positions and lattice information
+3. **CrystalStructure PyTree**: Unified representation with both fractional and Cartesian coordinates
+4. **Simulation**: Ewald data construction and kinematic simulation
 
 ## POSCAR/CONTCAR Support
 

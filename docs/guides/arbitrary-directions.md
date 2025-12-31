@@ -19,6 +19,21 @@ The coordinate system is defined as:
 - **y-axis**: Perpendicular to beam, in the surface plane
 - **z-axis**: Surface normal (pointing up)
 
+```python
+from rheedium.plots import plot_grazing_incidence_geometry
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(14, 8))
+plot_grazing_incidence_geometry(
+    theta_deg=2.0,
+    ax=ax,
+)
+plt.savefig("grazing_geometry.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Grazing Incidence Geometry](../source/guides/figures/grazing_incidence_geometry.svg)
+
 The incident wavevector components are:
 
 $$
@@ -203,6 +218,26 @@ The grazing angle `theta_deg` affects:
 1. **Penetration depth**: Lower angles = more surface sensitive
 2. **Ewald sphere intersection**: Changes which reflections are excited
 3. **Pattern geometry**: Affects streak spacing and curvature
+
+The Ewald sphere construction for RHEED geometry:
+
+```python
+from rheedium.plots import plot_ewald_sphere_2d
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(12, 8))
+plot_ewald_sphere_2d(
+    voltage_kv=20.0,
+    theta_deg=2.0,
+    lattice_spacing=3.905,
+    n_rods=9,
+    ax=ax,
+)
+plt.savefig("ewald_sphere.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Ewald Sphere 2D](../source/guides/figures/ewald_sphere_2d.svg)
 
 ### Typical Values
 

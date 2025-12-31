@@ -30,6 +30,24 @@ where:
 
 ### Numerical Values
 
+The wavelength decreases with accelerating voltage, as shown:
+
+```python
+from rheedium.plots import plot_wavelength_curve
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_wavelength_curve(
+    voltage_range=(5, 35),   # kV range
+    n_points=100,
+    ax=ax,
+)
+plt.savefig("wavelength_vs_voltage.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Wavelength vs Voltage](../source/guides/figures/wavelength_vs_voltage.svg)
+
 | Voltage (kV) | Wavelength (Å) | Relativistic Correction |
 |--------------|----------------|------------------------|
 | 10 | 0.1220 | 0.98% |
@@ -74,6 +92,24 @@ Each term in the sum represents:
 1. **Scattering amplitude** $f_j$: How strongly atom $j$ scatters electrons (depends on atomic number and scattering angle)
 2. **Thermal damping** $\exp(-W_j)$: Reduction due to thermal vibrations (stronger at large $|\mathbf{G}|$)
 3. **Phase factor** $\exp(i\mathbf{G}\cdot\mathbf{r}_j)$: Interference from atom positions
+
+The interference of phase factors from different atoms determines whether reflections are allowed or forbidden:
+
+```python
+from rheedium.plots import plot_structure_factor_phases
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 10))
+plot_structure_factor_phases(
+    structure_type="fcc",   # "bcc", "fcc", or "diamond"
+    hkl=(1, 1, 1),          # Miller indices
+    ax=ax,
+)
+plt.savefig("structure_factor_phases.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Structure Factor Phases](../source/guides/figures/structure_factor_phases.svg)
 
 ### Extinction Rules
 
@@ -157,7 +193,25 @@ $$
 I(h, k, l) \propto \frac{|F(h, k, l)|^2}{\sin^2(\pi l)}
 $$
 
-The $1/\sin^2(\pi l)$ factor produces:
+The $1/\sin^2(\pi l)$ factor produces characteristic intensity variations:
+
+```python
+from rheedium.plots import plot_ctr_profile
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(12, 6))
+plot_ctr_profile(
+    l_range=(-2.5, 2.5),    # l index range
+    n_points=500,
+    ax=ax,
+)
+plt.savefig("ctr_intensity_profile.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![CTR Intensity Profile](../source/guides/figures/ctr_intensity_profile.svg)
+
+The figure shows:
 
 - **Divergence at integer $l$**: Bragg peaks from bulk periodicity
 - **Finite intensity between Bragg peaks**: Surface truncation rods
@@ -209,6 +263,23 @@ $$
 \mathbf{k}_{\text{in}} = |\mathbf{k}| \begin{pmatrix} \cos\theta \cos\phi \\ \cos\theta \sin\phi \\ -\sin\theta \end{pmatrix}
 $$
 
+The grazing incidence geometry is visualized below:
+
+```python
+from rheedium.plots import plot_grazing_incidence_geometry
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(14, 8))
+plot_grazing_incidence_geometry(
+    theta_deg=2.0,          # Grazing angle
+    ax=ax,
+)
+plt.savefig("grazing_incidence_geometry.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Grazing Incidence Geometry](../source/guides/figures/grazing_incidence_geometry.svg)
+
 The small $\theta$ creates a nearly tangent intersection of the Ewald sphere with reciprocal lattice rods, producing the characteristic streaked RHEED pattern.
 
 ## Detector Projection
@@ -225,36 +296,19 @@ Only forward-scattered electrons ($k_{\text{out},x} > 0$) and upward-going elect
 
 ## Workflow Summary
 
-```
-CrystalStructure
-      ↓
-┌─────────────────────────────────────┐
-│ 1. Compute wavelength from voltage  │
-│    λ = h / √(2m₀eV(1 + eV/2m₀c²))  │
-└─────────────────────────────────────┘
-      ↓
-┌─────────────────────────────────────┐
-│ 2. Generate reciprocal lattice      │
-│    G(h,k,l) = h·a* + k·b* + l·c*   │
-└─────────────────────────────────────┘
-      ↓
-┌─────────────────────────────────────┐
-│ 3. Compute structure factors        │
-│    F(G) = Σⱼ fⱼ exp(-Wⱼ) exp(iG·rⱼ)│
-└─────────────────────────────────────┘
-      ↓
-┌─────────────────────────────────────┐
-│ 4. Find Ewald sphere intersections  │
-│    |k_out| = |k_in|                │
-└─────────────────────────────────────┘
-      ↓
-┌─────────────────────────────────────┐
-│ 5. Project onto detector screen     │
-│    (Y, Z) = d · (k_y, k_z) / k_x   │
-└─────────────────────────────────────┘
-      ↓
-RHEEDPattern
-```
+The kinematic simulation pipeline follows this workflow:
+
+![Data Flow Diagram](../source/guides/figures/data_flow_diagram.svg)
+
+The key steps are:
+
+1. **Compute wavelength from voltage**: $\lambda = h / \sqrt{2m_0 eV(1 + eV/2m_0c^2)}$
+2. **Generate reciprocal lattice**: $\mathbf{G}(h,k,l) = h\mathbf{a}^* + k\mathbf{b}^* + l\mathbf{c}^*$
+3. **Compute structure factors**: $F(\mathbf{G}) = \sum_j f_j \exp(-W_j) \exp(i\mathbf{G}\cdot\mathbf{r}_j)$
+4. **Find Ewald sphere intersections**: $|\mathbf{k}_{\text{out}}| = |\mathbf{k}_{\text{in}}|$
+5. **Project onto detector screen**: $(Y, Z) = d \cdot (k_y, k_z) / k_x$
+
+Each step is implemented in rheedium's `simul` module and produces data structures that flow into the next stage.
 
 ## Key Source Files
 

@@ -254,6 +254,26 @@ $$
 
 The Debye-Waller factor $\exp(-W)$ where $W = \frac{1}{2}q^2\langle u^2\rangle$ is therefore stronger for surface atoms, reducing their scattering contribution at high $q$.
 
+The temperature dependence of this damping effect:
+
+```python
+from rheedium.plots import plot_debye_waller
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_debye_waller(
+    q_range=(0.0, 8.0),
+    temperatures=[300.0, 300.0],  # Bulk vs surface-enhanced
+    atomic_number=14,
+    surface_enhancement=[1.0, 1.5],  # Bulk (1.0) vs surface (1.5x)
+    ax=ax,
+)
+plt.savefig("surface_debye_waller.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![Debye-Waller Damping](../source/guides/figures/debye_waller_damping.svg)
+
 ### On CTR Intensities
 
 Crystal Truncation Rods arise from the abrupt termination of the crystal. The surface structure factor enters the CTR calculation:
@@ -262,7 +282,23 @@ $$
 I_{\text{CTR}}(q_z) \propto \frac{|F_{\text{surface}}|^2}{\sin^2(\pi l)}
 $$
 
-Changing which atoms are "surface" modifies $F_{\text{surface}}$ and thus the CTR profile.
+Changing which atoms are "surface" modifies $F_{\text{surface}}$ and thus the CTR profile:
+
+```python
+from rheedium.plots import plot_ctr_profile
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(12, 6))
+plot_ctr_profile(
+    l_range=(-2.5, 2.5),
+    n_points=500,
+    ax=ax,
+)
+plt.savefig("ctr_profile.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+![CTR Intensity Profile](../source/guides/figures/ctr_intensity_profile.svg)
 
 ### On Pattern Symmetry
 

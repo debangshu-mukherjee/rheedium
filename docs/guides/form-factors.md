@@ -175,25 +175,56 @@ Each atom contributes:
 
 ## q-Dependence Visualization
 
-The form factor and Debye-Waller factor combine to produce q-dependent scattering:
+The form factor and Debye-Waller factor combine to produce q-dependent scattering.
 
+### Form Factor Curves
+
+Different elements have distinct form factor profiles:
+
+```python
+from rheedium.plots import plot_form_factors
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_form_factors(
+    atomic_numbers=[14, 8, 38, 22],  # Si, O, Sr, Ti
+    q_range=(0.0, 8.0),
+    ax=ax,
+)
+plt.savefig("form_factor_curves.png", dpi=150, bbox_inches="tight")
+plt.show()
 ```
-                                    Si at 300 K
-Scattering     │
-amplitude      │
-               │╲
-            1.0│ ╲
-               │  ╲
-               │   ╲   f(q) × exp(-W)
-               │    ╲
-            0.5│     ╲
-               │      ╲
-               │       ╲____
-               │            ────────
-            0.0│                     ─────────
-               └──────────────────────────────────
-               0         2         4         6    q (Å⁻¹)
+
+![Form Factor Curves](../source/guides/figures/form_factor_curves.svg)
+
+### Debye-Waller Damping
+
+Temperature effects on scattering amplitude:
+
+```python
+from rheedium.plots import plot_debye_waller
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_debye_waller(
+    q_range=(0.0, 8.0),
+    temperatures=[100.0, 300.0, 600.0],
+    atomic_number=14,  # Silicon
+    ax=ax,
+)
+plt.savefig("debye_waller_damping.png", dpi=150, bbox_inches="tight")
+plt.show()
 ```
+
+![Debye-Waller Damping](../source/guides/figures/debye_waller_damping.svg)
+
+### Combined Effects
+
+The combined form factor with thermal corrections:
+
+![Combined Scattering](../source/guides/figures/combined_scattering.svg)
+
+Key observations:
 
 - **Low q**: Form factor dominates, $f \approx$ constant
 - **Mid q**: Both effects contribute
@@ -209,6 +240,10 @@ The q-dependence of form factors affects relative peak intensities:
 - High-index reflections (large $|\mathbf{G}|$): Weaker, more temperature-sensitive
 
 ### Element Sensitivity
+
+The relative scattering strength varies significantly across elements:
+
+![Element Comparison](../source/guides/figures/element_comparison.svg)
 
 | Element Type | Scattering Strength | Thermal Sensitivity |
 |--------------|---------------------|---------------------|

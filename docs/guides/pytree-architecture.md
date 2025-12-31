@@ -238,40 +238,17 @@ expanded = jax.tree_map(
 
 ## Data Flow Through PyTrees
 
-```
-Input Files (CIF, XYZ, POSCAR)
-        ↓
-   parse_cif() / parse_xyz()
-        ↓
-┌───────────────────────────────────┐
-│      CrystalStructure (PyTree)    │
-│  ├─ frac_positions [N, 4]         │
-│  ├─ cart_positions [N, 4]         │
-│  ├─ cell_lengths [3]              │
-│  └─ cell_angles [3]               │
-└───────────────────────────────────┘
-        ↓
-   build_ewald_data()
-        ↓
-┌───────────────────────────────────┐
-│       EwaldData (PyTree)          │
-│  ├─ wavelength_ang                │
-│  ├─ k_magnitude                   │
-│  ├─ g_vectors [N, 3]              │
-│  ├─ structure_factors [N]         │
-│  └─ intensities [N]               │
-└───────────────────────────────────┘
-        ↓
-   kinematic_spot_simulator()
-        ↓
-┌───────────────────────────────────┐
-│      RHEEDPattern (PyTree)        │
-│  ├─ G_indices [N]                 │
-│  ├─ k_out [M, 3]                  │
-│  ├─ detector_points [M, 2]        │
-│  └─ intensities [M]               │
-└───────────────────────────────────┘
-```
+The simulation pipeline transforms data through a sequence of PyTree structures:
+
+![PyTree Hierarchy](../source/guides/figures/pytree_hierarchy.svg)
+
+The key stages are:
+
+1. **Input parsing**: CIF/XYZ/POSCAR files → `CrystalStructure` PyTree
+2. **Ewald construction**: `CrystalStructure` → `EwaldData` PyTree (precomputes angle-independent quantities)
+3. **Simulation**: `CrystalStructure` + `EwaldData` → `RHEEDPattern` PyTree (diffraction pattern)
+
+Each PyTree maintains JAX-traceable arrays that enable GPU acceleration and automatic differentiation.
 
 ## Type Aliases
 
