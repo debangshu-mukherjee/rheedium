@@ -42,10 +42,12 @@ Routine Listings
     Calculate incident electron wavevector from beam parameters.
 :func:`integrated_rod_intensity`
     Integrate CTR intensity over finite detector acceptance.
+:func:`ewald_simulator`
+    Simulate RHEED using exact Ewald sphere-CTR intersection (recommended).
 :func:`kinematic_ctr_simulator`
-    RHEED simulation using continuous crystal truncation rods (streaks).
+    RHEED simulation using continuous crystal truncation rods (deprecated).
 :func:`kinematic_simulator`
-    Simulate RHEED pattern with proper atomic form factors and CTRs.
+    Simulate RHEED pattern with proper atomic form factors (deprecated).
 :func:`kinematic_spot_simulator`
     RHEED simulation using discrete 3D reciprocal lattice (spots).
 :func:`kirkland_form_factor`
@@ -109,6 +111,7 @@ from .simul_utils import (
 )
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
+    ewald_simulator,
     find_kinematic_reflections,
     kinematic_simulator,
     multislice_propagate,
@@ -136,6 +139,7 @@ __all__ = [
     "compute_shell_sigma",
     "debye_waller_factor",
     "ewald_allowed_reflections",
+    "ewald_simulator",
     "extent_to_rod_sigma",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",

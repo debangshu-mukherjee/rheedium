@@ -16,6 +16,7 @@ These guides are written for **physics researchers** working with RHEED who want
 
 | Guide | Description |
 |-------|-------------|
+| [Ewald-CTR Tutorial](ewald-ctr-tutorial.md) | **Complete walkthrough**: From Ewald sphere to CTR rods for Si(111) |
 | [Kinematic Scattering](kinematic-scattering.md) | Single-scattering approximation, structure factors, and intensity calculations |
 | [Ewald Sphere](ewald-sphere.md) | Geometric diffraction conditions in reciprocal space |
 | [Form Factors](form-factors.md) | Atomic scattering amplitudes and thermal (Debye-Waller) effects |

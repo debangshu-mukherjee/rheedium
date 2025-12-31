@@ -8,6 +8,55 @@ Crystal truncation rods (CTRs) are the hallmark of surface-sensitive diffraction
 
 A bulk 3D crystal produces discrete Bragg peaks at reciprocal lattice points $\mathbf{G}_{hkl}$. When the crystal is truncated at a surface, the periodicity is broken along the surface-normal direction, creating continuous rods of intensity.
 
+**Visualizing CTR formation:**
+
+```python
+import matplotlib.pyplot as plt
+
+# Generate the CTR origin diagram showing:
+# 1. Bulk crystal (periodic in all directions)
+# 2. Truncated crystal (surface breaks z-periodicity)
+# 3. Reciprocal space CTRs
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+# Panel 1: Bulk crystal (periodic)
+ax1 = axes[0]
+for i in range(-2, 3):
+    for j in range(-2, 3):
+        ax1.scatter(i, j, c="blue", s=100)
+ax1.set_title("Bulk Crystal\n(Infinite periodicity)", fontsize=12)
+ax1.set_aspect("equal")
+ax1.axis("off")
+
+# Panel 2: Truncated crystal
+ax2 = axes[1]
+for i in range(-2, 3):
+    for j in range(0, 3):  # Only above surface
+        ax2.scatter(i, j, c="blue", s=100)
+ax2.axhline(-0.3, color="brown", linewidth=3)
+ax2.fill_between([-3, 3], [-3, -3], [-0.3, -0.3], color="tan", alpha=0.3)
+ax2.set_title("Truncated Crystal\n(Surface)", fontsize=12)
+ax2.set_aspect("equal")
+ax2.axis("off")
+
+# Panel 3: Reciprocal space rods
+ax3 = axes[2]
+for h in range(-2, 3):
+    ax3.axvline(h, color="green", linewidth=2, alpha=0.7)
+ax3.scatter([0], [0], c="red", s=150, zorder=5)
+ax3.set_title("Reciprocal Space\n(CTRs extend along l)", fontsize=12)
+ax3.set_xlabel("h")
+ax3.set_ylabel("l")
+ax3.set_xlim(-3, 3)
+ax3.set_ylim(-3, 3)
+
+plt.tight_layout()
+plt.savefig("ctr_origin.png", dpi=150)
+```
+
+![CTR Origin Diagram](../source/guides/figures/ctr_origin_diagram.svg)
+
 ### Mathematical Derivation
 
 Consider a semi-infinite crystal extending from $z = -\infty$ to $z = 0$:
@@ -55,6 +104,25 @@ where:
 
 The divergence at integer $l$ is regularized by the crystal's finite thickness and instrumental broadening.
 
+**Visualizing the CTR intensity profile with rheedium:**
+
+```python
+from rheedium.plots import plot_ctr_profile
+import matplotlib.pyplot as plt
+
+# Plot CTR intensity vs l (Miller index along rod)
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_ctr_profile(l_range=(-3.0, 3.0), n_points=500, ax=ax)
+plt.savefig("ctr_profile.png", dpi=150)
+```
+
+![CTR Intensity Profile](../source/guides/figures/ctr_intensity_profile.svg)
+
+The plot shows:
+- **Peaks at integer l** (Bragg condition): Intensity diverges as $1/\sin^2(\pi l) \to \infty$
+- **Minima at half-integer l** (anti-Bragg): Intensity minimum where $\sin^2(\pi l) = 1$
+- **Continuous intensity between peaks**: The signature of surface truncation
+
 ## Surface Roughness
 
 Real surfaces are not perfectly flat. Surface roughness modifies the CTR intensity.
@@ -86,6 +154,26 @@ $$
 - **Smooth surface** ($\sigma_h \to 0$): No damping, sharp CTRs
 - **Rough surface** (large $\sigma_h$): Strong damping at high $q_z$
 - **Typical values**: $\sigma_h \approx 1$–$5$ Å for epitaxial surfaces
+
+**Visualizing roughness damping:**
+
+```python
+from rheedium.plots import plot_roughness_damping
+import matplotlib.pyplot as plt
+
+# Compare damping for different roughness values
+fig, ax = plt.subplots(figsize=(8, 6))
+plot_roughness_damping(
+    q_z_range=(0.0, 5.0),
+    sigma_values=[0.0, 0.5, 1.0, 2.0, 5.0],
+    ax=ax,
+)
+plt.savefig("roughness_comparison.png", dpi=150)
+```
+
+![Roughness Damping](../source/guides/figures/roughness_damping.svg)
+
+The figure shows how increasing surface roughness progressively damps CTR intensity at high $q_z$. At $\sigma_h = 5$ Å (rough epitaxial surface), intensity is nearly zero above $q_z \approx 2$ Å$^{-1}$.
 
 ### Implementation
 
@@ -153,6 +241,26 @@ This follows from the Fourier uncertainty relation.
 | 10 Å | 0.25 Å$^{-1}$ |
 
 Small domains produce broad, diffuse rods.
+
+**Visualizing rod broadening:**
+
+```python
+from rheedium.plots import plot_rod_broadening
+import matplotlib.pyplot as plt
+
+# Compare rod profiles for different domain sizes
+fig, ax = plt.subplots(figsize=(8, 6))
+plot_rod_broadening(
+    q_perp_range=(-0.5, 0.5),
+    correlation_lengths=[20.0, 50.0, 100.0, 500.0],
+    ax=ax,
+)
+plt.savefig("rod_broadening.png", dpi=150)
+```
+
+![Rod Broadening](../source/guides/figures/rod_broadening.svg)
+
+The figure demonstrates the Fourier uncertainty principle: smaller domains produce broader rods. A 20 Å domain gives a rod width of ~0.3 Å$^{-1}$, while a 500 Å domain produces sharp rods with width ~0.01 Å$^{-1}$.
 
 ### Implementation
 
@@ -225,6 +333,39 @@ sigma_shell = compute_shell_sigma(
 
 The key to finite domain simulation is computing how much each reciprocal lattice rod overlaps with the broadened Ewald shell.
 
+**Visualizing the 3D Ewald sphere-CTR intersection:**
+
+```python
+from rheedium.plots import plot_ewald_sphere_3d
+import matplotlib.pyplot as plt
+
+# 3D view of Ewald sphere intersecting CTR rods
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection="3d")
+plot_ewald_sphere_3d(
+    voltage_kv=15.0,
+    theta_deg=2.0,
+    phi_deg=0.0,
+    lattice_spacing=4.0,
+    n_rods_h=5,
+    n_rods_k=5,
+    elev=20.0,
+    azim=45.0,
+    ax=ax,
+)
+plt.savefig("ewald_3d.png", dpi=150)
+```
+
+![Ewald Sphere 3D](../source/guides/figures/ewald_sphere_3d_perspective.svg)
+
+The 3D visualization shows:
+- **Blue surface**: Ewald sphere (radius = $2\pi/\lambda$)
+- **Green lines**: CTR rods extending along $q_z$
+- **Red arrow**: Incident wavevector $\mathbf{k}_{in}$
+- **Gray plane**: Surface (z = 0)
+
+Where the Ewald sphere intersects CTR rods, diffraction occurs. The grazing geometry causes the sphere to slice through multiple rods simultaneously.
+
 ### Overlap Integral
 
 For a rod at position $\mathbf{G}$ with width $\sigma_{\text{rod}}$ intersecting a shell of thickness $\sigma_{\text{shell}}$:
@@ -263,6 +404,34 @@ overlap = rod_ewald_overlap(
 ## Rod-Ewald Intersection Geometry
 
 For CTR simulations, rheedium solves the quadratic equation for where a continuous rod intersects the Ewald sphere.
+
+**2D cross-section view:**
+
+```python
+from rheedium.plots import plot_ewald_sphere_2d
+import matplotlib.pyplot as plt
+
+# 2D side view of Ewald sphere construction
+fig, ax = plt.subplots(figsize=(12, 8))
+plot_ewald_sphere_2d(
+    voltage_kv=15.0,
+    theta_deg=2.0,
+    lattice_spacing=4.0,
+    n_rods=7,
+    ax=ax,
+)
+plt.savefig("ewald_2d.png", dpi=150)
+```
+
+![Ewald Sphere 2D](../source/guides/figures/ewald_sphere_2d.svg)
+
+This side view shows:
+- **Blue curve**: Ewald sphere cross-section
+- **Green vertical lines**: CTR rods at each $(h,0)$ position
+- **Red arrow**: $\mathbf{k}_{in}$ at grazing angle $\theta$
+- **Purple arrow**: $\mathbf{k}_{out}$ (specular reflection)
+
+The small grazing angle creates a nearly tangent intersection, producing the characteristic elongated streaks in RHEED patterns.
 
 ### The Quadratic Equation
 
@@ -344,11 +513,58 @@ damping = roughness_damping(q_z, sigma_h=2.0)
 intensities_rough = intensities * damping
 ```
 
+## Complete Simulation Example
+
+Here's a complete example simulating a RHEED pattern with all CTR effects:
+
+```python
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+from rheedium.inout import parse_cif
+from rheedium.simul import ewald_simulator
+
+# Load crystal structure (e.g., MgO)
+crystal = parse_cif("MgO.cif")
+
+# Simulate RHEED pattern using exact Ewald-CTR intersection
+pattern = ewald_simulator(
+    crystal=crystal,
+    voltage_kv=20.0,          # 20 keV electrons
+    theta_deg=2.0,            # 2° grazing angle
+    phi_deg=0.0,              # [100] azimuth
+    hmax=5, kmax=5,           # CTR grid extent
+    temperature=300.0,        # For Debye-Waller factors
+    surface_roughness=0.5,    # 0.5 Å RMS roughness
+)
+
+# Plot the diffraction pattern
+valid = pattern.G_indices >= 0
+plt.figure(figsize=(10, 8))
+plt.scatter(
+    pattern.detector_points[valid, 0],
+    pattern.detector_points[valid, 1],
+    c=pattern.intensities[valid],
+    s=50 * pattern.intensities[valid] + 10,
+    cmap="hot",
+)
+plt.colorbar(label="Intensity (normalized)")
+plt.xlabel("Detector x (mm)")
+plt.ylabel("Detector y (mm)")
+plt.title("Simulated RHEED Pattern (MgO, 20 keV, θ=2°)")
+plt.savefig("rheed_pattern.png", dpi=150)
+```
+
+This produces a realistic RHEED pattern with:
+- CTR intensity modulation ($1/\sin^2(\pi l)$)
+- Structure factor variations from atomic positions
+- Debye-Waller thermal damping
+- Surface roughness attenuation
+
 ## Physical Summary
 
 | Effect | Mathematical Description | Implementation |
 |--------|-------------------------|----------------|
-| Surface termination | CTRs: $I \propto 1/\sin^2(\pi l)$ | `kinematic_ctr_simulator()` |
+| Surface termination | CTRs: $I \propto 1/\sin^2(\pi l)$ | `ewald_simulator()` |
 | Surface roughness | $I \times \exp(-q_z^2 \sigma_h^2)$ | `roughness_damping()` |
 | Finite domain | Rod width $\sigma = 2\pi/(L\sqrt{2\pi})$ | `extent_to_rod_sigma()` |
 | Energy spread | Shell width $\sigma = k \Delta E/(2E)$ | `compute_shell_sigma()` |
