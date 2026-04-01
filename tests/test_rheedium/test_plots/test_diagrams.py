@@ -15,6 +15,8 @@ from mpl_toolkits.mplot3d import Axes3D
 # Use non-interactive backend for testing
 matplotlib.use("Agg")
 
+import jax.numpy as jnp
+
 from rheedium.plots.diagrams import (
     plot_crystal_structure_3d,
     plot_ctr_profile,
@@ -28,7 +30,9 @@ from rheedium.plots.diagrams import (
     plot_structure_factor_phases,
     plot_unit_cell_3d,
     plot_wavelength_curve,
+    view_atoms,
 )
+from rheedium.types import create_crystal_structure
 
 
 class TestDiagramPlots:
@@ -416,6 +420,91 @@ class TestDiagramViewingAngles:
             elev=elev,
             azim=azim,
         )
+        assert isinstance(ax, Axes3D)
+
+
+def _make_crystal(n_atoms: int = 4):
+    """Create a simple CrystalStructure for view_atoms tests."""
+    positions_3d = np.array(
+        [[i * 1.0, j * 1.0, k * 1.0] for i in range(2) for j in range(2)]
+    )[:n_atoms]
+    z_nums = np.array([14, 8, 38, 22])[:n_atoms]
+    frac_pos = jnp.concatenate(
+        [jnp.array(positions_3d), jnp.array(z_nums[:, None], dtype=float)],
+        axis=1,
+    )
+    cart_pos = frac_pos.at[:, :3].multiply(jnp.array([4.0, 4.0, 4.0]))
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=jnp.array([4.0, 4.0, 4.0]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
+class TestViewAtoms:
+    """Tests for view_atoms function."""
+
+    def teardown_method(self) -> None:
+        """Clean up matplotlib figures after each test."""
+        plt.close("all")
+
+    def test_view_atoms_returns_axes3d(self) -> None:
+        """Should return an Axes3D instance."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal)
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_with_unit_cell(self) -> None:
+        """Should render unit cell wireframe when enabled."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal, show_unit_cell=True)
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_without_unit_cell(self) -> None:
+        """Should work without unit cell wireframe."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal, show_unit_cell=False)
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_custom_angles(self) -> None:
+        """Should accept custom viewing angles."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal, elev=60.0, azim=120.0)
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_custom_scale(self) -> None:
+        """Should accept custom atom_scale."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal, atom_scale=2.0)
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_custom_figsize(self) -> None:
+        """Should accept custom figsize."""
+        crystal = _make_crystal()
+        ax = view_atoms(crystal, figsize=(12, 10))
+        assert isinstance(ax, Axes3D)
+
+    def test_view_atoms_with_provided_ax(self) -> None:
+        """Should use user-provided axes."""
+        crystal = _make_crystal()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        returned_ax = view_atoms(crystal, ax=ax)
+        assert returned_ax is ax
+
+    def test_view_atoms_legend_entries(self) -> None:
+        """Should have a legend entry per unique element."""
+        crystal = _make_crystal(n_atoms=4)
+        ax = view_atoms(crystal)
+        legend = ax.get_legend()
+        assert legend is not None
+        assert len(legend.get_texts()) == 4
+
+    def test_view_atoms_single_element(self) -> None:
+        """Should work with a single element type."""
+        crystal = _make_crystal(n_atoms=1)
+        ax = view_atoms(crystal)
         assert isinstance(ax, Axes3D)
 
 

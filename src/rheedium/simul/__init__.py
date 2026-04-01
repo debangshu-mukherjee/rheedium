@@ -28,6 +28,8 @@ Routine Listings
     Find reflections satisfying Ewald sphere condition for given beam angles.
 :func:`extent_to_rod_sigma`
     Convert domain extent to reciprocal-space rod widths.
+:func:`ewald_simulator`
+    Simulate RHEED using exact Ewald sphere-CTR intersection (recommended).
 :func:`find_ctr_ewald_intersection`
     Find intersection of CTR with Ewald sphere for given (h, k) rod.
 :func:`find_kinematic_reflections`
@@ -42,12 +44,6 @@ Routine Listings
     Calculate incident electron wavevector from beam parameters.
 :func:`integrated_rod_intensity`
     Integrate CTR intensity over finite detector acceptance.
-:func:`ewald_simulator`
-    Simulate RHEED using exact Ewald sphere-CTR intersection (recommended).
-:func:`kinematic_ctr_simulator`
-    RHEED simulation using continuous crystal truncation rods (deprecated).
-:func:`kinematic_simulator`
-    Simulate RHEED pattern with proper atomic form factors (deprecated).
 :func:`kinematic_spot_simulator`
     RHEED simulation using discrete 3D reciprocal lattice (spots).
 :func:`kirkland_form_factor`
@@ -98,8 +94,6 @@ from .form_factors import (
     load_kirkland_parameters,
 )
 from .kinematic import (
-    find_ctr_ewald_intersection,
-    kinematic_ctr_simulator,
     kinematic_spot_simulator,
     make_ewald_sphere,
     simple_structure_factor,
@@ -112,8 +106,8 @@ from .simul_utils import (
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     ewald_simulator,
+    find_ctr_ewald_intersection,
     find_kinematic_reflections,
-    kinematic_simulator,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
@@ -149,8 +143,6 @@ __all__ = [
     "incident_wavevector",
     "interaction_constant",
     "integrated_rod_intensity",
-    "kinematic_ctr_simulator",
-    "kinematic_simulator",
     "kinematic_spot_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",
