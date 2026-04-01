@@ -1,7 +1,7 @@
 rheedium.simul
 ==============
 
-Simulation functions for RHEED pattern generation, including kinematic scattering, Ewald sphere construction, and form factor calculations.
+Simulation functions for RHEED pattern generation, including kinematic scattering, Ewald sphere construction, form factor calculations, and dynamical multislice propagation.
 
 .. automodule:: rheedium.simul
    :members:

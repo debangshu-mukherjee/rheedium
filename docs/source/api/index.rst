@@ -19,6 +19,7 @@ Submodules
    plots
    recon
    simul
+   tools
    types
    ucell
 
@@ -32,7 +33,10 @@ Submodules
     Surface reconstruction analysis and modeling utilities.
 
 :mod:`rheedium.simul`
-    RHEED pattern simulation using kinematic diffraction theory.
+    RHEED pattern simulation using kinematic and dynamical diffraction theory.
+
+:mod:`rheedium.tools`
+    Utility tools for parallel processing and distributed computing.
 
 :mod:`rheedium.types`
     Custom type definitions and data structures for JAX compatibility.
