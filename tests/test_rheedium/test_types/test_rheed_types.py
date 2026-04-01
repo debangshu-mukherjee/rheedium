@@ -7,13 +7,18 @@ from jax import tree_util
 from jaxtyping import TypeCheckError
 
 from rheedium.types.rheed_types import (
+    DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
+    SurfaceConfig,
+    bulk_to_slice,
     create_rheed_image,
     create_rheed_pattern,
     create_sliced_crystal,
+    identify_surface_atoms,
 )
+from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -766,6 +771,344 @@ class TestRHEEDIntegration(chex.TestCase):
 
         expected_grads = 2 * img_array
         chex.assert_trees_all_close(grads, expected_grads)
+
+
+def _make_simple_crystal(n_atoms: int = 8):
+    """Create a simple cubic CrystalStructure for testing."""
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    frac_xyz = rng.uniform(size=(n_atoms, 3))
+    z_nums = np.full((n_atoms, 1), 14.0)
+    frac_pos = jnp.array(np.hstack([frac_xyz, z_nums]))
+    cell_lengths = jnp.array([5.43, 5.43, 5.43])
+    cell_angles = jnp.array([90.0, 90.0, 90.0])
+    cart_xyz = frac_xyz * np.array([5.43, 5.43, 5.43])
+    cart_pos = jnp.array(np.hstack([cart_xyz, z_nums]))
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
+    )
+
+
+class TestIdentifySurfaceAtoms(chex.TestCase):
+    """Tests for identify_surface_atoms with all four methods."""
+
+    def test_height_method_default(self) -> None:
+        """Height method with default 30% fraction."""
+        positions = jnp.array(
+            [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3], [0, 0, 4]],
+            dtype=jnp.float64,
+        )
+        mask = identify_surface_atoms(positions)
+        assert mask.shape == (5,)
+        assert bool(mask[4])
+        assert not bool(mask[0])
+
+    def test_height_method_custom_fraction(self) -> None:
+        """Height method with 50% fraction."""
+        positions = jnp.array(
+            [[0, 0, i] for i in range(10)], dtype=jnp.float64
+        )
+        config = SurfaceConfig(method="height", height_fraction=0.5)
+        mask = identify_surface_atoms(positions, config)
+        n_surface = int(jnp.sum(mask))
+        assert n_surface == 5
+
+    def test_height_method_all_surface(self) -> None:
+        """Height fraction of 1.0 marks all atoms as surface."""
+        positions = jnp.array([[0, 0, i] for i in range(5)], dtype=jnp.float64)
+        config = SurfaceConfig(method="height", height_fraction=1.0)
+        mask = identify_surface_atoms(positions, config)
+        assert bool(jnp.all(mask))
+
+    def test_coordination_method(self) -> None:
+        """Coordination method identifies under-coordinated atoms."""
+        positions = jnp.array(
+            [
+                [0, 0, 0],
+                [1, 0, 0],
+                [0, 1, 0],
+                [1, 1, 0],
+                [0.5, 0.5, 0.5],
+                [10, 10, 10],
+            ],
+            dtype=jnp.float64,
+        )
+        config = SurfaceConfig(
+            method="coordination",
+            coordination_cutoff=2.0,
+            coordination_threshold=3,
+        )
+        mask = identify_surface_atoms(positions, config)
+        assert mask.shape == (6,)
+        assert bool(mask[5])
+
+    def test_layers_method(self) -> None:
+        """Layers method marks topmost layer."""
+        positions = jnp.array(
+            [
+                [0, 0, 0.0],
+                [1, 0, 0.0],
+                [0, 0, 2.0],
+                [1, 0, 2.0],
+                [0, 0, 4.0],
+                [1, 0, 4.0],
+            ],
+            dtype=jnp.float64,
+        )
+        config = SurfaceConfig(
+            method="layers", n_layers=1, layer_tolerance=0.5
+        )
+        mask = identify_surface_atoms(positions, config)
+        assert bool(mask[4]) and bool(mask[5])
+        assert not bool(mask[0]) and not bool(mask[1])
+
+    def test_layers_method_two_layers(self) -> None:
+        """Layers method with n_layers=2."""
+        positions = jnp.array(
+            [[0, 0, z] for z in [0.0, 0.0, 2.0, 2.0, 4.0, 4.0]],
+            dtype=jnp.float64,
+        )
+        config = SurfaceConfig(
+            method="layers", n_layers=2, layer_tolerance=0.5
+        )
+        mask = identify_surface_atoms(positions, config)
+        n_surface = int(jnp.sum(mask))
+        assert n_surface == 4
+
+    def test_explicit_method(self) -> None:
+        """Explicit method uses user-provided mask."""
+        positions = jnp.ones((5, 3))
+        explicit = jnp.array([True, False, True, False, True])
+        config = SurfaceConfig(method="explicit", explicit_mask=explicit)
+        mask = identify_surface_atoms(positions, config)
+        chex.assert_trees_all_equal(mask, explicit)
+
+    def test_explicit_method_no_mask_fallback(self) -> None:
+        """Explicit method without mask falls back to height."""
+        positions = jnp.array([[0, 0, i] for i in range(5)], dtype=jnp.float64)
+        config = SurfaceConfig(method="explicit")
+        mask = identify_surface_atoms(positions, config)
+        assert mask.shape == (5,)
+        assert bool(mask[4])
+
+    def test_output_shape_matches_input(self) -> None:
+        """Output mask has same length as input positions."""
+        for n in [1, 10, 100]:
+            positions = jnp.zeros((n, 3))
+            mask = identify_surface_atoms(positions)
+            assert mask.shape == (n,)
+
+
+class TestSurfaceConfig(chex.TestCase):
+    """Tests for SurfaceConfig NamedTuple."""
+
+    def test_default_values(self) -> None:
+        """Default config should use height method at 30%."""
+        config = SurfaceConfig()
+        assert config.method == "height"
+        assert config.height_fraction == 0.3
+        assert config.coordination_cutoff == 3.0
+        assert config.coordination_threshold == 8
+        assert config.n_layers == 1
+        assert config.layer_tolerance == 0.5
+        assert config.explicit_mask is None
+
+    def test_custom_values(self) -> None:
+        """Custom config should preserve all values."""
+        config = SurfaceConfig(
+            method="coordination",
+            coordination_cutoff=4.0,
+            coordination_threshold=6,
+        )
+        assert config.method == "coordination"
+        assert config.coordination_cutoff == 4.0
+        assert config.coordination_threshold == 6
+
+    def test_immutable(self) -> None:
+        """SurfaceConfig should be immutable (NamedTuple)."""
+        config = SurfaceConfig()
+        with pytest.raises(AttributeError):
+            config.method = "layers"
+
+
+class TestDetectorGeometry(chex.TestCase):
+    """Tests for DetectorGeometry NamedTuple."""
+
+    def test_default_values(self) -> None:
+        """Default geometry should have standard RHEED values."""
+        geom = DetectorGeometry()
+        assert geom.distance == 100.0
+        assert geom.tilt_angle == 0.0
+        assert geom.curvature_radius == float("inf")
+        assert geom.center_offset_h == 0.0
+        assert geom.center_offset_v == 0.0
+
+    def test_custom_values(self) -> None:
+        """Custom geometry should preserve values."""
+        geom = DetectorGeometry(
+            distance=200.0,
+            tilt_angle=5.0,
+            curvature_radius=500.0,
+            center_offset_h=1.5,
+            center_offset_v=-2.0,
+        )
+        assert geom.distance == 200.0
+        assert geom.tilt_angle == 5.0
+        assert geom.curvature_radius == 500.0
+        assert geom.center_offset_h == 1.5
+        assert geom.center_offset_v == -2.0
+
+    def test_immutable(self) -> None:
+        """DetectorGeometry should be immutable (NamedTuple)."""
+        geom = DetectorGeometry()
+        with pytest.raises(AttributeError):
+            geom.distance = 200.0
+
+    def test_infinite_curvature_is_flat(self) -> None:
+        """Default curvature should indicate a flat detector."""
+        import math
+
+        geom = DetectorGeometry()
+        assert math.isinf(geom.curvature_radius)
+
+
+class TestBulkToSlice(chex.TestCase):
+    """Tests for bulk_to_slice function."""
+
+    def test_returns_sliced_crystal(self) -> None:
+        """Should return a SlicedCrystal instance."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        assert isinstance(sliced, SlicedCrystal)
+
+    def test_output_shapes(self) -> None:
+        """Output should have correct array shapes."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.ndim == 2
+        assert sliced.cart_positions.shape[1] == 4
+        chex.assert_shape(sliced.cell_lengths, (3,))
+        chex.assert_shape(sliced.cell_angles, (3,))
+        chex.assert_shape(sliced.orientation, (3,))
+
+    def test_depth_preserved(self) -> None:
+        """Slab depth should match requested depth."""
+        crystal = _make_simple_crystal()
+        depth = 15.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+        )
+        chex.assert_trees_all_close(sliced.depth, depth)
+
+    def test_extents_preserved(self) -> None:
+        """Lateral extents should match requested values."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=120.0,
+            y_extent=130.0,
+        )
+        chex.assert_trees_all_close(sliced.x_extent, 120.0)
+        chex.assert_trees_all_close(sliced.y_extent, 130.0)
+
+    def test_orientation_preserved(self) -> None:
+        """Surface orientation should be preserved."""
+        crystal = _make_simple_crystal()
+        orient = jnp.array([1, 1, 1], dtype=jnp.int32)
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=orient,
+            depth=10.0,
+        )
+        chex.assert_trees_all_equal(sliced.orientation, orient)
+
+    def test_atoms_within_bounds(self) -> None:
+        """All atoms should be within the specified bounds."""
+        crystal = _make_simple_crystal()
+        depth = 10.0
+        x_ext = 80.0
+        y_ext = 80.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+            x_extent=x_ext,
+            y_extent=y_ext,
+        )
+        positions = sliced.cart_positions[:, :3]
+        assert bool(jnp.all(positions[:, 0] >= 0))
+        assert bool(jnp.all(positions[:, 0] <= x_ext))
+        assert bool(jnp.all(positions[:, 1] >= 0))
+        assert bool(jnp.all(positions[:, 1] <= y_ext))
+        assert bool(jnp.all(positions[:, 2] >= 0))
+        assert bool(jnp.all(positions[:, 2] <= depth))
+
+    def test_cell_angles_orthorhombic(self) -> None:
+        """Output cell should have 90-degree angles."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        chex.assert_trees_all_close(
+            sliced.cell_angles,
+            jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    def test_001_orientation(self) -> None:
+        """(001) orientation should work without rotation."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_111_orientation(self) -> None:
+        """(111) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 1, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_100_orientation(self) -> None:
+        """(100) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 0, 0], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
 
 
 if __name__ == "__main__":
