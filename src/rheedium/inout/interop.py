@@ -64,8 +64,8 @@ def from_ase(atoms: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Validate input** --
        Check ASE is installed, cell is 3D and
        non-degenerate.
@@ -168,8 +168,8 @@ def to_ase(crystal: CrystalStructure) -> Any:
         - ``numbers`` : Atomic numbers
         - ``pbc`` : Periodic boundary conditions set to True
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Reconstruct cell** --
        Build cell vectors from lengths and angles.
     2. **Convert to NumPy** --
@@ -252,8 +252,8 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Validate input** --
        Check pymatgen is installed and input type.
     2. **Extract data** --
@@ -338,8 +338,8 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     structure : pymatgen.core.Structure
         Equivalent pymatgen Structure object.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Reconstruct cell** --
        Build cell vectors from lengths and angles.
     2. **Map species** --

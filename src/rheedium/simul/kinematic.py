@@ -69,8 +69,8 @@ def make_ewald_sphere(
     radius : scalar_float
         Radius of the Ewald sphere (k).
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Derive wavelength** --
        :math:`\\lambda = 2\\pi / k`.
     2. **Compute incident wavevector** --
@@ -121,8 +121,8 @@ def simple_structure_factor(
     intensity : Float[Array, ""]
         Diffraction intensity :math:`I = |F(G)|^2`
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Approximate scattering factors** --
        Use :math:`f_j \\approx Z_j` (atomic number) as a
        simplified form factor.
@@ -215,8 +215,8 @@ def kinematic_spot_simulator(
     For surface-sensitive RHEED with continuous crystal truncation rods
     (CTRs) and streak patterns, use `kinematic_ctr_simulator` instead.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Generate reciprocal lattice** --
        Create G(h,k,l) up to (hmax, kmax, lmax).
     2. **Compute beam parameters** --

@@ -45,8 +45,8 @@ def wavelength_ang(
     This is more accurate than simplified approximations, especially at
     higher voltages (>=30 keV) where the difference can be several percent.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Convert voltage** --
        Multiply kV by 1000 to obtain voltage in Volts.
     2. **Relativistic correction** --
@@ -141,8 +141,8 @@ def incident_wavevector(
         The beam propagates in the surface plane at azimuthal angle phi,
         with a downward z-component determined by the grazing angle theta.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute wavevector magnitude** --
        :math:`k = 2\\pi / \\lambda`.
     2. **Convert angles** --
@@ -182,8 +182,8 @@ def interaction_constant(
     used in multislice calculations. Includes relativistic mass
     correction via the Lorentz factor.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Convert units** --
        Convert voltage from kV to V and wavelength from
        Ångstroms to metres.

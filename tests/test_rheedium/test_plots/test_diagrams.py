@@ -425,15 +425,18 @@ class TestDiagramViewingAngles:
 
 def _make_crystal(n_atoms: int = 4):
     """Create a simple CrystalStructure for view_atoms tests."""
-    positions_3d = np.array(
-        [[i * 1.0, j * 1.0, k * 1.0] for i in range(2) for j in range(2)]
+    all_pos = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
     )[:n_atoms]
     z_nums = np.array([14, 8, 38, 22])[:n_atoms]
     frac_pos = jnp.concatenate(
-        [jnp.array(positions_3d), jnp.array(z_nums[:, None], dtype=float)],
+        [jnp.array(all_pos), jnp.array(z_nums[:, None], dtype=float)],
         axis=1,
     )
-    cart_pos = frac_pos.at[:, :3].multiply(jnp.array([4.0, 4.0, 4.0]))
+    cart_pos = jnp.concatenate(
+        [jnp.array(all_pos) * 4.0, jnp.array(z_nums[:, None], dtype=float)],
+        axis=1,
+    )
     return create_crystal_structure(
         frac_positions=frac_pos,
         cart_positions=cart_pos,

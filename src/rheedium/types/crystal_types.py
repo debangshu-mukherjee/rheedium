@@ -168,8 +168,8 @@ def create_crystal_structure(
     validated_crystal_structure : CrystalStructure
         A validated CrystalStructure instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     - Convert all inputs to JAX arrays using jnp.asarray.
     - Validate shapes of frac_positions, cart_positions,
       cell_lengths, and cell_angles.
@@ -455,8 +455,8 @@ def create_ewald_data(
     ewald_data : EwaldData
         Validated EwaldData PyTree instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Convert dtypes** --
        float64 for real-valued fields, int32 for Miller
        indices, complex128 for structure factors.
@@ -732,8 +732,8 @@ def create_potential_slices(
     validated_potential_slices : PotentialSlices
         Validated PotentialSlices instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. Convert inputs to JAX arrays with appropriate dtypes.
     2. Validate slice array is 3D.
     3. Ensure slice thickness is positive.
@@ -993,8 +993,8 @@ def create_xyz_data(
     validated_xyz_data : XYZData
         Validated PyTree structure for XYZ file contents.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     - Convert required inputs to JAX arrays with appropriate
       dtypes: positions to float64, atomic_numbers to int32,
       lattice/stress/energy to float64 if provided.

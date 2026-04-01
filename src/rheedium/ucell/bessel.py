@@ -350,8 +350,8 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     result : Float[Array, "..."]
         Approximated values of K_v(x)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Classify Order** --
        Determine whether v is integer or non-integer and
        whether v = 1/2 (special case).

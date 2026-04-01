@@ -268,8 +268,8 @@ def create_rheed_pattern(
     validated_rheed_pattern : RHEEDPattern
         Validated RHEED pattern instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     - Convert inputs to JAX arrays.
     - Validate array shapes: check k_out has shape (M, 3),
       detector_points has shape (M, 2), intensities has
@@ -413,8 +413,8 @@ def create_rheed_image(
     validated_rheed_image : RHEEDImage
         Validated RHEED image instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. Convert inputs to JAX arrays.
     2. Validate image array: check it is 2D, all values are
        finite and non-negative.
@@ -701,8 +701,8 @@ def create_sliced_crystal(
     validated_sliced_crystal : SlicedCrystal
         Validated SlicedCrystal instance.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     - Verify cart_positions shape is (N, 4) with N > 0.
     - Verify cell_lengths, cell_angles, orientation have
       correct shapes.
@@ -891,8 +891,8 @@ def bulk_to_slice(
     sliced_crystal : SlicedCrystal
         Surface-oriented crystal slab with transformed coordinates.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. Build rotation matrix to align [hkl] direction with
        z-axis: convert Miller indices to reciprocal lattice
        vector and calculate rotation matrix R that maps this

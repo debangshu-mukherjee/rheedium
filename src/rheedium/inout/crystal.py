@@ -75,8 +75,8 @@ def lattice_to_cell_params(
         - ``beta`` : angle between vectors a and c
         - ``gamma`` : angle between vectors a and b
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Cell lengths** --
        Euclidean norm of each lattice vector.
     2. **Cell angles** --
@@ -173,8 +173,8 @@ def _infer_lattice_from_positions(
         elements are the cell dimensions [a, b, c] in Angstroms. Off-diagonal
         elements are zero (90-degree angles).
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Bounding box** --
        Min and max coordinates along each axis.
     2. **Add padding** --

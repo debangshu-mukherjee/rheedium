@@ -94,8 +94,8 @@ def compute_domain_extent(
         Domain extent [Lx, Ly, Lz] in Ångstroms. Minimum value is 1.0 Å
         per dimension to avoid numerical issues.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Bounding box** --
        Compute min and max coordinates along each axis.
     2. **Raw extent** --
@@ -148,8 +148,8 @@ def extent_to_rod_sigma(
         Rod Gaussian widths [σx, σy] in 1/Ångstroms. Only x and y
         components are returned since rods extend continuously along z.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Enforce minimum extent** --
        Clip domain sizes to 1.0 Å minimum.
     2. **Fourier relation** --
@@ -224,8 +224,8 @@ def compute_shell_sigma(
     shell_sigma : Float[Array, ""]
         Ewald shell Gaussian width in 1/Ångstroms.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Energy contribution** --
        :math:`\\Delta k / k = \\Delta E / (2E)`.
     2. **Divergence contribution** --
@@ -313,8 +313,8 @@ def rod_ewald_overlap(
         indicates exact Ewald sphere intersection; smaller values
         indicate partial overlap.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Outgoing wavevector** --
        :math:`k_{out} = k_{in} + G`.
     2. **Perpendicular distance** --
@@ -415,8 +415,8 @@ def finite_domain_intensities(
     modified_intensities : Float[Array, "N"]
         Intensities weighted by overlap: I_modified = I_base × overlap.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Incident wavevector** --
        Build :math:`k_{in}` from beam angles and
        wavelength.

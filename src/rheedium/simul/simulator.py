@@ -94,8 +94,8 @@ def project_on_detector(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Scale factor** --
        :math:`s = d / (k_x + \\epsilon)` for each
        wavevector.
@@ -139,8 +139,8 @@ def project_on_detector_geometry(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Ray-plane intersection** --
        Compute intersection parameter :math:`t` for each
        wavevector with the (possibly tilted) detector plane.
@@ -247,8 +247,8 @@ def find_kinematic_reflections(
         Output wavevectors for allowed reflections. Invalid entries
         correspond to `allowed_indices == -1`.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Outgoing wavevectors** --
        :math:`k_{out} = k_{in} + G` for all G vectors.
     2. **Elastic condition** --
@@ -362,8 +362,8 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     intensities : Float[Array, "N"]
         Diffraction intensities for each allowed reflection.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Extract atomic data** --
        Positions, atomic numbers, and Miller indices
        from crystal and G vectors.
@@ -641,8 +641,8 @@ def ewald_simulator(  # noqa: PLR0913
     pattern : RHEEDPattern
         RHEED pattern with detector positions and intensities.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Beam parameters** --
        Wavelength and incident wavevector from voltage and
        angles.
@@ -887,8 +887,8 @@ def sliced_crystal_to_potential(
     potential_slices : PotentialSlices
         3D potential array with calibration information.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Grid dimensions** --
        Compute nx, ny from extents and pixel size, nz from
        depth and slice thickness.
@@ -1054,8 +1054,8 @@ def multislice_propagate(
     exit_wave : Complex[Array, "nx ny"]
         Complex exit wave after propagation through all slices
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Initialise wave** --
        Tilted plane wave from :math:`k_{in,x}` and
        :math:`k_{in,y}` (with refraction if
@@ -1212,8 +1212,8 @@ def multislice_simulator(
         The g_indices field contains flattened grid indices since Miller
         indices are not well-defined for multislice simulation.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Exit wave** --
        Propagate through all slices via
        :func:`multislice_propagate`.

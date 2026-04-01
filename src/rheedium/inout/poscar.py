@@ -242,8 +242,8 @@ def parse_poscar(
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Read file** --
        Load lines, validate minimum length.
     2. **Parse header** --

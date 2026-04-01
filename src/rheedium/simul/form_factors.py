@@ -78,8 +78,8 @@ def get_debye_temperature(
 
     A value of 0.0 indicates no reliable data is available for that element.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Clip index** --
        Map atomic number to zero-based array index,
        clamped to [0, 102].
@@ -109,8 +109,8 @@ def get_atomic_mass(
     mass : Float[Array, ""]
         Atomic mass in atomic mass units (amu)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Clip index** --
        Map atomic number to zero-based array index,
        clamped to [0, 102].
@@ -145,8 +145,8 @@ def load_kirkland_parameters(
     b_coeffs : Float[Array, "6"]
         Width coefficients for Gaussian terms in Ų
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Validate range** --
        Clip atomic number to [1, 103].
     2. **Load parameter matrix** --
@@ -207,8 +207,8 @@ def kirkland_form_factor(
     form_factor : Float[Array, "..."]
         Atomic form factor f(q) in electron scattering units
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
     2. **Prepare q term** --
@@ -269,8 +269,8 @@ def kirkland_projected_potential(
     potential : Float[Array, "..."]
         Projected potential in Volt·Angstrom
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
     2. **Safe radial distance** --
@@ -356,8 +356,8 @@ def get_mean_square_displacement(
     mean_square_displacement : scalar_float
         Mean square displacement ⟨u²⟩ in Ų
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Retrieve Debye temperature** --
        Look up element-specific :math:`\\Theta_D`.
     2. **Debye model MSD** --
@@ -464,8 +464,8 @@ def debye_waller_factor(
     dw_factor : Float[Array, "..."]
         Debye-Waller damping factor exp(-W)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Validate MSD** --
        Ensure :math:`\\langle u^2 \\rangle \\geq 0`.
     2. **Compute exponent** --
@@ -525,8 +525,8 @@ def atomic_scattering_factor(
     scattering_factor : Float[Array, "..."]
         Total atomic scattering factor f(q)×exp(-W)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **q magnitude** --
        :math:`|q| = \\|q\\|`.
     2. **Form factor** --

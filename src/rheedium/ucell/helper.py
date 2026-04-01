@@ -164,8 +164,8 @@ def parse_cif_and_scrape(
         thickness.
 
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Parse CIF** --
        Load the CIF file to obtain the initial crystal
        structure with all symmetry-equivalent positions.

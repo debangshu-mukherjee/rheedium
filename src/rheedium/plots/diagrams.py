@@ -122,8 +122,8 @@ def plot_wavelength_curve(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute Relativistic Wavelength** --
        Evaluate lambda = 12.2643 / sqrt(V * (1 + 0.978476e-6
        * V)) over the requested voltage range.
@@ -200,8 +200,8 @@ def plot_form_factors(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Evaluate Form Factors** --
        For each atomic number, call kirkland_form_factor
        over the q grid and convert to NumPy.
@@ -270,8 +270,8 @@ def plot_debye_waller(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute MSD Per Temperature** --
        Call get_mean_square_displacement for the given
        element and each temperature.
@@ -337,8 +337,8 @@ def plot_ctr_profile(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute CTR Intensity** --
        Evaluate 1/sin^2(pi*l) with a small epsilon to
        avoid divergence at integer l, then normalize.
@@ -401,8 +401,8 @@ def plot_roughness_damping(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute Damping Curves** --
        For each sigma value, evaluate exp(-0.5 * q_z^2
        * sigma^2) over the q_z grid.
@@ -463,8 +463,8 @@ def plot_rod_broadening(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute Broadening Profiles** --
        For each correlation length xi, set sigma_q =
        1/xi and evaluate a Gaussian profile in q_perp.
@@ -528,8 +528,8 @@ def plot_ewald_sphere_2d(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute Wavevector** --
        Convert voltage to relativistic wavelength, then
        derive |k| = 2*pi/lambda.
@@ -653,8 +653,8 @@ def plot_ewald_sphere_3d(
     ax : Axes3D
         The 3D matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Build Sphere Surface** --
        Compute a partial spherical mesh of radius |k|,
        offset by the incident wavevector direction.
@@ -750,8 +750,8 @@ def plot_unit_cell_3d(
     ax : Axes3D
         The 3D matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Build Lattice Vectors** --
        Place a along x, b in the xy-plane using gamma,
        and c in general direction from alpha and beta.
@@ -913,8 +913,8 @@ def plot_crystal_structure_3d(
     ax : Axes3D
         The 3D matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Group by Element** --
        Identify unique atomic numbers and scatter each
        group with CPK color and scaled marker size.
@@ -1021,8 +1021,8 @@ def plot_grazing_incidence_geometry(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Draw Surface** --
        Render a horizontal line and filled region to
        represent the sample surface.
@@ -1112,8 +1112,8 @@ def plot_structure_factor_phases(
     ax : Axes
         The matplotlib axes with the plot.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Compute Phase Vectors** --
        For each atom at (x, y), compute phase = 2*pi *
        (h*x + k*y) and the corresponding unit phasor.
@@ -1226,8 +1226,8 @@ def view_atoms(
     >>> import matplotlib.pyplot as plt
     >>> plt.savefig("crystal_view.png", dpi=150)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Extract Positions** --
        Read cart_positions from CrystalStructure and
        split into xyz coordinates and atomic numbers.

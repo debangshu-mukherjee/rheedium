@@ -93,8 +93,8 @@ def calculate_ctr_intensity(
         CTR intensities for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Extract atomic data** --
        Get positions and atomic numbers from crystal
        structure.
@@ -212,8 +212,8 @@ def calculate_ctr_amplitude(
         CTR complex amplitudes for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Extract atomic data** --
        Get positions and atomic numbers from crystal
        structure.
@@ -334,8 +334,8 @@ def integrated_ctr_amplitude(
     integrated_amplitude : Complex[Array, ""]
         Coherently averaged complex amplitude over detector acceptance
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Sample q_z** --
        Create linearly spaced :math:`q_z` values over
        the integration range.
@@ -401,8 +401,8 @@ def roughness_damping(
     damping : Float[Array, "..."]
         Damping factor exp(-½q_z²σ_h²) between 0 and 1
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Clamp roughness** --
        Ensure :math:`\\sigma_h \\geq 0`.
     2. **Compute exponent** --
@@ -456,8 +456,8 @@ def gaussian_rod_profile(
     profile : Float[Array, "..."]
         Normalized Gaussian intensity profile perpendicular to rod
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Clamp correlation length** --
        Ensure :math:`\\xi > 0`.
     2. **Reciprocal width** --
@@ -502,8 +502,8 @@ def lorentzian_rod_profile(
     profile : Float[Array, "..."]
         Normalized Lorentzian intensity profile perpendicular to rod
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Clamp correlation length** --
        Ensure :math:`\\xi > 0`.
     2. **Compute product** --
@@ -547,8 +547,8 @@ def rod_profile_function(
     profile : Float[Array, "..."]
         Normalized intensity profile perpendicular to rod
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Select profile type** --
        Use JAX-safe conditional to choose between
        Gaussian and Lorentzian.
@@ -602,8 +602,8 @@ def surface_structure_factor(
     structure_factor : Complex[Array, ""]
         Complex structure factor F(q)
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Phase factors** --
        Compute :math:`\\exp(i q \\cdot r_j)` for each atom.
     2. **Scattering factors** --
@@ -700,8 +700,8 @@ def integrated_rod_intensity(
     integrated_intensity : scalar_float
         Total integrated intensity over detector acceptance
 
-    Implementation Logic
-    --------------------
+    Implementation
+    --------------
     1. **Sample q_z** --
        Create linearly spaced :math:`q_z` values over
        integration range.
