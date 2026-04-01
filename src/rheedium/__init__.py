@@ -5,7 +5,8 @@ Extended Summary
 Rheedium provides a comprehensive suite of tools for simulating and analyzing
 Reflection High-Energy Electron Diffraction (RHEED) patterns. Built on JAX,
 it offers differentiable simulations suitable for optimization and machine
-learning applications in materials science and surface physics.
+learning applications in materials science and surface physics. Distributed
+computing is supported through device mesh parallelism.
 
 Routine Listings
 ----------------
@@ -17,6 +18,8 @@ Routine Listings
     Surface reconstruction analysis and modeling utilities.
 :mod:`simul`
     RHEED pattern simulation using kinematic diffraction theory.
+:mod:`tools`
+    Utility tools for parallel processing and distributed computing.
 :mod:`types`
     Custom type definitions and data structures for JAX compatibility.
 :mod:`ucell`
@@ -34,6 +37,12 @@ Notes
 All computations are JAX-compatible and support automatic differentiation
 for gradient-based optimization of crystal structures and simulation
 parameters.
+
+Multi-node distributed execution is supported via
+``jax.distributed.initialize()``. To enable, set the environment variable
+``RHEEDIUM_DISTRIBUTED=1`` before launching with ``srun`` or equivalent.
+An optional ``RHEEDIUM_COORDINATOR_ADDRESS`` environment variable overrides
+automatic SLURM coordinator detection.
 """
 
 import os
@@ -49,6 +58,18 @@ os.environ.setdefault(
 # Enable 64-bit precision in JAX must be set before importing submodules
 import jax  # noqa: E402
 
+if (
+    os.environ.get("RHEEDIUM_DISTRIBUTED", "0") == "1"
+    and int(os.environ.get("SLURM_NTASKS", "1")) > 1
+):
+    coordinator_address: str | None = os.environ.get(
+        "RHEEDIUM_COORDINATOR_ADDRESS"
+    )
+    if coordinator_address is not None:
+        jax.distributed.initialize(coordinator_address=coordinator_address)
+    else:
+        jax.distributed.initialize()
+
 jax.config.update("jax_enable_x64", True)
 
 from . import (  # noqa: E402, I001
@@ -56,6 +77,7 @@ from . import (  # noqa: E402, I001
     plots,
     recon,
     simul,
+    tools,
     types,
     ucell,
 )
@@ -67,6 +89,7 @@ __all__ = [
     "plots",
     "recon",
     "simul",
+    "tools",
     "types",
     "ucell",
 ]
