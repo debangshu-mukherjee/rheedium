@@ -9,11 +9,12 @@ The parser supports VASP 5.x format with species names and both Direct
 
 Routine Listings
 ----------------
-parse_poscar : function
+:func:`parse_poscar`
     Parse VASP POSCAR/CONTCAR file into CrystalStructure.
-_parse_poscar_header : function, internal
-    Extract scaling factor, lattice vectors, species, and counts from header.
-_parse_poscar_positions : function, internal
+:func:`_parse_poscar_header`
+    Extract scaling factor, lattice vectors, species,
+    and counts from header.
+:func:`_parse_poscar_positions`
     Parse atomic positions in Direct or Cartesian format.
 
 Notes
@@ -240,6 +241,21 @@ def parse_poscar(
         - ``cart_positions`` : Cartesian coordinates with atomic numbers
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
+
+    Implementation Logic
+    --------------------
+    1. **Read file** --
+       Load lines, validate minimum length.
+    2. **Parse header** --
+       Extract scaling, lattice, species, and counts.
+    3. **Coordinate mode** --
+       Detect Direct or Cartesian, skip optional
+       Selective dynamics line.
+    4. **Parse positions** --
+       Read fractional or Cartesian coordinates.
+    5. **Assemble structure** --
+       Cell parameters, Cartesian positions, and
+       create CrystalStructure.
 
     Raises
     ------

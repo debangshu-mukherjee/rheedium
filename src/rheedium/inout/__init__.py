@@ -9,8 +9,12 @@ provides interoperability with ASE and pymatgen libraries.
 
 Routine Listings
 ----------------
+:func:`atomic_masses`
+    Return preloaded atomic masses as JAX array.
 :func:`atomic_symbol`
     Returns atomic number for given atomic symbol string.
+:func:`debye_temperatures`
+    Return preloaded Debye temperatures as JAX array.
 :func:`from_ase`
     Convert ASE Atoms to CrystalStructure.
 :func:`from_pymatgen`
@@ -54,10 +58,18 @@ from .crystal import lattice_to_cell_params, parse_crystal, xyz_to_crystal
 from .interop import from_ase, from_pymatgen, to_ase, to_pymatgen
 from .poscar import parse_poscar
 from .vaspxml import parse_vaspxml, parse_vaspxml_trajectory
-from .xyz import atomic_symbol, kirkland_potentials, parse_xyz
+from .xyz import (
+    atomic_masses,
+    atomic_symbol,
+    debye_temperatures,
+    kirkland_potentials,
+    parse_xyz,
+)
 
 __all__ = [
+    "atomic_masses",
     "atomic_symbol",
+    "debye_temperatures",
     "from_ase",
     "from_pymatgen",
     "kirkland_potentials",

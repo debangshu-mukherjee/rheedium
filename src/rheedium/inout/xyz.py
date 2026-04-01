@@ -8,19 +8,29 @@ for loading atomic data such as Kirkland scattering factors.
 
 Routine Listings
 ----------------
-atomic_symbol : function
+:func:`atomic_masses`
+    Return preloaded atomic masses as JAX array.
+:func:`atomic_symbol`
     Return atomic number for given atomic symbol string.
-kirkland_potentials : function
-    Return preloaded Kirkland potential parameters as JAX array.
-parse_xyz : function
-    Parse an XYZ file and return a validated XYZData PyTree.
-_load_atomic_numbers : function, internal
+:func:`debye_temperatures`
+    Return preloaded Debye temperatures as JAX array.
+:func:`kirkland_potentials`
+    Return preloaded Kirkland potential parameters as
+    JAX array.
+:func:`parse_xyz`
+    Parse an XYZ file and return a validated XYZData
+    PyTree.
+:func:`_load_atomic_masses`
+    Load atomic masses from CSV file.
+:func:`_load_atomic_numbers`
     Load atomic number mapping from JSON file.
-_load_kirkland_csv : function, internal
+:func:`_load_debye_temperatures`
+    Load Debye temperatures from CSV file.
+:func:`_load_kirkland_csv`
     Load Kirkland potential parameters from CSV file.
-_parse_xyz_metadata : function, internal
+:func:`_parse_xyz_metadata`
     Extract metadata from the XYZ comment line.
-_parse_atom_line : function, internal
+:func:`_parse_atom_line`
     Parse a single atom line from XYZ file.
 
 Notes
@@ -44,6 +54,8 @@ from rheedium.types import XYZData, create_xyz_data, scalar_int
 _LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
 _KIRKLAND_PATH: Path = _LUGGAGE_DIR / "Kirkland_Potentials.csv"
 _ATOMS_PATH: Path = _LUGGAGE_DIR / "atom_numbers.json"
+_DEBYE_TEMPS_PATH: Path = _LUGGAGE_DIR / "debye_temperatures.csv"
+_ATOMIC_MASSES_PATH: Path = _LUGGAGE_DIR / "atomic_masses.csv"
 
 
 @beartype
@@ -222,6 +234,128 @@ def kirkland_potentials() -> Float[Array, "103 12"]:
     Array([...], dtype=float64)
     """
     return _KIRKLAND_POTENTIALS
+
+
+@jaxtyped(typechecker=beartype)
+def _load_debye_temperatures(
+    file_path: Optional[Path] = _DEBYE_TEMPS_PATH,
+) -> Float[Array, "103"]:
+    """Load Debye temperatures from CSV file.
+
+    Reads element-specific Debye temperatures in Kelvin from a CSV
+    file and converts them to a JAX array. A value of 0.0 indicates
+    no reliable data is available for that element.
+
+    Parameters
+    ----------
+    file_path : Optional[Path], optional
+        Path to CSV file. Defaults to bundled debye_temperatures.csv.
+
+    Returns
+    -------
+    debye_temps : Float[Array, "103"]
+        Debye temperatures for elements 1-103 (H to Lr) in Kelvin.
+
+    Raises
+    ------
+    ValueError
+        If the CSV does not contain exactly 103 values.
+    """
+    debye_numpy: np.ndarray = np.loadtxt(file_path, dtype=np.float64)
+    if debye_numpy.shape != (103,):
+        raise ValueError(
+            f"Expected 103 Debye temperatures, got {debye_numpy.shape}"
+        )
+    debye_temps: Float[Array, "103"] = jnp.asarray(
+        debye_numpy, dtype=jnp.float64
+    )
+    return debye_temps
+
+
+_DEBYE_TEMPERATURES: Float[Array, "103"] = _load_debye_temperatures()
+
+
+@jaxtyped(typechecker=beartype)
+def debye_temperatures() -> Float[Array, "103"]:
+    """Return preloaded Debye temperatures as JAX array.
+
+    Provides access to element-specific Debye temperatures for
+    elements 1-103. Data is loaded once at module import. A value
+    of 0.0 indicates no reliable data for that element.
+
+    Returns
+    -------
+    debye_temps : Float[Array, "103"]
+        Debye temperatures in Kelvin for elements 1-103 (H to Lr).
+
+    Examples
+    --------
+    >>> temps = debye_temperatures()
+    >>> temps.shape
+    (103,)
+    >>> temps[28]  # Copper (Z=29, 0-indexed as 28)
+    Array(343., dtype=float64)
+    """
+    return _DEBYE_TEMPERATURES
+
+
+@jaxtyped(typechecker=beartype)
+def _load_atomic_masses(
+    file_path: Optional[Path] = _ATOMIC_MASSES_PATH,
+) -> Float[Array, "103"]:
+    """Load atomic masses from CSV file.
+
+    Reads atomic masses in atomic mass units (amu) from a CSV file
+    and converts them to a JAX array.
+
+    Parameters
+    ----------
+    file_path : Optional[Path], optional
+        Path to CSV file. Defaults to bundled atomic_masses.csv.
+
+    Returns
+    -------
+    masses : Float[Array, "103"]
+        Atomic masses for elements 1-103 (H to Lr) in amu.
+
+    Raises
+    ------
+    ValueError
+        If the CSV does not contain exactly 103 values.
+    """
+    masses_numpy: np.ndarray = np.loadtxt(file_path, dtype=np.float64)
+    if masses_numpy.shape != (103,):
+        raise ValueError(
+            f"Expected 103 atomic masses, got {masses_numpy.shape}"
+        )
+    masses: Float[Array, "103"] = jnp.asarray(masses_numpy, dtype=jnp.float64)
+    return masses
+
+
+_ATOMIC_MASSES: Float[Array, "103"] = _load_atomic_masses()
+
+
+@jaxtyped(typechecker=beartype)
+def atomic_masses() -> Float[Array, "103"]:
+    """Return preloaded atomic masses as JAX array.
+
+    Provides access to atomic masses in atomic mass units (amu) for
+    elements 1-103. Data is loaded once at module import.
+
+    Returns
+    -------
+    masses : Float[Array, "103"]
+        Atomic masses in amu for elements 1-103 (H to Lr).
+
+    Examples
+    --------
+    >>> masses = atomic_masses()
+    >>> masses.shape
+    (103,)
+    >>> masses[0]  # Hydrogen
+    Array(1.008, dtype=float64)
+    """
+    return _ATOMIC_MASSES
 
 
 @beartype

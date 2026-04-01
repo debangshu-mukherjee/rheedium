@@ -8,10 +8,10 @@ commonly seen in experimental RHEED systems.
 
 Routine Listings
 ----------------
-create_phosphor_colormap : function
-    Create custom colormap simulating phosphor screen appearance
-plot_rheed : function
-    Plot RHEED pattern with interpolation and phosphor colormap
+:func:`create_phosphor_colormap`
+    Create custom colormap simulating phosphor screen appearance.
+:func:`plot_rheed`
+    Plot RHEED pattern with interpolation and phosphor colormap.
 
 Notes
 -----
@@ -49,13 +49,21 @@ def create_phosphor_colormap(
     cmap : LinearSegmentedColormap
         Custom phosphor screen colormap.
 
-    Notes
-    -----
-    - Define color transition points and RGB values from black through dark
-      green, bright green, lighter green, to white bloom.
-    - Extract positions and RGB values from color definitions
-    - Create color channel definitions for red, green, and blue
-    - Create and return LinearSegmentedColormap with custom colors
+    Implementation Logic
+    --------------------
+    1. **Define Color Anchors** --
+       Set transition points and RGB values from black
+       through dark green, bright green, lighter green,
+       to white bloom.
+    2. **Extract Channel Data** --
+       Separate positions and RGB values from color
+       definitions into individual channel lists.
+    3. **Build Segment Dict** --
+       Create color channel definitions for red, green,
+       and blue as required by LinearSegmentedColormap.
+    4. **Construct Colormap** --
+       Create and return LinearSegmentedColormap with
+       the custom color segment dictionary.
 
     Examples
     --------
@@ -138,6 +146,22 @@ def plot_rheed(
         X-axis range (min, max) in mm. Default: auto from data with padding
     y_extent : Tuple[float, float], optional
         Y-axis range (min, max) in mm. Default: auto from data with padding
+
+    Implementation Logic
+    --------------------
+    1. **Extract Coordinates** --
+       Convert detector points and intensities from the
+       RHEEDPattern to NumPy arrays.
+    2. **Determine Extent** --
+       Compute axis limits from data range with padding,
+       or use user-supplied x_extent and y_extent.
+    3. **Render Image** --
+       For Gaussian mode, sum 2D Gaussian spots centered
+       at each diffraction point. For interpolation modes,
+       use scipy griddata on the irregular point set.
+    4. **Apply Colormap** --
+       Select the phosphor colormap or a named matplotlib
+       colormap, then display with imshow and colorbar.
     """
     coords: Float[np.ndarray, "N 2"] = np.asarray(
         rheed_pattern.detector_points

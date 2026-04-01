@@ -9,26 +9,28 @@ asymmetric units.
 
 Routine Listings
 ----------------
-_strip_esd : function, internal
+:func:`_strip_esd`
     Strip estimated standard deviation from CIF value string.
-_extract_cell_params : function, internal
+:func:`_extract_cell_params`
     Extract unit cell parameters from CIF text.
-_parse_atom_positions : function, internal
+:func:`_parse_atom_positions`
     Parse atomic positions from CIF atom site loop.
-_extract_sym_op_from_line : function, internal
+:func:`_extract_sym_op_from_line`
     Extract symmetry operation from a single line.
-_parse_symmetry_ops : function, internal
+:func:`_parse_symmetry_ops`
     Parse symmetry operations from CIF file.
-parse_cif : function
+:func:`parse_cif`
     Parse CIF file into JAX-compatible CrystalStructure.
-_parse_sym_op : function, internal
-    Parse a symmetry operation string into a callable function.
-_apply_symmetry_ops : function, internal
+:func:`_parse_sym_op`
+    Parse a symmetry operation string into a callable
+    function.
+:func:`_apply_symmetry_ops`
     Apply symmetry operations to fractional positions.
-_deduplicate_positions : function, internal
+:func:`_deduplicate_positions`
     Remove duplicate positions within tolerance.
-symmetry_expansion : function
-    Apply symmetry operations to expand fractional positions.
+:func:`symmetry_expansion`
+    Apply symmetry operations to expand fractional
+    positions.
 
 Notes
 -----
@@ -353,20 +355,21 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         If the file does not have .cif extension, or if required cell
         parameters or atomic positions cannot be parsed.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Validate CIF file path and extension
-    2. Read CIF file content
-    3. Extract unit cell parameters (cell lengths and angles)
-    4. Parse atomic positions from atom site loop section
-    5. Convert element symbols to atomic numbers
-    6. Convert fractional to Cartesian coordinates using cell vectors
-    7. Parse symmetry operations from CIF file
-    8. Create initial CrystalStructure
-    9. Apply symmetry operations to expand positions
-    10. Return expanded crystal structure
+    Implementation Logic
+    --------------------
+    1. **Validate path** --
+       Check file existence and ``.cif`` extension.
+    2. **Read file** --
+       Load CIF text content.
+    3. **Cell parameters** --
+       Extract lengths and angles from CIF tags.
+    4. **Atomic positions** --
+       Parse atom site loop for fractional coordinates.
+    5. **Cartesian conversion** --
+       Multiply fractional coords by cell vectors.
+    6. **Symmetry expansion** --
+       Parse symmetry operations and apply to expand
+       the asymmetric unit.
 
     Examples
     --------
@@ -630,17 +633,21 @@ def symmetry_expansion(
     expanded_crystal : CrystalStructure
         Symmetry-expanded crystal structure without duplicates.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Parse symmetry operations into callable functions
-    2. Apply each symmetry operation to each atomic position
-    3. Apply modulo 1 to keep positions within unit cell
-    4. Convert expanded positions to Cartesian coordinates
-    5. Remove duplicate positions within tolerance
-    6. Convert unique positions back to fractional coordinates
-    7. Create and return expanded CrystalStructure
+    Implementation Logic
+    --------------------
+    1. **Apply operations** --
+       Transform each fractional position by every
+       symmetry operation, wrap to [0, 1) with modulo.
+    2. **Cartesian conversion** --
+       Multiply expanded fractional coords by cell
+       vectors.
+    3. **Deduplicate** --
+       Remove positions within distance tolerance.
+    4. **Back to fractional** --
+       Invert cell matrix to recover fractional
+       coordinates.
+    5. **Create structure** --
+       Build expanded CrystalStructure.
 
     Examples
     --------

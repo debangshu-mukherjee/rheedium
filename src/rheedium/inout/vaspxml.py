@@ -9,19 +9,22 @@ extraction and full MD/relaxation trajectory parsing.
 
 Routine Listings
 ----------------
-parse_vaspxml : function
-    Parse single structure from vasprun.xml with optional metadata.
-parse_vaspxml_trajectory : function
-    Parse full MD/relaxation trajectory from vasprun.xml.
-_extract_structure_block : function, internal
-    Extract lattice, positions, and species from XML structure element.
-_extract_forces : function, internal
+:func:`parse_vaspxml`
+    Parse single structure from vasprun.xml with
+    optional metadata.
+:func:`parse_vaspxml_trajectory`
+    Parse full MD/relaxation trajectory from
+    vasprun.xml.
+:func:`_extract_structure_block`
+    Extract lattice, positions, and species from XML
+    structure element.
+:func:`_extract_forces`
     Extract forces array from XML element.
-_extract_stress : function, internal
+:func:`_extract_stress`
     Extract stress tensor from XML element.
-_extract_energy : function, internal
+:func:`_extract_energy`
     Extract total energy from XML element.
-_get_species_list : function, internal
+:func:`_get_species_list`
     Get element species list from atominfo section.
 
 Notes

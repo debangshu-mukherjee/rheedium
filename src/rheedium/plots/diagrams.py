@@ -9,35 +9,35 @@ multiple plots.
 
 Routine Listings
 ----------------
-_load_element_symbols : function, internal
+:func:`_load_element_symbols`
     Load element symbols from JSON file.
-_load_element_colors : function, internal
+:func:`_load_element_colors`
     Load CPK colors from JSON file.
-plot_wavelength_curve : function
+:func:`plot_wavelength_curve`
     Plot electron wavelength vs accelerating voltage.
-plot_form_factors : function
+:func:`plot_form_factors`
     Plot atomic form factors f(q) for multiple elements.
-plot_debye_waller : function
+:func:`plot_debye_waller`
     Plot Debye-Waller damping factor at different temperatures.
-plot_ctr_profile : function
+:func:`plot_ctr_profile`
     Plot crystal truncation rod intensity profile.
-plot_roughness_damping : function
+:func:`plot_roughness_damping`
     Plot surface roughness damping for different roughness values.
-plot_rod_broadening : function
+:func:`plot_rod_broadening`
     Plot lateral rod broadening for different correlation lengths.
-plot_ewald_sphere_2d : function
+:func:`plot_ewald_sphere_2d`
     Plot 2D cross-section of Ewald sphere construction.
-plot_ewald_sphere_3d : function
+:func:`plot_ewald_sphere_3d`
     Plot 3D visualization of Ewald sphere with reciprocal rods.
-plot_unit_cell_3d : function
+:func:`plot_unit_cell_3d`
     Plot 3D unit cell with lattice vectors.
-plot_crystal_structure_3d : function
+:func:`plot_crystal_structure_3d`
     Plot 3D crystal structure with atomic positions.
-plot_grazing_incidence_geometry : function
+:func:`plot_grazing_incidence_geometry`
     Plot grazing incidence geometry diagram for RHEED.
-plot_structure_factor_phases : function
+:func:`plot_structure_factor_phases`
     Plot Argand diagram showing structure factor phase contributions.
-view_atoms : function
+:func:`view_atoms`
     View atoms in a CrystalStructure with 3D visualization.
 
 Notes
@@ -121,6 +121,17 @@ def plot_wavelength_curve(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute Relativistic Wavelength** --
+       Evaluate lambda = 12.2643 / sqrt(V * (1 + 0.978476e-6
+       * V)) over the requested voltage range.
+    2. **Optional Non-relativistic Curve** --
+       When show_comparison is True, overlay the classical
+       approximation and annotate the percentage difference.
+    3. **Render Plot** --
+       Draw curves with labels, grid, and axis formatting.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 6))
@@ -189,6 +200,15 @@ def plot_form_factors(
     ax : Axes
         The matplotlib axes with the plot.
 
+    Implementation Logic
+    --------------------
+    1. **Evaluate Form Factors** --
+       For each atomic number, call kirkland_form_factor
+       over the q grid and convert to NumPy.
+    2. **Plot Per-element Curves** --
+       Assign distinct colors from tab10 and draw each
+       element curve with its symbol label.
+
     See Also
     --------
     kirkland_form_factor : Compute atomic form factor for element.
@@ -250,6 +270,15 @@ def plot_debye_waller(
     ax : Axes
         The matplotlib axes with the plot.
 
+    Implementation Logic
+    --------------------
+    1. **Compute MSD Per Temperature** --
+       Call get_mean_square_displacement for the given
+       element and each temperature.
+    2. **Evaluate Damping Curves** --
+       Apply debye_waller_factor over the q grid for
+       each MSD value and plot with coolwarm colors.
+
     See Also
     --------
     debye_waller_factor : Compute thermal damping factor.
@@ -307,6 +336,15 @@ def plot_ctr_profile(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute CTR Intensity** --
+       Evaluate 1/sin^2(pi*l) with a small epsilon to
+       avoid divergence at integer l, then normalize.
+    2. **Mark Bragg Peaks** --
+       Draw vertical dashed lines at integer l values
+       and annotate the Bragg peak positions.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 6))
@@ -362,6 +400,15 @@ def plot_roughness_damping(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute Damping Curves** --
+       For each sigma value, evaluate exp(-0.5 * q_z^2
+       * sigma^2) over the q_z grid.
+    2. **Plot with Color Gradient** --
+       Use viridis colormap to distinguish roughness
+       levels and label each curve.
     """
     if sigma_values is None:
         sigma_values = [0.0, 0.5, 1.0, 2.0]
@@ -415,6 +462,15 @@ def plot_rod_broadening(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute Broadening Profiles** --
+       For each correlation length xi, set sigma_q =
+       1/xi and evaluate a Gaussian profile in q_perp.
+    2. **Plot Per-length Curves** --
+       Use plasma colormap to distinguish correlation
+       lengths and label each curve.
     """
     if correlation_lengths is None:
         correlation_lengths = [10.0, 50.0, 100.0, 500.0]
@@ -471,6 +527,21 @@ def plot_ewald_sphere_2d(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute Wavevector** --
+       Convert voltage to relativistic wavelength, then
+       derive |k| = 2*pi/lambda.
+    2. **Draw Ewald Sphere** --
+       Trace an arc centered at the back of the incident
+       wavevector with radius |k|.
+    3. **Draw Reciprocal Rods** --
+       Place vertical lines at integer multiples of the
+       reciprocal lattice spacing g = 2*pi/a.
+    4. **Annotate Beam Vectors** --
+       Draw incident and diffracted k-vectors as arrows
+       with labels and mark the surface plane.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(12, 8))
@@ -581,6 +652,18 @@ def plot_ewald_sphere_3d(
     -------
     ax : Axes3D
         The 3D matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Build Sphere Surface** --
+       Compute a partial spherical mesh of radius |k|,
+       offset by the incident wavevector direction.
+    2. **Place Reciprocal Rod Grid** --
+       Draw vertical line segments at each (h, k)
+       reciprocal lattice point on the surface plane.
+    3. **Draw Incident Beam** --
+       Render a 3D quiver arrow for the incident
+       wavevector and mark the origin.
     """
     if ax is None:
         fig = plt.figure(figsize=(10, 8))
@@ -666,6 +749,18 @@ def plot_unit_cell_3d(
     -------
     ax : Axes3D
         The 3D matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Build Lattice Vectors** --
+       Place a along x, b in the xy-plane using gamma,
+       and c in general direction from alpha and beta.
+    2. **Draw Unit Cell Wireframe** --
+       Enumerate all 12 edges of the parallelepiped
+       and draw each as a thin black line.
+    3. **Draw Basis Vectors** --
+       Render colored quiver arrows for a (red),
+       b (green), and c (blue) from the origin.
     """
     if ax is None:
         fig = plt.figure(figsize=(8, 8))
@@ -818,6 +913,15 @@ def plot_crystal_structure_3d(
     ax : Axes3D
         The 3D matplotlib axes with the plot.
 
+    Implementation Logic
+    --------------------
+    1. **Group by Element** --
+       Identify unique atomic numbers and scatter each
+       group with CPK color and scaled marker size.
+    2. **Optional Cell Outline** --
+       When cell_lengths is provided, build lattice
+       vectors and draw the 12-edge wireframe.
+
     See Also
     --------
     view_atoms : Plot atoms from CrystalStructure object.
@@ -916,6 +1020,18 @@ def plot_grazing_incidence_geometry(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Draw Surface** --
+       Render a horizontal line and filled region to
+       represent the sample surface.
+    2. **Draw Beam Geometry** --
+       Place incident and diffracted beam arrows at the
+       grazing angle theta with labeled annotations.
+    3. **Annotate Angles** --
+       Draw an arc for theta and a surface normal arrow
+       to complete the geometry diagram.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 6))
@@ -995,6 +1111,18 @@ def plot_structure_factor_phases(
     -------
     ax : Axes
         The matplotlib axes with the plot.
+
+    Implementation Logic
+    --------------------
+    1. **Compute Phase Vectors** --
+       For each atom at (x, y), compute phase = 2*pi *
+       (h*x + k*y) and the corresponding unit phasor.
+    2. **Chain Arrows** --
+       Draw each phasor as a colored arrow appended
+       tip-to-tail to build the resultant F(G).
+    3. **Draw Resultant** --
+       Add a bold arrow from the origin to the total
+       sum and overlay a unit circle for reference.
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))
@@ -1097,6 +1225,18 @@ def view_atoms(
     >>> ax = rh.plots.view_atoms(crystal, elev=30, azim=60)
     >>> import matplotlib.pyplot as plt
     >>> plt.savefig("crystal_view.png", dpi=150)
+
+    Implementation Logic
+    --------------------
+    1. **Extract Positions** --
+       Read cart_positions from CrystalStructure and
+       split into xyz coordinates and atomic numbers.
+    2. **Scatter by Element** --
+       Group atoms by atomic number, assign CPK colors
+       and scaled marker sizes, then scatter in 3D.
+    3. **Optional Cell Wireframe** --
+       When show_unit_cell is True, build lattice
+       vectors from cell parameters and draw edges.
 
     See Also
     --------

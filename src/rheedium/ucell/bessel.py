@@ -8,22 +8,23 @@ diffraction physics, particularly for atomic potential calculations.
 
 Routine Listings
 ----------------
-_bessel_iv_series : function, internal
+:func:`_bessel_iv_series`
     Computes I_v(x) using series expansion for Bessel function.
-_bessel_k0_series : function, internal
+:func:`_bessel_k0_series`
     Computes K_0(x) using series expansion.
-_bessel_kn_recurrence : function, internal
+:func:`_bessel_kn_recurrence`
     Computes K_n(x) using recurrence relation.
-_bessel_kv_small_non_integer : function, internal
+:func:`_bessel_kv_small_non_integer`
     Computes K_v(x) for small x and non-integer v.
-_bessel_kv_small_integer : function, internal
+:func:`_bessel_kv_small_integer`
     Computes K_v(x) for small x and integer v.
-_bessel_kv_large : function, internal
+:func:`_bessel_kv_large`
     Asymptotic expansion for K_v(x) for large x.
-_bessel_k_half : function, internal
+:func:`_bessel_k_half`
     Computes special case K_{1/2}(x).
-bessel_kv : function
-    Computes the modified Bessel function of the second kind K_v(x).
+:func:`bessel_kv`
+    Computes the modified Bessel function of the second kind
+    K_v(x).
 
 Notes
 -----
@@ -349,10 +350,31 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     result : Float[Array, "..."]
         Approximated values of K_v(x)
 
+    Implementation Logic
+    --------------------
+    1. **Classify Order** --
+       Determine whether v is integer or non-integer and
+       whether v = 1/2 (special case).
+    2. **Small-x Branch** --
+       For x <= 2.0, use series expansions: non-integer
+       orders via ``_bessel_kv_small_non_integer``, integer
+       orders via ``_bessel_kv_small_integer`` with K_0/K_1
+       series and recurrence.
+    3. **Large-x Branch** --
+       For x > 2.0, use asymptotic expansion via
+       ``_bessel_kv_large``.
+    4. **Half-order Override** --
+       For v = 1/2, use the closed-form expression
+       K_{1/2}(x) = sqrt(pi/(2x)) * exp(-x).
+    5. **Combine Results** --
+       Select the appropriate branch using ``jnp.where``
+       for a fully differentiable, branchless computation.
+
     Notes
     -----
-    For integer orders n > 1, uses recurrence relations with masked updates.
-      to only update values within the target range
+    For integer orders n > 1, uses recurrence relations
+    with masked updates to only update values within the
+    target range.
     """
     v: Float[Array, ""] = jnp.asarray(v)
     x: Float[Array, "..."] = jnp.asarray(x)

@@ -8,11 +8,11 @@ structure filtering based on geometric criteria.
 
 Routine Listings
 ----------------
-angle_in_degrees : function
+:func:`angle_in_degrees`
     Calculate the angle in degrees between two vectors.
-compute_lengths_angles : function
+:func:`compute_lengths_angles`
     Compute unit cell lengths and angles from lattice vectors.
-parse_cif_and_scrape : function
+:func:`parse_cif_and_scrape`
     Parse CIF file and filter atoms within specified thickness.
 
 Notes
@@ -164,29 +164,42 @@ def parse_cif_and_scrape(
         thickness.
 
 
+    Implementation Logic
+    --------------------
+    1. **Parse CIF** --
+       Load the CIF file to obtain the initial crystal
+       structure with all symmetry-equivalent positions.
+    2. **Extract Coordinates** --
+       Separate Cartesian positions and atomic numbers
+       from the crystal structure arrays.
+    3. **Normalize Zone Axis** --
+       Compute a unit vector along the provided zone axis
+       direction.
+    4. **Project onto Zone Axis** --
+       Dot each atomic position with the zone axis unit
+       vector to get scalar projections.
+    5. **Apply Thickness Filter** --
+       Compute the center projection and half thickness,
+       then create a boolean mask for atoms within range.
+    6. **Filter Atoms** --
+       Select Cartesian positions and atomic numbers
+       using the thickness mask.
+    7. **Reconstruct Fractional Coordinates** --
+       Build cell vectors from crystal parameters, invert
+       the matrix, and convert filtered Cartesian
+       positions to fractional coordinates.
+    8. **Build Output Structure** --
+       Create a new ``CrystalStructure`` with the
+       filtered positions and original cell parameters.
+
     Notes
     -----
-    - The provided `zone_axis` is normalized internally. Current implementation
-      uses thickness only along the zone axis direction
-      (z-component of `thickness_xyz`).
-    - The `tolerance` parameter is reserved for compatibility and future
-      functionality.
-
-    The algorithm proceeds as follows:
-
-    1. Parse CIF file to get initial crystal structure
-    2. Extract Cartesian positions and atomic numbers
-    3. Normalize zone axis vector
-    4. Calculate projections of atomic positions onto zone axis
-    5. Find minimum and maximum projections
-    6. Calculate center projection and half thickness
-    7. Create mask for atoms within thickness range
-    8. Filter Cartesian positions and atomic numbers using mask
-    9. Build cell vectors from crystal parameters
-    10. Calculate inverse of cell vectors
-    11. Convert filtered Cartesian positions to fractional coordinates
-    12. Create new CrystalStructure with filtered positions
-    13. Return filtered crystal structure
+    - The provided ``zone_axis`` is normalized internally.
+      Current implementation uses thickness only along the
+      zone axis direction (z-component of
+      ``thickness_xyz``).
+    - The ``tolerance`` parameter is reserved for
+      compatibility and future functionality.
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]

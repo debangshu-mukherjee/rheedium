@@ -11,16 +11,16 @@ surfaces with limited coherence length.
 
 Routine Listings
 ----------------
-compute_domain_extent : function
-    Compute domain extent from atomic positions bounding box
-compute_shell_sigma : function
-    Compute Ewald shell Gaussian thickness from beam parameters
-extent_to_rod_sigma : function
-    Convert domain extent to reciprocal-space rod widths
-finite_domain_intensities : function
-    Compute intensities with finite domain broadening
-rod_ewald_overlap : function
-    Compute overlap between broadened rods and Ewald shell
+:func:`compute_domain_extent`
+    Compute domain extent from atomic positions bounding box.
+:func:`compute_shell_sigma`
+    Compute Ewald shell Gaussian thickness from beam parameters.
+:func:`extent_to_rod_sigma`
+    Convert domain extent to reciprocal-space rod widths.
+:func:`finite_domain_intensities`
+    Compute intensities with finite domain broadening.
+:func:`rod_ewald_overlap`
+    Compute overlap between broadened rods and Ewald shell.
 
 Notes
 -----
@@ -94,18 +94,17 @@ def compute_domain_extent(
         Domain extent [Lx, Ly, Lz] in Ångstroms. Minimum value is 1.0 Å
         per dimension to avoid numerical issues.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Compute min and max coordinates along each axis
-    2. Calculate extent = max - min
-    3. Add 2×padding to each dimension
-    4. Enforce minimum extent of 1.0 Å per dimension
-
-    For a single atom, the extent would be [0, 0, 0] before minimum
-    enforcement. The minimum extent prevents division by zero in
-    subsequent rod width calculations.
+    Implementation Logic
+    --------------------
+    1. **Bounding box** --
+       Compute min and max coordinates along each axis.
+    2. **Raw extent** --
+       :math:`L = \\text{max} - \\text{min}`.
+    3. **Add padding** --
+       :math:`L \\leftarrow L + 2 \\times \\text{padding}`.
+    4. **Enforce minimum** --
+       Clip to 1.0 Å per dimension to prevent division
+       by zero in rod width calculations.
 
     Examples
     --------
@@ -148,6 +147,17 @@ def extent_to_rod_sigma(
     rod_sigma : Float[Array, "2"]
         Rod Gaussian widths [σx, σy] in 1/Ångstroms. Only x and y
         components are returned since rods extend continuously along z.
+
+    Implementation Logic
+    --------------------
+    1. **Enforce minimum extent** --
+       Clip domain sizes to 1.0 Å minimum.
+    2. **Fourier relation** --
+       :math:`\\sigma_q = 2\\pi / (L \\times \\sqrt{2\\pi})`
+       for each in-plane dimension.
+    3. **Return lateral widths** --
+       Only :math:`\\sigma_x, \\sigma_y` (rods extend
+       continuously along z).
 
     Notes
     -----
@@ -213,6 +223,16 @@ def compute_shell_sigma(
     -------
     shell_sigma : Float[Array, ""]
         Ewald shell Gaussian width in 1/Ångstroms.
+
+    Implementation Logic
+    --------------------
+    1. **Energy contribution** --
+       :math:`\\Delta k / k = \\Delta E / (2E)`.
+    2. **Divergence contribution** --
+       :math:`\\Delta k_{\\perp} = k \\times \\Delta\\theta`.
+    3. **Combine in quadrature** --
+       :math:`\\sigma_{shell} = k \\sqrt{(\\Delta E/2E)^2
+       + \\Delta\\theta^2}`.
 
     Notes
     -----
@@ -293,25 +313,28 @@ def rod_ewald_overlap(
         indicates exact Ewald sphere intersection; smaller values
         indicate partial overlap.
 
+    Implementation Logic
+    --------------------
+    1. **Outgoing wavevector** --
+       :math:`k_{out} = k_{in} + G`.
+    2. **Perpendicular distance** --
+       :math:`d = ||k_{out}| - |k_{in}||`, the distance
+       from the Ewald sphere surface.
+    3. **Anisotropic rod width** --
+       Effective width depends on azimuthal angle
+       :math:`\\phi` of :math:`k_{out}`:
+       :math:`\\sigma_{eff}^2 = (\\sigma_x \\cos\\phi)^2
+       + (\\sigma_y \\sin\\phi)^2`.
+    4. **Evaluate overlap** --
+       :math:`\\exp(-d^2 / (2 \\sigma_{eff}^2))`.
+
     Notes
     -----
-    The algorithm proceeds as follows:
-
-    1. Compute outgoing wavevector: k_out = k_in + G
-    2. Compute true perpendicular distance to Ewald sphere
-    3. Compute anisotropic effective width based on rod orientation
-    4. Evaluate overlap: exp(-d²/(2σ_eff²))
-
-    The perpendicular distance to the Ewald sphere is computed as the
-    difference between |k_out| and |k_in|, projected onto the radial
-    direction. For a sphere centered at origin with radius |k|, the
-    perpendicular distance from point k_out is |k_out| - |k|.
-
-    For anisotropic rods, the effective width depends on the angle
-    between the k_out direction and the rod axes. The rod width in the
-    direction of k_out is computed using the projection:
-        σ_rod_eff² = (σx·cos(φ))² + (σy·sin(φ))²
-    where φ is the azimuthal angle of k_out in the xy plane.
+    For a sphere centred at the origin with radius :math:`|k|`,
+    the perpendicular distance from point :math:`k_{out}` is
+    :math:`|k_{out}| - |k|`. For vertical rods
+    (:math:`k_{out,xy} \\approx 0`) the mean of
+    :math:`\\sigma_x^2` and :math:`\\sigma_y^2` is used.
 
     Examples
     --------
@@ -392,19 +415,21 @@ def finite_domain_intensities(
     modified_intensities : Float[Array, "N"]
         Intensities weighted by overlap: I_modified = I_base × overlap.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Convert beam angles to incident wavevector k_in
-    2. Compute rod widths from domain extent
-    3. Compute shell thickness from beam parameters
-    4. Calculate rod-Ewald overlap for all G vectors
-    5. Weight base intensities by overlap factors
-
-    This function combines all finite domain effects in one call.
-    The modified intensities can be used directly for pattern
-    simulation or analysis.
+    Implementation Logic
+    --------------------
+    1. **Incident wavevector** --
+       Build :math:`k_{in}` from beam angles and
+       wavelength.
+    2. **Rod widths** --
+       Convert domain extent to reciprocal-space
+       Gaussian widths via :func:`extent_to_rod_sigma`.
+    3. **Shell thickness** --
+       Compute Ewald shell :math:`\\sigma` from energy
+       spread and beam divergence.
+    4. **Overlap calculation** --
+       Evaluate rod-Ewald overlap for all G vectors.
+    5. **Weight intensities** --
+       :math:`I_{mod} = I_{base} \\times \\text{overlap}`.
 
     Examples
     --------

@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2025.10.10"
+version = "2026.4.1"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -30,26 +30,14 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "jaxtyping >= 0.3.0",
-    "chex >= 0.1.85",
-    "optax >= 0.1.8",
-    "pytest >= 8.0.0",
+    "jaxtyping>=0.3.0",
     "beartype",
-    "ipython>=8.31.0",
-    "jupyter>=1.1.1",
     "numpy>=2.2.1",
     "scipy>=1.14.1",
     "matplotlib>=3.10.0",
-    "jupyter-black>=0.4.0",
-    "ipykernel>=6.29.5",
-    "pandas>=2.3.0",
     "jax>=0.7.0 ; sys_platform == 'win64'",
     "jax>=0.7.0 ; sys_platform == 'darwin'",
     "jax>=0.7.0 ; sys_platform == 'linux'",
-    "black>=25.1.0",
-    "isort>=6.0.1",
-    "ase>=3.26.0",
-    "pymatgen>=2025.10.7",
 ]
 [project.optional-dependencies]
 cuda = [
@@ -74,19 +62,26 @@ test = [
     "pytest-xdist>=3.0.0",
     "chex>=0.1.89",
 ]
+interop = [
+    "ase>=3.26.0",
+    "pymatgen>=2025.10.7",
+]
 notebooks = [
+    "ipython>=8.31.0",
+    "jupyter>=1.1.1",
+    "jupyter-black>=0.4.0",
     "ipywidgets>=8.1.0",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
 ]
 dev = [
-    "rheedium[docs,test,notebooks]",
+    "rheedium[docs,test,notebooks,interop]",
     "black[jupyter]>=25.1.0",
     "build>=1.2.2.post1",
-    "twine>=6.1.0",
-    "ipywidgets>=8.1.0",
+    "isort>=6.0.1",
     "ruff>=0.12.9",
-    "twine>=6.0.1",
+    "ty>=0.0.27",
+    "twine>=6.1.0",
     "pygount>=3.1.0",
     "pre-commit>=4.5.1",
 ]
@@ -94,7 +89,7 @@ dev_cuda = [
     "rheedium[dev,cuda]",
 ]
 all = [
-    "rheedium[docs,test,dev,notebooks,cuda]",
+    "rheedium[docs,test,dev,notebooks,interop,cuda]",
 ]
 
 [tool.coverage.report]
@@ -264,6 +259,26 @@ check-yield-types = true
 check-arg-order = true
 require-return-section-when-returning = true
 require-yield-section-when-yielding = true
+
+[tool.ty.rules]
+# ty does not understand beartype/jaxtyping decorator stacks, causing
+# false positives on decorated function signatures.
+too-many-positional-arguments = "ignore"
+missing-argument = "ignore"
+unknown-argument = "ignore"
+# np.loadtxt overload resolution fails with Optional[Path] arguments.
+no-matching-overload = "ignore"
+# JAX arrays vs Python scalars: jaxtyping scalar types (scalar_int,
+# scalar_float) are unions of int|Array, and JAX operations return
+# Array where ty expects bool/int/float.
+invalid-assignment = "ignore"
+invalid-argument-type = "ignore"
+# beartype-wrapped functions lose attribute visibility for ty.
+unresolved-attribute = "ignore"
+# jaxtyping dimension variables (N, M, etc.) appear unresolved.
+unresolved-reference = "ignore"
+# JAX return types through beartype decorators confuse ty.
+invalid-return-type = "ignore"
 
 [tool.interrogate]
 fail-under = 90

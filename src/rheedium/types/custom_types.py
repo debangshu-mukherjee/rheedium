@@ -8,20 +8,24 @@ facilitate type checking and ensure consistency across the codebase.
 
 Routine Listings
 ----------------
-scalar_float : TypeAlias
-    Union type for scalar float values (float or JAX scalar array)
-scalar_int : TypeAlias
-    Union type for scalar integer values (int or JAX scalar array)
-scalar_bool : TypeAlias
-    Union type for scalar boolean values (bool or JAX scalar array)
-scalar_num : TypeAlias
-    Union type for scalar numeric values (int, float, or JAX scalar array)
-non_jax_number : TypeAlias
-    Union type for non-JAX numeric values (int or float)
-float_image : TypeAlias
-    Type alias for 2D float array (H, W)
-int_image : TypeAlias
-    Type alias for 2D integer array (H, W)
+:obj:`scalar_float`
+    Union type for scalar float values (float or JAX scalar
+    array).
+:obj:`scalar_int`
+    Union type for scalar integer values (int or JAX scalar
+    array).
+:obj:`scalar_bool`
+    Union type for scalar boolean values (bool or JAX scalar
+    array).
+:obj:`scalar_num`
+    Union type for scalar numeric values (int, float, or JAX
+    scalar array).
+:obj:`non_jax_number`
+    Union type for non-JAX numeric values (int or float).
+:obj:`float_image`
+    Type alias for 2D float array (H, W).
+:obj:`int_image`
+    Type alias for 2D integer array (H, W).
 
 Notes
 -----

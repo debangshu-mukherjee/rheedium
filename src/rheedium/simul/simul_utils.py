@@ -8,10 +8,12 @@ simulator.py, ewald.py, finite_domain.py, and kinematic.py.
 
 Routine Listings
 ----------------
-incident_wavevector : function
-    Calculate incident electron wavevector from beam parameters
-wavelength_ang : function
-    Calculate relativistic electron wavelength in angstroms
+:func:`incident_wavevector`
+    Calculate incident electron wavevector from beam parameters.
+:func:`wavelength_ang`
+    Calculate relativistic electron wavelength in angstroms.
+:func:`interaction_constant`
+    Relativistic electron interaction constant.
 
 Notes
 -----
@@ -34,12 +36,25 @@ def wavelength_ang(
 ) -> Float[Array, "..."]:
     """Calculate the relativistic electron wavelength in angstroms.
 
+    Extended Summary
+    ----------------
     Uses the full relativistic de Broglie wavelength formula:
 
         lambda = h / sqrt(2 * m_e * e * V * (1 + e*V / (2 * m_e * c^2)))
 
     This is more accurate than simplified approximations, especially at
     higher voltages (>=30 keV) where the difference can be several percent.
+
+    Implementation Logic
+    --------------------
+    1. **Convert voltage** --
+       Multiply kV by 1000 to obtain voltage in Volts.
+    2. **Relativistic correction** --
+       Compute corrected voltage
+       :math:`V_{corr} = V (1 + eV / 2 m_e c^2)`.
+    3. **Wavelength calculation** --
+       Compute :math:`\\lambda = h / \\sqrt{2 m_e e V_{corr}}`
+       and return in Ångstroms.
 
     Parameters
     ----------
@@ -125,6 +140,18 @@ def incident_wavevector(
         Incident wavevector [k_x, k_y, k_z] in reciprocal angstroms.
         The beam propagates in the surface plane at azimuthal angle phi,
         with a downward z-component determined by the grazing angle theta.
+
+    Implementation Logic
+    --------------------
+    1. **Compute wavevector magnitude** --
+       :math:`k = 2\\pi / \\lambda`.
+    2. **Convert angles** --
+       Convert grazing and azimuthal angles from degrees
+       to radians.
+    3. **Decompose into components** --
+       Split :math:`k` into in-plane (:math:`k_x`, :math:`k_y`)
+       and surface-normal (:math:`k_z`) components using
+       trigonometric projection.
     """
     k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
     theta_rad: Float[Array, ""] = jnp.deg2rad(theta_deg)
@@ -148,6 +175,25 @@ def interaction_constant(
     wavelength_ang: scalar_float,
 ) -> Float[Array, ""]:
     """Relativistic electron interaction constant σ in 1/(V·Å).
+
+    Extended Summary
+    ----------------
+    Computes the relativistic interaction constant :math:`\\sigma`
+    used in multislice calculations. Includes relativistic mass
+    correction via the Lorentz factor.
+
+    Implementation Logic
+    --------------------
+    1. **Convert units** --
+       Convert voltage from kV to V and wavelength from
+       Ångstroms to metres.
+    2. **Compute Lorentz factors** --
+       Calculate relativistic :math:`\\gamma` and :math:`\\beta`
+       from accelerating voltage.
+    3. **Evaluate interaction constant** --
+       :math:`\\sigma = (2\\pi m_e e \\lambda / h^2)
+       \\times (\\gamma / \\beta)` in SI, then convert
+       to :math:`1/(V \\cdot \\text{Å})`.
 
     Parameters
     ----------

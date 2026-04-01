@@ -9,10 +9,11 @@ and beam voltage, enabling efficient reuse across multiple beam orientations.
 
 Routine Listings
 ----------------
-build_ewald_data : function
-    Build EwaldData from CrystalStructure, voltage, and lattice bounds
-ewald_allowed_reflections : function
-    Find reflections satisfying Ewald sphere condition for given beam angles
+:func:`build_ewald_data`
+    Build EwaldData from CrystalStructure, voltage, and lattice bounds.
+:func:`ewald_allowed_reflections`
+    Find reflections satisfying Ewald sphere condition for given beam
+    angles.
 
 Notes
 -----
@@ -84,11 +85,16 @@ def _compute_structure_factor_single(
     structure_factor : Complex[Array, ""]
         Complex structure factor F(G).
 
-    Flow
-    ----
-    1. Compute :math:`|G|` for form factor lookup
-    2. For each atom: compute :math:`f(|G|)`, Debye-Waller, and phase
-    3. Sum all atomic contributions
+    Implementation Logic
+    --------------------
+    1. **Compute scattering magnitude** --
+       Calculate :math:`|G|` for form factor lookup.
+    2. **Per-atom contributions** --
+       For each atom, evaluate Kirkland form factor
+       :math:`f(|G|)`, Debye-Waller damping, and phase
+       factor :math:`\\exp(i G \\cdot r_j)`.
+    3. **Sum contributions** --
+       Accumulate complex structure factor over all atoms.
     """
     g_magnitude: Float[Array, ""] = jnp.linalg.norm(g_vector)
 
@@ -164,18 +170,26 @@ def build_ewald_data(
         Complete angle-independent Ewald sphere data ready for use with
         kinematic_from_ewald() or similar angle-dependent functions.
 
-    Flow
-    ----
-    1. Compute relativistic electron wavelength from voltage
-    2. Calculate wavevector magnitude
-       :math:`k = 2\pi/\lambda` (= sphere radius)
-    3. Generate reciprocal lattice basis vectors from crystal cell
-    4. Create Miller index grid for specified (hmax, kmax, lmax)
-    5. Transform Miller indices to reciprocal space vectors G
-    6. Compute :math:`|G|` for each reciprocal point
-    7. Calculate structure factors F(G) with form factors and DW
-    8. Compute intensities :math:`I(G) = |F(G)|^2`
-    9. Package into EwaldData PyTree
+    Implementation Logic
+    --------------------
+    1. **Compute wavelength** --
+       Relativistic electron wavelength from voltage.
+    2. **Wavevector magnitude** --
+       :math:`k = 2\\pi/\\lambda` (equals sphere radius).
+    3. **Reciprocal basis** --
+       Generate reciprocal lattice vectors from crystal
+       cell parameters.
+    4. **Miller index grid** --
+       Create meshgrid for specified (hmax, kmax, lmax).
+    5. **Reciprocal space vectors** --
+       Transform Miller indices to G vectors.
+    6. **Structure factors** --
+       Calculate :math:`F(G)` with Kirkland form factors
+       and Debye-Waller thermal damping.
+    7. **Intensities** --
+       Compute :math:`I(G) = |F(G)|^2`.
+    8. **Package result** --
+       Assemble into EwaldData PyTree.
 
     Examples
     --------
@@ -321,14 +335,23 @@ def ewald_allowed_reflections(
         Structure factor intensities. In binary mode: :math:`I(G) = |F(G)|^2`.
         In finite domain mode: :math:`I(G) = |F(G)|^2 \\times \\text{overlap}`.
 
-    Flow
-    ----
-    1. Compute incident wavevector
-    :math:`k_{in}` from theta, phi, and :math:`|k|`
-    2. For each G vector: compute :math:`k_{out} = k_{in} + G`
-    3. Check Ewald condition (binary) or compute overlap (finite domain)
-    4. Filter to reflections with upward scattering (:math:`k_{out,z} > 0`)
-    5. Return allowed indices, k_out vectors, and intensities
+    Implementation Logic
+    --------------------
+    1. **Compute incident wavevector** --
+       Build :math:`k_{in}` from theta, phi, and
+       :math:`|k|`.
+    2. **Outgoing wavevectors** --
+       For each G vector, compute
+       :math:`k_{out} = k_{in} + G`.
+    3. **Apply Ewald condition** --
+       Binary mode: check tolerance. Finite domain mode:
+       compute rod-shell overlap weights.
+    4. **Filter reflections** --
+       Keep only upward scattering
+       (:math:`k_{out,z} > 0`).
+    5. **Return results** --
+       Allowed indices, :math:`k_{out}` vectors, and
+       weighted intensities.
 
     Examples
     --------

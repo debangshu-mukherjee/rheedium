@@ -8,25 +8,33 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
-RHEEDPattern : PyTree
-    Container for RHEED diffraction pattern data with detector points.
-RHEEDImage : PyTree
-    Container for RHEED image data with pixel coordinates and intensity values.
-create_rheed_pattern : function
-    Factory function to create RHEEDPattern instances with data validation.
-create_rheed_image : function
-    Factory function to create RHEEDImage instances with data validation.
-SlicedCrystal : PyTree
-    JAX-compatible crystal structure sliced for multislice simulation.
-create_sliced_crystal : function
-    Factory function to create SlicedCrystal instances with data validation.
-bulk_to_slice : function
-    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation.
-SurfaceConfig : NamedTuple
-    Configuration for surface atom identification method and parameters.
-identify_surface_atoms : function
+:class:`RHEEDPattern`
+    Container for RHEED diffraction pattern data with
+    detector points.
+:class:`RHEEDImage`
+    Container for RHEED image data with pixel coordinates
+    and intensity values.
+:func:`create_rheed_pattern`
+    Factory function to create RHEEDPattern instances with
+    data validation.
+:func:`create_rheed_image`
+    Factory function to create RHEEDImage instances with
+    data validation.
+:class:`SlicedCrystal`
+    JAX-compatible crystal structure sliced for multislice
+    simulation.
+:func:`create_sliced_crystal`
+    Factory function to create SlicedCrystal instances with
+    data validation.
+:func:`bulk_to_slice`
+    Convert bulk CrystalStructure to SlicedCrystal for
+    multislice simulation.
+:class:`SurfaceConfig`
+    Configuration for surface atom identification method
+    and parameters.
+:func:`identify_surface_atoms`
     Identify surface atoms using configurable methods.
-DetectorGeometry : NamedTuple
+:class:`DetectorGeometry`
     Configuration for RHEED detector geometry.
 
 Notes
@@ -260,14 +268,16 @@ def create_rheed_pattern(
     validated_rheed_pattern : RHEEDPattern
         Validated RHEED pattern instance.
 
-    Notes
-    -----
+    Implementation Logic
+    --------------------
     - Convert inputs to JAX arrays.
-    - Validate array shapes: check k_out has shape (M, 3), detector_points
-      has shape (M, 2), intensities has shape (M,), and g_indices has length M
-    - Validate data: ensure intensities are non-negative, k_out vectors are
-      non-zero, and detector points are finite
-    - Create and return RHEEDPattern instance
+    - Validate array shapes: check k_out has shape (M, 3),
+      detector_points has shape (M, 2), intensities has
+      shape (M,), and g_indices has length M.
+    - Validate data: ensure intensities are non-negative,
+      k_out vectors are non-zero, and detector points are
+      finite.
+    - Create and return RHEEDPattern instance.
     """
     g_indices: Int[Array, "nn"] = jnp.asarray(g_indices, dtype=jnp.int32)
     k_out: Float[Array, "mm 3"] = jnp.asarray(k_out, dtype=jnp.float64)
@@ -403,18 +413,18 @@ def create_rheed_image(
     validated_rheed_image : RHEEDImage
         Validated RHEED image instance.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Convert inputs to JAX arrays
-    2. Validate image array: check it's 2D, all values are finite and
-       non-negative.
-    3. Validate parameters: check incoming_angle is between 0 and 90 degrees,
-       electron_wavelength is positive, and detector_distance is positive
-    4. Validate calibration: if scalar, ensure it's positive; if array, ensure
-       shape is (2,) and all values are positive
-    5. Create and return RHEEDImage instance
+    Implementation Logic
+    --------------------
+    1. Convert inputs to JAX arrays.
+    2. Validate image array: check it is 2D, all values are
+       finite and non-negative.
+    3. Validate parameters: check incoming_angle is between
+       0 and 90 degrees, electron_wavelength is positive,
+       and detector_distance is positive.
+    4. Validate calibration: if scalar, ensure it is
+       positive; if array, ensure shape is (2,) and all
+       values are positive.
+    5. Create and return RHEEDImage instance.
     """
     img_array: Float[Array, "H W"] = jnp.asarray(img_array, dtype=jnp.float64)
     incoming_angle: Float[Array, ""] = jnp.asarray(
@@ -691,15 +701,16 @@ def create_sliced_crystal(
     validated_sliced_crystal : SlicedCrystal
         Validated SlicedCrystal instance.
 
-    Notes
-    -----
-    Validation checks:
-    - cart_positions shape is (N, 4) with N > 0
-    - cell_lengths, cell_angles, orientation have correct shapes
-    - All positions are finite
-    - depth, x_extent, y_extent are positive
-    - x_extent and y_extent are recommended to be >= 100 Å
-    - Atomic numbers (cart_positions[:, 3]) are in valid range [1, 118]
+    Implementation Logic
+    --------------------
+    - Verify cart_positions shape is (N, 4) with N > 0.
+    - Verify cell_lengths, cell_angles, orientation have
+      correct shapes.
+    - Ensure all positions are finite.
+    - Ensure depth, x_extent, y_extent are positive.
+    - Recommend x_extent and y_extent >= 100 Angstroms.
+    - Validate atomic numbers (cart_positions[:, 3]) are in
+      valid range [1, 118].
     """
     cart_positions = jnp.asarray(cart_positions, dtype=jnp.float64)
     cell_lengths = jnp.asarray(cell_lengths, dtype=jnp.float64)
@@ -880,27 +891,32 @@ def bulk_to_slice(
     sliced_crystal : SlicedCrystal
         Surface-oriented crystal slab with transformed coordinates.
 
-    Algorithm
-    ---------
-    1. Build rotation matrix to align [hkl] direction with z-axis:
-       - Convert Miller indices to reciprocal lattice vector
-       - Calculate rotation matrix R that maps this vector to [0, 0, 1]
-    2. Transform all atomic positions using rotation matrix
-    3. Create supercell by replicating atoms in x and y directions:
-       - Determine number of repetitions needed to cover x_extent, y_extent
-       - Generate all combinations of translations
-       - Apply translations to create supercell
-    4. Filter atoms within depth range: 0 <= z <= depth
-    5. Center the slab so z=0 is at the bottom surface
-    6. Calculate new cell parameters for the supercell
-    7. Return SlicedCrystal with transformed coordinates
+    Implementation Logic
+    --------------------
+    1. Build rotation matrix to align [hkl] direction with
+       z-axis: convert Miller indices to reciprocal lattice
+       vector and calculate rotation matrix R that maps this
+       vector to [0, 0, 1].
+    2. Transform all atomic positions using rotation matrix.
+    3. Create supercell by replicating atoms in x and y
+       directions: determine number of repetitions needed
+       to cover x_extent and y_extent, generate all
+       combinations of translations, and apply translations
+       to create supercell.
+    4. Filter atoms within depth range: 0 <= z <= depth.
+    5. Center the slab so z=0 is at the bottom surface.
+    6. Calculate new cell parameters for the supercell.
+    7. Return SlicedCrystal with transformed coordinates.
 
     Notes
     -----
-    - The transformation preserves atomic types and relative positions
-    - The resulting structure has z as the surface normal
-    - Periodic boundary conditions apply in x and y directions
-    - The depth direction (z) is typically non-periodic for surface slabs
+    - The transformation preserves atomic types and relative
+      positions.
+    - The resulting structure has z as the surface normal.
+    - Periodic boundary conditions apply in x and y
+      directions.
+    - The depth direction (z) is typically non-periodic for
+      surface slabs.
 
     Examples
     --------

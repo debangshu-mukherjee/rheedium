@@ -8,21 +8,26 @@ filtering for specific zones and thicknesses.
 
 Routine Listings
 ----------------
-reciprocal_unitcell : function
-    Calculate reciprocal unit cell parameters from direct cell parameters.
-get_unit_cell_matrix : function
-    Build transformation matrix between direct and reciprocal space.
-build_cell_vectors : function
+:func:`reciprocal_unitcell`
+    Calculate reciprocal unit cell parameters from direct
+    cell parameters.
+:func:`get_unit_cell_matrix`
+    Build transformation matrix between direct and
+    reciprocal space.
+:func:`build_cell_vectors`
     Construct unit cell vectors from lengths and angles.
-compute_lengths_angles : function
-    Compute unit cell lengths and angles from lattice vectors.
-generate_reciprocal_points : function
-    Generate reciprocal lattice points for given hkl ranges.
-atom_scraper : function
-    Filter atoms within specified thickness along zone axis.
-reciprocal_lattice_vectors : function
+:func:`compute_lengths_angles`
+    Compute unit cell lengths and angles from lattice
+    vectors.
+:func:`generate_reciprocal_points`
+    Generate reciprocal lattice points for given hkl
+    ranges.
+:func:`atom_scraper`
+    Filter atoms within specified thickness along zone
+    axis.
+:func:`reciprocal_lattice_vectors`
     Generate reciprocal lattice basis vectors b₁, b₂, b₃.
-miller_to_reciprocal : function
+:func:`miller_to_reciprocal`
     Convert Miller indices to reciprocal space vectors.
 
 Notes
@@ -88,15 +93,22 @@ def reciprocal_unitcell(
     reciprocal_angles : Float[Array, "3"]
         Reciprocal cell angles [α*, β*, γ*] in degrees or radians
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Convert input angles to radians if needed
-    2. Calculate unit cell volume using triple product formula
-    3. Compute reciprocal lengths using volume relationships
-    4. Calculate reciprocal angles using crystallographic formulas
-    5. Convert output angles to degrees if requested
+    Implementation Logic
+    --------------------
+    1. **Angle Conversion** --
+       Convert input angles to radians if provided in
+       degrees.
+    2. **Volume Calculation** --
+       Compute unit cell volume using the triple product
+       formula with cosines of cell angles.
+    3. **Reciprocal Lengths** --
+       Derive a*, b*, c* from the volume and direct cell
+       parameters using crystallographic relationships.
+    4. **Reciprocal Angles** --
+       Calculate alpha*, beta*, gamma* from the direct
+       cell angle cosines and sines.
+    5. **Output Conversion** --
+       Convert output angles to degrees if requested.
 
     See Also
     --------
@@ -186,14 +198,19 @@ def get_unit_cell_matrix(
     Float[Array, "3 3"]
         Transformation matrix from direct to reciprocal space.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Calculate cell volume from lattice parameters
-    2. Calculate reciprocal lengths
-    3. Calculate transformation matrix elements
-    4. Return 3x3 transformation matrix
+    Implementation Logic
+    --------------------
+    1. **Angle Conversion** --
+       Convert cell angles from degrees to radians and
+       compute their cosines and sines.
+    2. **Volume Factor** --
+       Compute the volume factor from the cosines of all
+       three cell angles.
+    3. **Matrix Assembly** --
+       Populate the 3x3 transformation matrix with
+       elements derived from lengths, angles, and the
+       volume factor. The matrix maps direct space
+       coordinates to Cartesian coordinates.
 
     Examples
     --------
@@ -266,16 +283,22 @@ def build_cell_vectors(
     Float[Array, "3 3"]
         Unit cell vectors as rows of 3x3 matrix.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Convert angles to radians
-    2. Calculate cosines of angles
-    3. Build first vector along x-axis
-    4. Build second vector in x-y plane
-    5. Build third vector using all angles
-    6. Return 3x3 matrix of vectors
+    Implementation Logic
+    --------------------
+    1. **Angle Conversion** --
+       Convert alpha, beta, gamma from degrees to radians.
+    2. **First Vector** --
+       Place a-vector along the x-axis as [a, 0, 0].
+    3. **Second Vector** --
+       Place b-vector in the x-y plane using gamma to
+       compute x and y components.
+    4. **Third Vector** --
+       Compute c-vector components from all three angles,
+       clipping c_z squared to avoid negative values under
+       the square root.
+    5. **Stack Vectors** --
+       Assemble the three vectors into a 3x3 matrix with
+       each vector as a row.
 
     Examples
     --------
@@ -337,16 +360,17 @@ def compute_lengths_angles(
     angles : Float[Array, "3"]
         Unit cell angles [α, β, γ] in degrees
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Calculate lengths of each vector
-    2. Calculate angle between b and c vectors (α)
-    3. Calculate angle between a and c vectors (β)
-    4. Calculate angle between a and b vectors (γ)
-    5. Convert angles to degrees
-    6. Return lengths and angles
+    Implementation Logic
+    --------------------
+    1. **Compute Lengths** --
+       Calculate the Euclidean norm of each row vector to
+       obtain a, b, c.
+    2. **Compute Angles** --
+       For each pair of vectors, compute the dot product
+       divided by the product of norms, then take arccos
+       (clipped to [-1, 1]) to get alpha, beta, gamma.
+    3. **Convert to Degrees** --
+       Convert all angles from radians to degrees.
 
     Examples
     --------
@@ -420,15 +444,21 @@ def generate_reciprocal_points(
     Float[Array, "M 3"]
         Reciprocal lattice vectors in 1/angstroms.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Get cell parameters from crystal structure
-    2. Generate reciprocal lattice vectors directly from direct cell
-    3. Generate h, k, l indices
-    4. Transform indices to reciprocal space using miller_to_reciprocal
-    5. Return reciprocal vectors
+    Implementation Logic
+    --------------------
+    1. **Extract Cell Parameters** --
+       Retrieve lengths and angles from the crystal
+       structure.
+    2. **Build Reciprocal Basis** --
+       Generate reciprocal lattice vectors from the
+       direct cell parameters.
+    3. **Generate Index Grid** --
+       Create h, k, l index ranges and form a meshgrid
+       of all (h, k, l) combinations.
+    4. **Transform to Reciprocal Space** --
+       Convert the flattened Miller index array to
+       reciprocal space vectors via
+       ``miller_to_reciprocal``.
 
     Examples
     --------
@@ -507,15 +537,34 @@ def atom_scraper(
     filtered_crystal : CrystalStructure
         Filtered crystal structure.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Normalize zone axis
-    2. Calculate distances along zone axis
-    3. Filter atoms within thickness
-    4. Create new crystal structure with filtered atoms
-    5. Return filtered crystal
+    Implementation Logic
+    --------------------
+    1. **Build Cell Vectors** --
+       Construct direct lattice vectors from the crystal
+       structure cell parameters.
+    2. **Normalize Zone Axis** --
+       Compute a unit vector along the provided zone axis
+       direction.
+    3. **Project and Measure** --
+       Project each atomic position onto the zone axis
+       and compute distances from the topmost layer.
+    4. **Adaptive Threshold** --
+       Determine an adaptive epsilon for top-layer mode
+       based on the smallest nonzero distance.
+    5. **Apply Thickness Mask** --
+       Create a boolean mask selecting atoms within the
+       projected thickness or within the adaptive
+       epsilon for zero-thickness (top-layer) mode.
+    6. **Gather Filtered Atoms** --
+       Extract fractional and Cartesian positions for
+       atoms that pass the mask.
+    7. **Scale Cell Vectors** --
+       Rescale lattice vectors along the zone axis to
+       match the new slab height while preserving
+       perpendicular components.
+    8. **Build Output Structure** --
+       Create a new ``CrystalStructure`` with the
+       filtered positions and rescaled cell parameters.
 
     Examples
     --------
@@ -687,20 +736,30 @@ def reciprocal_lattice_vectors(
     Returns
     -------
     reciprocal_vectors : Float[Array, "3 3"]
-        Reciprocal lattice vectors as rows of 3x3 matrix in 1/Angstroms.
-        Each row is a reciprocal basis vector [b₁, b₂, b₃]
-    The algorithm proceeds as follows:
+        Reciprocal lattice vectors as rows of 3x3 matrix
+        in 1/Angstroms. Each row is a reciprocal basis
+        vector [b₁, b₂, b₃].
 
-    1. Convert angles to radians if needed
-    2. Build direct lattice vectors using build_cell_vectors
-
-    3. Extract individual direct vectors a₁, a₂, a₃
-    4. Calculate unit cell volume using triple product
-
-    5. Compute cross products for each reciprocal vector
-    6. Scale by 2π/volume to get final reciprocal vectors
-
-    7. Stack vectors into 3x3 matrix
+    Implementation Logic
+    --------------------
+    1. **Angle Conversion** --
+       Convert input angles to radians if provided in
+       degrees.
+    2. **Build Direct Vectors** --
+       Construct direct lattice vectors a₁, a₂, a₃ via
+       ``build_cell_vectors``.
+    3. **Compute Volume** --
+       Calculate the unit cell volume from the triple
+       product a₁ . (a₂ x a₃).
+    4. **Cross Products** --
+       Compute cross products (a₂ x a₃), (a₃ x a₁),
+       and (a₁ x a₂) for each reciprocal vector.
+    5. **Scale to Reciprocal Space** --
+       Multiply each cross product by 2pi/volume to
+       obtain b₁, b₂, b₃.
+    6. **Stack Vectors** --
+       Assemble the three reciprocal vectors into a 3x3
+       matrix with each vector as a row.
 
     See Also
     --------
@@ -777,17 +836,18 @@ def miller_to_reciprocal(
         Reciprocal space vectors in 1/Angstroms with same batch shape
         as input hkl indices
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Cast Miller indices to float for computation
-    2. Extract reciprocal basis vectors b₁, b₂, b₃
-
-    3. Extract h, k, l components from input
-    4. Compute linear combination h*b₁ + k*b₂ + l*b₃
-
-    5. Use einsum for efficient batched computation
+    Implementation Logic
+    --------------------
+    1. **Cast to Float** --
+       Convert integer Miller indices to float for
+       computation with reciprocal vectors.
+    2. **Extract Basis Vectors** --
+       Retrieve individual reciprocal basis vectors
+       b₁, b₂, b₃ from the input matrix rows.
+    3. **Linear Combination** --
+       Compute G = h*b₁ + k*b₂ + l*b₃ using
+       element-wise broadcasting for efficient batched
+       computation over all (h, k, l) triplets.
 
     See Also
     --------

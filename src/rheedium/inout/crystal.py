@@ -8,14 +8,16 @@ provides conversion utilities between different crystal representations.
 
 Routine Listings
 ----------------
-lattice_to_cell_params : function
-    Convert 3x3 lattice vectors to crystallographic cell parameters
-parse_crystal : function
-    Parse CIF or XYZ file into simulation-ready CrystalStructure
-xyz_to_crystal : function
-    Convert XYZData to CrystalStructure for simulation
-_infer_lattice_from_positions : function, internal
-    Infer orthorhombic lattice from atomic bounding box
+:func:`lattice_to_cell_params`
+    Convert 3x3 lattice vectors to crystallographic
+    cell parameters.
+:func:`parse_crystal`
+    Parse CIF or XYZ file into simulation-ready
+    CrystalStructure.
+:func:`xyz_to_crystal`
+    Convert XYZData to CrystalStructure for simulation.
+:func:`_infer_lattice_from_positions`
+    Infer orthorhombic lattice from atomic bounding box.
 
 Notes
 -----
@@ -72,6 +74,16 @@ def lattice_to_cell_params(
         - ``alpha`` : angle between vectors b and c
         - ``beta`` : angle between vectors a and c
         - ``gamma`` : angle between vectors a and b
+
+    Implementation Logic
+    --------------------
+    1. **Cell lengths** --
+       Euclidean norm of each lattice vector.
+    2. **Cell angles** --
+       :math:`\\cos(\\alpha) = (b \\cdot c) / (bc)`,
+       etc., with clipping to [-1, 1].
+    3. **Convert to degrees** --
+       :func:`jnp.degrees` of :func:`jnp.arccos`.
 
     Notes
     -----
@@ -138,7 +150,7 @@ def _infer_lattice_from_positions(
     positions: Float[Array, "N 3"],
     padding_ang: scalar_float,
 ) -> Float[Array, "3 3"]:
-    """Infer orthorhombic lattice from atomic bounding box.
+    r"""Infer orthorhombic lattice from atomic bounding box.
 
     Computes a minimal orthorhombic (rectangular) unit cell that encompasses
     all atomic positions with specified padding. This is used as a fallback
@@ -161,20 +173,22 @@ def _infer_lattice_from_positions(
         elements are the cell dimensions [a, b, c] in Angstroms. Off-diagonal
         elements are zero (90-degree angles).
 
+    Implementation Logic
+    --------------------
+    1. **Bounding box** --
+       Min and max coordinates along each axis.
+    2. **Add padding** --
+       :math:`L \\leftarrow L + 2 \\times \\text{padding}`.
+    3. **Enforce minimum** --
+       Clip to 1.0 Å per dimension.
+    4. **Diagonal matrix** --
+       Construct orthorhombic cell (90° angles).
+
     Notes
     -----
-    The algorithm:
-
-    1. Computes the bounding box of all atomic positions (min/max in each
-       dimension)
-    2. Adds 2*padding_ang to each dimension (padding on both sides)
-    3. Enforces a minimum extent of 1.0 Angstrom per dimension to avoid
-       degenerate cells (e.g., for 2D slabs or linear molecules)
-    4. Constructs a diagonal matrix with these extents
-
-    This function always produces orthorhombic cells (alpha=beta=gamma=90°).
-    For non-orthorhombic structures, explicit lattice vectors should be
-    provided via the extended XYZ format or the cell_vectors parameter.
+    For non-orthorhombic structures, explicit lattice vectors
+    should be provided via the extended XYZ format or the
+    ``cell_vectors`` parameter.
 
     Examples
     --------

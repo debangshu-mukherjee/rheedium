@@ -9,27 +9,29 @@ simulation as they produce the characteristic streaks observed experimentally.
 
 Routine Listings
 ----------------
-calculate_ctr_intensity : function
-    Calculate continuous intensity along crystal truncation rods with form
-    factors.
-calculate_ctr_amplitude : function
-    Calculate complex amplitude along crystal truncation rods (for coherent
-    mixing with kinematic scattering).
-gaussian_rod_profile : function
-    Gaussian lateral width profile of rods due to finite correlation length
-lorentzian_rod_profile : function
-    Lorentzian lateral width profile of rods due to finite correlation length
-roughness_damping : function
-    Gaussian roughness damping factor for CTR intensities
-rod_profile_function : function
-    Lateral width profile of rods due to finite correlation length
-surface_structure_factor : function
-    Calculate structure factor for surface with q_z dependence
-integrated_rod_intensity : function
-    Integrate CTR intensity over finite detector acceptance
-integrated_ctr_amplitude : function
-    Integrate CTR amplitude over finite detector acceptance (for coherent
-    mixing)
+:func:`calculate_ctr_intensity`
+    Calculate continuous intensity along crystal truncation rods with
+    form factors.
+:func:`calculate_ctr_amplitude`
+    Calculate complex amplitude along crystal truncation rods (for
+    coherent mixing with kinematic scattering).
+:func:`gaussian_rod_profile`
+    Gaussian lateral width profile of rods due to finite correlation
+    length.
+:func:`lorentzian_rod_profile`
+    Lorentzian lateral width profile of rods due to finite correlation
+    length.
+:func:`roughness_damping`
+    Gaussian roughness damping factor for CTR intensities.
+:func:`rod_profile_function`
+    Lateral width profile of rods due to finite correlation length.
+:func:`surface_structure_factor`
+    Calculate structure factor for surface with q_z dependence.
+:func:`integrated_rod_intensity`
+    Integrate CTR intensity over finite detector acceptance.
+:func:`integrated_ctr_amplitude`
+    Integrate CTR amplitude over finite detector acceptance (for
+    coherent mixing).
 
 Notes
 -----
@@ -91,17 +93,27 @@ def calculate_ctr_intensity(
         CTR intensities for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Extract atomic positions and numbers from crystal structure
-    2. Build reciprocal lattice vectors from cell parameters
-    3. For each (h,k) index, calculate in-plane q vector
-    4. For each q_z value, construct full 3D q vector
-    5. Calculate structure factor with atomic form factors
-    6. Apply roughness damping to intensity
-    7. Return intensity array for all rods and q_z values
+    Implementation Logic
+    --------------------
+    1. **Extract atomic data** --
+       Get positions and atomic numbers from crystal
+       structure.
+    2. **Build reciprocal lattice** --
+       Compute in-plane reciprocal vectors from cell
+       parameters.
+    3. **In-plane q vectors** --
+       For each (h, k) index, calculate :math:`q_x` and
+       :math:`q_y`.
+    4. **Full 3D q vector** --
+       Combine in-plane q with each :math:`q_z` value.
+    5. **Structure factor** --
+       Evaluate with atomic form factors and
+       Debye-Waller damping.
+    6. **Roughness damping** --
+       Apply Gaussian roughness attenuation.
+    7. **Assemble output** --
+       Return intensity array for all rods and
+       :math:`q_z` values.
 
     See Also
     --------
@@ -199,6 +211,21 @@ def calculate_ctr_amplitude(
     amplitudes : Complex[Array, "N M"]
         CTR complex amplitudes for each (h,k) rod at each q_z value.
         Shape (N, M) where N is number of rods, M is number of q_z points.
+
+    Implementation Logic
+    --------------------
+    1. **Extract atomic data** --
+       Get positions and atomic numbers from crystal
+       structure.
+    2. **Build reciprocal lattice** --
+       Compute in-plane reciprocal vectors from cell
+       parameters.
+    3. **Per-rod amplitude** --
+       For each (h, k), compute structure factor at each
+       :math:`q_z` value.
+    4. **Apply roughness** --
+       Multiply by :math:`\\sqrt{D(q_z)}` so that
+       :math:`|A|^2 = |F|^2 \\times D`.
 
     Notes
     -----
@@ -306,6 +333,20 @@ def integrated_ctr_amplitude(
     -------
     integrated_amplitude : Complex[Array, ""]
         Coherently averaged complex amplitude over detector acceptance
+
+    Implementation Logic
+    --------------------
+    1. **Sample q_z** --
+       Create linearly spaced :math:`q_z` values over
+       the integration range.
+    2. **Compute amplitudes** --
+       Evaluate CTR amplitude at all :math:`q_z` points.
+    3. **Gaussian window** --
+       Apply acceptance window centred on :math:`q_z`
+       midpoint with width from detector acceptance.
+    4. **Coherent average** --
+       Normalize window and compute weighted sum of
+       complex amplitudes.
     """
     q_z_values: Float[Array, "n_points"] = jnp.linspace(
         q_z_range[0], q_z_range[1], n_integration_points
@@ -360,14 +401,17 @@ def roughness_damping(
     damping : Float[Array, "..."]
         Damping factor exp(-½q_z²σ_h²) between 0 and 1
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Ensure roughness is non-negative
-    2. Calculate exponent W = ½q_z²σ_h²
-    3. Return exp(-W) damping factor
-    4. Handle edge case of zero roughness (no damping)
+    Implementation Logic
+    --------------------
+    1. **Clamp roughness** --
+       Ensure :math:`\\sigma_h \\geq 0`.
+    2. **Compute exponent** --
+       :math:`W = \\tfrac{1}{2} q_z^2 \\sigma_h^2`.
+    3. **Evaluate damping** --
+       Return :math:`\\exp(-W)`.
+    4. **Handle zero roughness** --
+       If :math:`\\sigma_h < \\epsilon`, return 1.0
+       (no damping).
 
     See Also
     --------
@@ -412,17 +456,16 @@ def gaussian_rod_profile(
     profile : Float[Array, "..."]
         Normalized Gaussian intensity profile perpendicular to rod
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Ensure correlation length is positive (clip to minimum value)
-    2. Convert correlation length to reciprocal space width σ_q = 1/ξ
-
-    3. Normalize q_perpendicular by σ_q
-    4. Calculate Gaussian profile: exp(-½(q_⊥/σ_q)²)
-
-    5. Return normalized profile with peak value of 1.0
+    Implementation Logic
+    --------------------
+    1. **Clamp correlation length** --
+       Ensure :math:`\\xi > 0`.
+    2. **Reciprocal width** --
+       :math:`\\sigma_q = 1/\\xi`.
+    3. **Normalize** --
+       Compute :math:`q_{\\perp} / \\sigma_q`.
+    4. **Gaussian profile** --
+       :math:`\\exp(-\\tfrac{1}{2}(q_{\\perp}/\\sigma_q)^2)`.
     """
     xi: Float[Array, ""] = jnp.maximum(
         jnp.asarray(correlation_length, dtype=jnp.float64), 1e-10
@@ -459,14 +502,14 @@ def lorentzian_rod_profile(
     profile : Float[Array, "..."]
         Normalized Lorentzian intensity profile perpendicular to rod
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Ensure correlation length is positive (clip to minimum value)
-    2. Calculate product q_⊥ × ξ
-    3. Calculate Lorentzian profile: 1/(1 + (q_⊥ξ)²)
-    4. Return normalized profile with peak value of 1.0
+    Implementation Logic
+    --------------------
+    1. **Clamp correlation length** --
+       Ensure :math:`\\xi > 0`.
+    2. **Compute product** --
+       :math:`q_{\\perp} \\times \\xi`.
+    3. **Lorentzian profile** --
+       :math:`1 / (1 + (q_{\\perp} \\xi)^2)`.
     """
     xi: Float[Array, ""] = jnp.maximum(
         jnp.asarray(correlation_length, dtype=jnp.float64), 1e-10
@@ -504,13 +547,14 @@ def rod_profile_function(
     profile : Float[Array, "..."]
         Normalized intensity profile perpendicular to rod
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Use JAX-safe conditional to select profile type
-    2. Call appropriate profile function
-    3. Return selected profile
+    Implementation Logic
+    --------------------
+    1. **Select profile type** --
+       Use JAX-safe conditional to choose between
+       Gaussian and Lorentzian.
+    2. **Evaluate profile** --
+       Dispatch to :func:`gaussian_rod_profile` or
+       :func:`lorentzian_rod_profile`.
     """
     is_lorentzian: Bool[Array, ""] = jnp.asarray(
         profile_type == "lorentzian", dtype=jnp.bool_
@@ -558,14 +602,17 @@ def surface_structure_factor(
     structure_factor : Complex[Array, ""]
         Complex structure factor F(q)
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Calculate phase factors exp(iq·r) for each atom
-    2. Get atomic scattering factors with Debye-Waller (per-atom surface flag)
-    3. Sum weighted contributions from all atoms
-    4. Return complex structure factor
+    Implementation Logic
+    --------------------
+    1. **Phase factors** --
+       Compute :math:`\\exp(i q \\cdot r_j)` for each atom.
+    2. **Scattering factors** --
+       Evaluate per-atom form factor with Debye-Waller
+       damping and surface enhancement flag.
+    3. **Sum contributions** --
+       Accumulate weighted complex contributions.
+    4. **Return result** --
+       Complex structure factor :math:`F(q)`.
 
     See Also
     --------
@@ -653,15 +700,17 @@ def integrated_rod_intensity(
     integrated_intensity : scalar_float
         Total integrated intensity over detector acceptance
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Create q_z array spanning integration range
-    2. Calculate CTR intensity at all q_z points
-    3. Apply detector acceptance window function
-    4. Integrate using trapezoidal rule
-    5. Return total integrated intensity
+    Implementation Logic
+    --------------------
+    1. **Sample q_z** --
+       Create linearly spaced :math:`q_z` values over
+       integration range.
+    2. **CTR intensity** --
+       Evaluate intensity at all :math:`q_z` points.
+    3. **Acceptance window** --
+       Apply Gaussian detector acceptance weighting.
+    4. **Integrate** --
+       Trapezoidal rule over weighted intensities.
     """
     q_z_values: Float[Array, "n_points"] = jnp.linspace(
         q_z_range[0], q_z_range[1], n_integration_points

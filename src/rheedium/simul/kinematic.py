@@ -8,16 +8,16 @@ Implements the algorithm from arXiv:2207.06642.
 
 Routine Listings
 ----------------
-find_ctr_ewald_intersection : function
-    Find where a crystal truncation rod intersects the Ewald sphere
-kinematic_ctr_simulator : function
-    RHEED simulation using continuous crystal truncation rods (streaks)
-kinematic_spot_simulator : function
-    RHEED simulation using discrete 3D reciprocal lattice (spots)
-make_ewald_sphere : function
-    Generate Ewald sphere geometry from scattering parameters
-simple_structure_factor : function
-    Calculate structure factor for a single reflection
+:func:`find_ctr_ewald_intersection`
+    Find where a crystal truncation rod intersects the Ewald sphere.
+:func:`kinematic_ctr_simulator`
+    RHEED simulation using continuous crystal truncation rods (streaks).
+:func:`kinematic_spot_simulator`
+    RHEED simulation using discrete 3D reciprocal lattice (spots).
+:func:`make_ewald_sphere`
+    Generate Ewald sphere geometry from scattering parameters.
+:func:`simple_structure_factor`
+    Calculate structure factor for a single reflection.
 
 Notes
 -----
@@ -58,7 +58,7 @@ def make_ewald_sphere(
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
 ) -> Tuple[Float[Array, "3"], scalar_float]:
-    """Generate Ewald sphere geometry from scattering parameters.
+    r"""Generate Ewald sphere geometry from scattering parameters.
 
     Parameters
     ----------
@@ -76,13 +76,15 @@ def make_ewald_sphere(
     radius : scalar_float
         Radius of the Ewald sphere (k).
 
-    Notes
-    -----
-    Calculations:
-    - Wavelength is derived from k = 2π/λ => λ = 2π/k.
-    - Incident wavevector k_in is calculated from wavelength and angles.
-    - Ewald sphere center is at -k_in.
-    - Radius is simply the magnitude k.
+    Implementation Logic
+    --------------------
+    1. **Derive wavelength** --
+       :math:`\\lambda = 2\\pi / k`.
+    2. **Compute incident wavevector** --
+       Call :func:`incident_wavevector` with wavelength and
+       angles to obtain :math:`k_{in}`.
+    3. **Set sphere geometry** --
+       Center at :math:`-k_{in}`, radius equals :math:`k`.
 
     See Also
     --------
@@ -126,35 +128,29 @@ def simple_structure_factor(
     intensity : Float[Array, ""]
         Diffraction intensity :math:`I = |F(G)|^2`
 
+    Implementation Logic
+    --------------------
+    1. **Approximate scattering factors** --
+       Use :math:`f_j \\approx Z_j` (atomic number) as a
+       simplified form factor.
+    2. **Compute phase factors** --
+       Calculate :math:`\\exp(i \\cdot G \\cdot r_j)` for all
+       atoms via vectorized dot products.
+    3. **Sum contributions** --
+       :math:`F = \\sum f_j \\cdot \\exp(i \\cdot G \\cdot r_j)`.
+    4. **Return intensity** --
+       :math:`I(G) = |F(G)|^2`.
+
     Notes
     -----
     Structure factor (Paper's Eq. 7):
 
     .. math::
 
-        F(G) = \sum_j f_j(G) \cdot \exp(i \cdot G \cdot r_j)
+        F(G) = \\sum_j f_j(G) \\cdot \\exp(i \\cdot G \\cdot r_j)
 
-    where:
-
-    - :math:`f_j(G)` = atomic scattering factor for atom j
-    - :math:`r_j` = position of atom j
-    - Sum over all atoms in unit cell
-
-    Intensity:
-
-    .. math::
-
-        I(G) = |F(G)|^2
-
-    Implementation details:
-
-    - Uses vectorized operations (JAX-friendly).
-    - Atomic scattering factors are simplified as :math:`f_j \approx Z_j`
-      (atomic number).
-    - For more accurate scattering, use Kirkland parameterization
-      (see form_factors.py).
-    - Calculates phase factors :math:`\exp(i \cdot G \cdot r_j)` for all atoms.
-    - Sums contributions: :math:`F = \sum f_j \cdot \exp(i \cdot G \cdot r_j)`.
+    For more accurate scattering, use Kirkland parameterization
+    (see :func:`kirkland_form_factor` in form_factors).
 
     Examples
     --------
@@ -190,7 +186,7 @@ def kinematic_spot_simulator(
     detector_distance: scalar_float = 100.0,
     tolerance: scalar_float = 0.05,
 ) -> RHEEDPattern:
-    """Kinematic RHEED spot simulator using discrete 3D reciprocal lattice.
+    r"""Kinematic RHEED spot simulator using discrete 3D reciprocal lattice.
 
     Simulates RHEED pattern as discrete spots where integer (h,k,l) reciprocal
     lattice points intersect the Ewald sphere. Useful for bulk-like diffraction
@@ -226,14 +222,21 @@ def kinematic_spot_simulator(
     For surface-sensitive RHEED with continuous crystal truncation rods
     (CTRs) and streak patterns, use `kinematic_ctr_simulator` instead.
 
-    Algorithm
-    ---------
-    1. Generate reciprocal lattice G(h,k,l) up to (hmax, kmax, lmax)
-    2. Calculate electron wavelength λ from voltage
-    3. Build incident wavevector k_in from θ and λ
-    4. Find allowed reflections via Ewald sphere construction
-    5. Project k_out onto detector screen
-    6. Calculate intensities :math:`I = |F(G)|^2` using structure factors
+    Implementation Logic
+    --------------------
+    1. **Generate reciprocal lattice** --
+       Create G(h,k,l) up to (hmax, kmax, lmax).
+    2. **Compute beam parameters** --
+       Calculate electron wavelength :math:`\\lambda` from
+       voltage and build incident wavevector :math:`k_{in}`.
+    3. **Find allowed reflections** --
+       Apply Ewald sphere construction to identify
+       kinematically allowed spots.
+    4. **Project onto detector** --
+       Map outgoing wavevectors :math:`k_{out}` to
+       detector screen coordinates.
+    5. **Calculate intensities** --
+       Compute :math:`I = |F(G)|^2` using structure factors.
 
     Examples
     --------
@@ -307,7 +310,7 @@ def find_ctr_ewald_intersection(
     recip_b: Float[Array, "3"],
     recip_c: Float[Array, "3"],
 ) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
-    """Find where a crystal truncation rod intersects the Ewald sphere.
+    r"""Find where a crystal truncation rod intersects the Ewald sphere.
 
     Solves quadratic equation for rod-sphere intersection and returns
     the solution with upward scattering (k_out_z > 0).
@@ -335,6 +338,20 @@ def find_ctr_ewald_intersection(
         Outgoing wavevector at intersection.
     valid : Float[Array, ""]
         1.0 if intersection exists and is physical, 0.0 otherwise.
+
+    Implementation Logic
+    --------------------
+    1. **Build in-plane G vector** --
+       Compute :math:`G_{hk} = h \\cdot a^* + k \\cdot b^*`.
+    2. **Formulate quadratic** --
+       Set up :math:`a l^2 + b l + c = 0` from the
+       Ewald sphere constraint
+       :math:`|k_{in} + G_{hk} + l \\cdot c^*|^2 = k^2`.
+    3. **Solve for l** --
+       Compute discriminant, select solution with
+       upward scattering (:math:`k_{out,z} > 0`).
+    4. **Validate intersection** --
+       Return NaN if no physical intersection exists.
     """
     g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
     c_star: Float[Array, "3"] = recip_c
@@ -409,6 +426,22 @@ def kinematic_ctr_simulator(
     -------
     pattern : RHEEDPattern
         RHEED pattern with streak positions and intensities.
+
+    Implementation Logic
+    --------------------
+    1. **Compute beam geometry** --
+       Calculate incident wavevector and reciprocal lattice
+       vectors from crystal and beam parameters.
+    2. **Build rod grid** --
+       Create meshgrid of (h, k) indices from -hmax to
+       +hmax and -kmax to +kmax.
+    3. **Process rods in parallel** --
+       Use :func:`jax.vmap` to compute detector coordinates,
+       outgoing wavevectors, and CTR-modulated intensities
+       for all rods simultaneously.
+    4. **Flatten and filter** --
+       Collect valid points with upward scattering and
+       non-zero structure factor into output pattern.
 
     Notes
     -----

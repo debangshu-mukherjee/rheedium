@@ -9,13 +9,13 @@ without these optional packages installed.
 
 Routine Listings
 ----------------
-from_ase : function
+:func:`from_ase`
     Convert ASE Atoms to CrystalStructure.
-to_ase : function
+:func:`to_ase`
     Convert CrystalStructure to ASE Atoms.
-from_pymatgen : function
+:func:`from_pymatgen`
     Convert pymatgen Structure to CrystalStructure.
-to_pymatgen : function
+:func:`to_pymatgen`
     Convert CrystalStructure to pymatgen Structure.
 
 Notes
@@ -63,6 +63,18 @@ def from_ase(atoms: Any) -> CrystalStructure:
         - ``cart_positions`` : Cartesian coordinates with atomic numbers
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
+
+    Implementation Logic
+    --------------------
+    1. **Validate input** --
+       Check ASE is installed, cell is 3D and
+       non-degenerate.
+    2. **Extract data** --
+       Cell, positions, and atomic numbers from
+       ASE Atoms object.
+    3. **Convert** --
+       Create XYZData and delegate to
+       :func:`xyz_to_crystal`.
 
     Raises
     ------
@@ -156,6 +168,15 @@ def to_ase(crystal: CrystalStructure) -> Any:
         - ``numbers`` : Atomic numbers
         - ``pbc`` : Periodic boundary conditions set to True
 
+    Implementation Logic
+    --------------------
+    1. **Reconstruct cell** --
+       Build cell vectors from lengths and angles.
+    2. **Convert to NumPy** --
+       Extract positions and atomic numbers.
+    3. **Create Atoms** --
+       ASE Atoms with ``pbc=True``.
+
     Raises
     ------
     ImportError
@@ -231,6 +252,17 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
+    Implementation Logic
+    --------------------
+    1. **Validate input** --
+       Check pymatgen is installed and input type.
+    2. **Extract data** --
+       Lattice matrix, Cartesian coords, atomic
+       numbers from pymatgen Structure.
+    3. **Convert** --
+       Create XYZData and delegate to
+       :func:`xyz_to_crystal`.
+
     Raises
     ------
     ImportError
@@ -305,6 +337,16 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     -------
     structure : pymatgen.core.Structure
         Equivalent pymatgen Structure object.
+
+    Implementation Logic
+    --------------------
+    1. **Reconstruct cell** --
+       Build cell vectors from lengths and angles.
+    2. **Map species** --
+       Convert atomic numbers to element symbols.
+    3. **Create Structure** --
+       pymatgen Structure from lattice, species, and
+       fractional coordinates.
 
     Raises
     ------

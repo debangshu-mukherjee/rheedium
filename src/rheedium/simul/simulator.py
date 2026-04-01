@@ -10,24 +10,27 @@ and complete RHEED patterns from crystal structures.
 
 Routine Listings
 ----------------
-compute_kinematic_intensities_with_ctrs : function
-    Calculate kinematic intensities with CTR contributions
-find_kinematic_reflections : function
-    Find reflections satisfying kinematic conditions
-incident_wavevector : function
-    Calculate incident electron wavevector
-kinematic_simulator : function
-    Simulate complete RHEED pattern using kinematic approximation
-multislice_propagate : function
-    Propagate electron wave through potential slices using multislice algorithm
-multislice_simulator : function
-    Simulate RHEED pattern from potential slices using multislice (dynamical)
-project_on_detector : function
-    Project wavevectors onto detector plane
-sliced_crystal_to_potential : function
-    Convert SlicedCrystal to PotentialSlices for multislice simulation
-wavelength_ang : function
-    Calculate electron wavelength in angstroms
+:func:`compute_kinematic_intensities_with_ctrs`
+    Calculate kinematic intensities with CTR contributions.
+:func:`ewald_simulator`
+    Simulate RHEED using exact Ewald sphere-CTR intersection.
+:func:`find_kinematic_reflections`
+    Find reflections satisfying kinematic conditions.
+:func:`kinematic_simulator`
+    Simulate complete RHEED pattern using kinematic approximation.
+:func:`multislice_propagate`
+    Propagate electron wave through potential slices using multislice
+    algorithm.
+:func:`multislice_simulator`
+    Simulate RHEED pattern from potential slices using multislice
+    (dynamical).
+:func:`project_on_detector`
+    Project wavevectors onto detector plane.
+:func:`project_on_detector_geometry`
+    Project wavevectors with full detector geometry support.
+:func:`sliced_crystal_to_potential`
+    Convert SlicedCrystal to PotentialSlices for multislice
+    simulation.
 
 Notes
 -----
@@ -101,6 +104,14 @@ def project_on_detector(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
+    Implementation Logic
+    --------------------
+    1. **Scale factor** --
+       :math:`s = d / (k_x + \\epsilon)` for each
+       wavevector.
+    2. **Detector coordinates** --
+       :math:`(k_y \\times s,\\; k_z \\times s)`.
+
     See Also
     --------
     project_on_detector_geometry : Projection with tilt and curvature support.
@@ -138,22 +149,24 @@ def project_on_detector_geometry(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
+    Implementation Logic
+    --------------------
+    1. **Ray-plane intersection** --
+       Compute intersection parameter :math:`t` for each
+       wavevector with the (possibly tilted) detector plane.
+    2. **Tilt correction** --
+       Rotate coordinates when tilt angle is non-zero.
+    3. **Curvature correction** --
+       Map flat coordinates onto cylindrical surface when
+       curvature radius is finite.
+    4. **Apply offsets** --
+       Shift by centre offsets.
+
     Notes
     -----
-    The projection accounts for:
-
-    1. **Tilt**: When tilt_angle != 0, the detector plane is rotated about
-       the horizontal (y) axis. The plane normal becomes
-       n = (cos(tilt), 0, sin(tilt)) instead of (1, 0, 0).
-
-    2. **Curvature**: For finite curvature_radius, the detector is a cylinder
-       with axis along y. Points are projected onto this cylinder surface.
-
-    3. **Offsets**: center_offset_h and center_offset_v shift the coordinate
-       system origin on the detector.
-
-    For small tilt angles and infinite curvature, this reduces to the simple
-    ray-tracing formula used in `project_on_detector`.
+    For small tilt angles and infinite curvature, this reduces
+    to the simple ray-tracing formula in
+    :func:`project_on_detector`.
 
     See Also
     --------
@@ -243,6 +256,18 @@ def find_kinematic_reflections(
     k_out : Float[Array, "M 3"]
         Output wavevectors for allowed reflections. Invalid entries
         correspond to `allowed_indices == -1`.
+
+    Implementation Logic
+    --------------------
+    1. **Outgoing wavevectors** --
+       :math:`k_{out} = k_{in} + G` for all G vectors.
+    2. **Elastic condition** --
+       Filter by :math:`||k_{out}| - |k_{in}|| <` tolerance.
+    3. **z-direction filter** --
+       Keep reflections with correct z-sign.
+    4. **Fixed-size output** --
+       Use :func:`jnp.where` with fill_value for JIT
+       compatibility.
 
     Notes
     -----
@@ -347,17 +372,21 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     intensities : Float[Array, "N"]
         Diffraction intensities for each allowed reflection.
 
-    Algorithm
-    ---------
-    - Extract atomic positions and numbers from crystal
-    - Identify surface atoms using configured method
-    - For each allowed reflection:
-        - Calculate momentum transfer q = k_out - k_in
-        - Compute structure factor with proper form factors
-        - Apply Debye-Waller factors (enhanced for surface atoms)
-        - Validate h,k are near-integer before applying CTR
-        - Mix CTR and kinematic contributions according to mode
-    - Return intensities
+    Implementation Logic
+    --------------------
+    1. **Extract atomic data** --
+       Positions, atomic numbers, and Miller indices
+       from crystal and G vectors.
+    2. **Identify surface atoms** --
+       Apply configured method (height, coordination,
+       layers, or explicit mask).
+    3. **Per-reflection intensity** --
+       For each G: compute :math:`q = k_{out} - k_{in}`,
+       evaluate structure factor with form factors and
+       Debye-Waller, gate CTR on near-integer (h, k).
+    4. **Mix contributions** --
+       Coherent (add amplitudes), incoherent (add
+       intensities), or no CTR.
 
     Notes
     -----
@@ -621,17 +650,20 @@ def kinematic_simulator(  # noqa: PLR0913
     >>> # Plot the pattern
     >>> rh.plots.plot_rheed(pattern, grid_size=400)
 
-    Algorithm
-    ---------
-    - Generate reciprocal lattice points up to specified bounds
-    - Calculate electron wavelength from voltage
-    - Build incident wavevector at specified angle
-    - Find G vectors satisfying reflection condition
-    - Project resulting k_out onto detector plane
-    - Calculate intensities with proper atomic form factors
-    - Include CTR contributions for surface reflections
-    - Apply surface-enhanced Debye-Waller factors
-    - Create and return RHEEDPattern with computed data
+    Implementation Logic
+    --------------------
+    1. **Generate reciprocal lattice** --
+       Miller index grid up to (hmax, kmax, lmax).
+    2. **Beam parameters** --
+       Wavelength from voltage, incident wavevector from
+       angles.
+    3. **Find allowed reflections** --
+       Binary Ewald tolerance or finite domain overlap.
+    4. **Detector projection** --
+       Map :math:`k_{out}` onto detector plane.
+    5. **Intensities** --
+       Structure factors with form factors, Debye-Waller,
+       CTR contributions, and optional overlap weighting.
 
     See Also
     --------
@@ -855,6 +887,24 @@ def ewald_simulator(  # noqa: PLR0913
     -------
     pattern : RHEEDPattern
         RHEED pattern with detector positions and intensities.
+
+    Implementation Logic
+    --------------------
+    1. **Beam parameters** --
+       Wavelength and incident wavevector from voltage and
+       angles.
+    2. **Reciprocal basis** --
+       Compute :math:`a^*, b^*, c^*` from cell parameters.
+    3. **Rod-sphere intersection** --
+       For each (h, k) rod, solve quadratic for l where
+       the rod intersects the Ewald sphere.
+    4. **Structure factors** --
+       Kirkland form factors with Debye-Waller and surface
+       enhancement at each intersection.
+    5. **CTR modulation** --
+       :math:`1/\\sin^2(\\pi l)` with roughness damping.
+    6. **Assemble pattern** --
+       Project onto detector and normalize intensities.
 
     Notes
     -----
@@ -1084,17 +1134,18 @@ def sliced_crystal_to_potential(
     potential_slices : PotentialSlices
         3D potential array with calibration information.
 
-    Algorithm
-    ---------
-    1. Determine grid dimensions from x_extent, y_extent, and pixel_size
-    2. Calculate number of slices from depth and slice_thickness
-    3. For each slice z-range:
-       a. Select atoms within [z, z+slice_thickness]
-       b. Project atomic potentials onto x-y grid
-       c. Use proper scattering factors for each element
-       d. Sum contributions from all atoms in slice
-    4. Apply appropriate units (Volts or interaction potential)
-    5. Return PotentialSlices with grid and calibration data
+    Implementation Logic
+    --------------------
+    1. **Grid dimensions** --
+       Compute nx, ny from extents and pixel size, nz from
+       depth and slice thickness.
+    2. **Interaction constant** --
+       :math:`\\sigma` from voltage and wavelength.
+    3. **Per-slice potential** --
+       For each z-range, select atoms in slice, project
+       Kirkland potentials onto xy grid, and sum.
+    4. **Package result** --
+       Return :class:`PotentialSlices` with calibration.
 
     Notes
     -----
@@ -1250,6 +1301,23 @@ def multislice_propagate(
     exit_wave : Complex[Array, "nx ny"]
         Complex exit wave after propagation through all slices
 
+    Implementation Logic
+    --------------------
+    1. **Initialise wave** --
+       Tilted plane wave from :math:`k_{in,x}` and
+       :math:`k_{in,y}` (with refraction if
+       :math:`V_0 \\neq 0`).
+    2. **Build propagator** --
+       Fresnel propagator
+       :math:`P = \\exp(-i \\pi \\lambda \\Delta z
+       (k_x^2 + k_y^2))` and bandwidth aperture.
+    3. **Scan slices** --
+       For each slice: transmit
+       :math:`\\psi' = \\psi \\exp(i \\sigma V)`, then
+       propagate in Fourier space.
+    4. **Return exit wave** --
+       Complex wave after all slices.
+
     Notes
     -----
     The transmission function is:
@@ -1390,6 +1458,23 @@ def multislice_simulator(
         RHEED diffraction pattern with detector coordinates and intensities.
         The g_indices field contains flattened grid indices since Miller
         indices are not well-defined for multislice simulation.
+
+    Implementation Logic
+    --------------------
+    1. **Exit wave** --
+       Propagate through all slices via
+       :func:`multislice_propagate`.
+    2. **Fourier transform** --
+       FFT of exit wave to reciprocal space.
+    3. **Ewald constraint** --
+       :math:`k_{out,z}^2 = k^2 - k_{out,x}^2
+       - k_{out,y}^2`; keep real solutions.
+    4. **Detector projection** --
+       :math:`\\theta_x \\approx k_x / k_z`,
+       :math:`\\theta_y \\approx k_y / k_z`.
+    5. **Assemble pattern** --
+       Filter non-zero intensities and create
+       :class:`RHEEDPattern`.
 
     Notes
     -----

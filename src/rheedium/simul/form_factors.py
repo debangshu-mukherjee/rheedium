@@ -8,20 +8,22 @@ atomic scattering factors for quantitative RHEED simulations.
 
 Routine Listings
 ----------------
-kirkland_form_factor : function
-    Calculate atomic form factor f(q) using Kirkland parameterization
-kirkland_projected_potential : function
-    Calculate projected atomic potential for multislice simulations
-debye_waller_factor : function
-    Calculate Debye-Waller damping factor for thermal vibrations
-atomic_scattering_factor : function
-    Combined form factor with Debye-Waller damping
-get_mean_square_displacement : function
-    Calculate mean square displacement for given temperature
-get_debye_temperature : function
-    Get element-specific Debye temperature
-load_kirkland_parameters : function
-    Load Kirkland scattering parameters from data file
+:func:`kirkland_form_factor`
+    Calculate atomic form factor f(q) using Kirkland
+    parameterization.
+:func:`kirkland_projected_potential`
+    Calculate projected atomic potential for multislice
+    simulations.
+:func:`debye_waller_factor`
+    Calculate Debye-Waller damping factor for thermal vibrations.
+:func:`atomic_scattering_factor`
+    Combined form factor with Debye-Waller damping.
+:func:`get_mean_square_displacement`
+    Calculate mean square displacement for given temperature.
+:func:`get_debye_temperature`
+    Get element-specific Debye temperature.
+:func:`load_kirkland_parameters`
+    Load Kirkland scattering parameters from data file.
 
 Notes
 -----
@@ -40,68 +42,15 @@ from beartype import beartype
 from beartype.typing import Optional, Tuple
 from jaxtyping import Array, Float, Int, jaxtyped
 
-from rheedium.inout import kirkland_potentials
+from rheedium.inout import (
+    atomic_masses,
+    debye_temperatures,
+    kirkland_potentials,
+)
 from rheedium.types import scalar_bool, scalar_float, scalar_int
 
-
-# Element-specific Debye temperatures in Kelvin (index = atomic_number - 1)
-# Value of 0.0 indicates no reliable data; fallback to generic model
-# Sources: Kittel, CRC Handbook, experimental literature
-# fmt: off
-DEBYE_TEMPERATURES: Float[Array, "103"] = jnp.array([
-    # Z=1-10: H, He, Li, Be, B, C, N, O, F, Ne
-    110.0, 25.0, 344.0, 1440.0, 1250.0, 2230.0, 63.0, 91.0, 53.0, 75.0,
-    # Z=11-20: Na, Mg, Al, Si, P, S, Cl, Ar, K, Ca
-    158.0, 400.0, 428.0, 645.0, 195.0, 200.0, 115.0, 92.0, 91.0, 230.0,
-    # Z=21-30: Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn
-    360.0, 420.0, 380.0, 630.0, 410.0, 470.0, 445.0, 450.0, 343.0, 327.0,
-    # Z=31-40: Ga, Ge, As, Se, Br, Kr, Rb, Sr, Y, Zr
-    320.0, 374.0, 282.0, 90.0, 58.0, 72.0, 56.0, 147.0, 280.0, 291.0,
-    # Z=41-50: Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd, In, Sn
-    275.0, 450.0, 351.0, 600.0, 480.0, 274.0, 225.0, 209.0, 108.0, 200.0,
-    # Z=51-60: Sb, Te, I, Xe, Cs, Ba, La, Ce, Pr, Nd
-    211.0, 153.0, 55.0, 64.0, 38.0, 110.0, 142.0, 146.0, 85.0, 157.0,
-    # Z=61-70: Pm, Sm, Eu, Gd, Tb, Dy, Ho, Er, Tm, Yb
-    158.0, 166.0, 127.0, 170.0, 176.0, 186.0, 191.0, 188.0, 179.0, 120.0,
-    # Z=71-80: Lu, Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg
-    183.0, 252.0, 240.0, 400.0, 430.0, 500.0, 420.0, 240.0, 165.0, 72.0,
-    # Z=81-90: Tl, Pb, Bi, Po, At, Rn, Fr, Ra, Ac, Th
-    78.0, 105.0, 119.0, 81.0, 0.0, 64.0, 0.0, 89.0, 124.0, 163.0,
-    # Z=91-100: Pa, U, Np, Pu, Am, Cm, Bk, Cf, Es, Fm
-    159.0, 207.0, 163.0, 171.0, 121.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    # Z=101-103: Md, No, Lr
-    0.0, 0.0, 0.0,
-], dtype=jnp.float64)
-# fmt: on
-
-# Atomic masses in atomic mass units (index = atomic_number - 1)
-# Used for proper Debye model calculation
-# fmt: off
-ATOMIC_MASSES: Float[Array, "103"] = jnp.array([
-    # Z=1-10
-    1.008, 4.003, 6.941, 9.012, 10.81, 12.01, 14.01, 16.00, 19.00, 20.18,
-    # Z=11-20
-    22.99, 24.31, 26.98, 28.09, 30.97, 32.07, 35.45, 39.95, 39.10, 40.08,
-    # Z=21-30
-    44.96, 47.87, 50.94, 52.00, 54.94, 55.85, 58.93, 58.69, 63.55, 65.38,
-    # Z=31-40
-    69.72, 72.63, 74.92, 78.97, 79.90, 83.80, 85.47, 87.62, 88.91, 91.22,
-    # Z=41-50
-    92.91, 95.95, 98.00, 101.1, 102.9, 106.4, 107.9, 112.4, 114.8, 118.7,
-    # Z=51-60
-    121.8, 127.6, 126.9, 131.3, 132.9, 137.3, 138.9, 140.1, 140.9, 144.2,
-    # Z=61-70
-    145.0, 150.4, 152.0, 157.3, 158.9, 162.5, 164.9, 167.3, 168.9, 173.0,
-    # Z=71-80
-    175.0, 178.5, 180.9, 183.8, 186.2, 190.2, 192.2, 195.1, 197.0, 200.6,
-    # Z=81-90
-    204.4, 207.2, 209.0, 209.0, 210.0, 222.0, 223.0, 226.0, 227.0, 232.0,
-    # Z=91-100
-    231.0, 238.0, 237.0, 244.0, 243.0, 247.0, 247.0, 251.0, 252.0, 257.0,
-    # Z=101-103
-    258.0, 259.0, 262.0,
-], dtype=jnp.float64)
-# fmt: on
+DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
+ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
 
 
 @jaxtyped(typechecker=beartype)
@@ -128,6 +77,15 @@ def get_debye_temperature(
     - Various experimental literature
 
     A value of 0.0 indicates no reliable data is available for that element.
+
+    Implementation Logic
+    --------------------
+    1. **Clip index** --
+       Map atomic number to zero-based array index,
+       clamped to [0, 102].
+    2. **Table lookup** --
+       Return :data:`DEBYE_TEMPERATURES` entry. Zero
+       indicates no reliable data.
     """
     atomic_idx: Int[Array, ""] = jnp.clip(
         jnp.asarray(atomic_number, dtype=jnp.int32) - 1, 0, 102
@@ -150,6 +108,14 @@ def get_atomic_mass(
     -------
     mass : Float[Array, ""]
         Atomic mass in atomic mass units (amu)
+
+    Implementation Logic
+    --------------------
+    1. **Clip index** --
+       Map atomic number to zero-based array index,
+       clamped to [0, 102].
+    2. **Table lookup** --
+       Return :data:`ATOMIC_MASSES` entry in amu.
     """
     atomic_idx: Int[Array, ""] = jnp.clip(
         jnp.asarray(atomic_number, dtype=jnp.int32) - 1, 0, 102
@@ -179,16 +145,17 @@ def load_kirkland_parameters(
     b_coeffs : Float[Array, "6"]
         Width coefficients for Gaussian terms in Ų
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Validate atomic number is in valid range [1, 103]
-    2. Load full Kirkland potential parameters matrix
-    3. Extract row for specified atomic number
-    4. Split into amplitude coefficients (even indices 0,2,4,6,8,10)
-    5. Split into width coefficients (odd indices 1,3,5,7,9,11)
-    6. Return both coefficient arrays
+    Implementation Logic
+    --------------------
+    1. **Validate range** --
+       Clip atomic number to [1, 103].
+    2. **Load parameter matrix** --
+       Full Kirkland potential parameters (103 × 12).
+    3. **Extract row** --
+       Select row for the specified atomic number.
+    4. **Split coefficients** --
+       Amplitude :math:`a_i` at even indices (0, 2, …, 10),
+       width :math:`b_i` at odd indices (1, 3, …, 11).
 
     See Also
     --------
@@ -222,7 +189,7 @@ def kirkland_form_factor(
     atomic_number: scalar_int,
     q_magnitude: Float[Array, "..."],
 ) -> Float[Array, "..."]:
-    """Calculate atomic form factor f(q) using Kirkland parameterization.
+    r"""Calculate atomic form factor f(q) using Kirkland parameterization.
 
     Computes the atomic scattering factor for electrons using the Kirkland
     parameterization, which represents the form factor as a sum of Gaussians.
@@ -240,19 +207,16 @@ def kirkland_form_factor(
     form_factor : Float[Array, "..."]
         Atomic form factor f(q) in electron scattering units
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Load Kirkland parameters for the element
-    2. Calculate q/(4π) term used in exponentials
-    3. Compute each Gaussian term: aᵢ exp(-bᵢ(q/4π)²)
-    4. Sum all six Gaussian contributions
-    5. Return total form factor
-
-    Uses the sum of Gaussians approximation:
-    f(q) = Σᵢ aᵢ exp(-bᵢ(q/4π)²)
-    where i runs from 1 to 6 for the Kirkland parameterization.
+    Implementation Logic
+    --------------------
+    1. **Load parameters** --
+       Kirkland :math:`a_i, b_i` for the element.
+    2. **Prepare q term** --
+       :math:`s = q / (4\\pi)`.
+    3. **Gaussian terms** --
+       :math:`a_i \\exp(-b_i s^2)` for :math:`i = 1 \\ldots 6`.
+    4. **Sum contributions** --
+       :math:`f(q) = \\sum_i a_i \\exp(-b_i s^2)`.
 
     See Also
     --------
@@ -287,7 +251,7 @@ def kirkland_projected_potential(
     atomic_number: scalar_int,
     r: Float[Array, "..."],
 ) -> Float[Array, "..."]:
-    """Calculate projected atomic potential using Kirkland parameterization.
+    r"""Calculate projected atomic potential using Kirkland parameterization.
 
     Computes the 2D projected atomic potential for multislice calculations
     using Kirkland parameterization. This is the integral of the 3D atomic
@@ -304,6 +268,19 @@ def kirkland_projected_potential(
     -------
     potential : Float[Array, "..."]
         Projected potential in Volt·Angstrom
+
+    Implementation Logic
+    --------------------
+    1. **Load parameters** --
+       Kirkland :math:`a_i, b_i` for the element.
+    2. **Safe radial distance** --
+       Clamp :math:`r` to avoid singularity at zero.
+    3. **Gaussian terms** --
+       :math:`(a_i / b_i) \\exp(-\\pi r^2 / b_i)` for
+       each of the six terms.
+    4. **Sum and scale** --
+       Multiply sum by :math:`2\\pi` for projected
+       potential in Volt·Ångstrom.
 
     Notes
     -----
@@ -357,7 +334,7 @@ def get_mean_square_displacement(
     is_surface: Optional[scalar_bool] = False,
     surface_enhancement: Optional[scalar_float] = 2.0,
 ) -> scalar_float:
-    """Calculate mean square displacement for thermal vibrations.
+    r"""Calculate mean square displacement for thermal vibrations.
 
     Uses element-specific Debye temperatures when available for accurate
     thermal displacement calculations. Falls back to a generic model for
@@ -378,6 +355,20 @@ def get_mean_square_displacement(
     -------
     mean_square_displacement : scalar_float
         Mean square displacement ⟨u²⟩ in Ų
+
+    Implementation Logic
+    --------------------
+    1. **Retrieve Debye temperature** --
+       Look up element-specific :math:`\\Theta_D`.
+    2. **Debye model MSD** --
+       :math:`\\langle u^2 \\rangle = 3 \\hbar^2 T
+       / (m k_B \\Theta_D^2)` (high-T limit).
+    3. **Fallback model** --
+       If :math:`\\Theta_D = 0`, use generic scaling
+       :math:`\\propto \\sqrt{12/Z} \\times T/300`.
+    4. **Surface enhancement** --
+       Multiply by enhancement factor if atom is
+       flagged as surface.
 
     Notes
     -----
@@ -456,7 +447,7 @@ def debye_waller_factor(
     q_magnitude: Float[Array, "..."],
     mean_square_displacement: scalar_float,
 ) -> Float[Array, "..."]:
-    """Calculate Debye-Waller damping factor for thermal vibrations.
+    r"""Calculate Debye-Waller damping factor for thermal vibrations.
 
     Computes the Debye-Waller temperature factor that accounts for
     reduction in scattering intensity due to thermal atomic vibrations.
@@ -473,18 +464,17 @@ def debye_waller_factor(
     dw_factor : Float[Array, "..."]
         Debye-Waller damping factor exp(-W)
 
+    Implementation Logic
+    --------------------
+    1. **Validate MSD** --
+       Ensure :math:`\\langle u^2 \\rangle \\geq 0`.
+    2. **Compute exponent** --
+       :math:`W = \\tfrac{1}{2} \\langle u^2 \\rangle q^2`.
+    3. **Evaluate factor** --
+       :math:`\\exp(-W)`.
+
     Notes
     -----
-    The algorithm proceeds as follows:
-
-    1. Validate mean square displacement is non-negative
-    2. Calculate W = ½⟨u²⟩q²
-    3. Compute exp(-W) damping factor
-    4. Return Debye-Waller factor
-
-    The Debye-Waller factor is:
-    exp(-W) = exp(-½⟨u²⟩q²)
-
     Surface enhancement should be applied when calculating the
     mean_square_displacement, NOT in this function, to avoid
     double-application of the enhancement factor.
@@ -513,7 +503,7 @@ def atomic_scattering_factor(
     temperature: Optional[scalar_float] = 300.0,
     is_surface: Optional[scalar_bool] = False,
 ) -> Float[Array, "..."]:
-    """Calculate combined atomic scattering factor with thermal damping.
+    r"""Calculate combined atomic scattering factor with thermal damping.
 
     Computes the total atomic scattering factor by combining the
     q-dependent form factor with the Debye-Waller temperature factor.
@@ -535,17 +525,20 @@ def atomic_scattering_factor(
     scattering_factor : Float[Array, "..."]
         Total atomic scattering factor f(q)×exp(-W)
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Calculate magnitude of q vector
-    2. Compute atomic form factor f(q) using Kirkland parameterization
-    3. Calculate mean square displacement for temperature with surface
+    Implementation Logic
+    --------------------
+    1. **q magnitude** --
+       :math:`|q| = \\|q\\|`.
+    2. **Form factor** --
+       Evaluate Kirkland :math:`f(|q|)`.
+    3. **Mean square displacement** --
+       Element- and temperature-dependent
+       :math:`\\langle u^2 \\rangle` with optional surface
        enhancement.
-    4. Compute Debye-Waller factor exp(-W) using the MSD
-    5. Multiply form factor by Debye-Waller factor
-    6. Return combined scattering factor
+    4. **Debye-Waller factor** --
+       :math:`\\exp(-\\tfrac{1}{2} \\langle u^2 \\rangle q^2)`.
+    5. **Combined factor** --
+       :math:`f(q) \\times \\exp(-W)`.
 
     Examples
     --------

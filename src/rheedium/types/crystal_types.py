@@ -9,22 +9,29 @@ support JAX transformations.
 
 Routine Listings
 ----------------
-CrystalStructure : PyTree
-    JAX-compatible crystal structure with fractional and Cartesian coordinates.
-create_crystal_structure : function
-    Factory function to create CrystalStructure instances with data validation.
-EwaldData : PyTree
+:class:`CrystalStructure`
+    JAX-compatible crystal structure with fractional and
+    Cartesian coordinates.
+:func:`create_crystal_structure`
+    Factory function to create CrystalStructure instances
+    with data validation.
+:class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
-create_ewald_data : function
-    Factory function to create EwaldData instances with validation.
-PotentialSlices : PyTree
-    JAX-compatible data structure for representing multislice potential data.
-create_potential_slices : function
-    Factory function to create PotentialSlices instances with data validation.
-XYZData : PyTree
-    A PyTree for XYZ file data with atomic positions and metadata.
-create_xyz_data : function
-    Factory function to create XYZData instances with data validation.
+:func:`create_ewald_data`
+    Factory function to create EwaldData instances with
+    validation.
+:class:`PotentialSlices`
+    JAX-compatible data structure for representing multislice
+    potential data.
+:func:`create_potential_slices`
+    Factory function to create PotentialSlices instances with
+    data validation.
+:class:`XYZData`
+    A PyTree for XYZ file data with atomic positions and
+    metadata.
+:func:`create_xyz_data`
+    Factory function to create XYZData instances with data
+    validation.
 
 Notes
 -----
@@ -161,16 +168,19 @@ def create_crystal_structure(
     validated_crystal_structure : CrystalStructure
         A validated CrystalStructure instance.
 
-    Notes
-    -----
+    Implementation Logic
+    --------------------
     - Convert all inputs to JAX arrays using jnp.asarray.
-    - Validate shapes of frac_positions, cart_positions, cell_lengths,.
-      and cell_angles.
-    - Verify number of atoms matches between frac and cart positions
-    - Verify atomic numbers match between frac and cart positions
-    - Ensure cell lengths are positive
-    - Ensure cell angles are between 0 and 180 degrees
-    - Create and return CrystalStructure instance with validated data
+    - Validate shapes of frac_positions, cart_positions,
+      cell_lengths, and cell_angles.
+    - Verify number of atoms matches between frac and cart
+      positions.
+    - Verify atomic numbers match between frac and cart
+      positions.
+    - Ensure cell lengths are positive.
+    - Ensure cell angles are between 0 and 180 degrees.
+    - Create and return CrystalStructure instance with
+      validated data.
     """
     frac_positions: Float[Array, "... 4"] = jnp.asarray(frac_positions)
     cart_positions: Num[Array, "... 4"] = jnp.asarray(cart_positions)
@@ -443,6 +453,14 @@ def create_ewald_data(
     -------
     ewald_data : EwaldData
         Validated EwaldData PyTree instance.
+
+    Implementation Logic
+    --------------------
+    - Convert all inputs to JAX arrays with explicit dtypes:
+      float64 for real-valued fields, int32 for Miller
+      indices, and complex128 for structure factors.
+    - Construct and return an EwaldData instance from the
+      converted arrays.
     """
     wavelength_ang = jnp.asarray(wavelength_ang, dtype=jnp.float64)
     k_magnitude = jnp.asarray(k_magnitude, dtype=jnp.float64)
@@ -572,16 +590,14 @@ def create_potential_slices(
     validated_potential_slices : PotentialSlices
         Validated PotentialSlices instance.
 
-    Notes
-    -----
-    The algorithm proceeds as follows:
-
-    1. Convert inputs to JAX arrays with appropriate dtypes
-    2. Validate slice array is 3D
-    3. Ensure slice thickness is positive
-    4. Ensure calibrations are positive
-    5. Check that all slice data is finite
-    6. Create and return PotentialSlices instance
+    Implementation Logic
+    --------------------
+    1. Convert inputs to JAX arrays with appropriate dtypes.
+    2. Validate slice array is 3D.
+    3. Ensure slice thickness is positive.
+    4. Ensure calibrations are positive.
+    5. Check that all slice data is finite.
+    6. Create and return PotentialSlices instance.
     """
     slices: Float[Array, "n_slices height width"] = jnp.asarray(
         slices, dtype=jnp.float64
@@ -835,19 +851,22 @@ def create_xyz_data(
     validated_xyz_data : XYZData
         Validated PyTree structure for XYZ file contents.
 
-    Notes
-    -----
-    - Convert required inputs to JAX arrays with appropriate dtypes
-      positions to float64, atomic_numbers to int32, lattice/stress/energy
-      to float64 if provided
-    - Execute shape validation checks: verify positions has shape (N, 3)
-      and atomic_numbers has shape (N,)
-    - Execute value validation checks: ensure all position values are finite
-      and atomic numbers are non-negative
-    - Execute optional matrix validation checks: for lattice and stress tensors
-      verify shape is (3, 3) and all values are finite
-    - If all validations pass, create and return XYZData instance
-    - If any validation fails, raise ValueError with descriptive error message
+    Implementation Logic
+    --------------------
+    - Convert required inputs to JAX arrays with appropriate
+      dtypes: positions to float64, atomic_numbers to int32,
+      lattice/stress/energy to float64 if provided.
+    - Execute shape validation checks: verify positions has
+      shape (N, 3) and atomic_numbers has shape (N,).
+    - Execute value validation checks: ensure all position
+      values are finite and atomic numbers are non-negative.
+    - Execute optional matrix validation checks: for lattice
+      and stress tensors verify shape is (3, 3) and all
+      values are finite.
+    - If all validations pass, create and return XYZData
+      instance.
+    - If any validation fails, raise ValueError with
+      descriptive error message.
     """
     positions: Float[Array, "N 3"] = jnp.asarray(positions, dtype=jnp.float64)
     atomic_numbers: Int[Array, "N"] = jnp.asarray(
