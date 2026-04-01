@@ -317,7 +317,8 @@ class EwaldData(NamedTuple):
     wavelength_ang : Float[Array, ""]
         Relativistic electron wavelength in Ångstroms.
     k_magnitude : Float[Array, ""]
-        Magnitude of electron wavevector :math:`|k| = 2\pi/\lambda` in 1/Ångstroms.
+        Magnitude of electron wavevector :math:`|k| = 2\pi/\lambda`
+        in 1/Ångstroms.
     sphere_radius : Float[Array, ""]
         Ewald sphere radius in 1/Ångstroms (equals k_magnitude).
     recip_vectors : Float[Array, "3 3"]
@@ -456,11 +457,21 @@ def create_ewald_data(
 
     Implementation Logic
     --------------------
-    - Convert all inputs to JAX arrays with explicit dtypes:
-      float64 for real-valued fields, int32 for Miller
-      indices, and complex128 for structure factors.
-    - Construct and return an EwaldData instance from the
-      converted arrays.
+    1. **Convert dtypes** --
+       float64 for real-valued fields, int32 for Miller
+       indices, complex128 for structure factors.
+    2. **Validate scalars** --
+       Wavelength, k_magnitude, and sphere_radius must be
+       positive.
+    3. **Validate shapes** --
+       recip_vectors is (3, 3); hkl_grid, g_vectors,
+       g_magnitudes, structure_factors, and intensities
+       share the same leading dimension N.
+    4. **Validate values** --
+       Intensities must be non-negative; all real-valued
+       arrays must be finite.
+    5. **Create instance** --
+       Assemble validated arrays into EwaldData PyTree.
     """
     wavelength_ang = jnp.asarray(wavelength_ang, dtype=jnp.float64)
     k_magnitude = jnp.asarray(k_magnitude, dtype=jnp.float64)
@@ -472,17 +483,148 @@ def create_ewald_data(
     structure_factors = jnp.asarray(structure_factors, dtype=jnp.complex128)
     intensities = jnp.asarray(intensities, dtype=jnp.float64)
 
-    return EwaldData(
-        wavelength_ang=wavelength_ang,
-        k_magnitude=k_magnitude,
-        sphere_radius=sphere_radius,
-        recip_vectors=recip_vectors,
-        hkl_grid=hkl_grid,
-        g_vectors=g_vectors,
-        g_magnitudes=g_magnitudes,
-        structure_factors=structure_factors,
-        intensities=intensities,
-    )
+    def _validate_and_create() -> EwaldData:
+        def _check_wavelength_positive() -> Float[Array, ""]:
+            return lax.cond(
+                wavelength_ang > 0,
+                lambda: wavelength_ang,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: wavelength_ang,
+                        lambda: wavelength_ang,
+                    )
+                ),
+            )
+
+        def _check_k_magnitude_positive() -> Float[Array, ""]:
+            return lax.cond(
+                k_magnitude > 0,
+                lambda: k_magnitude,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: k_magnitude,
+                        lambda: k_magnitude,
+                    )
+                ),
+            )
+
+        def _check_sphere_radius_positive() -> Float[Array, ""]:
+            return lax.cond(
+                sphere_radius > 0,
+                lambda: sphere_radius,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: sphere_radius,
+                        lambda: sphere_radius,
+                    )
+                ),
+            )
+
+        def _check_recip_vectors_shape() -> Float[Array, "3 3"]:
+            return lax.cond(
+                recip_vectors.shape == (3, 3),
+                lambda: recip_vectors,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: recip_vectors,
+                        lambda: recip_vectors,
+                    )
+                ),
+            )
+
+        def _check_n_consistency() -> Tuple[
+            Int[Array, "N 3"],
+            Float[Array, "N 3"],
+            Float[Array, "N"],
+        ]:
+            n_hkl = hkl_grid.shape[0]
+            consistent = (
+                (g_vectors.shape[0] == n_hkl)
+                & (g_magnitudes.shape[0] == n_hkl)
+                & (structure_factors.shape[0] == n_hkl)
+                & (intensities.shape[0] == n_hkl)
+            )
+            return lax.cond(
+                consistent,
+                lambda: (hkl_grid, g_vectors, g_magnitudes),
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: (
+                            hkl_grid,
+                            g_vectors,
+                            g_magnitudes,
+                        ),
+                        lambda: (
+                            hkl_grid,
+                            g_vectors,
+                            g_magnitudes,
+                        ),
+                    )
+                ),
+            )
+
+        def _check_intensities_nonneg() -> Float[Array, "N"]:
+            return lax.cond(
+                jnp.all(intensities >= 0),
+                lambda: intensities,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: intensities,
+                        lambda: intensities,
+                    )
+                ),
+            )
+
+        def _check_finite() -> Float[Array, "N"]:
+            all_finite = (
+                jnp.all(jnp.isfinite(wavelength_ang))
+                & jnp.all(jnp.isfinite(k_magnitude))
+                & jnp.all(jnp.isfinite(sphere_radius))
+                & jnp.all(jnp.isfinite(recip_vectors))
+                & jnp.all(jnp.isfinite(g_vectors))
+                & jnp.all(jnp.isfinite(g_magnitudes))
+                & jnp.all(jnp.isfinite(intensities))
+            )
+            return lax.cond(
+                all_finite,
+                lambda: g_magnitudes,
+                lambda: lax.stop_gradient(
+                    lax.cond(
+                        False,
+                        lambda: g_magnitudes,
+                        lambda: g_magnitudes,
+                    )
+                ),
+            )
+
+        _check_wavelength_positive()
+        _check_k_magnitude_positive()
+        _check_sphere_radius_positive()
+        _check_recip_vectors_shape()
+        _check_n_consistency()
+        _check_intensities_nonneg()
+        _check_finite()
+
+        return EwaldData(
+            wavelength_ang=wavelength_ang,
+            k_magnitude=k_magnitude,
+            sphere_radius=sphere_radius,
+            recip_vectors=recip_vectors,
+            hkl_grid=hkl_grid,
+            g_vectors=g_vectors,
+            g_magnitudes=g_magnitudes,
+            structure_factors=structure_factors,
+            intensities=intensities,
+        )
+
+    validated_ewald_data: EwaldData = _validate_and_create()
+    return validated_ewald_data
 
 
 @register_pytree_node_class

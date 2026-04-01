@@ -8,8 +8,10 @@ from jax import tree_util
 from jaxtyping import TypeCheckError
 
 from rheedium.types.crystal_types import (
+    EwaldData,
     XYZData,
     create_crystal_structure,
+    create_ewald_data,
     create_potential_slices,
     create_xyz_data,
 )
@@ -170,6 +172,174 @@ class TestCrystalStructure(chex.TestCase):
 
         with pytest.raises(Exception, match=".*"):
             create_with_mismatched_positions()
+
+
+class TestEwaldData(chex.TestCase, parameterized.TestCase):
+    """Test suite for EwaldData PyTree and create_ewald_data validation."""
+
+    def _make_valid_ewald_kwargs(self, n_points: int = 7) -> dict:
+        """Build valid keyword arguments for create_ewald_data."""
+        wavelength_ang = jnp.array(0.0859)
+        k_magnitude = 2.0 * jnp.pi / wavelength_ang
+        sphere_radius = k_magnitude
+        recip_vectors = jnp.eye(3) * 1.5
+        rng = jax.random.PRNGKey(0)
+        hkl_grid = jax.random.randint(
+            rng, (n_points, 3), -5, 6, dtype=jnp.int32
+        )
+        g_vectors = hkl_grid.astype(jnp.float64) @ recip_vectors
+        g_magnitudes = jnp.linalg.norm(g_vectors, axis=-1)
+        structure_factors = jnp.ones(n_points, dtype=jnp.complex128)
+        intensities = jnp.ones(n_points, dtype=jnp.float64)
+        return dict(
+            wavelength_ang=wavelength_ang,
+            k_magnitude=k_magnitude,
+            sphere_radius=sphere_radius,
+            recip_vectors=recip_vectors,
+            hkl_grid=hkl_grid,
+            g_vectors=g_vectors,
+            g_magnitudes=g_magnitudes,
+            structure_factors=structure_factors,
+            intensities=intensities,
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_create_ewald_data_valid(self) -> None:
+        """Test creation of valid EwaldData instances."""
+        n_points = 7
+        kwargs = self._make_valid_ewald_kwargs(n_points)
+        create_fn = self.variant(create_ewald_data)
+        ewald = create_fn(**kwargs)
+
+        chex.assert_shape(ewald.wavelength_ang, ())
+        chex.assert_shape(ewald.k_magnitude, ())
+        chex.assert_shape(ewald.sphere_radius, ())
+        chex.assert_shape(ewald.recip_vectors, (3, 3))
+        chex.assert_shape(ewald.hkl_grid, (n_points, 3))
+        chex.assert_shape(ewald.g_vectors, (n_points, 3))
+        chex.assert_shape(ewald.g_magnitudes, (n_points,))
+        chex.assert_shape(ewald.structure_factors, (n_points,))
+        chex.assert_shape(ewald.intensities, (n_points,))
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_ewald_data_pytree(self) -> None:
+        """Test PyTree flatten/unflatten round-trip."""
+        kwargs = self._make_valid_ewald_kwargs()
+        create_fn = self.variant(create_ewald_data)
+        ewald = create_fn(**kwargs)
+
+        flat, treedef = tree_util.tree_flatten(ewald)
+        reconstructed = tree_util.tree_unflatten(treedef, flat)
+
+        chex.assert_trees_all_close(ewald, reconstructed)
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_ewald_data_dtype_casting(self) -> None:
+        """Test that inputs are cast to correct dtypes."""
+        kwargs = self._make_valid_ewald_kwargs()
+        create_fn = self.variant(create_ewald_data)
+        ewald = create_fn(**kwargs)
+
+        assert ewald.wavelength_ang.dtype == jnp.float64
+        assert ewald.k_magnitude.dtype == jnp.float64
+        assert ewald.recip_vectors.dtype == jnp.float64
+        assert ewald.hkl_grid.dtype == jnp.int32
+        assert ewald.g_vectors.dtype == jnp.float64
+        assert ewald.structure_factors.dtype == jnp.complex128
+        assert ewald.intensities.dtype == jnp.float64
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_ewald_data_values_preserved(self) -> None:
+        """Test that array values are faithfully preserved."""
+        kwargs = self._make_valid_ewald_kwargs()
+        create_fn = self.variant(create_ewald_data)
+        ewald = create_fn(**kwargs)
+
+        chex.assert_trees_all_close(
+            ewald.wavelength_ang, kwargs["wavelength_ang"]
+        )
+        chex.assert_trees_all_close(ewald.k_magnitude, kwargs["k_magnitude"])
+        chex.assert_trees_all_close(
+            ewald.recip_vectors, kwargs["recip_vectors"]
+        )
+        chex.assert_trees_all_close(ewald.g_vectors, kwargs["g_vectors"])
+        chex.assert_trees_all_close(ewald.intensities, kwargs["intensities"])
+
+    @chex.variants(with_jit=True, without_jit=True)
+    @parameterized.named_parameters(
+        ("small", 1),
+        ("medium", 27),
+        ("large", 125),
+    )
+    def test_ewald_data_various_sizes(self, n_points: int) -> None:
+        """Test EwaldData with various numbers of reciprocal points."""
+        kwargs = self._make_valid_ewald_kwargs(n_points)
+        create_fn = self.variant(create_ewald_data)
+        ewald = create_fn(**kwargs)
+
+        chex.assert_shape(ewald.hkl_grid, (n_points, 3))
+        chex.assert_shape(ewald.g_vectors, (n_points, 3))
+        chex.assert_shape(ewald.g_magnitudes, (n_points,))
+        chex.assert_shape(ewald.structure_factors, (n_points,))
+        chex.assert_shape(ewald.intensities, (n_points,))
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_ewald_data_jit_compilation(self) -> None:
+        """Test JIT compilation of EwaldData operations."""
+
+        def create_and_process(**kw) -> jnp.ndarray:
+            ewald = create_ewald_data(**kw)
+            return jnp.sum(ewald.intensities) + ewald.wavelength_ang
+
+        jitted_fn = self.variant(create_and_process)
+        kwargs = self._make_valid_ewald_kwargs()
+        result = jitted_fn(**kwargs)
+        expected = jnp.sum(kwargs["intensities"]) + kwargs["wavelength_ang"]
+        chex.assert_trees_all_close(result, expected)
+
+    def test_ewald_data_negative_wavelength(self) -> None:
+        """Test that negative wavelength is caught by validation."""
+        kwargs = self._make_valid_ewald_kwargs()
+        kwargs["wavelength_ang"] = jnp.array(-0.1)
+        jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_negative_k_magnitude(self) -> None:
+        """Test that negative k_magnitude is caught by validation."""
+        kwargs = self._make_valid_ewald_kwargs()
+        kwargs["k_magnitude"] = jnp.array(-1.0)
+        jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_negative_sphere_radius(self) -> None:
+        """Test that negative sphere_radius is caught by validation."""
+        kwargs = self._make_valid_ewald_kwargs()
+        kwargs["sphere_radius"] = jnp.array(-1.0)
+        jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_mismatched_n(self) -> None:
+        """Test that mismatched leading dimensions are caught."""
+        kwargs = self._make_valid_ewald_kwargs(n_points=7)
+        kwargs["intensities"] = jnp.ones(5, dtype=jnp.float64)
+        with pytest.raises(Exception):
+            jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_negative_intensities(self) -> None:
+        """Test that negative intensities are caught by validation."""
+        kwargs = self._make_valid_ewald_kwargs()
+        kwargs["intensities"] = -jnp.ones(7, dtype=jnp.float64)
+        jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_nan_in_g_vectors(self) -> None:
+        """Test that NaN values in g_vectors are caught."""
+        kwargs = self._make_valid_ewald_kwargs()
+        g = kwargs["g_vectors"]
+        kwargs["g_vectors"] = g.at[0, 0].set(jnp.nan)
+        jax.jit(create_ewald_data)(**kwargs)
+
+    def test_ewald_data_inf_in_wavelength(self) -> None:
+        """Test that Inf values are caught by finiteness check."""
+        kwargs = self._make_valid_ewald_kwargs()
+        kwargs["wavelength_ang"] = jnp.array(jnp.inf)
+        jax.jit(create_ewald_data)(**kwargs)
 
 
 class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
