@@ -72,7 +72,7 @@ def compute_domain_extent(
     positions: Float[Array, "N 3"],
     padding_ang: scalar_float = 0.0,
 ) -> Float[Array, "3"]:
-    """Compute domain extent from atomic positions bounding box.
+    r"""Compute domain extent from atomic positions bounding box.
 
     Calculates the physical extent of a coherent scattering domain as the
     bounding box of atomic positions plus optional padding. This extent
@@ -131,7 +131,7 @@ def compute_domain_extent(
 def extent_to_rod_sigma(
     domain_extent_ang: Float[Array, "3"],
 ) -> Float[Array, "2"]:
-    """Convert domain extent to reciprocal-space rod Gaussian widths.
+    r"""Convert domain extent to reciprocal-space rod Gaussian widths.
 
     Computes the Gaussian σ for reciprocal lattice rod profiles from
     real-space domain size. Uses the Fourier uncertainty relation with
@@ -201,7 +201,7 @@ def compute_shell_sigma(
     energy_spread_frac: scalar_float = 1e-4,
     beam_divergence_rad: scalar_float = 1e-3,
 ) -> Float[Array, ""]:
-    """Compute Ewald shell Gaussian thickness from beam parameters.
+    r"""Compute Ewald shell Gaussian thickness from beam parameters.
 
     Calculates the Gaussian width of the Ewald shell due to energy spread
     and beam angular divergence. These instrumental factors cause the
@@ -286,7 +286,7 @@ def rod_ewald_overlap(
     rod_sigma: Float[Array, "2"],
     shell_sigma: Float[Array, ""],
 ) -> Float[Array, "N"]:
-    """Compute overlap between broadened rods and Ewald shell.
+    r"""Compute overlap between broadened rods and Ewald shell.
 
     Calculates the intensity contribution from finite-width reciprocal
     lattice rods intersecting a finite-thickness Ewald shell. Both are
@@ -384,7 +384,7 @@ def finite_domain_intensities(
     energy_spread_frac: scalar_float = 1e-4,
     beam_divergence_rad: scalar_float = 1e-3,
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
-    """Compute diffraction intensities with finite domain broadening.
+    r"""Compute diffraction intensities with finite domain broadening.
 
     Calculates kinematic diffraction intensities accounting for finite
     coherent domain size and beam parameters. The base intensities from

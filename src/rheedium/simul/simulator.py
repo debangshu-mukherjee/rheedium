@@ -85,7 +85,7 @@ def project_on_detector(
     k_out: Float[Array, "N 3"],
     detector_distance: scalar_float,
 ) -> Float[Array, "N 2"]:
-    """Project output wavevectors onto detector plane.
+    r"""Project output wavevectors onto detector plane.
 
     Uses ray-tracing projection to a vertical detector screen at distance d.
     The scale factor is computed as d/k_x (with small epsilon to avoid
@@ -1103,7 +1103,7 @@ def sliced_crystal_to_potential(
     pixel_size: scalar_float = 0.1,
     voltage_kv: scalar_float = 20.0,
 ) -> PotentialSlices:
-    """Convert a SlicedCrystal into PotentialSlices for multislice calculation.
+    r"""Convert a SlicedCrystal into PotentialSlices for multislice calculation.
 
     This function takes a surface-oriented crystal slab and generates 3D
     potential slices suitable for multislice electron diffraction simulations.
@@ -1259,7 +1259,7 @@ def multislice_propagate(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> Complex[Array, "nx ny"]:
-    """Propagate electron wave through potential slices.
+    r"""Propagate electron wave through potential slices.
 
     This implements the multislice algorithm for dynamical electron
     diffraction, which accounts for multiple scattering events. The
@@ -1418,7 +1418,7 @@ def multislice_simulator(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> RHEEDPattern:
-    """Simulate RHEED pattern from potential slices using multislice algorithm.
+    r"""Simulate RHEED pattern from potential slices using multislice algorithm.
 
     This function implements the complete multislice RHEED simulation pipeline:
     1. Propagate electron wave through crystal (multislice_propagate)

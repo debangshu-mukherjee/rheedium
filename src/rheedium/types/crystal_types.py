@@ -305,7 +305,7 @@ def create_crystal_structure(
 
 @register_pytree_node_class
 class EwaldData(NamedTuple):
-    """Angle-independent Ewald sphere data for RHEED simulation.
+    r"""Angle-independent Ewald sphere data for RHEED simulation.
 
     This PyTree contains pre-computed reciprocal lattice geometry and structure
     factors that depend only on crystal structure and beam voltage, not on
@@ -426,7 +426,7 @@ def create_ewald_data(
     structure_factors: Complex[Array, "N"],
     intensities: Float[Array, "N"],
 ) -> EwaldData:
-    """Create an EwaldData PyTree with validation.
+    r"""Create an EwaldData PyTree with validation.
 
     Parameters
     ----------

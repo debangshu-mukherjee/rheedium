@@ -34,7 +34,7 @@ from rheedium.types import scalar_float, scalar_num
 def wavelength_ang(
     voltage_kv: Union[scalar_num, Num[Array, "..."]],
 ) -> Float[Array, "..."]:
-    """Calculate the relativistic electron wavelength in angstroms.
+    r"""Calculate the relativistic electron wavelength in angstroms.
 
     Extended Summary
     ----------------
@@ -120,7 +120,7 @@ def incident_wavevector(
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
 ) -> Float[Array, "3"]:
-    """Calculate the incident electron wavevector for RHEED geometry.
+    r"""Calculate the incident electron wavevector for RHEED geometry.
 
     Parameters
     ----------
@@ -174,7 +174,7 @@ def interaction_constant(
     voltage_kv: scalar_float,
     wavelength_ang: scalar_float,
 ) -> Float[Array, ""]:
-    """Relativistic electron interaction constant σ in 1/(V·Å).
+    r"""Relativistic electron interaction constant σ in 1/(V·Å).
 
     Extended Summary
     ----------------

@@ -182,7 +182,7 @@ def calculate_ctr_amplitude(
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
 ) -> Complex[Array, "N M"]:
-    """Calculate complex amplitude along crystal truncation rods (CTRs).
+    r"""Calculate complex amplitude along crystal truncation rods (CTRs).
 
     Computes the complex amplitude (structure factor × roughness damping)
     along CTRs for given in-plane reciprocal lattice points (h,k). This is
@@ -383,7 +383,7 @@ def roughness_damping(
     q_z: Float[Array, "..."],
     sigma_height: scalar_float,
 ) -> Float[Array, "..."]:
-    """Gaussian roughness damping factor for CTR intensities.
+    r"""Gaussian roughness damping factor for CTR intensities.
 
     Calculates the damping factor due to surface roughness, which
     reduces the CTR intensity especially at large q_z values. Assumes
@@ -438,7 +438,7 @@ def gaussian_rod_profile(
     q_perpendicular: Float[Array, "..."],
     correlation_length: scalar_float,
 ) -> Float[Array, "..."]:
-    """Gaussian lateral width profile of rods due to finite correlation length.
+    r"""Gaussian lateral width profile of rods due to finite correlation length.
 
     Calculates the Gaussian lateral intensity profile of CTRs perpendicular
     to the rod direction. The width in reciprocal space is inversely
@@ -484,7 +484,7 @@ def lorentzian_rod_profile(
     q_perpendicular: Float[Array, "..."],
     correlation_length: scalar_float,
 ) -> Float[Array, "..."]:
-    """Lorentzian lateral width profile of rods with finite correlation length.
+    r"""Lorentzian lateral width profile of rods with finite correlation length.
 
     Calculates the Lorentzian lateral intensity profile of CTRs perpendicular
     to the rod direction. This profile corresponds to exponentially decaying
@@ -575,7 +575,7 @@ def surface_structure_factor(
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "N"] | None = None,
 ) -> Complex[Array, ""]:
-    """Calculate structure factor for surface with q_z dependence.
+    r"""Calculate structure factor for surface with q_z dependence.
 
     Computes the complex structure factor F(q) for a surface, including
     atomic form factors and Debye-Waller factors. Surface atoms can be
