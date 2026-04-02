@@ -46,7 +46,7 @@ from pathlib import Path
 import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
-from beartype.typing import Any, Dict, List, Optional, Tuple, Union
+from beartype.typing import Dict, List, Optional, Tuple, Union
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import XYZData, create_xyz_data, scalar_int
@@ -359,7 +359,7 @@ def atomic_masses() -> Float[Array, "103"]:
 
 
 @beartype
-def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
+def _parse_xyz_metadata(line: str) -> Dict[str, object]:
     """Extract metadata from the XYZ comment line.
 
     Parses the second line of an extended XYZ file to extract structured
@@ -374,7 +374,7 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
 
     Returns
     -------
-    metadata : Dict[str, Any]
+    metadata : Dict[str, object]
         Dictionary containing parsed metadata with optional keys:
 
         - ``lattice`` : Float[Array, "3 3"] - Unit cell vectors as rows
@@ -397,7 +397,7 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
     >>> meta["lattice"].shape
     (3, 3)
     """
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, object] = {}
     num_values_in_lattice: int = 9
     lattice_match: Optional[re.Match[str]] = re.search(
         r'Lattice="([^"]+)"', line
@@ -435,7 +435,7 @@ def _parse_xyz_metadata(line: str) -> Dict[str, Any]:
     if props_match:
         raw_props: str = props_match.group(1)
         parts: List[str] = raw_props.split(":")
-        props: List[Dict[str, Any]] = []
+        props: List[Dict[str, object]] = []
         for i in range(0, len(parts), 3):
             props.append(
                 {
@@ -560,7 +560,7 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
         ) from err
 
     comment: str = lines[1].strip()
-    metadata: Dict[str, Any] = _parse_xyz_metadata(comment)
+    metadata: Dict[str, object] = _parse_xyz_metadata(comment)
 
     if len(lines) < 2 + num_atoms:
         raise ValueError(

@@ -6,19 +6,18 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
+from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.types.rheed_types import (
     DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
-    bulk_to_slice,
     create_rheed_image,
     create_rheed_pattern,
     create_sliced_crystal,
     identify_surface_atoms,
 )
-from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -132,7 +131,7 @@ class TestRHEEDPattern(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_rheed_pattern_validation_errors(self) -> None:
-        """Test that invalid inputs are properly handled during JIT compilation."""
+        """Test invalid inputs are handled during JIT compilation."""
         n_reflections = 5
 
         # Test wrong k_out shape - jaxtyping catches this
@@ -343,7 +342,7 @@ class TestRHEEDImage(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_rheed_image_validation_errors(self) -> None:
-        """Test that invalid inputs are properly handled during JIT compilation."""
+        """Test invalid inputs are handled during JIT compilation."""
         # Test wrong image shape - jaxtyping catches type errors
         wrong_shape_img = jnp.ones((64,))
         with pytest.raises(TypeCheckError):
@@ -773,26 +772,6 @@ class TestRHEEDIntegration(chex.TestCase):
         chex.assert_trees_all_close(grads, expected_grads)
 
 
-def _make_simple_crystal(n_atoms: int = 8):
-    """Create a simple cubic CrystalStructure for testing."""
-    import numpy as np
-
-    rng = np.random.default_rng(0)
-    frac_xyz = rng.uniform(size=(n_atoms, 3))
-    z_nums = np.full((n_atoms, 1), 14.0)
-    frac_pos = jnp.array(np.hstack([frac_xyz, z_nums]))
-    cell_lengths = jnp.array([5.43, 5.43, 5.43])
-    cell_angles = jnp.array([90.0, 90.0, 90.0])
-    cart_xyz = frac_xyz * np.array([5.43, 5.43, 5.43])
-    cart_pos = jnp.array(np.hstack([cart_xyz, z_nums]))
-    return create_crystal_structure(
-        frac_positions=frac_pos,
-        cart_positions=cart_pos,
-        cell_lengths=cell_lengths,
-        cell_angles=cell_angles,
-    )
-
-
 class TestIdentifySurfaceAtoms(chex.TestCase):
     """Tests for identify_surface_atoms with all four methods."""
 
@@ -978,145 +957,8 @@ class TestDetectorGeometry(chex.TestCase):
 
     def test_infinite_curvature_is_flat(self) -> None:
         """Default curvature should indicate a flat detector."""
-        import math
-
         geom = DetectorGeometry()
-        assert math.isinf(geom.curvature_radius)
-
-
-class TestBulkToSlice(chex.TestCase):
-    """Tests for bulk_to_slice function."""
-
-    def test_returns_sliced_crystal(self) -> None:
-        """Should return a SlicedCrystal instance."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=10.0,
-        )
-        assert isinstance(sliced, SlicedCrystal)
-
-    def test_output_shapes(self) -> None:
-        """Output should have correct array shapes."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=10.0,
-            x_extent=50.0,
-            y_extent=50.0,
-        )
-        assert sliced.cart_positions.ndim == 2
-        assert sliced.cart_positions.shape[1] == 4
-        chex.assert_shape(sliced.cell_lengths, (3,))
-        chex.assert_shape(sliced.cell_angles, (3,))
-        chex.assert_shape(sliced.orientation, (3,))
-
-    def test_depth_preserved(self) -> None:
-        """Slab depth should match requested depth."""
-        crystal = _make_simple_crystal()
-        depth = 15.0
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=depth,
-        )
-        chex.assert_trees_all_close(sliced.depth, depth)
-
-    def test_extents_preserved(self) -> None:
-        """Lateral extents should match requested values."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=10.0,
-            x_extent=120.0,
-            y_extent=130.0,
-        )
-        chex.assert_trees_all_close(sliced.x_extent, 120.0)
-        chex.assert_trees_all_close(sliced.y_extent, 130.0)
-
-    def test_orientation_preserved(self) -> None:
-        """Surface orientation should be preserved."""
-        crystal = _make_simple_crystal()
-        orient = jnp.array([1, 1, 1], dtype=jnp.int32)
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=orient,
-            depth=10.0,
-        )
-        chex.assert_trees_all_equal(sliced.orientation, orient)
-
-    def test_atoms_within_bounds(self) -> None:
-        """All atoms should be within the specified bounds."""
-        crystal = _make_simple_crystal()
-        depth = 10.0
-        x_ext = 80.0
-        y_ext = 80.0
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=depth,
-            x_extent=x_ext,
-            y_extent=y_ext,
-        )
-        positions = sliced.cart_positions[:, :3]
-        assert bool(jnp.all(positions[:, 0] >= 0))
-        assert bool(jnp.all(positions[:, 0] <= x_ext))
-        assert bool(jnp.all(positions[:, 1] >= 0))
-        assert bool(jnp.all(positions[:, 1] <= y_ext))
-        assert bool(jnp.all(positions[:, 2] >= 0))
-        assert bool(jnp.all(positions[:, 2] <= depth))
-
-    def test_cell_angles_orthorhombic(self) -> None:
-        """Output cell should have 90-degree angles."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=10.0,
-        )
-        chex.assert_trees_all_close(
-            sliced.cell_angles,
-            jnp.array([90.0, 90.0, 90.0]),
-        )
-
-    def test_001_orientation(self) -> None:
-        """(001) orientation should work without rotation."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=10.0,
-            x_extent=50.0,
-            y_extent=50.0,
-        )
-        assert sliced.cart_positions.shape[0] > 0
-
-    def test_111_orientation(self) -> None:
-        """(111) orientation should produce rotated slab."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([1, 1, 1], dtype=jnp.int32),
-            depth=10.0,
-            x_extent=50.0,
-            y_extent=50.0,
-        )
-        assert sliced.cart_positions.shape[0] > 0
-
-    def test_100_orientation(self) -> None:
-        """(100) orientation should produce rotated slab."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
-            crystal,
-            orientation=jnp.array([1, 0, 0], dtype=jnp.int32),
-            depth=10.0,
-            x_extent=50.0,
-            y_extent=50.0,
-        )
-        assert sliced.cart_positions.shape[0] > 0
+        assert jnp.isinf(geom.curvature_radius)
 
 
 if __name__ == "__main__":

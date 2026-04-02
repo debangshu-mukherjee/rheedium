@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">3.12, <3.15"
+requires-python = ">3.12, <3.16"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win64'",
     "python_full_version == '3.13.*' and sys_platform == 'win64'",
@@ -2399,7 +2399,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -2973,11 +2973,13 @@ name = "rheedium"
 version = "2026.4.1"
 source = { editable = "." }
 dependencies = [
+    { name = "ase" },
     { name = "beartype" },
     { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win64'" },
     { name = "jaxtyping" },
     { name = "matplotlib" },
     { name = "numpy" },
+    { name = "pymatgen" },
     { name = "scipy" },
 ]
 
@@ -3113,6 +3115,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ase", specifier = ">=3.26.0" },
     { name = "ase", marker = "extra == 'interop'", specifier = ">=3.26.0" },
     { name = "beartype" },
     { name = "black", extras = ["jupyter"], marker = "extra == 'dev'", specifier = ">=25.1.0" },
@@ -3141,6 +3144,7 @@ requires-dist = [
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'cuda'", specifier = ">=9.5.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.1" },
     { name = "pygount", marker = "extra == 'dev'", specifier = ">=3.1.0" },
+    { name = "pymatgen", specifier = ">=2025.10.7" },
     { name = "pymatgen", marker = "extra == 'interop'", specifier = ">=2025.10.7" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.5" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0.0" },
@@ -3258,7 +3262,7 @@ name = "ruamel-yaml"
 version = "0.18.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ruamel-yaml-clib", marker = "platform_python_implementation == 'CPython'" },
+    { name = "ruamel-yaml-clib", marker = "python_full_version < '3.15' and platform_python_implementation == 'CPython'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3a/2b/7a1f1ebcd6b3f14febdc003e658778d81e76b40df2267904ee6b13f0c5c6/ruamel_yaml-0.18.17.tar.gz", hash = "sha256:9091cd6e2d93a3a4b157ddb8fabf348c3de7f1fb1381346d985b6b247dcd8d3c", size = 149602, upload-time = "2025-12-17T20:02:55.757Z" }
 wheels = [

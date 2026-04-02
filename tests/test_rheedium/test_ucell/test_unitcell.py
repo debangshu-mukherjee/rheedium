@@ -6,13 +6,19 @@ thickness along a zone axis, plus reciprocal lattice functions.
 
 import chex
 import jax.numpy as jnp
+import numpy as np
 from absl.testing import parameterized
 from jaxtyping import Array, Float
 
-from rheedium.types import CrystalStructure, create_crystal_structure
-from rheedium.ucell.unitcell import (
+from rheedium.types import (
+    CrystalStructure,
+    SlicedCrystal,
+    create_crystal_structure,
+)
+from rheedium.ucell import (
     atom_scraper,
     build_cell_vectors,
+    bulk_to_slice,
     compute_lengths_angles,
     generate_reciprocal_points,
     get_unit_cell_matrix,
@@ -20,6 +26,159 @@ from rheedium.ucell.unitcell import (
     reciprocal_lattice_vectors,
     reciprocal_unitcell,
 )
+
+
+def _make_simple_crystal(n_atoms: int = 8):
+    """Create a simple cubic CrystalStructure for testing."""
+    rng = np.random.default_rng(0)
+    frac_xyz = rng.uniform(size=(n_atoms, 3))
+    z_nums = np.full((n_atoms, 1), 14.0)
+    frac_pos = jnp.array(np.hstack([frac_xyz, z_nums]))
+    cell_lengths = jnp.array([5.43, 5.43, 5.43])
+    cell_angles = jnp.array([90.0, 90.0, 90.0])
+    cart_xyz = frac_xyz * np.array([5.43, 5.43, 5.43])
+    cart_pos = jnp.array(np.hstack([cart_xyz, z_nums]))
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
+    )
+
+
+class TestBulkToSlice(chex.TestCase):
+    """Tests for bulk_to_slice function."""
+
+    def test_returns_sliced_crystal(self) -> None:
+        """Should return a SlicedCrystal instance."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        assert isinstance(sliced, SlicedCrystal)
+
+    def test_output_shapes(self) -> None:
+        """Output should have correct array shapes."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.ndim == 2
+        assert sliced.cart_positions.shape[1] == 4
+        chex.assert_shape(sliced.cell_lengths, (3,))
+        chex.assert_shape(sliced.cell_angles, (3,))
+        chex.assert_shape(sliced.orientation, (3,))
+
+    def test_depth_preserved(self) -> None:
+        """Slab depth should match requested depth."""
+        crystal = _make_simple_crystal()
+        depth = 15.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+        )
+        chex.assert_trees_all_close(sliced.depth, depth)
+
+    def test_extents_preserved(self) -> None:
+        """Lateral extents should match requested values."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=120.0,
+            y_extent=130.0,
+        )
+        chex.assert_trees_all_close(sliced.x_extent, 120.0)
+        chex.assert_trees_all_close(sliced.y_extent, 130.0)
+
+    def test_orientation_preserved(self) -> None:
+        """Surface orientation should be preserved."""
+        crystal = _make_simple_crystal()
+        orient = jnp.array([1, 1, 1], dtype=jnp.int32)
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=orient,
+            depth=10.0,
+        )
+        chex.assert_trees_all_equal(sliced.orientation, orient)
+
+    def test_atoms_within_bounds(self) -> None:
+        """All atoms should be within the specified bounds."""
+        crystal = _make_simple_crystal()
+        depth = 10.0
+        x_ext = 80.0
+        y_ext = 80.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+            x_extent=x_ext,
+            y_extent=y_ext,
+        )
+        positions = sliced.cart_positions[:, :3]
+        assert bool(jnp.all(positions[:, 0] >= 0))
+        assert bool(jnp.all(positions[:, 0] <= x_ext))
+        assert bool(jnp.all(positions[:, 1] >= 0))
+        assert bool(jnp.all(positions[:, 1] <= y_ext))
+        assert bool(jnp.all(positions[:, 2] >= 0))
+        assert bool(jnp.all(positions[:, 2] <= depth))
+
+    def test_cell_angles_orthorhombic(self) -> None:
+        """Output cell should have 90-degree angles."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        chex.assert_trees_all_close(
+            sliced.cell_angles,
+            jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    def test_001_orientation(self) -> None:
+        """(001) orientation should work without rotation."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_111_orientation(self) -> None:
+        """(111) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 1, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_100_orientation(self) -> None:
+        """(100) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 0, 0], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
 
 
 class TestAtomScraper(chex.TestCase, parameterized.TestCase):
@@ -419,7 +578,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants
     def test_orthorhombic_system(self) -> None:
-        """Test reciprocal parameters for orthorhombic system (a≠b≠c, all 90°)."""
+        """Test reciprocal params for orthorhombic (a!=b!=c, 90)."""
         var_fn = self.variant(reciprocal_unitcell)
         lengths, angles = var_fn(
             a=3.0,
@@ -505,7 +664,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants
     def test_triclinic_system(self) -> None:
-        """Test reciprocal parameters for triclinic system (no special symmetry)."""
+        """Test reciprocal params for triclinic system."""
         var_fn = self.variant(reciprocal_unitcell)
         lengths, angles = var_fn(
             a=3.0,
@@ -1060,7 +1219,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants
     def test_orthogonality_to_direct(self) -> None:
-        """Test that reciprocal vectors are orthogonal to other direct vectors."""
+        """Test reciprocal vectors orthogonal to direct vectors."""
         var_fn = self.variant(reciprocal_lattice_vectors)
         rec_vecs = var_fn(
             a=3.0,

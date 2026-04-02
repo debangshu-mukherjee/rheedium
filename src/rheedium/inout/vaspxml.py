@@ -353,6 +353,9 @@ def parse_vaspxml(
 
     calculations: list[ET.Element] = root.findall(".//calculation")
 
+    lattice: Float[Array, "3 3"]
+    frac_positions: Float[Array, "n_atoms 3"]
+
     if not calculations:
         structure: ET.Element | None = root.find(
             ".//structure[@name='initialpos']"
@@ -408,6 +411,8 @@ def parse_vaspxml(
             comment=f"From vasprun.xml step {step}",
         )
     else:
+        cell_lengths: Float[Array, "3"]
+        cell_angles: Float[Array, "3"]
         cell_lengths, cell_angles = lattice_to_cell_params(lattice)
 
         frac_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
@@ -502,6 +507,8 @@ def parse_vaspxml_trajectory(
         if structure is None:
             continue
 
+        lattice: Float[Array, "3 3"]
+        frac_positions: Float[Array, "n_atoms 3"]
         lattice, frac_positions = _extract_structure_block(structure)
         cart_positions: Float[Array, "n_atoms 3"] = frac_positions @ lattice
 

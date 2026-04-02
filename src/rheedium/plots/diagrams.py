@@ -54,9 +54,12 @@ from pathlib import Path
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import ndarray as NDArray  # noqa: N812
 from beartype import beartype
-from beartype.typing import Dict, List, Optional, Tuple, Union
+from beartype.typing import Any, Dict, List, Optional, Tuple, Union
+from jaxtyping import Float
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 
 from rheedium.simul import (
@@ -134,17 +137,23 @@ def plot_wavelength_curve(
        Draw curves with labels, grid, and axis formatting.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 6))
-    voltages = np.linspace(voltage_range_kv[0], voltage_range_kv[1], n_points)
-    voltage_v = voltages * 1000.0
-    relativistic_coeff = 0.978476e-6
-    h_over_sqrt_2me = 12.2643
-    wavelength_rel = h_over_sqrt_2me / np.sqrt(
+        fig: Figure
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 6))
+    voltages: Float[NDArray, "N"] = np.linspace(
+        voltage_range_kv[0], voltage_range_kv[1], n_points
+    )
+    voltage_v: Float[NDArray, "N"] = voltages * 1000.0
+    relativistic_coeff: float = 0.978476e-6
+    h_over_sqrt_2me: float = 12.2643
+    wavelength_rel: Float[NDArray, "N"] = h_over_sqrt_2me / np.sqrt(
         voltage_v * (1.0 + relativistic_coeff * voltage_v)
     )
     ax.plot(voltages, wavelength_rel, "b-", linewidth=2, label="Relativistic")
     if show_comparison:
-        wavelength_nonrel = h_over_sqrt_2me / np.sqrt(voltage_v)
+        wavelength_nonrel: Float[NDArray, "N"] = h_over_sqrt_2me / np.sqrt(
+            voltage_v
+        )
         ax.plot(
             voltages,
             wavelength_nonrel,
@@ -152,7 +161,7 @@ def plot_wavelength_curve(
             linewidth=1.5,
             label="Non-relativistic",
         )
-        rel_diff = (
+        rel_diff: float = (
             (wavelength_nonrel[-1] - wavelength_rel[-1])
             / wavelength_rel[-1]
             * 100
@@ -215,14 +224,17 @@ def plot_form_factors(
     plot_debye_waller : Plot thermal damping factors.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 6))
-    q_values = np.linspace(q_range[0], q_range[1], n_points)
-    q_jax = jnp.array(q_values)
-    colors = plt.cm.tab10(np.linspace(0, 1, len(atomic_numbers)))
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 6))
+    q_values: Float[NDArray, "N"] = np.linspace(
+        q_range[0], q_range[1], n_points
+    )
+    q_jax: Any = jnp.array(q_values)
+    colors: NDArray = plt.cm.tab10(np.linspace(0, 1, len(atomic_numbers)))
     for i, z in enumerate(atomic_numbers):
-        ff_jax = kirkland_form_factor(z, q_jax)
-        ff = np.array(ff_jax)
-        symbol = _ELEMENT_SYMBOLS.get(z, f"Z={z}")
+        ff_jax: Any = kirkland_form_factor(z, q_jax)
+        ff: NDArray = np.array(ff_jax)
+        symbol: str = _ELEMENT_SYMBOLS.get(z, f"Z={z}")
         ax.plot(
             q_values,
             ff,
@@ -286,15 +298,18 @@ def plot_debye_waller(
     plot_form_factors : Plot atomic form factors.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 6))
-    q_values = np.linspace(q_range[0], q_range[1], n_points)
-    q_jax = jnp.array(q_values)
-    colors = plt.cm.coolwarm(np.linspace(0, 1, len(temperatures)))
-    symbol = _ELEMENT_SYMBOLS.get(atomic_number, f"Z={atomic_number}")
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 6))
+    q_values: Float[NDArray, "N"] = np.linspace(
+        q_range[0], q_range[1], n_points
+    )
+    q_jax: Any = jnp.array(q_values)
+    colors: NDArray = plt.cm.coolwarm(np.linspace(0, 1, len(temperatures)))
+    symbol: str = _ELEMENT_SYMBOLS.get(atomic_number, f"Z={atomic_number}")
     for i, temp in enumerate(temperatures):
-        msd = float(get_mean_square_displacement(atomic_number, temp))
-        dw_jax = debye_waller_factor(q_jax, msd)
-        dw = np.array(dw_jax)
+        msd: Any = float(get_mean_square_displacement(atomic_number, temp))
+        dw_jax: Any = debye_waller_factor(q_jax, msd)
+        dw: NDArray = np.array(dw_jax)
         ax.plot(
             q_values,
             dw,
@@ -347,14 +362,17 @@ def plot_ctr_profile(
        and annotate the Bragg peak positions.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(10, 6))
-    l_values = np.linspace(l_range[0], l_range[1], n_points)
-    epsilon = 0.01
-    sin_term = np.sin(np.pi * l_values)
-    intensity = 1.0 / (sin_term**2 + epsilon)
-    intensity = intensity / intensity.max()
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+    l_values: Float[NDArray, "N"] = np.linspace(
+        l_range[0], l_range[1], n_points
+    )
+    epsilon: float = 0.01
+    sin_term: NDArray = np.sin(np.pi * l_values)
+    intensity: NDArray = 1.0 / (sin_term**2 + epsilon)
+    intensity: NDArray = intensity / intensity.max()
     ax.semilogy(l_values, intensity, "b-", linewidth=2)
-    bragg_l = np.arange(int(l_range[0]), int(l_range[1]) + 1)
+    bragg_l: NDArray = np.arange(int(l_range[0]), int(l_range[1]) + 1)
     for l_bragg in bragg_l:
         ax.axvline(l_bragg, color="red", linestyle="--", alpha=0.5, lw=1)
     ax.set_xlabel("l (reciprocal lattice units)", fontsize=12)
@@ -411,13 +429,16 @@ def plot_roughness_damping(
        levels and label each curve.
     """
     if sigma_values is None:
-        sigma_values = [0.0, 0.5, 1.0, 2.0]
+        sigma_values: NDArray = [0.0, 0.5, 1.0, 2.0]
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 6))
-    q_z = np.linspace(q_z_range[0], q_z_range[1], n_points)
-    colors = plt.cm.viridis(np.linspace(0, 0.9, len(sigma_values)))
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 6))
+    q_z: Float[NDArray, "N"] = np.linspace(
+        q_z_range[0], q_z_range[1], n_points
+    )
+    colors: NDArray = plt.cm.viridis(np.linspace(0, 0.9, len(sigma_values)))
     for i, sigma in enumerate(sigma_values):
-        damping = np.exp(-0.5 * q_z**2 * sigma**2)
+        damping: NDArray = np.exp(-0.5 * q_z**2 * sigma**2)
         ax.plot(
             q_z,
             damping,
@@ -473,14 +494,19 @@ def plot_rod_broadening(
        lengths and label each curve.
     """
     if correlation_lengths is None:
-        correlation_lengths = [10.0, 50.0, 100.0, 500.0]
+        correlation_lengths: NDArray = [10.0, 50.0, 100.0, 500.0]
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 6))
-    q_perp = np.linspace(q_perp_range[0], q_perp_range[1], n_points)
-    colors = plt.cm.plasma(np.linspace(0.1, 0.9, len(correlation_lengths)))
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 6))
+    q_perp: Float[NDArray, "N"] = np.linspace(
+        q_perp_range[0], q_perp_range[1], n_points
+    )
+    colors: NDArray = plt.cm.plasma(
+        np.linspace(0.1, 0.9, len(correlation_lengths))
+    )
     for i, xi in enumerate(correlation_lengths):
-        sigma_q = 1.0 / xi
-        profile = np.exp(-0.5 * (q_perp / sigma_q) ** 2)
+        sigma_q: float = 1.0 / xi
+        profile: NDArray = np.exp(-0.5 * (q_perp / sigma_q) ** 2)
         ax.plot(
             q_perp,
             profile,
@@ -544,26 +570,29 @@ def plot_ewald_sphere_2d(
        with labels and mark the surface plane.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(12, 8))
-    voltage_v = voltage_kv * 1000.0
-    rel_coeff = 0.978476e-6
-    wavelength = 12.2643 / np.sqrt(voltage_v * (1.0 + rel_coeff * voltage_v))
-    k_mag = 2 * np.pi / wavelength
-    theta_rad = np.deg2rad(theta_deg)
-    k_in_x = k_mag * np.cos(theta_rad)
-    k_in_z = -k_mag * np.sin(theta_rad)
-    center_x = -k_in_x
-    center_z = -k_in_z
-    g_spacing = 2 * np.pi / lattice_spacing
-    theta_sphere = np.linspace(-np.pi / 4, np.pi / 4, 200)
-    sphere_x = center_x + k_mag * np.cos(theta_sphere)
-    sphere_z = center_z + k_mag * np.sin(theta_sphere)
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(12, 8))
+    voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
+    rel_coeff: float = 0.978476e-6
+    wavelength: float = 12.2643 / np.sqrt(
+        voltage_v * (1.0 + rel_coeff * voltage_v)
+    )
+    k_mag: float = 2 * np.pi / wavelength
+    theta_rad: float = np.deg2rad(theta_deg)
+    k_in_x: float = k_mag * np.cos(theta_rad)
+    k_in_z: float = -k_mag * np.sin(theta_rad)
+    center_x: float = -k_in_x
+    center_z: float = -k_in_z
+    g_spacing: float = 2 * np.pi / lattice_spacing
+    theta_sphere: Float[NDArray, "N"] = np.linspace(-np.pi / 4, np.pi / 4, 200)
+    sphere_x: Float[NDArray, "N"] = center_x + k_mag * np.cos(theta_sphere)
+    sphere_z: Float[NDArray, "N"] = center_z + k_mag * np.sin(theta_sphere)
     ax.plot(sphere_x, sphere_z, "b-", linewidth=2, label="Ewald sphere")
-    rod_indices = np.arange(-(n_rods // 2), n_rods // 2 + 1)
+    rod_indices: NDArray = np.arange(-(n_rods // 2), n_rods // 2 + 1)
     for h in rod_indices:
-        g_x = h * g_spacing
+        g_x: float = h * g_spacing
         ax.axvline(g_x, color="green", linestyle="-", linewidth=1.5, alpha=0.7)
-        label = "(0,0)" if h == 0 else f"({h},0)"
+        label: str = "(0,0)" if h == 0 else f"({h},0)"
         ax.annotate(label, (g_x, 2), fontsize=9, ha="center")
     ax.annotate(
         "",
@@ -578,8 +607,8 @@ def plot_ewald_sphere_2d(
         fontsize=12,
         color="red",
     )
-    k_out_x = k_mag * np.cos(theta_rad)
-    k_out_z = k_mag * np.sin(theta_rad)
+    k_out_x: float = k_mag * np.cos(theta_rad)
+    k_out_z: float = k_mag * np.sin(theta_rad)
     ax.annotate(
         "",
         xy=(k_out_x, k_out_z),
@@ -666,34 +695,38 @@ def plot_ewald_sphere_3d(
        wavevector and mark the origin.
     """
     if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection="3d")
-    voltage_v = voltage_kv * 1000.0
-    rel_coeff = 0.978476e-6
-    wavelength = 12.2643 / np.sqrt(voltage_v * (1.0 + rel_coeff * voltage_v))
-    k_mag = 2 * np.pi / wavelength
-    g_spacing = 2 * np.pi / lattice_spacing
-    u = np.linspace(0, 2 * np.pi, 50)
-    v = np.linspace(0, np.pi / 4, 25)
-    sphere_x = k_mag * np.outer(np.cos(u), np.sin(v))
-    sphere_y = k_mag * np.outer(np.sin(u), np.sin(v))
-    sphere_z = k_mag * np.outer(np.ones(np.size(u)), np.cos(v))
-    theta_rad = np.deg2rad(theta_deg)
-    phi_rad = np.deg2rad(phi_deg)
-    k_in_x = k_mag * np.cos(theta_rad) * np.cos(phi_rad)
-    k_in_y = k_mag * np.cos(theta_rad) * np.sin(phi_rad)
-    k_in_z = -k_mag * np.sin(theta_rad)
-    sphere_x = sphere_x - k_in_x
-    sphere_y = sphere_y - k_in_y
-    sphere_z = sphere_z - k_in_z
+        fig: Any = plt.figure(figsize=(10, 8))
+        ax: Any = fig.add_subplot(111, projection="3d")
+    voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
+    rel_coeff: float = 0.978476e-6
+    wavelength: float = 12.2643 / np.sqrt(
+        voltage_v * (1.0 + rel_coeff * voltage_v)
+    )
+    k_mag: float = 2 * np.pi / wavelength
+    g_spacing: float = 2 * np.pi / lattice_spacing
+    u: Float[NDArray, "N"] = np.linspace(0, 2 * np.pi, 50)
+    v: Float[NDArray, "N"] = np.linspace(0, np.pi / 4, 25)
+    sphere_x: Float[NDArray, "N"] = k_mag * np.outer(np.cos(u), np.sin(v))
+    sphere_y: Float[NDArray, "N"] = k_mag * np.outer(np.sin(u), np.sin(v))
+    sphere_z: Float[NDArray, "N"] = k_mag * np.outer(
+        np.ones(np.size(u)), np.cos(v)
+    )
+    theta_rad: float = np.deg2rad(theta_deg)
+    phi_rad: float = np.deg2rad(phi_deg)
+    k_in_x: float = k_mag * np.cos(theta_rad) * np.cos(phi_rad)
+    k_in_y: float = k_mag * np.cos(theta_rad) * np.sin(phi_rad)
+    k_in_z: float = -k_mag * np.sin(theta_rad)
+    sphere_x: Float[NDArray, "N"] = sphere_x - k_in_x
+    sphere_y: Float[NDArray, "N"] = sphere_y - k_in_y
+    sphere_z: Float[NDArray, "N"] = sphere_z - k_in_z
     ax.plot_surface(sphere_x, sphere_y, sphere_z, alpha=0.2, color="blue")
-    h_indices = np.arange(-(n_rods_h // 2), n_rods_h // 2 + 1)
-    k_indices = np.arange(-(n_rods_k // 2), n_rods_k // 2 + 1)
+    h_indices: NDArray = np.arange(-(n_rods_h // 2), n_rods_h // 2 + 1)
+    k_indices: NDArray = np.arange(-(n_rods_k // 2), n_rods_k // 2 + 1)
     for h in h_indices:
         for k in k_indices:
-            g_x = h * g_spacing
-            g_y = k * g_spacing
-            z_range = np.linspace(-2, 5, 2)
+            g_x: float = h * g_spacing
+            g_y: float = k * g_spacing
+            z_range: Float[NDArray, "N"] = np.linspace(-2, 5, 2)
             ax.plot(
                 [g_x, g_x], [g_y, g_y], z_range, "g-", linewidth=1.5, alpha=0.7
             )
@@ -763,18 +796,20 @@ def plot_unit_cell_3d(
        b (green), and c (blue) from the origin.
     """
     if ax is None:
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection="3d")
+        fig: Any = plt.figure(figsize=(8, 8))
+        ax: Any = fig.add_subplot(111, projection="3d")
     a, b, c = cell_lengths
     alpha, beta, gamma = [np.deg2rad(ang) for ang in cell_angles]
-    vec_a = np.array([a, 0, 0])
-    vec_b = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
-    cx = c * np.cos(beta)
-    cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
-    cz = np.sqrt(c**2 - cx**2 - cy**2)
-    vec_c = np.array([cx, cy, cz])
-    origin = np.array([0, 0, 0])
-    corners = [
+    vec_a: NDArray = np.array([a, 0, 0])
+    vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+    cx: float = c * np.cos(beta)
+    cy: float = (
+        c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+    )
+    cz: float = np.sqrt(c**2 - cx**2 - cy**2)
+    vec_c: NDArray = np.array([cx, cy, cz])
+    origin: NDArray = np.array([0, 0, 0])
+    corners: NDArray = [
         origin,
         vec_a,
         vec_b,
@@ -784,7 +819,7 @@ def plot_unit_cell_3d(
         vec_b + vec_c,
         vec_a + vec_b + vec_c,
     ]
-    edges = [
+    edges: NDArray = [
         (0, 1),
         (0, 2),
         (0, 3),
@@ -868,7 +903,7 @@ def plot_unit_cell_3d(
     ax.set_ylabel("y (A)", fontsize=10)
     ax.set_zlabel("z (A)", fontsize=10)
     ax.set_title("Unit Cell Lattice Vectors", fontsize=12)
-    max_range = max(a, b, c) * 1.2
+    max_range: float = max(a, b, c) * 1.2
     ax.set_xlim([-0.5, max_range])
     ax.set_ylim([-0.5, max_range])
     ax.set_zlim([-0.5, max_range])
@@ -928,15 +963,15 @@ def plot_crystal_structure_3d(
     plot_unit_cell_3d : Plot unit cell vectors.
     """
     if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection="3d")
-    unique_z = np.unique(atomic_numbers)
+        fig: Any = plt.figure(figsize=(10, 8))
+        ax: Any = fig.add_subplot(111, projection="3d")
+    unique_z: NDArray = np.unique(atomic_numbers)
     for z in unique_z:
-        mask = atomic_numbers == z
-        pos_subset = positions[mask]
-        color = _ELEMENT_COLORS.get(int(z), "#808080")
-        symbol = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
-        size = 50 + z * 2
+        mask: NDArray = atomic_numbers == z
+        pos_subset: NDArray = positions[mask]
+        color: Any = _ELEMENT_COLORS.get(int(z), "#808080")
+        symbol: str = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
+        size: int = 50 + z * 2
         ax.scatter(
             pos_subset[:, 0],
             pos_subset[:, 1],
@@ -948,17 +983,19 @@ def plot_crystal_structure_3d(
             linewidth=0.5,
         )
     if cell_lengths is not None:
-        cell_angles = cell_angles or (90.0, 90.0, 90.0)
+        cell_angles: NDArray = cell_angles or (90.0, 90.0, 90.0)
         a, b, c = cell_lengths
         alpha, beta, gamma = [np.deg2rad(ang) for ang in cell_angles]
-        vec_a = np.array([a, 0, 0])
-        vec_b = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
-        cx = c * np.cos(beta)
-        cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
-        cz = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
-        vec_c = np.array([cx, cy, cz])
-        origin = np.array([0, 0, 0])
-        corners = [
+        vec_a: NDArray = np.array([a, 0, 0])
+        vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+        cx: float = c * np.cos(beta)
+        cy: float = (
+            c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+        )
+        cz: float = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
+        vec_c: NDArray = np.array([cx, cy, cz])
+        origin: NDArray = np.array([0, 0, 0])
+        corners: NDArray = [
             origin,
             vec_a,
             vec_b,
@@ -968,7 +1005,7 @@ def plot_crystal_structure_3d(
             vec_b + vec_c,
             vec_a + vec_b + vec_c,
         ]
-        edges = [
+        edges: NDArray = [
             (0, 1),
             (0, 2),
             (0, 3),
@@ -1034,14 +1071,15 @@ def plot_grazing_incidence_geometry(
        to complete the geometry diagram.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(10, 6))
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(10, 6))
     ax.axhline(0, color="brown", linewidth=3)
     ax.fill_between([-2, 12], [-1, -1], [0, 0], color="tan", alpha=0.3)
     ax.text(5, -0.5, "Sample Surface", fontsize=11, ha="center")
-    theta_rad = np.deg2rad(theta_deg)
-    beam_length = 8
-    start_x = 0
-    start_y = beam_length * np.sin(theta_rad)
+    theta_rad: float = np.deg2rad(theta_deg)
+    beam_length: float = 8
+    start_x: float = 0
+    start_y: float = beam_length * np.sin(theta_rad)
     ax.annotate(
         "",
         xy=(beam_length, 0),
@@ -1049,8 +1087,8 @@ def plot_grazing_incidence_geometry(
         arrowprops={"arrowstyle": "->", "color": "red", "lw": 2},
     )
     ax.text(2, start_y / 2 + 0.3, "Incident\nBeam", fontsize=10, color="red")
-    end_x = beam_length + beam_length * np.cos(theta_rad)
-    end_y = beam_length * np.sin(theta_rad)
+    end_x: float = beam_length + beam_length * np.cos(theta_rad)
+    end_y: float = beam_length * np.sin(theta_rad)
     ax.annotate(
         "",
         xy=(end_x, end_y),
@@ -1064,10 +1102,10 @@ def plot_grazing_incidence_geometry(
         fontsize=10,
         color="blue",
     )
-    arc_radius = 2
-    arc_angles = np.linspace(0, theta_rad, 20)
-    arc_x = beam_length + arc_radius * np.cos(arc_angles)
-    arc_y = arc_radius * np.sin(arc_angles)
+    arc_radius: float = 2
+    arc_angles: Float[NDArray, "N"] = np.linspace(0, theta_rad, 20)
+    arc_x: Float[NDArray, "N"] = beam_length + arc_radius * np.cos(arc_angles)
+    arc_y: Float[NDArray, "N"] = arc_radius * np.sin(arc_angles)
     ax.plot(arc_x, arc_y, "k-", linewidth=1)
     ax.text(
         beam_length + arc_radius + 0.5,
@@ -1125,15 +1163,16 @@ def plot_structure_factor_phases(
        sum and overlay a unit circle for reference.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(8, 8))
+        fig: Figure
+        fig, ax = plt.subplots(figsize=(8, 8))
     h, k = g_vector
-    colors = plt.cm.tab10(np.linspace(0, 1, len(atom_positions_2d)))
-    total_real = 0
-    total_imag = 0
+    colors: NDArray = plt.cm.tab10(np.linspace(0, 1, len(atom_positions_2d)))
+    total_real: float = 0
+    total_imag: float = 0
     for i, (x, y) in enumerate(atom_positions_2d):
-        phase = 2 * np.pi * (h * x + k * y)
-        real_part = np.cos(phase)
-        imag_part = np.sin(phase)
+        phase: float = 2 * np.pi * (h * x + k * y)
+        real_part: float = np.cos(phase)
+        imag_part: float = np.sin(phase)
         ax.annotate(
             "",
             xy=(total_real + real_part, total_imag + imag_part),
@@ -1162,7 +1201,7 @@ def plot_structure_factor_phases(
         fontsize=11,
         fontweight="bold",
     )
-    theta = np.linspace(0, 2 * np.pi, 100)
+    theta: NDArray = np.linspace(0, 2 * np.pi, 100)
     ax.plot(np.cos(theta), np.sin(theta), "k--", alpha=0.3)
     ax.axhline(0, color="gray", linewidth=0.5)
     ax.axvline(0, color="gray", linewidth=0.5)
@@ -1173,7 +1212,7 @@ def plot_structure_factor_phases(
     )
     ax.set_aspect("equal")
     ax.grid(True, alpha=0.3)
-    max_val = max(abs(total_real), abs(total_imag), 1.5)
+    max_val: float = max(abs(total_real), abs(total_imag), 1.5)
     ax.set_xlim(-max_val - 0.5, max_val + 0.5)
     ax.set_ylim(-max_val - 0.5, max_val + 0.5)
     return ax
@@ -1245,18 +1284,18 @@ def view_atoms(
     parse_cif : Load crystal structure from CIF file.
     """
     if ax is None:
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection="3d")
-    cart_positions = np.asarray(crystal.cart_positions)
-    positions = cart_positions[:, :3]
-    atomic_numbers = cart_positions[:, 3].astype(int)
-    unique_z = np.unique(atomic_numbers)
+        fig: Any = plt.figure(figsize=figsize)
+        ax: Any = fig.add_subplot(111, projection="3d")
+    cart_positions: NDArray = np.asarray(crystal.cart_positions)
+    positions: NDArray = cart_positions[:, :3]
+    atomic_numbers: NDArray = cart_positions[:, 3].astype(int)
+    unique_z: NDArray = np.unique(atomic_numbers)
     for z in unique_z:
-        mask = atomic_numbers == z
-        pos_subset = positions[mask]
-        color = _ELEMENT_COLORS.get(int(z), "#808080")
-        symbol = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
-        size = (50 + z * 2) * atom_scale
+        mask: NDArray = atomic_numbers == z
+        pos_subset: NDArray = positions[mask]
+        color: Any = _ELEMENT_COLORS.get(int(z), "#808080")
+        symbol: str = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
+        size: int = (50 + z * 2) * atom_scale
         ax.scatter(
             pos_subset[:, 0],
             pos_subset[:, 1],
@@ -1269,18 +1308,20 @@ def view_atoms(
             depthshade=True,
         )
     if show_unit_cell:
-        cell_lengths = np.asarray(crystal.cell_lengths)
-        cell_angles = np.asarray(crystal.cell_angles)
+        cell_lengths: NDArray = np.asarray(crystal.cell_lengths)
+        cell_angles: NDArray = np.asarray(crystal.cell_angles)
         a, b, c = cell_lengths
         alpha, beta, gamma = np.deg2rad(cell_angles)
-        vec_a = np.array([a, 0, 0])
-        vec_b = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
-        cx = c * np.cos(beta)
-        cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
-        cz = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
-        vec_c = np.array([cx, cy, cz])
-        origin = np.array([0, 0, 0])
-        corners = [
+        vec_a: NDArray = np.array([a, 0, 0])
+        vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+        cx: float = c * np.cos(beta)
+        cy: float = (
+            c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+        )
+        cz: float = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
+        vec_c: NDArray = np.array([cx, cy, cz])
+        origin: NDArray = np.array([0, 0, 0])
+        corners: NDArray = [
             origin,
             vec_a,
             vec_b,
@@ -1290,7 +1331,7 @@ def view_atoms(
             vec_b + vec_c,
             vec_a + vec_b + vec_c,
         ]
-        edges = [
+        edges: NDArray = [
             (0, 1),
             (0, 2),
             (0, 3),

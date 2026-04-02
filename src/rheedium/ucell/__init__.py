@@ -41,6 +41,7 @@ from .helper import (
 from .unitcell import (
     atom_scraper,
     build_cell_vectors,
+    bulk_to_slice,
     generate_reciprocal_points,
     get_unit_cell_matrix,
     miller_to_reciprocal,
@@ -53,6 +54,7 @@ __all__: list[str] = [
     "atom_scraper",
     "bessel_kv",
     "build_cell_vectors",
+    "bulk_to_slice",
     "compute_lengths_angles",
     "generate_reciprocal_points",
     "get_unit_cell_matrix",

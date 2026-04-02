@@ -4,8 +4,7 @@ Extended Summary
 ----------------
 This module provides bidirectional conversion functions between rheedium's
 CrystalStructure and external atomistic simulation libraries (ASE and
-pymatgen). Dependencies are lazily imported to allow rheedium to function
-without these optional packages installed.
+pymatgen). Both are core dependencies.
 
 Routine Listings
 ----------------
@@ -20,17 +19,17 @@ Routine Listings
 
 Notes
 -----
-ASE and pymatgen are optional dependencies. Functions will raise ImportError
-with installation instructions if the required library is not installed.
+Both ASE and pymatgen are core dependencies and are always available.
 """
 
 import jax.numpy as jnp
 import numpy as np
+from ase import Atoms
 from beartype import beartype
-from beartype.typing import Any
 from jaxtyping import Array, Float, Int, jaxtyped
+from pymatgen.core import Lattice, Structure
 
-from rheedium.types import CrystalStructure, create_xyz_data
+from rheedium.types import CrystalStructure, XYZData, create_xyz_data
 from rheedium.ucell import build_cell_vectors
 
 from .crystal import xyz_to_crystal
@@ -40,7 +39,7 @@ _Z_TO_SYMBOL: dict[int, str] = {v: k for k, v in _ATOMIC_NUMBERS.items()}
 
 
 @jaxtyped(typechecker=beartype)
-def from_ase(atoms: Any) -> CrystalStructure:
+def from_ase(atoms: Atoms) -> CrystalStructure:
     """Convert ASE Atoms object to CrystalStructure.
 
     Extracts cell parameters, atomic positions, and species from an ASE
@@ -65,11 +64,9 @@ def from_ase(atoms: Any) -> CrystalStructure:
 
     Raises
     ------
-    ImportError
-        If ASE is not installed.
     ValueError
-        If atoms has no cell defined, cell is degenerate (volume near zero),
-        or cell has fewer than 3 dimensions.
+        If atoms has no cell defined, cell is degenerate (volume near
+        zero), or cell has fewer than 3 dimensions.
 
     Notes
     -----
@@ -79,12 +76,11 @@ def from_ase(atoms: Any) -> CrystalStructure:
     - ``atoms.get_positions()`` : Cartesian atomic positions
     - ``atoms.get_atomic_numbers()`` : Element atomic numbers
 
-    Periodic boundary conditions (PBC) from the ASE Atoms are not preserved
-    in CrystalStructure, which assumes full 3D periodicity.
+    Periodic boundary conditions (PBC) from the ASE Atoms are not
+    preserved in CrystalStructure, which assumes full 3D periodicity.
 
     1. **Validate input** --
-       Check ASE is installed, cell is 3D and
-       non-degenerate.
+       Check cell is 3D and non-degenerate.
     2. **Extract data** --
        Cell, positions, and atomic numbers from
        ASE Atoms object.
@@ -101,26 +97,18 @@ def from_ase(atoms: Any) -> CrystalStructure:
     >>> crystal.cell_lengths
     Array([5.43, 5.43, 5.43], dtype=float64)
     """
-    try:
-        from ase import Atoms
-    except ImportError as e:
-        raise ImportError(
-            "ASE is not installed. Install with: pip install ase"
-        ) from e
+    cell = atoms.get_cell()
 
-    if not isinstance(atoms, Atoms):
-        raise TypeError(f"Expected ase.Atoms, got {type(atoms).__name__}")
-
-    cell: Any = atoms.get_cell()
-
-    if cell is None or cell.rank < 3:
+    _min_cell_rank: int = 3
+    if cell is None or cell.rank < _min_cell_rank:
         raise ValueError(
             "ASE Atoms must have a valid 3D cell defined. "
             "Set cell with atoms.set_cell() or use atoms.center()."
         )
 
     cell_volume: float = abs(cell.volume)
-    if cell_volume < 1e-10:
+    _min_cell_volume: float = 1e-10
+    if cell_volume < _min_cell_volume:
         raise ValueError(
             f"ASE Atoms cell is degenerate (volume={cell_volume:.2e}). "
             "Please define a valid unit cell."
@@ -144,7 +132,7 @@ def from_ase(atoms: Any) -> CrystalStructure:
 
 
 @jaxtyped(typechecker=beartype)
-def to_ase(crystal: CrystalStructure) -> Any:
+def to_ase(crystal: CrystalStructure) -> Atoms:
     """Convert CrystalStructure to ASE Atoms object.
 
     Creates an ASE Atoms object from a rheedium CrystalStructure,
@@ -164,11 +152,6 @@ def to_ase(crystal: CrystalStructure) -> Any:
         - ``positions`` : Cartesian atomic coordinates
         - ``numbers`` : Atomic numbers
         - ``pbc`` : Periodic boundary conditions set to True
-
-    Raises
-    ------
-    ImportError
-        If ASE is not installed.
 
     Notes
     -----
@@ -192,13 +175,6 @@ def to_ase(crystal: CrystalStructure) -> Any:
     Cell([...])
     >>> atoms.write("structure.xyz")
     """
-    try:
-        from ase import Atoms
-    except ImportError as e:
-        raise ImportError(
-            "ASE is not installed. Install with: pip install ase"
-        ) from e
-
     cell: Float[Array, "3 3"] = build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -214,18 +190,16 @@ def to_ase(crystal: CrystalStructure) -> Any:
     )
     cell_np: np.ndarray = np.asarray(cell)
 
-    atoms: Any = Atoms(
+    return Atoms(
         numbers=atomic_numbers_np,
         positions=positions_np,
         cell=cell_np,
         pbc=True,
     )
 
-    return atoms
-
 
 @jaxtyped(typechecker=beartype)
-def from_pymatgen(structure: Any) -> CrystalStructure:
+def from_pymatgen(structure: Structure) -> CrystalStructure:
     """Convert pymatgen Structure to CrystalStructure.
 
     Extracts lattice, positions, and species from a pymatgen Structure
@@ -247,13 +221,6 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Raises
-    ------
-    ImportError
-        If pymatgen is not installed.
-    TypeError
-        If input is not a pymatgen Structure.
-
     Notes
     -----
     The conversion extracts:
@@ -263,7 +230,7 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
     - ``site.specie.Z`` : Atomic numbers for each site
 
     1. **Validate input** --
-       Check pymatgen is installed and input type.
+       Check input type.
     2. **Extract data** --
        Lattice matrix, Cartesian coords, atomic
        numbers from pymatgen Structure.
@@ -280,18 +247,6 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
     >>> crystal.cell_lengths
     Array([5.43, 5.43, 5.43], dtype=float64)
     """
-    try:
-        from pymatgen.core import Structure
-    except ImportError as e:
-        raise ImportError(
-            "pymatgen is not installed. Install with: pip install pymatgen"
-        ) from e
-
-    if not isinstance(structure, Structure):
-        raise TypeError(
-            f"Expected pymatgen.core.Structure, got {type(structure).__name__}"
-        )
-
     lattice: Float[Array, "3 3"] = jnp.asarray(
         structure.lattice.matrix, dtype=jnp.float64
     )
@@ -315,7 +270,7 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
 
 
 @jaxtyped(typechecker=beartype)
-def to_pymatgen(crystal: CrystalStructure) -> Any:
+def to_pymatgen(crystal: CrystalStructure) -> Structure:
     """Convert CrystalStructure to pymatgen Structure.
 
     Creates a pymatgen Structure object from a rheedium CrystalStructure,
@@ -330,11 +285,6 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     -------
     structure : pymatgen.core.Structure
         Equivalent pymatgen Structure object.
-
-    Raises
-    ------
-    ImportError
-        If pymatgen is not installed.
 
     Notes
     -----
@@ -360,13 +310,6 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     >>> struct = rh.inout.to_pymatgen(crystal)
     >>> struct.to("POSCAR", "output_POSCAR")
     """
-    try:
-        from pymatgen.core import Lattice, Structure
-    except ImportError as e:
-        raise ImportError(
-            "pymatgen is not installed. Install with: pip install pymatgen"
-        ) from e
-
     cell: Float[Array, "3 3"] = build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -376,7 +319,7 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
         crystal.cell_angles[2],
     )
 
-    lattice: Any = Lattice(np.asarray(cell))
+    lattice_pmg: Lattice = Lattice(np.asarray(cell))
 
     atomic_numbers: np.ndarray = np.asarray(
         crystal.frac_positions[:, 3], dtype=int
@@ -385,9 +328,7 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
 
     species: list[str] = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
 
-    structure: Any = Structure(lattice, species, frac_coords)
-
-    return structure
+    return Structure(lattice_pmg, species, frac_coords)
 
 
 __all__: list[str] = [

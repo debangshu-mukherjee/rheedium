@@ -38,6 +38,8 @@ dependencies = [
     "jax>=0.9.2 ; sys_platform == 'win64'",
     "jax>=0.9.2 ; sys_platform == 'darwin'",
     "jax>=0.9.2 ; sys_platform == 'linux'",
+    "ase>=3.26.0",
+    "pymatgen>=2025.10.7",
 ]
 [project.optional-dependencies]
 cuda = [

@@ -8,6 +8,9 @@ filtering for specific zones and thicknesses.
 
 Routine Listings
 ----------------
+:func:`bulk_to_slice`
+    Transform bulk crystal structure into surface-oriented
+    slab for RHEED simulation.
 :func:`reciprocal_unitcell`
     Calculate reciprocal unit cell parameters from direct
     cell parameters.
@@ -41,9 +44,13 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
+from jax import lax
+
 from rheedium.types import (
     CrystalStructure,
+    SlicedCrystal,
     create_crystal_structure,
+    create_sliced_crystal,
     scalar_bool,
     scalar_float,
     scalar_int,
@@ -881,9 +888,226 @@ def miller_to_reciprocal(
     return g_vectors
 
 
+@jaxtyped(typechecker=beartype)
+def bulk_to_slice(
+    bulk_crystal: CrystalStructure,
+    orientation: Int[Array, "3"],
+    depth: scalar_float,
+    x_extent: scalar_float = 150.0,
+    y_extent: scalar_float = 150.0,
+) -> SlicedCrystal:
+    """Transform a bulk crystal structure into a surface-oriented slab.
+
+    This function takes a bulk crystal structure and creates a surface
+    slab oriented along the specified Miller indices. The slab is
+    extended in the x and y directions to create a large surface area
+    suitable for RHEED simulations, with atoms selected within a
+    specified depth from the surface.
+
+    Parameters
+    ----------
+    bulk_crystal : CrystalStructure
+        Bulk crystal structure from CIF file or other source.
+    orientation : Int[Array, "3"]
+        Miller indices [h, k, l] defining the desired surface
+        orientation. Example: [1, 1, 1] for (111) surface,
+        [0, 0, 1] for (001).
+    depth : scalar_float
+        Depth of atoms to include perpendicular to surface in
+        Angstroms. Typically 10-30 Angstroms to capture surface
+        effects.
+    x_extent : scalar_float, optional
+        Lateral extent in x-direction in Angstroms. Default: 150.0.
+        Should be >= 100 Angstroms for realistic RHEED simulations.
+    y_extent : scalar_float, optional
+        Lateral extent in y-direction in Angstroms. Default: 150.0.
+        Should be >= 100 Angstroms for realistic RHEED simulations.
+
+    Returns
+    -------
+    sliced_crystal : SlicedCrystal
+        Surface-oriented crystal slab with transformed coordinates.
+
+    Notes
+    -----
+    - The transformation preserves atomic types and relative
+      positions.
+    - The resulting structure has z as the surface normal.
+    - Periodic boundary conditions apply in x and y
+      directions.
+    - The depth direction (z) is typically non-periodic for
+      surface slabs.
+
+    1. Build rotation matrix to align [hkl] direction with
+       z-axis: convert Miller indices to reciprocal lattice
+       vector and calculate rotation matrix R that maps this
+       vector to [0, 0, 1].
+    2. Transform all atomic positions using rotation matrix.
+    3. Create supercell by replicating atoms in x and y
+       directions: determine number of repetitions needed
+       to cover x_extent and y_extent, generate all
+       combinations of translations, and apply translations
+       to create supercell.
+    4. Filter atoms within depth range: 0 <= z <= depth.
+    5. Center the slab so z=0 is at the bottom surface.
+    6. Calculate new cell parameters for the supercell.
+    7. Return SlicedCrystal with transformed coordinates.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>>
+    >>> # Load bulk structure
+    >>> bulk = rh.inout.parse_cif("SrTiO3.cif")
+    >>>
+    >>> # Create (111) surface slab
+    >>> slab = rh.ucell.bulk_to_slice(
+    ...     bulk_crystal=bulk,
+    ...     orientation=jnp.array([1, 1, 1]),
+    ...     depth=20.0,
+    ...     x_extent=150.0,
+    ...     y_extent=150.0,
+    ... )
+    """
+    orientation = jnp.asarray(orientation, dtype=jnp.int32)
+    depth = jnp.asarray(depth, dtype=jnp.float64)
+    x_extent = jnp.asarray(x_extent, dtype=jnp.float64)
+    y_extent = jnp.asarray(y_extent, dtype=jnp.float64)
+
+    cell_vecs: Float[Array, "3 3"] = build_cell_vectors(
+        *bulk_crystal.cell_lengths, *bulk_crystal.cell_angles
+    )
+
+    recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        *bulk_crystal.cell_lengths,
+        *bulk_crystal.cell_angles,
+        in_degrees=True,
+    )
+
+    hkl_cart: Float[Array, "3"] = (
+        orientation[0] * recip_vecs[0]
+        + orientation[1] * recip_vecs[1]
+        + orientation[2] * recip_vecs[2]
+    )
+    hkl_norm: Float[Array, "3"] = hkl_cart / jnp.linalg.norm(hkl_cart)
+
+    z_axis: Float[Array, "3"] = jnp.array([0.0, 0.0, 1.0])
+    rot_axis: Float[Array, "3"] = jnp.cross(hkl_norm, z_axis)
+    rot_axis_norm: Float[Array, ""] = jnp.linalg.norm(rot_axis)
+
+    cos_angle: Float[Array, ""] = jnp.dot(hkl_norm, z_axis)
+    angle: Float[Array, ""] = jnp.arccos(jnp.clip(cos_angle, -1.0, 1.0))
+
+    def _aligned_matrix() -> Float[Array, "3 3"]:
+        return jnp.eye(3)
+
+    def _rotation_matrix() -> Float[Array, "3 3"]:
+        k: Float[Array, "3"] = rot_axis / (rot_axis_norm + 1e-10)
+        skew: Float[Array, "3 3"] = jnp.array(
+            [
+                [0.0, -k[2], k[1]],
+                [k[2], 0.0, -k[0]],
+                [-k[1], k[0], 0.0],
+            ]
+        )
+        return (
+            jnp.eye(3)
+            + jnp.sin(angle) * skew
+            + (1 - jnp.cos(angle)) * (skew @ skew)
+        )
+
+    _rot_threshold: float = 1e-6
+    rotation_matrix: Float[Array, "3 3"] = lax.cond(
+        rot_axis_norm < _rot_threshold,
+        _aligned_matrix,
+        _rotation_matrix,
+    )
+
+    positions_xyz: Float[Array, "N 3"] = bulk_crystal.cart_positions[:, :3]
+    rotated_positions: Float[Array, "N 3"] = positions_xyz @ rotation_matrix.T
+
+    rotated_cell_vecs: Float[Array, "3 3"] = cell_vecs @ rotation_matrix.T
+
+    cell_x_proj: Float[Array, ""] = jnp.abs(rotated_cell_vecs[0, 0])
+    cell_y_proj: Float[Array, ""] = jnp.abs(rotated_cell_vecs[1, 1])
+
+    nx: int = int(jnp.ceil(x_extent / (cell_x_proj + 1e-10))) + 2
+    ny: int = int(jnp.ceil(y_extent / (cell_y_proj + 1e-10))) + 2
+
+    atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
+
+    all_positions: list[Float[Array, "N 3"]] = []
+    for ix in range(-nx // 2, nx // 2 + 1):
+        for iy in range(-ny // 2, ny // 2 + 1):
+            translation: Float[Array, "3"] = (
+                ix * rotated_cell_vecs[0] + iy * rotated_cell_vecs[1]
+            )
+            translated_pos: Float[Array, "N 3"] = (
+                rotated_positions + translation[None, :]
+            )
+            all_positions.append(translated_pos)
+
+    supercell_positions: Float[Array, "M 3"] = jnp.concatenate(
+        all_positions, axis=0
+    )
+
+    supercell_atomic_nums: Float[Array, "M"] = jnp.tile(
+        atomic_numbers, (nx + 1) * (ny + 1)
+    )
+
+    x_min: Float[Array, ""] = supercell_positions[:, 0].min()
+    y_min: Float[Array, ""] = supercell_positions[:, 1].min()
+    z_min: Float[Array, ""] = supercell_positions[:, 2].min()
+
+    centered_positions: Float[Array, "M 3"] = supercell_positions - jnp.array(
+        [x_min, y_min, z_min]
+    )
+
+    x_mask: Bool[Array, "M"] = jnp.logical_and(
+        centered_positions[:, 0] >= 0,
+        centered_positions[:, 0] <= x_extent,
+    )
+    y_mask: Bool[Array, "M"] = jnp.logical_and(
+        centered_positions[:, 1] >= 0,
+        centered_positions[:, 1] <= y_extent,
+    )
+    z_mask: Bool[Array, "M"] = jnp.logical_and(
+        centered_positions[:, 2] >= 0,
+        centered_positions[:, 2] <= depth,
+    )
+
+    combined_mask: Bool[Array, "M"] = x_mask & y_mask & z_mask
+
+    filtered_positions: Float[Array, "K 3"] = centered_positions[combined_mask]
+    filtered_atomic_nums: Float[Array, "K"] = supercell_atomic_nums[
+        combined_mask
+    ]
+
+    final_positions: Float[Array, "K 4"] = jnp.column_stack(
+        [filtered_positions, filtered_atomic_nums]
+    )
+
+    new_cell_lengths: Float[Array, "3"] = jnp.array(
+        [x_extent, y_extent, depth]
+    )
+    new_cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+
+    return create_sliced_crystal(
+        cart_positions=final_positions,
+        cell_lengths=new_cell_lengths,
+        cell_angles=new_cell_angles,
+        orientation=orientation,
+        depth=depth,
+        x_extent=x_extent,
+        y_extent=y_extent,
+    )
+
+
 __all__: list[str] = [
     "atom_scraper",
     "build_cell_vectors",
+    "bulk_to_slice",
     "compute_lengths_angles",
     "generate_reciprocal_points",
     "get_unit_cell_matrix",

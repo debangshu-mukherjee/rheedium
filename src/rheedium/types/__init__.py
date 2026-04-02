@@ -29,8 +29,6 @@ Routine Listings
     Configuration for surface atom identification method and parameters.
 :class:`XYZData`
     A PyTree for XYZ file data with atomic positions and metadata.
-:func:`bulk_to_slice`
-    Convert bulk CrystalStructure to SlicedCrystal for multislice simulation.
 :func:`create_crystal_structure`
     Factory function to create CrystalStructure instances.
 :func:`create_electron_beam`
@@ -99,7 +97,6 @@ from .rheed_types import (
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
-    bulk_to_slice,
     create_rheed_image,
     create_rheed_pattern,
     create_sliced_crystal,
@@ -107,7 +104,6 @@ from .rheed_types import (
 )
 
 __all__: list[str] = [
-    "bulk_to_slice",
     "create_crystal_structure",
     "create_electron_beam",
     "create_ewald_data",

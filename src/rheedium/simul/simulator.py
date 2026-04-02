@@ -915,7 +915,7 @@ def sliced_crystal_to_potential(
     >>>
     >>> # Create surface slab
     >>> bulk = rh.inout.parse_cif("SrTiO3.cif")
-    >>> slab = rh.types.bulk_to_slice(
+    >>> slab = rh.ucell.bulk_to_slice(
     ...     bulk_crystal=bulk,
     ...     orientation=jnp.array([1, 1, 1]),
     ...     depth=20.0

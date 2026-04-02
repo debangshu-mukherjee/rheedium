@@ -35,7 +35,6 @@ from rheedium.types import (
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
-    bulk_to_slice,
     create_crystal_structure,
     create_potential_slices,
     create_sliced_crystal,
@@ -1062,7 +1061,7 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_gating_uses_explicit_hkl(self) -> None:
-        """Explicit hkl indices should enable CTR when |G| would miss tolerance."""
+        """Explicit hkl should enable CTR when |G| misses tolerance."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
         hkls: Int[Array, "3 3"] = jnp.array(
