@@ -2981,6 +2981,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pymatgen" },
     { name = "scipy" },
+    { name = "tifffile" },
 ]
 
 [package.optional-dependencies]
@@ -3158,6 +3159,7 @@ requires-dist = [
     { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=3.0.1" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.0.2" },
+    { name = "tifffile", specifier = ">=2026.3.3" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.1.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.27" },
 ]
@@ -3700,6 +3702,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701, upload-time = "2024-03-12T14:34:39.026Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/9e/2064975477fdc887e47ad42157e214526dcad8f317a948dee17e1659a62f/terminado-0.18.1-py3-none-any.whl", hash = "sha256:a4468e1b37bb318f8a86514f65814e1afc977cf29b3992a4500d9dd305dcceb0", size = 14154, upload-time = "2024-03-12T14:34:36.569Z" },
+]
+
+[[package]]
+name = "tifffile"
+version = "2026.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/cb/2f6d79c7576e22c116352a801f4c3c8ace5957e9aced862012430b62e14f/tifffile-2026.3.3.tar.gz", hash = "sha256:d9a1266bed6f2ee1dd0abde2018a38b4f8b2935cb843df381d70ac4eac5458b7", size = 388745, upload-time = "2026-03-03T19:14:38.134Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/e4/e804505f87627cd8cdae9c010c47c4485fd8c1ce31a7dd0ab7fcc4707377/tifffile-2026.3.3-py3-none-any.whl", hash = "sha256:e8be15c94273113d31ecb7aa3a39822189dd11c4967e3cc88c178f1ad2fd1170", size = 243960, upload-time = "2026-03-03T19:14:35.808Z" },
 ]
 
 [[package]]

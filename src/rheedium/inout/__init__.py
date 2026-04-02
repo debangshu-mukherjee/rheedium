@@ -11,10 +11,16 @@ Routine Listings
 ----------------
 :func:`atomic_masses`
     Return preloaded atomic masses as JAX array.
+:class:`FrameMetadata`
+    Per-frame metadata extracted from TIFF tags.
 :func:`atomic_symbol`
     Returns atomic number for given atomic symbol string.
 :func:`debye_temperatures`
     Return preloaded Debye temperatures as JAX array.
+:func:`detect_beam_center`
+    Locate the specular spot position automatically.
+:func:`extract_frame_metadata`
+    Extract exposure time, timestamp, and description from a TIFF page.
 :func:`from_ase`
     Convert ASE Atoms to CrystalStructure.
 :func:`from_pymatgen`
@@ -23,6 +29,10 @@ Routine Listings
     Loads Kirkland scattering factors from CSV file.
 :func:`lattice_to_cell_params`
     Convert 3x3 lattice vectors to crystallographic cell parameters.
+:func:`load_tiff_sequence`
+    Load ordered TIFF stack into a JAX array.
+:func:`normalize_sequence`
+    Background subtraction, flat-field correction, and normalization.
 :func:`parse_cif`
     Parse a CIF file into a JAX-compatible CrystalStructure.
 :func:`parse_crystal`
@@ -57,6 +67,13 @@ from .cif import parse_cif, symmetry_expansion
 from .crystal import lattice_to_cell_params, parse_crystal, xyz_to_crystal
 from .interop import from_ase, from_pymatgen, to_ase, to_pymatgen
 from .poscar import parse_poscar
+from .tiff import (
+    FrameMetadata,
+    detect_beam_center,
+    extract_frame_metadata,
+    load_tiff_sequence,
+    normalize_sequence,
+)
 from .vaspxml import parse_vaspxml, parse_vaspxml_trajectory
 from .xyz import (
     atomic_masses,
@@ -70,10 +87,15 @@ __all__: list[str] = [
     "atomic_masses",
     "atomic_symbol",
     "debye_temperatures",
+    "detect_beam_center",
+    "extract_frame_metadata",
+    "FrameMetadata",
     "from_ase",
     "from_pymatgen",
     "kirkland_potentials",
     "lattice_to_cell_params",
+    "load_tiff_sequence",
+    "normalize_sequence",
     "parse_cif",
     "parse_crystal",
     "parse_poscar",
