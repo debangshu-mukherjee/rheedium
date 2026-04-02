@@ -573,7 +573,8 @@ def find_ctr_ewald_intersection(
     b_coef: Float[Array, ""] = 2.0 * jnp.dot(p_vec, c_star)
     c_coef: Float[Array, ""] = jnp.dot(p_vec, p_vec) - k_mag_sq
     discriminant: Float[Array, ""] = b_coef**2 - 4.0 * a_coef * c_coef
-    sqrt_disc: Float[Array, ""] = jnp.sqrt(jnp.maximum(discriminant, 0.0))
+    safe_disc: Float[Array, ""] = jnp.maximum(discriminant, 1e-30)
+    sqrt_disc: Float[Array, ""] = jnp.sqrt(safe_disc)
     l_plus: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
     l_minus: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
     k_out_plus: Float[Array, "3"] = p_vec + l_plus * c_star
@@ -586,8 +587,8 @@ def find_ctr_ewald_intersection(
     l_intersect: Float[Array, ""] = jnp.where(use_plus, l_plus, l_minus)
     k_out: Float[Array, "3"] = jnp.where(use_plus, k_out_plus, k_out_minus)
     any_valid: Float[Array, ""] = valid_plus | valid_minus
-    l_intersect = jnp.where(any_valid, l_intersect, jnp.nan)
-    k_out = jnp.where(any_valid, k_out, jnp.nan)
+    l_intersect = jnp.where(any_valid, l_intersect, 0.0)
+    k_out = jnp.where(any_valid, k_out, 0.0)
     valid: Float[Array, ""] = any_valid.astype(jnp.float64)
     return l_intersect, k_out, valid
 

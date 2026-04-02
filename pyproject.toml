@@ -126,6 +126,7 @@ module-name = "rheedium"
 namespace = true
 
 [tool.pytest.ini_options]
+addopts = "-n 16"
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
