@@ -84,7 +84,7 @@ from . import (  # noqa: E402, I001
 
 __version__: str = version("rheedium")
 
-__all__ = [
+__all__: list[str] = [
     "inout",
     "plots",
     "recon",

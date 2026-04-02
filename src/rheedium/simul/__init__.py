@@ -42,6 +42,8 @@ Routine Listings
     Calculate mean square displacement for given temperature.
 :func:`incident_wavevector`
     Calculate incident electron wavevector from beam parameters.
+:func:`interaction_constant`
+    Calculate relativistic electron-specimen interaction constant.
 :func:`integrated_rod_intensity`
     Integrate CTR intensity over finite detector acceptance.
 :func:`kinematic_spot_simulator`
@@ -124,7 +126,7 @@ from .surface_rods import (
     surface_structure_factor,
 )
 
-__all__ = [
+__all__: list[str] = [
     "atomic_scattering_factor",
     "build_ewald_data",
     "calculate_ctr_intensity",

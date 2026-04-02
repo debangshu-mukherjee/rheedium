@@ -94,8 +94,8 @@ def project_on_detector(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Scale factor** --
        :math:`s = d / (k_x + \\epsilon)` for each
        wavevector.
@@ -139,8 +139,12 @@ def project_on_detector_geometry(
     detector_coords : Float[Array, "N 2"]
         [horizontal, vertical] coordinates on detector in mm.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    For small tilt angles and infinite curvature, this reduces
+    to the simple ray-tracing formula in
+    :func:`project_on_detector`.
+
     1. **Ray-plane intersection** --
        Compute intersection parameter :math:`t` for each
        wavevector with the (possibly tilted) detector plane.
@@ -151,12 +155,6 @@ def project_on_detector_geometry(
        curvature radius is finite.
     4. **Apply offsets** --
        Shift by centre offsets.
-
-    Notes
-    -----
-    For small tilt angles and infinite curvature, this reduces
-    to the simple ray-tracing formula in
-    :func:`project_on_detector`.
 
     See Also
     --------
@@ -247,8 +245,13 @@ def find_kinematic_reflections(
         Output wavevectors for allowed reflections. Invalid entries
         correspond to `allowed_indices == -1`.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    Returns fixed-size arrays for JIT compatibility. Filter results using:
+        valid_mask = allowed_indices >= 0
+        valid_indices = allowed_indices[valid_mask]
+        valid_k_out = k_out[valid_mask]
+
     1. **Outgoing wavevectors** --
        :math:`k_{out} = k_{in} + G` for all G vectors.
     2. **Elastic condition** --
@@ -258,13 +261,6 @@ def find_kinematic_reflections(
     4. **Fixed-size output** --
        Use :func:`jnp.where` with fill_value for JIT
        compatibility.
-
-    Notes
-    -----
-    Returns fixed-size arrays for JIT compatibility. Filter results using:
-        valid_mask = allowed_indices >= 0
-        valid_indices = allowed_indices[valid_mask]
-        valid_k_out = k_out[valid_mask]
 
     See Also
     --------
@@ -362,8 +358,19 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     intensities : Float[Array, "N"]
         Diffraction intensities for each allowed reflection.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    The coherent mode is physically more accurate as it accounts for
+    interference between kinematic scattering and CTR contributions.
+    However, incoherent mode may be more stable numerically and is
+    the historical default behavior.
+
+    Surface atom identification supports multiple strategies:
+    - "height": Top fraction by z-coordinate (simple, fast)
+    - "coordination": Atoms with fewer neighbors (better for steps)
+    - "layers": Topmost N complete layers (good for flat surfaces)
+    - "explicit": User-provided mask (full control)
+
     1. **Extract atomic data** --
        Positions, atomic numbers, and Miller indices
        from crystal and G vectors.
@@ -377,19 +384,6 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     4. **Mix contributions** --
        Coherent (add amplitudes), incoherent (add
        intensities), or no CTR.
-
-    Notes
-    -----
-    The coherent mode is physically more accurate as it accounts for
-    interference between kinematic scattering and CTR contributions.
-    However, incoherent mode may be more stable numerically and is
-    the historical default behavior.
-
-    Surface atom identification supports multiple strategies:
-    - "height": Top fraction by z-coordinate (simple, fast)
-    - "coordination": Atoms with fewer neighbors (better for steps)
-    - "layers": Topmost N complete layers (good for flat surfaces)
-    - "explicit": User-provided mask (full control)
 
     See Also
     --------
@@ -642,24 +636,6 @@ def ewald_simulator(  # noqa: PLR0913
     pattern : RHEEDPattern
         RHEED pattern with detector positions and intensities.
 
-    Implementation
-    --------------
-    1. **Beam parameters** --
-       Wavelength and incident wavevector from voltage and
-       angles.
-    2. **Reciprocal basis** --
-       Compute :math:`a^*, b^*, c^*` from cell parameters.
-    3. **Rod-sphere intersection** --
-       For each (h, k) rod, solve quadratic for l where
-       the rod intersects the Ewald sphere.
-    4. **Structure factors** --
-       Kirkland form factors with Debye-Waller and surface
-       enhancement at each intersection.
-    5. **CTR modulation** --
-       :math:`1/\\sin^2(\\pi l)` with roughness damping.
-    6. **Assemble pattern** --
-       Project onto detector and normalize intensities.
-
     Notes
     -----
     The algorithm solves the Ewald sphere constraint for each (h,k) rod:
@@ -686,6 +662,22 @@ def ewald_simulator(  # noqa: PLR0913
     - Debye-Waller thermal damping
     - CTR intensity modulation :math:`1/\sin^2(\pi l)`
     - Surface roughness damping :math:`\exp(-\sigma^2 q_z^2)`
+
+    1. **Beam parameters** --
+       Wavelength and incident wavevector from voltage and
+       angles.
+    2. **Reciprocal basis** --
+       Compute :math:`a^*, b^*, c^*` from cell parameters.
+    3. **Rod-sphere intersection** --
+       For each (h, k) rod, solve quadratic for l where
+       the rod intersects the Ewald sphere.
+    4. **Structure factors** --
+       Kirkland form factors with Debye-Waller and surface
+       enhancement at each intersection.
+    5. **CTR modulation** --
+       :math:`1/\\sin^2(\\pi l)` with roughness damping.
+    6. **Assemble pattern** --
+       Project onto detector and normalize intensities.
 
     See Also
     --------
@@ -888,8 +880,13 @@ def sliced_crystal_to_potential(
     potential_slices : PotentialSlices
         3D potential array with calibration information.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    - The potential includes proper atomic scattering factors
+    - Assumes independent atom approximation
+    - Periodic boundary conditions in x-y plane
+    - Non-periodic in z-direction (surface slab)
+
     1. **Grid dimensions** --
        Compute nx, ny from extents and pixel size, nz from
        depth and slice thickness.
@@ -900,13 +897,6 @@ def sliced_crystal_to_potential(
        Kirkland potentials onto xy grid, and sum.
     4. **Package result** --
        Return :class:`PotentialSlices` with calibration.
-
-    Notes
-    -----
-    - The potential includes proper atomic scattering factors
-    - Assumes independent atom approximation
-    - Periodic boundary conditions in x-y plane
-    - Non-periodic in z-direction (surface slab)
 
     See Also
     --------
@@ -1055,8 +1045,20 @@ def multislice_propagate(
     exit_wave : Complex[Array, "nx ny"]
         Complex exit wave after propagation through all slices
 
-    Implementation
-    --------------
+    Notes
+    -----
+    The transmission function is:
+        T(x,y) = exp(iσV(x,y))
+    where σ = 2πme/(h²k) is the interaction constant.
+
+    The Fresnel propagator in reciprocal space is:
+        P(kx,ky,Δz) = exp(-iπλΔz(kx² + ky²))
+
+    For RHEED geometry with grazing incidence, we:
+    1. Start with a tilted plane wave
+    2. Propagate through slices perpendicular to surface normal
+    3. Account for the projection of k_in onto the surface
+
     1. **Initialise wave** --
        Tilted plane wave from :math:`k_{in,x}` and
        :math:`k_{in,y}` (with refraction if
@@ -1071,20 +1073,6 @@ def multislice_propagate(
        propagate in Fourier space.
     4. **Return exit wave** --
        Complex wave after all slices.
-
-    Notes
-    -----
-    The transmission function is:
-        T(x,y) = exp(iσV(x,y))
-    where σ = 2πme/(h²k) is the interaction constant.
-
-    The Fresnel propagator in reciprocal space is:
-        P(kx,ky,Δz) = exp(-iπλΔz(kx² + ky²))
-
-    For RHEED geometry with grazing incidence, we:
-    1. Start with a tilted plane wave
-    2. Propagate through slices perpendicular to surface normal
-    3. Account for the projection of k_in onto the surface
 
     See Also
     --------
@@ -1213,8 +1201,20 @@ def multislice_simulator(
         The g_indices field contains flattened grid indices since Miller
         indices are not well-defined for multislice simulation.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    The multislice algorithm captures dynamical diffraction effects including:
+    - Multiple scattering events
+    - Absorption and inelastic processes (if imaginary potential included)
+    - Thickness-dependent intensity oscillations
+    - Kikuchi lines from diffuse scattering
+
+    Unlike the kinematic approximation, multislice is quantitatively accurate
+    for thick samples and strong scattering conditions.
+
+    For RHEED geometry, the exit wave is projected onto the Ewald sphere
+    to satisfy elastic scattering constraint :math:`|k_{out}| = |k_{in}|`.
+
     1. **Exit wave** --
        Propagate through all slices via
        :func:`multislice_propagate`.
@@ -1229,20 +1229,6 @@ def multislice_simulator(
     5. **Assemble pattern** --
        Filter non-zero intensities and create
        :class:`RHEEDPattern`.
-
-    Notes
-    -----
-    The multislice algorithm captures dynamical diffraction effects including:
-    - Multiple scattering events
-    - Absorption and inelastic processes (if imaginary potential included)
-    - Thickness-dependent intensity oscillations
-    - Kikuchi lines from diffuse scattering
-
-    Unlike the kinematic approximation, multislice is quantitatively accurate
-    for thick samples and strong scattering conditions.
-
-    For RHEED geometry, the exit wave is projected onto the Ewald sphere
-    to satisfy elastic scattering constraint :math:`|k_{out}| = |k_{in}|`.
 
     See Also
     --------
@@ -1331,3 +1317,16 @@ def multislice_simulator(
         intensities=intensity_filtered,
     )
     return pattern
+
+
+__all__: list[str] = [
+    "compute_kinematic_intensities_with_ctrs",
+    "ewald_simulator",
+    "find_ctr_ewald_intersection",
+    "find_kinematic_reflections",
+    "multislice_propagate",
+    "multislice_simulator",
+    "project_on_detector",
+    "project_on_detector_geometry",
+    "sliced_crystal_to_potential",
+]

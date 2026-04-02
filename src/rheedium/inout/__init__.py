@@ -66,7 +66,7 @@ from .xyz import (
     parse_xyz,
 )
 
-__all__ = [
+__all__: list[str] = [
     "atomic_masses",
     "atomic_symbol",
     "debye_temperatures",

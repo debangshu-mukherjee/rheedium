@@ -522,3 +522,14 @@ def parse_vaspxml_trajectory(
         trajectory.append(xyz_data)
 
     return trajectory
+
+
+__all__: list[str] = [
+    "_extract_energy",
+    "_extract_forces",
+    "_extract_stress",
+    "_extract_structure_block",
+    "_get_species_list",
+    "parse_vaspxml",
+    "parse_vaspxml_trajectory",
+]

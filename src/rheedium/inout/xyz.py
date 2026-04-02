@@ -600,3 +600,18 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
         properties=metadata.get("properties"),
         comment=comment,
     )
+
+
+__all__: list[str] = [
+    "_load_atomic_masses",
+    "_load_atomic_numbers",
+    "_load_debye_temperatures",
+    "_load_kirkland_csv",
+    "_parse_atom_line",
+    "_parse_xyz_metadata",
+    "atomic_masses",
+    "atomic_symbol",
+    "debye_temperatures",
+    "kirkland_potentials",
+    "parse_xyz",
+]

@@ -11,4 +11,4 @@ Notes
 Currently empty but will contain reconstruction algorithms in future releases.
 """
 
-__all__ = []
+__all__: list[str] = []

@@ -78,8 +78,6 @@ def get_debye_temperature(
 
     A value of 0.0 indicates no reliable data is available for that element.
 
-    Implementation
-    --------------
     1. **Clip index** --
        Map atomic number to zero-based array index,
        clamped to [0, 102].
@@ -109,8 +107,8 @@ def get_atomic_mass(
     mass : Float[Array, ""]
         Atomic mass in atomic mass units (amu)
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Clip index** --
        Map atomic number to zero-based array index,
        clamped to [0, 102].
@@ -145,8 +143,8 @@ def load_kirkland_parameters(
     b_coeffs : Float[Array, "6"]
         Width coefficients for Gaussian terms in Ų
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Validate range** --
        Clip atomic number to [1, 103].
     2. **Load parameter matrix** --
@@ -207,8 +205,8 @@ def kirkland_form_factor(
     form_factor : Float[Array, "..."]
         Atomic form factor f(q) in electron scattering units
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
     2. **Prepare q term** --
@@ -269,19 +267,6 @@ def kirkland_projected_potential(
     potential : Float[Array, "..."]
         Projected potential in Volt·Angstrom
 
-    Implementation
-    --------------
-    1. **Load parameters** --
-       Kirkland :math:`a_i, b_i` for the element.
-    2. **Safe radial distance** --
-       Clamp :math:`r` to avoid singularity at zero.
-    3. **Gaussian terms** --
-       :math:`(a_i / b_i) \\exp(-\\pi r^2 / b_i)` for
-       each of the six terms.
-    4. **Sum and scale** --
-       Multiply sum by :math:`2\\pi` for projected
-       potential in Volt·Ångstrom.
-
     Notes
     -----
     The Kirkland projected potential is given by:
@@ -298,6 +283,17 @@ def kirkland_projected_potential(
     - a₀ = 0.529177 Å (Bohr radius)
     - e = elementary charge
     - Kirkland uses different units, so we include a conversion
+
+    1. **Load parameters** --
+       Kirkland :math:`a_i, b_i` for the element.
+    2. **Safe radial distance** --
+       Clamp :math:`r` to avoid singularity at zero.
+    3. **Gaussian terms** --
+       :math:`(a_i / b_i) \\exp(-\\pi r^2 / b_i)` for
+       each of the six terms.
+    4. **Sum and scale** --
+       Multiply sum by :math:`2\\pi` for projected
+       potential in Volt·Ångstrom.
 
     See Also
     --------
@@ -356,20 +352,6 @@ def get_mean_square_displacement(
     mean_square_displacement : scalar_float
         Mean square displacement ⟨u²⟩ in Ų
 
-    Implementation
-    --------------
-    1. **Retrieve Debye temperature** --
-       Look up element-specific :math:`\\Theta_D`.
-    2. **Debye model MSD** --
-       :math:`\\langle u^2 \\rangle = 3 \\hbar^2 T
-       / (m k_B \\Theta_D^2)` (high-T limit).
-    3. **Fallback model** --
-       If :math:`\\Theta_D = 0`, use generic scaling
-       :math:`\\propto \\sqrt{12/Z} \\times T/300`.
-    4. **Surface enhancement** --
-       Multiply by enhancement factor if atom is
-       flagged as surface.
-
     Notes
     -----
     The Debye model for mean square displacement is:
@@ -390,6 +372,18 @@ def get_mean_square_displacement(
     the generic scaling ⟨u²⟩ ∝ sqrt(12/Z) * T / 300K.
 
     Surface enhancement is applied ONLY here to avoid double-application.
+
+    1. **Retrieve Debye temperature** --
+       Look up element-specific :math:`\\Theta_D`.
+    2. **Debye model MSD** --
+       :math:`\\langle u^2 \\rangle = 3 \\hbar^2 T
+       / (m k_B \\Theta_D^2)` (high-T limit).
+    3. **Fallback model** --
+       If :math:`\\Theta_D = 0`, use generic scaling
+       :math:`\\propto \\sqrt{12/Z} \\times T/300`.
+    4. **Surface enhancement** --
+       Multiply by enhancement factor if atom is
+       flagged as surface.
 
     See Also
     --------
@@ -464,20 +458,18 @@ def debye_waller_factor(
     dw_factor : Float[Array, "..."]
         Debye-Waller damping factor exp(-W)
 
-    Implementation
-    --------------
+    Notes
+    -----
+    Surface enhancement should be applied when calculating the
+    mean_square_displacement, NOT in this function, to avoid
+    double-application of the enhancement factor.
+
     1. **Validate MSD** --
        Ensure :math:`\\langle u^2 \\rangle \\geq 0`.
     2. **Compute exponent** --
        :math:`W = \\tfrac{1}{2} \\langle u^2 \\rangle q^2`.
     3. **Evaluate factor** --
        :math:`\\exp(-W)`.
-
-    Notes
-    -----
-    Surface enhancement should be applied when calculating the
-    mean_square_displacement, NOT in this function, to avoid
-    double-application of the enhancement factor.
 
     See Also
     --------
@@ -525,8 +517,8 @@ def atomic_scattering_factor(
     scattering_factor : Float[Array, "..."]
         Total atomic scattering factor f(q)×exp(-W)
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **q magnitude** --
        :math:`|q| = \\|q\\|`.
     2. **Form factor** --
@@ -573,3 +565,15 @@ def atomic_scattering_factor(
     )
     scattering_factor: Float[Array, "..."] = form_factor * dw_factor
     return scattering_factor
+
+
+__all__: list[str] = [
+    "atomic_scattering_factor",
+    "debye_waller_factor",
+    "get_atomic_mass",
+    "get_debye_temperature",
+    "get_mean_square_displacement",
+    "kirkland_form_factor",
+    "kirkland_projected_potential",
+    "load_kirkland_parameters",
+]

@@ -350,8 +350,12 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     result : Float[Array, "..."]
         Approximated values of K_v(x)
 
-    Implementation
-    --------------
+    Notes
+    -----
+    For integer orders n > 1, uses recurrence relations
+    with masked updates to only update values within the
+    target range.
+
     1. **Classify Order** --
        Determine whether v is integer or non-integer and
        whether v = 1/2 (special case).
@@ -369,12 +373,6 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     5. **Combine Results** --
        Select the appropriate branch using ``jnp.where``
        for a fully differentiable, branchless computation.
-
-    Notes
-    -----
-    For integer orders n > 1, uses recurrence relations
-    with masked updates to only update values within the
-    target range.
     """
     v: Float[Array, ""] = jnp.asarray(v)
     x: Float[Array, "..."] = jnp.asarray(x)
@@ -406,3 +404,15 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     )
 
     return final_result
+
+
+__all__: list[str] = [
+    "_bessel_iv_series",
+    "_bessel_k0_series",
+    "_bessel_k_half",
+    "_bessel_kn_recurrence",
+    "_bessel_kv_large",
+    "_bessel_kv_small_integer",
+    "_bessel_kv_small_non_integer",
+    "bessel_kv",
+]

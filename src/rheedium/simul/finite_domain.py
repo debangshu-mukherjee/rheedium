@@ -94,8 +94,8 @@ def compute_domain_extent(
         Domain extent [Lx, Ly, Lz] in Ångstroms. Minimum value is 1.0 Å
         per dimension to avoid numerical issues.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Bounding box** --
        Compute min and max coordinates along each axis.
     2. **Raw extent** --
@@ -148,17 +148,6 @@ def extent_to_rod_sigma(
         Rod Gaussian widths [σx, σy] in 1/Ångstroms. Only x and y
         components are returned since rods extend continuously along z.
 
-    Implementation
-    --------------
-    1. **Enforce minimum extent** --
-       Clip domain sizes to 1.0 Å minimum.
-    2. **Fourier relation** --
-       :math:`\\sigma_q = 2\\pi / (L \\times \\sqrt{2\\pi})`
-       for each in-plane dimension.
-    3. **Return lateral widths** --
-       Only :math:`\\sigma_x, \\sigma_y` (rods extend
-       continuously along z).
-
     Notes
     -----
     The conversion uses:
@@ -171,6 +160,15 @@ def extent_to_rod_sigma(
     FWHM as the true sinc² profile from a finite domain. The sinc²
     function has FWHM ≈ 0.886 × 2π/L, and the Gaussian FWHM = 2.355σ,
     giving σ ≈ 0.376 × 2π/L ≈ 2π/(L × √(2π)).
+
+    1. **Enforce minimum extent** --
+       Clip domain sizes to 1.0 Å minimum.
+    2. **Fourier relation** --
+       :math:`\\sigma_q = 2\\pi / (L \\times \\sqrt{2\\pi})`
+       for each in-plane dimension.
+    3. **Return lateral widths** --
+       Only :math:`\\sigma_x, \\sigma_y` (rods extend
+       continuously along z).
 
     Examples
     --------
@@ -224,16 +222,6 @@ def compute_shell_sigma(
     shell_sigma : Float[Array, ""]
         Ewald shell Gaussian width in 1/Ångstroms.
 
-    Implementation
-    --------------
-    1. **Energy contribution** --
-       :math:`\\Delta k / k = \\Delta E / (2E)`.
-    2. **Divergence contribution** --
-       :math:`\\Delta k_{\\perp} = k \\times \\Delta\\theta`.
-    3. **Combine in quadrature** --
-       :math:`\\sigma_{shell} = k \\sqrt{(\\Delta E/2E)^2
-       + \\Delta\\theta^2}`.
-
     Notes
     -----
     The shell thickness arises from two contributions:
@@ -251,6 +239,14 @@ def compute_shell_sigma(
     For typical RHEED conditions (15 kV, ΔE/E = 10⁻⁴, Δθ = 1 mrad):
     - k ≈ 73 Å⁻¹
     - σ_shell ≈ 0.07 Å⁻¹
+
+    1. **Energy contribution** --
+       :math:`\\Delta k / k = \\Delta E / (2E)`.
+    2. **Divergence contribution** --
+       :math:`\\Delta k_{\\perp} = k \\times \\Delta\\theta`.
+    3. **Combine in quadrature** --
+       :math:`\\sigma_{shell} = k \\sqrt{(\\Delta E/2E)^2
+       + \\Delta\\theta^2}`.
 
     Examples
     --------
@@ -313,8 +309,14 @@ def rod_ewald_overlap(
         indicates exact Ewald sphere intersection; smaller values
         indicate partial overlap.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    For a sphere centred at the origin with radius :math:`|k|`,
+    the perpendicular distance from point :math:`k_{out}` is
+    :math:`|k_{out}| - |k|`. For vertical rods
+    (:math:`k_{out,xy} \\approx 0`) the mean of
+    :math:`\\sigma_x^2` and :math:`\\sigma_y^2` is used.
+
     1. **Outgoing wavevector** --
        :math:`k_{out} = k_{in} + G`.
     2. **Perpendicular distance** --
@@ -327,14 +329,6 @@ def rod_ewald_overlap(
        + (\\sigma_y \\sin\\phi)^2`.
     4. **Evaluate overlap** --
        :math:`\\exp(-d^2 / (2 \\sigma_{eff}^2))`.
-
-    Notes
-    -----
-    For a sphere centred at the origin with radius :math:`|k|`,
-    the perpendicular distance from point :math:`k_{out}` is
-    :math:`|k_{out}| - |k|`. For vertical rods
-    (:math:`k_{out,xy} \\approx 0`) the mean of
-    :math:`\\sigma_x^2` and :math:`\\sigma_y^2` is used.
 
     Examples
     --------
@@ -415,8 +409,8 @@ def finite_domain_intensities(
     modified_intensities : Float[Array, "N"]
         Intensities weighted by overlap: I_modified = I_base × overlap.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Incident wavevector** --
        Build :math:`k_{in}` from beam angles and
        wavelength.
@@ -471,3 +465,12 @@ def finite_domain_intensities(
         ewald.intensities * overlap_factors
     )
     return overlap_factors, modified_intensities
+
+
+__all__: list[str] = [
+    "compute_domain_extent",
+    "compute_shell_sigma",
+    "extent_to_rod_sigma",
+    "finite_domain_intensities",
+    "rod_ewald_overlap",
+]

@@ -8,34 +8,34 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
-:class:`RHEEDPattern`
-    Container for RHEED diffraction pattern data with
-    detector points.
+:class:`DetectorGeometry`
+    Configuration for RHEED detector geometry.
 :class:`RHEEDImage`
     Container for RHEED image data with pixel coordinates
     and intensity values.
-:func:`create_rheed_pattern`
-    Factory function to create RHEEDPattern instances with
-    data validation.
-:func:`create_rheed_image`
-    Factory function to create RHEEDImage instances with
-    data validation.
+:class:`RHEEDPattern`
+    Container for RHEED diffraction pattern data with
+    detector points.
 :class:`SlicedCrystal`
     JAX-compatible crystal structure sliced for multislice
     simulation.
-:func:`create_sliced_crystal`
-    Factory function to create SlicedCrystal instances with
-    data validation.
-:func:`bulk_to_slice`
-    Convert bulk CrystalStructure to SlicedCrystal for
-    multislice simulation.
 :class:`SurfaceConfig`
     Configuration for surface atom identification method
     and parameters.
+:func:`bulk_to_slice`
+    Convert bulk CrystalStructure to SlicedCrystal for
+    multislice simulation.
+:func:`create_rheed_image`
+    Factory function to create RHEEDImage instances with
+    data validation.
+:func:`create_rheed_pattern`
+    Factory function to create RHEEDPattern instances with
+    data validation.
+:func:`create_sliced_crystal`
+    Factory function to create SlicedCrystal instances with
+    data validation.
 :func:`identify_surface_atoms`
     Identify surface atoms using configurable methods.
-:class:`DetectorGeometry`
-    Configuration for RHEED detector geometry.
 
 Notes
 -----
@@ -268,8 +268,8 @@ def create_rheed_pattern(
     validated_rheed_pattern : RHEEDPattern
         Validated RHEED pattern instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     - Convert inputs to JAX arrays.
     - Validate array shapes: check k_out has shape (M, 3),
       detector_points has shape (M, 2), intensities has
@@ -413,8 +413,8 @@ def create_rheed_image(
     validated_rheed_image : RHEEDImage
         Validated RHEED image instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. Convert inputs to JAX arrays.
     2. Validate image array: check it is 2D, all values are
        finite and non-negative.
@@ -701,8 +701,8 @@ def create_sliced_crystal(
     validated_sliced_crystal : SlicedCrystal
         Validated SlicedCrystal instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     - Verify cart_positions shape is (N, 4) with N > 0.
     - Verify cell_lengths, cell_angles, orientation have
       correct shapes.
@@ -891,8 +891,16 @@ def bulk_to_slice(
     sliced_crystal : SlicedCrystal
         Surface-oriented crystal slab with transformed coordinates.
 
-    Implementation
-    --------------
+    Notes
+    -----
+    - The transformation preserves atomic types and relative
+      positions.
+    - The resulting structure has z as the surface normal.
+    - Periodic boundary conditions apply in x and y
+      directions.
+    - The depth direction (z) is typically non-periodic for
+      surface slabs.
+
     1. Build rotation matrix to align [hkl] direction with
        z-axis: convert Miller indices to reciprocal lattice
        vector and calculate rotation matrix R that maps this
@@ -907,16 +915,6 @@ def bulk_to_slice(
     5. Center the slab so z=0 is at the bottom surface.
     6. Calculate new cell parameters for the supercell.
     7. Return SlicedCrystal with transformed coordinates.
-
-    Notes
-    -----
-    - The transformation preserves atomic types and relative
-      positions.
-    - The resulting structure has z as the surface normal.
-    - Periodic boundary conditions apply in x and y
-      directions.
-    - The depth direction (z) is typically non-periodic for
-      surface slabs.
 
     Examples
     --------
@@ -1290,6 +1288,11 @@ class DetectorGeometry(NamedTuple):
     center_offset_v : float
         Vertical offset of detector center from beam axis in mm.
         Positive values shift the detector up. Default: 0.0
+    psf_sigma_pixels : float
+        Point spread function 1-sigma width in pixels. Models phosphor
+        grain size, camera lens blur, and CCD pixel diffusion. Typical:
+        0.5--2.0 pixels. Use 0.0 to disable PSF convolution.
+        Default: 1.0
 
     Notes
     -----
@@ -1312,3 +1315,18 @@ class DetectorGeometry(NamedTuple):
     curvature_radius: float = float("inf")
     center_offset_h: float = 0.0
     center_offset_v: float = 0.0
+    psf_sigma_pixels: float = 1.0
+
+
+__all__: list[str] = [
+    "DetectorGeometry",
+    "RHEEDImage",
+    "RHEEDPattern",
+    "SlicedCrystal",
+    "SurfaceConfig",
+    "bulk_to_slice",
+    "create_rheed_image",
+    "create_rheed_pattern",
+    "create_sliced_crystal",
+    "identify_surface_atoms",
+]

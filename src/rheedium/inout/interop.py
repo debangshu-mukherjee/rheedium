@@ -36,7 +36,6 @@ from rheedium.ucell import build_cell_vectors
 from .crystal import xyz_to_crystal
 from .xyz import _ATOMIC_NUMBERS
 
-
 _Z_TO_SYMBOL: dict[int, str] = {v: k for k, v in _ATOMIC_NUMBERS.items()}
 
 
@@ -64,18 +63,6 @@ def from_ase(atoms: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation
-    --------------
-    1. **Validate input** --
-       Check ASE is installed, cell is 3D and
-       non-degenerate.
-    2. **Extract data** --
-       Cell, positions, and atomic numbers from
-       ASE Atoms object.
-    3. **Convert** --
-       Create XYZData and delegate to
-       :func:`xyz_to_crystal`.
-
     Raises
     ------
     ImportError
@@ -94,6 +81,16 @@ def from_ase(atoms: Any) -> CrystalStructure:
 
     Periodic boundary conditions (PBC) from the ASE Atoms are not preserved
     in CrystalStructure, which assumes full 3D periodicity.
+
+    1. **Validate input** --
+       Check ASE is installed, cell is 3D and
+       non-degenerate.
+    2. **Extract data** --
+       Cell, positions, and atomic numbers from
+       ASE Atoms object.
+    3. **Convert** --
+       Create XYZData and delegate to
+       :func:`xyz_to_crystal`.
 
     Examples
     --------
@@ -168,15 +165,6 @@ def to_ase(crystal: CrystalStructure) -> Any:
         - ``numbers`` : Atomic numbers
         - ``pbc`` : Periodic boundary conditions set to True
 
-    Implementation
-    --------------
-    1. **Reconstruct cell** --
-       Build cell vectors from lengths and angles.
-    2. **Convert to NumPy** --
-       Extract positions and atomic numbers.
-    3. **Create Atoms** --
-       ASE Atoms with ``pbc=True``.
-
     Raises
     ------
     ImportError
@@ -187,6 +175,13 @@ def to_ase(crystal: CrystalStructure) -> Any:
     The created Atoms object has ``pbc=True`` (full 3D periodicity),
     matching the assumption in rheedium that crystal structures are
     periodic.
+
+    1. **Reconstruct cell** --
+       Build cell vectors from lengths and angles.
+    2. **Convert to NumPy** --
+       Extract positions and atomic numbers.
+    3. **Create Atoms** --
+       ASE Atoms with ``pbc=True``.
 
     Examples
     --------
@@ -252,17 +247,6 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation
-    --------------
-    1. **Validate input** --
-       Check pymatgen is installed and input type.
-    2. **Extract data** --
-       Lattice matrix, Cartesian coords, atomic
-       numbers from pymatgen Structure.
-    3. **Convert** --
-       Create XYZData and delegate to
-       :func:`xyz_to_crystal`.
-
     Raises
     ------
     ImportError
@@ -277,6 +261,15 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
     - ``structure.lattice.matrix`` : Lattice vectors
     - ``structure.cart_coords`` : Cartesian atomic positions
     - ``site.specie.Z`` : Atomic numbers for each site
+
+    1. **Validate input** --
+       Check pymatgen is installed and input type.
+    2. **Extract data** --
+       Lattice matrix, Cartesian coords, atomic
+       numbers from pymatgen Structure.
+    3. **Convert** --
+       Create XYZData and delegate to
+       :func:`xyz_to_crystal`.
 
     Examples
     --------
@@ -338,16 +331,6 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     structure : pymatgen.core.Structure
         Equivalent pymatgen Structure object.
 
-    Implementation
-    --------------
-    1. **Reconstruct cell** --
-       Build cell vectors from lengths and angles.
-    2. **Map species** --
-       Convert atomic numbers to element symbols.
-    3. **Create Structure** --
-       pymatgen Structure from lattice, species, and
-       fractional coordinates.
-
     Raises
     ------
     ImportError
@@ -361,6 +344,14 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
       build_cell_vectors)
     - Fractional coordinates from frac_positions
     - Element species from atomic numbers
+
+    1. **Reconstruct cell** --
+       Build cell vectors from lengths and angles.
+    2. **Map species** --
+       Convert atomic numbers to element symbols.
+    3. **Create Structure** --
+       pymatgen Structure from lattice, species, and
+       fractional coordinates.
 
     Examples
     --------
@@ -395,3 +386,11 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
     structure = Structure(lattice, species, frac_coords)
 
     return structure
+
+
+__all__: list[str] = [
+    "from_ase",
+    "from_pymatgen",
+    "to_ase",
+    "to_pymatgen",
+]

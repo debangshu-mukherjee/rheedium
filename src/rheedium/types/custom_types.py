@@ -43,3 +43,13 @@ scalar_num: TypeAlias = Union[int, float, Num[Array, " "]]
 non_jax_number: TypeAlias = Union[int, float]
 float_image: TypeAlias = Float[Array, " H W"]
 int_image: TypeAlias = Integer[Array, " H W"]
+
+__all__: list[str] = [
+    "float_image",
+    "int_image",
+    "non_jax_number",
+    "scalar_bool",
+    "scalar_float",
+    "scalar_int",
+    "scalar_num",
+]

@@ -164,8 +164,15 @@ def parse_cif_and_scrape(
         thickness.
 
 
-    Implementation
-    --------------
+    Notes
+    -----
+    - The provided ``zone_axis`` is normalized internally.
+      Current implementation uses thickness only along the
+      zone axis direction (z-component of
+      ``thickness_xyz``).
+    - The ``tolerance`` parameter is reserved for
+      compatibility and future functionality.
+
     1. **Parse CIF** --
        Load the CIF file to obtain the initial crystal
        structure with all symmetry-equivalent positions.
@@ -191,15 +198,6 @@ def parse_cif_and_scrape(
     8. **Build Output Structure** --
        Create a new ``CrystalStructure`` with the
        filtered positions and original cell parameters.
-
-    Notes
-    -----
-    - The provided ``zone_axis`` is normalized internally.
-      Current implementation uses thickness only along the
-      zone axis direction (z-component of
-      ``thickness_xyz``).
-    - The ``tolerance`` parameter is reserved for
-      compatibility and future functionality.
     """
     crystal: CrystalStructure = rh.inout.parse_cif(cif_path)
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
@@ -241,3 +239,10 @@ def parse_cif_and_scrape(
         cell_angles=crystal.cell_angles,
     )
     return filtered_crystal
+
+
+__all__: list[str] = [
+    "angle_in_degrees",
+    "compute_lengths_angles",
+    "parse_cif_and_scrape",
+]

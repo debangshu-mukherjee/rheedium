@@ -946,6 +946,7 @@ class TestDetectorGeometry(chex.TestCase):
         assert geom.curvature_radius == float("inf")
         assert geom.center_offset_h == 0.0
         assert geom.center_offset_v == 0.0
+        assert geom.psf_sigma_pixels == 1.0
 
     def test_custom_values(self) -> None:
         """Custom geometry should preserve values."""
@@ -955,12 +956,19 @@ class TestDetectorGeometry(chex.TestCase):
             curvature_radius=500.0,
             center_offset_h=1.5,
             center_offset_v=-2.0,
+            psf_sigma_pixels=1.5,
         )
         assert geom.distance == 200.0
         assert geom.tilt_angle == 5.0
         assert geom.curvature_radius == 500.0
         assert geom.center_offset_h == 1.5
         assert geom.center_offset_v == -2.0
+        assert geom.psf_sigma_pixels == 1.5
+
+    def test_psf_sigma_zero_disables(self) -> None:
+        """Zero PSF sigma should be valid (disables convolution)."""
+        geom = DetectorGeometry(psf_sigma_pixels=0.0)
+        assert geom.psf_sigma_pixels == 0.0
 
     def test_immutable(self) -> None:
         """DetectorGeometry should be immutable (NamedTuple)."""

@@ -49,8 +49,8 @@ def create_phosphor_colormap(
     cmap : LinearSegmentedColormap
         Custom phosphor screen colormap.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Define Color Anchors** --
        Set transition points and RGB values from black
        through dark green, bright green, lighter green,
@@ -147,8 +147,8 @@ def plot_rheed(
     y_extent : Tuple[float, float], optional
         Y-axis range (min, max) in mm. Default: auto from data with padding
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Extract Coordinates** --
        Convert detector points and intensities from the
        RHEEDPattern to NumPy arrays.
@@ -234,3 +234,9 @@ def plot_rheed(
     ax.set_title(f"RHEED Pattern ({interp_type})")
     plt.colorbar(im, ax=ax, label="Intensity (arb. units)")
     plt.show()
+
+
+__all__: list[str] = [
+    "create_phosphor_colormap",
+    "plot_rheed",
+]

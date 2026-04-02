@@ -93,8 +93,8 @@ def reciprocal_unitcell(
     reciprocal_angles : Float[Array, "3"]
         Reciprocal cell angles [α*, β*, γ*] in degrees or radians
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Angle Conversion** --
        Convert input angles to radians if provided in
        degrees.
@@ -198,8 +198,8 @@ def get_unit_cell_matrix(
     Float[Array, "3 3"]
         Transformation matrix from direct to reciprocal space.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Angle Conversion** --
        Convert cell angles from degrees to radians and
        compute their cosines and sines.
@@ -283,8 +283,8 @@ def build_cell_vectors(
     Float[Array, "3 3"]
         Unit cell vectors as rows of 3x3 matrix.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Angle Conversion** --
        Convert alpha, beta, gamma from degrees to radians.
     2. **First Vector** --
@@ -360,8 +360,8 @@ def compute_lengths_angles(
     angles : Float[Array, "3"]
         Unit cell angles [α, β, γ] in degrees
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Compute Lengths** --
        Calculate the Euclidean norm of each row vector to
        obtain a, b, c.
@@ -444,8 +444,8 @@ def generate_reciprocal_points(
     Float[Array, "M 3"]
         Reciprocal lattice vectors in 1/angstroms.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Extract Cell Parameters** --
        Retrieve lengths and angles from the crystal
        structure.
@@ -537,8 +537,8 @@ def atom_scraper(
     filtered_crystal : CrystalStructure
         Filtered crystal structure.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Build Cell Vectors** --
        Construct direct lattice vectors from the crystal
        structure cell parameters.
@@ -740,8 +740,8 @@ def reciprocal_lattice_vectors(
         in 1/Angstroms. Each row is a reciprocal basis
         vector [b₁, b₂, b₃].
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Angle Conversion** --
        Convert input angles to radians if provided in
        degrees.
@@ -836,8 +836,8 @@ def miller_to_reciprocal(
         Reciprocal space vectors in 1/Angstroms with same batch shape
         as input hkl indices
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Cast to Float** --
        Convert integer Miller indices to float for
        computation with reciprocal vectors.
@@ -879,3 +879,15 @@ def miller_to_reciprocal(
     )
 
     return g_vectors
+
+
+__all__: list[str] = [
+    "atom_scraper",
+    "build_cell_vectors",
+    "compute_lengths_angles",
+    "generate_reciprocal_points",
+    "get_unit_cell_matrix",
+    "miller_to_reciprocal",
+    "reciprocal_lattice_vectors",
+    "reciprocal_unitcell",
+]

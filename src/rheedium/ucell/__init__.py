@@ -48,7 +48,7 @@ from .unitcell import (
     reciprocal_unitcell,
 )
 
-__all__ = [
+__all__: list[str] = [
     "angle_in_degrees",
     "atom_scraper",
     "bessel_kv",

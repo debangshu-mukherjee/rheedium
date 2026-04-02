@@ -8,10 +8,33 @@ that support JAX transformations and automatic differentiation.
 
 Routine Listings
 ----------------
+:class:`CrystalStructure`
+    JAX-compatible crystal structure with fractional and Cartesian coordinates.
+:class:`DetectorGeometry`
+    Configuration for RHEED detector geometry (tilt, curvature, offsets).
+:class:`ElectronBeam`
+    Complete specification of an electron beam for RHEED simulation.
+:class:`EwaldData`
+    Angle-independent Ewald sphere data for RHEED simulation.
+:class:`PotentialSlices`
+    JAX-compatible data structure for representing multislice potential data.
+:class:`RHEEDImage`
+    Container for RHEED image data with pixel coordinates and intensity values.
+:class:`RHEEDPattern`
+    Container for RHEED diffraction pattern data with detector points and
+    intensities.
+:class:`SlicedCrystal`
+    JAX-compatible crystal structure sliced for multislice simulation.
+:class:`SurfaceConfig`
+    Configuration for surface atom identification method and parameters.
+:class:`XYZData`
+    A PyTree for XYZ file data with atomic positions and metadata.
 :func:`bulk_to_slice`
     Convert bulk CrystalStructure to SlicedCrystal for multislice simulation.
 :func:`create_crystal_structure`
     Factory function to create CrystalStructure instances.
+:func:`create_electron_beam`
+    Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
 :func:`create_potential_slices`
@@ -26,25 +49,12 @@ Routine Listings
     Factory function to create XYZData instances.
 :func:`identify_surface_atoms`
     Identify surface atoms using configurable methods.
-:class:`CrystalStructure`
-    JAX-compatible crystal structure with fractional and Cartesian coordinates.
-:class:`DetectorGeometry`
-    Configuration for RHEED detector geometry (tilt, curvature, offsets).
-:class:`EwaldData`
-    Angle-independent Ewald sphere data for RHEED simulation.
 :obj:`float_image`
     Type alias for float-valued 2D image arrays.
 :obj:`int_image`
     Type alias for integer-valued 2D image arrays.
 :obj:`non_jax_number`
     Union type for non-JAX numeric values (int or float).
-:class:`PotentialSlices`
-    JAX-compatible data structure for representing multislice potential data.
-:class:`RHEEDImage`
-    Container for RHEED image data with pixel coordinates and intensity values.
-:class:`RHEEDPattern`
-    Container for RHEED diffraction pattern data with detector points and
-    intensities.
 :obj:`scalar_bool`
     Union type for scalar boolean values (bool or JAX scalar array).
 :obj:`scalar_float`
@@ -53,12 +63,6 @@ Routine Listings
     Union type for scalar integer values (int or JAX scalar array).
 :obj:`scalar_num`
     Union type for scalar numeric values (int, float, or JAX scalar array).
-:class:`SlicedCrystal`
-    JAX-compatible crystal structure sliced for multislice simulation.
-:class:`SurfaceConfig`
-    Configuration for surface atom identification method and parameters.
-:class:`XYZData`
-    A PyTree for XYZ file data with atomic positions and metadata.
 
 Notes
 -----
@@ -66,6 +70,10 @@ Every PyTree has a corresponding factory function to create the instance. This
 is because beartype does not support type checking of dataclasses.
 """
 
+from .beam_types import (
+    ElectronBeam,
+    create_electron_beam,
+)
 from .crystal_types import (
     CrystalStructure,
     EwaldData,
@@ -98,9 +106,10 @@ from .rheed_types import (
     identify_surface_atoms,
 )
 
-__all__ = [
+__all__: list[str] = [
     "bulk_to_slice",
     "create_crystal_structure",
+    "create_electron_beam",
     "create_ewald_data",
     "create_potential_slices",
     "create_rheed_image",
@@ -109,6 +118,7 @@ __all__ = [
     "create_xyz_data",
     "CrystalStructure",
     "DetectorGeometry",
+    "ElectronBeam",
     "EwaldData",
     "float_image",
     "identify_surface_atoms",

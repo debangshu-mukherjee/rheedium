@@ -45,17 +45,6 @@ def wavelength_ang(
     This is more accurate than simplified approximations, especially at
     higher voltages (>=30 keV) where the difference can be several percent.
 
-    Implementation
-    --------------
-    1. **Convert voltage** --
-       Multiply kV by 1000 to obtain voltage in Volts.
-    2. **Relativistic correction** --
-       Compute corrected voltage
-       :math:`V_{corr} = V (1 + eV / 2 m_e c^2)`.
-    3. **Wavelength calculation** --
-       Compute :math:`\\lambda = h / \\sqrt{2 m_e e V_{corr}}`
-       and return in Ångstroms.
-
     Parameters
     ----------
     voltage_kv : Union[scalar_num, Num[Array, "..."]]
@@ -79,6 +68,15 @@ def wavelength_ang(
         lambda(Å) = 12.2643 / sqrt(V * (1 + 0.978476e-6 * V))
 
     where V is in volts and the coefficient 0.978476e-6 = e / (2 * m_e * c^2).
+
+    1. **Convert voltage** --
+       Multiply kV by 1000 to obtain voltage in Volts.
+    2. **Relativistic correction** --
+       Compute corrected voltage
+       :math:`V_{corr} = V (1 + eV / 2 m_e c^2)`.
+    3. **Wavelength calculation** --
+       Compute :math:`\\lambda = h / \\sqrt{2 m_e e V_{corr}}`
+       and return in Ångstroms.
 
     Examples
     --------
@@ -141,8 +139,8 @@ def incident_wavevector(
         The beam propagates in the surface plane at azimuthal angle phi,
         with a downward z-component determined by the grazing angle theta.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Compute wavevector magnitude** --
        :math:`k = 2\\pi / \\lambda`.
     2. **Convert angles** --
@@ -182,8 +180,8 @@ def interaction_constant(
     used in multislice calculations. Includes relativistic mass
     correction via the Lorentz factor.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Convert units** --
        Convert voltage from kV to V and wavelength from
        Ångstroms to metres.
@@ -228,3 +226,10 @@ def interaction_constant(
     # Convert from 1/(V·m) to 1/(V·Å)
     sigma_ang: Float[Array, ""] = sigma_si * 1e-10
     return sigma_ang
+
+
+__all__: list[str] = [
+    "incident_wavevector",
+    "interaction_constant",
+    "wavelength_ang",
+]

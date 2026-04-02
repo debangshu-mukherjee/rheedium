@@ -69,8 +69,8 @@ def make_ewald_sphere(
     radius : scalar_float
         Radius of the Ewald sphere (k).
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Derive wavelength** --
        :math:`\\lambda = 2\\pi / k`.
     2. **Compute incident wavevector** --
@@ -121,19 +121,6 @@ def simple_structure_factor(
     intensity : Float[Array, ""]
         Diffraction intensity :math:`I = |F(G)|^2`
 
-    Implementation
-    --------------
-    1. **Approximate scattering factors** --
-       Use :math:`f_j \\approx Z_j` (atomic number) as a
-       simplified form factor.
-    2. **Compute phase factors** --
-       Calculate :math:`\\exp(i \\cdot G \\cdot r_j)` for all
-       atoms via vectorized dot products.
-    3. **Sum contributions** --
-       :math:`F = \\sum f_j \\cdot \\exp(i \\cdot G \\cdot r_j)`.
-    4. **Return intensity** --
-       :math:`I(G) = |F(G)|^2`.
-
     Notes
     -----
     Structure factor (Paper's Eq. 7):
@@ -144,6 +131,17 @@ def simple_structure_factor(
 
     For more accurate scattering, use Kirkland parameterization
     (see :func:`kirkland_form_factor` in form_factors).
+
+    1. **Approximate scattering factors** --
+       Use :math:`f_j \\approx Z_j` (atomic number) as a
+       simplified form factor.
+    2. **Compute phase factors** --
+       Calculate :math:`\\exp(i \\cdot G \\cdot r_j)` for all
+       atoms via vectorized dot products.
+    3. **Sum contributions** --
+       :math:`F = \\sum f_j \\cdot \\exp(i \\cdot G \\cdot r_j)`.
+    4. **Return intensity** --
+       :math:`I(G) = |F(G)|^2`.
 
     Examples
     --------
@@ -215,8 +213,6 @@ def kinematic_spot_simulator(
     For surface-sensitive RHEED with continuous crystal truncation rods
     (CTRs) and streak patterns, use `kinematic_ctr_simulator` instead.
 
-    Implementation
-    --------------
     1. **Generate reciprocal lattice** --
        Create G(h,k,l) up to (hmax, kmax, lmax).
     2. **Compute beam parameters** --
@@ -292,3 +288,10 @@ def kinematic_spot_simulator(
         intensities=intensities,
     )
     return pattern
+
+
+__all__: list[str] = [
+    "kinematic_spot_simulator",
+    "make_ewald_sphere",
+    "simple_structure_factor",
+]

@@ -85,8 +85,8 @@ def _compute_structure_factor_single(
     structure_factor : Complex[Array, ""]
         Complex structure factor F(G).
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Compute scattering magnitude** --
        Calculate :math:`|G|` for form factor lookup.
     2. **Per-atom contributions** --
@@ -170,8 +170,8 @@ def build_ewald_data(
         Complete angle-independent Ewald sphere data ready for use with
         kinematic_from_ewald() or similar angle-dependent functions.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Compute wavelength** --
        Relativistic electron wavelength from voltage.
     2. **Wavevector magnitude** --
@@ -335,8 +335,8 @@ def ewald_allowed_reflections(
         Structure factor intensities. In binary mode: :math:`I(G) = |F(G)|^2`.
         In finite domain mode: :math:`I(G) = |F(G)|^2 \\times \\text{overlap}`.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Compute incident wavevector** --
        Build :math:`k_{in}` from theta, phi, and
        :math:`|k|`.
@@ -442,3 +442,10 @@ def ewald_allowed_reflections(
         k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
         intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
     return allowed_indices, k_out, intensities
+
+
+__all__: list[str] = [
+    "_compute_structure_factor_single",
+    "build_ewald_data",
+    "ewald_allowed_reflections",
+]

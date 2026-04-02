@@ -355,8 +355,8 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         If the file does not have .cif extension, or if required cell
         parameters or atomic positions cannot be parsed.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Validate path** --
        Check file existence and ``.cif`` extension.
     2. **Read file** --
@@ -633,8 +633,8 @@ def symmetry_expansion(
     expanded_crystal : CrystalStructure
         Symmetry-expanded crystal structure without duplicates.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Apply operations** --
        Transform each fractional position by every
        symmetry operation, wrap to [0, 1) with modulo.
@@ -681,3 +681,17 @@ def symmetry_expansion(
         cell_angles=crystal.cell_angles,
     )
     return expanded_crystal
+
+
+__all__: list[str] = [
+    "_apply_symmetry_ops",
+    "_deduplicate_positions",
+    "_extract_cell_params",
+    "_extract_sym_op_from_line",
+    "_parse_atom_positions",
+    "_parse_sym_op",
+    "_parse_symmetry_ops",
+    "_strip_esd",
+    "parse_cif",
+    "symmetry_expansion",
+]

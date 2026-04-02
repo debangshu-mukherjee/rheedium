@@ -75,16 +75,6 @@ def lattice_to_cell_params(
         - ``beta`` : angle between vectors a and c
         - ``gamma`` : angle between vectors a and b
 
-    Implementation
-    --------------
-    1. **Cell lengths** --
-       Euclidean norm of each lattice vector.
-    2. **Cell angles** --
-       :math:`\\cos(\\alpha) = (b \\cdot c) / (bc)`,
-       etc., with clipping to [-1, 1].
-    3. **Convert to degrees** --
-       :func:`jnp.degrees` of :func:`jnp.arccos`.
-
     Notes
     -----
     The conversion uses the standard crystallographic definitions:
@@ -99,6 +89,14 @@ def lattice_to_cell_params(
 
     Cosine values are clipped to [-1, 1] to prevent numerical issues with
     arccos when vectors are nearly parallel or antiparallel.
+
+    1. **Cell lengths** --
+       Euclidean norm of each lattice vector.
+    2. **Cell angles** --
+       :math:`\\cos(\\alpha) = (b \\cdot c) / (bc)`,
+       etc., with clipping to [-1, 1].
+    3. **Convert to degrees** --
+       :func:`jnp.degrees` of :func:`jnp.arccos`.
 
     Examples
     --------
@@ -173,8 +171,12 @@ def _infer_lattice_from_positions(
         elements are the cell dimensions [a, b, c] in Angstroms. Off-diagonal
         elements are zero (90-degree angles).
 
-    Implementation
-    --------------
+    Notes
+    -----
+    For non-orthorhombic structures, explicit lattice vectors
+    should be provided via the extended XYZ format or the
+    ``cell_vectors`` parameter.
+
     1. **Bounding box** --
        Min and max coordinates along each axis.
     2. **Add padding** --
@@ -183,12 +185,6 @@ def _infer_lattice_from_positions(
        Clip to 1.0 Å per dimension.
     4. **Diagonal matrix** --
        Construct orthorhombic cell (90° angles).
-
-    Notes
-    -----
-    For non-orthorhombic structures, explicit lattice vectors
-    should be provided via the extended XYZ format or the
-    ``cell_vectors`` parameter.
 
     Examples
     --------
@@ -453,3 +449,11 @@ def parse_crystal(
     raise ValueError(
         f"Unsupported file format '{suffix}'. Supported: {supported}"
     )
+
+
+__all__: list[str] = [
+    "_infer_lattice_from_positions",
+    "lattice_to_cell_params",
+    "parse_crystal",
+    "xyz_to_crystal",
+]

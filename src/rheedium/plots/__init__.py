@@ -64,7 +64,7 @@ from .diagrams import (
 )
 from .figuring import create_phosphor_colormap, plot_rheed
 
-__all__ = [
+__all__: list[str] = [
     "create_phosphor_colormap",
     "plot_crystal_structure_3d",
     "plot_ctr_profile",

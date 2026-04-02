@@ -242,21 +242,6 @@ def parse_poscar(
         - ``cell_lengths`` : [a, b, c] in Angstroms
         - ``cell_angles`` : [alpha, beta, gamma] in degrees
 
-    Implementation
-    --------------
-    1. **Read file** --
-       Load lines, validate minimum length.
-    2. **Parse header** --
-       Extract scaling, lattice, species, and counts.
-    3. **Coordinate mode** --
-       Detect Direct or Cartesian, skip optional
-       Selective dynamics line.
-    4. **Parse positions** --
-       Read fractional or Cartesian coordinates.
-    5. **Assemble structure** --
-       Cell parameters, Cartesian positions, and
-       create CrystalStructure.
-
     Raises
     ------
     FileNotFoundError
@@ -285,6 +270,19 @@ def parse_poscar(
 
     The scaling factor is applied to all lattice vectors. Selective dynamics
     flags (T/F) are parsed but not stored in CrystalStructure.
+
+    1. **Read file** --
+       Load lines, validate minimum length.
+    2. **Parse header** --
+       Extract scaling, lattice, species, and counts.
+    3. **Coordinate mode** --
+       Detect Direct or Cartesian, skip optional
+       Selective dynamics line.
+    4. **Parse positions** --
+       Read fractional or Cartesian coordinates.
+    5. **Assemble structure** --
+       Cell parameters, Cartesian positions, and
+       create CrystalStructure.
 
     Examples
     --------
@@ -373,3 +371,10 @@ def parse_poscar(
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
+
+
+__all__: list[str] = [
+    "_parse_poscar_header",
+    "_parse_poscar_positions",
+    "parse_poscar",
+]

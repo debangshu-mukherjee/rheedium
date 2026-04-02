@@ -12,23 +12,23 @@ Routine Listings
 :class:`CrystalStructure`
     JAX-compatible crystal structure with fractional and
     Cartesian coordinates.
-:func:`create_crystal_structure`
-    Factory function to create CrystalStructure instances
-    with data validation.
 :class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
-:func:`create_ewald_data`
-    Factory function to create EwaldData instances with
-    validation.
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice
     potential data.
-:func:`create_potential_slices`
-    Factory function to create PotentialSlices instances with
-    data validation.
 :class:`XYZData`
     A PyTree for XYZ file data with atomic positions and
     metadata.
+:func:`create_crystal_structure`
+    Factory function to create CrystalStructure instances
+    with data validation.
+:func:`create_ewald_data`
+    Factory function to create EwaldData instances with
+    validation.
+:func:`create_potential_slices`
+    Factory function to create PotentialSlices instances with
+    data validation.
 :func:`create_xyz_data`
     Factory function to create XYZData instances with data
     validation.
@@ -168,8 +168,8 @@ def create_crystal_structure(
     validated_crystal_structure : CrystalStructure
         A validated CrystalStructure instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     - Convert all inputs to JAX arrays using jnp.asarray.
     - Validate shapes of frac_positions, cart_positions,
       cell_lengths, and cell_angles.
@@ -455,8 +455,8 @@ def create_ewald_data(
     ewald_data : EwaldData
         Validated EwaldData PyTree instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. **Convert dtypes** --
        float64 for real-valued fields, int32 for Miller
        indices, complex128 for structure factors.
@@ -732,8 +732,8 @@ def create_potential_slices(
     validated_potential_slices : PotentialSlices
         Validated PotentialSlices instance.
 
-    Implementation
-    --------------
+    Notes
+    -----
     1. Convert inputs to JAX arrays with appropriate dtypes.
     2. Validate slice array is 3D.
     3. Ensure slice thickness is positive.
@@ -993,8 +993,8 @@ def create_xyz_data(
     validated_xyz_data : XYZData
         Validated PyTree structure for XYZ file contents.
 
-    Implementation
-    --------------
+    Notes
+    -----
     - Convert required inputs to JAX arrays with appropriate
       dtypes: positions to float64, atomic_numbers to int32,
       lattice/stress/energy to float64 if provided.
@@ -1070,3 +1070,15 @@ def create_xyz_data(
 
     validated_xyz_data: XYZData = _validate_and_create()
     return validated_xyz_data
+
+
+__all__: list[str] = [
+    "CrystalStructure",
+    "EwaldData",
+    "PotentialSlices",
+    "XYZData",
+    "create_crystal_structure",
+    "create_ewald_data",
+    "create_potential_slices",
+    "create_xyz_data",
+]
