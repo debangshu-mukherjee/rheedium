@@ -19,6 +19,8 @@ Routine Listings
     Background subtraction, flat-field correction, and normalization.
 :func:`detect_beam_center`
     Locate the specular spot position automatically.
+:func:`load_tiff_as_rheed_image`
+    Load a single TIFF frame and return a RHEEDImage PyTree.
 
 Notes
 -----
@@ -40,7 +42,7 @@ from beartype import beartype
 from beartype.typing import List, NamedTuple, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
 
-from rheedium.types import scalar_float
+from rheedium.types import RHEEDImage, create_rheed_image, scalar_float
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -508,10 +510,115 @@ def detect_beam_center(
     return center
 
 
+@beartype
+def load_tiff_as_rheed_image(
+    path: Union[str, Path],
+    incoming_angle_deg: float,
+    voltage_kv: float,
+    detector_distance_mm: float,
+    calibration: Union[float, Float[Array, "2"]] = 1.0,
+    background: Optional[Float[Array, "H W"]] = None,
+) -> RHEEDImage:
+    r"""Load a single TIFF frame and return a RHEEDImage PyTree.
+
+    Extended Summary
+    ----------------
+    Convenience function that loads a TIFF file, optionally subtracts
+    a background, computes the electron wavelength from the
+    accelerating voltage, and packages everything into a
+    ``RHEEDImage`` PyTree ready for comparison with simulated
+    patterns.
+
+    Parameters
+    ----------
+    path : Union[str, Path]
+        Path to a single-frame TIFF file. If the file is multi-page,
+        only the first frame is used.
+    incoming_angle_deg : float
+        Grazing incidence angle in degrees.
+    voltage_kv : float
+        Accelerating voltage in kilovolts. Used to compute the
+        relativistic electron wavelength.
+    detector_distance_mm : float
+        Sample-to-detector distance in mm.
+    calibration : Union[float, Float[Array, "2"]], optional
+        Pixel-to-physical-units calibration. Either a scalar (same
+        for both axes) or a 2-element array ``[cal_x, cal_y]``.
+        Default: 1.0
+    background : Float[Array, "H W"], optional
+        Dark frame to subtract before packaging. If ``None``, no
+        subtraction is performed.
+
+    Returns
+    -------
+    rheed_image : RHEEDImage
+        Validated RHEEDImage PyTree containing the image and all
+        experimental parameters.
+
+    Notes
+    -----
+    1. **Load image** --
+       Read the TIFF via ``tifffile``. If multi-page, take frame 0.
+    2. **Background subtract** --
+       If provided, subtract and clip to non-negative.
+    3. **Compute wavelength** --
+       Relativistic de Broglie wavelength:
+       :math:`\\lambda = 12.2643 / \\sqrt{V(1 + 0.978476 \\times 10^{-6} V)}`
+       where :math:`V` is voltage in volts.
+    4. **Package** --
+       Call :func:`~rheedium.types.create_rheed_image` with all
+       parameters.
+
+    Examples
+    --------
+    >>> import rheedium as rh
+    >>> img = rh.inout.load_tiff_as_rheed_image(
+    ...     "frame_001.tif",
+    ...     incoming_angle_deg=2.0,
+    ...     voltage_kv=20.0,
+    ...     detector_distance_mm=350.0,
+    ... )
+    >>> img.img_array.shape
+    (480, 640)
+    """
+    filepath: Path = Path(path)
+    with tifffile.TiffFile(filepath) as tif:
+        np_img: np.ndarray = tif.asarray()
+
+    if np_img.ndim > _SINGLE_FRAME_NDIM:
+        np_img = np_img[0]
+
+    img_array: Float[Array, "H W"] = jnp.asarray(np_img, dtype=jnp.float64)
+
+    if background is not None:
+        img_array = jnp.maximum(img_array - background, 0.0)
+
+    voltage_v: float = voltage_kv * 1000.0
+    relativistic_coeff: float = 0.978476e-6
+    corrected_voltage: float = voltage_v * (
+        1.0 + relativistic_coeff * voltage_v
+    )
+    electron_wavelength_ang: float = 12.2643 / np.sqrt(corrected_voltage)
+
+    cal: Union[Float[Array, "2"], scalar_float] = jnp.asarray(
+        calibration, dtype=jnp.float64
+    )
+
+    rheed_image: RHEEDImage = create_rheed_image(
+        img_array=img_array,
+        incoming_angle=jnp.float64(incoming_angle_deg),
+        calibration=cal,
+        electron_wavelength=jnp.float64(electron_wavelength_ang),
+        detector_distance=jnp.float64(detector_distance_mm),
+    )
+    return rheed_image
+
+
 __all__: list[str] = [
     "FrameMetadata",
     "detect_beam_center",
     "extract_frame_metadata",
+    "load_tiff_as_rheed_image",
     "load_tiff_sequence",
     "normalize_sequence",
 ]

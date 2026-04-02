@@ -29,6 +29,8 @@ Routine Listings
     Loads Kirkland scattering factors from CSV file.
 :func:`lattice_to_cell_params`
     Convert 3x3 lattice vectors to crystallographic cell parameters.
+:func:`load_tiff_as_rheed_image`
+    Load a single TIFF frame and return a RHEEDImage PyTree.
 :func:`load_tiff_sequence`
     Load ordered TIFF stack into a JAX array.
 :func:`normalize_sequence`
@@ -71,6 +73,7 @@ from .tiff import (
     FrameMetadata,
     detect_beam_center,
     extract_frame_metadata,
+    load_tiff_as_rheed_image,
     load_tiff_sequence,
     normalize_sequence,
 )
@@ -94,6 +97,7 @@ __all__: list[str] = [
     "from_pymatgen",
     "kirkland_potentials",
     "lattice_to_cell_params",
+    "load_tiff_as_rheed_image",
     "load_tiff_sequence",
     "normalize_sequence",
     "parse_cif",

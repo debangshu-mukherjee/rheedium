@@ -19,10 +19,11 @@ from rheedium.inout.tiff import (
     FrameMetadata,
     detect_beam_center,
     extract_frame_metadata,
+    load_tiff_as_rheed_image,
     load_tiff_sequence,
     normalize_sequence,
 )
-from rheedium.types import scalar_float
+from rheedium.types import RHEEDImage, scalar_float
 
 H: int = 32
 W: int = 48
@@ -332,6 +333,117 @@ class TestDetectBeamCenter(chex.TestCase):
             jnp.array([row_center, col_center], dtype=jnp.float64),
             atol=2.0,
         )
+
+
+class TestLoadTiffAsRheedImage(chex.TestCase):
+    """Tests for load_tiff_as_rheed_image."""
+
+    def setUp(self) -> None:
+        """Create temporary directory for test files."""
+        super().setUp()
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.tmp_path: Path = Path(self._tmpdir.name)
+
+    def tearDown(self) -> None:
+        """Clean up temporary directory."""
+        self._tmpdir.cleanup()
+        super().tearDown()
+
+    def test_returns_rheed_image(self) -> None:
+        """Returns a RHEEDImage instance."""
+        data: np.ndarray = np.ones((H, W), dtype=np.float32) * 500.0
+        tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "frame.tif",
+            incoming_angle_deg=2.0,
+            voltage_kv=20.0,
+            detector_distance_mm=350.0,
+        )
+        self.assertIsInstance(img, RHEEDImage)
+
+    def test_image_shape(self) -> None:
+        """Image array has correct shape."""
+        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "frame.tif",
+            incoming_angle_deg=2.0,
+            voltage_kv=20.0,
+            detector_distance_mm=350.0,
+        )
+        chex.assert_shape(img.img_array, (H, W))
+
+    def test_wavelength_correct(self) -> None:
+        """Electron wavelength is physically reasonable for 20 keV."""
+        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "frame.tif",
+            incoming_angle_deg=2.0,
+            voltage_kv=20.0,
+            detector_distance_mm=350.0,
+        )
+        chex.assert_trees_all_close(
+            img.electron_wavelength, 0.0859, atol=0.001
+        )
+
+    def test_with_background(self) -> None:
+        """Background subtraction is applied."""
+        data: np.ndarray = np.ones((H, W), dtype=np.float32) * 500.0
+        tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
+        bg: Float[Array, "H W"] = jnp.ones((H, W)) * 200.0
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "frame.tif",
+            incoming_angle_deg=2.0,
+            voltage_kv=20.0,
+            detector_distance_mm=350.0,
+            background=bg,
+        )
+        chex.assert_trees_all_close(
+            img.img_array,
+            jnp.full((H, W), 300.0),
+            atol=1.0,
+        )
+
+    def test_multipage_takes_first(self) -> None:
+        """Multi-page TIFF uses only the first frame."""
+        data: np.ndarray = np.stack(
+            [
+                np.ones((H, W), dtype=np.float32) * 100.0,
+                np.ones((H, W), dtype=np.float32) * 999.0,
+            ]
+        )
+        tifffile.imwrite(
+            str(self.tmp_path / "multi.tif"),
+            data,
+            photometric="minisblack",
+        )
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "multi.tif",
+            incoming_angle_deg=2.0,
+            voltage_kv=20.0,
+            detector_distance_mm=350.0,
+        )
+        chex.assert_trees_all_close(
+            img.img_array,
+            jnp.full((H, W), 100.0),
+            atol=1.0,
+        )
+
+    def test_parameters_stored(self) -> None:
+        """Beam and detector parameters are stored correctly."""
+        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
+        img: RHEEDImage = load_tiff_as_rheed_image(
+            self.tmp_path / "frame.tif",
+            incoming_angle_deg=3.5,
+            voltage_kv=15.0,
+            detector_distance_mm=400.0,
+            calibration=0.05,
+        )
+        chex.assert_trees_all_close(img.incoming_angle, 3.5, atol=1e-10)
+        chex.assert_trees_all_close(img.detector_distance, 400.0, atol=1e-10)
+        chex.assert_trees_all_close(img.calibration, 0.05, atol=1e-10)
 
 
 class TestGradients(chex.TestCase):
