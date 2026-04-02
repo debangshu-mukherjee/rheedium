@@ -200,8 +200,8 @@ def project_on_detector_geometry(
         _no_curvature,
         (detector_h, detector_v),
     )
-    detector_h = detector_h - offset_h
-    detector_v = detector_v - offset_v
+    detector_h: Float[Array, "N"] = detector_h - offset_h
+    detector_v: Float[Array, "N"] = detector_v - offset_v
     detector_coords: Float[Array, "N 2"] = jnp.stack(
         [detector_h, detector_v], axis=-1
     )
@@ -401,7 +401,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     if hkl_indices is not None:
         hkl_all = jnp.asarray(hkl_indices, dtype=jnp.float64)
     else:
-        recip_vecs = reciprocal_lattice_vectors(
+        recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
             *crystal.cell_lengths,
             *crystal.cell_angles,
             in_degrees=True,
@@ -494,7 +494,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
             total_amplitude: Complex[Array, ""] = (
                 structure_factor + weighted_ctr
             )
-            total_intensity = jnp.abs(total_amplitude) ** 2
+            total_intensity: Float[Array, ""] = jnp.abs(total_amplitude) ** 2
         else:
             # Incoherent mixing (default): add intensities
             ctr_intensity: Float[Array, ""] = integrated_rod_intensity(
@@ -509,7 +509,9 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
             weighted_ctr_intensity: Float[Array, ""] = (
                 ctr_weight * ctr_intensity * is_near_integer
             )
-            total_intensity = kinematic_intensity + weighted_ctr_intensity
+            total_intensity: Float[Array, ""] = (
+                kinematic_intensity + weighted_ctr_intensity
+            )
 
         return total_intensity
 
@@ -581,8 +583,8 @@ def find_ctr_ewald_intersection(
     l_intersect: Float[Array, ""] = jnp.where(use_plus, l_plus, l_minus)
     k_out: Float[Array, "3"] = jnp.where(use_plus, k_out_plus, k_out_minus)
     any_valid: Float[Array, ""] = valid_plus | valid_minus
-    l_intersect = jnp.where(any_valid, l_intersect, 0.0)
-    k_out = jnp.where(any_valid, k_out, 0.0)
+    l_intersect: Float[Array, ""] = jnp.where(any_valid, l_intersect, 0.0)
+    k_out: Float[Array, "3"] = jnp.where(any_valid, k_out, 0.0)
     valid: Float[Array, ""] = any_valid.astype(jnp.float64)
     return l_intersect, k_out, valid
 
@@ -684,9 +686,9 @@ def ewald_simulator(  # noqa: PLR0913
     find_ctr_ewald_intersection : Solve rod-sphere intersection geometry.
     kinematic_simulator : Deprecated bulk-like simulator.
     """
-    voltage_kv = jnp.asarray(voltage_kv)
-    theta_deg = jnp.asarray(theta_deg)
-    phi_deg = jnp.asarray(phi_deg)
+    voltage_kv: Float[Array, ""] = jnp.asarray(voltage_kv)
+    theta_deg: Float[Array, ""] = jnp.asarray(theta_deg)
+    phi_deg: Float[Array, ""] = jnp.asarray(phi_deg)
     # Keep hmax/kmax as Python ints for static array sizing in JIT
     hmax_int: int = int(hmax)
     kmax_int: int = int(kmax)
@@ -825,7 +827,7 @@ def ewald_simulator(  # noqa: PLR0913
 
     # Normalize intensities
     max_intensity: Float[Array, ""] = jnp.maximum(jnp.max(intensities), 1e-10)
-    intensities = intensities / max_intensity
+    intensities: Float[Array, "K"] = intensities / max_intensity
 
     # Project onto detector
     detector_points: Float[Array, "K 2"] = project_on_detector(
@@ -926,9 +928,11 @@ def sliced_crystal_to_potential(
     ...     pixel_size=0.1
     ... )
     """
-    slice_thickness = jnp.asarray(slice_thickness, dtype=jnp.float64)
-    pixel_size = jnp.asarray(pixel_size, dtype=jnp.float64)
-    voltage_kv = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    slice_thickness: Float[Array, ""] = jnp.asarray(
+        slice_thickness, dtype=jnp.float64
+    )
+    pixel_size: Float[Array, ""] = jnp.asarray(pixel_size, dtype=jnp.float64)
+    voltage_kv: Float[Array, ""] = jnp.asarray(voltage_kv, dtype=jnp.float64)
     positions: Float[Array, "N 3"] = sliced_crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "N"] = sliced_crystal.cart_positions[:, 3]
     x_extent: Float[Array, ""] = sliced_crystal.x_extent
@@ -1288,7 +1292,9 @@ def multislice_simulator(
     det_x: Float[Array, "nx ny"] = detector_distance * theta_x
     det_y: Float[Array, "nx ny"] = detector_distance * theta_y
     intensity_k: Float[Array, "nx ny"] = jnp.abs(exit_wave_k) ** 2
-    intensity_k = jnp.where(valid_mask, intensity_k, 0.0)
+    intensity_k: Float[Array, "nx ny"] = jnp.where(
+        valid_mask, intensity_k, 0.0
+    )
     det_x_flat: Float[Array, "n"] = det_x.ravel()
     det_y_flat: Float[Array, "n"] = det_y.ravel()
     intensity_flat: Float[Array, "n"] = intensity_k.ravel()

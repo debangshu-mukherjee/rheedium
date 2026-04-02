@@ -64,16 +64,16 @@ def shard_array(
     if isinstance(shard_axes, int):
         shard_axes = [shard_axes]
     num_devices: int = len(devices)
-    mesh = jax.make_mesh(
+    mesh: jax.sharding.Mesh = jax.make_mesh(
         (num_devices,),
         ("devices",),
     )
-    pspec = [None] * input_array.ndim
+    pspec_list: list[str | None] = [None] * input_array.ndim
     for ax in shard_axes:
         if ax != -1 and ax < input_array.ndim:
-            pspec[ax] = "devices"
-    pspec = PartitionSpec(*pspec)
-    sharding = NamedSharding(mesh, pspec)
+            pspec_list[ax] = "devices"
+    pspec: PartitionSpec = PartitionSpec(*pspec_list)
+    sharding: NamedSharding = NamedSharding(mesh, pspec)
     with mesh:
         return jax.device_put(input_array, sharding)
 

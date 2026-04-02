@@ -44,7 +44,7 @@ from beartype import beartype
 from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
-from jaxtyping import Array, Complex, Float, Int, Num, jaxtyped
+from jaxtyping import Array, Bool, Complex, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 
@@ -541,8 +541,8 @@ def create_ewald_data(
             Float[Array, "N 3"],
             Float[Array, "N"],
         ]:
-            n_hkl = hkl_grid.shape[0]
-            consistent = (
+            n_hkl: int = hkl_grid.shape[0]
+            consistent: Bool[Array, ""] = (
                 (g_vectors.shape[0] == n_hkl)
                 & (g_magnitudes.shape[0] == n_hkl)
                 & (structure_factors.shape[0] == n_hkl)
@@ -582,7 +582,7 @@ def create_ewald_data(
             )
 
         def _check_finite() -> Float[Array, "N"]:
-            all_finite = (
+            all_finite: Bool[Array, ""] = (
                 jnp.all(jnp.isfinite(wavelength_ang))
                 & jnp.all(jnp.isfinite(k_magnitude))
                 & jnp.all(jnp.isfinite(sphere_radius))
@@ -916,14 +916,28 @@ class XYZData(NamedTuple):
         Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
     ]:
         """Flatten the PyTree into a tuple of arrays."""
-        children = (
+        children: Tuple[
+            Float[Array, "N 3"],
+            Int[Array, "N"],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, "3 3"]],
+            Optional[Float[Array, ""]],
+        ] = (
             self.positions,
             self.atomic_numbers,
             self.lattice,
             self.stress,
             self.energy,
         )
-        aux_data = {
+        aux_data: dict[
+            str,
+            Optional[
+                Union[
+                    List[Dict[str, Union[str, int]]],
+                    str,
+                ]
+            ],
+        ] = {
             "properties": self.properties,
             "comment": self.comment,
         }

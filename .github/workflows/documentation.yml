@@ -8,24 +8,44 @@ on:
   workflow_dispatch:
 
 jobs:
+  resolve-python:
+    name: Resolve Python version from pyproject.toml
+    runs-on: ubuntu-latest
+    outputs:
+      latest: ${{ steps.parse.outputs.latest }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Parse latest Python version from classifiers
+      id: parse
+      run: |
+        latest=$(grep 'Programming Language :: Python :: 3\.' pyproject.toml \
+          | grep -oP '3\.\d+' \
+          | sort -t. -k2 -n \
+          | tail -1)
+        echo "latest=$latest" >> "$GITHUB_OUTPUT"
+        echo "Detected latest Python version: $latest"
+
   docs:
     runs-on: ubuntu-latest
+    needs: resolve-python
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
-      
+
     - name: Set up Python
-      run: uv python install 3.12
-      
+      run: uv python install ${{ needs.resolve-python.outputs.latest }}
+
     - name: Install system dependencies
       run: sudo apt-get update && sudo apt-get install -y make pandoc
-      
+
     - name: Install dependencies
       run: uv sync --extra dev
-      
+
     - name: Debug - Check environment
       run: |
         echo "Current directory:"
@@ -36,24 +56,24 @@ jobs:
         uv run python --version
         echo "Sphinx version:"
         uv run sphinx-build --version
-        
+
     - name: Build documentation
       run: |
         cd docs
         echo "Building documentation..."
         uv run make html
-        
+
     - name: Check for broken links
       run: |
         cd docs
         uv run make linkcheck
       continue-on-error: true
-      
+
     - name: Upload documentation
       uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: docs/build/html/
-        
+
     # Note: Documentation is now hosted on Read the Docs
     # https://rheedium.readthedocs.io/

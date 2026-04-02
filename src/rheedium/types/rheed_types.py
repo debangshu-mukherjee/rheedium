@@ -712,20 +712,26 @@ def create_sliced_crystal(
     - Validate atomic numbers (cart_positions[:, 3]) are in
       valid range [1, 118].
     """
-    cart_positions = jnp.asarray(cart_positions, dtype=jnp.float64)
-    cell_lengths = jnp.asarray(cell_lengths, dtype=jnp.float64)
-    cell_angles = jnp.asarray(cell_angles, dtype=jnp.float64)
-    orientation = jnp.asarray(orientation, dtype=jnp.int32)
-    depth = jnp.asarray(depth, dtype=jnp.float64)
-    x_extent = jnp.asarray(x_extent, dtype=jnp.float64)
-    y_extent = jnp.asarray(y_extent, dtype=jnp.float64)
+    cart_positions: Float[Array, "N 4"] = jnp.asarray(
+        cart_positions, dtype=jnp.float64
+    )
+    cell_lengths: Float[Array, "3"] = jnp.asarray(
+        cell_lengths, dtype=jnp.float64
+    )
+    cell_angles: Float[Array, "3"] = jnp.asarray(
+        cell_angles, dtype=jnp.float64
+    )
+    orientation: Int[Array, "3"] = jnp.asarray(orientation, dtype=jnp.int32)
+    depth: Float[Array, ""] = jnp.asarray(depth, dtype=jnp.float64)
+    x_extent: Float[Array, ""] = jnp.asarray(x_extent, dtype=jnp.float64)
+    y_extent: Float[Array, ""] = jnp.asarray(y_extent, dtype=jnp.float64)
 
     def _validate_and_create() -> SlicedCrystal:
         """Validate and create a SlicedCrystal instance."""
 
         def _check_positions_shape() -> Float[Array, "N 4"]:
             """Check cart_positions has shape (N, 4)."""
-            n_atoms = cart_positions.shape[0]
+            n_atoms: int = cart_positions.shape[0]
             return lax.cond(
                 jnp.logical_and(
                     cart_positions.ndim == 2,
@@ -753,7 +759,7 @@ def create_sliced_crystal(
 
         def _check_atomic_numbers() -> Float[Array, "N 4"]:
             """Check atomic numbers are in valid range [1, 118]."""
-            atomic_nums = cart_positions[:, 3]
+            atomic_nums: Float[Array, "N"] = cart_positions[:, 3]
             return lax.cond(
                 jnp.logical_and(
                     jnp.all(atomic_nums >= 1), jnp.all(atomic_nums <= 118)
@@ -815,14 +821,14 @@ def create_sliced_crystal(
 
         def _check_extents() -> Tuple[Float[Array, ""], Float[Array, ""]]:
             """Check x_extent and y_extent are positive."""
-            x_valid = lax.cond(
+            x_valid: Float[Array, ""] = lax.cond(
                 x_extent > 0,
                 lambda: x_extent,
                 lambda: lax.stop_gradient(
                     lax.cond(False, lambda: x_extent, lambda: x_extent)
                 ),
             )
-            y_valid = lax.cond(
+            y_valid: Float[Array, ""] = lax.cond(
                 y_extent > 0,
                 lambda: y_extent,
                 lambda: lax.stop_gradient(
@@ -850,7 +856,7 @@ def create_sliced_crystal(
             y_extent=y_extent,
         )
 
-    validated_sliced_crystal = _validate_and_create()
+    validated_sliced_crystal: SlicedCrystal = _validate_and_create()
     return validated_sliced_crystal
 
 
@@ -938,10 +944,10 @@ def bulk_to_slice(
         reciprocal_lattice_vectors,
     )
 
-    orientation = jnp.asarray(orientation, dtype=jnp.int32)
-    depth = jnp.asarray(depth, dtype=jnp.float64)
-    x_extent = jnp.asarray(x_extent, dtype=jnp.float64)
-    y_extent = jnp.asarray(y_extent, dtype=jnp.float64)
+    orientation: Int[Array, "3"] = jnp.asarray(orientation, dtype=jnp.int32)
+    depth: Float[Array, ""] = jnp.asarray(depth, dtype=jnp.float64)
+    x_extent: Float[Array, ""] = jnp.asarray(x_extent, dtype=jnp.float64)
+    y_extent: Float[Array, ""] = jnp.asarray(y_extent, dtype=jnp.float64)
 
     # Step 1: Build real-space lattice vectors
     cell_vecs: Float[Array, "3 3"] = build_cell_vectors(
@@ -1018,7 +1024,7 @@ def bulk_to_slice(
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
 
     # Create all translations
-    all_positions = []
+    all_positions: list[Float[Array, "N 3"]] = []
     for ix in range(-nx // 2, nx // 2 + 1):
         for iy in range(-ny // 2, ny // 2 + 1):
             translation: Float[Array, "3"] = (
@@ -1247,19 +1253,25 @@ def identify_surface_atoms(
         # Map back to original atom order
         sort_indices: Int[Array, "N"] = jnp.argsort(z_coords)
         atom_layers: Int[Array, "N"] = jnp.zeros(n_atoms, dtype=jnp.int32)
-        atom_layers = atom_layers.at[sort_indices].set(layer_indices)
+        atom_layers: Int[Array, "N"] = atom_layers.at[sort_indices].set(
+            layer_indices
+        )
 
         # Mark top n_layers as surface
         max_layer: Int[Array, ""] = jnp.max(atom_layers)
-        is_surface = atom_layers >= (max_layer - config.n_layers + 1)
+        is_surface: Bool[Array, "N"] = atom_layers >= (
+            max_layer - config.n_layers + 1
+        )
         return is_surface
 
     else:
         # Default: height-based method
-        z_max = jnp.max(z_coords)
-        z_min = jnp.min(z_coords)
-        z_threshold = z_max - config.height_fraction * (z_max - z_min)
-        is_surface = z_coords >= z_threshold
+        z_max: Float[Array, ""] = jnp.max(z_coords)
+        z_min: Float[Array, ""] = jnp.min(z_coords)
+        z_threshold: Float[Array, ""] = z_max - config.height_fraction * (
+            z_max - z_min
+        )
+        is_surface: Bool[Array, "N"] = z_coords >= z_threshold
         return is_surface
 
 

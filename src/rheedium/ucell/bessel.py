@@ -173,7 +173,7 @@ def _bessel_kn_recurrence(
             mask: Bool[Array, ""] = i < n
             two_i_over_x: Float[Array, "..."] = 2.0 * i / x
             k_curr: Float[Array, "..."] = two_i_over_x * k_prev1 + k_prev2
-            k_curr = jnp.where(mask, k_curr, k_prev1)
+            k_curr: Float[Array, "..."] = jnp.where(mask, k_curr, k_prev1)
             return (k_prev1, k_curr), k_curr
 
         carry: Tuple[Float[Array, "..."], Float[Array, "..."]]

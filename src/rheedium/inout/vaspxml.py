@@ -74,11 +74,11 @@ def _get_species_list(root: ET.Element) -> List[str]:
     ValueError
         If atominfo section is missing or malformed.
     """
-    atominfo = root.find(".//atominfo")
+    atominfo: ET.Element | None = root.find(".//atominfo")
     if atominfo is None:
         raise ValueError("Invalid vasprun.xml: missing <atominfo> section")
 
-    atoms_array = atominfo.find(".//array[@name='atoms']")
+    atoms_array: ET.Element | None = atominfo.find(".//array[@name='atoms']")
     if atoms_array is None:
         raise ValueError(
             "Invalid vasprun.xml: missing <array name='atoms'> in atominfo"
@@ -86,9 +86,9 @@ def _get_species_list(root: ET.Element) -> List[str]:
 
     species: List[str] = []
     for rc in atoms_array.findall(".//rc"):
-        c_elements = rc.findall("c")
+        c_elements: list[ET.Element] = rc.findall("c")
         if c_elements:
-            element = c_elements[0].text
+            element: str | None = c_elements[0].text
             if element is not None:
                 species.append(element.strip())
 
@@ -124,18 +124,18 @@ def _extract_structure_block(
     ValueError
         If required elements are missing or malformed.
     """
-    crystal = structure_elem.find("crystal")
+    crystal: ET.Element | None = structure_elem.find("crystal")
     if crystal is None:
         raise ValueError("Invalid structure: missing <crystal> element")
 
-    basis = crystal.find(".//varray[@name='basis']")
+    basis: ET.Element | None = crystal.find(".//varray[@name='basis']")
     if basis is None:
         raise ValueError("Invalid structure: missing lattice basis")
 
     lattice_rows: List[List[float]] = []
     for v in basis.findall("v"):
         if v.text is not None:
-            row = [float(x) for x in v.text.split()]
+            row: list[float] = [float(x) for x in v.text.split()]
             lattice_rows.append(row)
 
     if len(lattice_rows) != 3:
@@ -145,14 +145,16 @@ def _extract_structure_block(
 
     lattice: Float[Array, "3 3"] = jnp.array(lattice_rows, dtype=jnp.float64)
 
-    positions_elem = structure_elem.find(".//varray[@name='positions']")
+    positions_elem: ET.Element | None = structure_elem.find(
+        ".//varray[@name='positions']"
+    )
     if positions_elem is None:
         raise ValueError("Invalid structure: missing positions")
 
     position_rows: List[List[float]] = []
     for v in positions_elem.findall("v"):
         if v.text is not None:
-            row = [float(x) for x in v.text.split()]
+            row: list[float] = [float(x) for x in v.text.split()]
             position_rows.append(row)
 
     positions: Float[Array, "n_atoms 3"] = jnp.array(
@@ -180,14 +182,16 @@ def _extract_forces(
     forces : Optional[Float[Array, "n_atoms 3"]]
         Forces in eV/Angstrom, or None if not found.
     """
-    forces_elem = calculation_elem.find(".//varray[@name='forces']")
+    forces_elem: ET.Element | None = calculation_elem.find(
+        ".//varray[@name='forces']"
+    )
     if forces_elem is None:
         return None
 
     force_rows: List[List[float]] = []
     for v in forces_elem.findall("v"):
         if v.text is not None:
-            row = [float(x) for x in v.text.split()]
+            row: list[float] = [float(x) for x in v.text.split()]
             force_rows.append(row)
 
     if not force_rows:
@@ -217,14 +221,16 @@ def _extract_stress(
     stress : Optional[Float[Array, "3 3"]]
         Stress tensor in kBar, or None if not found.
     """
-    stress_elem = calculation_elem.find(".//varray[@name='stress']")
+    stress_elem: ET.Element | None = calculation_elem.find(
+        ".//varray[@name='stress']"
+    )
     if stress_elem is None:
         return None
 
     stress_rows: List[List[float]] = []
     for v in stress_elem.findall("v"):
         if v.text is not None:
-            row = [float(x) for x in v.text.split()]
+            row: list[float] = [float(x) for x in v.text.split()]
             stress_rows.append(row)
 
     if len(stress_rows) != 3:
@@ -253,15 +259,15 @@ def _extract_energy(
     energy : Optional[float]
         Total energy in eV, or None if not found.
     """
-    energy_elem = calculation_elem.find(".//energy")
+    energy_elem: ET.Element | None = calculation_elem.find(".//energy")
     if energy_elem is None:
         return None
 
-    e_fr = energy_elem.find(".//i[@name='e_fr_energy']")
+    e_fr: ET.Element | None = energy_elem.find(".//i[@name='e_fr_energy']")
     if e_fr is not None and e_fr.text is not None:
         return float(e_fr.text.strip())
 
-    e_0 = energy_elem.find(".//i[@name='e_0_energy']")
+    e_0: ET.Element | None = energy_elem.find(".//i[@name='e_0_energy']")
     if e_0 is not None and e_0.text is not None:
         return float(e_0.text.strip())
 
@@ -332,8 +338,8 @@ def parse_vaspxml(
         raise FileNotFoundError(f"vasprun.xml file not found: {path}")
 
     try:
-        tree = ET.parse(path)
-        root = tree.getroot()
+        tree: ET.ElementTree = ET.parse(path)
+        root: ET.Element = tree.getroot()
     except ET.ParseError as err:
         raise ValueError(f"Invalid XML in vasprun.xml: {err}") from err
 
@@ -345,22 +351,24 @@ def parse_vaspxml(
         atomic_numbers_list, dtype=jnp.int32
     )
 
-    calculations = root.findall(".//calculation")
+    calculations: list[ET.Element] = root.findall(".//calculation")
 
     if not calculations:
-        structure = root.find(".//structure[@name='initialpos']")
+        structure: ET.Element | None = root.find(
+            ".//structure[@name='initialpos']"
+        )
         if structure is None:
             structure = root.find(".//structure")
         if structure is None:
             raise ValueError("Invalid vasprun.xml: no structure found")
 
         lattice, frac_positions = _extract_structure_block(structure)
-        energy = None
-        forces = None
-        stress = None
+        energy: Optional[float] = None
+        forces: Optional[Float[Array, "n_atoms 3"]] = None
+        stress: Optional[Float[Array, "3 3"]] = None
     else:
         if step == -1:
-            calc_idx = len(calculations) - 1
+            calc_idx: int = len(calculations) - 1
         elif step < 0:
             calc_idx = len(calculations) + step
         else:
@@ -371,7 +379,7 @@ def parse_vaspxml(
                 f"Step {step} out of range. Available steps: 0-{len(calculations)-1}"
             )
 
-        calculation = calculations[calc_idx]
+        calculation: ET.Element = calculations[calc_idx]
         structure = calculation.find("structure")
         if structure is None:
             raise ValueError(
@@ -386,7 +394,7 @@ def parse_vaspxml(
     cart_positions: Float[Array, "n_atoms 3"] = frac_positions @ lattice
 
     if include_forces:
-        properties = None
+        properties: list[dict[str, str | int]] | None = None
         if forces is not None:
             properties = [{"name": "forces", "type": "R", "count": 3}]
 
@@ -469,8 +477,8 @@ def parse_vaspxml_trajectory(
         raise FileNotFoundError(f"vasprun.xml file not found: {path}")
 
     try:
-        tree = ET.parse(path)
-        root = tree.getroot()
+        tree: ET.ElementTree = ET.parse(path)
+        root: ET.Element = tree.getroot()
     except ET.ParseError as err:
         raise ValueError(f"Invalid XML in vasprun.xml: {err}") from err
 
@@ -480,7 +488,7 @@ def parse_vaspxml_trajectory(
         atomic_numbers_list, dtype=jnp.int32
     )
 
-    calculations = root.findall(".//calculation")
+    calculations: list[ET.Element] = root.findall(".//calculation")
 
     if not calculations:
         raise ValueError(
@@ -490,7 +498,7 @@ def parse_vaspxml_trajectory(
     trajectory: List[XYZData] = []
 
     for step_idx, calculation in enumerate(calculations):
-        structure = calculation.find("structure")
+        structure: ET.Element | None = calculation.find("structure")
         if structure is None:
             continue
 
@@ -506,11 +514,11 @@ def parse_vaspxml_trajectory(
             forces = _extract_forces(calculation)
             stress = _extract_stress(calculation)
 
-        properties = None
+        properties: list[dict[str, str | int]] | None = None
         if forces is not None:
             properties = [{"name": "forces", "type": "R", "count": 3}]
 
-        xyz_data = create_xyz_data(
+        xyz_data: XYZData = create_xyz_data(
             positions=cart_positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,

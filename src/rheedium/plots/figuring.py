@@ -19,12 +19,16 @@ Visualization functions use matplotlib for rendering and scipy for
 interpolation.
 """
 
+import matplotlib.colors as mcolors
+import matplotlib.image as mimage
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import ndarray as NDArray  # noqa: N812
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple
 from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
 from scipy.interpolate import griddata
 
 from rheedium.types import RHEEDPattern, scalar_float
@@ -163,12 +167,10 @@ def plot_rheed(
        Select the phosphor colormap or a named matplotlib
        colormap, then display with imshow and colorbar.
     """
-    coords: Float[np.ndarray, "N 2"] = np.asarray(
-        rheed_pattern.detector_points
-    )
-    x_np: Float[np.ndarray, "N"] = coords[:, 0]
-    y_np: Float[np.ndarray, "N"] = coords[:, 1]
-    i_np: Float[np.ndarray, "N"] = np.asarray(rheed_pattern.intensities)
+    coords: Float[NDArray, "N 2"] = np.asarray(rheed_pattern.detector_points)
+    x_np: Float[NDArray, "N"] = coords[:, 0]
+    y_np: Float[NDArray, "N"] = coords[:, 1]
+    i_np: Float[NDArray, "N"] = np.asarray(rheed_pattern.intensities)
 
     if x_extent is None:
         x_min: float = float(x_np.min()) - 0.5
@@ -182,14 +184,14 @@ def plot_rheed(
     else:
         y_min, y_max = y_extent
 
-    x_axis: Float[np.ndarray, "W"] = np.linspace(x_min, x_max, grid_size)
-    y_axis: Float[np.ndarray, "H"] = np.linspace(y_min, y_max, grid_size)
+    x_axis: Float[NDArray, "W"] = np.linspace(x_min, x_max, grid_size)
+    y_axis: Float[NDArray, "H"] = np.linspace(y_min, y_max, grid_size)
 
     if interp_type == "gaussian":
-        xx: Float[np.ndarray, "H W"]
-        yy: Float[np.ndarray, "H W"]
+        xx: Float[NDArray, "H W"]
+        yy: Float[NDArray, "H W"]
         xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
-        image: Float[np.ndarray, "H W"] = np.zeros((grid_size, grid_size))
+        image: Float[NDArray, "H W"] = np.zeros((grid_size, grid_size))
 
         for idx in range(len(i_np)):
             x0: float = x_np[idx]
@@ -200,12 +202,14 @@ def plot_rheed(
             )
 
     elif interp_type in ("cubic", "linear", "nearest"):
-        points: Float[np.ndarray, "N 2"] = np.column_stack([x_np, y_np])
-        xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
-        grid_points: Float[np.ndarray, "M 2"] = np.column_stack(
-            [xx.ravel(), yy.ravel()]
+        points: Float[NDArray, "N 2"] = np.column_stack([x_np, y_np])
+        xx_g: Float[NDArray, "H W"]
+        yy_g: Float[NDArray, "H W"]
+        xx_g, yy_g = np.meshgrid(x_axis, y_axis, indexing="xy")
+        grid_points: Float[NDArray, "M 2"] = np.column_stack(
+            [xx_g.ravel(), yy_g.ravel()]
         )
-        image_flat: Float[np.ndarray, "M"] = griddata(
+        image_flat: Float[NDArray, "M"] = griddata(
             points, i_np, grid_points, method=interp_type, fill_value=0.0
         )
         image = image_flat.reshape((grid_size, grid_size))
@@ -216,13 +220,16 @@ def plot_rheed(
             f"Got: {interp_type}"
         )
 
+    cmap: mcolors.Colormap
     if cmap_name == "phosphor":
         cmap = create_phosphor_colormap()
     else:
         cmap = plt.get_cmap(cmap_name)
 
-    _, ax = plt.subplots(figsize=figsize)
-    im = ax.imshow(
+    fig: Figure
+    ax: plt.Axes
+    fig, ax = plt.subplots(figsize=figsize)
+    im: mimage.AxesImage = ax.imshow(
         image,
         extent=[x_min, x_max, y_min, y_max],
         origin="lower",
