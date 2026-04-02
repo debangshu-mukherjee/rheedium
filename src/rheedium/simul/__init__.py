@@ -10,8 +10,12 @@ from crystal structures.
 
 Routine Listings
 ----------------
+:func:`angular_divergence_average`
+    Average pattern over Gaussian angular divergence distribution.
 :func:`atomic_scattering_factor`
     Combined form factor with Debye-Waller damping.
+:func:`coherence_envelope`
+    Apply partial coherence damping envelope in reciprocal space.
 :func:`build_ewald_data`
     Build angle-independent EwaldData from crystal and beam parameters.
 :func:`calculate_ctr_intensity`
@@ -24,6 +28,10 @@ Routine Listings
     Compute Ewald shell Gaussian thickness from beam parameters.
 :func:`debye_waller_factor`
     Calculate Debye-Waller damping factor for thermal vibrations.
+:func:`detector_psf_convolve`
+    Convolve detector image with Gaussian point spread function.
+:func:`energy_spread_average`
+    Average pattern over Gaussian energy spread distribution.
 :func:`ewald_allowed_reflections`
     Find reflections satisfying Ewald sphere condition for given beam angles.
 :func:`extent_to_rod_sigma`
@@ -34,6 +42,8 @@ Routine Listings
     Find intersection of CTR with Ewald sphere for given (h, k) rod.
 :func:`find_kinematic_reflections`
     Find kinematically allowed reflections for given experimental conditions.
+:func:`gauss_hermite_nodes_weights`
+    Gauss-Hermite quadrature nodes and weights for Gaussian averaging.
 :func:`finite_domain_intensities`
     Compute intensities with finite domain broadening.
 :func:`gaussian_rod_profile`
@@ -42,6 +52,8 @@ Routine Listings
     Calculate mean square displacement for given temperature.
 :func:`incident_wavevector`
     Calculate incident electron wavevector from beam parameters.
+:func:`instrument_broadened_pattern`
+    Full instrument-averaged RHEED pattern combining all effects.
 :func:`interaction_constant`
     Calculate relativistic electron-specimen interaction constant.
 :func:`integrated_rod_intensity`
@@ -80,6 +92,14 @@ Routine Listings
     Calculate electron wavelength in angstroms.
 """
 
+from .beam_averaging import (
+    angular_divergence_average,
+    coherence_envelope,
+    detector_psf_convolve,
+    energy_spread_average,
+    gauss_hermite_nodes_weights,
+    instrument_broadened_pattern,
+)
 from .ewald import build_ewald_data, ewald_allowed_reflections
 from .finite_domain import (
     compute_domain_extent,
@@ -127,22 +147,28 @@ from .surface_rods import (
 )
 
 __all__: list[str] = [
+    "angular_divergence_average",
     "atomic_scattering_factor",
     "build_ewald_data",
+    "coherence_envelope",
     "calculate_ctr_intensity",
     "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
     "compute_shell_sigma",
     "debye_waller_factor",
+    "detector_psf_convolve",
+    "energy_spread_average",
     "ewald_allowed_reflections",
     "ewald_simulator",
     "extent_to_rod_sigma",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
     "finite_domain_intensities",
+    "gauss_hermite_nodes_weights",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "incident_wavevector",
+    "instrument_broadened_pattern",
     "interaction_constant",
     "integrated_rod_intensity",
     "kinematic_spot_simulator",
