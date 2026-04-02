@@ -250,15 +250,15 @@ def _extract_sym_op_from_line(
     'x,y,z'
     """
     if "_symmetry_equiv_pos_as_xyz" in sym_loop_columns:
-        xyz_col_idx = sym_loop_columns.index("_symmetry_equiv_pos_as_xyz")
-        match = re.search(r"'([^']+)'", stripped_line)
+        xyz_col_idx: int = sym_loop_columns.index("_symmetry_equiv_pos_as_xyz")
+        match: re.Match[str] | None = re.search(r"'([^']+)'", stripped_line)
         if not match:
             match = re.search(r'"([^"]+)"', stripped_line)
         if match:
             return match.group(1).strip()
-        tokens = stripped_line.split()
+        tokens: List[str] = stripped_line.split()
         if len(tokens) > xyz_col_idx:
-            op = tokens[xyz_col_idx].strip("'\"")
+            op: str = tokens[xyz_col_idx].strip("'\"")
             if "," in op:
                 return op
     elif not sym_loop_columns:
@@ -317,7 +317,9 @@ def _parse_symmetry_ops(lines: List[str]) -> List[str]:
             in_sym_loop = False
             continue
 
-        op = _extract_sym_op_from_line(stripped_line, sym_loop_columns)
+        op: Optional[str] = _extract_sym_op_from_line(
+            stripped_line, sym_loop_columns
+        )
         if op is not None:
             sym_ops.append(op)
 
@@ -392,7 +394,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     )
 
     lines: List[str] = cif_text.splitlines()
-    positions_list = _parse_atom_positions(lines)
+    positions_list: List[List[float]] = _parse_atom_positions(lines)
 
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
@@ -408,7 +410,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         (cart_coords, frac_positions[:, 3])
     )
 
-    sym_ops = _parse_symmetry_ops(lines)
+    sym_ops: List[str] = _parse_symmetry_ops(lines)
 
     crystal: CrystalStructure = create_crystal_structure(
         frac_positions=frac_positions,
@@ -657,22 +659,28 @@ def symmetry_expansion(
     >>> expanded.frac_positions.shape[0]
     2
     """
-    frac_positions = crystal.frac_positions
+    frac_positions: Float[Array, "N 4"] = crystal.frac_positions
 
-    expanded_positions = _apply_symmetry_ops(frac_positions, sym_ops)
+    expanded_positions: Float[Array, "M 4"] = _apply_symmetry_ops(
+        frac_positions, sym_ops
+    )
 
-    cell_vectors = build_cell_vectors(
+    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         *crystal.cell_lengths, *crystal.cell_angles
     )
-    cart_coords = expanded_positions[:, :3] @ cell_vectors
-    cart_with_z = jnp.column_stack([cart_coords, expanded_positions[:, 3]])
+    cart_coords: Float[Array, "M 3"] = expanded_positions[:, :3] @ cell_vectors
+    cart_with_z: Float[Array, "M 4"] = jnp.column_stack(
+        [cart_coords, expanded_positions[:, 3]]
+    )
 
-    unique_cart_with_z = _deduplicate_positions(cart_with_z, tolerance)
+    unique_cart_with_z: Float[Array, "U 4"] = _deduplicate_positions(
+        cart_with_z, tolerance
+    )
 
-    unique_cart = unique_cart_with_z[:, :3]
-    atomic_numbers = unique_cart_with_z[:, 3]
-    cell_inv = jnp.linalg.inv(cell_vectors)
-    unique_frac = (unique_cart @ cell_inv) % 1.0
+    unique_cart: Float[Array, "U 3"] = unique_cart_with_z[:, :3]
+    atomic_numbers: Float[Array, "U"] = unique_cart_with_z[:, 3]
+    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
+    unique_frac: Float[Array, "U 3"] = (unique_cart @ cell_inv) % 1.0
 
     expanded_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
