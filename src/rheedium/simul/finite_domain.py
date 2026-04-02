@@ -123,7 +123,7 @@ def compute_domain_extent(
     min_coords: Float[Array, "3"] = jnp.min(positions, axis=0)
     max_coords: Float[Array, "3"] = jnp.max(positions, axis=0)
     extent: Float[Array, "3"] = max_coords - min_coords + 2.0 * padding_arr
-    extent = jnp.maximum(extent, _MIN_EXTENT_ANG)
+    extent: Float[Array, "3"] = jnp.maximum(extent, _MIN_EXTENT_ANG)
     return extent
 
 
@@ -361,7 +361,7 @@ def rod_ewald_overlap(
     ) ** 2
     is_vertical: Bool[Array, "N"] = k_out_xy_mag < 1e-8
     rod_sigma_mean_sq: Float[Array, ""] = (rod_sigma_x**2 + rod_sigma_y**2) / 2
-    rod_sigma_eff_sq = jnp.where(
+    rod_sigma_eff_sq: Float[Array, "N"] = jnp.where(
         is_vertical, rod_sigma_mean_sq, rod_sigma_eff_sq
     )
     sigma_eff_sq: Float[Array, "N"] = rod_sigma_eff_sq + shell_sigma**2

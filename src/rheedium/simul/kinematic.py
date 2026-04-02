@@ -254,6 +254,8 @@ def kinematic_spot_simulator(
     k_in: Float[Array, "3"] = incident_wavevector(
         wavelength, theta_deg, phi_deg=0.0
     )
+    all_indices: Int[Array, "M"]
+    all_k_out: Float[Array, "M 3"]
     all_indices, all_k_out = find_kinematic_reflections(
         k_in=k_in, gs=reciprocal_points, z_sign=1.0, tolerance=tolerance
     )
