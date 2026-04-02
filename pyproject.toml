@@ -278,10 +278,6 @@ invalid-assignment = "ignore"
 invalid-argument-type = "ignore"
 # beartype-wrapped functions lose attribute visibility for ty.
 unresolved-attribute = "ignore"
-# jaxtyping dimension variables (N, M, etc.) appear unresolved.
-unresolved-reference = "ignore"
-# JAX return types through beartype decorators confuse ty.
-invalid-return-type = "ignore"
 
 [tool.interrogate]
 fail-under = 90

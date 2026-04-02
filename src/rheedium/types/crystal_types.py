@@ -913,7 +913,10 @@ class XYZData(NamedTuple):
             Optional[Float[Array, "3 3"]],
             Optional[Float[Array, ""]],
         ],
-        Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
+        Dict[
+            str,
+            Optional[Union[List[Dict[str, Union[str, int]]], str]],
+        ],
     ]:
         """Flatten the PyTree into a tuple of arrays."""
         children: Tuple[
@@ -929,7 +932,7 @@ class XYZData(NamedTuple):
             self.stress,
             self.energy,
         )
-        aux_data: dict[
+        aux_data: Dict[
             str,
             Optional[
                 Union[
@@ -946,7 +949,10 @@ class XYZData(NamedTuple):
     @classmethod
     def tree_unflatten(
         cls,
-        aux_data: Dict[str, Optional[List[Dict[str, Union[str, int]]]]],
+        aux_data: Dict[
+            str,
+            Optional[Union[List[Dict[str, Union[str, int]]], str]],
+        ],
         children: Tuple[
             Float[Array, "N 3"],
             Int[Array, "N"],
