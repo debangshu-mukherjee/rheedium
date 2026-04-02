@@ -107,7 +107,7 @@ def _parse_poscar_header(
             ) from err
 
     lattice: Float[Array, "3 3"] = jnp.array(lattice_rows, dtype=jnp.float64)
-    lattice = lattice * scaling
+    lattice: Float[Array, "3 3"] = lattice * scaling
 
     try:
         species: List[str] = lines[5].split()
@@ -211,7 +211,7 @@ def _parse_poscar_positions(
         lattice_inv: Float[Array, "3 3"] = jnp.linalg.inv(lattice)
         frac_positions: Float[Array, "n_atoms 3"] = positions_arr @ lattice_inv
     else:
-        frac_positions = positions_arr
+        frac_positions: Float[Array, "n_atoms 3"] = positions_arr
 
     return frac_positions
 
@@ -303,7 +303,7 @@ def parse_poscar(
     with open(path, encoding="utf-8") as f:
         lines: List[str] = f.readlines()
 
-    lines = [line.rstrip("\n") for line in lines]
+    lines: List[str] = [line.rstrip("\n") for line in lines]
 
     min_lines: int = 8
     if len(lines) < min_lines:

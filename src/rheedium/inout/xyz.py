@@ -144,7 +144,7 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
     """
     cleaned_symbol: str = symbol_string.strip()
     # Strip ionic charge notation (e.g., "Bi3+" -> "Bi", "O2-" -> "O")
-    cleaned_symbol = re.sub(r"[0-9]*[+-]$", "", cleaned_symbol)
+    cleaned_symbol: str = re.sub(r"[0-9]*[+-]$", "", cleaned_symbol)
     normalized_symbol: str = cleaned_symbol.capitalize()
     if normalized_symbol not in _ATOMIC_NUMBERS:
         available_symbols: str = ", ".join(sorted(_ATOMIC_NUMBERS.keys()))

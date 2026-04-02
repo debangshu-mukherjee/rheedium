@@ -131,9 +131,9 @@ def lattice_to_cell_params(
     cos_beta: Float[Array, ""] = jnp.dot(a_vec, c_vec) / (a * c)
     cos_gamma: Float[Array, ""] = jnp.dot(a_vec, b_vec) / (a * b)
 
-    cos_alpha = jnp.clip(cos_alpha, min=-1.0, max=1.0)
-    cos_beta = jnp.clip(cos_beta, min=-1.0, max=1.0)
-    cos_gamma = jnp.clip(cos_gamma, min=-1.0, max=1.0)
+    cos_alpha: Float[Array, ""] = jnp.clip(cos_alpha, min=-1.0, max=1.0)
+    cos_beta: Float[Array, ""] = jnp.clip(cos_beta, min=-1.0, max=1.0)
+    cos_gamma: Float[Array, ""] = jnp.clip(cos_gamma, min=-1.0, max=1.0)
 
     alpha: Float[Array, ""] = jnp.degrees(jnp.arccos(cos_alpha))
     beta: Float[Array, ""] = jnp.degrees(jnp.arccos(cos_beta))
@@ -294,7 +294,7 @@ def xyz_to_crystal(
         lattice = jnp.asarray(cell_vectors)
     elif xyz_data.lattice is not None:
         lattice = xyz_data.lattice
-        is_identity = jnp.allclose(lattice, jnp.eye(3))
+        is_identity: bool = jnp.allclose(lattice, jnp.eye(3))
         if is_identity:
             logger.warning(
                 "XYZ file has no Lattice= metadata. Inferring cell from "

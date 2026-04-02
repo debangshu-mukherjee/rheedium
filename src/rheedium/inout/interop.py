@@ -111,7 +111,7 @@ def from_ase(atoms: Any) -> CrystalStructure:
     if not isinstance(atoms, Atoms):
         raise TypeError(f"Expected ase.Atoms, got {type(atoms).__name__}")
 
-    cell = atoms.get_cell()
+    cell: Any = atoms.get_cell()
 
     if cell is None or cell.rank < 3:
         raise ValueError(
@@ -119,7 +119,7 @@ def from_ase(atoms: Any) -> CrystalStructure:
             "Set cell with atoms.set_cell() or use atoms.center()."
         )
 
-    cell_volume = abs(cell.volume)
+    cell_volume: float = abs(cell.volume)
     if cell_volume < 1e-10:
         raise ValueError(
             f"ASE Atoms cell is degenerate (volume={cell_volume:.2e}). "
@@ -134,7 +134,7 @@ def from_ase(atoms: Any) -> CrystalStructure:
         atoms.get_atomic_numbers(), dtype=jnp.int32
     )
 
-    xyz_data = create_xyz_data(
+    xyz_data: XYZData = create_xyz_data(
         positions=positions,
         atomic_numbers=atomic_numbers,
         lattice=lattice,
@@ -214,7 +214,7 @@ def to_ase(crystal: CrystalStructure) -> Any:
     )
     cell_np: np.ndarray = np.asarray(cell)
 
-    atoms = Atoms(
+    atoms: Any = Atoms(
         numbers=atomic_numbers_np,
         positions=positions_np,
         cell=cell_np,
@@ -300,12 +300,12 @@ def from_pymatgen(structure: Any) -> CrystalStructure:
         structure.cart_coords, dtype=jnp.float64
     )
 
-    atomic_numbers_list = [site.specie.Z for site in structure]
+    atomic_numbers_list: list[int] = [site.specie.Z for site in structure]
     atomic_numbers: Int[Array, "N"] = jnp.array(
         atomic_numbers_list, dtype=jnp.int32
     )
 
-    xyz_data = create_xyz_data(
+    xyz_data: XYZData = create_xyz_data(
         positions=positions,
         atomic_numbers=atomic_numbers,
         lattice=lattice,
@@ -376,14 +376,16 @@ def to_pymatgen(crystal: CrystalStructure) -> Any:
         crystal.cell_angles[2],
     )
 
-    lattice = Lattice(np.asarray(cell))
+    lattice: Any = Lattice(np.asarray(cell))
 
-    atomic_numbers = np.asarray(crystal.frac_positions[:, 3], dtype=int)
-    frac_coords = np.asarray(crystal.frac_positions[:, :3])
+    atomic_numbers: np.ndarray = np.asarray(
+        crystal.frac_positions[:, 3], dtype=int
+    )
+    frac_coords: np.ndarray = np.asarray(crystal.frac_positions[:, :3])
 
-    species = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
+    species: list[str] = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
 
-    structure = Structure(lattice, species, frac_coords)
+    structure: Any = Structure(lattice, species, frac_coords)
 
     return structure
 
