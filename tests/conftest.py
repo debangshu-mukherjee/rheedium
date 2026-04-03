@@ -39,6 +39,11 @@ Linux, available memory is read from ``/proc/meminfo`` (includes
 reclaimable buff/cache). On macOS, ``vm_stat`` is parsed. On
 Windows, ``GlobalMemoryStatusEx`` is called via ctypes. Unrecognised
 platforms fall back to a single-worker conservative default.
+
+Available memory is queried once at session start. The figure is a
+snapshot — as workers launch and caches grow it becomes stale.
+``MEM_PER_WORKER_GB`` and ``MEM_LEAK_THRESHOLD_GB`` should be treated
+as living configuration and tuned as the test suite grows.
 """
 
 import os
@@ -65,8 +70,9 @@ def _available_ram_gb() -> float:
     available_gb : float
         Memory that can be allocated without swapping.
         On Linux this includes reclaimable buff/cache.
-        Falls back to ``MEM_PER_WORKER_GB`` on unrecognised
-        platforms.
+        Falls back to ``float(MEM_PER_WORKER_GB)`` on unrecognised
+        platforms or when the target field is not found, so that
+        ``pytest_xdist_auto_num_workers`` yields exactly one worker.
 
     Notes
     -----
@@ -77,9 +83,8 @@ def _available_ram_gb() -> float:
        purgeable pages, then multiply by the Mach page size.
     3. On Windows, call ``GlobalMemoryStatusEx`` via ctypes and
        read ``ullAvailPhys``.
-    4. On unrecognised platforms, return ``MEM_PER_WORKER_GB``
-       so that ``pytest_xdist_auto_num_workers`` yields exactly
-       one worker.
+    4. On unrecognised platforms, or if the target field is absent,
+       return ``float(MEM_PER_WORKER_GB)`` as a conservative fallback.
     """
     system: str = platform.system()
     if system == "Linux":
@@ -144,7 +149,9 @@ def _worker_rss_gb() -> float:
     -------
     rss_gb : float
         Resident set size of the current process in GB.
-        Returns 0.0 on unrecognised platforms.
+        Returns 0.0 on unrecognised platforms or when the target
+        field is absent, so the leak check in ``manage_jax_memory``
+        never triggers a false positive.
 
     Notes
     -----
@@ -154,8 +161,8 @@ def _worker_rss_gb() -> float:
        in kB.
     3. On Windows, call ``GetProcessMemoryInfo`` via ctypes and
        read ``WorkingSetSize`` (reported in bytes).
-    4. On unrecognised platforms, return 0.0 so the leak check
-       in ``manage_jax_memory`` never triggers a false positive.
+    4. On unrecognised platforms, or if the target field is absent,
+       return 0.0.
     """
     system: str = platform.system()
     pid: int = os.getpid()
@@ -189,14 +196,8 @@ def _worker_rss_gb() -> float:
                 ("WorkingSetSize", ctypes.c_size_t),
                 ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
                 ("QuotaPagedPoolUsage", ctypes.c_size_t),
-                (
-                    "QuotaPeakNonPagedPoolUsage",
-                    ctypes.c_size_t,
-                ),
-                (
-                    "QuotaNonPagedPoolUsage",
-                    ctypes.c_size_t,
-                ),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
                 ("PagefileUsage", ctypes.c_size_t),
                 ("PeakPagefileUsage", ctypes.c_size_t),
             ]
@@ -229,7 +230,10 @@ def pytest_xdist_auto_num_workers() -> int:
     4. Clamp to a minimum of 1.
 
     This hook is called by ``pytest-xdist`` when ``-n auto`` is
-    passed. An explicit ``-n <N>`` bypasses it entirely.
+    passed. An explicit ``-n <N>`` bypasses it entirely. The available
+    memory figure is a snapshot taken at session start; it does not
+    account for memory consumed as workers launch and caches grow.
+    ``MEM_PER_WORKER_GB`` should be tuned as the test suite grows.
     """
     available_gb: float = _available_ram_gb() * AVAILABLE_MEM_FRACTION
     return max(1, int(available_gb // MEM_PER_WORKER_GB))
@@ -259,6 +263,11 @@ def manage_jax_memory() -> Generator[None, None, None]:
     4. Measure RSS again and compute the delta from baseline.
     5. If the delta exceeds ``MEM_LEAK_THRESHOLD_GB``, fail the
        test with a diagnostic message identifying the leak size.
+
+    The delta-based comparison avoids false positives from the
+    worker process baseline (Python interpreter, JAX runtime,
+    imported libraries), which can consume 2-4 GB before any
+    test runs.
     """
     baseline_gb: float = _worker_rss_gb()
     yield

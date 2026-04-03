@@ -4,15 +4,25 @@ Verifies that jax.grad produces finite, non-zero gradients through
 the entire forward model pipeline: form factors, Debye-Waller,
 CTR intensity, ewald_simulator, and multislice_simulator.
 
+Gradient correctness is verified by comparing analytical gradients
+(via jax.grad / reverse-mode AD) against numerical finite-difference
+approximations using jax.test_util.check_grads. This catches bugs
+where a function is differentiable and returns finite gradients that
+are nonetheless wrong (e.g. missing negative sign, incorrect chain
+rule in a custom operation).
+
 These tests establish the differentiability baseline required for
 inverse problems on experimental RHEED data.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax
 import jax.numpy as jnp
-import pytest
 from absl.testing import parameterized
+from jax.test_util import check_grads
 from jaxtyping import Array, Float, Int
 
 from rheedium.simul import (
@@ -34,6 +44,21 @@ from rheedium.types import (
     create_sliced_crystal,
     scalar_float,
 )
+
+
+def _jax_safe(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap fn to convert numpy scalar args to JAX arrays.
+
+    jax.test_util.check_grads perturbs inputs via numpy arithmetic,
+    producing numpy scalars that fail beartype's Float[Array, '']
+    checks. This wrapper ensures all scalar arguments are converted
+    to JAX arrays before reaching the decorated function.
+    """
+
+    def wrapper(*args: Any) -> Any:
+        return fn(*(jnp.asarray(a) for a in args))
+
+    return wrapper
 
 
 def _make_si_crystal() -> CrystalStructure:
@@ -300,3 +325,250 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
 
         g = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
+
+
+class TestGradientCorrectness(chex.TestCase, parameterized.TestCase):
+    """Verify analytical gradients match finite differences.
+
+    These tests catch silent gradient bugs where jax.grad returns
+    finite values that are numerically wrong (e.g. sign error,
+    missing chain rule term). Uses jax.test_util.check_grads
+    which compares reverse-mode AD against central finite
+    differences at the specified order.
+    """
+
+    def test_form_factor_grad_correct(self) -> None:
+        """Kirkland form factor analytical grad matches finite diff."""
+
+        def f(q: scalar_float) -> scalar_float:
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        check_grads(_jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
+
+    def test_debye_waller_grad_correct(self) -> None:
+        """DW factor analytical grad matches finite diff."""
+
+        def f(temp: scalar_float) -> scalar_float:
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        check_grads(_jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+    def test_msd_grad_correct(self) -> None:
+        """Mean square displacement analytical grad matches finite diff."""
+
+        def f(temp: scalar_float) -> scalar_float:
+            return get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+
+        check_grads(_jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-4)
+
+    def test_ctr_intensity_grad_roughness_correct(self) -> None:
+        """CTR intensity grad w.r.t. roughness matches finite diff."""
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness: scalar_float) -> scalar_float:
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=SI_CRYSTAL,
+                    surface_roughness=roughness,
+                    temperature=300.0,
+                )
+            )
+
+        check_grads(_jax_safe(f), (jnp.float64(0.5),), order=1, atol=1e-3)
+
+    def test_ctr_intensity_grad_temperature_correct(self) -> None:
+        """CTR intensity grad w.r.t. temperature matches finite diff."""
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+
+        def f(temp: scalar_float) -> scalar_float:
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=SI_CRYSTAL,
+                    surface_roughness=0.5,
+                    temperature=temp,
+                )
+            )
+
+        check_grads(_jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+    def test_ewald_simulator_grad_temperature_correct(self) -> None:
+        """Ewald simulator grad w.r.t. temperature matches finite diff."""
+
+        def f(temp: scalar_float) -> scalar_float:
+            pattern = ewald_simulator(
+                crystal=SI_CRYSTAL,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                hmax=2,
+                kmax=2,
+                temperature=temp,
+                surface_roughness=0.5,
+            )
+            return jnp.sum(pattern.intensities)
+
+        check_grads(_jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-2)
+
+    def test_ewald_simulator_grad_roughness_correct(self) -> None:
+        """Ewald simulator grad w.r.t. roughness matches finite diff."""
+
+        def f(roughness: scalar_float) -> scalar_float:
+            pattern = ewald_simulator(
+                crystal=SI_CRYSTAL,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                hmax=2,
+                kmax=2,
+                temperature=300.0,
+                surface_roughness=roughness,
+            )
+            return jnp.sum(pattern.intensities)
+
+        check_grads(_jax_safe(f), (jnp.float64(0.5),), order=1, atol=1e-2)
+
+    def test_wavelength_grad_correct(self) -> None:
+        """Relativistic wavelength grad matches finite diff to 2nd order."""
+
+        def f(voltage: scalar_float) -> scalar_float:
+            return wavelength_ang(voltage)
+
+        check_grads(_jax_safe(f), (jnp.float64(20.0),), order=2, atol=1e-4)
+
+    def test_multislice_grad_voltage_correct(self) -> None:
+        """Multislice propagation grad w.r.t. voltage matches finite diff."""
+        cart_positions: Float[Array, "2 4"] = jnp.array(
+            [
+                [5.0, 5.0, 1.0, 14.0],
+                [7.5, 7.5, 3.0, 14.0],
+            ]
+        )
+        sliced = create_sliced_crystal(
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([15.0, 15.0, 5.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            orientation=jnp.array([0, 0, 1]),
+            depth=5.0,
+            x_extent=15.0,
+            y_extent=15.0,
+        )
+
+        def f(voltage: scalar_float) -> scalar_float:
+            potential = sliced_crystal_to_potential(
+                sliced,
+                slice_thickness=2.0,
+                pixel_size=0.5,
+                voltage_kv=voltage,
+            )
+            psi_exit = multislice_propagate(
+                potential,
+                voltage_kv=voltage,
+                theta_deg=2.0,
+            )
+            return jnp.sum(jnp.abs(psi_exit) ** 2)
+
+        check_grads(_jax_safe(f), (jnp.float64(20.0),), order=1, atol=1e-2)
+
+
+class TestVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap produces results consistent with sequential eval.
+
+    This is critical for beam_averaging where angular_divergence_average
+    relies on vmap producing identical results to sequential evaluation.
+    Divergence between the two means the weighted sum is silently wrong.
+    """
+
+    def test_form_factor_vmap_consistent(self) -> None:
+        """Batched form factor matches sequential per-element result."""
+
+        def f(q: scalar_float) -> scalar_float:
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        q_batch: Float[Array, "4"] = jnp.array([0.5, 1.0, 2.0, 4.0])
+        batched: Float[Array, "4"] = jax.vmap(f)(q_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(q) for q in q_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+    def test_ctr_intensity_vmap_consistent(self) -> None:
+        """Batched CTR intensity matches sequential evaluation."""
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness: scalar_float) -> Float[Array, "1 5"]:
+            return calculate_ctr_intensity(
+                hk_indices=hk_indices,
+                q_z=q_z,
+                crystal=SI_CRYSTAL,
+                surface_roughness=roughness,
+                temperature=300.0,
+            )
+
+        roughness_batch: Float[Array, "3"] = jnp.array([0.1, 0.5, 1.0])
+        batched: Float[Array, "3 1 5"] = jax.vmap(f)(roughness_batch)
+        sequential: Float[Array, "3 1 5"] = jnp.stack(
+            [f(r) for r in roughness_batch]
+        )
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+    def test_debye_waller_vmap_consistent(self) -> None:
+        """Batched DW factor matches sequential evaluation."""
+
+        def f(temp: scalar_float) -> scalar_float:
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        temp_batch: Float[Array, "4"] = jnp.array(
+            [100.0, 300.0, 600.0, 1000.0]
+        )
+        batched: Float[Array, "4"] = jax.vmap(f)(temp_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(t) for t in temp_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+    def test_ewald_simulator_vmap_temperature_consistent(self) -> None:
+        """Batched ewald_simulator over temps matches sequential."""
+
+        def f(temp: scalar_float) -> scalar_float:
+            pattern = ewald_simulator(
+                crystal=SI_CRYSTAL,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                hmax=2,
+                kmax=2,
+                temperature=temp,
+                surface_roughness=0.5,
+            )
+            return jnp.sum(pattern.intensities)
+
+        temp_batch: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
+        batched: Float[Array, "3"] = jax.vmap(f)(temp_batch)
+        sequential: Float[Array, "3"] = jnp.stack([f(t) for t in temp_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-4)
+
+    def test_wavelength_vmap_consistent(self) -> None:
+        """Batched wavelength matches sequential evaluation."""
+        voltages: Float[Array, "4"] = jnp.array([10.0, 20.0, 30.0, 50.0])
+        batched: Float[Array, "4"] = jax.vmap(wavelength_ang)(voltages)
+        sequential: Float[Array, "4"] = jnp.stack(
+            [wavelength_ang(v) for v in voltages]
+        )
+        chex.assert_trees_all_close(batched, sequential, atol=1e-8)
