@@ -54,13 +54,13 @@ from pathlib import Path
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import ndarray as NDArray  # noqa: N812
 from beartype import beartype
 from beartype.typing import Any, Dict, List, Optional, Tuple, Union
 from jaxtyping import Float
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.simul import (
     debye_waller_factor,
@@ -68,6 +68,10 @@ from rheedium.simul import (
     kirkland_form_factor,
 )
 from rheedium.types import CrystalStructure
+from rheedium.types.constants import (
+    H_OVER_SQRT_2ME_ANG_VSQRT,
+    RELATIVISTIC_COEFF_PER_V,
+)
 
 _LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
 _ATOMS_PATH: Path = _LUGGAGE_DIR / "atom_numbers.json"
@@ -144,15 +148,13 @@ def plot_wavelength_curve(
         voltage_range_kv[0], voltage_range_kv[1], n_points
     )
     voltage_v: Float[NDArray, "N"] = voltages * 1000.0
-    relativistic_coeff: float = 0.978476e-6
-    h_over_sqrt_2me: float = 12.2643
-    wavelength_rel: Float[NDArray, "N"] = h_over_sqrt_2me / np.sqrt(
-        voltage_v * (1.0 + relativistic_coeff * voltage_v)
+    wavelength_rel: Float[NDArray, "N"] = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+        voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
     ax.plot(voltages, wavelength_rel, "b-", linewidth=2, label="Relativistic")
     if show_comparison:
-        wavelength_nonrel: Float[NDArray, "N"] = h_over_sqrt_2me / np.sqrt(
-            voltage_v
+        wavelength_nonrel: Float[NDArray, "N"] = (
+            H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(voltage_v)
         )
         ax.plot(
             voltages,
@@ -573,9 +575,8 @@ def plot_ewald_sphere_2d(
         fig: Figure
         fig, ax = plt.subplots(figsize=(12, 8))
     voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
-    rel_coeff: float = 0.978476e-6
-    wavelength: float = 12.2643 / np.sqrt(
-        voltage_v * (1.0 + rel_coeff * voltage_v)
+    wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+        voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
     k_mag: float = 2 * np.pi / wavelength
     theta_rad: float = np.deg2rad(theta_deg)
@@ -698,9 +699,8 @@ def plot_ewald_sphere_3d(
         fig: Any = plt.figure(figsize=(10, 8))
         ax: Any = fig.add_subplot(111, projection="3d")
     voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
-    rel_coeff: float = 0.978476e-6
-    wavelength: float = 12.2643 / np.sqrt(
-        voltage_v * (1.0 + rel_coeff * voltage_v)
+    wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+        voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
     k_mag: float = 2 * np.pi / wavelength
     g_spacing: float = 2 * np.pi / lattice_spacing

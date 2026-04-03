@@ -48,6 +48,12 @@ from rheedium.inout import (
     kirkland_potentials,
 )
 from rheedium.types import scalar_bool, scalar_float, scalar_int
+from rheedium.types.constants import (
+    AMU_TO_KG,
+    BOLTZMANN_CONSTANT_JK,
+    HBAR_JS,
+    M2_TO_ANG2,
+)
 
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
@@ -391,9 +397,9 @@ def get_mean_square_displacement(
     get_atomic_mass : Atomic masses for MSD calculation
     debye_waller_factor : Convert MSD to damping factor
     """
-    hbar: float = 1.054571817e-34
-    k_b: float = 1.380649e-23
-    amu_to_kg: float = 1.66053906660e-27
+    hbar: float = HBAR_JS
+    k_b: float = BOLTZMANN_CONSTANT_JK
+    amu_to_kg: float = AMU_TO_KG
     theta_d: Float[Array, ""] = get_debye_temperature(atomic_number)
     mass_amu: Float[Array, ""] = get_atomic_mass(atomic_number)
     mass_kg: Float[Array, ""] = mass_amu * amu_to_kg
@@ -403,7 +409,7 @@ def get_mean_square_displacement(
     atomic_number_float: Float[Array, ""] = jnp.asarray(
         atomic_number, dtype=jnp.float64
     )
-    m2_to_ang2: float = 1e20
+    m2_to_ang2: float = M2_TO_ANG2
 
     def debye_msd() -> Float[Array, ""]:
         """Calculate MSD using Debye model with element-specific Θ_D."""

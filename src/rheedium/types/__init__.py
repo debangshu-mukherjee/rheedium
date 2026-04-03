@@ -61,6 +61,8 @@ Routine Listings
     Union type for scalar integer values (int or JAX scalar array).
 :obj:`scalar_num`
     Union type for scalar numeric values (int, float, or JAX scalar array).
+:mod:`constants`
+    Physical constants with ``Final`` annotations.
 
 Notes
 -----

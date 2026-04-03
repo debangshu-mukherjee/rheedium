@@ -21,13 +21,20 @@ These functions are re-exported from the main simul module for backward
 compatibility. Import from rheedium.simul, not rheedium.simul.simul_utils.
 """
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
 from rheedium.types import scalar_float, scalar_num
+from rheedium.types.constants import (
+    ELECTRON_MASS_KG,
+    ELEMENTARY_CHARGE_C,
+    H_OVER_SQRT_2ME_ANG_VSQRT,
+    PLANCK_CONSTANT_JS,
+    RELATIVISTIC_COEFF_PER_V,
+    SPEED_OF_LIGHT_MS,
+)
 
 
 @jaxtyped(typechecker=beartype)
@@ -91,22 +98,11 @@ def wavelength_ang(
         jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
     )
 
-    # Exact relativistic correction coefficient: e / (2 * m_e * c^2)
-    # = 1.602176634e-19 / (2 * 9.1093837015e-31 * (299792458)^2)
-    # = 0.978476e-6 V^-1
-    relativistic_coeff: float = 0.978476e-6
-
-    # Relativistically corrected voltage: V * (1 + e*V / (2*m_e*c^2))
     corrected_voltage: Float[Array, "..."] = voltage_v * (
-        1.0 + relativistic_coeff * voltage_v
+        1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v
     )
 
-    # h / sqrt(2 * m_e * e) in Å·V^0.5 units
-    # = 6.62607015e-34 / sqrt(2 * 9.1093837015e-31 * 1.602176634e-19)
-    # = 12.2643 Å·V^0.5
-    h_over_sqrt_2me: float = 12.2643
-
-    wavelength: Float[Array, "..."] = h_over_sqrt_2me / jnp.sqrt(
+    wavelength: Float[Array, "..."] = H_OVER_SQRT_2ME_ANG_VSQRT / jnp.sqrt(
         corrected_voltage
     )
     return wavelength
@@ -211,16 +207,19 @@ def interaction_constant(
     lam_m: Float[Array, ""] = (
         jnp.asarray(wavelength_ang, dtype=jnp.float64) * 1e-10
     )
-    # Physical constants (SI)
-    h: float = 6.62607015e-34  # Planck constant (J·s)
-    m_e: float = 9.1093837015e-31  # electron mass (kg)
-    e_charge: float = 1.602176634e-19  # elementary charge (C)
-    c: float = 299792458.0  # speed of light (m/s)
-
-    gamma: Float[Array, ""] = 1.0 + (e_charge * voltage_v) / (m_e * c * c)
-    beta: Float[Array, ""] = 1.0 + (e_charge * voltage_v) / (2.0 * m_e * c * c)
+    gamma: Float[Array, ""] = 1.0 + (ELEMENTARY_CHARGE_C * voltage_v) / (
+        ELECTRON_MASS_KG * SPEED_OF_LIGHT_MS * SPEED_OF_LIGHT_MS
+    )
+    beta: Float[Array, ""] = 1.0 + (ELEMENTARY_CHARGE_C * voltage_v) / (
+        2.0 * ELECTRON_MASS_KG * SPEED_OF_LIGHT_MS * SPEED_OF_LIGHT_MS
+    )
     sigma_si: Float[Array, ""] = (
-        2.0 * jnp.pi * m_e * e_charge * lam_m / (h**2)
+        2.0
+        * jnp.pi
+        * ELECTRON_MASS_KG
+        * ELEMENTARY_CHARGE_C
+        * lam_m
+        / (PLANCK_CONSTANT_JS**2)
     ) * (gamma / beta)
 
     # Convert from 1/(V·m) to 1/(V·Å)

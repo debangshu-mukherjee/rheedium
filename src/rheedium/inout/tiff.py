@@ -43,6 +43,10 @@ from beartype.typing import List, NamedTuple, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.types import RHEEDImage, create_rheed_image, scalar_float
+from rheedium.types.constants import (
+    H_OVER_SQRT_2ME_ANG_VSQRT,
+    RELATIVISTIC_COEFF_PER_V,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -594,11 +598,12 @@ def load_tiff_as_rheed_image(
         img_array = jnp.maximum(img_array - background, 0.0)
 
     voltage_v: float = voltage_kv * 1000.0
-    relativistic_coeff: float = 0.978476e-6
     corrected_voltage: float = voltage_v * (
-        1.0 + relativistic_coeff * voltage_v
+        1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v
     )
-    electron_wavelength_ang: float = 12.2643 / np.sqrt(corrected_voltage)
+    electron_wavelength_ang: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+        corrected_voltage
+    )
 
     cal: Union[Float[Array, "2"], scalar_float] = jnp.asarray(
         calibration, dtype=jnp.float64
