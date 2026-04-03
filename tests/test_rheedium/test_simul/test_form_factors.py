@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
 from rheedium.simul.form_factors import (
@@ -18,6 +19,7 @@ from rheedium.simul.form_factors import (
     kirkland_form_factor,
     load_kirkland_parameters,
 )
+from rheedium.tools import jax_safe
 
 
 class TestFormFactors(chex.TestCase, parameterized.TestCase):
@@ -608,6 +610,117 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             f_rotated = var_scattering(14, q_rotated, 300.0, False)
 
             chex.assert_trees_all_close(f_original, f_rotated, rtol=1e-8)
+
+
+class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
+    """Gradient existence and correctness for form factor functions."""
+
+    def test_form_factor_grad_q(self) -> None:
+        """Kirkland form factor gradient w.r.t. q is finite and smooth."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        grad_fn = jax.grad(f)
+        q_values = [0.5, 1.0, 2.0, 4.0]
+        for q in q_values:
+            g = grad_fn(jnp.float64(q))
+            chex.assert_tree_all_finite(g)
+            assert jnp.abs(g) > 1e-12
+
+    def test_debye_waller_grad_temperature(self) -> None:
+        """DW factor gradient w.r.t. temperature is negative."""
+
+        def dw_at_temp(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        g = jax.grad(dw_at_temp)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+        assert g < 0
+
+    def test_msd_grad_temperature(self) -> None:
+        """MSD gradient w.r.t. temperature is positive."""
+
+        def msd_fn(temp):
+            return get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+
+        g = jax.grad(msd_fn)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+        assert g > 0
+
+    def test_form_factor_grad_correct(self) -> None:
+        """Kirkland form factor analytical grad matches finite diff."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        check_grads(jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
+
+    def test_debye_waller_grad_correct(self) -> None:
+        """DW factor analytical grad matches finite diff."""
+
+        def f(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+    def test_msd_grad_correct(self) -> None:
+        """MSD analytical grad matches finite diff."""
+
+        def f(temp):
+            return get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-4)
+
+
+class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap matches sequential evaluation for form factors."""
+
+    def test_form_factor_vmap_consistent(self) -> None:
+        """Batched form factor matches sequential per-element result."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        q_batch: Float[Array, "4"] = jnp.array([0.5, 1.0, 2.0, 4.0])
+        batched: Float[Array, "4"] = jax.vmap(f)(q_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(q) for q in q_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+    def test_debye_waller_vmap_consistent(self) -> None:
+        """Batched DW factor matches sequential evaluation."""
+
+        def f(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        temp_batch: Float[Array, "4"] = jnp.array(
+            [100.0, 300.0, 600.0, 1000.0]
+        )
+        batched: Float[Array, "4"] = jax.vmap(f)(temp_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(t) for t in temp_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 
 if __name__ == "__main__":

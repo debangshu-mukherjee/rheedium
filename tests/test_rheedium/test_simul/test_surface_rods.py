@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
 from rheedium.simul.surface_rods import (
@@ -20,7 +21,8 @@ from rheedium.simul.surface_rods import (
     roughness_damping,
     surface_structure_factor,
 )
-from rheedium.types import create_crystal_structure
+from rheedium.tools import jax_safe
+from rheedium.types import CrystalStructure, create_crystal_structure
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
@@ -701,6 +703,127 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         expected_intensity = jnp.abs(f_struct) ** 2 * damping
 
         chex.assert_tree_all_finite(expected_intensity)
+
+
+def _make_si_crystal() -> CrystalStructure:
+    """Create a 2-atom Si crystal for gradient tests."""
+    a_si: float = 5.431
+    frac_coords = jnp.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]])
+    cart_coords = frac_coords * a_si
+    atomic_numbers = jnp.full(2, 14.0)
+    frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
+    cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+    return create_crystal_structure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=jnp.array([a_si, a_si, a_si]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
+_SI_CRYSTAL: CrystalStructure = _make_si_crystal()
+
+
+class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
+    """Gradient existence and correctness for CTR intensity."""
+
+    def test_ctr_intensity_grad_roughness(self) -> None:
+        """CTR intensity gradient w.r.t. roughness is finite."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def loss(roughness):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=roughness,
+                    temperature=300.0,
+                )
+            )
+
+        g = jax.grad(loss)(jnp.float64(0.5))
+        chex.assert_tree_all_finite(g)
+        assert jnp.abs(g) > 1e-12
+
+    def test_ctr_intensity_grad_temperature(self) -> None:
+        """CTR intensity gradient w.r.t. temperature is finite."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def loss(temp):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=0.5,
+                    temperature=temp,
+                )
+            )
+
+        g = jax.grad(loss)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+
+    def test_ctr_intensity_grad_roughness_correct(self) -> None:
+        """CTR intensity grad w.r.t. roughness matches finite diff."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=roughness,
+                    temperature=300.0,
+                )
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(0.5),), order=1, atol=1e-3)
+
+    def test_ctr_intensity_grad_temperature_correct(self) -> None:
+        """CTR intensity grad w.r.t. temperature matches finite diff."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(temp):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=0.5,
+                    temperature=temp,
+                )
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+
+class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap matches sequential evaluation for CTR intensity."""
+
+    def test_ctr_intensity_vmap_consistent(self) -> None:
+        """Batched CTR intensity matches sequential evaluation."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness):
+            return calculate_ctr_intensity(
+                hk_indices=hk_indices,
+                q_z=q_z,
+                crystal=_SI_CRYSTAL,
+                surface_roughness=roughness,
+                temperature=300.0,
+            )
+
+        roughness_batch = jnp.array([0.1, 0.5, 1.0])
+        batched = jax.vmap(f)(roughness_batch)
+        sequential = jnp.stack([f(r) for r in roughness_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
+from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
 from rheedium.simul import (
@@ -16,6 +17,7 @@ from rheedium.simul import (
     interaction_constant,
     wavelength_ang,
 )
+from rheedium.tools import jax_safe
 from rheedium.types import scalar_float
 
 
@@ -221,3 +223,28 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         sigma_30: Float[Array, ""] = var_sigma(jnp.float64(30.0), lam_30)
 
         assert float(sigma_10) > float(sigma_30)
+
+
+class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
+    """Verify analytical gradients match finite differences."""
+
+    def test_wavelength_grad_correct(self) -> None:
+        """Relativistic wavelength grad matches finite diff to 2nd order."""
+
+        def f(voltage):
+            return wavelength_ang(voltage)
+
+        check_grads(jax_safe(f), (jnp.float64(20.0),), order=2, atol=1e-4)
+
+
+class TestSimulUtilsVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap matches sequential for utility functions."""
+
+    def test_wavelength_vmap_consistent(self) -> None:
+        """Batched wavelength matches sequential evaluation."""
+        voltages: Float[Array, "4"] = jnp.array([10.0, 20.0, 30.0, 50.0])
+        batched: Float[Array, "4"] = jax.vmap(wavelength_ang)(voltages)
+        sequential: Float[Array, "4"] = jnp.stack(
+            [wavelength_ang(v) for v in voltages]
+        )
+        chex.assert_trees_all_close(batched, sequential, atol=1e-8)

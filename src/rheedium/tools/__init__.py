@@ -9,6 +9,8 @@ differentiation.
 
 Routine Listings
 ----------------
+:func:`jax_safe`
+    Wrap a function to convert positional args to JAX arrays.
 :func:`shard_array`
     Shard an array across specified axes and devices for
     parallel processing.
@@ -23,7 +25,9 @@ overrides automatic SLURM coordinator detection.
 """
 
 from .parallel import shard_array
+from .wrappers import jax_safe
 
 __all__: list[str] = [
+    "jax_safe",
     "shard_array",
 ]
