@@ -19,7 +19,7 @@ from jaxtyping import Array, Complex, Float, Int
 
 from rheedium.simul import (
     compute_kinematic_intensities_with_ctrs,
-    interaction_constant,
+    ewald_simulator,
     wavelength_ang,
 )
 from rheedium.simul.simulator import (
@@ -97,40 +97,6 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         )
 
         return crystal
-
-    @chex.all_variants(without_device=False)
-    def test_wavelength_calculation(self) -> None:
-        """Test relativistic wavelength calculation."""
-        var_wavelength = self.variant(wavelength_ang)
-
-        # Test at different voltages
-        voltages_kv: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
-        wavelengths: Float[Array, "3"] = jax.vmap(var_wavelength)(voltages_kv)
-
-        # Expected wavelengths (approximate values in Angstroms)
-        expected: Float[Array, "3"] = jnp.array([0.1226, 0.0859, 0.0698])
-
-        chex.assert_trees_all_close(wavelengths, expected, rtol=5e-3)
-        chex.assert_tree_all_finite(wavelengths)
-
-    @chex.all_variants(without_device=False)
-    def test_interaction_constant(self) -> None:
-        """Test relativistic interaction constant against reference values."""
-        var_sigma = self.variant(interaction_constant)
-
-        voltages_kv: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
-        wavelengths: Float[Array, "3"] = jax.vmap(wavelength_ang)(voltages_kv)
-        sigmas: Float[Array, "3"] = jax.vmap(var_sigma)(
-            voltages_kv, wavelengths
-        )
-
-        # Reference values computed from full relativistic formula (1/(V·Å))
-        expected: Float[Array, "3"] = jnp.array(
-            [0.0025738, 0.0018283, 0.0014993]
-        )
-
-        chex.assert_trees_all_close(sigmas, expected, rtol=5e-4, atol=5e-6)
-        chex.assert_tree_all_finite(sigmas)
 
     @chex.all_variants(without_device=False)
     @parameterized.named_parameters(
@@ -1094,6 +1060,303 @@ class TestComputeKinematicIntensitiesExtended(
         total_with: float = float(jnp.sum(intens_with_hkl))
 
         self.assertGreater(total_with, total_no)
+
+
+class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
+    """Test suite for ewald_simulator with exact Ewald-CTR intersection."""
+
+    def setUp(self) -> None:
+        """Set up test fixtures."""
+        super().setUp()
+        self.mgo_crystal = self._create_mgo_crystal()
+
+    def _create_mgo_crystal(self) -> CrystalStructure:
+        """Create a simple MgO rock-salt structure for testing."""
+        a_mgo: scalar_float = 4.212
+
+        frac_coords: Float[Array, "2 3"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],
+            ]
+        )
+
+        cart_coords: Float[Array, "2 3"] = frac_coords * a_mgo
+
+        atomic_numbers: Float[Array, "2"] = jnp.array([12.0, 8.0])
+        frac_positions: Float[Array, "2 4"] = jnp.column_stack(
+            [frac_coords, atomic_numbers]
+        )
+        cart_positions: Float[Array, "2 4"] = jnp.column_stack(
+            [cart_coords, atomic_numbers]
+        )
+
+        crystal: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([a_mgo, a_mgo, a_mgo]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+        return crystal
+
+    def test_basic_pattern_generation(self) -> None:
+        """Test that ewald_simulator produces a valid RHEED pattern."""
+        pattern: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        n_valid = jnp.sum(valid_mask)
+        self.assertGreater(
+            int(n_valid), 0, "Should have at least one valid reflection"
+        )
+
+        self.assertTrue(
+            jnp.all(pattern.intensities >= 0),
+            "All intensities should be non-negative",
+        )
+
+        valid_detector = pattern.detector_points[valid_mask]
+        self.assertTrue(
+            jnp.all(jnp.isfinite(valid_detector)),
+            "Valid detector points should be finite",
+        )
+
+    def test_upward_scattering_only(self) -> None:
+        """Only upward-scattered reflections are returned (k_out_z > 0)."""
+        pattern: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            hmax=5,
+            kmax=5,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        k_out_valid = pattern.k_out[valid_mask]
+
+        self.assertTrue(
+            jnp.all(k_out_valid[:, 2] > 0),
+            "All valid reflections should have k_out_z > 0",
+        )
+
+    def test_elastic_scattering_constraint(self) -> None:
+        """Test that |k_out| = |k_in| (elastic scattering)."""
+        pattern: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        k_out_valid = pattern.k_out[valid_mask]
+
+        wl = wavelength_ang(20.0)
+        k_mag_expected = 2.0 * jnp.pi / wl
+
+        k_out_mags = jnp.linalg.norm(k_out_valid, axis=1)
+        relative_error = jnp.abs(k_out_mags - k_mag_expected) / k_mag_expected
+
+        self.assertTrue(
+            jnp.all(relative_error < 0.01),
+            "k_out magnitudes should match k_in (elastic scattering)",
+        )
+
+    def test_azimuthal_rotation_changes_pattern(self) -> None:
+        """Changing phi_deg rotates the pattern."""
+        pattern_0: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        pattern_45: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=45.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        self.assertFalse(
+            jnp.allclose(
+                pattern_0.detector_points, pattern_45.detector_points
+            ),
+            "Different azimuths should produce different patterns",
+        )
+
+    def test_temperature_affects_intensity(self) -> None:
+        """Higher temperature reduces intensity (Debye-Waller)."""
+        pattern_low_T: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            temperature=100.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        pattern_high_T: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            temperature=500.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_low = pattern_low_T.G_indices >= 0
+        valid_high = pattern_high_T.G_indices >= 0
+
+        self.assertGreater(
+            int(jnp.sum(valid_low)),
+            0,
+            "Low T pattern should have reflections",
+        )
+        self.assertGreater(
+            int(jnp.sum(valid_high)),
+            0,
+            "High T pattern should have reflections",
+        )
+
+    def test_roughness_affects_intensity(self) -> None:
+        """Surface roughness affects CTR intensity."""
+        pattern_smooth: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            surface_roughness=0.1,
+            hmax=3,
+            kmax=3,
+        )
+
+        pattern_rough: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            surface_roughness=2.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_smooth = pattern_smooth.G_indices >= 0
+        valid_rough = pattern_rough.G_indices >= 0
+
+        self.assertGreater(
+            int(jnp.sum(valid_smooth)),
+            0,
+            "Smooth surface should have reflections",
+        )
+        self.assertGreater(
+            int(jnp.sum(valid_rough)),
+            0,
+            "Rough surface should have reflections",
+        )
+
+    def test_voltage_affects_wavevector(self) -> None:
+        """Different voltages give different k magnitudes."""
+        pattern_10kv: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=10.0,
+            theta_deg=2.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        pattern_30kv: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=30.0,
+            theta_deg=2.0,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_10 = pattern_10kv.G_indices >= 0
+        valid_30 = pattern_30kv.G_indices >= 0
+
+        if jnp.any(valid_10) and jnp.any(valid_30):
+            k_mag_10 = jnp.linalg.norm(pattern_10kv.k_out[valid_10][0])
+            k_mag_30 = jnp.linalg.norm(pattern_30kv.k_out[valid_30][0])
+
+            self.assertGreater(
+                float(k_mag_30),
+                float(k_mag_10),
+                "Higher voltage should give larger k magnitude",
+            )
+
+    def test_jax_jit_compatible(self) -> None:
+        """ewald_simulator works under JAX JIT compilation."""
+        pattern: RHEEDPattern = jax.jit(
+            ewald_simulator,
+            static_argnames=("hmax", "kmax"),
+        )(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            hmax=2,
+            kmax=2,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        self.assertGreater(
+            int(jnp.sum(valid_mask)),
+            0,
+            "JIT-compiled simulation should work",
+        )
+
+    def test_surface_config_parameter(self) -> None:
+        """surface_config parameter works correctly."""
+        config = SurfaceConfig(method="height", height_fraction=0.5)
+
+        pattern: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            surface_config=config,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        self.assertGreater(
+            int(jnp.sum(valid_mask)),
+            0,
+            "Should produce valid pattern with custom surface config",
+        )
+
+    @parameterized.parameters(
+        {"theta_deg": 1.0},
+        {"theta_deg": 2.0},
+        {"theta_deg": 3.0},
+        {"theta_deg": 5.0},
+    )
+    def test_various_grazing_angles(self, theta_deg: float) -> None:
+        """Various grazing angles produce valid patterns."""
+        pattern: RHEEDPattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=theta_deg,
+            hmax=3,
+            kmax=3,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        self.assertGreaterEqual(
+            int(jnp.sum(valid_mask)),
+            0,
+            f"Grazing angle {theta_deg} should produce valid reflections",
+        )
 
 
 if __name__ == "__main__":

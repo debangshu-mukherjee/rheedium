@@ -27,15 +27,13 @@ from jaxtyping import Array, Float, Int
 
 from rheedium.simul import (
     calculate_ctr_intensity,
+    debye_waller_factor,
     ewald_simulator,
+    get_mean_square_displacement,
+    kirkland_form_factor,
     multislice_propagate,
     sliced_crystal_to_potential,
     wavelength_ang,
-)
-from rheedium.simul.form_factors import (
-    debye_waller_factor,
-    get_mean_square_displacement,
-    kirkland_form_factor,
 )
 from rheedium.types import (
     CrystalStructure,
