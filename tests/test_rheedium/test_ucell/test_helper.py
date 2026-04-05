@@ -23,7 +23,6 @@ class TestAngleInDegrees(chex.TestCase):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -112,7 +111,6 @@ class TestComputeLengthsAngles(chex.TestCase):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -215,7 +213,6 @@ class TestParseCifAndScrape(chex.TestCase):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
         # Create a temporary test CIF file
         self.test_cif_content = """

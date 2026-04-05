@@ -30,7 +30,6 @@ class TestBesselIvSeries(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5),
@@ -79,7 +78,6 @@ class TestBesselK0Series(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("x0p5", 0.5, 0.9244190712276656),
@@ -119,7 +117,6 @@ class TestBesselKnRecurrence(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     def test_kn_recurrence_n0(self) -> None:
         """Test K_n recurrence returns K_0 when n=0."""
@@ -178,7 +175,6 @@ class TestBesselKvSmallNonInteger(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("v0p25_x0p5", 0.25, 0.5, 0.9603163249318826),
@@ -212,7 +208,6 @@ class TestBesselKvSmallInteger(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5, 0.9244190712276656),
@@ -243,7 +238,6 @@ class TestBesselKvLarge(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("v0_x5", 0.0, 5.0, 0.0036910983340425942),
@@ -282,7 +276,6 @@ class TestBesselKHalf(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @parameterized.named_parameters(
         ("x0p5", 0.5, 1.0750476034999203),
@@ -318,7 +311,6 @@ class TestBesselKv(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -451,7 +443,6 @@ class TestBesselKvEdgeCases(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     def test_bessel_kv_small_x_boundary(self) -> None:
         """Test behavior near the small/large x boundary."""

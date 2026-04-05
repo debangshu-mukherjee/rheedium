@@ -187,7 +187,6 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
         # Create a simple cubic crystal with atoms at different z positions
         self.cubic_crystal = self._create_layered_crystal()
@@ -548,7 +547,6 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.all_variants
     def test_cubic_system(self) -> None:
@@ -788,7 +786,6 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.all_variants
     def test_cubic_system(self) -> None:
@@ -903,7 +900,6 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.all_variants
     def test_cubic_system(self) -> None:
@@ -1058,7 +1054,6 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_cubic_system(self) -> None:
@@ -1165,7 +1160,6 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
 
     @chex.all_variants
     def test_cubic_system(self) -> None:
@@ -1326,7 +1320,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
+
         # Set up cubic reciprocal vectors for testing
         self.cubic_rec_vecs = reciprocal_lattice_vectors(
             a=3.0,
@@ -1443,7 +1437,7 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        chex.set_n_cpu_devices(1)
+
         # Create a simple cubic crystal
         self.cubic_crystal = self._create_cubic_crystal()
 
