@@ -76,7 +76,7 @@ jobs:
       env:
         JAX_PLATFORMS: cpu
       continue-on-error: true
-      run: uv run pytest tests/ --cov=src/rheedium --cov-branch --cov-report=xml --cov-report=html --cov-report=term-missing --junitxml=test-results.xml -v
+      run: uv run pytest tests/ -n auto --cov=src/rheedium --cov-branch --cov-report=xml --cov-report=html --cov-report=term-missing --junitxml=test-results.xml -v
 
     - name: List generated files (debug)
       if: always()
