@@ -10,17 +10,22 @@ Manages JAX memory during test runs by:
    ``int(available_ram_gb * AVAILABLE_MEM_FRACTION // MEM_PER_WORKER_GB)``.
    An explicit ``-n 16`` overrides this calculation.
 
-2. Disabling JAX GPU memory pre-allocation via
+2. Exposing 8 virtual CPU devices via
+   ``XLA_FLAGS=--xla_force_host_platform_device_count=8``.
+   This enables meaningful ``pmap`` and multi-device sharding
+   tests on the CPU backend.
+
+3. Disabling JAX GPU memory pre-allocation via
    ``XLA_PYTHON_CLIENT_PREALLOCATE=false``. This must be set before
    ``import jax``; the ``os.environ`` call at module level ensures
    this regardless of import order.
 
-3. Clearing the JIT compilation cache after each test via
+4. Clearing the JIT compilation cache after each test via
    ``jax.clear_caches()``. Without this, each unique array shape
    compiled through a ``@jax.jit`` function accumulates a cached XLA
    binary that is never evicted, causing monotonic memory growth.
 
-4. Detecting per-test memory leaks by comparing RSS before and after
+5. Detecting per-test memory leaks by comparing RSS before and after
    each test. If a single test increases RSS by more than
    ``MEM_LEAK_THRESHOLD_GB``, the test is failed with a diagnostic
    message.
@@ -51,6 +56,7 @@ from collections.abc import Generator
 from typing import Final
 
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=8"
 
 import platform  # noqa: E402
 
