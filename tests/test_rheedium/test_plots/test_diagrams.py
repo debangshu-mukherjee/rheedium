@@ -17,7 +17,7 @@ matplotlib.use("Agg")
 
 import jax.numpy as jnp
 
-from rheedium.plots.diagrams import (
+from rheedium.plots import (
     plot_crystal_structure_3d,
     plot_ctr_profile,
     plot_debye_waller,

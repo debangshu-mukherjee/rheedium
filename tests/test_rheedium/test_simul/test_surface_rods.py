@@ -12,7 +12,7 @@ from absl.testing import parameterized
 from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
-from rheedium.simul.surface_rods import (
+from rheedium.simul import (
     calculate_ctr_intensity,
     gaussian_rod_profile,
     integrated_rod_intensity,

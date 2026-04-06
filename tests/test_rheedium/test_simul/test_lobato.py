@@ -13,7 +13,7 @@ from absl.testing import parameterized
 from jaxtyping import Array, Float
 
 from rheedium.inout import lobato_potentials
-from rheedium.simul.form_factors import (
+from rheedium.simul import (
     kirkland_form_factor,
     kirkland_projected_potential,
     load_lobato_parameters,

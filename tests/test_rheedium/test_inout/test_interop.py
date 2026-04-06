@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from absl.testing import parameterized
 
-from rheedium.inout.interop import (
+from rheedium.inout import (
     from_ase,
     from_pymatgen,
     to_ase,

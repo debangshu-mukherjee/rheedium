@@ -7,7 +7,7 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.crystal_types import (
+from rheedium.types import (
     EwaldData,
     XYZData,
     create_crystal_structure,

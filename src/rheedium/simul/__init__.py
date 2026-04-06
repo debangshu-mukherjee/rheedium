@@ -14,8 +14,10 @@ Routine Listings
     Average pattern over Gaussian angular divergence distribution.
 :func:`atomic_scattering_factor`
     Combined form factor with Debye-Waller damping.
-:func:`coherence_envelope`
-    Apply partial coherence damping envelope in reciprocal space.
+:func:`bessel_k0`
+    Modified Bessel function K_0(x).
+:func:`bessel_k1`
+    Modified Bessel function K_1(x).
 :func:`build_ewald_data`
     Build angle-independent EwaldData from crystal and beam parameters.
 :func:`calculate_ctr_intensity`
@@ -62,6 +64,8 @@ Routine Listings
     RHEED simulation using discrete 3D reciprocal lattice (spots).
 :func:`kirkland_form_factor`
     Calculate atomic form factor f(q) using Kirkland parameterization.
+:func:`kirkland_projected_potential`
+    Calculate projected atomic potential using Kirkland parameterization.
 :func:`load_kirkland_parameters`
     Load Kirkland scattering parameters from data file.
 :func:`load_lobato_parameters`
@@ -102,6 +106,7 @@ Routine Listings
     Calculate electron wavelength in angstroms.
 """
 
+from .bessel import bessel_k0, bessel_k1
 from .beam_averaging import (
     angular_divergence_average,
     coherence_envelope,
@@ -123,6 +128,7 @@ from .form_factors import (
     debye_waller_factor,
     get_mean_square_displacement,
     kirkland_form_factor,
+    kirkland_projected_potential,
     load_kirkland_parameters,
     load_lobato_parameters,
     lobato_form_factor,
@@ -163,6 +169,8 @@ from .surface_rods import (
 __all__: list[str] = [
     "angular_divergence_average",
     "atomic_scattering_factor",
+    "bessel_k0",
+    "bessel_k1",
     "build_ewald_data",
     "coherence_envelope",
     "calculate_ctr_intensity",
@@ -187,6 +195,7 @@ __all__: list[str] = [
     "integrated_rod_intensity",
     "kinematic_spot_simulator",
     "kirkland_form_factor",
+    "kirkland_projected_potential",
     "load_kirkland_parameters",
     "load_lobato_parameters",
     "lobato_form_factor",

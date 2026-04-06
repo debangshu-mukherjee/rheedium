@@ -12,10 +12,12 @@ import pytest
 from absl.testing import parameterized
 from jaxtyping import Array, Complex, Float, Int
 
-from rheedium.simul.ewald import (
-    _compute_structure_factor_single,
+from rheedium.simul import (
     build_ewald_data,
     ewald_allowed_reflections,
+)
+from rheedium.simul.ewald import (
+    _compute_structure_factor_single,
 )
 from rheedium.types import (
     CrystalStructure,

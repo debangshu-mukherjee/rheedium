@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
-from rheedium.recon.preprocessing import (
+from rheedium.recon import (
     log_intensity_transform,
     normalize_image,
     preprocess_experimental,

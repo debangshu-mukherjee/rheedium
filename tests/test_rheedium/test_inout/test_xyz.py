@@ -8,12 +8,14 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
-from rheedium.inout.xyz import (
-    _parse_atom_line,
-    _parse_xyz_metadata,
+from rheedium.inout import (
     atomic_symbol,
     kirkland_potentials,
     parse_xyz,
+)
+from rheedium.inout.xyz import (
+    _parse_atom_line,
+    _parse_xyz_metadata,
 )
 from rheedium.types import XYZData
 

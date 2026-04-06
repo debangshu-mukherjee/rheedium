@@ -9,7 +9,7 @@ import pytest
 from beartype import beartype
 from jaxtyping import Array, Float, Integer, jaxtyped
 
-from rheedium.types.custom_types import (
+from rheedium.types import (
     float_image,
     int_image,
     non_jax_number,

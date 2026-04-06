@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import pytest
 from jaxtyping import Array, Complex, Float
 
-from rheedium.simul.beam_averaging import (
+from rheedium.simul import (
     angular_divergence_average,
     coherence_envelope,
     detector_psf_convolve,

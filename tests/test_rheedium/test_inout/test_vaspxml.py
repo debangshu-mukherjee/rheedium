@@ -7,14 +7,16 @@ import chex
 import jax.numpy as jnp
 import pytest
 
+from rheedium.inout import (
+    parse_vaspxml,
+    parse_vaspxml_trajectory,
+)
 from rheedium.inout.vaspxml import (
     _extract_energy,
     _extract_forces,
     _extract_stress,
     _extract_structure_block,
     _get_species_list,
-    parse_vaspxml,
-    parse_vaspxml_trajectory,
 )
 from rheedium.types import CrystalStructure, XYZData
 import xml.etree.ElementTree as ET
@@ -483,7 +485,7 @@ class TestVaspxmlRoundtrip(chex.TestCase):
             xyz_data = parse_vaspxml(xml_file, include_forces=True)
 
             # Lattice from XYZData should give same cell lengths
-            from rheedium.inout.crystal import lattice_to_cell_params
+            from rheedium.inout import lattice_to_cell_params
 
             lengths, angles = lattice_to_cell_params(xyz_data.lattice)
 

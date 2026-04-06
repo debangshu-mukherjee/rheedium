@@ -12,7 +12,7 @@ from absl.testing import parameterized
 from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
-from rheedium.simul.form_factors import (
+from rheedium.simul import (
     atomic_scattering_factor,
     debye_waller_factor,
     get_mean_square_displacement,

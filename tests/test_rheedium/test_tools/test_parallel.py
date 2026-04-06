@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 from jax.sharding import NamedSharding
 
-from rheedium.tools.parallel import shard_array
+from rheedium.tools import shard_array
 
 
 class TestShardArray(chex.TestCase):

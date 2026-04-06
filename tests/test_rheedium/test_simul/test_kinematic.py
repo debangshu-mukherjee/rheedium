@@ -12,15 +12,15 @@ import pytest
 from absl.testing import parameterized
 
 from rheedium.inout import parse_cif
-from rheedium.simul.kinematic import (
+from rheedium.simul import (
     find_kinematic_reflections as kinematic_ewald_sphere,
     incident_wavevector as kinematic_incident_wavevector,
     kinematic_spot_simulator,
     make_ewald_sphere,
+    project_on_detector,
     simple_structure_factor as kinematic_structure_factor,
     wavelength_ang as kinematic_wavelength,
 )
-from rheedium.simul.simulator import project_on_detector
 from rheedium.types import create_crystal_structure
 from rheedium.ucell import miller_to_reciprocal, reciprocal_lattice_vectors
 

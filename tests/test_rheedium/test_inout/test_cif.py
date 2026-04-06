@@ -8,6 +8,10 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
+from rheedium.inout import (
+    parse_cif,
+    symmetry_expansion,
+)
 from rheedium.inout.cif import (
     _deduplicate_positions,
     _extract_cell_params,
@@ -15,8 +19,6 @@ from rheedium.inout.cif import (
     _parse_atom_positions,
     _parse_sym_op,
     _parse_symmetry_ops,
-    parse_cif,
-    symmetry_expansion,
 )
 from rheedium.types import CrystalStructure, create_crystal_structure
 

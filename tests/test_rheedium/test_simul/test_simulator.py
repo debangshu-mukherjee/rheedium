@@ -21,14 +21,12 @@ from jaxtyping import Array, Complex, Float, Int
 from rheedium.simul import (
     compute_kinematic_intensities_with_ctrs,
     ewald_simulator,
-    wavelength_ang,
-)
-from rheedium.simul.simulator import (
     find_kinematic_reflections,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
     sliced_crystal_to_potential,
+    wavelength_ang,
 )
 from rheedium.tools import jax_safe
 from rheedium.types import (

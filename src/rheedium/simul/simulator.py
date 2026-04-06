@@ -60,7 +60,7 @@ from rheedium.ucell import reciprocal_lattice_vectors
 
 from .form_factors import (
     atomic_scattering_factor,
-    kirkland_projected_potential,
+    projected_potential,
 )
 from .simul_utils import (
     incident_wavevector,
@@ -850,18 +850,20 @@ def sliced_crystal_to_potential(
     slice_thickness: scalar_float = 2.0,
     pixel_size: scalar_float = 0.1,
     voltage_kv: scalar_float = 20.0,
+    parameterization: str = "lobato",
 ) -> PotentialSlices:
     r"""Convert a SlicedCrystal into PotentialSlices for multislice calculation.
 
     This function takes a surface-oriented crystal slab and generates 3D
     potential slices suitable for multislice electron diffraction simulations.
-    The potential is calculated from atomic positions using the Kirkland
-    parameterization for accurate projected atomic potentials.
+    The potential is calculated from atomic positions using the selected
+    parameterization (Lobato-van Dyck by default) for accurate projected
+    atomic potentials.
 
     The interaction constant sigma = 2*pi*m*e*lambda/h^2 is computed in
     simplified form as 2*pi/(lambda*V) with units 1/(Volt*Angstrom^2).
-    Each atom contributes a projected potential using Kirkland parameters,
-    which provides accurate scattering for all elements 1-103.
+    Each atom contributes a projected potential, which provides accurate
+    scattering for all elements 1-103.
 
     Parameters
     ----------
@@ -875,6 +877,9 @@ def sliced_crystal_to_potential(
         Sets the lateral resolution of the potential grid.
     voltage_kv : scalar_float, optional
         Electron beam voltage in kV. Default: 20.0 kV
+    parameterization : str, optional
+        Atomic potential model: ``"lobato"`` (default) or ``"kirkland"``.
+        Not JIT-compiled; resolved at trace time.
         Used for interaction constant calculation.
 
     Returns
@@ -896,14 +901,14 @@ def sliced_crystal_to_potential(
        :math:`\\sigma` from voltage and wavelength.
     3. **Per-slice potential** --
        For each z-range, select atoms in slice, project
-       Kirkland potentials onto xy grid, and sum.
+       potentials onto xy grid, and sum.
     4. **Package result** --
        Return :class:`PotentialSlices` with calibration.
 
     See Also
     --------
     wavelength_ang : Compute electron wavelength from voltage.
-    kirkland_projected_potential : Projected atomic potential calculation.
+    projected_potential : Projected atomic potential calculation.
     create_potential_slices : Create PotentialSlices from array.
     multislice_propagate : Propagate wave through potential slices.
     multislice_simulator : Complete multislice RHEED simulation.
@@ -960,10 +965,7 @@ def sliced_crystal_to_potential(
         )
 
         def _atom_contribution(atom_idx: int) -> Float[Array, "nx ny"]:
-            """Calculate contribution from single atom to potential.
-
-            Uses Kirkland parameterization for accurate projected potentials.
-            """
+            """Calculate contribution from single atom to potential."""
             pos: Float[Array, "3"] = positions[atom_idx]
             z_number: Int[Array, ""] = atomic_numbers[atom_idx].astype(
                 jnp.int32
@@ -972,9 +974,8 @@ def sliced_crystal_to_potential(
             dx: Float[Array, "nx ny"] = xx - pos[0]
             dy: Float[Array, "nx ny"] = yy - pos[1]
             r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2)
-            # Use Kirkland parameterization for projected potential
             atom_potential: Float[Array, "nx ny"] = (
-                sigma * kirkland_projected_potential(z_number, r)
+                sigma * projected_potential(z_number, r, parameterization)
             )
             return jnp.where(is_in_slice, atom_potential, 0.0)
 

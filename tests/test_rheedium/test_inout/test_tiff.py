@@ -15,7 +15,7 @@ import numpy as np
 import tifffile
 from jaxtyping import Array, Float
 
-from rheedium.inout.tiff import (
+from rheedium.inout import (
     FrameMetadata,
     detect_beam_center,
     extract_frame_metadata,

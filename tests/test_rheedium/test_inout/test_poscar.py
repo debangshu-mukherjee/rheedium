@@ -8,10 +8,10 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
+from rheedium.inout import parse_poscar
 from rheedium.inout.poscar import (
     _parse_poscar_header,
     _parse_poscar_positions,
-    parse_poscar,
 )
 from rheedium.types import CrystalStructure
 

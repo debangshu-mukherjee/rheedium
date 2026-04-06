@@ -7,7 +7,7 @@ import pytest
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.beam_types import (
+from rheedium.types import (
     ElectronBeam,
     create_electron_beam,
 )

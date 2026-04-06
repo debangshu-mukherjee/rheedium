@@ -13,7 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 matplotlib.use("Agg")
 
-from rheedium.plots.figuring import create_phosphor_colormap, plot_rheed
+from rheedium.plots import create_phosphor_colormap, plot_rheed
 from rheedium.types import create_rheed_pattern
 
 

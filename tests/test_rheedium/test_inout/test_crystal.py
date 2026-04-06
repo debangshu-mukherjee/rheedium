@@ -9,11 +9,13 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
-from rheedium.inout.crystal import (
-    _infer_lattice_from_positions,
+from rheedium.inout import (
     lattice_to_cell_params,
     parse_crystal,
     xyz_to_crystal,
+)
+from rheedium.inout.crystal import (
+    _infer_lattice_from_positions,
 )
 from rheedium.types import CrystalStructure, create_xyz_data
 

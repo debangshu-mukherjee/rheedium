@@ -6,13 +6,13 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types.crystal_types import create_crystal_structure
-from rheedium.types.rheed_types import (
+from rheedium.types import (
     DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
+    create_crystal_structure,
     create_rheed_image,
     create_rheed_pattern,
     create_sliced_crystal,

@@ -61,7 +61,7 @@ from rheedium.inout import (
     kirkland_potentials,
     lobato_potentials,
 )
-from rheedium.simul.bessel import bessel_k0, bessel_k1
+from .bessel import bessel_k0, bessel_k1
 from rheedium.types import scalar_bool, scalar_float, scalar_int
 from rheedium.types.constants import (
     AMU_TO_KG,
