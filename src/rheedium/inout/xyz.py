@@ -17,6 +17,9 @@ Routine Listings
 :func:`kirkland_potentials`
     Return preloaded Kirkland potential parameters as
     JAX array.
+:func:`lobato_potentials`
+    Return preloaded Lobato-van Dyck parameters as
+    JAX array.
 :func:`parse_xyz`
     Parse an XYZ file and return a validated XYZData
     PyTree.
@@ -53,6 +56,7 @@ from rheedium.types import XYZData, create_xyz_data, scalar_int
 
 _LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
 _KIRKLAND_PATH: Path = _LUGGAGE_DIR / "Kirkland_Potentials.csv"
+_LOBATO_PATH: Path = _LUGGAGE_DIR / "Lobato_van_Dyck.csv"
 _ATOMS_PATH: Path = _LUGGAGE_DIR / "atom_numbers.json"
 _DEBYE_TEMPS_PATH: Path = _LUGGAGE_DIR / "debye_temperatures.csv"
 _ATOMIC_MASSES_PATH: Path = _LUGGAGE_DIR / "atomic_masses.csv"
@@ -234,6 +238,97 @@ def kirkland_potentials() -> Float[Array, "103 12"]:
     Array([...], dtype=float64)
     """
     return _KIRKLAND_POTENTIALS
+
+
+@jaxtyped(typechecker=beartype)
+def _load_lobato_csv(
+    file_path: Optional[Path] = _LOBATO_PATH,
+) -> Float[Array, "103 10"]:
+    """Load Lobato-van Dyck scattering factor parameters from CSV.
+
+    Reads the Lobato-van Dyck (2014) parameterization coefficients
+    from a CSV file and converts them to a JAX array with interleaved
+    (a_i, b_i) column order for consistency with
+    :func:`_load_kirkland_csv`.
+
+    Parameters
+    ----------
+    file_path : Optional[Path], optional
+        Path to CSV file. Defaults to bundled Lobato_van_Dyck.csv.
+
+    Returns
+    -------
+    lobato_data : Float[Array, "103 10"]
+        Lobato parameters with shape (103, 10). Rows correspond to
+        elements 1--103 (H to Lr), columns are interleaved as
+        (a1, b1, a2, b2, a3, b3, a4, b4, a5, b5).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified CSV file does not exist.
+    ValueError
+        If the CSV file does not have the expected 103 rows.
+
+    Examples
+    --------
+    >>> params = _load_lobato_csv()
+    >>> params.shape
+    (103, 10)
+    """
+    lobato_numpy: np.ndarray = np.loadtxt(
+        file_path,
+        delimiter=",",
+        dtype=np.float64,
+        skiprows=1,
+        usecols=range(2, 12),
+    )
+    if lobato_numpy.shape[0] != 103:
+        raise ValueError(f"Expected 103 rows, got {lobato_numpy.shape[0]}")
+    a_cols: np.ndarray = lobato_numpy[:, :5]
+    b_cols: np.ndarray = lobato_numpy[:, 5:]
+    interleaved: np.ndarray = np.empty((103, 10), dtype=np.float64)
+    interleaved[:, 0::2] = a_cols
+    interleaved[:, 1::2] = b_cols
+    lobato_data: Float[Array, "103 10"] = jnp.asarray(
+        interleaved, dtype=jnp.float64
+    )
+    return lobato_data
+
+
+_LOBATO_POTENTIALS: Float[Array, "103 10"] = _load_lobato_csv()
+
+
+@jaxtyped(typechecker=beartype)
+def lobato_potentials() -> Float[Array, "103 10"]:
+    """Return preloaded Lobato-van Dyck parameters as JAX array.
+
+    Provides access to the Lobato-van Dyck (2014) electron scattering
+    factor parameters for elements 1--103. Data is loaded once at
+    module import for optimal performance.
+
+    Returns
+    -------
+    lobato_potentials : Float[Array, "103 10"]
+        Lobato parameters with shape (103, 10). Rows correspond to
+        elements 1--103 (H to Lr), columns are interleaved as
+        (a1, b1, a2, b2, a3, b3, a4, b4, a5, b5) where the
+        scattering factor is
+        f_e(q) = sum_i a_i (2 + b_i q^2) / (1 + b_i q^2)^2.
+
+    Examples
+    --------
+    >>> params = lobato_potentials()
+    >>> params.shape
+    (103, 10)
+    >>> params[0]  # Hydrogen (Z=1, 0-indexed)
+    Array([...], dtype=float64)
+
+    References
+    ----------
+    Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70, 636--649.
+    """
+    return _LOBATO_POTENTIALS
 
 
 @jaxtyped(typechecker=beartype)
@@ -607,11 +702,13 @@ __all__: list[str] = [
     "_load_atomic_numbers",
     "_load_debye_temperatures",
     "_load_kirkland_csv",
+    "_load_lobato_csv",
     "_parse_atom_line",
     "_parse_xyz_metadata",
     "atomic_masses",
     "atomic_symbol",
     "debye_temperatures",
     "kirkland_potentials",
+    "lobato_potentials",
     "parse_xyz",
 ]

@@ -14,6 +14,15 @@ Routine Listings
 :func:`kirkland_projected_potential`
     Calculate projected atomic potential for multislice
     simulations.
+:func:`load_lobato_parameters`
+    Load Lobato-van Dyck scattering parameters from
+    data file.
+:func:`lobato_form_factor`
+    Calculate atomic form factor f_e(q) using
+    Lobato-van Dyck parameterization.
+:func:`lobato_projected_potential`
+    Calculate projected atomic potential using
+    Lobato-van Dyck parameterization.
 :func:`debye_waller_factor`
     Calculate Debye-Waller damping factor for thermal vibrations.
 :func:`atomic_scattering_factor`
@@ -46,7 +55,9 @@ from rheedium.inout import (
     atomic_masses,
     debye_temperatures,
     kirkland_potentials,
+    lobato_potentials,
 )
+from rheedium.simul.bessel import bessel_k0, bessel_k1
 from rheedium.types import scalar_bool, scalar_float, scalar_int
 from rheedium.types.constants import (
     AMU_TO_KG,
@@ -57,6 +68,7 @@ from rheedium.types.constants import (
 
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
+LOBATO_PARAMS: Float[Array, "103 10"] = lobato_potentials()
 
 
 @jaxtyped(typechecker=beartype)
@@ -330,6 +342,232 @@ def kirkland_projected_potential(
 
 
 @jaxtyped(typechecker=beartype)
+def load_lobato_parameters(
+    atomic_number: scalar_int,
+) -> Tuple[Float[Array, "5"], Float[Array, "5"]]:
+    """Load Lobato-van Dyck scattering parameters for a given element.
+
+    Extracts the Lobato-van Dyck (2014) parameterization coefficients
+    for electron scattering factors from the preloaded data. The model
+    uses 5 terms of the form a_i (2 + b_i q^2) / (1 + b_i q^2)^2.
+
+    Parameters
+    ----------
+    atomic_number : scalar_int
+        Atomic number (Z) of the element (1-103)
+
+    Returns
+    -------
+    a_coeffs : Float[Array, "5"]
+        Amplitude coefficients for the 5 Lobato terms
+    b_coeffs : Float[Array, "5"]
+        Width coefficients for the 5 Lobato terms in Angstroms^2
+
+    Notes
+    -----
+    1. **Validate range** --
+       Clip atomic number to [1, 103].
+    2. **Extract row** --
+       Select row for the specified atomic number.
+    3. **Split coefficients** --
+       Amplitude :math:`a_i` at even indices (0, 2, 4, 6, 8),
+       width :math:`b_i` at odd indices (1, 3, 5, 7, 9).
+
+    See Also
+    --------
+    lobato_form_factor : Compute form factor using these parameters
+    lobato_projected_potential : Compute projected potential
+    rheedium.inout.lobato_potentials : Load raw Lobato data from file
+
+    References
+    ----------
+    Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70, 636--649.
+    """
+    min_atomic_number: Int[Array, ""] = jnp.asarray(1, dtype=jnp.int32)
+    max_atomic_number: Int[Array, ""] = jnp.asarray(103, dtype=jnp.int32)
+    atomic_number_clipped: Int[Array, ""] = jnp.clip(
+        jnp.asarray(atomic_number, dtype=jnp.int32),
+        min_atomic_number,
+        max_atomic_number,
+    )
+    atomic_index: Int[Array, ""] = atomic_number_clipped - 1
+    atom_params: Float[Array, "10"] = LOBATO_PARAMS[atomic_index]
+    a_indices: Int[Array, "5"] = jnp.array([0, 2, 4, 6, 8], dtype=jnp.int32)
+    b_indices: Int[Array, "5"] = jnp.array([1, 3, 5, 7, 9], dtype=jnp.int32)
+    a_coeffs: Float[Array, "5"] = atom_params[a_indices]
+    b_coeffs: Float[Array, "5"] = atom_params[b_indices]
+    return a_coeffs, b_coeffs
+
+
+@jaxtyped(typechecker=beartype)
+def lobato_form_factor(
+    atomic_number: scalar_int,
+    q_magnitude: Float[Array, "..."],
+) -> Float[Array, "..."]:
+    r"""Electron scattering factor using Lobato-van Dyck parameterization.
+
+    Computes the atomic scattering factor for electrons using the
+    Lobato-van Dyck (2014) parameterization, which obeys all physical
+    constraints including the correct high-q asymptotic behaviour
+    :math:`f_e \propto q^{-4}`.
+
+    Parameters
+    ----------
+    atomic_number : scalar_int
+        Atomic number (Z) of the element (1-103)
+    q_magnitude : Float[Array, "..."]
+        Magnitude of scattering vector in 1/Angstrom.
+        Here q = \|g\| where g is the reciprocal lattice vector.
+
+    Returns
+    -------
+    form_factor : Float[Array, "..."]
+        Electron scattering factor f_e(q) in Angstrom
+
+    Notes
+    -----
+    The Lobato-van Dyck scattering factor is
+
+    .. math::
+
+        f_e(q) = \sum_{i=1}^{5}
+        a_i \frac{2 + b_i\,q^2}{(1 + b_i\,q^2)^2}
+
+    where :math:`q = |g|/(4\pi)` in the convention of the original
+    paper (using :math:`s = \sin\theta/\lambda`). The coefficients
+    :math:`a_i, b_i` are tabulated for Z = 1--103.
+
+    1. **Load parameters** --
+       Lobato :math:`a_i, b_i` for the element.
+    2. **Prepare q term** --
+       :math:`s^2 = (q / (4\pi))^2`.
+    3. **Rational terms** --
+       :math:`a_i (2 + b_i s^2) / (1 + b_i s^2)^2`
+       for :math:`i = 1 \ldots 5`.
+    4. **Sum contributions** --
+       :math:`f_e = \sum_i` rational terms.
+
+    See Also
+    --------
+    load_lobato_parameters : Load the Lobato coefficients
+    kirkland_form_factor : Alternative Kirkland parameterization
+
+    References
+    ----------
+    Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70, 636--649.
+    """
+    a_coeffs: Float[Array, "5"]
+    b_coeffs: Float[Array, "5"]
+    a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
+    four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
+    s_squared: Float[Array, "..."] = jnp.square(q_magnitude / four_pi)
+    expanded_s_sq: Float[Array, "... 1"] = s_squared[..., jnp.newaxis]
+    expanded_a: Float[Array, "1 5"] = a_coeffs[jnp.newaxis, :]
+    expanded_b: Float[Array, "1 5"] = b_coeffs[jnp.newaxis, :]
+    b_s_sq: Float[Array, "... 5"] = expanded_b * expanded_s_sq
+    numerator: Float[Array, "... 5"] = expanded_a * (2.0 + b_s_sq)
+    denominator: Float[Array, "... 5"] = jnp.square(1.0 + b_s_sq)
+    rational_terms: Float[Array, "... 5"] = numerator / denominator
+    form_factor: Float[Array, "..."] = jnp.sum(rational_terms, axis=-1)
+    return form_factor
+
+
+@jaxtyped(typechecker=beartype)
+def lobato_projected_potential(
+    atomic_number: scalar_int,
+    r: Float[Array, "..."],
+) -> Float[Array, "..."]:
+    r"""Projected atomic potential using Lobato-van Dyck parameterization.
+
+    Computes the 2D projected atomic potential for multislice calculations
+    using the Lobato-van Dyck (2014) parameterization. This is the integral
+    of the 3D atomic potential along the beam direction, expressed
+    analytically in terms of modified Bessel functions K_0 and K_1.
+
+    Parameters
+    ----------
+    atomic_number : scalar_int
+        Atomic number (Z) of the element (1-103)
+    r : Float[Array, "..."]
+        Radial distance from atom centre in Angstroms
+
+    Returns
+    -------
+    potential : Float[Array, "..."]
+        Projected potential in Volt-Angstrom
+
+    Notes
+    -----
+    The Lobato-van Dyck projected potential (Eq. 16 of [1]_) is
+
+    .. math::
+
+        V_z(r) = \frac{2\pi\,h^2}{m_e\,e} \sum_{i=1}^{5} a_i
+        \left[
+            \frac{\pi}{\sqrt{b_i}}\,K_0\!\bigl(\tfrac{2\pi r}
+            {\sqrt{b_i}}\bigr)
+            + \frac{2\pi^2 r}{b_i}\,K_1\!\bigl(\tfrac{2\pi r}
+            {\sqrt{b_i}}\bigr)
+        \right]
+
+    where K_0 and K_1 are modified Bessel functions of the second
+    kind, obtained from :mod:`rheedium.simul.bessel`.
+
+    The prefactor :math:`h^2 / (2\pi m_e e)` evaluates to
+    47.87801 V-Angstrom^2.
+
+    1. **Load parameters** --
+       Lobato :math:`a_i, b_i` for the element.
+    2. **Safe radial distance** --
+       Clamp :math:`r` to avoid singularity at zero.
+    3. **Bessel arguments** --
+       :math:`x_i = 2\pi r / \sqrt{b_i}` for each term.
+    4. **K_0 and K_1 contributions** --
+       Evaluate Bessel functions and combine with
+       prefactors.
+    5. **Sum and scale** --
+       Multiply sum by :math:`2\pi \times 47.87801`.
+
+    See Also
+    --------
+    load_lobato_parameters : Load the Lobato coefficients
+    lobato_form_factor : Reciprocal-space form factor
+    kirkland_projected_potential : Alternative Kirkland parameterization
+    rheedium.simul.bessel.bessel_k0 : Modified Bessel K_0
+    rheedium.simul.bessel.bessel_k1 : Modified Bessel K_1
+
+    References
+    ----------
+    .. [1] Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70,
+       636--649, Eq. (16).
+    """
+    a_coeffs: Float[Array, "5"]
+    b_coeffs: Float[Array, "5"]
+    a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
+    r_safe: Float[Array, "..."] = jnp.maximum(r, 1e-10)
+    two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
+    prefactor: Float[Array, ""] = jnp.asarray(
+        47.87801 * 2.0 * jnp.pi, dtype=jnp.float64
+    )
+    expanded_r: Float[Array, "... 1"] = r_safe[..., jnp.newaxis]
+    expanded_a: Float[Array, "1 5"] = a_coeffs[jnp.newaxis, :]
+    expanded_b: Float[Array, "1 5"] = b_coeffs[jnp.newaxis, :]
+    sqrt_b: Float[Array, "1 5"] = jnp.sqrt(expanded_b)
+    bessel_arg: Float[Array, "... 5"] = two_pi * expanded_r / sqrt_b
+    k0_vals: Float[Array, "... 5"] = bessel_k0(bessel_arg)
+    k1_vals: Float[Array, "... 5"] = bessel_k1(bessel_arg)
+    k0_contribution: Float[Array, "... 5"] = (
+        expanded_a * jnp.pi / sqrt_b * k0_vals
+    )
+    k1_contribution: Float[Array, "... 5"] = (
+        expanded_a * two_pi * jnp.pi * expanded_r / expanded_b * k1_vals
+    )
+    per_term: Float[Array, "... 5"] = k0_contribution + k1_contribution
+    potential: Float[Array, "..."] = prefactor * jnp.sum(per_term, axis=-1)
+    return potential
+
+
+@jaxtyped(typechecker=beartype)
 def get_mean_square_displacement(
     atomic_number: scalar_int,
     temperature: scalar_float,
@@ -582,4 +820,7 @@ __all__: list[str] = [
     "kirkland_form_factor",
     "kirkland_projected_potential",
     "load_kirkland_parameters",
+    "load_lobato_parameters",
+    "lobato_form_factor",
+    "lobato_projected_potential",
 ]

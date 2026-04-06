@@ -64,6 +64,14 @@ Routine Listings
     Calculate atomic form factor f(q) using Kirkland parameterization.
 :func:`load_kirkland_parameters`
     Load Kirkland scattering parameters from data file.
+:func:`load_lobato_parameters`
+    Load Lobato-van Dyck scattering parameters from data file.
+:func:`lobato_form_factor`
+    Calculate atomic form factor f_e(q) using Lobato-van Dyck
+    parameterization.
+:func:`lobato_projected_potential`
+    Calculate projected atomic potential using Lobato-van Dyck
+    parameterization.
 :func:`lorentzian_rod_profile`
     Lorentzian lateral width profile of rods due to finite correlation length.
 :func:`make_ewald_sphere`
@@ -114,6 +122,9 @@ from .form_factors import (
     get_mean_square_displacement,
     kirkland_form_factor,
     load_kirkland_parameters,
+    load_lobato_parameters,
+    lobato_form_factor,
+    lobato_projected_potential,
 )
 from .kinematic import (
     kinematic_spot_simulator,
@@ -174,6 +185,9 @@ __all__: list[str] = [
     "kinematic_spot_simulator",
     "kirkland_form_factor",
     "load_kirkland_parameters",
+    "load_lobato_parameters",
+    "lobato_form_factor",
+    "lobato_projected_potential",
     "lorentzian_rod_profile",
     "make_ewald_sphere",
     "multislice_propagate",

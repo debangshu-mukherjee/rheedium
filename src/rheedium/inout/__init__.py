@@ -27,6 +27,9 @@ Routine Listings
     Convert pymatgen Structure to CrystalStructure.
 :func:`kirkland_potentials`
     Loads Kirkland scattering factors from CSV file.
+:func:`lobato_potentials`
+    Loads Lobato-van Dyck scattering factor parameters
+    from CSV file.
 :func:`lattice_to_cell_params`
     Convert 3x3 lattice vectors to crystallographic cell parameters.
 :func:`load_tiff_as_rheed_image`
@@ -83,6 +86,7 @@ from .xyz import (
     atomic_symbol,
     debye_temperatures,
     kirkland_potentials,
+    lobato_potentials,
     parse_xyz,
 )
 
@@ -96,6 +100,7 @@ __all__: list[str] = [
     "from_ase",
     "from_pymatgen",
     "kirkland_potentials",
+    "lobato_potentials",
     "lattice_to_cell_params",
     "load_tiff_as_rheed_image",
     "load_tiff_sequence",
