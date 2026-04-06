@@ -72,6 +72,8 @@ Routine Listings
 :func:`lobato_projected_potential`
     Calculate projected atomic potential using Lobato-van Dyck
     parameterization.
+:func:`projected_potential`
+    Projected potential with selectable parameterization.
 :func:`lorentzian_rod_profile`
     Lorentzian lateral width profile of rods due to finite correlation length.
 :func:`make_ewald_sphere`
@@ -125,6 +127,7 @@ from .form_factors import (
     load_lobato_parameters,
     lobato_form_factor,
     lobato_projected_potential,
+    projected_potential,
 )
 from .kinematic import (
     kinematic_spot_simulator,
@@ -189,6 +192,7 @@ __all__: list[str] = [
     "lobato_form_factor",
     "lobato_projected_potential",
     "lorentzian_rod_profile",
+    "projected_potential",
     "make_ewald_sphere",
     "multislice_propagate",
     "multislice_simulator",

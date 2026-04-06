@@ -137,12 +137,17 @@ class TestBesselBranchTransition(chex.TestCase):
     """Test continuity at x=2 where polynomial branches switch."""
 
     def test_k0_continuity_at_branch(self):
-        """K_0 is continuous across the x=2 branch point."""
+        """K_0 is continuous across the x=2 branch point.
+
+        Points 0.002 apart on a steeply decaying function, so we
+        check that the relative jump is consistent with the local
+        slope rather than a branch discontinuity.
+        """
         x_below = jnp.array(1.999)
         x_above = jnp.array(2.001)
         k0_below = bessel_k0(x_below)
         k0_above = bessel_k0(x_above)
-        chex.assert_trees_all_close(k0_below, k0_above, rtol=1e-3)
+        chex.assert_trees_all_close(k0_below, k0_above, rtol=5e-3)
 
     def test_k1_continuity_at_branch(self):
         """K_1 is continuous across the x=2 branch point."""
@@ -150,7 +155,7 @@ class TestBesselBranchTransition(chex.TestCase):
         x_above = jnp.array(2.001)
         k1_below = bessel_k1(x_below)
         k1_above = bessel_k1(x_above)
-        chex.assert_trees_all_close(k1_below, k1_above, rtol=1e-3)
+        chex.assert_trees_all_close(k1_below, k1_above, rtol=5e-3)
 
 
 if __name__ == "__main__":

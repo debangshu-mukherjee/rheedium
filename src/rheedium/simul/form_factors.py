@@ -23,6 +23,9 @@ Routine Listings
 :func:`lobato_projected_potential`
     Calculate projected atomic potential using
     Lobato-van Dyck parameterization.
+:func:`projected_potential`
+    Projected potential with selectable parameterization
+    (Lobato or Kirkland).
 :func:`debye_waller_factor`
     Calculate Debye-Waller damping factor for thermal vibrations.
 :func:`atomic_scattering_factor`
@@ -46,6 +49,7 @@ Debye temperatures are from:
 - Various experimental sources for less common elements
 """
 
+import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional, Tuple
@@ -408,8 +412,8 @@ def lobato_form_factor(
 
     Computes the atomic scattering factor for electrons using the
     Lobato-van Dyck (2014) parameterization, which obeys all physical
-    constraints including the correct high-q asymptotic behaviour
-    :math:`f_e \propto q^{-4}`.
+    constraints including the correct high-q Bethe asymptotic
+    :math:`f_e \propto q^{-2}`.
 
     Parameters
     ----------
@@ -433,16 +437,17 @@ def lobato_form_factor(
         f_e(q) = \sum_{i=1}^{5}
         a_i \frac{2 + b_i\,q^2}{(1 + b_i\,q^2)^2}
 
-    where :math:`q = |g|/(4\pi)` in the convention of the original
-    paper (using :math:`s = \sin\theta/\lambda`). The coefficients
+    where :math:`g = q/(2\pi)` is the scattering vector magnitude in
+    the convention of the original paper
+    (:math:`g = 2\sin\theta/\lambda`). The coefficients
     :math:`a_i, b_i` are tabulated for Z = 1--103.
 
     1. **Load parameters** --
        Lobato :math:`a_i, b_i` for the element.
-    2. **Prepare q term** --
-       :math:`s^2 = (q / (4\pi))^2`.
+    2. **Prepare g term** --
+       :math:`g^2 = (q / (2\pi))^2`.
     3. **Rational terms** --
-       :math:`a_i (2 + b_i s^2) / (1 + b_i s^2)^2`
+       :math:`a_i (2 + b_i g^2) / (1 + b_i g^2)^2`
        for :math:`i = 1 \ldots 5`.
     4. **Sum contributions** --
        :math:`f_e = \sum_i` rational terms.
@@ -459,9 +464,9 @@ def lobato_form_factor(
     a_coeffs: Float[Array, "5"]
     b_coeffs: Float[Array, "5"]
     a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
-    four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
-    s_squared: Float[Array, "..."] = jnp.square(q_magnitude / four_pi)
-    expanded_s_sq: Float[Array, "... 1"] = s_squared[..., jnp.newaxis]
+    two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
+    g_squared: Float[Array, "..."] = jnp.square(q_magnitude / two_pi)
+    expanded_s_sq: Float[Array, "... 1"] = g_squared[..., jnp.newaxis]
     expanded_a: Float[Array, "1 5"] = a_coeffs[jnp.newaxis, :]
     expanded_b: Float[Array, "1 5"] = b_coeffs[jnp.newaxis, :]
     b_s_sq: Float[Array, "... 5"] = expanded_b * expanded_s_sq
@@ -564,6 +569,60 @@ def lobato_projected_potential(
     )
     per_term: Float[Array, "... 5"] = k0_contribution + k1_contribution
     potential: Float[Array, "..."] = prefactor * jnp.sum(per_term, axis=-1)
+    return potential
+
+
+@jaxtyped(typechecker=beartype)
+def projected_potential(
+    atomic_number: scalar_int,
+    r: Float[Array, "..."],
+    parameterization: str = "lobato",
+) -> Float[Array, "..."]:
+    r"""Projected atomic potential with selectable parameterization.
+
+    Dispatches to either the Lobato-van Dyck or Kirkland projected
+    potential calculation via ``jax.lax.cond``. Both parameterizations
+    share the same call signature and return shape.
+
+    Parameters
+    ----------
+    atomic_number : scalar_int
+        Atomic number (Z) of the element (1-103)
+    r : Float[Array, "..."]
+        Radial distance from atom centre in Angstroms
+    parameterization : str, optional
+        Potential model: ``"lobato"`` (default) or ``"kirkland"``.
+
+    Returns
+    -------
+    potential : Float[Array, "..."]
+        Projected potential in Volt-Angstrom
+
+    Notes
+    -----
+    The ``parameterization`` string is resolved to a boolean predicate
+    at trace time and passed to ``jax.lax.cond``, which compiles both
+    branches but executes only the selected one at runtime.
+
+    1. **Resolve predicate** --
+       ``use_lobato = (parameterization == "lobato")``.
+    2. **Dispatch** --
+       ``jax.lax.cond`` selects :func:`lobato_projected_potential`
+       or :func:`kirkland_projected_potential`.
+
+    See Also
+    --------
+    lobato_projected_potential : Lobato-van Dyck parameterization
+    kirkland_projected_potential : Kirkland parameterization
+    """
+    use_lobato: Float[Array, ""] = jnp.asarray(parameterization == "lobato")
+    potential: Float[Array, "..."] = jax.lax.cond(
+        use_lobato,
+        lobato_projected_potential,
+        kirkland_projected_potential,
+        atomic_number,
+        r,
+    )
     return potential
 
 
@@ -823,4 +882,5 @@ __all__: list[str] = [
     "load_lobato_parameters",
     "lobato_form_factor",
     "lobato_projected_potential",
+    "projected_potential",
 ]
