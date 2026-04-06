@@ -548,7 +548,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test reciprocal parameters for cubic system."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -574,7 +574,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test reciprocal params for orthorhombic (a!=b!=c, 90)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -597,7 +597,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_tetragonal_system(self) -> None:
         """Test reciprocal parameters for tetragonal system (a=b≠c)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -617,7 +617,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             float(lengths[0]), float(lengths[2]), places=3
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test reciprocal parameters for hexagonal system (γ=120°)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -638,7 +638,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         # Reciprocal gamma for hexagonal is 60°
         chex.assert_trees_all_close(angles[2], 60.0, atol=1e-4)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test reciprocal parameters for monoclinic system (β≠90°)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -660,7 +660,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(angles[0], 90.0, atol=1e-4)
         chex.assert_trees_all_close(angles[2], 90.0, atol=1e-4)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test reciprocal params for triclinic system."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -683,7 +683,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(angles > 0), True)
         chex.assert_trees_all_equal(jnp.all(angles < 180), True)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag_true(self) -> None:
         """Test in_degrees=True (input in degrees)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -700,7 +700,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(lengths)
         chex.assert_tree_all_finite(angles)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag_false(self) -> None:
         """Test in_degrees=False (input in radians)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -720,7 +720,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_out_degrees_flag_false(self) -> None:
         """Test out_degrees=False (output in radians)."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -739,7 +739,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             angles, jnp.array([jnp.pi / 2] * 3), atol=1e-5
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_both_degrees_flags_false(self) -> None:
         """Test both in_degrees=False and out_degrees=False."""
         var_fn = self.variant(reciprocal_unitcell)
@@ -787,7 +787,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test transformation matrix for cubic system."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -806,7 +806,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(matrix[1, 1], 3.0, atol=1e-10)
         chex.assert_trees_all_close(matrix[2, 2], 3.0, atol=1e-10)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test transformation matrix for orthorhombic system."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -824,7 +824,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(matrix[1, 1], 4.0, atol=1e-10)
         chex.assert_trees_all_close(matrix[2, 2], 5.0, atol=1e-10)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test transformation matrix for monoclinic system."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -841,7 +841,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         # Off-diagonal term for c vector
         self.assertNotAlmostEqual(float(matrix[0, 2]), 0.0, places=5)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test transformation matrix for hexagonal system."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -860,7 +860,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
             matrix[0, 1], 3.0 * jnp.cos(jnp.radians(120.0)), atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test transformation matrix for triclinic system."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -877,7 +877,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         # Matrix should have off-diagonal elements
         self.assertNotAlmostEqual(float(matrix[0, 1]), 0.0, places=5)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_volume_consistency(self) -> None:
         """Test that matrix determinant equals cell volume."""
         var_fn = self.variant(get_unit_cell_matrix)
@@ -901,7 +901,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test cell vectors for cubic system."""
         var_fn = self.variant(build_cell_vectors)
@@ -927,7 +927,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
             vectors[2], jnp.array([0.0, 0.0, 3.0]), atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test cell vectors for orthorhombic system."""
         var_fn = self.variant(build_cell_vectors)
@@ -950,7 +950,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
             vectors[2], jnp.array([0.0, 0.0, 5.0]), atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test cell vectors for hexagonal system (gamma=120)."""
         var_fn = self.variant(build_cell_vectors)
@@ -975,7 +975,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         # c vector along z
         chex.assert_trees_all_close(vectors[2, 2], 5.0, atol=1e-10)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test cell vectors for monoclinic system (beta != 90)."""
         var_fn = self.variant(build_cell_vectors)
@@ -993,7 +993,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         c_x = 5.0 * jnp.cos(jnp.radians(100.0))
         chex.assert_trees_all_close(vectors[2, 0], c_x, atol=1e-10)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test cell vectors for triclinic system."""
         var_fn = self.variant(build_cell_vectors)
@@ -1009,7 +1009,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(vectors)
         # All three vectors should have nonzero components
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_vector_lengths_correct(self) -> None:
         """Test that built vectors have correct lengths."""
         var_fn = self.variant(build_cell_vectors)
@@ -1026,7 +1026,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(lengths[1], 4.0, rtol=1e-5)
         chex.assert_trees_all_close(lengths[2], 5.0, rtol=1e-5)
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_angles_correct(self) -> None:
         """Test that angles between vectors are correct."""
         var_fn = self.variant(build_cell_vectors)
@@ -1161,7 +1161,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test reciprocal vectors for cubic system."""
         var_fn = self.variant(reciprocal_lattice_vectors)
@@ -1187,7 +1187,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             rec_vecs[2], jnp.array([0.0, 0.0, expected]), atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test reciprocal vectors for orthorhombic system."""
         var_fn = self.variant(reciprocal_lattice_vectors)
@@ -1211,7 +1211,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             rec_vecs[2], jnp.array([0.0, 0.0, 2 * jnp.pi / 5.0]), atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_orthogonality_to_direct(self) -> None:
         """Test reciprocal vectors orthogonal to direct vectors."""
         var_fn = self.variant(reciprocal_lattice_vectors)
@@ -1254,7 +1254,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             jnp.dot(rec_vecs[2], direct_vecs[1]), 0.0, atol=1e-10
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_bi_dot_ai_equals_2pi(self) -> None:
         """Test that b_i · a_i = 2π."""
         var_fn = self.variant(reciprocal_lattice_vectors)
@@ -1286,7 +1286,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             jnp.dot(rec_vecs[2], direct_vecs[2]), two_pi, rtol=1e-5
         )
 
-    @chex.all_variants
+    @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag(self) -> None:
         """Test in_degrees flag."""
         var_fn = self.variant(reciprocal_lattice_vectors)

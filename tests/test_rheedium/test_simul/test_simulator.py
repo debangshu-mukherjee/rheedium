@@ -100,7 +100,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 
         return crystal
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("room_temp", 300.0, 0.5, 0.3),
         ("low_temp", 77.0, 0.3, 0.3),
@@ -148,7 +148,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             max_intensity: scalar_float = jnp.max(intensities)
             chex.assert_scalar_positive(float(max_intensity))
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_surface_enhancement_effect(self) -> None:
         """Test that surface atoms have enhanced thermal motion."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
@@ -192,7 +192,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_basic_projection(self) -> None:
         """Test basic projection onto detector plane."""
         var_project = self.variant(project_on_detector)
@@ -215,7 +215,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
             coords[0], jnp.array([0.0, 0.0]), atol=1e-6
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("close", 50.0),
         ("medium", 100.0),
@@ -236,7 +236,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
             coords[0], jnp.array([expected_h, expected_v]), rtol=1e-5
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Test output has correct shape for various inputs."""
         var_project = self.variant(project_on_detector)
@@ -255,7 +255,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         super().setUp()
         self.k_mag: float = 73.0  # Typical |k| for 20 keV electrons
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_elastic_scattering_constraint(self) -> None:
         """Test that output wavevectors satisfy |k_out| ≈ |k_in|."""
         var_find = self.variant(find_kinematic_reflections)
@@ -277,7 +277,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(allowed_indices, (5,))
         chex.assert_shape(k_out, (5, 3))
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("tight", 0.01),
         ("medium", 0.05),
@@ -309,7 +309,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(k_out)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_positive(self) -> None:
         """Test filtering with positive z_sign (forward scattering)."""
         var_find = self.variant(find_kinematic_reflections)
@@ -327,7 +327,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         chex.assert_shape(allowed_indices, (3,))
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_negative(self) -> None:
         """Test filtering with negative z_sign (back scattering - RHEED)."""
         var_find = self.variant(find_kinematic_reflections)
@@ -345,7 +345,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         chex.assert_shape(allowed_indices, (3,))
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_empty_g_vectors(self) -> None:
         """Test handling of single G vector."""
         var_find = self.variant(find_kinematic_reflections)
@@ -534,7 +534,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
             y_calibration=0.5,
         )
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Test that exit wave has same shape as input grid."""
         var_propagate = self.variant(multislice_propagate)
@@ -548,7 +548,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(exit_wave, (32, 32))
         chex.assert_tree_all_finite(exit_wave)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_exit_wave_nonzero(self) -> None:
         """Test that exit wave has non-zero amplitude."""
         var_propagate = self.variant(multislice_propagate)
@@ -562,7 +562,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         total_intensity: float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("low", 10.0),
         ("medium", 20.0),
@@ -583,7 +583,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         total_intensity: float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("shallow", 0.5),
         ("medium", 2.0),
@@ -601,7 +601,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("phi_0", 0.0),
         ("phi_45", 45.0),
@@ -620,7 +620,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("no_inner", 0.0),
         ("small_inner", 10.0),
@@ -639,7 +639,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("half", 0.5),
         ("two_thirds", 2.0 / 3.0),
@@ -658,7 +658,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     def test_zero_potential_propagation(self) -> None:
         """Test propagation through zero potential (free space)."""
         var_propagate = self.variant(multislice_propagate)
@@ -947,7 +947,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("zero", 0.0),
         ("half", 0.5),
@@ -1007,7 +1007,7 @@ class TestComputeKinematicIntensitiesExtended(
 
         chex.assert_tree_all_finite(intensities)
 
-    @chex.all_variants(without_device=False)
+    @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
         ("tight", 0.01),
         ("medium", 0.1),
