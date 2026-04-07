@@ -130,6 +130,10 @@ target/
 /data/.ipynb_checkpoints/
 /data/*/.ipynb_checkpoints/
 /ens/.ipynb_checkpoints/
+
+# Marimo session state
+__marimo__/
+
 /.mypy_cache/
 /.pytest_cache
 .qodo
