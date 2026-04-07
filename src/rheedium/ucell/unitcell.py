@@ -1037,23 +1037,31 @@ def bulk_to_slice(
 
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
 
-    all_positions: list[Float[Array, "N 3"]] = []
-    for ix in range(-nx // 2, nx // 2 + 1):
-        for iy in range(-ny // 2, ny // 2 + 1):
-            translation: Float[Array, "3"] = (
-                ix * rotated_cell_vecs[0] + iy * rotated_cell_vecs[1]
-            )
-            translated_pos: Float[Array, "N 3"] = (
-                rotated_positions + translation[None, :]
-            )
-            all_positions.append(translated_pos)
-
-    supercell_positions: Float[Array, "M 3"] = jnp.concatenate(
-        all_positions, axis=0
+    ix_vals: Float[Array, "Rx"] = jnp.arange(
+        -nx // 2, nx // 2 + 1, dtype=jnp.float64
     )
-
+    iy_vals: Float[Array, "Ry"] = jnp.arange(
+        -ny // 2, ny // 2 + 1, dtype=jnp.float64
+    )
+    ix_grid: Float[Array, "Rx Ry"] = jnp.repeat(
+        ix_vals[:, None], iy_vals.shape[0], axis=1
+    )
+    iy_grid: Float[Array, "Rx Ry"] = jnp.repeat(
+        iy_vals[None, :], ix_vals.shape[0], axis=0
+    )
+    ix_flat: Float[Array, "R"] = ix_grid.ravel()
+    iy_flat: Float[Array, "R"] = iy_grid.ravel()
+    n_replicas: int = ix_flat.shape[0]
+    translations: Float[Array, "R 3"] = (
+        ix_flat[:, None] * rotated_cell_vecs[0][None, :]
+        + iy_flat[:, None] * rotated_cell_vecs[1][None, :]
+    )
+    tiled_positions: Float[Array, "R N 3"] = (
+        rotated_positions[None, :, :] + translations[:, None, :]
+    )
+    supercell_positions: Float[Array, "M 3"] = tiled_positions.reshape(-1, 3)
     supercell_atomic_nums: Float[Array, "M"] = jnp.tile(
-        atomic_numbers, (nx + 1) * (ny + 1)
+        atomic_numbers, n_replicas
     )
 
     x_min: Float[Array, ""] = supercell_positions[:, 0].min()

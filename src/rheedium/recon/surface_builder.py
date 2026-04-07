@@ -149,16 +149,15 @@ def create_surface_slab(
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
     rotated_positions: Float[Array, "N 3"] = positions_xyz @ rotation_matrix.T
 
-    all_positions: list[Float[Array, "N 3"]] = []
-    for iz in range(-nz, nz + 1):
-        translation: Float[Array, "3"] = iz * rotated_cell_vecs[2]
-        shifted: Float[Array, "N 3"] = rotated_positions + translation[None, :]
-        all_positions.append(shifted)
-
     n_replicas: int = 2 * nz + 1
-    supercell_positions: Float[Array, "M 3"] = jnp.concatenate(
-        all_positions, axis=0
+    iz_range: Float[Array, "R"] = jnp.arange(-nz, nz + 1, dtype=jnp.float64)
+    translations: Float[Array, "R 3"] = (
+        iz_range[:, None] * rotated_cell_vecs[2][None, :]
     )
+    tiled_positions: Float[Array, "R N 3"] = (
+        rotated_positions[None, :, :] + translations[:, None, :]
+    )
+    supercell_positions: Float[Array, "M 3"] = tiled_positions.reshape(-1, 3)
     supercell_atomic_nums: Float[Array, "M"] = jnp.tile(
         atomic_numbers, n_replicas
     )
@@ -278,20 +277,26 @@ def apply_surface_reconstruction(
 
     nx_range: int = max(abs(m11), abs(m21)) + 1
     ny_range: int = max(abs(m12), abs(m22)) + 1
+    n_replicas: int = nx_range * ny_range
 
-    all_positions: list[Float[Array, "N 3"]] = []
-    for ix in range(nx_range):
-        for iy in range(ny_range):
-            translation: Float[Array, "3"] = (
-                ix * cell_vecs[0] + iy * cell_vecs[1]
-            )
-            shifted: Float[Array, "N 3"] = positions_xyz + translation[None, :]
-            all_positions.append(shifted)
-
-    n_replicas: int = len(all_positions)
-    supercell_positions: Float[Array, "M 3"] = jnp.concatenate(
-        all_positions, axis=0
+    ix_vals: Float[Array, "Rx"] = jnp.arange(nx_range, dtype=jnp.float64)
+    iy_vals: Float[Array, "Ry"] = jnp.arange(ny_range, dtype=jnp.float64)
+    ix_grid: Float[Array, "Rx Ry"] = jnp.repeat(
+        ix_vals[:, None], ny_range, axis=1
     )
+    iy_grid: Float[Array, "Rx Ry"] = jnp.repeat(
+        iy_vals[None, :], nx_range, axis=0
+    )
+    ix_flat: Float[Array, "R"] = ix_grid.ravel()
+    iy_flat: Float[Array, "R"] = iy_grid.ravel()
+    translations: Float[Array, "R 3"] = (
+        ix_flat[:, None] * cell_vecs[0][None, :]
+        + iy_flat[:, None] * cell_vecs[1][None, :]
+    )
+    tiled_positions: Float[Array, "R N 3"] = (
+        positions_xyz[None, :, :] + translations[:, None, :]
+    )
+    supercell_positions: Float[Array, "M 3"] = tiled_positions.reshape(-1, 3)
     supercell_atomic_nums: Float[Array, "M"] = jnp.tile(
         atomic_numbers, n_replicas
     )
