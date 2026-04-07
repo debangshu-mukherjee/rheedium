@@ -125,9 +125,9 @@ def compute_lengths_angles(
     )
     angles: Float[Array, "3"] = jnp.array(
         [
-            angle_in_degrees(vectors[0], vectors[1]),
             angle_in_degrees(vectors[1], vectors[2]),
-            angle_in_degrees(vectors[2], vectors[0]),
+            angle_in_degrees(vectors[0], vectors[2]),
+            angle_in_degrees(vectors[0], vectors[1]),
         ]
     )
     return (lengths, angles)

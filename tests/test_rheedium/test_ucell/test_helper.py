@@ -130,7 +130,7 @@ class TestComputeLengthsAngles(chex.TestCase):
             "monoclinic",
             [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [1.0, 0.0, 5.0]],
             [3.0, 4.0, 5.099019513592784],
-            [90.0, 90.0, 78.69006752597979],
+            [90.0, 78.69006752597979, 90.0],
         ),
     )
     def test_compute_lengths_angles_known_cells(
@@ -198,9 +198,9 @@ class TestComputeLengthsAngles(chex.TestCase):
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         expected_angles = jnp.array(
             [
-                var_angle_in_degrees(vectors[0], vectors[1]),
                 var_angle_in_degrees(vectors[1], vectors[2]),
-                var_angle_in_degrees(vectors[2], vectors[0]),
+                var_angle_in_degrees(vectors[0], vectors[2]),
+                var_angle_in_degrees(vectors[0], vectors[1]),
             ]
         )
         chex.assert_trees_all_close(angles, expected_angles, atol=1e-10)

@@ -1029,8 +1029,13 @@ def bulk_to_slice(
 
     rotated_cell_vecs: Float[Array, "3 3"] = cell_vecs @ rotation_matrix.T
 
-    cell_x_proj: Float[Array, ""] = jnp.abs(rotated_cell_vecs[0, 0])
-    cell_y_proj: Float[Array, ""] = jnp.abs(rotated_cell_vecs[1, 1])
+    z_projections: Float[Array, "3"] = jnp.abs(rotated_cell_vecs[:, 2])
+    in_plane_axes: Int[Array, "2"] = jnp.argsort(z_projections)[:2]
+    in_plane_vecs: Float[Array, "2 3"] = rotated_cell_vecs[in_plane_axes]
+    x_repeat_vec: Float[Array, "3"] = in_plane_vecs[0]
+    y_repeat_vec: Float[Array, "3"] = in_plane_vecs[1]
+    cell_x_proj: Float[Array, ""] = jnp.max(jnp.abs(in_plane_vecs[:, 0]))
+    cell_y_proj: Float[Array, ""] = jnp.max(jnp.abs(in_plane_vecs[:, 1]))
 
     nx: int = int(jnp.ceil(x_extent / (cell_x_proj + 1e-10))) + 2
     ny: int = int(jnp.ceil(y_extent / (cell_y_proj + 1e-10))) + 2
@@ -1053,8 +1058,8 @@ def bulk_to_slice(
     iy_flat: Float[Array, "R"] = iy_grid.ravel()
     n_replicas: int = ix_flat.shape[0]
     translations: Float[Array, "R 3"] = (
-        ix_flat[:, None] * rotated_cell_vecs[0][None, :]
-        + iy_flat[:, None] * rotated_cell_vecs[1][None, :]
+        ix_flat[:, None] * x_repeat_vec[None, :]
+        + iy_flat[:, None] * y_repeat_vec[None, :]
     )
     tiled_positions: Float[Array, "R N 3"] = (
         rotated_positions[None, :, :] + translations[:, None, :]

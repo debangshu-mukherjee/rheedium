@@ -38,7 +38,6 @@ from .xyz import _ATOMIC_NUMBERS
 _Z_TO_SYMBOL: dict[int, str] = {v: k for k, v in _ATOMIC_NUMBERS.items()}
 
 
-@jaxtyped(typechecker=beartype)
 def from_ase(atoms: Atoms) -> CrystalStructure:
     """Convert ASE Atoms object to CrystalStructure.
 
@@ -97,6 +96,9 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
     >>> crystal.cell_lengths
     Array([5.43, 5.43, 5.43], dtype=float64)
     """
+    if not isinstance(atoms, Atoms):
+        raise TypeError(f"Expected ase.Atoms, got {type(atoms).__name__}.")
+
     cell = atoms.get_cell()
 
     _min_cell_rank: int = 3
@@ -198,7 +200,6 @@ def to_ase(crystal: CrystalStructure) -> Atoms:
     )
 
 
-@jaxtyped(typechecker=beartype)
 def from_pymatgen(structure: Structure) -> CrystalStructure:
     """Convert pymatgen Structure to CrystalStructure.
 
@@ -247,6 +248,11 @@ def from_pymatgen(structure: Structure) -> CrystalStructure:
     >>> crystal.cell_lengths
     Array([5.43, 5.43, 5.43], dtype=float64)
     """
+    if not isinstance(structure, Structure):
+        raise TypeError(
+            f"Expected pymatgen Structure, got {type(structure).__name__}."
+        )
+
     lattice: Float[Array, "3 3"] = jnp.asarray(
         structure.lattice.matrix, dtype=jnp.float64
     )
