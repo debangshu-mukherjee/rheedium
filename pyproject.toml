@@ -40,6 +40,7 @@ dependencies = [
     "ase>=3.26.0",
     "pymatgen>=2025.10.7",
     "tifffile>=2026.3.3",
+    "marimo>=0.22.4",
 ]
 [project.optional-dependencies]
 cuda = [

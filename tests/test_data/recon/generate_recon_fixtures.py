@@ -1,21 +1,45 @@
+# ruff: noqa: E402
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = [
+#   "rheedium",
+#   "ase>=3.26.0",
+#   "beartype",
+#   "jaxtyping>=0.3.0",
+#   "jax>=0.9.2",
+#   "matplotlib>=3.10.0",
+#   "numpy>=2.2.1",
+#   "pymatgen>=2025.10.7",
+#   "scipy>=1.14.1",
+#   "tifffile>=2026.3.3",
+# ]
+# ///
 """Generate pre-built slab fixtures for recon tests.
 
 Run once:
-    JAX_PLATFORMS=cpu python tests/test_data/generate_recon_fixtures.py
+    uv run tests/test_data/recon/generate_recon_fixtures.py
 
 Produces .npz files in tests/test_data/recon/ that tests load
 instead of building slabs at test time.
 """
 
+import gc
 import os
 import sys
+from collections.abc import Callable
+from pathlib import Path
 
 os.environ["JAX_PLATFORMS"] = "cpu"
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT: Path = Path(__file__).resolve().parents[3]
+SRC_ROOT: Path = REPO_ROOT / "src"
+OUT_DIR: Path = Path(__file__).resolve().parent
+
+sys.path.insert(0, str(SRC_ROOT))
 
 from rheedium.recon import (
     add_adsorbate_layer,
@@ -41,6 +65,15 @@ def _save_crystal(path: str, crystal: CrystalStructure) -> None:
         cell_lengths=np.array(crystal.cell_lengths),
         cell_angles=np.array(crystal.cell_angles),
     )
+
+
+def _write_fixture(name: str, crystal: CrystalStructure) -> None:
+    """Persist one fixture and clear JAX caches between generations."""
+    path: Path = OUT_DIR / name
+    print(f"Writing {path.name}", flush=True)
+    _save_crystal(str(path), crystal)
+    jax.clear_caches()
+    gc.collect()
 
 
 def _make_cubic_crystal(a: float = 4.0) -> CrystalStructure:
@@ -90,122 +123,194 @@ def _make_mgo_crystal() -> CrystalStructure:
     )
 
 
+def _generate_surface_slab_fixtures(
+    crystal: CrystalStructure,
+    mgo_crystal: CrystalStructure,
+) -> CrystalStructure:
+    """Generate the base slab fixtures from aligned spec arrays."""
+    slab_names: tuple[str, ...] = (
+        "slab_001.npz",
+        "slab_110.npz",
+        "slab_111.npz",
+        "mgo_slab.npz",
+        "thin_slab.npz",
+    )
+    base_crystals: tuple[CrystalStructure, ...] = (
+        crystal,
+        crystal,
+        crystal,
+        mgo_crystal,
+        crystal,
+    )
+    miller_specs: np.ndarray = np.array(
+        [
+            [0, 0, 1],
+            [1, 1, 0],
+            [1, 1, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+        ],
+        dtype=np.int32,
+    )
+    thickness_specs: np.ndarray = np.array(
+        [10.0, 10.0, 10.0, 20.0, 5.0],
+        dtype=np.float64,
+    )
+    vacuum_specs: np.ndarray = np.full(len(slab_names), 15.0, dtype=np.float64)
+
+    slab_001: CrystalStructure | None = None
+    for name, base_crystal, miller, thickness, vacuum in zip(
+        slab_names,
+        base_crystals,
+        miller_specs,
+        thickness_specs,
+        vacuum_specs,
+        strict=True,
+    ):
+        slab: CrystalStructure = create_surface_slab(
+            base_crystal,
+            jnp.asarray(miller, dtype=jnp.int32),
+            jnp.asarray(thickness, dtype=jnp.float64),
+            jnp.asarray(vacuum, dtype=jnp.float64),
+        )
+        _write_fixture(name, slab)
+        if name == "slab_001.npz":
+            slab_001 = slab
+
+    assert slab_001 is not None
+    return slab_001
+
+
+def _generate_reconstruction_fixtures(slab_001: CrystalStructure) -> None:
+    """Generate reconstruction fixtures from a declarative spec list."""
+    reconstruction_specs: tuple[
+        tuple[str, np.ndarray, float, np.ndarray],
+        ...,
+    ] = (
+        (
+            "recon_2x2.npz",
+            np.array([[2, 0], [0, 2]], dtype=np.int32),
+            3.0,
+            np.zeros((1, 3), dtype=np.float64),
+        ),
+        (
+            "recon_no_disp.npz",
+            np.array([[1, 0], [0, 1]], dtype=np.int32),
+            3.0,
+            np.zeros((1, 3), dtype=np.float64),
+        ),
+        (
+            "recon_with_disp.npz",
+            np.array([[1, 0], [0, 1]], dtype=np.int32),
+            3.0,
+            np.array([[0.5, 0.0, 0.0]], dtype=np.float64),
+        ),
+    )
+
+    for (
+        name,
+        reconstruction_matrix,
+        surface_depth,
+        displacements,
+    ) in reconstruction_specs:
+        reconstructed: CrystalStructure = apply_surface_reconstruction(
+            slab=slab_001,
+            reconstruction_matrix=jnp.asarray(
+                reconstruction_matrix, dtype=jnp.int32
+            ),
+            surface_layer_depth_angstrom=jnp.asarray(
+                surface_depth, dtype=jnp.float64
+            ),
+            atomic_displacements=jnp.asarray(displacements, dtype=jnp.float64),
+        )
+        _write_fixture(name, reconstructed)
+
+
+def _generate_adsorbate_fixtures(slab_001: CrystalStructure) -> None:
+    """Generate adsorbate fixtures from a declarative spec list."""
+    adsorbate_specs: tuple[
+        tuple[str, np.ndarray, np.ndarray, float],
+        ...,
+    ] = (
+        (
+            "ads_full.npz",
+            np.array([[0.5, 0.5, 0.95]], dtype=np.float64),
+            np.array([8.0], dtype=np.float64),
+            1.0,
+        ),
+        (
+            "ads_half.npz",
+            np.array([[0.5, 0.5, 0.95]], dtype=np.float64),
+            np.array([8.0], dtype=np.float64),
+            0.5,
+        ),
+        (
+            "ads_multi.npz",
+            np.array(
+                [[0.25, 0.25, 0.95], [0.75, 0.75, 0.95]],
+                dtype=np.float64,
+            ),
+            np.array([8.0, 8.0], dtype=np.float64),
+            1.0,
+        ),
+        (
+            "ads_zero.npz",
+            np.array([[0.5, 0.5, 0.95]], dtype=np.float64),
+            np.array([14.0], dtype=np.float64),
+            0.0,
+        ),
+    )
+
+    for name, positions, atomic_numbers, coverage in adsorbate_specs:
+        decorated: CrystalStructure = add_adsorbate_layer(
+            slab=slab_001,
+            adsorbate_positions_fractional=jnp.asarray(
+                positions, dtype=jnp.float64
+            ),
+            adsorbate_atomic_numbers=jnp.asarray(
+                atomic_numbers, dtype=jnp.float64
+            ),
+            coverage_fraction=jnp.asarray(coverage, dtype=jnp.float64),
+        )
+        _write_fixture(name, decorated)
+
+
+def _generate_library_fixtures() -> None:
+    """Generate library fixtures from a factory table."""
+    library_specs: tuple[tuple[str, Callable[[], CrystalStructure]], ...] = (
+        ("si111_1x1.npz", si111_1x1),
+        (
+            "si111_1x1_custom.npz",
+            lambda: si111_1x1(a_lattice_angstrom=6.0),
+        ),
+        ("si111_7x7.npz", si111_7x7),
+        ("si100_2x1.npz", si100_2x1),
+        ("gaas001_2x4.npz", gaas001_2x4),
+        ("mgo001.npz", mgo001_bulk_terminated),
+        ("srtio3_001.npz", srtio3_001_2x1),
+    )
+
+    for name, builder in library_specs:
+        _write_fixture(name, builder())
+
+
 def main() -> None:
     """Generate all recon test fixtures."""
-    out_dir: str = os.path.join(os.path.dirname(__file__), "recon")
-    os.makedirs(out_dir, exist_ok=True)
-
-    miller_001 = jnp.array([0, 0, 1], dtype=jnp.int32)
-    miller_110 = jnp.array([1, 1, 0], dtype=jnp.int32)
-    miller_111 = jnp.array([1, 1, 1], dtype=jnp.int32)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     crystal = _make_cubic_crystal()
     mgo_crystal = _make_mgo_crystal()
 
-    _save_crystal(os.path.join(out_dir, "cubic_crystal.npz"), crystal)
-
-    slab_001 = create_surface_slab(crystal, miller_001, 10.0, 15.0)
-    _save_crystal(os.path.join(out_dir, "slab_001.npz"), slab_001)
-
-    slab_110 = create_surface_slab(crystal, miller_110, 10.0, 15.0)
-    _save_crystal(os.path.join(out_dir, "slab_110.npz"), slab_110)
-
-    slab_111 = create_surface_slab(crystal, miller_111, 10.0, 15.0)
-    _save_crystal(os.path.join(out_dir, "slab_111.npz"), slab_111)
-
-    mgo_slab = create_surface_slab(mgo_crystal, miller_001, 20.0, 15.0)
-    _save_crystal(os.path.join(out_dir, "mgo_slab.npz"), mgo_slab)
-
-    thin_slab = create_surface_slab(crystal, miller_001, 5.0, 15.0)
-    _save_crystal(os.path.join(out_dir, "thin_slab.npz"), thin_slab)
-
-    recon_2x2 = apply_surface_reconstruction(
-        slab=slab_001,
-        reconstruction_matrix=jnp.array([[2, 0], [0, 2]], dtype=jnp.int32),
-        surface_layer_depth_angstrom=3.0,
-        atomic_displacements=jnp.zeros((1, 3)),
+    _write_fixture("cubic_crystal.npz", crystal)
+    slab_001: CrystalStructure = _generate_surface_slab_fixtures(
+        crystal,
+        mgo_crystal,
     )
-    _save_crystal(os.path.join(out_dir, "recon_2x2.npz"), recon_2x2)
+    _generate_reconstruction_fixtures(slab_001)
+    _generate_adsorbate_fixtures(slab_001)
+    _generate_library_fixtures()
 
-    identity = jnp.array([[1, 0], [0, 1]], dtype=jnp.int32)
-    recon_no_disp = apply_surface_reconstruction(
-        slab=slab_001,
-        reconstruction_matrix=identity,
-        surface_layer_depth_angstrom=3.0,
-        atomic_displacements=jnp.zeros((1, 3)),
-    )
-    _save_crystal(
-        os.path.join(out_dir, "recon_no_disp.npz"),
-        recon_no_disp,
-    )
-
-    recon_with_disp = apply_surface_reconstruction(
-        slab=slab_001,
-        reconstruction_matrix=identity,
-        surface_layer_depth_angstrom=3.0,
-        atomic_displacements=jnp.array([[0.5, 0.0, 0.0]]),
-    )
-    _save_crystal(
-        os.path.join(out_dir, "recon_with_disp.npz"),
-        recon_with_disp,
-    )
-
-    ads_full = add_adsorbate_layer(
-        slab=slab_001,
-        adsorbate_positions_fractional=jnp.array([[0.5, 0.5, 0.95]]),
-        adsorbate_atomic_numbers=jnp.array([8.0]),
-        coverage_fraction=1.0,
-    )
-    _save_crystal(os.path.join(out_dir, "ads_full.npz"), ads_full)
-
-    ads_half = add_adsorbate_layer(
-        slab=slab_001,
-        adsorbate_positions_fractional=jnp.array([[0.5, 0.5, 0.95]]),
-        adsorbate_atomic_numbers=jnp.array([8.0]),
-        coverage_fraction=0.5,
-    )
-    _save_crystal(os.path.join(out_dir, "ads_half.npz"), ads_half)
-
-    ads_multi = add_adsorbate_layer(
-        slab=slab_001,
-        adsorbate_positions_fractional=jnp.array(
-            [[0.25, 0.25, 0.95], [0.75, 0.75, 0.95]]
-        ),
-        adsorbate_atomic_numbers=jnp.array([8.0, 8.0]),
-        coverage_fraction=1.0,
-    )
-    _save_crystal(os.path.join(out_dir, "ads_multi.npz"), ads_multi)
-
-    ads_zero = add_adsorbate_layer(
-        slab=slab_001,
-        adsorbate_positions_fractional=jnp.array([[0.5, 0.5, 0.95]]),
-        adsorbate_atomic_numbers=jnp.array([14.0]),
-        coverage_fraction=0.0,
-    )
-    _save_crystal(os.path.join(out_dir, "ads_zero.npz"), ads_zero)
-
-    # Library slabs
-    _save_crystal(os.path.join(out_dir, "si111_1x1.npz"), si111_1x1())
-    _save_crystal(
-        os.path.join(out_dir, "si111_1x1_custom.npz"),
-        si111_1x1(a_lattice_angstrom=6.0),
-    )
-    _save_crystal(os.path.join(out_dir, "si111_7x7.npz"), si111_7x7())
-    _save_crystal(os.path.join(out_dir, "si100_2x1.npz"), si100_2x1())
-    _save_crystal(
-        os.path.join(out_dir, "gaas001_2x4.npz"),
-        gaas001_2x4(),
-    )
-    _save_crystal(
-        os.path.join(out_dir, "mgo001.npz"),
-        mgo001_bulk_terminated(),
-    )
-    _save_crystal(
-        os.path.join(out_dir, "srtio3_001.npz"),
-        srtio3_001_2x1(),
-    )
-
-    print(f"Generated {len(os.listdir(out_dir))} fixtures in {out_dir}")
+    print(f"Generated {len(os.listdir(OUT_DIR))} fixtures in {OUT_DIR}")
 
 
 if __name__ == "__main__":

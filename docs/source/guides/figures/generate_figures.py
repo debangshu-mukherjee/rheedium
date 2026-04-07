@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = [
+#   "ase>=3.26.0",
+#   "beartype",
+#   "jaxtyping>=0.3.0",
+#   "jax>=0.9.2",
+#   "matplotlib>=3.10.0",
+#   "numpy>=2.2.1",
+#   "pymatgen>=2025.10.7",
+#   "scipy>=1.14.1",
+#   "tifffile>=2026.3.3",
+# ]
+# ///
 """Generate all documentation figures for rheedium guides.
 
 This script generates publication-quality SVG figures for the documentation
@@ -10,19 +24,24 @@ matplotlib. SVG format is used for vector graphics that:
 
 Usage
 -----
-    python generate_figures.py
+    uv run docs/source/guides/figures/generate_figures.py
 
 All figures are saved to the current directory (docs/source/guides/figures/).
 """
 
+import sys
 from pathlib import Path
 
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 
 # Use non-interactive backend for headless generation
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+SRC_ROOT = REPO_ROOT / "src"
+sys.path.insert(0, str(SRC_ROOT))
 
 # Common style settings
 plt.style.use("default")

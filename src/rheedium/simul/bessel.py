@@ -40,13 +40,16 @@ References
 import jax
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import Final
 from jaxtyping import Array, Float, jaxtyped
+
+SAFE_X: Final[float] = 2.0
 
 
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Modified Bessel function of the second kind, order zero.
+    r"""Modify Bessel function of the second kind, order zero.
 
     Parameters
     ----------
@@ -142,14 +145,16 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.exp(-x_safe) / jnp.sqrt(x_safe) * poly_large
     )
 
-    k0_val: Float[Array, "..."] = jnp.where(x_safe <= 2.0, k0_small, k0_large)
+    k0_val: Float[Array, "..."] = jnp.where(
+        x_safe <= SAFE_X, k0_small, k0_large
+    )
     return k0_val
 
 
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Modified Bessel function of the second kind, order one.
+    r"""Modify Bessel function of the second kind, order one.
 
     Parameters
     ----------
@@ -243,7 +248,9 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.exp(-x_safe) / jnp.sqrt(x_safe) * poly_large
     )
 
-    k1_val: Float[Array, "..."] = jnp.where(x_safe <= 2.0, k1_small, k1_large)
+    k1_val: Float[Array, "..."] = jnp.where(
+        x_safe <= SAFE_X, k1_small, k1_large
+    )
     return k1_val
 
 
