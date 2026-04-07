@@ -20,6 +20,17 @@ Routine Listings
     Modified Bessel function K_1(x).
 :func:`build_ewald_data`
     Build angle-independent EwaldData from crystal and beam parameters.
+:func:`build_transmission_function`
+    Construct ``T(x,y) = exp(i sigma V dz)`` from a complex projected
+    potential.
+:func:`crystal_projected_potential`
+    Build complex projected potential V_real + i*V_abs for one
+    multislice slice.
+:func:`fresnel_propagator`
+    Reciprocal-space Fresnel free-space propagator for one slice.
+:func:`multislice_one_step`
+    Single multislice propagation step (transmit, FFT, propagate,
+    IFFT).
 :func:`calculate_ctr_intensity`
     Calculate continuous intensity along crystal truncation rods.
 :func:`compute_domain_extent`
@@ -140,6 +151,12 @@ from .kinematic import (
     make_ewald_sphere,
     simple_structure_factor,
 )
+from .multislice import (
+    build_transmission_function,
+    fresnel_propagator,
+    multislice_one_step,
+)
+from .potential import crystal_projected_potential
 from .simul_utils import (
     incident_wavevector,
     interaction_constant,
@@ -172,7 +189,9 @@ __all__: list[str] = [
     "bessel_k0",
     "bessel_k1",
     "build_ewald_data",
+    "build_transmission_function",
     "coherence_envelope",
+    "crystal_projected_potential",
     "calculate_ctr_intensity",
     "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
@@ -186,6 +205,7 @@ __all__: list[str] = [
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
     "finite_domain_intensities",
+    "fresnel_propagator",
     "gauss_hermite_nodes_weights",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
@@ -203,6 +223,7 @@ __all__: list[str] = [
     "lorentzian_rod_profile",
     "projected_potential",
     "make_ewald_sphere",
+    "multislice_one_step",
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",
