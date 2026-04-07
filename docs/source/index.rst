@@ -30,6 +30,13 @@ Rheedium
 
 .. toctree::
    :maxdepth: 2
+   :caption: Interactive
+   :hidden:
+
+   interactive/ewald-sphere
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
    :hidden:
 

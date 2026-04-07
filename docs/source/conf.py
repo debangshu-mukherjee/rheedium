@@ -28,9 +28,14 @@ jaxtyping.jaxtyped = _noop_decorator
 # Add project paths
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
+venv_bin_path = os.path.join(project_root, ".venv", "bin")
 
 sys.path.insert(0, src_path)
 sys.path.insert(0, project_root)
+if os.path.isdir(venv_bin_path):
+    os.environ["PATH"] = os.pathsep.join(
+        [venv_bin_path, os.environ.get("PATH", "")]
+    )
 
 print(f"Added to sys.path: {src_path}")
 
@@ -61,12 +66,19 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "myst_parser",
+    "sphinx_marimo",
 ]
 
 source_suffix = {
     ".rst": None,
     ".md": None,
 }
+
+marimo_notebook_dir = "interactive_notebooks"
+marimo_default_height = "720px"
+marimo_default_width = "100%"
+marimo_click_to_load = True
+marimo_load_button_text = "Run Interactive Example"
 
 # MyST-Parser configuration for LaTeX math rendering
 myst_enable_extensions = [
@@ -167,6 +179,9 @@ autodoc_mock_imports = [
     "mpl_toolkits",
     "mpl_toolkits.mplot3d",
     "gemmi",
+    "ase",
+    "pymatgen",
+    "pymatgen.core",
 ]
 
 # Autodoc settings

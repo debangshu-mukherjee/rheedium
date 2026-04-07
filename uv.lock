@@ -2654,6 +2654,24 @@ wheels = [
 ]
 
 [[package]]
+name = "pydata-sphinx-theme"
+version = "0.17.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "accessible-pygments" },
+    { name = "babel" },
+    { name = "beautifulsoup4" },
+    { name = "docutils" },
+    { name = "pygments" },
+    { name = "sphinx" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/bb/4a97aaa840b26601d6d04deca1389c35025336428706a4a732051187fbd3/pydata_sphinx_theme-0.17.0.tar.gz", hash = "sha256:529c5631582cb3328cf4814fb9eb80611d1704c854406d282a75c9c86e3a1955", size = 4990605, upload-time = "2026-04-03T13:02:20.091Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/b7/a2bae25aae3568fe9f17040b31f9c190b4c5d86856d8869d0a30364a2567/pydata_sphinx_theme-0.17.0-py3-none-any.whl", hash = "sha256:cec5c92f41f4a11541b6df8210c446b4aa9c3badb7fcf2db7893405b786d5c99", size = 6820685, upload-time = "2026-04-03T13:02:18.09Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3085,6 +3103,7 @@ all = [
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-marimo" },
     { name = "sphinx-rtd-theme" },
     { name = "twine" },
     { name = "ty" },
@@ -3119,6 +3138,7 @@ dev = [
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-marimo" },
     { name = "sphinx-rtd-theme" },
     { name = "twine" },
     { name = "ty" },
@@ -3151,6 +3171,7 @@ dev-cuda = [
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-marimo" },
     { name = "sphinx-rtd-theme" },
     { name = "twine" },
     { name = "ty" },
@@ -3163,6 +3184,7 @@ docs = [
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-marimo" },
     { name = "sphinx-rtd-theme" },
 ]
 interop = [
@@ -3227,6 +3249,7 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0.0" },
     { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=3.0.1" },
+    { name = "sphinx-marimo", marker = "extra == 'docs'", specifier = ">=0.3.0" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.0.2" },
     { name = "tifffile", specifier = ">=2026.3.3" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.1.0" },
@@ -3622,6 +3645,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/98/0b/a866924ded68efec7a1759587a4e478aec7559d8165fac8b2ad1c0e774d6/sphinx_basic_ng-1.0.0b2.tar.gz", hash = "sha256:9ec55a47c90c8c002b5960c57492ec3021f5193cb26cebc2dc4ea226848651c9", size = 20736, upload-time = "2023-07-08T18:40:54.166Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3c/dd/018ce05c532a22007ac58d4f45232514cd9d6dd0ee1dc374e309db830983/sphinx_basic_ng-1.0.0b2-py3-none-any.whl", hash = "sha256:eb09aedbabfb650607e9b4b68c9d240b90b1e1be221d6ad71d61c52e29f7932b", size = 22496, upload-time = "2023-07-08T18:40:52.659Z" },
+]
+
+[[package]]
+name = "sphinx-marimo"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "marimo" },
+    { name = "pydata-sphinx-theme" },
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/a2/d6c6c025da4813ea3f736a089a052ff2c6d4ab727abf8331ed4e80b062e0/sphinx_marimo-0.3.0.tar.gz", hash = "sha256:e27883a673868b53140789b31674bc19c59a8122e9eea0267ca6c15fd9f72f17", size = 271784, upload-time = "2025-11-18T09:12:31.184Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/9c/d2141e67a51256c80f2f1879602c010e9a0f6002913edfd3012e8e112891/sphinx_marimo-0.3.0-py3-none-any.whl", hash = "sha256:205fca3aed0607d480fa9c3baafdd038fc85b899077793b04444beaa30356122", size = 15937, upload-time = "2025-11-18T09:12:30.163Z" },
 ]
 
 [[package]]

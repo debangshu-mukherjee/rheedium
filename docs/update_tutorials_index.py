@@ -3,11 +3,10 @@
 
 For each ``tutorials/*.py`` Marimo notebook this script:
 
-1. Exports it to a self-contained, browser-runnable HTML bundle via
-   ``marimo export html-wasm`` into ``docs/source/_extra/marimo/<stem>/``.
-   Sphinx is configured (via ``html_extra_path``) to copy ``_extra``
-   verbatim into the build root, so each notebook ends up at
-   ``<build>/marimo/<stem>/index.html``.
+1. Runs it and exports it to static HTML via ``marimo export html`` into
+   ``docs/source/_extra/marimo/<stem>/index.html``. Sphinx is configured
+   (via ``html_extra_path``) to copy ``_extra`` verbatim into the build
+   root, so each notebook ends up at ``<build>/marimo/<stem>/index.html``.
 2. Regenerates ``tutorials/index.rst`` with one link per notebook
    pointing at the corresponding generated HTML bundle.
 
@@ -29,22 +28,21 @@ EXTRA_DIR = DOCS_DIR / "source" / "_extra" / "marimo"
 
 
 def export_notebook(notebook: Path, out_dir: Path) -> None:
-    """Export a single Marimo notebook to a wasm HTML bundle."""
+    """Export a single Marimo notebook to static HTML."""
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "index.html"
     subprocess.run(
         [
             sys.executable,
             "-m",
             "marimo",
             "export",
-            "html-wasm",
+            "html",
             str(notebook),
             "-o",
-            str(out_dir),
-            "--mode",
-            "run",
+            str(out_file),
             "-f",
         ],
         check=True,
@@ -57,16 +55,18 @@ def write_index(notebooks: list[Path]) -> None:
         "Tutorials",
         "=========",
         "",
-        "Interactive `Marimo <https://marimo.io>`_ notebooks demonstrating",
-        "how to use Rheedium for RHEED pattern simulation. Each tutorial",
-        "below runs entirely in your browser via Pyodide — no installation",
-        "required.",
+        "Rendered `Marimo <https://marimo.io>`_ notebooks demonstrating",
+        "how to use Rheedium for RHEED pattern simulation. These pages",
+        "capture the full notebook output from the docs build so the",
+        "heavy JAX-based examples remain viewable on Read the Docs.",
         "",
         ".. note::",
         "",
-        "   To run a notebook locally with full performance, clone the",
-        "   repository, install Marimo (``pip install marimo``), and",
-        "   launch ``marimo edit tutorials/<notebook>.py``.",
+        "   For true in-browser interactivity, see the lightweight WASM",
+        "   demos under the Interactive section. To run the full tutorial",
+        "   notebooks locally, clone the repository, install Marimo",
+        "   (``pip install marimo``), and launch",
+        "   ``marimo edit tutorials/<notebook>.py``.",
         "",
         "Available tutorials",
         "-------------------",

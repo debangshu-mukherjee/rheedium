@@ -1,16 +1,18 @@
 Tutorials
 =========
 
-Interactive `Marimo <https://marimo.io>`_ notebooks demonstrating
-how to use Rheedium for RHEED pattern simulation. Each tutorial
-below runs entirely in your browser via Pyodide — no installation
-required.
+Rendered `Marimo <https://marimo.io>`_ notebooks demonstrating
+how to use Rheedium for RHEED pattern simulation. These pages
+capture the full notebook output from the docs build so the
+heavy JAX-based examples remain viewable on Read the Docs.
 
 .. note::
 
-   To run a notebook locally with full performance, clone the
-   repository, install Marimo (``pip install marimo``), and
-   launch ``marimo edit tutorials/<notebook>.py``.
+   For true in-browser interactivity, see the lightweight WASM
+   demos under the Interactive section. To run the full tutorial
+   notebooks locally, clone the repository, install Marimo
+   (``pip install marimo``), and launch
+   ``marimo edit tutorials/<notebook>.py``.
 
 Available tutorials
 -------------------
