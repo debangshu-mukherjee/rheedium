@@ -141,7 +141,13 @@ def create_surface_slab(
 
     rotated_cell_vecs: Float[Array, "3 3"] = cell_vecs @ rotation_matrix.T
 
-    cell_z_proj: Float[Array, ""] = jnp.abs(rotated_cell_vecs[2, 2])
+    # Replicate along the lattice vector with the largest surface-normal
+    # component. Using the rotated c vector alone can collapse to zero for
+    # cuts like (100) or (110), which explodes the replica count.
+    z_projections: Float[Array, "3"] = jnp.abs(rotated_cell_vecs[:, 2])
+    repeat_axis: int = int(jnp.argmax(z_projections))
+    repeat_vec: Float[Array, "3"] = rotated_cell_vecs[repeat_axis]
+    cell_z_proj: Float[Array, ""] = z_projections[repeat_axis]
     nz: int = int(jnp.ceil(slab_thickness_angstrom / (cell_z_proj + 1e-10)))
     nz = max(nz, 3)
 
@@ -151,9 +157,7 @@ def create_surface_slab(
 
     n_replicas: int = 2 * nz + 1
     iz_range: Float[Array, "R"] = jnp.arange(-nz, nz + 1, dtype=jnp.float64)
-    translations: Float[Array, "R 3"] = (
-        iz_range[:, None] * rotated_cell_vecs[2][None, :]
-    )
+    translations: Float[Array, "R 3"] = iz_range[:, None] * repeat_vec[None, :]
     tiled_positions: Float[Array, "R N 3"] = (
         rotated_positions[None, :, :] + translations[:, None, :]
     )
