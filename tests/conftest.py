@@ -63,7 +63,7 @@ import platform  # noqa: E402
 import jax  # noqa: E402
 import pytest  # noqa: E402
 
-MEM_PER_WORKER_GB: Final[int] = 10
+MEM_PER_WORKER_GB: Final[int] = 5
 MEM_LEAK_THRESHOLD_GB: Final[float] = 0.5
 AVAILABLE_MEM_FRACTION: Final[float] = 0.80
 
