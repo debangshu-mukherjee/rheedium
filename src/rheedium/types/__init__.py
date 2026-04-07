@@ -74,6 +74,18 @@ from .beam_types import (
     ElectronBeam,
     create_electron_beam,
 )
+from .constants import (
+    AMU_TO_KG,
+    BOLTZMANN_CONSTANT_JK,
+    ELECTRON_MASS_KG,
+    ELEMENTARY_CHARGE_C,
+    H_OVER_SQRT_2ME_ANG_VSQRT,
+    HBAR_JS,
+    M2_TO_ANG2,
+    PLANCK_CONSTANT_JS,
+    RELATIVISTIC_COEFF_PER_V,
+    SPEED_OF_LIGHT_MS,
+)
 from .crystal_types import (
     CrystalStructure,
     EwaldData,
@@ -106,6 +118,16 @@ from .rheed_types import (
 )
 
 __all__: list[str] = [
+    "AMU_TO_KG",
+    "BOLTZMANN_CONSTANT_JK",
+    "ELEMENTARY_CHARGE_C",
+    "ELECTRON_MASS_KG",
+    "H_OVER_SQRT_2ME_ANG_VSQRT",
+    "HBAR_JS",
+    "M2_TO_ANG2",
+    "PLANCK_CONSTANT_JS",
+    "RELATIVISTIC_COEFF_PER_V",
+    "SPEED_OF_LIGHT_MS",
     "create_crystal_structure",
     "create_electron_beam",
     "create_ewald_data",

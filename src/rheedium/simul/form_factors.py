@@ -61,14 +61,17 @@ from rheedium.inout import (
     kirkland_potentials,
     lobato_potentials,
 )
-from .bessel import bessel_k0, bessel_k1
-from rheedium.types import scalar_bool, scalar_float, scalar_int
-from rheedium.types.constants import (
+from rheedium.types import (
     AMU_TO_KG,
     BOLTZMANN_CONSTANT_JK,
     HBAR_JS,
     M2_TO_ANG2,
+    scalar_bool,
+    scalar_float,
+    scalar_int,
 )
+
+from .bessel import bessel_k0, bessel_k1
 
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
