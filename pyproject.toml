@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2026.4.6"
+version = "2026.4.7"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -50,10 +50,8 @@ cuda = [
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=3.0.2",
-    "nbsphinx>=0.9.7",
     "myst-parser>=2.0.0",
-    "ipykernel>=6.29.5",
-    "nbconvert>=7.16.6",
+    "marimo>=0.10.0",
     "sphinx-autobuild>=2024.10.3",
     "furo>=2025.7.19",
     "sphinx-autodoc-typehints>=3.0.1",
@@ -254,6 +252,24 @@ convention = "numpy"
     "F401",   # Ignore unused imports (tests may import for side effects)
     "F841",   # Ignore unused variables
     "PLR2004", # Ignore magic value comparisons
+]
+"tutorials/**/*.py" = [
+    "D",      # Marimo notebooks: no module/function docstrings required
+    "ANN",    # Marimo cells use `def _(arg1, arg2):` with no annotations
+    "PLR1711", # Marimo cells end with bare `return` to declare outputs
+    "PLC0415", # Each marimo cell is a function; imports go inside
+    "N803",   # Allow scientific variable names like X, Y, Mx as args
+    "N806",   # Allow scientific variable names like X, Y, Mx in body
+    "E501",   # Long lines in exploratory notebook code
+    "F541",   # f-strings without placeholders are common in notebook prints
+    "B018",   # Bare expressions are how marimo displays cell outputs
+    "B905",   # zip without strict= is fine in tutorial code
+    "F841",   # Unused variables are fine in exploratory cells
+    "E741",   # Ambiguous variable names (l, I, O) are common in physics
+    "PLR2004", # Magic numbers are fine in tutorials
+    "ARG001", # Marimo cells may declare args they do not use
+    "RET504", # Unnecessary assigns are fine for clarity
+    "I001",   # Marimo manages imports per-cell, not sorted globally
 ]
 
 [tool.pydoclint]

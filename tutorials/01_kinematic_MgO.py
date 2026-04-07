@@ -38,19 +38,18 @@ def _(mo):
 @app.cell
 def _():
     import jax.numpy as jnp
-    import rheedium as rh
     import matplotlib.pyplot as plt
     import numpy as np
+    from pathlib import Path
+    import rheedium as rh
 
-    return jnp, np, plt, rh
+    return Path, jnp, np, plt, rh
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %load_ext autoreload
-    # '%autoreload 2' command supported automatically in marimo
-    return
+def _(Path):
+    repo_root = Path(__file__).resolve().parents[1]
+    return (repo_root,)
 
 
 @app.cell(hide_code=True)
@@ -64,8 +63,8 @@ def _(mo):
 
 
 @app.cell
-def _(rh):
-    crystal = rh.inout.parse_cif("../tests/test_data/MgO.cif")
+def _(repo_root, rh):
+    crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
     print(f"Cell parameters: a={crystal.cell_lengths[0]:.3f} Å")
     print(f"Number of atoms: {crystal.cart_positions.shape[0]}")
     return (crystal,)
@@ -135,11 +134,11 @@ def _(rh, spot_pattern):
 def _(mo):
     mo.md(
         r"""
-    ## Streak Pattern (Crystal Truncation Rods)
+    ## Surface Pattern (Exact CTR-Ewald Intersection)
 
-    The `kinematic_ctr_simulator` models RHEED from surfaces where the reciprocal lattice
-    consists of continuous rods rather than discrete points. This produces the characteristic
-    vertical streaks seen in real RHEED patterns.
+    The `ewald_simulator` solves the exact intersection between each crystal truncation
+    rod and the Ewald sphere. This is the recommended surface-sensitive simulator and
+    produces the characteristic vertical streaks seen in real RHEED patterns.
     """
     )
     return
@@ -147,19 +146,18 @@ def _(mo):
 
 @app.cell
 def _(crystal, detector_distance, hmax, jnp, kmax, rh, theta_deg, voltage_kV):
-    streak_pattern = rh.simul.kinematic_ctr_simulator(
+    streak_pattern = rh.simul.ewald_simulator(
         crystal=crystal,
         voltage_kv=voltage_kV,
         theta_deg=theta_deg,
         hmax=hmax,
         kmax=kmax,
         detector_distance=detector_distance,
-        l_min=0.5,
-        l_max=4.0,
-        n_points_per_rod=200,
+        temperature=300.0,
+        surface_roughness=0.5,
     )
 
-    print(f"Number of streak points: {len(streak_pattern.intensities)}")
+    print(f"Number of rod intersections: {len(streak_pattern.intensities)}")
     print(
         f"Number of unique rods: {len(jnp.unique(streak_pattern.G_indices))}"
     )

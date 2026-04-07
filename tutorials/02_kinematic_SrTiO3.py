@@ -30,9 +30,16 @@ def _(mo):
 @app.cell
 def _():
     import jax.numpy as jnp
+    from pathlib import Path
     import rheedium as rh
 
-    return jnp, rh
+    return Path, jnp, rh
+
+
+@app.cell
+def _(Path):
+    repo_root = Path(__file__).resolve().parents[1]
+    return (repo_root,)
 
 
 @app.cell(hide_code=True)
@@ -54,8 +61,10 @@ def _():
 
 
 @app.cell
-def _(rh):
-    structure_file = rh.inout.parse_cif("../tests/test_data/SrTiO3.cif")
+def _(repo_root, rh):
+    structure_file = rh.inout.parse_cif(
+        repo_root / "tests" / "test_data" / "SrTiO3.cif"
+    )
     return (structure_file,)
 
 
@@ -89,14 +98,7 @@ def _():
     hmax, kmax = 4, 4  # In-plane reciprocal lattice bounds
     detector_distance = 100.0  # Detector distance in mm
     points_per_streak = 100  # Points to sample along each CTR streak
-    return (
-        detector_distance,
-        hmax,
-        kmax,
-        points_per_streak,
-        theta_deg,
-        voltage_kV,
-    )
+    return detector_distance, hmax, kmax, theta_deg, voltage_kV
 
 
 @app.cell(hide_code=True)
@@ -373,10 +375,10 @@ def _(rh, spot_pattern):
 def _(mo):
     mo.md(
         r"""
-    ## Simulate RHEED streak pattern using Crystal Truncation Rods (CTRs)
+    ## Simulate Surface RHEED with Exact CTR-Ewald Intersections
 
-    The `streak_simulator` models RHEED as diffraction from continuous rods in reciprocal space,
-    producing the characteristic vertical streaks seen in real RHEED patterns.
+    The `ewald_simulator` solves the exact intersection of each crystal truncation rod
+    with the Ewald sphere, producing the characteristic streak-like surface pattern.
     """
     )
     return
@@ -387,26 +389,25 @@ def _(
     detector_distance,
     hmax,
     kmax,
-    points_per_streak,
     rh,
     structure_file,
     theta_deg,
     voltage_kV,
 ):
-    # Generate RHEED streak pattern for SrTiO3
-    # kinematic_ctr_simulator models continuous crystal truncation rods (CTRs)
-    # and returns a RHEEDPattern directly
-    streak_pattern = rh.simul.kinematic_ctr_simulator(
+    # Generate surface-sensitive RHEED pattern for SrTiO3.
+    streak_pattern = rh.simul.ewald_simulator(
         crystal=structure_file,
         voltage_kv=voltage_kV,
         theta_deg=theta_deg,
+        phi_deg=0.0,
         hmax=hmax,
         kmax=kmax,
         detector_distance=detector_distance,
-        n_points_per_rod=points_per_streak,
+        temperature=300.0,
+        surface_roughness=0.5,
     )
 
-    print(f"Number of streak points: {len(streak_pattern.intensities)}")
+    print(f"Number of rod intersections: {len(streak_pattern.intensities)}")
     print(
         f"X-coordinate range: [{streak_pattern.detector_points[:, 0].min():.2f}, {streak_pattern.detector_points[:, 0].max():.2f}] mm"
     )
@@ -429,7 +430,7 @@ def _(mo):
 @app.cell
 def _(jnp, streak_pattern):
     # Summary of streak pattern
-    print(f"Number of streak points: {len(streak_pattern.intensities)}")
+    print(f"Number of rod intersections: {len(streak_pattern.intensities)}")
     print(
         f"Number of unique rods: {len(jnp.unique(streak_pattern.G_indices))}"
     )
@@ -454,7 +455,7 @@ def _(mo):
 @app.cell
 def _(rh, streak_pattern):
     # Plot using phosphor colormap
-    # streak_pattern is already a RHEEDPattern from kinematic_ctr_simulator
+    # streak_pattern is already a RHEEDPattern from ewald_simulator
     rh.plots.plot_rheed(streak_pattern, grid_size=400, interp_type="linear")
     return
 
@@ -467,7 +468,7 @@ def _(mo):
 
     ## Physics of RHEED Streaks
 
-    The `streak_simulator` properly models RHEED from surfaces:
+    The `ewald_simulator` properly models RHEED from surfaces:
 
     1. **Crystal Truncation Rods (CTRs)**: Surface breaks z-symmetry, creating continuous rods in reciprocal space
     2. **Ewald Sphere Intersection**: Each (h,k) rod intersects the Ewald sphere along an arc
@@ -497,7 +498,7 @@ def _(mo):
 @app.cell
 def _(jnp, rh, structure_file):
     # Create a properly oriented [111] surface slab
-    slab_111 = rh.types.bulk_to_slice(
+    slab_111 = rh.ucell.bulk_to_slice(
         bulk_crystal=structure_file,
         orientation=jnp.array([1, 1, 1]),  # (111) surface
         depth=20.0,  # 20 Å deep
@@ -532,7 +533,7 @@ def _(mo):
 @app.cell
 def _(jnp, rh, structure_file):
     # Create a properly oriented [111] surface slab
-    slab_111_1 = rh.types.bulk_to_slice(
+    slab_111_1 = rh.ucell.bulk_to_slice(
         bulk_crystal=structure_file,
         orientation=jnp.array([1, 1, 1]),
         depth=20.0,
@@ -643,10 +644,6 @@ def _(detector_distance, potential, rh, theta_deg, voltage_kV):
         theta_deg=theta_deg,
         phi_deg=90.0,  # Vertical streaks
         detector_distance=detector_distance,
-        detector_width=200.0,  # mm
-        detector_height=200.0,  # mm
-        detector_pixels_x=256,  # Reduced for speed
-        detector_pixels_y=256,
     )
 
     print(f"Multislice RHEED pattern:")

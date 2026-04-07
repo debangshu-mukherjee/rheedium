@@ -41,19 +41,17 @@ def _(mo):
 def _():
     import jax.numpy as jnp
     import matplotlib.pyplot as plt
-    import rheedium as rh
     import numpy as np
     from pathlib import Path
+    import rheedium as rh
 
     return Path, jnp, np, plt, rh
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %load_ext autoreload
-    # '%autoreload 2' command supported automatically in marimo
-    return
+def _(Path):
+    repo_root = Path(__file__).resolve().parents[1]
+    return (repo_root,)
 
 
 @app.cell(hide_code=True)
@@ -70,8 +68,8 @@ def _(mo):
 
 
 @app.cell
-def _(Path, rh):
-    data_dir = Path("../tests/test_data/bi2se3")
+def _(repo_root, rh):
+    data_dir = repo_root / "tests" / "test_data" / "bi2se3"
     pristine = rh.inout.parse_cif(data_dir / "Bi2Se3.cif")
     # Load pristine Bi2Se3 from CIF file
     print(
@@ -182,34 +180,16 @@ def _(mo):
     For each structure, we simulate the RHEED pattern at grazing angles from 1° to 4°.
     This shows the full Ewald sphere rotation and how different reflections become active.
 
-    **Note on l-range**: These structures have a large unit cell (~100 Å along c-axis),
-    resulting in a small reciprocal lattice spacing (c* ≈ 0.063 Å⁻¹). To satisfy the
-    Ewald sphere condition (k_out_z > 0), we need l values around 50-150. We calculate
-    the appropriate range based on the crystal geometry.
+    We use `ewald_simulator`, which solves the exact intersection between each crystal
+    truncation rod and the Ewald sphere directly, so no manual `l` sampling range is
+    needed even for the long c-axis of Bi2Se3.
     """
     )
     return
 
 
 @app.cell
-def _(crystals, jnp, rh, voltage_kV):
-    def compute_l_range(crystal, voltage_kv, theta_deg):
-        """Compute appropriate l-range for Ewald sphere intersection.
-
-        For large unit cells, the reciprocal lattice is dense and we need
-        large l values to satisfy k_out_z > 0.
-        """
-        c_length = crystal.cell_lengths[2]  # Get c* magnitude
-        c_star = 2 * jnp.pi / c_length
-        wavelength = rh.simul.wavelength_ang(voltage_kv)
-        theta_rad = jnp.radians(theta_deg)
-        k_in_z = (
-            -2 * jnp.pi / wavelength * jnp.sin(theta_rad)
-        )  # Incident wavevector z-component (negative for grazing incidence)
-        l_min = float(-k_in_z / c_star) + 1.0
-        l_max = l_min + 100.0
-        return (l_min, l_max)
-
+def _(crystals, rh):
     def simulate_rheed_pattern(
         crystal,
         theta_deg,
@@ -217,30 +197,27 @@ def _(crystals, jnp, rh, voltage_kV):
         hmax=3,
         kmax=3,
         detector_distance=80.0,
-    ):  # Minimum l for k_out_z > 0: l * c* > -k_in_z
-        """Simulate kinematic CTR RHEED pattern with auto-computed l-range."""  # Add margin
-        l_min, l_max = compute_l_range(
-            crystal, voltage_kv, theta_deg
-        )  # Sample 100 l-units
-        _pattern = rh.simul.kinematic_ctr_simulator(
+    ):
+        """Simulate surface-sensitive RHEED using exact CTR-Ewald intersections."""
+        _pattern = rh.simul.ewald_simulator(
             crystal=crystal,
             voltage_kv=voltage_kv,
             theta_deg=theta_deg,
             hmax=hmax,
             kmax=kmax,
             detector_distance=detector_distance,
-            l_min=l_min,
-            l_max=l_max,
-            n_points_per_rod=200,
+            temperature=300.0,
+            surface_roughness=0.5,
         )
         return _pattern
 
     example_crystal = crystals["Initial"]
-    l_min, l_max = compute_l_range(example_crystal, voltage_kV, 2.0)
-    print(f"For c = {float(example_crystal.cell_lengths[2]):.1f} Å at θ = 2°:")
-    print(f"  c* = {2 * jnp.pi / example_crystal.cell_lengths[2]:.4f} Å⁻¹")
-    # Show l-range for initial structure at 2 degrees
-    print(f"  l-range: [{l_min:.1f}, {l_max:.1f}]")
+    print(
+        f"Initial structure c-axis: {float(example_crystal.cell_lengths[2]):.1f} Å"
+    )
+    print(
+        "Using ewald_simulator to solve the CTR-Ewald intersection directly."
+    )
     return (simulate_rheed_pattern,)
 
 
@@ -288,14 +265,18 @@ def _(np):
         y_range=(0, 6),
     ):
         """Render RHEED pattern to image array."""
-        valid = _pattern.intensities > 0  # Filter to valid points only
-        x_np = np.asarray(_pattern.detector_points[valid, 0])
-        y_np = np.asarray(_pattern.detector_points[valid, 1])
-        i_np = np.asarray(_pattern.intensities[valid])
         _x_axis = np.linspace(x_range[0], x_range[1], grid_size)
         _y_axis = np.linspace(y_range[0], y_range[1], grid_size)
         xx, yy = np.meshgrid(_x_axis, _y_axis, indexing="xy")
         _image = np.zeros_like(xx)
+        valid = np.asarray(pattern.intensities) > 0
+
+        if not np.any(valid):
+            return (_image, _x_axis, _y_axis)
+
+        x_np = np.asarray(pattern.detector_points[valid, 0])
+        y_np = np.asarray(pattern.detector_points[valid, 1])
+        i_np = np.asarray(pattern.intensities[valid])
         for idx in range(len(i_np)):
             _image += i_np[idx] * np.exp(
                 -((xx - x_np[idx]) ** 2 + (yy - y_np[idx]) ** 2)

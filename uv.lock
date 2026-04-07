@@ -2049,23 +2049,6 @@ wheels = [
 ]
 
 [[package]]
-name = "nbsphinx"
-version = "0.9.7"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "docutils" },
-    { name = "jinja2" },
-    { name = "nbconvert" },
-    { name = "nbformat" },
-    { name = "sphinx" },
-    { name = "traitlets" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/84/b1856b7651ac34e965aa567a158714c7f3bd42a1b1ce76bf423ffb99872c/nbsphinx-0.9.7.tar.gz", hash = "sha256:abd298a686d55fa894ef697c51d44f24e53aa312dadae38e82920f250a5456fe", size = 180479, upload-time = "2025-03-03T19:46:08.069Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/2d/8c8e635bcc6757573d311bb3c5445426382f280da32b8cd6d82d501ef4a4/nbsphinx-0.9.7-py3-none-any.whl", hash = "sha256:7292c3767fea29e405c60743eee5393682a83982ab202ff98f5eb2db02629da8", size = 31660, upload-time = "2025-03-03T19:46:06.581Z" },
-]
-
-[[package]]
 name = "nest-asyncio"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3058,7 +3041,7 @@ wheels = [
 
 [[package]]
 name = "rheedium"
-version = "2026.4.6"
+version = "2026.4.7"
 source = { editable = "." }
 dependencies = [
     { name = "ase" },
@@ -3087,9 +3070,9 @@ all = [
     { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple" }, extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jupyter" },
     { name = "jupyter-black" },
+    { name = "marimo" },
     { name = "myst-parser" },
     { name = "nbconvert" },
-    { name = "nbsphinx" },
     { name = "numpydoc" },
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pre-commit" },
@@ -3122,9 +3105,9 @@ dev = [
     { name = "isort" },
     { name = "jupyter" },
     { name = "jupyter-black" },
+    { name = "marimo" },
     { name = "myst-parser" },
     { name = "nbconvert" },
-    { name = "nbsphinx" },
     { name = "numpydoc" },
     { name = "pre-commit" },
     { name = "pygount" },
@@ -3153,9 +3136,9 @@ dev-cuda = [
     { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple" }, extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jupyter" },
     { name = "jupyter-black" },
+    { name = "marimo" },
     { name = "myst-parser" },
     { name = "nbconvert" },
-    { name = "nbsphinx" },
     { name = "numpydoc" },
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pre-commit" },
@@ -3174,10 +3157,8 @@ dev-cuda = [
 ]
 docs = [
     { name = "furo" },
-    { name = "ipykernel" },
+    { name = "marimo" },
     { name = "myst-parser" },
-    { name = "nbconvert" },
-    { name = "nbsphinx" },
     { name = "numpydoc" },
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
@@ -3212,7 +3193,6 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2.2.post1" },
     { name = "chex", marker = "extra == 'test'", specifier = ">=0.1.89" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2025.7.19" },
-    { name = "ipykernel", marker = "extra == 'docs'", specifier = ">=6.29.5" },
     { name = "ipykernel", marker = "extra == 'notebooks'", specifier = ">=6.29.5" },
     { name = "ipython", marker = "extra == 'notebooks'", specifier = ">=8.31.0" },
     { name = "ipywidgets", marker = "extra == 'notebooks'", specifier = ">=8.1.0" },
@@ -3225,11 +3205,10 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'notebooks'", specifier = ">=1.1.1" },
     { name = "jupyter-black", marker = "extra == 'notebooks'", specifier = ">=0.4.0" },
     { name = "marimo", specifier = ">=0.22.4" },
+    { name = "marimo", marker = "extra == 'docs'", specifier = ">=0.10.0" },
     { name = "matplotlib", specifier = ">=3.10.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0.0" },
-    { name = "nbconvert", marker = "extra == 'docs'", specifier = ">=7.16.6" },
     { name = "nbconvert", marker = "extra == 'notebooks'", specifier = ">=7.16.6" },
-    { name = "nbsphinx", marker = "extra == 'docs'", specifier = ">=0.9.7" },
     { name = "numpy", specifier = ">=2.2.1" },
     { name = "numpydoc", marker = "extra == 'docs'", specifier = ">=1.9.0" },
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'cuda'", specifier = ">=9.5.0" },

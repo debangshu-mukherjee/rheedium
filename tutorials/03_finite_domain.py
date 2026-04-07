@@ -41,13 +41,20 @@ def _(mo):
 def _():
     import jax.numpy as jnp
     import matplotlib.pyplot as plt
+    from pathlib import Path
     import rheedium as rh
 
     # Suppress JAX GPU warning if no CUDA
     import warnings
 
     warnings.filterwarnings("ignore", category=UserWarning)
-    return jnp, plt, rh
+    return Path, jnp, plt, rh
+
+
+@app.cell
+def _(Path):
+    repo_root = Path(__file__).resolve().parents[1]
+    return (repo_root,)
 
 
 @app.cell(hide_code=True)
@@ -63,8 +70,8 @@ def _(mo):
 
 
 @app.cell
-def _(rh):
-    crystal = rh.inout.parse_cif("../tests/test_data/MgO.cif")
+def _(repo_root, rh):
+    crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
 
     print(f"Cell parameters: a = {float(crystal.cell_lengths[0]):.3f} Å")
     print(f"Number of atoms: {crystal.cart_positions.shape[0]}")

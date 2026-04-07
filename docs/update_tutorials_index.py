@@ -1,117 +1,101 @@
 #!/usr/bin/env python3
-"""
-Automatically update the tutorials index.rst file to include all Jupyter notebooks.
-Run this script whenever new notebooks are added to the tutorials directory.
+"""Export Marimo tutorial notebooks and regenerate the tutorials index.
+
+For each ``tutorials/*.py`` Marimo notebook this script:
+
+1. Exports it to a self-contained, browser-runnable HTML bundle via
+   ``marimo export html-wasm`` into ``docs/source/_extra/marimo/<stem>/``.
+   Sphinx is configured (via ``html_extra_path``) to copy ``_extra``
+   verbatim into the build root, so each notebook ends up at
+   ``<build>/marimo/<stem>/index.html``.
+2. Regenerates ``tutorials/index.rst`` with one link per notebook
+   pointing at the corresponding generated HTML bundle.
+
+Run as part of the docs build (see ``.readthedocs.yaml``) or manually
+with ``python docs/update_tutorials_index.py``.
 """
 
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
-
-def update_tutorials_index():
-    """Update the tutorials/index.rst file with all notebooks found."""
-
-    # Get paths
-    docs_dir = Path(__file__).parent
-    tutorials_dir = docs_dir.parent / "tutorials"
-    index_file = tutorials_dir / "index.rst"
-
-    # Find all notebook files in root tutorials directory
-    root_notebooks = sorted([f.stem for f in tutorials_dir.glob("*.ipynb")])
-
-    # Find subdirectories with notebooks
-    subdirs = []
-    for subdir in sorted(tutorials_dir.iterdir()):
-        if subdir.is_dir() and not subdir.name.startswith("."):
-            subdir_notebooks = list(subdir.glob("*.ipynb"))
-            if subdir_notebooks:
-                subdirs.append(subdir.name)
-
-    if not root_notebooks and not subdirs:
-        print("No notebooks found in tutorials directory")
-        return
-
-    # Create the index content
-    content = """Tutorials
-=========
-
-This section contains interactive Jupyter notebooks demonstrating how to use Rheedium for RHEED pattern simulation.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorial Notebooks
-
-"""
-
-    # Add each root notebook
-    for notebook in root_notebooks:
-        content += f"   {notebook}\n"
-
-    # Add subdirectory sections
-    for subdir in subdirs:
-        content += f"""
-.. toctree::
-   :maxdepth: 2
-   :caption: {subdir}
-
-   {subdir}/index
-"""
-
-    content += """
-.. note::
-
-   These notebooks are rendered automatically from the ``tutorials/`` directory.
-   To run them interactively:
-
-   1. Clone the repository
-   2. Navigate to the ``tutorials/`` directory
-   3. Launch Jupyter: ``jupyter notebook`` or ``jupyter lab``
-   4. Open any notebook to explore the examples
-"""
-
-    # Write the file
-    with open(index_file, "w") as f:
-        f.write(content)
-
-    print(f"Updated {index_file} with {len(root_notebooks)} root notebooks")
-    print(f"  and {len(subdirs)} subdirectories: {subdirs}")
-    for notebook in root_notebooks:
-        print(f"  - {notebook}")
-
-    # Also update subdirectory index files
-    for subdir in subdirs:
-        update_subdir_index(tutorials_dir / subdir)
+DOCS_DIR = Path(__file__).parent
+REPO_ROOT = DOCS_DIR.parent
+TUTORIALS_DIR = REPO_ROOT / "tutorials"
+EXTRA_DIR = DOCS_DIR / "source" / "_extra" / "marimo"
 
 
-def update_subdir_index(subdir_path: Path):
-    """Update the index.rst file for a subdirectory."""
-    index_file = subdir_path / "index.rst"
-    subdir_name = subdir_path.name
+def export_notebook(notebook: Path, out_dir: Path) -> None:
+    """Export a single Marimo notebook to a wasm HTML bundle."""
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "marimo",
+            "export",
+            "html-wasm",
+            str(notebook),
+            "-o",
+            str(out_dir),
+            "--mode",
+            "run",
+            "-f",
+        ],
+        check=True,
+    )
 
-    # Find all notebook files in subdirectory
-    notebooks = sorted([f.stem for f in subdir_path.glob("*.ipynb")])
 
+def write_index(notebooks: list[Path]) -> None:
+    """Write ``tutorials/index.rst`` linking to each exported notebook."""
+    lines = [
+        "Tutorials",
+        "=========",
+        "",
+        "Interactive `Marimo <https://marimo.io>`_ notebooks demonstrating",
+        "how to use Rheedium for RHEED pattern simulation. Each tutorial",
+        "below runs entirely in your browser via Pyodide — no installation",
+        "required.",
+        "",
+        ".. note::",
+        "",
+        "   To run a notebook locally with full performance, clone the",
+        "   repository, install Marimo (``pip install marimo``), and",
+        "   launch ``marimo edit tutorials/<notebook>.py``.",
+        "",
+        "Available tutorials",
+        "-------------------",
+        "",
+    ]
+    for nb in notebooks:
+        title = nb.stem.replace("_", " ")
+        lines.append(f"- `{title} <../marimo/{nb.stem}/index.html>`_")
+    lines.append("")
+
+    index_file = TUTORIALS_DIR / "index.rst"
+    index_file.write_text("\n".join(lines))
+    print(f"Wrote {index_file} with {len(notebooks)} tutorials")
+
+
+def main() -> None:
+    notebooks = sorted(TUTORIALS_DIR.glob("*.py"))
     if not notebooks:
+        print("No Marimo notebooks found in tutorials/", file=sys.stderr)
         return
 
-    content = f"""{subdir_name}
-{'=' * len(subdir_name)}
+    EXTRA_DIR.mkdir(parents=True, exist_ok=True)
+    for nb in notebooks:
+        out_dir = EXTRA_DIR / nb.stem
+        print(f"Exporting {nb.name} -> {out_dir.relative_to(REPO_ROOT)}")
+        export_notebook(nb, out_dir)
 
-This section contains notebooks for {subdir_name}.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: {subdir_name}
-
-"""
-
-    for notebook in notebooks:
-        content += f"   {notebook}\n"
-
-    with open(index_file, "w") as f:
-        f.write(content)
-
-    print(f"  Updated {index_file} with {len(notebooks)} notebooks")
+    write_index(notebooks)
 
 
 if __name__ == "__main__":
-    update_tutorials_index()
+    main()
