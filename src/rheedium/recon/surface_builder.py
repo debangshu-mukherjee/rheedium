@@ -29,6 +29,7 @@ differentiability of continuous parameters (displacements, coverage).
 
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import Final
 from jax import lax
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
@@ -39,9 +40,11 @@ from rheedium.types import (
 )
 from rheedium.ucell import build_cell_vectors, reciprocal_lattice_vectors
 
+_FRAC_TOL: Final[scalar_float] = 1e-6
+
 
 @jaxtyped(typechecker=beartype)
-def create_surface_slab(
+def create_surface_slab(  # noqa: PLR0915
     bulk_crystal: CrystalStructure,
     surface_normal_miller: Int[Array, "3"],
     slab_thickness_angstrom: scalar_float,
@@ -218,7 +221,7 @@ def create_surface_slab(
 
 
 @jaxtyped(typechecker=beartype)
-def apply_surface_reconstruction(
+def apply_surface_reconstruction(  # noqa: PLR0915
     slab: CrystalStructure,
     reconstruction_matrix: Int[Array, "2 2"],
     surface_layer_depth_angstrom: scalar_float,
@@ -312,7 +315,7 @@ def apply_surface_reconstruction(
     frac_in_new: Float[Array, "M 3"] = supercell_positions @ inv_new_cell.T
 
     in_cell: Bool[Array, "M"] = jnp.all(
-        (frac_in_new >= -1e-6) & (frac_in_new < 1.0 - 1e-6),
+        (frac_in_new >= -_FRAC_TOL) & (frac_in_new < 1.0 - _FRAC_TOL),
         axis=1,
     )
     filtered_positions: Float[Array, "K 3"] = supercell_positions[in_cell]
