@@ -26,7 +26,9 @@ from rheedium.audit import (
 )
 
 _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
-_REFERENCE_DIR: Path = _REPO_ROOT / "tests" / "test_data" / "rheed_reference"
+_REFERENCE_DIR: Path = (
+    _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
+)
 
 
 def _synthetic_three_peak_image(

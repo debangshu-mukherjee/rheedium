@@ -1,4 +1,4 @@
-# RHEED Reference Bundle
+# Synthetic RHEED Reference Bundle
 
 These fixtures back the `rheedium.audit` benchmark pipeline.
 
@@ -8,8 +8,10 @@ Current status:
   `ewald_simulator` plus `instrument_broadened_pattern`.
 - The goal of the bundle today is to validate metadata format,
   benchmark mechanics, and image-space metrics.
-- Calibrated experimental references can replace these files later
-  without changing the audit API.
+- Experimental references now live alongside this folder under
+  `tests/test_data/reference_data/experimental/`.
+- Calibrated experimental references can replace or complement these
+  files later without changing the audit API.
 
 Each case is stored as:
 

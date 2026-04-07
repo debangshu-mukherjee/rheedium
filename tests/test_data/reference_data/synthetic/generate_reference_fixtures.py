@@ -19,7 +19,7 @@ from rheedium.audit import (
 )
 
 _REFERENCE_DIR: Path = Path(__file__).resolve().parent
-_REPO_ROOT: Path = _REFERENCE_DIR.parents[2]
+_REPO_ROOT: Path = _REFERENCE_DIR.parents[3]
 
 _BASE_CASES: tuple[ReferenceMetadata, ...] = (
     ReferenceMetadata(

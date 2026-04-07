@@ -21,7 +21,9 @@ from rheedium.audit import (
 )
 
 _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
-_REFERENCE_DIR: Path = _REPO_ROOT / "tests" / "test_data" / "rheed_reference"
+_REFERENCE_DIR: Path = (
+    _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
+)
 _REFERENCE_CASES = load_reference_cases(_REFERENCE_DIR)
 _REFERENCE_CASE = _REFERENCE_CASES[0]
 _SIMULATED_IMAGE = simulate_detector_image_from_metadata(

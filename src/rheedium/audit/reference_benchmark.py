@@ -61,7 +61,7 @@ from .reference_types import (
 
 _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 _DEFAULT_REFERENCE_DIR: Path = (
-    _REPO_ROOT / "tests" / "test_data" / "rheed_reference"
+    _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
 )
 
 
@@ -96,7 +96,7 @@ def load_reference_cases(
     reference_dir : Path, optional
         Directory containing ``*_metadata.json`` files and associated
         ``.npz`` images. Default:
-        ``tests/test_data/rheed_reference``.
+        ``tests/test_data/reference_data/synthetic``.
 
     Returns
     -------
