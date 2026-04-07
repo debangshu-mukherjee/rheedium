@@ -10,6 +10,8 @@ computing is supported through device mesh parallelism.
 
 Routine Listings
 ----------------
+:mod:`audit`
+    Benchmarking and realism-audit utilities for detector images.
 :mod:`inout`
     Data input/output operations for crystal structures and RHEED images.
 :mod:`plots`
@@ -80,11 +82,13 @@ from . import (  # noqa: E402, I001
     tools,
     types,
     ucell,
+    audit,
 )
 
 __version__: str = version("rheedium")
 
 __all__: list[str] = [
+    "audit",
     "inout",
     "plots",
     "recon",

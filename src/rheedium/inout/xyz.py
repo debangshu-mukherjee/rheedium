@@ -51,6 +51,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import Dict, List, Optional, Tuple, Union
 from jaxtyping import Array, Float, Int, jaxtyped
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.types import XYZData, create_xyz_data, scalar_int
 
@@ -197,7 +198,7 @@ def _load_kirkland_csv(
     >>> params.shape
     (103, 12)
     """
-    kirkland_numpy: np.ndarray = np.loadtxt(
+    kirkland_numpy: Float[NDArray, "103 12"] = np.loadtxt(
         file_path, delimiter=",", dtype=np.float64
     )
     if kirkland_numpy.shape != (103, 12):
@@ -276,7 +277,7 @@ def _load_lobato_csv(
     >>> params.shape
     (103, 10)
     """
-    lobato_numpy: np.ndarray = np.loadtxt(
+    lobato_numpy: Float[NDArray, "103 10"] = np.loadtxt(
         file_path,
         delimiter=",",
         dtype=np.float64,
@@ -285,9 +286,11 @@ def _load_lobato_csv(
     )
     if lobato_numpy.shape[0] != 103:
         raise ValueError(f"Expected 103 rows, got {lobato_numpy.shape[0]}")
-    a_cols: np.ndarray = lobato_numpy[:, :5]
-    b_cols: np.ndarray = lobato_numpy[:, 5:]
-    interleaved: np.ndarray = np.empty((103, 10), dtype=np.float64)
+    a_cols: Float[NDArray, "103 5"] = lobato_numpy[:, :5]
+    b_cols: Float[NDArray, "103 5"] = lobato_numpy[:, 5:]
+    interleaved: Float[NDArray, "103 10"] = np.empty(
+        (103, 10), dtype=np.float64
+    )
     interleaved[:, 0::2] = a_cols
     interleaved[:, 1::2] = b_cols
     lobato_data: Float[Array, "103 10"] = jnp.asarray(
@@ -356,7 +359,9 @@ def _load_debye_temperatures(
     ValueError
         If the CSV does not contain exactly 103 values.
     """
-    debye_numpy: np.ndarray = np.loadtxt(file_path, dtype=np.float64)
+    debye_numpy: Float[NDArray, "103"] = np.loadtxt(
+        file_path, dtype=np.float64
+    )
     if debye_numpy.shape != (103,):
         raise ValueError(
             f"Expected 103 Debye temperatures, got {debye_numpy.shape}"
@@ -418,7 +423,9 @@ def _load_atomic_masses(
     ValueError
         If the CSV does not contain exactly 103 values.
     """
-    masses_numpy: np.ndarray = np.loadtxt(file_path, dtype=np.float64)
+    masses_numpy: Float[NDArray, "103"] = np.loadtxt(
+        file_path, dtype=np.float64
+    )
     if masses_numpy.shape != (103,):
         raise ValueError(
             f"Expected 103 atomic masses, got {masses_numpy.shape}"

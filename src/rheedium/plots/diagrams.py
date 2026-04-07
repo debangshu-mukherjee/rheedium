@@ -56,7 +56,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from beartype import beartype
 from beartype.typing import Any, Dict, List, Optional, Tuple, Union
-from jaxtyping import Float
+from jaxtyping import Bool, Float, Int
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
@@ -232,10 +232,12 @@ def plot_form_factors(
         q_range[0], q_range[1], n_points
     )
     q_jax: Any = jnp.array(q_values)
-    colors: NDArray = plt.cm.tab10(np.linspace(0, 1, len(atomic_numbers)))
+    colors: Float[NDArray, "N 4"] = plt.cm.tab10(
+        np.linspace(0, 1, len(atomic_numbers))
+    )
     for i, z in enumerate(atomic_numbers):
         ff_jax: Any = kirkland_form_factor(z, q_jax)
-        ff: NDArray = np.array(ff_jax)
+        ff: Float[NDArray, "N"] = np.array(ff_jax)
         symbol: str = _ELEMENT_SYMBOLS.get(z, f"Z={z}")
         ax.plot(
             q_values,
@@ -306,12 +308,14 @@ def plot_debye_waller(
         q_range[0], q_range[1], n_points
     )
     q_jax: Any = jnp.array(q_values)
-    colors: NDArray = plt.cm.coolwarm(np.linspace(0, 1, len(temperatures)))
+    colors: Float[NDArray, "N 4"] = plt.cm.coolwarm(
+        np.linspace(0, 1, len(temperatures))
+    )
     symbol: str = _ELEMENT_SYMBOLS.get(atomic_number, f"Z={atomic_number}")
     for i, temp in enumerate(temperatures):
         msd: Any = float(get_mean_square_displacement(atomic_number, temp))
         dw_jax: Any = debye_waller_factor(q_jax, msd)
-        dw: NDArray = np.array(dw_jax)
+        dw: Float[NDArray, "N"] = np.array(dw_jax)
         ax.plot(
             q_values,
             dw,
@@ -370,11 +374,13 @@ def plot_ctr_profile(
         l_range[0], l_range[1], n_points
     )
     epsilon: float = 0.01
-    sin_term: NDArray = np.sin(np.pi * l_values)
-    intensity: NDArray = 1.0 / (sin_term**2 + epsilon)
-    intensity: NDArray = intensity / intensity.max()
+    sin_term: Float[NDArray, "N"] = np.sin(np.pi * l_values)
+    intensity: Float[NDArray, "N"] = 1.0 / (sin_term**2 + epsilon)
+    intensity = intensity / intensity.max()
     ax.semilogy(l_values, intensity, "b-", linewidth=2)
-    bragg_l: NDArray = np.arange(int(l_range[0]), int(l_range[1]) + 1)
+    bragg_l: Int[NDArray, "N"] = np.arange(
+        int(l_range[0]), int(l_range[1]) + 1
+    )
     for l_bragg in bragg_l:
         ax.axvline(l_bragg, color="red", linestyle="--", alpha=0.5, lw=1)
     ax.set_xlabel("l (reciprocal lattice units)", fontsize=12)
@@ -431,16 +437,18 @@ def plot_roughness_damping(
        levels and label each curve.
     """
     if sigma_values is None:
-        sigma_values: NDArray = [0.0, 0.5, 1.0, 2.0]
+        sigma_values = [0.0, 0.5, 1.0, 2.0]
     if ax is None:
         fig: Figure
         fig, ax = plt.subplots(figsize=(8, 6))
     q_z: Float[NDArray, "N"] = np.linspace(
         q_z_range[0], q_z_range[1], n_points
     )
-    colors: NDArray = plt.cm.viridis(np.linspace(0, 0.9, len(sigma_values)))
+    colors: Float[NDArray, "N 4"] = plt.cm.viridis(
+        np.linspace(0, 0.9, len(sigma_values))
+    )
     for i, sigma in enumerate(sigma_values):
-        damping: NDArray = np.exp(-0.5 * q_z**2 * sigma**2)
+        damping: Float[NDArray, "N"] = np.exp(-0.5 * q_z**2 * sigma**2)
         ax.plot(
             q_z,
             damping,
@@ -496,19 +504,19 @@ def plot_rod_broadening(
        lengths and label each curve.
     """
     if correlation_lengths is None:
-        correlation_lengths: NDArray = [10.0, 50.0, 100.0, 500.0]
+        correlation_lengths = [10.0, 50.0, 100.0, 500.0]
     if ax is None:
         fig: Figure
         fig, ax = plt.subplots(figsize=(8, 6))
     q_perp: Float[NDArray, "N"] = np.linspace(
         q_perp_range[0], q_perp_range[1], n_points
     )
-    colors: NDArray = plt.cm.plasma(
+    colors: Float[NDArray, "N 4"] = plt.cm.plasma(
         np.linspace(0.1, 0.9, len(correlation_lengths))
     )
     for i, xi in enumerate(correlation_lengths):
         sigma_q: float = 1.0 / xi
-        profile: NDArray = np.exp(-0.5 * (q_perp / sigma_q) ** 2)
+        profile: Float[NDArray, "N"] = np.exp(-0.5 * (q_perp / sigma_q) ** 2)
         ax.plot(
             q_perp,
             profile,
@@ -574,7 +582,7 @@ def plot_ewald_sphere_2d(
     if ax is None:
         fig: Figure
         fig, ax = plt.subplots(figsize=(12, 8))
-    voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
+    voltage_v: float = voltage_kv * 1000.0
     wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
         voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
@@ -589,7 +597,7 @@ def plot_ewald_sphere_2d(
     sphere_x: Float[NDArray, "N"] = center_x + k_mag * np.cos(theta_sphere)
     sphere_z: Float[NDArray, "N"] = center_z + k_mag * np.sin(theta_sphere)
     ax.plot(sphere_x, sphere_z, "b-", linewidth=2, label="Ewald sphere")
-    rod_indices: NDArray = np.arange(-(n_rods // 2), n_rods // 2 + 1)
+    rod_indices: Int[NDArray, "N"] = np.arange(-(n_rods // 2), n_rods // 2 + 1)
     for h in rod_indices:
         g_x: float = h * g_spacing
         ax.axvline(g_x, color="green", linestyle="-", linewidth=1.5, alpha=0.7)
@@ -698,7 +706,7 @@ def plot_ewald_sphere_3d(
     if ax is None:
         fig: Any = plt.figure(figsize=(10, 8))
         ax: Any = fig.add_subplot(111, projection="3d")
-    voltage_v: Float[NDArray, "N"] = voltage_kv * 1000.0
+    voltage_v: float = voltage_kv * 1000.0
     wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
         voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
@@ -706,9 +714,9 @@ def plot_ewald_sphere_3d(
     g_spacing: float = 2 * np.pi / lattice_spacing
     u: Float[NDArray, "N"] = np.linspace(0, 2 * np.pi, 50)
     v: Float[NDArray, "N"] = np.linspace(0, np.pi / 4, 25)
-    sphere_x: Float[NDArray, "N"] = k_mag * np.outer(np.cos(u), np.sin(v))
-    sphere_y: Float[NDArray, "N"] = k_mag * np.outer(np.sin(u), np.sin(v))
-    sphere_z: Float[NDArray, "N"] = k_mag * np.outer(
+    sphere_x: Float[NDArray, "N M"] = k_mag * np.outer(np.cos(u), np.sin(v))
+    sphere_y: Float[NDArray, "N M"] = k_mag * np.outer(np.sin(u), np.sin(v))
+    sphere_z: Float[NDArray, "N M"] = k_mag * np.outer(
         np.ones(np.size(u)), np.cos(v)
     )
     theta_rad: float = np.deg2rad(theta_deg)
@@ -716,12 +724,16 @@ def plot_ewald_sphere_3d(
     k_in_x: float = k_mag * np.cos(theta_rad) * np.cos(phi_rad)
     k_in_y: float = k_mag * np.cos(theta_rad) * np.sin(phi_rad)
     k_in_z: float = -k_mag * np.sin(theta_rad)
-    sphere_x: Float[NDArray, "N"] = sphere_x - k_in_x
-    sphere_y: Float[NDArray, "N"] = sphere_y - k_in_y
-    sphere_z: Float[NDArray, "N"] = sphere_z - k_in_z
+    sphere_x = sphere_x - k_in_x
+    sphere_y = sphere_y - k_in_y
+    sphere_z = sphere_z - k_in_z
     ax.plot_surface(sphere_x, sphere_y, sphere_z, alpha=0.2, color="blue")
-    h_indices: NDArray = np.arange(-(n_rods_h // 2), n_rods_h // 2 + 1)
-    k_indices: NDArray = np.arange(-(n_rods_k // 2), n_rods_k // 2 + 1)
+    h_indices: Int[NDArray, "N"] = np.arange(
+        -(n_rods_h // 2), n_rods_h // 2 + 1
+    )
+    k_indices: Int[NDArray, "N"] = np.arange(
+        -(n_rods_k // 2), n_rods_k // 2 + 1
+    )
     for h in h_indices:
         for k in k_indices:
             g_x: float = h * g_spacing
@@ -800,16 +812,18 @@ def plot_unit_cell_3d(
         ax: Any = fig.add_subplot(111, projection="3d")
     a, b, c = cell_lengths
     alpha, beta, gamma = [np.deg2rad(ang) for ang in cell_angles]
-    vec_a: NDArray = np.array([a, 0, 0])
-    vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+    vec_a: Float[NDArray, "3"] = np.array([a, 0, 0])
+    vec_b: Float[NDArray, "3"] = np.array(
+        [b * np.cos(gamma), b * np.sin(gamma), 0]
+    )
     cx: float = c * np.cos(beta)
     cy: float = (
         c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
     )
     cz: float = np.sqrt(c**2 - cx**2 - cy**2)
-    vec_c: NDArray = np.array([cx, cy, cz])
-    origin: NDArray = np.array([0, 0, 0])
-    corners: NDArray = [
+    vec_c: Float[NDArray, "3"] = np.array([cx, cy, cz])
+    origin: Float[NDArray, "3"] = np.array([0, 0, 0])
+    corners: List[Float[NDArray, "3"]] = [
         origin,
         vec_a,
         vec_b,
@@ -819,7 +833,7 @@ def plot_unit_cell_3d(
         vec_b + vec_c,
         vec_a + vec_b + vec_c,
     ]
-    edges: NDArray = [
+    edges: List[Tuple[int, int]] = [
         (0, 1),
         (0, 2),
         (0, 3),
@@ -913,8 +927,8 @@ def plot_unit_cell_3d(
 
 @beartype
 def plot_crystal_structure_3d(
-    positions: np.ndarray,
-    atomic_numbers: np.ndarray,
+    positions: Float[NDArray, "N 3"],
+    atomic_numbers: Int[NDArray, "N"],
     cell_lengths: Optional[Tuple[float, float, float]] = None,
     cell_angles: Optional[Tuple[float, float, float]] = None,
     elev: float = 20.0,
@@ -965,10 +979,10 @@ def plot_crystal_structure_3d(
     if ax is None:
         fig: Any = plt.figure(figsize=(10, 8))
         ax: Any = fig.add_subplot(111, projection="3d")
-    unique_z: NDArray = np.unique(atomic_numbers)
+    unique_z: Int[NDArray, "N"] = np.unique(atomic_numbers)
     for z in unique_z:
-        mask: NDArray = atomic_numbers == z
-        pos_subset: NDArray = positions[mask]
+        mask: Bool[NDArray, "N"] = atomic_numbers == z
+        pos_subset: Float[NDArray, "M 3"] = positions[mask]
         color: Any = _ELEMENT_COLORS.get(int(z), "#808080")
         symbol: str = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
         size: int = 50 + z * 2
@@ -983,19 +997,25 @@ def plot_crystal_structure_3d(
             linewidth=0.5,
         )
     if cell_lengths is not None:
-        cell_angles: NDArray = cell_angles or (90.0, 90.0, 90.0)
+        cell_angles_tuple: Tuple[float, float, float] = cell_angles or (
+            90.0,
+            90.0,
+            90.0,
+        )
         a, b, c = cell_lengths
-        alpha, beta, gamma = [np.deg2rad(ang) for ang in cell_angles]
-        vec_a: NDArray = np.array([a, 0, 0])
-        vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+        alpha, beta, gamma = [np.deg2rad(ang) for ang in cell_angles_tuple]
+        vec_a: Float[NDArray, "3"] = np.array([a, 0, 0])
+        vec_b: Float[NDArray, "3"] = np.array(
+            [b * np.cos(gamma), b * np.sin(gamma), 0]
+        )
         cx: float = c * np.cos(beta)
         cy: float = (
             c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
         )
         cz: float = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
-        vec_c: NDArray = np.array([cx, cy, cz])
-        origin: NDArray = np.array([0, 0, 0])
-        corners: NDArray = [
+        vec_c: Float[NDArray, "3"] = np.array([cx, cy, cz])
+        origin: Float[NDArray, "3"] = np.array([0, 0, 0])
+        corners: List[Float[NDArray, "3"]] = [
             origin,
             vec_a,
             vec_b,
@@ -1005,7 +1025,7 @@ def plot_crystal_structure_3d(
             vec_b + vec_c,
             vec_a + vec_b + vec_c,
         ]
-        edges: NDArray = [
+        edges: List[Tuple[int, int]] = [
             (0, 1),
             (0, 2),
             (0, 3),
@@ -1166,7 +1186,9 @@ def plot_structure_factor_phases(
         fig: Figure
         fig, ax = plt.subplots(figsize=(8, 8))
     h, k = g_vector
-    colors: NDArray = plt.cm.tab10(np.linspace(0, 1, len(atom_positions_2d)))
+    colors: Float[NDArray, "N 4"] = plt.cm.tab10(
+        np.linspace(0, 1, len(atom_positions_2d))
+    )
     total_real: float = 0
     total_imag: float = 0
     for i, (x, y) in enumerate(atom_positions_2d):
@@ -1201,7 +1223,7 @@ def plot_structure_factor_phases(
         fontsize=11,
         fontweight="bold",
     )
-    theta: NDArray = np.linspace(0, 2 * np.pi, 100)
+    theta: Float[NDArray, "N"] = np.linspace(0, 2 * np.pi, 100)
     ax.plot(np.cos(theta), np.sin(theta), "k--", alpha=0.3)
     ax.axhline(0, color="gray", linewidth=0.5)
     ax.axvline(0, color="gray", linewidth=0.5)
@@ -1286,13 +1308,13 @@ def view_atoms(
     if ax is None:
         fig: Any = plt.figure(figsize=figsize)
         ax: Any = fig.add_subplot(111, projection="3d")
-    cart_positions: NDArray = np.asarray(crystal.cart_positions)
-    positions: NDArray = cart_positions[:, :3]
-    atomic_numbers: NDArray = cart_positions[:, 3].astype(int)
-    unique_z: NDArray = np.unique(atomic_numbers)
+    cart_positions: Float[NDArray, "N 4"] = np.asarray(crystal.cart_positions)
+    positions: Float[NDArray, "N 3"] = cart_positions[:, :3]
+    atomic_numbers: Int[NDArray, "N"] = cart_positions[:, 3].astype(int)
+    unique_z: Int[NDArray, "N"] = np.unique(atomic_numbers)
     for z in unique_z:
-        mask: NDArray = atomic_numbers == z
-        pos_subset: NDArray = positions[mask]
+        mask: Bool[NDArray, "N"] = atomic_numbers == z
+        pos_subset: Float[NDArray, "M 3"] = positions[mask]
         color: Any = _ELEMENT_COLORS.get(int(z), "#808080")
         symbol: str = _ELEMENT_SYMBOLS.get(int(z), f"Z={z}")
         size: int = (50 + z * 2) * atom_scale
@@ -1308,20 +1330,22 @@ def view_atoms(
             depthshade=True,
         )
     if show_unit_cell:
-        cell_lengths: NDArray = np.asarray(crystal.cell_lengths)
-        cell_angles: NDArray = np.asarray(crystal.cell_angles)
+        cell_lengths: Float[NDArray, "3"] = np.asarray(crystal.cell_lengths)
+        cell_angles: Float[NDArray, "3"] = np.asarray(crystal.cell_angles)
         a, b, c = cell_lengths
         alpha, beta, gamma = np.deg2rad(cell_angles)
-        vec_a: NDArray = np.array([a, 0, 0])
-        vec_b: NDArray = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+        vec_a: Float[NDArray, "3"] = np.array([a, 0, 0])
+        vec_b: Float[NDArray, "3"] = np.array(
+            [b * np.cos(gamma), b * np.sin(gamma), 0]
+        )
         cx: float = c * np.cos(beta)
         cy: float = (
             c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
         )
         cz: float = np.sqrt(max(c**2 - cx**2 - cy**2, 0))
-        vec_c: NDArray = np.array([cx, cy, cz])
-        origin: NDArray = np.array([0, 0, 0])
-        corners: NDArray = [
+        vec_c: Float[NDArray, "3"] = np.array([cx, cy, cz])
+        origin: Float[NDArray, "3"] = np.array([0, 0, 0])
+        corners: List[Float[NDArray, "3"]] = [
             origin,
             vec_a,
             vec_b,
@@ -1331,7 +1355,7 @@ def view_atoms(
             vec_b + vec_c,
             vec_a + vec_b + vec_c,
         ]
-        edges: NDArray = [
+        edges: List[Tuple[int, int]] = [
             (0, 1),
             (0, 2),
             (0, 3),

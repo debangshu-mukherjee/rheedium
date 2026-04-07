@@ -1,0 +1,59 @@
+{
+  "reference_id": "srtio3_001_synthetic",
+  "material": "SrTiO3",
+  "surface": "(001)",
+  "surface_normal_hkl": [
+    0,
+    0,
+    1
+  ],
+  "source_kind": "synthetic_detector_reference",
+  "simulation_mode": "ewald",
+  "cif_path": "tests/test_data/SrTiO3.cif",
+  "image_path": "srtio3_001_reference.npz",
+  "image_shape_px": [
+    208,
+    224
+  ],
+  "pixel_size_mm": [
+    6.0,
+    5.0
+  ],
+  "detector_pixel_pitch_mm": [
+    6.0,
+    5.0
+  ],
+  "beam_center_px": [
+    12.0,
+    8.0
+  ],
+  "specular_position_px": [
+    161.9999999999021,
+    15.035397511794097
+  ],
+  "voltage_kv": 18.0,
+  "theta_deg": 1.6,
+  "phi_deg": 45.0,
+  "hmax": 5,
+  "kmax": 5,
+  "detector_distance_mm": 900.0,
+  "camera_length_mm": 900.0,
+  "temperature_kelvin": 300.0,
+  "surface_roughness_angstrom": 0.55,
+  "angular_divergence_mrad": 0.45,
+  "energy_spread_ev": 0.4,
+  "psf_sigma_pixels": 1.4,
+  "spot_sigma_px": 1.6,
+  "n_angular_samples": 5,
+  "n_energy_samples": 5,
+  "n_metric_peaks": 3,
+  "peak_min_separation_px": 8,
+  "profile_band_half_width_px": 2,
+  "notes": "Synthetic SrTiO3 detector image for audit-pipeline validation.",
+  "dominant_peak_positions_px": [
+    153.0,
+    162.0,
+    171.0
+  ],
+  "reference_streak_fwhm_px": 5.0
+}

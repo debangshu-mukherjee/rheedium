@@ -27,6 +27,7 @@ import numpy as np
 from ase import Atoms
 from beartype import beartype
 from jaxtyping import Array, Float, Int, jaxtyped
+from numpy import ndarray as NDArray  # noqa: N812
 from pymatgen.core import Lattice, Structure
 
 from rheedium.types import CrystalStructure, XYZData, create_xyz_data
@@ -186,11 +187,13 @@ def to_ase(crystal: CrystalStructure) -> Atoms:
         crystal.cell_angles[2],
     )
 
-    positions_np: np.ndarray = np.asarray(crystal.cart_positions[:, :3])
-    atomic_numbers_np: np.ndarray = np.asarray(
+    positions_np: Float[NDArray, "N 3"] = np.asarray(
+        crystal.cart_positions[:, :3]
+    )
+    atomic_numbers_np: Int[NDArray, "N"] = np.asarray(
         crystal.cart_positions[:, 3], dtype=int
     )
-    cell_np: np.ndarray = np.asarray(cell)
+    cell_np: Float[NDArray, "3 3"] = np.asarray(cell)
 
     return Atoms(
         numbers=atomic_numbers_np,
@@ -327,10 +330,12 @@ def to_pymatgen(crystal: CrystalStructure) -> Structure:
 
     lattice_pmg: Lattice = Lattice(np.asarray(cell))
 
-    atomic_numbers: np.ndarray = np.asarray(
+    atomic_numbers: Int[NDArray, "N"] = np.asarray(
         crystal.frac_positions[:, 3], dtype=int
     )
-    frac_coords: np.ndarray = np.asarray(crystal.frac_positions[:, :3])
+    frac_coords: Float[NDArray, "N 3"] = np.asarray(
+        crystal.frac_positions[:, :3]
+    )
 
     species: list[str] = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
 

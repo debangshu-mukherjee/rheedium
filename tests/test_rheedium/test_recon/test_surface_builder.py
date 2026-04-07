@@ -12,13 +12,15 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+from jaxtyping import Float
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.types import CrystalStructure
 
 _DATA_DIR: Path = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
 
-def _load(name: str) -> dict[str, np.ndarray]:
+def _load(name: str) -> dict[str, object]:
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
 
@@ -45,7 +47,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
     def test_atoms_within_slab_thickness(self) -> None:
         """All atom z-coordinates should be within [0, thickness]."""
         d: dict = _load("slab_001.npz")
-        z: np.ndarray = d["cart_positions"][:, 2]
+        z: Float[NDArray, "N"] = d["cart_positions"][:, 2]
         assert float(z.min()) >= -0.1
         assert float(z.max()) <= 10.1
 
@@ -60,7 +62,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
     def test_stoichiometry_preserved_mgo(self) -> None:
         """MgO slab should have Mg:O ratio close to 1:1."""
         d: dict = _load("mgo_slab.npz")
-        z_nums: np.ndarray = d["cart_positions"][:, 3]
+        z_nums: Float[NDArray, "N"] = d["cart_positions"][:, 3]
         n_mg: int = int(np.sum(np.abs(z_nums - 12.0) < 0.5))
         n_o: int = int(np.sum(np.abs(z_nums - 8.0) < 0.5))
         assert n_mg > 0

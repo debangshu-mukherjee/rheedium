@@ -10,11 +10,13 @@ from pathlib import Path
 import chex
 import numpy as np
 from absl.testing import parameterized
+from jaxtyping import Float
+from numpy import ndarray as NDArray  # noqa: N812
 
 _DATA_DIR: Path = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
 
-def _load(name: str) -> dict[str, np.ndarray]:
+def _load(name: str) -> dict[str, object]:
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
 
@@ -89,7 +91,7 @@ class TestGaAs001_2x4(chex.TestCase):
     def test_has_ga_and_as(self) -> None:
         """Slab should contain both Ga (31) and As (33)."""
         d: dict = _load("gaas001_2x4.npz")
-        z: np.ndarray = d["cart_positions"][:, 3]
+        z: Float[NDArray, "N"] = d["cart_positions"][:, 3]
         assert np.any(np.abs(z - 31.0) < 0.5)
         assert np.any(np.abs(z - 33.0) < 0.5)
 
@@ -106,14 +108,14 @@ class TestMgO001BulkTerminated(chex.TestCase):
     def test_has_mg_and_o(self) -> None:
         """Slab should contain both Mg (12) and O (8)."""
         d: dict = _load("mgo001.npz")
-        z: np.ndarray = d["cart_positions"][:, 3]
+        z: Float[NDArray, "N"] = d["cart_positions"][:, 3]
         assert np.any(np.abs(z - 12.0) < 0.5)
         assert np.any(np.abs(z - 8.0) < 0.5)
 
     def test_stoichiometry_mg_to_o(self) -> None:
         """Mg:O ratio should be close to 1:1."""
         d: dict = _load("mgo001.npz")
-        z: np.ndarray = d["cart_positions"][:, 3]
+        z: Float[NDArray, "N"] = d["cart_positions"][:, 3]
         n_mg: int = int(np.sum(np.abs(z - 12.0) < 0.5))
         n_o: int = int(np.sum(np.abs(z - 8.0) < 0.5))
         ratio: float = n_mg / (n_o + 1e-10)
@@ -133,7 +135,7 @@ class TestSrTiO3_001_2x1(chex.TestCase):
     def test_has_sr_ti_o(self) -> None:
         """Slab should contain Sr (38), Ti (22), and O (8)."""
         d: dict = _load("srtio3_001.npz")
-        z: np.ndarray = d["cart_positions"][:, 3]
+        z: Float[NDArray, "N"] = d["cart_positions"][:, 3]
         assert np.any(np.abs(z - 38.0) < 0.5)
         assert np.any(np.abs(z - 22.0) < 0.5)
         assert np.any(np.abs(z - 8.0) < 0.5)

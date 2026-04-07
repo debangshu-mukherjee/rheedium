@@ -1,0 +1,59 @@
+{
+  "reference_id": "mgo001_synthetic",
+  "material": "MgO",
+  "surface": "(001)",
+  "surface_normal_hkl": [
+    0,
+    0,
+    1
+  ],
+  "source_kind": "synthetic_detector_reference",
+  "simulation_mode": "ewald",
+  "cif_path": "tests/test_data/MgO.cif",
+  "image_path": "mgo001_reference.npz",
+  "image_shape_px": [
+    192,
+    192
+  ],
+  "pixel_size_mm": [
+    1.5,
+    3.0
+  ],
+  "detector_pixel_pitch_mm": [
+    1.5,
+    3.0
+  ],
+  "beam_center_px": [
+    96.0,
+    8.0
+  ],
+  "specular_position_px": [
+    96.0,
+    20.58421044675834
+  ],
+  "voltage_kv": 20.0,
+  "theta_deg": 2.2,
+  "phi_deg": 0.0,
+  "hmax": 5,
+  "kmax": 5,
+  "detector_distance_mm": 1000.0,
+  "camera_length_mm": 1000.0,
+  "temperature_kelvin": 300.0,
+  "surface_roughness_angstrom": 0.45,
+  "angular_divergence_mrad": 0.35,
+  "energy_spread_ev": 0.35,
+  "psf_sigma_pixels": 1.2,
+  "spot_sigma_px": 1.4,
+  "n_angular_samples": 5,
+  "n_energy_samples": 5,
+  "n_metric_peaks": 3,
+  "peak_min_separation_px": 8,
+  "profile_band_half_width_px": 2,
+  "notes": "Synthetic MgO detector image for audit-pipeline validation.",
+  "dominant_peak_positions_px": [
+    87.0,
+    96.0,
+    105.0
+  ],
+  "reference_streak_fwhm_px": 4.0
+}

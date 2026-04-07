@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import numpy as np
 import tifffile
 from jaxtyping import Array, Float
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.inout import (
     FrameMetadata,
@@ -32,12 +33,12 @@ W: int = 48
 def _write_multipage_tiff(
     path: Path,
     n_frames: int = 5,
-) -> np.ndarray:
+) -> Float[NDArray, "T H W"]:
     """Write a multi-page TIFF and return the data."""
     rng: np.random.Generator = np.random.default_rng(42)
-    data: np.ndarray = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(
-        np.float32
-    )
+    data: Float[NDArray, "T H W"] = rng.uniform(
+        10.0, 1000.0, size=(n_frames, H, W)
+    ).astype(np.float32)
     tifffile.imwrite(str(path), data, photometric="minisblack")
     return data
 
@@ -45,12 +46,12 @@ def _write_multipage_tiff(
 def _write_single_frame_tiffs(
     dirpath: Path,
     n_frames: int = 5,
-) -> np.ndarray:
+) -> Float[NDArray, "T H W"]:
     """Write individual TIFF files to a directory and return data."""
     rng: np.random.Generator = np.random.default_rng(42)
-    data: np.ndarray = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(
-        np.float32
-    )
+    data: Float[NDArray, "T H W"] = rng.uniform(
+        10.0, 1000.0, size=(n_frames, H, W)
+    ).astype(np.float32)
     dirpath.mkdir(parents=True, exist_ok=True)
     for i in range(n_frames):
         filename: str = f"frame_{i:04d}.tif"
@@ -88,7 +89,7 @@ class TestLoadTiffSequence(chex.TestCase):
 
     def test_multipage_values(self) -> None:
         """Loaded values match written data."""
-        expected: np.ndarray = _write_multipage_tiff(
+        expected: Float[NDArray, "T H W"] = _write_multipage_tiff(
             self.tmp_path / "stack.tif", 3
         )
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
@@ -106,7 +107,7 @@ class TestLoadTiffSequence(chex.TestCase):
 
     def test_directory_values(self) -> None:
         """Directory values match written data."""
-        expected: np.ndarray = _write_single_frame_tiffs(
+        expected: Float[NDArray, "T H W"] = _write_single_frame_tiffs(
             self.tmp_path / "frames", 3
         )
         seq, _ = load_tiff_sequence(self.tmp_path / "frames")
@@ -124,7 +125,7 @@ class TestLoadTiffSequence(chex.TestCase):
 
     def test_single_frame_file(self) -> None:
         """Single-frame TIFF loads as (1, H, W)."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32) * 42.0
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32) * 42.0
         tifffile.imwrite(str(self.tmp_path / "single.tif"), data)
         seq, meta = load_tiff_sequence(self.tmp_path / "single.tif")
         chex.assert_shape(seq, (1, H, W))
@@ -171,7 +172,7 @@ class TestExtractFrameMetadata(chex.TestCase):
 
     def test_returns_named_tuple(self) -> None:
         """Returns a FrameMetadata instance."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32)
         fpath: Path = self.tmp_path / "meta.tif"
         tifffile.imwrite(str(fpath), data)
         with tifffile.TiffFile(str(fpath)) as tif:
@@ -181,7 +182,7 @@ class TestExtractFrameMetadata(chex.TestCase):
 
     def test_description_string(self) -> None:
         """Description is a string (possibly empty)."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32)
         fpath: Path = self.tmp_path / "desc.tif"
         tifffile.imwrite(str(fpath), data)
         with tifffile.TiffFile(str(fpath)) as tif:
@@ -201,7 +202,9 @@ class TestNormalizeSequence(chex.TestCase):
     def test_output_range(self) -> None:
         """Each frame is normalized to [0, 1]."""
         rng: np.random.Generator = np.random.default_rng(99)
-        np_data: np.ndarray = rng.uniform(10.0, 1000.0, size=(5, H, W))
+        np_data: Float[NDArray, "T H W"] = rng.uniform(
+            10.0, 1000.0, size=(5, H, W)
+        )
         seq: Float[Array, "T H W"] = jnp.asarray(np_data, dtype=jnp.float64)
         result: Float[Array, "T H W"] = normalize_sequence(seq)
         for t in range(5):
@@ -220,7 +223,9 @@ class TestNormalizeSequence(chex.TestCase):
     def test_with_flat_field(self) -> None:
         """Flat-field correction applied without errors."""
         rng: np.random.Generator = np.random.default_rng(99)
-        np_data: np.ndarray = rng.uniform(10.0, 1000.0, size=(3, H, W))
+        np_data: Float[NDArray, "T H W"] = rng.uniform(
+            10.0, 1000.0, size=(3, H, W)
+        )
         seq: Float[Array, "T H W"] = jnp.asarray(np_data, dtype=jnp.float64)
         flat: Float[Array, "H W"] = jnp.ones((H, W)) * 0.8
         result: Float[Array, "T H W"] = normalize_sequence(
@@ -232,7 +237,9 @@ class TestNormalizeSequence(chex.TestCase):
     def test_with_all_corrections(self) -> None:
         """Full correction pipeline works."""
         rng: np.random.Generator = np.random.default_rng(99)
-        np_data: np.ndarray = rng.uniform(100.0, 1000.0, size=(3, H, W))
+        np_data: Float[NDArray, "T H W"] = rng.uniform(
+            100.0, 1000.0, size=(3, H, W)
+        )
         seq: Float[Array, "T H W"] = jnp.asarray(np_data, dtype=jnp.float64)
         bg: Float[Array, "H W"] = jnp.ones((H, W)) * 50.0
         flat: Float[Array, "H W"] = jnp.ones((H, W)) * 0.9
@@ -351,7 +358,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_returns_rheed_image(self) -> None:
         """Returns a RHEEDImage instance."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32) * 500.0
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: RHEEDImage = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -363,7 +370,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_image_shape(self) -> None:
         """Image array has correct shape."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: RHEEDImage = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -375,7 +382,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_wavelength_correct(self) -> None:
         """Electron wavelength is physically reasonable for 20 keV."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: RHEEDImage = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -389,7 +396,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_with_background(self) -> None:
         """Background subtraction is applied."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32) * 500.0
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         bg: Float[Array, "H W"] = jnp.ones((H, W)) * 200.0
         img: RHEEDImage = load_tiff_as_rheed_image(
@@ -407,7 +414,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_multipage_takes_first(self) -> None:
         """Multi-page TIFF uses only the first frame."""
-        data: np.ndarray = np.stack(
+        data: Float[NDArray, "T H W"] = np.stack(
             [
                 np.ones((H, W), dtype=np.float32) * 100.0,
                 np.ones((H, W), dtype=np.float32) * 999.0,
@@ -432,7 +439,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_parameters_stored(self) -> None:
         """Beam and detector parameters are stored correctly."""
-        data: np.ndarray = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "H W"] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: RHEEDImage = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",

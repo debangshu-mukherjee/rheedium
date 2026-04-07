@@ -47,6 +47,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import Callable, Tuple
 from jaxtyping import Array, Complex, Float, jaxtyped
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.types import scalar_float
 
@@ -101,8 +102,8 @@ def gauss_hermite_nodes_weights(
     >>> nodes.shape
     (7,)
     """
-    np_nodes: np.ndarray
-    np_weights: np.ndarray
+    np_nodes: Float[NDArray, "N"]
+    np_weights: Float[NDArray, "N"]
     np_nodes, np_weights = np.polynomial.hermite.hermgauss(n_points)
     nodes: Float[Array, " N"] = jnp.asarray(np_nodes, dtype=jnp.float64)
     weights: Float[Array, " N"] = jnp.asarray(np_weights, dtype=jnp.float64)

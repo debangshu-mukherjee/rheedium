@@ -34,6 +34,8 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jaxtyping import Float, Int
+from numpy import ndarray as NDArray  # noqa: N812
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 SRC_ROOT: Path = REPO_ROOT / "src"
@@ -142,7 +144,7 @@ def _generate_surface_slab_fixtures(
         mgo_crystal,
         crystal,
     )
-    miller_specs: np.ndarray = np.array(
+    miller_specs: Int[NDArray, "5 3"] = np.array(
         [
             [0, 0, 1],
             [1, 1, 0],
@@ -152,11 +154,13 @@ def _generate_surface_slab_fixtures(
         ],
         dtype=np.int32,
     )
-    thickness_specs: np.ndarray = np.array(
+    thickness_specs: Float[NDArray, "5"] = np.array(
         [10.0, 10.0, 10.0, 20.0, 5.0],
         dtype=np.float64,
     )
-    vacuum_specs: np.ndarray = np.full(len(slab_names), 15.0, dtype=np.float64)
+    vacuum_specs: Float[NDArray, "5"] = np.full(
+        len(slab_names), 15.0, dtype=np.float64
+    )
 
     slab_001: CrystalStructure | None = None
     for name, base_crystal, miller, thickness, vacuum in zip(
@@ -184,7 +188,7 @@ def _generate_surface_slab_fixtures(
 def _generate_reconstruction_fixtures(slab_001: CrystalStructure) -> None:
     """Generate reconstruction fixtures from a declarative spec list."""
     reconstruction_specs: tuple[
-        tuple[str, np.ndarray, float, np.ndarray],
+        tuple[str, Int[NDArray, "2 2"], float, Float[NDArray, "N 3"]],
         ...,
     ] = (
         (
@@ -229,7 +233,7 @@ def _generate_reconstruction_fixtures(slab_001: CrystalStructure) -> None:
 def _generate_adsorbate_fixtures(slab_001: CrystalStructure) -> None:
     """Generate adsorbate fixtures from a declarative spec list."""
     adsorbate_specs: tuple[
-        tuple[str, np.ndarray, np.ndarray, float],
+        tuple[str, Float[NDArray, "N 3"], Float[NDArray, "N"], float],
         ...,
     ] = (
         (

@@ -41,6 +41,7 @@ import tifffile
 from beartype import beartype
 from beartype.typing import List, NamedTuple, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
+from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.types import RHEEDImage, create_rheed_image, scalar_float
 from rheedium.types.constants import (
@@ -259,7 +260,7 @@ def _load_multipage_tiff(
     """
     metadata_list: List[FrameMetadata] = []
     with tifffile.TiffFile(filepath) as tif:
-        np_stack: np.ndarray = tif.asarray()
+        np_stack: Float[NDArray, "T H W"] = tif.asarray()
         if np_stack.ndim == _SINGLE_FRAME_NDIM:
             np_stack = np_stack[np.newaxis, :, :]
         for idx, page in enumerate(tif.pages):
@@ -301,12 +302,12 @@ def _load_tiff_directory(
     if not tiff_files:
         raise ValueError(f"No TIFF files found in {dirpath}")
 
-    frames: List[np.ndarray] = []
+    frames: List[Float[NDArray, "H W"]] = []
     metadata_list: List[FrameMetadata] = []
 
     for idx, fpath in enumerate(tiff_files):
         with tifffile.TiffFile(fpath) as tif:
-            frame: np.ndarray = tif.asarray()
+            frame: Float[NDArray, "H W"] = tif.asarray()
             if frame.ndim == _MULTIPAGE_FRAME_NDIM:
                 frame = frame[0]
             frames.append(frame)
@@ -333,7 +334,7 @@ def _load_tiff_directory(
                 "No valid timestamps found; falling back to name sort."
             )
 
-    np_stack: np.ndarray = np.stack(frames, axis=0)
+    np_stack: Float[NDArray, "T H W"] = np.stack(frames, axis=0)
     sequence: Float[Array, "T H W"] = jnp.asarray(np_stack, dtype=jnp.float64)
     return sequence, metadata_list
 
@@ -587,7 +588,7 @@ def load_tiff_as_rheed_image(
     """
     filepath: Path = Path(path)
     with tifffile.TiffFile(filepath) as tif:
-        np_img: np.ndarray = tif.asarray()
+        np_img: Float[NDArray, "H W"] = tif.asarray()
 
     if np_img.ndim > _SINGLE_FRAME_NDIM:
         np_img = np_img[0]
