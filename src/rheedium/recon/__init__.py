@@ -10,12 +10,49 @@ differentiable surface-construction utilities live in
 
 Routine Listings
 ----------------
-No inverse-problem entry points are implemented in this namespace yet.
-
-Notes
------
-This package remains public so downstream code can rely on a stable
-inverse-problem namespace as those APIs land.
+:class:`ReconstructionResult`
+    Result container returned by reconstruction solvers.
+:func:`weighted_image_residual`
+    Build a weighted least-squares residual field between two images.
+:func:`weighted_mean_squared_error`
+    Compute a normalized weighted mean-squared error.
+:func:`gauss_newton_least_squares`
+    Gauss-Newton optimizer for arbitrary least-squares residuals.
+:func:`adam_optimize`
+    Adam optimizer for arbitrary scalar objectives.
+:func:`adagrad_optimize`
+    Adagrad optimizer for arbitrary scalar objectives.
+:func:`gauss_newton_reconstruction`
+    Reconstruct parameters by least-squares image matching.
+:func:`adam_reconstruction`
+    Reconstruct parameters by minimizing an image-matching loss with Adam.
+:func:`adagrad_reconstruction`
+    Reconstruct parameters by minimizing an image-matching loss with
+    Adagrad.
 """
 
-__all__: list[str] = []
+from .losses import (
+    weighted_image_residual,
+    weighted_mean_squared_error,
+)
+from .optimizers import (
+    ReconstructionResult,
+    adagrad_optimize,
+    adagrad_reconstruction,
+    adam_optimize,
+    adam_reconstruction,
+    gauss_newton_least_squares,
+    gauss_newton_reconstruction,
+)
+
+__all__: list[str] = [
+    "ReconstructionResult",
+    "adagrad_optimize",
+    "adagrad_reconstruction",
+    "adam_optimize",
+    "adam_reconstruction",
+    "gauss_newton_least_squares",
+    "gauss_newton_reconstruction",
+    "weighted_image_residual",
+    "weighted_mean_squared_error",
+]
