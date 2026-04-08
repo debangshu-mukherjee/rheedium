@@ -3,21 +3,16 @@
 import chex
 import jax
 import jax.numpy as jnp
-import pytest
 from jax import tree_util
-from jaxtyping import TypeCheckError
 
-from rheedium.types import (
-    ElectronBeam,
-    create_electron_beam,
-)
+from rheedium.types.beam_types import ElectronBeam, create_electron_beam
 
 
 class TestElectronBeam(chex.TestCase):
     """Comprehensive test suite for ElectronBeam PyTree."""
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_create_electron_beam_defaults(self) -> None:
+    def test_create_electron_beam_defaults(self):
         """Default beam should have standard RHEED gun values."""
         var_create = self.variant(create_electron_beam)
         beam = var_create()
@@ -36,7 +31,7 @@ class TestElectronBeam(chex.TestCase):
             beam.spot_size_um, jnp.array([100.0, 50.0])
         )
 
-    def test_create_electron_beam_custom(self) -> None:
+    def test_create_electron_beam_custom(self):
         """Custom values should be preserved."""
         beam = create_electron_beam(
             energy_kev=15.0,
@@ -59,7 +54,7 @@ class TestElectronBeam(chex.TestCase):
             beam.spot_size_um, jnp.array([200.0, 100.0])
         )
 
-    def test_electron_beam_pytree(self) -> None:
+    def test_electron_beam_pytree(self):
         """ElectronBeam should flatten and unflatten as a PyTree."""
         beam = create_electron_beam()
         flat, treedef = tree_util.tree_flatten(beam)
@@ -69,7 +64,7 @@ class TestElectronBeam(chex.TestCase):
         assert isinstance(reconstructed, ElectronBeam)
         chex.assert_trees_all_close(beam, reconstructed)
 
-    def test_electron_beam_jit(self) -> None:
+    def test_electron_beam_jit(self):
         """ElectronBeam should be creatable inside jit."""
 
         @jax.jit
@@ -79,7 +74,7 @@ class TestElectronBeam(chex.TestCase):
         beam = make_beam(jnp.float64(25.0))
         chex.assert_trees_all_close(beam.energy_kev, 25.0)
 
-    def test_electron_beam_vmap(self) -> None:
+    def test_electron_beam_vmap(self):
         """vmap over energy should produce batched beams."""
 
         def make_beam(energy):
@@ -91,14 +86,14 @@ class TestElectronBeam(chex.TestCase):
         chex.assert_shape(result, (3,))
         chex.assert_trees_all_close(result, energies)
 
-    def test_electron_beam_tree_map(self) -> None:
+    def test_electron_beam_tree_map(self):
         """tree_map should apply to all leaves."""
         beam = create_electron_beam(energy_kev=20.0)
         doubled = jax.tree.map(lambda x: x * 2.0, beam)
         chex.assert_trees_all_close(doubled.energy_kev, 40.0)
         chex.assert_trees_all_close(doubled.energy_spread_ev, 1.0)
 
-    def test_dtypes_are_float64(self) -> None:
+    def test_dtypes_are_float64(self):
         """All fields should be float64."""
         beam = create_electron_beam()
         assert beam.energy_kev.dtype == jnp.float64
@@ -112,79 +107,79 @@ class TestElectronBeam(chex.TestCase):
 class TestElectronBeamValidation(chex.TestCase):
     """Validation tests for create_electron_beam."""
 
-    def test_energy_too_low(self) -> None:
+    def test_energy_too_low(self):
         """Energy below 5 keV should produce NaN."""
         beam = create_electron_beam(energy_kev=1.0)
         assert jnp.isnan(beam.energy_kev)
 
-    def test_energy_too_high(self) -> None:
+    def test_energy_too_high(self):
         """Energy above 100 keV should produce NaN."""
         beam = create_electron_beam(energy_kev=200.0)
         assert jnp.isnan(beam.energy_kev)
 
-    def test_energy_boundary_low(self) -> None:
+    def test_energy_boundary_low(self):
         """Energy at exactly 5 keV should be valid."""
         beam = create_electron_beam(energy_kev=5.0)
         chex.assert_trees_all_close(beam.energy_kev, 5.0)
 
-    def test_energy_boundary_high(self) -> None:
+    def test_energy_boundary_high(self):
         """Energy at exactly 100 keV should be valid."""
         beam = create_electron_beam(energy_kev=100.0)
         chex.assert_trees_all_close(beam.energy_kev, 100.0)
 
-    def test_negative_energy_spread(self) -> None:
+    def test_negative_energy_spread(self):
         """Negative energy spread should produce NaN."""
         beam = create_electron_beam(energy_spread_ev=-0.1)
         assert jnp.isnan(beam.energy_spread_ev)
 
-    def test_zero_energy_spread(self) -> None:
+    def test_zero_energy_spread(self):
         """Zero energy spread should be valid (ideal source)."""
         beam = create_electron_beam(energy_spread_ev=0.0)
         chex.assert_trees_all_close(beam.energy_spread_ev, 0.0)
 
-    def test_negative_divergence(self) -> None:
+    def test_negative_divergence(self):
         """Negative angular divergence should produce NaN."""
         beam = create_electron_beam(angular_divergence_mrad=-0.1)
         assert jnp.isnan(beam.angular_divergence_mrad)
 
-    def test_zero_divergence(self) -> None:
+    def test_zero_divergence(self):
         """Zero divergence should be valid (perfect collimation)."""
         beam = create_electron_beam(angular_divergence_mrad=0.0)
         chex.assert_trees_all_close(beam.angular_divergence_mrad, 0.0)
 
-    def test_negative_transverse_coherence(self) -> None:
+    def test_negative_transverse_coherence(self):
         """Negative transverse coherence length should produce NaN."""
         beam = create_electron_beam(coherence_length_transverse_angstrom=-10.0)
         assert jnp.isnan(beam.coherence_length_transverse_angstrom)
 
-    def test_zero_transverse_coherence(self) -> None:
+    def test_zero_transverse_coherence(self):
         """Zero transverse coherence length should produce NaN."""
         beam = create_electron_beam(coherence_length_transverse_angstrom=0.0)
         assert jnp.isnan(beam.coherence_length_transverse_angstrom)
 
-    def test_negative_longitudinal_coherence(self) -> None:
+    def test_negative_longitudinal_coherence(self):
         """Negative longitudinal coherence length should produce NaN."""
         beam = create_electron_beam(
             coherence_length_longitudinal_angstrom=-10.0
         )
         assert jnp.isnan(beam.coherence_length_longitudinal_angstrom)
 
-    def test_zero_longitudinal_coherence(self) -> None:
+    def test_zero_longitudinal_coherence(self):
         """Zero longitudinal coherence length should produce NaN."""
         beam = create_electron_beam(coherence_length_longitudinal_angstrom=0.0)
         assert jnp.isnan(beam.coherence_length_longitudinal_angstrom)
 
-    def test_negative_spot_size(self) -> None:
+    def test_negative_spot_size(self):
         """Negative spot size should produce NaN."""
         beam = create_electron_beam(spot_size_um=jnp.array([-100.0, 50.0]))
         assert jnp.any(jnp.isnan(beam.spot_size_um))
 
-    def test_zero_spot_size(self) -> None:
+    def test_zero_spot_size(self):
         """Zero spot size should produce NaN."""
         beam = create_electron_beam(spot_size_um=jnp.array([0.0, 50.0]))
         assert jnp.any(jnp.isnan(beam.spot_size_um))
 
-    def test_valid_fields_unaffected_by_invalid(self) -> None:
+    def test_valid_fields_unaffected_by_invalid(self):
         """Invalid energy should not corrupt other fields."""
         beam = create_electron_beam(energy_kev=1.0, energy_spread_ev=0.3)
         assert jnp.isnan(beam.energy_kev)
@@ -194,7 +189,7 @@ class TestElectronBeamValidation(chex.TestCase):
 class TestElectronBeamGradients(chex.TestCase):
     """Gradient tests for ElectronBeam through create_electron_beam."""
 
-    def test_grad_energy(self) -> None:
+    def test_grad_energy(self):
         """Gradient should flow through energy_kev."""
 
         def loss(energy):
@@ -205,7 +200,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_tree_all_finite(g)
         chex.assert_trees_all_close(g, 40.0)
 
-    def test_grad_energy_spread(self) -> None:
+    def test_grad_energy_spread(self):
         """Gradient should flow through energy_spread_ev."""
 
         def loss(spread):
@@ -216,7 +211,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_tree_all_finite(g)
         chex.assert_trees_all_close(g, 1.0)
 
-    def test_grad_divergence(self) -> None:
+    def test_grad_divergence(self):
         """Gradient should flow through angular_divergence_mrad."""
 
         def loss(div):
@@ -227,7 +222,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_tree_all_finite(g)
         chex.assert_trees_all_close(g, 1.0)
 
-    def test_grad_coherence_lengths(self) -> None:
+    def test_grad_coherence_lengths(self):
         """Gradient should flow through both coherence lengths."""
 
         def loss(lt, ll):
@@ -248,7 +243,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(gt, 1.0)
         chex.assert_trees_all_close(gl, 1.0)
 
-    def test_grad_spot_size(self) -> None:
+    def test_grad_spot_size(self):
         """Gradient should flow through spot_size_um."""
 
         def loss(spot):
@@ -260,7 +255,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_shape(g, (2,))
         chex.assert_trees_all_close(g, jnp.array([200.0, 100.0]))
 
-    def test_jacrev_multi_param(self) -> None:
+    def test_jacrev_multi_param(self):
         """jacrev over (energy, spread) produces correct Jacobian."""
 
         def loss(params):

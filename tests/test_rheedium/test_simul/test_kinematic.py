@@ -11,20 +11,31 @@ import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 
-from rheedium.inout import parse_cif
-from rheedium.simul import (
-    find_kinematic_reflections as kinematic_ewald_sphere,
-    incident_wavevector as kinematic_incident_wavevector,
+from rheedium.inout.cif import parse_cif
+from rheedium.simul.kinematic import (
     kinematic_spot_simulator,
     make_ewald_sphere,
-    project_on_detector,
-    wavelength_ang as kinematic_wavelength,
 )
 from rheedium.simul.kinematic import (
     simple_structure_factor as kinematic_structure_factor,
 )
-from rheedium.types import create_crystal_structure
-from rheedium.ucell import miller_to_reciprocal, reciprocal_lattice_vectors
+from rheedium.simul.simul_utils import (
+    incident_wavevector as kinematic_incident_wavevector,
+)
+from rheedium.simul.simul_utils import (
+    wavelength_ang as kinematic_wavelength,
+)
+from rheedium.simul.simulator import (
+    find_kinematic_reflections as kinematic_ewald_sphere,
+)
+from rheedium.simul.simulator import (
+    project_on_detector,
+)
+from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.ucell.unitcell import (
+    miller_to_reciprocal,
+    reciprocal_lattice_vectors,
+)
 
 
 class TestKinematicWavelength(chex.TestCase):
@@ -36,9 +47,7 @@ class TestKinematicWavelength(chex.TestCase):
         ("20kV", 20.0, 0.0859),
         ("30kV", 30.0, 0.0698),
     )
-    def test_wavelength_values(
-        self, voltage_kv: float, expected_lambda: float
-    ):
+    def test_wavelength_values(self, voltage_kv, expected_lambda):
         """Test wavelength calculation matches expected values."""
         var_wavelength = self.variant(kinematic_wavelength)
 
@@ -156,8 +165,6 @@ class TestDetectorProjection(chex.TestCase):
         var_project = self.variant(project_on_detector)
 
         # Setup: typical RHEED parameters
-        theta_deg = 2.0
-        theta_rad = jnp.deg2rad(theta_deg)
         wavelength = 0.0859  # ~20 keV electrons
         k0 = 2.0 * jnp.pi / wavelength
 
@@ -375,9 +382,9 @@ class TestMgOExtinctionRules(chex.TestCase):
             in_degrees=True,
         )
 
-    def _get_structure_factor_intensity(self, h: int, k: int, l: int) -> float:
+    def _get_structure_factor_intensity(self, h, k, ell):
         """Calculate structure factor intensity for given Miller indices."""
-        hkl = jnp.array([[h, k, l]])
+        hkl = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.mgo_crystal.cart_positions[:, :3]
@@ -402,10 +409,10 @@ class TestMgOExtinctionRules(chex.TestCase):
             (1, 1, 3),
             (3, 1, 1),
         ]
-        for h, k, l in all_odd_cases:
-            intensity = self._get_structure_factor_intensity(h, k, l)
+        for h, k, ell in all_odd_cases:
+            intensity = self._get_structure_factor_intensity(h, k, ell)
             assert intensity > 1.0, (
-                f"FCC allowed reflection ({h},{k},{l}) should have non-zero "
+                f"FCC allowed reflection ({h},{k},{ell}) should have non-zero "
                 f"intensity, got {intensity}"
             )
 
@@ -416,10 +423,10 @@ class TestMgOExtinctionRules(chex.TestCase):
             (2, 2, 2),
             (4, 0, 0),
         ]
-        for h, k, l in all_even_cases:
-            intensity = self._get_structure_factor_intensity(h, k, l)
+        for h, k, ell in all_even_cases:
+            intensity = self._get_structure_factor_intensity(h, k, ell)
             assert intensity > 1.0, (
-                f"FCC allowed reflection ({h},{k},{l}) should have non-zero "
+                f"FCC allowed reflection ({h},{k},{ell}) should have non-zero "
                 f"intensity, got {intensity}"
             )
 
@@ -452,10 +459,10 @@ class TestMgOExtinctionRules(chex.TestCase):
 
         tolerance = 1e-6  # Numerical tolerance for "zero"
 
-        for h, k, l in forbidden_cases:
-            intensity = self._get_structure_factor_intensity(h, k, l)
+        for h, k, ell in forbidden_cases:
+            intensity = self._get_structure_factor_intensity(h, k, ell)
             assert intensity < tolerance, (
-                f"FCC forbidden reflection ({h},{k},{l}) should have zero "
+                f"FCC forbidden reflection ({h},{k},{ell}) should have zero "
                 f"intensity, got {intensity}. "
                 f"This indicates the structure factor calculation is WRONG."
             )
@@ -510,9 +517,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
             in_degrees=True,
         )
 
-    def _get_structure_factor_intensity(self, h: int, k: int, l: int) -> float:
+    def _get_structure_factor_intensity(self, h, k, ell):
         """Calculate structure factor intensity for given Miller indices."""
-        hkl = jnp.array([[h, k, l]])
+        hkl = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.sto_crystal.cart_positions[:, :3]
@@ -616,10 +623,10 @@ class TestSrTiO3StructureFactor(chex.TestCase):
             (3, 0, 0),
         ]
 
-        for h, k, l in test_cases:
-            intensity = self._get_structure_factor_intensity(h, k, l)
+        for h, k, ell in test_cases:
+            intensity = self._get_structure_factor_intensity(h, k, ell)
             assert intensity > 0.1, (
-                f"Perovskite reflection ({h},{k},{l}) should have non-zero "
+                f"Perovskite reflection ({h},{k},{ell}) should have non-zero "
                 f"intensity, got {intensity}"
             )
 

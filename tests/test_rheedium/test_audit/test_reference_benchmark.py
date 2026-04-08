@@ -9,19 +9,21 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import pytest
 
-from rheedium.audit import (
-    BenchmarkCaseResult,
-    BenchmarkSuiteResult,
-    ReferenceCase,
-    ReferenceMetadata,
+from rheedium.audit.reference_benchmark import (
     benchmark_reference_case,
     benchmark_reference_suite,
     load_reference_cases,
     simulate_detector_image_from_metadata,
 )
+from rheedium.audit.reference_types import (
+    BenchmarkCaseResult,
+    BenchmarkSuiteResult,
+    ReferenceCase,
+    ReferenceMetadata,
+)
 
-_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
-_REFERENCE_DIR: Path = (
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REFERENCE_DIR = (
     _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
 )
 _REFERENCE_CASES = load_reference_cases(_REFERENCE_DIR)
@@ -41,7 +43,7 @@ _SUITE_SUMMARY = benchmark_reference_suite(
 _SUITE_PAYLOAD = json.loads(_SUMMARY_OUTPUT_PATH.read_text())
 
 
-def test_load_reference_cases_returns_typed_cases() -> None:
+def test_load_reference_cases_returns_typed_cases():
     """Reference cases load as typed metadata-plus-image objects."""
     assert len(_REFERENCE_CASES) >= 2
     for case in _REFERENCE_CASES:
@@ -52,7 +54,7 @@ def test_load_reference_cases_returns_typed_cases() -> None:
         assert np.all(np.isfinite(case.image))
 
 
-def test_simulate_detector_image_from_metadata_matches_shape() -> None:
+def test_simulate_detector_image_from_metadata_matches_shape():
     """Regenerated images preserve the stored detector grid shape."""
     assert (
         tuple(_SIMULATED_IMAGE.shape)
@@ -62,7 +64,7 @@ def test_simulate_detector_image_from_metadata_matches_shape() -> None:
     assert float(np.max(_SIMULATED_IMAGE)) == pytest.approx(1.0, abs=1e-12)
 
 
-def test_benchmark_reference_case_matches_synthetic_fixture() -> None:
+def test_benchmark_reference_case_matches_synthetic_fixture():
     """Synthetic fixtures benchmark back to a near-perfect match."""
     assert isinstance(_CASE_RESULT, BenchmarkCaseResult)
     assert _CASE_RESULT.reference_id == _REFERENCE_CASE.metadata.reference_id
@@ -77,7 +79,7 @@ def test_benchmark_reference_case_matches_synthetic_fixture() -> None:
     )
 
 
-def test_benchmark_reference_suite_writes_json_summary() -> None:
+def test_benchmark_reference_suite_writes_json_summary():
     """The suite runner writes a JSON summary with one entry per case."""
     assert isinstance(_SUITE_SUMMARY, BenchmarkSuiteResult)
     assert _SUITE_SUMMARY.reference_count >= 2

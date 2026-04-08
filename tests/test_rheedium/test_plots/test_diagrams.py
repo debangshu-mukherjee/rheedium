@@ -17,7 +17,7 @@ matplotlib.use("Agg")
 
 import jax.numpy as jnp
 
-from rheedium.plots import (
+from rheedium.plots.diagrams import (
     plot_crystal_structure_3d,
     plot_ctr_profile,
     plot_debye_waller,
@@ -32,24 +32,24 @@ from rheedium.plots import (
     plot_wavelength_curve,
     view_atoms,
 )
-from rheedium.types import create_crystal_structure
+from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestDiagramPlots:
     """Smoke tests for diagram plotting functions."""
 
-    def teardown_method(self) -> None:
+    def teardown_method(self):
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
-    def test_plot_wavelength_curve_default(self) -> None:
+    def test_plot_wavelength_curve_default(self):
         """Test wavelength curve plot with default parameters."""
         ax = plot_wavelength_curve()
         assert isinstance(ax, Axes)
         assert ax.get_xlabel() == "Accelerating Voltage (kV)"
         assert ax.get_ylabel() == "Wavelength (A)"
 
-    def test_plot_wavelength_curve_custom_range(self) -> None:
+    def test_plot_wavelength_curve_custom_range(self):
         """Test wavelength curve with custom voltage range."""
         ax = plot_wavelength_curve(
             voltage_range_kv=(10.0, 50.0),
@@ -61,26 +61,26 @@ class TestDiagramPlots:
         assert xlim[0] >= 10.0
         assert xlim[1] <= 50.0
 
-    def test_plot_wavelength_curve_with_provided_ax(self) -> None:
+    def test_plot_wavelength_curve_with_provided_ax(self):
         """Test wavelength curve with user-provided axes."""
         fig, ax = plt.subplots()
         returned_ax = plot_wavelength_curve(ax=ax)
         assert returned_ax is ax
 
-    def test_plot_form_factors_single_element(self) -> None:
+    def test_plot_form_factors_single_element(self):
         """Test form factor plot for single element."""
         ax = plot_form_factors(atomic_numbers=[14])  # Silicon
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 1
 
-    def test_plot_form_factors_multiple_elements(self) -> None:
+    def test_plot_form_factors_multiple_elements(self):
         """Test form factor plot for multiple elements."""
         ax = plot_form_factors(atomic_numbers=[14, 8, 38, 22])
         assert isinstance(ax, Axes)
         # Should have one line per element
         assert len(ax.get_lines()) >= 4
 
-    def test_plot_form_factors_custom_range(self) -> None:
+    def test_plot_form_factors_custom_range(self):
         """Test form factor plot with custom q range."""
         ax = plot_form_factors(
             atomic_numbers=[14],
@@ -92,7 +92,7 @@ class TestDiagramPlots:
         assert xlim[0] >= 0.0
         assert xlim[1] <= 5.0
 
-    def test_plot_debye_waller_default(self) -> None:
+    def test_plot_debye_waller_default(self):
         """Test Debye-Waller plot with default parameters."""
         ax = plot_debye_waller(
             atomic_number=14,
@@ -101,7 +101,7 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 3
 
-    def test_plot_debye_waller_single_temp(self) -> None:
+    def test_plot_debye_waller_single_temp(self):
         """Test Debye-Waller plot with single temperature."""
         ax = plot_debye_waller(
             atomic_number=79,  # Gold
@@ -109,14 +109,14 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
-    def test_plot_ctr_profile_default(self) -> None:
+    def test_plot_ctr_profile_default(self):
         """Test CTR profile plot with default parameters."""
         ax = plot_ctr_profile()
         assert isinstance(ax, Axes)
         # Should be log scale on y-axis
         assert ax.get_yscale() == "log"
 
-    def test_plot_ctr_profile_custom_range(self) -> None:
+    def test_plot_ctr_profile_custom_range(self):
         """Test CTR profile with custom l range."""
         ax = plot_ctr_profile(
             l_range=(-2.0, 2.0),
@@ -124,14 +124,14 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
-    def test_plot_roughness_damping_default(self) -> None:
+    def test_plot_roughness_damping_default(self):
         """Test roughness damping plot with default parameters."""
         ax = plot_roughness_damping()
         assert isinstance(ax, Axes)
         # Should have lines for each sigma value
         assert len(ax.get_lines()) >= 4
 
-    def test_plot_roughness_damping_custom_sigma(self) -> None:
+    def test_plot_roughness_damping_custom_sigma(self):
         """Test roughness damping with custom sigma values."""
         ax = plot_roughness_damping(
             q_z_range=(0.0, 3.0),
@@ -140,13 +140,13 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 3
 
-    def test_plot_rod_broadening_default(self) -> None:
+    def test_plot_rod_broadening_default(self):
         """Test rod broadening plot with default parameters."""
         ax = plot_rod_broadening()
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 4
 
-    def test_plot_rod_broadening_custom_lengths(self) -> None:
+    def test_plot_rod_broadening_custom_lengths(self):
         """Test rod broadening with custom correlation lengths."""
         ax = plot_rod_broadening(
             q_perp_range=(-0.5, 0.5),
@@ -154,12 +154,12 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
-    def test_plot_ewald_sphere_2d_default(self) -> None:
+    def test_plot_ewald_sphere_2d_default(self):
         """Test 2D Ewald sphere plot with default parameters."""
         ax = plot_ewald_sphere_2d()
         assert isinstance(ax, Axes)
 
-    def test_plot_ewald_sphere_2d_custom_params(self) -> None:
+    def test_plot_ewald_sphere_2d_custom_params(self):
         """Test 2D Ewald sphere with custom parameters."""
         ax = plot_ewald_sphere_2d(
             voltage_kv=20.0,
@@ -169,12 +169,12 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
-    def test_plot_ewald_sphere_3d_default(self) -> None:
+    def test_plot_ewald_sphere_3d_default(self):
         """Test 3D Ewald sphere plot with default parameters."""
         ax = plot_ewald_sphere_3d()
         assert isinstance(ax, Axes3D)
 
-    def test_plot_ewald_sphere_3d_different_views(self) -> None:
+    def test_plot_ewald_sphere_3d_different_views(self):
         """Test 3D Ewald sphere with different viewing angles."""
         # Front view
         ax1 = plot_ewald_sphere_3d(elev=0.0, azim=0.0)
@@ -190,7 +190,7 @@ class TestDiagramPlots:
         ax3 = plot_ewald_sphere_3d(elev=30.0, azim=45.0)
         assert isinstance(ax3, Axes3D)
 
-    def test_plot_unit_cell_3d_cubic(self) -> None:
+    def test_plot_unit_cell_3d_cubic(self):
         """Test 3D unit cell plot for cubic cell."""
         ax = plot_unit_cell_3d(
             cell_lengths=(4.0, 4.0, 4.0),
@@ -198,7 +198,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes3D)
 
-    def test_plot_unit_cell_3d_orthorhombic(self) -> None:
+    def test_plot_unit_cell_3d_orthorhombic(self):
         """Test 3D unit cell plot for orthorhombic cell."""
         ax = plot_unit_cell_3d(
             cell_lengths=(3.0, 4.0, 5.0),
@@ -206,7 +206,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes3D)
 
-    def test_plot_unit_cell_3d_triclinic(self) -> None:
+    def test_plot_unit_cell_3d_triclinic(self):
         """Test 3D unit cell plot for triclinic cell."""
         ax = plot_unit_cell_3d(
             cell_lengths=(3.0, 4.0, 5.0),
@@ -214,7 +214,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes3D)
 
-    def test_plot_crystal_structure_3d_simple(self) -> None:
+    def test_plot_crystal_structure_3d_simple(self):
         """Test 3D crystal structure plot with simple structure."""
         positions = np.array(
             [
@@ -230,7 +230,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes3D)
 
-    def test_plot_crystal_structure_3d_with_cell(self) -> None:
+    def test_plot_crystal_structure_3d_with_cell(self):
         """Test 3D crystal structure with unit cell outline."""
         positions = np.array(
             [
@@ -250,7 +250,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes3D)
 
-    def test_plot_crystal_structure_3d_multiple_elements(self) -> None:
+    def test_plot_crystal_structure_3d_multiple_elements(self):
         """Test 3D crystal structure with multiple element types."""
         positions = np.array(
             [
@@ -272,17 +272,17 @@ class TestDiagramPlots:
         assert legend is not None
         assert len(legend.get_texts()) == 4
 
-    def test_plot_grazing_incidence_geometry_default(self) -> None:
+    def test_plot_grazing_incidence_geometry_default(self):
         """Test grazing incidence geometry diagram."""
         ax = plot_grazing_incidence_geometry()
         assert isinstance(ax, Axes)
 
-    def test_plot_grazing_incidence_geometry_custom_angle(self) -> None:
+    def test_plot_grazing_incidence_geometry_custom_angle(self):
         """Test grazing incidence geometry with custom angle."""
         ax = plot_grazing_incidence_geometry(theta_deg=5.0)
         assert isinstance(ax, Axes)
 
-    def test_plot_structure_factor_phases_simple(self) -> None:
+    def test_plot_structure_factor_phases_simple(self):
         """Test structure factor phases diagram with simple structure."""
         atom_positions = [(0.0, 0.0), (0.5, 0.5)]
         ax = plot_structure_factor_phases(
@@ -291,7 +291,7 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
-    def test_plot_structure_factor_phases_multiple_atoms(self) -> None:
+    def test_plot_structure_factor_phases_multiple_atoms(self):
         """Test structure factor phases with multiple atoms."""
         atom_positions = [
             (0.0, 0.0),
@@ -309,11 +309,11 @@ class TestDiagramPlots:
 class TestDiagramPlotsWithProvidedAxes:
     """Test that all functions accept user-provided axes."""
 
-    def teardown_method(self) -> None:
+    def teardown_method(self):
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
-    def test_2d_plots_with_provided_ax(self) -> None:
+    def test_2d_plots_with_provided_ax(self):
         """Test 2D plotting functions with user-provided axes."""
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
@@ -338,7 +338,7 @@ class TestDiagramPlotsWithProvidedAxes:
         ax6 = plot_rod_broadening(ax=axes[1, 2])
         assert ax6 is axes[1, 2]
 
-    def test_3d_plots_with_provided_ax(self) -> None:
+    def test_3d_plots_with_provided_ax(self):
         """Test 3D plotting functions with user-provided axes."""
         fig = plt.figure(figsize=(15, 5))
 
@@ -364,7 +364,7 @@ class TestDiagramPlotsWithProvidedAxes:
 class TestDiagramViewingAngles:
     """Test 3D viewing angle parameters."""
 
-    def teardown_method(self) -> None:
+    def teardown_method(self):
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
@@ -378,9 +378,7 @@ class TestDiagramViewingAngles:
             (-30.0, 135.0),  # Unusual angle
         ],
     )
-    def test_ewald_sphere_3d_viewing_angles(
-        self, elev: float, azim: float
-    ) -> None:
+    def test_ewald_sphere_3d_viewing_angles(self, elev, azim):
         """Test Ewald sphere 3D with various viewing angles."""
         ax = plot_ewald_sphere_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
@@ -393,9 +391,7 @@ class TestDiagramViewingAngles:
             (90.0, 0.0),
         ],
     )
-    def test_unit_cell_3d_viewing_angles(
-        self, elev: float, azim: float
-    ) -> None:
+    def test_unit_cell_3d_viewing_angles(self, elev, azim):
         """Test unit cell 3D with various viewing angles."""
         ax = plot_unit_cell_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
@@ -408,9 +404,7 @@ class TestDiagramViewingAngles:
             (60.0, 120.0),
         ],
     )
-    def test_crystal_structure_3d_viewing_angles(
-        self, elev: float, azim: float
-    ) -> None:
+    def test_crystal_structure_3d_viewing_angles(self, elev, azim):
         """Test crystal structure 3D with various viewing angles."""
         positions = np.array([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]])
         atomic_numbers = np.array([14, 14])
@@ -423,7 +417,7 @@ class TestDiagramViewingAngles:
         assert isinstance(ax, Axes3D)
 
 
-def _make_crystal(n_atoms: int = 4):
+def _make_crystal(n_atoms=4):
     """Create a simple CrystalStructure for view_atoms tests."""
     all_pos = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
@@ -448,47 +442,47 @@ def _make_crystal(n_atoms: int = 4):
 class TestViewAtoms:
     """Tests for view_atoms function."""
 
-    def teardown_method(self) -> None:
+    def teardown_method(self):
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
-    def test_view_atoms_returns_axes3d(self) -> None:
+    def test_view_atoms_returns_axes3d(self):
         """Should return an Axes3D instance."""
         crystal = _make_crystal()
         ax = view_atoms(crystal)
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_with_unit_cell(self) -> None:
+    def test_view_atoms_with_unit_cell(self):
         """Should render unit cell wireframe when enabled."""
         crystal = _make_crystal()
         ax = view_atoms(crystal, show_unit_cell=True)
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_without_unit_cell(self) -> None:
+    def test_view_atoms_without_unit_cell(self):
         """Should work without unit cell wireframe."""
         crystal = _make_crystal()
         ax = view_atoms(crystal, show_unit_cell=False)
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_custom_angles(self) -> None:
+    def test_view_atoms_custom_angles(self):
         """Should accept custom viewing angles."""
         crystal = _make_crystal()
         ax = view_atoms(crystal, elev=60.0, azim=120.0)
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_custom_scale(self) -> None:
+    def test_view_atoms_custom_scale(self):
         """Should accept custom atom_scale."""
         crystal = _make_crystal()
         ax = view_atoms(crystal, atom_scale=2.0)
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_custom_figsize(self) -> None:
+    def test_view_atoms_custom_figsize(self):
         """Should accept custom figsize."""
         crystal = _make_crystal()
         ax = view_atoms(crystal, figsize=(12, 10))
         assert isinstance(ax, Axes3D)
 
-    def test_view_atoms_with_provided_ax(self) -> None:
+    def test_view_atoms_with_provided_ax(self):
         """Should use user-provided axes."""
         crystal = _make_crystal()
         fig = plt.figure()
@@ -496,7 +490,7 @@ class TestViewAtoms:
         returned_ax = view_atoms(crystal, ax=ax)
         assert returned_ax is ax
 
-    def test_view_atoms_legend_entries(self) -> None:
+    def test_view_atoms_legend_entries(self):
         """Should have a legend entry per unique element."""
         crystal = _make_crystal(n_atoms=4)
         ax = view_atoms(crystal)
@@ -504,7 +498,7 @@ class TestViewAtoms:
         assert legend is not None
         assert len(legend.get_texts()) == 4
 
-    def test_view_atoms_single_element(self) -> None:
+    def test_view_atoms_single_element(self):
         """Should work with a single element type."""
         crystal = _make_crystal(n_atoms=1)
         ax = view_atoms(crystal)

@@ -7,9 +7,7 @@ from absl.testing import parameterized
 from jax import tree_util
 from jaxtyping import TypeCheckError
 
-from rheedium.types import (
-    EwaldData,
-    XYZData,
+from rheedium.types.crystal_types import (
     create_crystal_structure,
     create_ewald_data,
     create_potential_slices,
@@ -20,12 +18,12 @@ from rheedium.types import (
 class TestCrystalStructure(chex.TestCase):
     """Comprehensive test suite for CrystalStructure PyTree."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_create_crystal_structure_valid(self) -> None:
+    def test_create_crystal_structure_valid(self):
         """Test creation of valid CrystalStructure instances."""
         n_atoms = 10
         positions_3d = np.random.rand(n_atoms, 3)
@@ -48,7 +46,7 @@ class TestCrystalStructure(chex.TestCase):
         chex.assert_shape(crystal.cell_angles, (3,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_crystal_structure_pytree(self) -> None:
+    def test_crystal_structure_pytree(self):
         """Test PyTree registration and operations."""
         n_atoms = 5
         frac_positions = jnp.ones((n_atoms, 4))
@@ -73,9 +71,7 @@ class TestCrystalStructure(chex.TestCase):
         ("triclinic_large", 100, "triclinic"),
         ("hexagonal_xlarge", 1000, "hexagonal"),
     )
-    def test_crystal_structure_various_cells(
-        self, n_atoms: int, cell_type: str
-    ) -> None:
+    def test_crystal_structure_various_cells(self, n_atoms, cell_type):
         """Test CrystalStructure with various cell types and atom counts."""
         cell_params = {
             "cubic": ([5.0, 5.0, 5.0], [90.0, 90.0, 90.0]),
@@ -115,15 +111,15 @@ class TestCrystalStructure(chex.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_crystal_structure_jit_compilation(self) -> None:
+    def test_crystal_structure_jit_compilation(self):
         """Test JIT compilation of CrystalStructure operations."""
 
         def create_and_process(
-            frac_pos: jnp.ndarray,
-            cart_pos: jnp.ndarray,
-            lengths: jnp.ndarray,
-            angles: jnp.ndarray,
-        ) -> jnp.ndarray:
+            frac_pos,
+            cart_pos,
+            lengths,
+            angles,
+        ):
             crystal = create_crystal_structure(
                 frac_pos, cart_pos, lengths, angles
             )
@@ -145,11 +141,11 @@ class TestCrystalStructure(chex.TestCase):
         expected = jnp.sum(frac_positions) + jnp.sum(cart_positions)
         chex.assert_trees_all_close(result, expected)
 
-    def test_crystal_structure_validation_errors(self) -> None:
+    def test_crystal_structure_validation_errors(self):
         """Test that invalid inputs are properly handled during JIT compilation."""
         n_atoms = 5
 
-        def create_with_wrong_shape() -> jnp.ndarray:
+        def create_with_wrong_shape():
             wrong_shape_frac = jnp.ones((n_atoms, 3))
             cart_positions = jnp.ones((n_atoms, 4))
             cell_lengths = jnp.array([3.0, 4.0, 5.0])
@@ -158,7 +154,7 @@ class TestCrystalStructure(chex.TestCase):
                 wrong_shape_frac, cart_positions, cell_lengths, cell_angles
             )
 
-        def create_with_mismatched_positions() -> jnp.ndarray:
+        def create_with_mismatched_positions():
             frac_positions = jnp.ones((n_atoms, 4))
             cart_positions = jnp.ones((n_atoms + 1, 4))
             cell_lengths = jnp.array([3.0, 4.0, 5.0])
@@ -177,7 +173,7 @@ class TestCrystalStructure(chex.TestCase):
 class TestEwaldData(chex.TestCase, parameterized.TestCase):
     """Test suite for EwaldData PyTree and create_ewald_data validation."""
 
-    def _make_valid_ewald_kwargs(self, n_points: int = 7) -> dict:
+    def _make_valid_ewald_kwargs(self, n_points=7):
         """Build valid keyword arguments for create_ewald_data."""
         wavelength_ang = jnp.array(0.0859)
         k_magnitude = 2.0 * jnp.pi / wavelength_ang
@@ -204,7 +200,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_create_ewald_data_valid(self) -> None:
+    def test_create_ewald_data_valid(self):
         """Test creation of valid EwaldData instances."""
         n_points = 7
         kwargs = self._make_valid_ewald_kwargs(n_points)
@@ -222,7 +218,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(ewald.intensities, (n_points,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_data_pytree(self) -> None:
+    def test_ewald_data_pytree(self):
         """Test PyTree flatten/unflatten round-trip."""
         kwargs = self._make_valid_ewald_kwargs()
         create_fn = self.variant(create_ewald_data)
@@ -234,7 +230,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ewald, reconstructed)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_data_dtype_casting(self) -> None:
+    def test_ewald_data_dtype_casting(self):
         """Test that inputs are cast to correct dtypes."""
         kwargs = self._make_valid_ewald_kwargs()
         create_fn = self.variant(create_ewald_data)
@@ -249,7 +245,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         assert ewald.intensities.dtype == jnp.float64
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_data_values_preserved(self) -> None:
+    def test_ewald_data_values_preserved(self):
         """Test that array values are faithfully preserved."""
         kwargs = self._make_valid_ewald_kwargs()
         create_fn = self.variant(create_ewald_data)
@@ -271,7 +267,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         ("medium", 27),
         ("large", 125),
     )
-    def test_ewald_data_various_sizes(self, n_points: int) -> None:
+    def test_ewald_data_various_sizes(self, n_points):
         """Test EwaldData with various numbers of reciprocal points."""
         kwargs = self._make_valid_ewald_kwargs(n_points)
         create_fn = self.variant(create_ewald_data)
@@ -284,10 +280,10 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(ewald.intensities, (n_points,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_data_jit_compilation(self) -> None:
+    def test_ewald_data_jit_compilation(self):
         """Test JIT compilation of EwaldData operations."""
 
-        def create_and_process(**kw) -> jnp.ndarray:
+        def create_and_process(**kw):
             ewald = create_ewald_data(**kw)
             return jnp.sum(ewald.intensities) + ewald.wavelength_ang
 
@@ -297,45 +293,45 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         expected = jnp.sum(kwargs["intensities"]) + kwargs["wavelength_ang"]
         chex.assert_trees_all_close(result, expected)
 
-    def test_ewald_data_negative_wavelength(self) -> None:
+    def test_ewald_data_negative_wavelength(self):
         """Test that negative wavelength is caught by validation."""
         kwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(-0.1)
         jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_negative_k_magnitude(self) -> None:
+    def test_ewald_data_negative_k_magnitude(self):
         """Test that negative k_magnitude is caught by validation."""
         kwargs = self._make_valid_ewald_kwargs()
         kwargs["k_magnitude"] = jnp.array(-1.0)
         jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_negative_sphere_radius(self) -> None:
+    def test_ewald_data_negative_sphere_radius(self):
         """Test that negative sphere_radius is caught by validation."""
         kwargs = self._make_valid_ewald_kwargs()
         kwargs["sphere_radius"] = jnp.array(-1.0)
         jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_mismatched_n(self) -> None:
+    def test_ewald_data_mismatched_n(self):
         """Test that mismatched leading dimensions are caught."""
         kwargs = self._make_valid_ewald_kwargs(n_points=7)
         kwargs["intensities"] = jnp.ones(5, dtype=jnp.float64)
         with pytest.raises(Exception):
             jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_negative_intensities(self) -> None:
+    def test_ewald_data_negative_intensities(self):
         """Test that negative intensities are caught by validation."""
         kwargs = self._make_valid_ewald_kwargs()
         kwargs["intensities"] = -jnp.ones(7, dtype=jnp.float64)
         jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_nan_in_g_vectors(self) -> None:
+    def test_ewald_data_nan_in_g_vectors(self):
         """Test that NaN values in g_vectors are caught."""
         kwargs = self._make_valid_ewald_kwargs()
         g = kwargs["g_vectors"]
         kwargs["g_vectors"] = g.at[0, 0].set(jnp.nan)
         jax.jit(create_ewald_data)(**kwargs)
 
-    def test_ewald_data_inf_in_wavelength(self) -> None:
+    def test_ewald_data_inf_in_wavelength(self):
         """Test that Inf values are caught by finiteness check."""
         kwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(jnp.inf)
@@ -345,12 +341,12 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
     """Comprehensive test suite for PotentialSlices PyTree."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_create_potential_slices_valid(self) -> None:
+    def test_create_potential_slices_valid(self):
         """Test creation of valid PotentialSlices instances."""
         n_slices, height, width = 10, 64, 64
         slices = jnp.zeros((n_slices, height, width))
@@ -370,7 +366,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         assert float(potential.y_calibration) == y_calibration
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_potential_slices_pytree(self) -> None:
+    def test_potential_slices_pytree(self):
         """Test PyTree registration and operations."""
         slices = jnp.ones((5, 32, 32))
         slice_thickness = 1.5
@@ -397,8 +393,8 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         ("wide_slice", 50, 256, 512, 3.0),
     )
     def test_potential_slices_various_sizes(
-        self, n_slices: int, height: int, width: int, thickness: float
-    ) -> None:
+        self, n_slices, height, width, thickness
+    ):
         """Test PotentialSlices with various dimensions."""
         slices = jax.random.normal(self.rng, (n_slices, height, width))
         x_calibration = 0.1
@@ -413,12 +409,10 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         # Scalar fields are validated in the create_potential_slices function
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_potential_slices_jit_compilation(self) -> None:
+    def test_potential_slices_jit_compilation(self):
         """Test JIT compilation of PotentialSlices operations."""
 
-        def create_and_process(
-            slices: jnp.ndarray, thickness: float, x_cal: float, y_cal: float
-        ) -> jnp.ndarray:
+        def create_and_process(slices, thickness, x_cal, y_cal):
             potential = create_potential_slices(
                 slices, thickness, x_cal, y_cal
             )
@@ -435,23 +429,23 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         expected = jnp.sum(slices) * thickness
         chex.assert_trees_all_close(result, expected)
 
-    def test_potential_slices_validation_errors(self) -> None:
+    def test_potential_slices_validation_errors(self):
         """Test that invalid inputs are properly handled during JIT compilation."""
 
-        def create_with_wrong_shape() -> jnp.ndarray:
+        def create_with_wrong_shape():
             wrong_shape_slices = jnp.ones((10, 32))
             return jax.jit(create_potential_slices)(
                 wrong_shape_slices, 1.0, 0.1, 0.1
             )
 
-        def create_with_negative_thickness() -> jnp.ndarray:
+        def create_with_negative_thickness():
             slices = jnp.ones((10, 32, 32))
             negative_thickness = -1.0
             return jax.jit(create_potential_slices)(
                 slices, negative_thickness, 0.1, 0.1
             )
 
-        def create_with_negative_calibration() -> jnp.ndarray:
+        def create_with_negative_calibration():
             slices = jnp.ones((10, 32, 32))
             negative_calibration = -0.1
             return jax.jit(create_potential_slices)(
@@ -471,12 +465,12 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 class TestXYZData(chex.TestCase, parameterized.TestCase):
     """Comprehensive test suite for XYZData PyTree."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_create_xyz_data_minimal(self) -> None:
+    def test_create_xyz_data_minimal(self):
         """Test creation of XYZData with minimal required fields."""
         n_atoms = 10
         positions = jax.random.normal(self.rng, (n_atoms, 3))
@@ -495,7 +489,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(xyz_data.comment, None)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_create_xyz_data_full(self) -> None:
+    def test_create_xyz_data_full(self):
         """Test creation of XYZData with all optional fields."""
         n_atoms = 5
         positions = jax.random.normal(self.rng, (n_atoms, 3))
@@ -529,7 +523,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(xyz_data.comment, comment)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_xyz_data_pytree(self) -> None:
+    def test_xyz_data_pytree(self):
         """Test PyTree registration and operations."""
         positions = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
@@ -565,11 +559,11 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     )
     def test_xyz_data_optional_fields(
         self,
-        n_atoms: int,
-        include_lattice: bool,
-        include_stress: bool,
-        include_energy: bool,
-    ) -> None:
+        n_atoms,
+        include_lattice,
+        include_stress,
+        include_energy,
+    ):
         """Test XYZData with various combinations of optional fields."""
         positions = jax.random.normal(self.rng, (n_atoms, 3))
         atomic_numbers = jax.random.randint(self.rng, (n_atoms,), 1, 119)
@@ -596,7 +590,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
             chex.assert_trees_all_equal(xyz_data.energy is not None, True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_xyz_data_jit_compilation(self) -> None:
+    def test_xyz_data_jit_compilation(self):
         """Test JIT compilation of operations on XYZData."""
         # Create XYZData outside JIT since create_xyz_data is a foreign interface
         n_atoms = 5
@@ -605,7 +599,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         lattice = jnp.eye(3) * 5.0
         xyz_data = create_xyz_data(positions, atomic_numbers, lattice=lattice)
 
-        def process_xyz_data(xyz: XYZData) -> jnp.ndarray:
+        def process_xyz_data(xyz):
             return jnp.sum(xyz.positions) + jnp.sum(xyz.atomic_numbers)
 
         jitted_fn = self.variant(process_xyz_data)
@@ -616,7 +610,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_trees_all_close(result, expected)
 
-    def test_xyz_data_validation_errors(self) -> None:
+    def test_xyz_data_validation_errors(self):
         """Test that invalid inputs raise appropriate errors."""
         # jaxtyping catches type errors for wrong position shape
         with pytest.raises(TypeCheckError):
@@ -625,7 +619,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
             create_xyz_data(wrong_shape_positions, atomic_numbers)
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_xyz_data_tree_map(self) -> None:
+    def test_xyz_data_tree_map(self):
         """Test that XYZData works correctly with tree_map operations."""
         n_atoms = 5
         positions = jnp.ones((n_atoms, 3))
@@ -635,7 +629,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
-        def scale_positions(x: jnp.ndarray) -> jnp.ndarray:
+        def scale_positions(x):
             if isinstance(x, jnp.ndarray) and x.shape == positions.shape:
                 return x * 2.0
             return x
@@ -648,11 +642,11 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
     """Test PyTree operations across all crystal types."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
-    def test_nested_pytree_operations(self) -> None:
+    def test_nested_pytree_operations(self):
         """Test nested PyTree structures with crystal types."""
         n_atoms = 5
         crystal = create_crystal_structure(
@@ -690,7 +684,7 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
             nested_structure["xyz"].positions, reconstructed["xyz"].positions
         )
 
-    def test_vmap_over_crystal_structures(self) -> None:
+    def test_vmap_over_crystal_structures(self):
         """Test vmap operations over batches of crystal structures."""
         batch_size = 4
         n_atoms = 3

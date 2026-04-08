@@ -1,8 +1,6 @@
 """Tests for ASE and pymatgen interoperability."""
 
 import sys
-import tempfile
-from pathlib import Path
 from unittest import mock
 
 import chex
@@ -11,16 +9,14 @@ import numpy as np
 import pytest
 from absl.testing import parameterized
 
-from rheedium.inout import (
-    from_ase,
-    from_pymatgen,
-    to_ase,
-    to_pymatgen,
+from rheedium.inout.interop import from_ase, from_pymatgen, to_ase, to_pymatgen
+from rheedium.types.crystal_types import (
+    CrystalStructure,
+    create_crystal_structure,
 )
-from rheedium.types import CrystalStructure, create_crystal_structure
 
 
-def _make_simple_crystal() -> CrystalStructure:
+def _make_simple_crystal():
     """Create a simple test crystal (MgO rock salt)."""
     frac_positions = jnp.array(
         [
@@ -53,7 +49,7 @@ class TestAseInterop(chex.TestCase):
         """Skip tests if ASE is not installed."""
         pytest.importorskip("ase")
 
-    def test_from_ase_simple(self) -> None:
+    def test_from_ase_simple(self):
         """Convert simple ASE Atoms to CrystalStructure."""
         from ase import Atoms
 
@@ -80,7 +76,7 @@ class TestAseInterop(chex.TestCase):
             atol=1e-10,
         )
 
-    def test_from_ase_bulk(self) -> None:
+    def test_from_ase_bulk(self):
         """Convert bulk structure from ASE."""
         from ase.build import bulk
 
@@ -93,7 +89,7 @@ class TestAseInterop(chex.TestCase):
         # Si = 14
         assert jnp.all(crystal.frac_positions[:, 3] == 14.0)
 
-    def test_from_ase_no_cell(self) -> None:
+    def test_from_ase_no_cell(self):
         """ASE Atoms without cell raises ValueError."""
         from ase import Atoms
 
@@ -102,12 +98,12 @@ class TestAseInterop(chex.TestCase):
         with pytest.raises(ValueError, match="valid 3D cell"):
             from_ase(atoms)
 
-    def test_from_ase_wrong_type(self) -> None:
+    def test_from_ase_wrong_type(self):
         """Non-Atoms input raises TypeError."""
         with pytest.raises(TypeError, match="Expected ase.Atoms"):
             from_ase("not an atoms object")
 
-    def test_to_ase_simple(self) -> None:
+    def test_to_ase_simple(self):
         """Convert CrystalStructure to ASE Atoms."""
         from ase import Atoms
 
@@ -119,7 +115,7 @@ class TestAseInterop(chex.TestCase):
         assert list(atoms.get_atomic_numbers()) == [12, 8]
         assert atoms.pbc.all()
 
-    def test_to_ase_cell_preserved(self) -> None:
+    def test_to_ase_cell_preserved(self):
         """Cell parameters preserved in conversion."""
         crystal = _make_simple_crystal()
         atoms = to_ase(crystal)
@@ -130,7 +126,7 @@ class TestAseInterop(chex.TestCase):
             cell[0], np.array([4.21, 0.0, 0.0]), atol=1e-3
         )
 
-    def test_ase_roundtrip(self) -> None:
+    def test_ase_roundtrip(self):
         """Round-trip conversion preserves structure."""
         from ase import Atoms
 
@@ -173,7 +169,7 @@ class TestPymatgenInterop(chex.TestCase):
         """Skip tests if pymatgen is not installed."""
         pytest.importorskip("pymatgen")
 
-    def test_from_pymatgen_simple(self) -> None:
+    def test_from_pymatgen_simple(self):
         """Convert simple pymatgen Structure to CrystalStructure."""
         from pymatgen.core import Lattice, Structure
 
@@ -200,7 +196,7 @@ class TestPymatgenInterop(chex.TestCase):
             atol=1e-10,
         )
 
-    def test_from_pymatgen_hexagonal(self) -> None:
+    def test_from_pymatgen_hexagonal(self):
         """Convert hexagonal structure from pymatgen."""
         from pymatgen.core import Lattice, Structure
 
@@ -216,12 +212,12 @@ class TestPymatgenInterop(chex.TestCase):
         # Hexagonal: gamma = 120 degrees
         chex.assert_trees_all_close(crystal.cell_angles[2], 120.0, atol=1e-1)
 
-    def test_from_pymatgen_wrong_type(self) -> None:
+    def test_from_pymatgen_wrong_type(self):
         """Non-Structure input raises TypeError."""
         with pytest.raises(TypeError, match="Expected pymatgen"):
             from_pymatgen("not a structure")
 
-    def test_to_pymatgen_simple(self) -> None:
+    def test_to_pymatgen_simple(self):
         """Convert CrystalStructure to pymatgen Structure."""
         from pymatgen.core import Structure
 
@@ -232,7 +228,7 @@ class TestPymatgenInterop(chex.TestCase):
         assert len(structure) == 2
         assert [s.specie.symbol for s in structure] == ["Mg", "O"]
 
-    def test_to_pymatgen_lattice_preserved(self) -> None:
+    def test_to_pymatgen_lattice_preserved(self):
         """Lattice parameters preserved in conversion."""
         crystal = _make_simple_crystal()
         structure = to_pymatgen(crystal)
@@ -252,7 +248,7 @@ class TestPymatgenInterop(chex.TestCase):
             atol=1e-3,
         )
 
-    def test_pymatgen_roundtrip(self) -> None:
+    def test_pymatgen_roundtrip(self):
         """Round-trip conversion preserves structure."""
         from pymatgen.core import Lattice, Structure
 
@@ -289,7 +285,7 @@ class TestPymatgenInterop(chex.TestCase):
 class TestInteropImportErrors(chex.TestCase):
     """Test ImportError handling when libraries are missing."""
 
-    def test_from_ase_import_error(self) -> None:
+    def test_from_ase_import_error(self):
         """from_ase raises ImportError with helpful message."""
         # Mock ase import to fail
         with mock.patch.dict(sys.modules, {"ase": None}):
@@ -297,15 +293,15 @@ class TestInteropImportErrors(chex.TestCase):
             # Instead, we'll test a fresh function call
             pass
 
-    def test_to_ase_import_error(self) -> None:
+    def test_to_ase_import_error(self):
         """to_ase raises ImportError with helpful message."""
         pass
 
-    def test_from_pymatgen_import_error(self) -> None:
+    def test_from_pymatgen_import_error(self):
         """from_pymatgen raises ImportError with helpful message."""
         pass
 
-    def test_to_pymatgen_import_error(self) -> None:
+    def test_to_pymatgen_import_error(self):
         """to_pymatgen raises ImportError with helpful message."""
         pass
 
@@ -319,7 +315,7 @@ class TestCrossLibraryConversion(chex.TestCase):
         pytest.importorskip("ase")
         pytest.importorskip("pymatgen")
 
-    def test_ase_to_pymatgen_via_rheedium(self) -> None:
+    def test_ase_to_pymatgen_via_rheedium(self):
         """Convert ASE to pymatgen via CrystalStructure."""
         from ase.build import bulk
         from pymatgen.core import Structure
@@ -333,7 +329,7 @@ class TestCrossLibraryConversion(chex.TestCase):
         assert isinstance(pmg_structure, Structure)
         assert len(pmg_structure) == len(ase_atoms)
 
-    def test_pymatgen_to_ase_via_rheedium(self) -> None:
+    def test_pymatgen_to_ase_via_rheedium(self):
         """Convert pymatgen to ASE via CrystalStructure."""
         from ase import Atoms
         from pymatgen.core import Lattice, Structure
@@ -361,7 +357,7 @@ class TestInteropEdgeCases(chex.TestCase):
         """Skip tests if ASE is not installed."""
         pytest.importorskip("ase")
 
-    def test_single_atom(self) -> None:
+    def test_single_atom(self):
         """Single atom structure."""
         from ase import Atoms
 
@@ -376,7 +372,7 @@ class TestInteropEdgeCases(chex.TestCase):
         assert crystal.frac_positions.shape == (1, 4)
         assert crystal.frac_positions[0, 3] == 26.0  # Fe
 
-    def test_large_cell(self) -> None:
+    def test_large_cell(self):
         """Large unit cell."""
         from ase import Atoms
 
@@ -400,7 +396,7 @@ class TestInteropEdgeCases(chex.TestCase):
         ("iron", "Fe", 26),
         ("oxygen", "O", 8),
     )
-    def test_various_elements(self, symbol: str, expected_z: int) -> None:
+    def test_various_elements(self, symbol, expected_z):
         """Test conversion with various elements."""
         from ase import Atoms
 

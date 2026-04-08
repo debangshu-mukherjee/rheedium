@@ -1,15 +1,10 @@
-"""Test suite for rheedium.types.custom_types type aliases.
-
-Verifies that type aliases accept the expected Python and JAX types
-and reject incorrect types via beartype runtime checking.
-"""
+"""Test suite for rheedium.types.custom_types type aliases."""
 
 import jax.numpy as jnp
 import pytest
-from beartype import beartype
-from jaxtyping import Array, Float, Integer, jaxtyped
+from beartype.door import die_if_unbearable
 
-from rheedium.types import (
+from rheedium.types.custom_types import (
     float_image,
     int_image,
     non_jax_number,
@@ -20,221 +15,126 @@ from rheedium.types import (
 )
 
 
+def _accepts(value, hint):
+    die_if_unbearable(value, hint)
+    return value
+
+
+def _assert_rejected(value, hint):
+    with pytest.raises(Exception):
+        die_if_unbearable(value, hint)
+
+
 class TestScalarFloat:
     """Tests for the scalar_float type alias."""
 
-    def test_accepts_python_float(self) -> None:
-        @beartype
-        def f(x: scalar_float) -> scalar_float:
-            return x
+    def test_accepts_python_float(self):
+        assert _accepts(3.14, scalar_float) == 3.14
 
-        assert f(3.14) == 3.14
-
-    def test_accepts_jax_scalar(self) -> None:
-        @beartype
-        def f(x: scalar_float) -> scalar_float:
-            return x
-
-        val = jnp.float64(2.5)
-        result = f(val)
+    def test_accepts_jax_scalar(self):
+        result = _accepts(jnp.float64(2.5), scalar_float)
         assert float(result) == 2.5
 
-    def test_rejects_string(self) -> None:
-        @beartype
-        def f(x: scalar_float) -> None:
-            pass
+    def test_rejects_string(self):
+        _assert_rejected("hello", scalar_float)
 
-        with pytest.raises(Exception):
-            f("hello")
-
-    def test_rejects_list(self) -> None:
-        @beartype
-        def f(x: scalar_float) -> None:
-            pass
-
-        with pytest.raises(Exception):
-            f([1.0, 2.0])
+    def test_rejects_list(self):
+        _assert_rejected([1.0, 2.0], scalar_float)
 
 
 class TestScalarInt:
     """Tests for the scalar_int type alias."""
 
-    def test_accepts_python_int(self) -> None:
-        @beartype
-        def f(x: scalar_int) -> scalar_int:
-            return x
+    def test_accepts_python_int(self):
+        assert _accepts(42, scalar_int) == 42
 
-        assert f(42) == 42
-
-    def test_accepts_jax_int_scalar(self) -> None:
-        @beartype
-        def f(x: scalar_int) -> scalar_int:
-            return x
-
-        val = jnp.int32(7)
-        result = f(val)
+    def test_accepts_jax_int_scalar(self):
+        result = _accepts(jnp.int32(7), scalar_int)
         assert int(result) == 7
 
-    def test_rejects_string(self) -> None:
-        @beartype
-        def f(x: scalar_int) -> None:
-            pass
-
-        with pytest.raises(Exception):
-            f("hello")
+    def test_rejects_string(self):
+        _assert_rejected("hello", scalar_int)
 
 
 class TestScalarBool:
     """Tests for the scalar_bool type alias."""
 
-    def test_accepts_python_bool(self) -> None:
-        @beartype
-        def f(x: scalar_bool) -> scalar_bool:
-            return x
+    def test_accepts_python_bool(self):
+        assert _accepts(True, scalar_bool) is True
+        assert _accepts(False, scalar_bool) is False
 
-        assert f(True) is True
-        assert f(False) is False
-
-    def test_accepts_jax_bool_scalar(self) -> None:
-        @beartype
-        def f(x: scalar_bool) -> scalar_bool:
-            return x
-
-        val = jnp.bool_(True)
-        result = f(val)
+    def test_accepts_jax_bool_scalar(self):
+        result = _accepts(jnp.bool_(True), scalar_bool)
         assert bool(result) is True
 
 
 class TestScalarNum:
     """Tests for the scalar_num type alias."""
 
-    def test_accepts_python_int(self) -> None:
-        @beartype
-        def f(x: scalar_num) -> scalar_num:
-            return x
+    def test_accepts_python_int(self):
+        assert _accepts(5, scalar_num) == 5
 
-        assert f(5) == 5
+    def test_accepts_python_float(self):
+        assert _accepts(3.14, scalar_num) == 3.14
 
-    def test_accepts_python_float(self) -> None:
-        @beartype
-        def f(x: scalar_num) -> scalar_num:
-            return x
-
-        assert f(3.14) == 3.14
-
-    def test_accepts_jax_scalar(self) -> None:
-        @beartype
-        def f(x: scalar_num) -> scalar_num:
-            return x
-
-        val = jnp.float64(1.5)
-        result = f(val)
+    def test_accepts_jax_scalar(self):
+        result = _accepts(jnp.float64(1.5), scalar_num)
         assert float(result) == 1.5
 
-    def test_rejects_string(self) -> None:
-        @beartype
-        def f(x: scalar_num) -> None:
-            pass
-
-        with pytest.raises(Exception):
-            f("hello")
+    def test_rejects_string(self):
+        _assert_rejected("hello", scalar_num)
 
 
 class TestNonJaxNumber:
     """Tests for the non_jax_number type alias."""
 
-    def test_accepts_python_int(self) -> None:
-        @beartype
-        def f(x: non_jax_number) -> non_jax_number:
-            return x
+    def test_accepts_python_int(self):
+        assert _accepts(10, non_jax_number) == 10
 
-        assert f(10) == 10
+    def test_accepts_python_float(self):
+        assert _accepts(2.5, non_jax_number) == 2.5
 
-    def test_accepts_python_float(self) -> None:
-        @beartype
-        def f(x: non_jax_number) -> non_jax_number:
-            return x
-
-        assert f(2.5) == 2.5
-
-    def test_rejects_jax_array(self) -> None:
-        @beartype
-        def f(x: non_jax_number) -> None:
-            pass
-
-        with pytest.raises(Exception):
-            f(jnp.float64(1.0))
+    def test_rejects_jax_array(self):
+        _assert_rejected(jnp.float64(1.0), non_jax_number)
 
 
 class TestFloatImage:
     """Tests for the float_image type alias."""
 
-    def test_accepts_2d_float_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: float_image) -> float_image:
-            return x
-
+    def test_accepts_2d_float_array(self):
         img = jnp.ones((64, 128), dtype=jnp.float32)
-        result = f(img)
+        result = _accepts(img, float_image)
         assert result.shape == (64, 128)
 
-    def test_accepts_float64(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: float_image) -> float_image:
-            return x
-
+    def test_accepts_float64(self):
         img = jnp.zeros((32, 32), dtype=jnp.float64)
-        result = f(img)
+        result = _accepts(img, float_image)
         assert result.shape == (32, 32)
 
-    def test_rejects_int_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: float_image) -> None:
-            pass
-
+    def test_rejects_int_array(self):
         img = jnp.ones((64, 64), dtype=jnp.int32)
-        with pytest.raises(Exception):
-            f(img)
+        _assert_rejected(img, float_image)
 
-    def test_rejects_3d_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: float_image) -> None:
-            pass
-
+    def test_rejects_3d_array(self):
         img = jnp.ones((3, 64, 64), dtype=jnp.float32)
-        with pytest.raises(Exception):
-            f(img)
+        _assert_rejected(img, float_image)
 
 
 class TestIntImage:
     """Tests for the int_image type alias."""
 
-    def test_accepts_2d_int_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: int_image) -> int_image:
-            return x
-
+    def test_accepts_2d_int_array(self):
         img = jnp.ones((64, 128), dtype=jnp.int32)
-        result = f(img)
+        result = _accepts(img, int_image)
         assert result.shape == (64, 128)
 
-    def test_rejects_float_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: int_image) -> None:
-            pass
-
+    def test_rejects_float_array(self):
         img = jnp.ones((64, 64), dtype=jnp.float32)
-        with pytest.raises(Exception):
-            f(img)
+        _assert_rejected(img, int_image)
 
-    def test_rejects_1d_array(self) -> None:
-        @jaxtyped(typechecker=beartype)
-        def f(x: int_image) -> None:
-            pass
-
+    def test_rejects_1d_array(self):
         img = jnp.ones((64,), dtype=jnp.int32)
-        with pytest.raises(Exception):
-            f(img)
+        _assert_rejected(img, int_image)
 
 
 if __name__ == "__main__":

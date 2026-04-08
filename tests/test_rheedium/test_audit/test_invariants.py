@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from rheedium.audit import (
+from rheedium.audit.invariants import (
     InvariantResult,
     check_elastic_closure_ewald,
     check_form_factor_kirkland_lobato_close,
@@ -16,7 +16,7 @@ from rheedium.audit import (
 )
 
 
-def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
+def _assert_well_formed(result, expected_name):
     """Assert an InvariantResult has all fields populated correctly."""
     assert isinstance(result, InvariantResult)
     assert result.name == expected_name
@@ -32,14 +32,12 @@ def test_form_factor_positivity_both_parameterizations():
     kirkland_result, lobato_result = check_form_factor_positivity()
     _assert_well_formed(kirkland_result, "form_factor_positivity_kirkland")
     _assert_well_formed(lobato_result, "form_factor_positivity_lobato")
-    assert kirkland_result.passed, (
-        "Kirkland form factor went negative: "
-        f"residual={kirkland_result.residual}"
-    )
-    assert lobato_result.passed, (
-        "Lobato form factor went negative: "
-        f"residual={lobato_result.residual}"
-    )
+    assert (
+        kirkland_result.passed
+    ), f"Kirkland form factor went negative: residual={kirkland_result.residual}"
+    assert (
+        lobato_result.passed
+    ), f"Lobato form factor went negative: residual={lobato_result.residual}"
 
 
 def test_form_factor_monotonic_decrease_both_parameterizations():

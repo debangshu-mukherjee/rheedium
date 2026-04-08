@@ -9,14 +9,10 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jaxtyping import Array, Float
 
-from rheedium.audit import (
-    REQUIRED_REFERENCE_METADATA_KEYS,
-    ReferenceCase,
+from rheedium.audit.metrics import (
     dominant_peak_positions,
     extract_streak_profile,
-    load_reference_cases,
     normalized_cross_correlation,
     peak_centroid,
     peak_centroid_error_px,
@@ -24,25 +20,28 @@ from rheedium.audit import (
     specular_offset_px,
     streak_fwhm_px,
 )
+from rheedium.audit.reference_benchmark import load_reference_cases
+from rheedium.audit.reference_types import (
+    REQUIRED_REFERENCE_METADATA_KEYS,
+    ReferenceCase,
+)
 
-_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
-_REFERENCE_DIR: Path = (
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REFERENCE_DIR = (
     _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
 )
 
 
 def _synthetic_three_peak_image(
-    peak_positions_px: tuple[int, int, int],
-) -> Float[Array, "H W"]:
+    peak_positions_px,
+):
     """Create a simple three-peak detector image for metric tests."""
-    image_height: int = 80
-    image_width: int = 96
-    x_axis: Float[Array, "W"] = jnp.arange(image_width, dtype=jnp.float64)
-    y_axis: Float[Array, "H"] = jnp.arange(image_height, dtype=jnp.float64)
-    x_grid: Float[Array, "H W"]
-    y_grid: Float[Array, "H W"]
+    image_height = 80
+    image_width = 96
+    x_axis = jnp.arange(image_width, dtype=jnp.float64)
+    y_axis = jnp.arange(image_height, dtype=jnp.float64)
     x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
-    image: Float[Array, "H W"] = jnp.zeros((image_height, image_width))
+    image = jnp.zeros((image_height, image_width))
 
     for x0_px in peak_positions_px:
         image = image + jnp.exp(
@@ -56,7 +55,7 @@ def _synthetic_three_peak_image(
 class TestReferenceMetadata(chex.TestCase):
     """Tests for the stored audit benchmark metadata bundle."""
 
-    def test_reference_metadata_complete(self) -> None:
+    def test_reference_metadata_complete(self):
         """Each stored reference case has the required metadata fields."""
         metadata_paths = sorted(_REFERENCE_DIR.glob("*_metadata.json"))
         assert len(metadata_paths) >= 2
@@ -79,7 +78,7 @@ class TestReferenceMetadata(chex.TestCase):
             assert np.all(np.isfinite(image))
             assert np.all(image >= 0.0)
 
-    def test_load_reference_cases_reads_images(self) -> None:
+    def test_load_reference_cases_reads_images(self):
         """The loader returns the shipped reference cases with images."""
         cases = load_reference_cases(_REFERENCE_DIR)
         assert len(cases) >= 2
@@ -91,7 +90,7 @@ class TestReferenceMetadata(chex.TestCase):
 class TestAuditMetrics(chex.TestCase):
     """Tests for pixel-space realism metrics."""
 
-    def test_metrics_translation_invariant(self) -> None:
+    def test_metrics_translation_invariant(self):
         """Spacing and width metrics ignore rigid image translations."""
         image = _synthetic_three_peak_image((18, 42, 66))
         shifted_image = _synthetic_three_peak_image((24, 48, 72))
@@ -120,7 +119,7 @@ class TestAuditMetrics(chex.TestCase):
             atol=1e-10,
         )
 
-    def test_metrics_report_zero_error_on_identical_patterns(self) -> None:
+    def test_metrics_report_zero_error_on_identical_patterns(self):
         """Identical detector images produce perfect agreement metrics."""
         image = _synthetic_three_peak_image((22, 48, 74))
         peak = peak_centroid(image)

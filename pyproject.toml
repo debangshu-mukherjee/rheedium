@@ -139,7 +139,7 @@ source = ["rheedium"]
 omit = ["*/tests/*", "*/site-packages/*"]
 
 [tool.ruff]
-include = ["pyproject.toml", "src/**/*.py"]
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 line-length = 79
 target-version = "py312"
 exclude = [
@@ -236,7 +236,7 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "D",      # Ignore all docstring issues
-    "ANN",    # Ignore type annotations (tests often use Any)
+    "ANN",    # Tests are intentionally annotation-free
     "S",      # Ignore security issues (tests may use assert, random, etc.)
     "PLR",    # Ignore refactoring suggestions
     "ARG",    # Ignore unused arguments
@@ -250,6 +250,8 @@ convention = "numpy"
     "SIM",    # Ignore simplification suggestions
     "N",      # Ignore naming conventions
     "UP",     # Ignore upgrade suggestions
+    "E501",   # Long assertion lines and array literals are fine in tests
+    "PLC0415", # Tests may import inside functions to control optional deps
     "F401",   # Ignore unused imports (tests may import for side effects)
     "F841",   # Ignore unused variables
     "PLR2004", # Ignore magic value comparisons

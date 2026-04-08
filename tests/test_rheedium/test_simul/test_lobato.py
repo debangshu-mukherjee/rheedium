@@ -10,10 +10,9 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jaxtyping import Array, Float
 
-from rheedium.inout import lobato_potentials
-from rheedium.simul import (
+from rheedium.inout.xyz import lobato_potentials
+from rheedium.simul.form_factors import (
     kirkland_form_factor,
     kirkland_projected_potential,
     load_lobato_parameters,

@@ -12,26 +12,24 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-from jaxtyping import Float
-from numpy import ndarray as NDArray  # noqa: N812
 
 from rheedium.recon.surface_builder import (
     add_adsorbate_layer,
     apply_surface_reconstruction,
     create_surface_slab,
 )
-from rheedium.types import CrystalStructure, create_crystal_structure
-from rheedium.ucell import build_cell_vectors
+from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.ucell.unitcell import build_cell_vectors
 
-_DATA_DIR: Path = Path(__file__).resolve().parents[2] / "test_data" / "recon"
+_DATA_DIR = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
 
-def _load(name: str) -> dict[str, object]:
+def _load(name):
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
 
 
-def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
+def _make_cubic_bulk(a=2.0):
     """Build a minimal cubic bulk crystal for direct slab tests."""
     frac_positions = jnp.array(
         [
@@ -51,7 +49,7 @@ def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
     )
 
 
-def _make_test_slab() -> CrystalStructure:
+def _make_test_slab():
     """Build a simple orthorhombic slab for direct reconstruction tests."""
     cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
     cart_positions = jnp.array(
@@ -78,7 +76,7 @@ def _make_test_slab() -> CrystalStructure:
 class TestSurfaceBuilderDirect(chex.TestCase):
     """Direct unit tests for branch-heavy geometry builders."""
 
-    def test_create_surface_slab_handles_aligned_surface_normal(self) -> None:
+    def test_create_surface_slab_handles_aligned_surface_normal(self):
         """(001) cuts should keep the in-plane cubic metric."""
         slab = create_surface_slab(
             _make_cubic_bulk(),
@@ -102,7 +100,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_create_surface_slab_rotates_non_aligned_surface_normal(
         self,
-    ) -> None:
+    ):
         """Non-(001) cuts should still yield a finite, bounded slab."""
         slab = create_surface_slab(
             _make_cubic_bulk(),
@@ -122,7 +120,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_apply_surface_reconstruction_moves_only_requested_surface_atoms(
         self,
-    ) -> None:
+    ):
         """Only the first n displaced surface atoms should be updated."""
         reconstructed = apply_surface_reconstruction(
             _make_test_slab(),
@@ -155,7 +153,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_apply_surface_reconstruction_shears_the_in_plane_cell(
         self,
-    ) -> None:
+    ):
         """Off-diagonal reconstruction matrices should shear the cell."""
         reconstructed = apply_surface_reconstruction(
             _make_test_slab(),
@@ -183,7 +181,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_add_adsorbate_layer_appends_weighted_cartesian_positions(
         self,
-    ) -> None:
+    ):
         """Adsorbates should be appended in both coordinate systems."""
         slab = _make_test_slab()
         decorated = add_adsorbate_layer(
@@ -225,51 +223,51 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
     """Tests for create_surface_slab (validated via fixtures)."""
 
-    def test_returns_four_columns(self) -> None:
+    def test_returns_four_columns(self):
         """Cart positions should have 4 columns [x,y,z,Z]."""
-        d: dict = _load("slab_001.npz")
+        d = _load("slab_001.npz")
         assert d["cart_positions"].shape[1] == 4
 
-    def test_slab_c_equals_thickness_plus_vacuum(self) -> None:
+    def test_slab_c_equals_thickness_plus_vacuum(self):
         """Cell c parameter should equal slab + vacuum thickness."""
-        d: dict = _load("slab_001.npz")
-        c: float = float(d["cell_lengths"][2])
+        d = _load("slab_001.npz")
+        c = float(d["cell_lengths"][2])
         chex.assert_trees_all_close(c, 25.0, atol=1e-6)
 
-    def test_slab_has_atoms(self) -> None:
+    def test_slab_has_atoms(self):
         """Slab should contain at least one atom."""
-        d: dict = _load("slab_001.npz")
+        d = _load("slab_001.npz")
         assert d["cart_positions"].shape[0] > 0
 
-    def test_atoms_within_slab_thickness(self) -> None:
+    def test_atoms_within_slab_thickness(self):
         """All atom z-coordinates should be within [0, thickness]."""
-        d: dict = _load("slab_001.npz")
-        z: Float[NDArray, "N"] = d["cart_positions"][:, 2]
+        d = _load("slab_001.npz")
+        z = d["cart_positions"][:, 2]
         assert float(z.min()) >= -0.1
         assert float(z.max()) <= 10.1
 
-    def test_atomic_numbers_preserved(self) -> None:
+    def test_atomic_numbers_preserved(self):
         """Slab atoms should have same Z as bulk crystal."""
-        bulk: dict = _load("cubic_crystal.npz")
-        slab: dict = _load("slab_001.npz")
-        bulk_z: set = set(bulk["cart_positions"][:, 3])
-        slab_z: set = set(slab["cart_positions"][:, 3])
+        bulk = _load("cubic_crystal.npz")
+        slab = _load("slab_001.npz")
+        bulk_z = set(bulk["cart_positions"][:, 3])
+        slab_z = set(slab["cart_positions"][:, 3])
         assert slab_z.issubset(bulk_z)
 
-    def test_stoichiometry_preserved_mgo(self) -> None:
+    def test_stoichiometry_preserved_mgo(self):
         """MgO slab should have Mg:O ratio close to 1:1."""
-        d: dict = _load("mgo_slab.npz")
-        z_nums: Float[NDArray, "N"] = d["cart_positions"][:, 3]
-        n_mg: int = int(np.sum(np.abs(z_nums - 12.0) < 0.5))
-        n_o: int = int(np.sum(np.abs(z_nums - 8.0) < 0.5))
+        d = _load("mgo_slab.npz")
+        z_nums = d["cart_positions"][:, 3]
+        n_mg = int(np.sum(np.abs(z_nums - 12.0) < 0.5))
+        n_o = int(np.sum(np.abs(z_nums - 8.0) < 0.5))
         assert n_mg > 0
         assert n_o > 0
-        ratio: float = n_mg / (n_o + 1e-10)
+        ratio = n_mg / (n_o + 1e-10)
         assert 0.5 < ratio < 2.0
 
-    def test_cell_angles_valid(self) -> None:
+    def test_cell_angles_valid(self):
         """All output cell angles should be in (0, 180)."""
-        d: dict = _load("slab_001.npz")
+        d = _load("slab_001.npz")
         for angle in d["cell_angles"]:
             assert 0.0 < float(angle) < 180.0
 
@@ -278,38 +276,38 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         ("110", "slab_110.npz"),
         ("111", "slab_111.npz"),
     )
-    def test_various_orientations(self, fname: str) -> None:
+    def test_various_orientations(self, fname):
         """Slabs for various Miller indices should have atoms."""
-        d: dict = _load(fname)
+        d = _load(fname)
         assert d["cart_positions"].shape[0] > 0
         assert d["cart_positions"].shape[1] == 4
 
-    def test_thicker_slab_has_more_atoms(self) -> None:
+    def test_thicker_slab_has_more_atoms(self):
         """A thicker slab should contain more atoms."""
-        thin: dict = _load("thin_slab.npz")
-        thick: dict = _load("slab_001.npz")
+        thin = _load("thin_slab.npz")
+        thick = _load("slab_001.npz")
         assert thick["cart_positions"].shape[0] >= (
             thin["cart_positions"].shape[0]
         )
 
-    def test_frac_and_cart_shapes_match(self) -> None:
+    def test_frac_and_cart_shapes_match(self):
         """Fractional and Cartesian arrays should match shape."""
-        d: dict = _load("slab_001.npz")
+        d = _load("slab_001.npz")
         assert d["frac_positions"].shape == d["cart_positions"].shape
 
 
 class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
     """Tests for apply_surface_reconstruction (via fixtures)."""
 
-    def test_reconstruction_has_atoms(self) -> None:
+    def test_reconstruction_has_atoms(self):
         """Reconstructed slab should have atoms."""
-        d: dict = _load("recon_2x2.npz")
+        d = _load("recon_2x2.npz")
         assert d["cart_positions"].shape[0] > 0
 
-    def test_2x2_expands_cell(self) -> None:
+    def test_2x2_expands_cell(self):
         """2x2 reconstruction should roughly double a and b."""
-        orig: dict = _load("slab_001.npz")
-        recon: dict = _load("recon_2x2.npz")
+        orig = _load("slab_001.npz")
+        recon = _load("recon_2x2.npz")
         chex.assert_trees_all_close(
             float(recon["cell_lengths"][0]),
             2.0 * float(orig["cell_lengths"][0]),
@@ -321,19 +319,19 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
             atol=0.5,
         )
 
-    def test_atom_count_scales(self) -> None:
+    def test_atom_count_scales(self):
         """2x2 recon should have more atoms than 1x1."""
-        orig: dict = _load("slab_001.npz")
-        recon: dict = _load("recon_2x2.npz")
+        orig = _load("slab_001.npz")
+        recon = _load("recon_2x2.npz")
         assert recon["cart_positions"].shape[0] > (
             orig["cart_positions"].shape[0]
         )
 
-    def test_displacement_moves_atoms(self) -> None:
+    def test_displacement_moves_atoms(self):
         """Non-zero displacement should change positions."""
-        no_disp: dict = _load("recon_no_disp.npz")
-        with_disp: dict = _load("recon_with_disp.npz")
-        diff: float = float(
+        no_disp = _load("recon_no_disp.npz")
+        with_disp = _load("recon_with_disp.npz")
+        diff = float(
             np.sum(
                 np.abs(
                     no_disp["cart_positions"][:, :3]
@@ -347,41 +345,41 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
 class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
     """Tests for add_adsorbate_layer (via fixtures)."""
 
-    def test_adsorbate_increases_atom_count(self) -> None:
+    def test_adsorbate_increases_atom_count(self):
         """Adding adsorbates should increase total atom count."""
-        orig: dict = _load("slab_001.npz")
-        ads: dict = _load("ads_full.npz")
+        orig = _load("slab_001.npz")
+        ads = _load("ads_full.npz")
         assert ads["cart_positions"].shape[0] == (
             orig["cart_positions"].shape[0] + 1
         )
 
-    def test_coverage_weights_atomic_number(self) -> None:
+    def test_coverage_weights_atomic_number(self):
         """Coverage 0.5 should halve the adsorbate Z value."""
-        orig: dict = _load("slab_001.npz")
-        ads: dict = _load("ads_half.npz")
-        n_orig: int = orig["cart_positions"].shape[0]
-        ads_z: float = float(ads["cart_positions"][n_orig, 3])
+        orig = _load("slab_001.npz")
+        ads = _load("ads_half.npz")
+        n_orig = orig["cart_positions"].shape[0]
+        ads_z = float(ads["cart_positions"][n_orig, 3])
         chex.assert_trees_all_close(ads_z, 4.0, atol=1e-6)
 
-    def test_cell_parameters_unchanged(self) -> None:
+    def test_cell_parameters_unchanged(self):
         """Adsorbates should not change cell parameters."""
-        orig: dict = _load("slab_001.npz")
-        ads: dict = _load("ads_full.npz")
+        orig = _load("slab_001.npz")
+        ads = _load("ads_full.npz")
         np.testing.assert_allclose(ads["cell_lengths"], orig["cell_lengths"])
         np.testing.assert_allclose(ads["cell_angles"], orig["cell_angles"])
 
-    def test_multiple_adsorbates(self) -> None:
+    def test_multiple_adsorbates(self):
         """Should handle multiple adsorbate atoms."""
-        orig: dict = _load("slab_001.npz")
-        ads: dict = _load("ads_multi.npz")
+        orig = _load("slab_001.npz")
+        ads = _load("ads_multi.npz")
         assert ads["cart_positions"].shape[0] == (
             orig["cart_positions"].shape[0] + 2
         )
 
-    def test_zero_coverage_zeroes_z(self) -> None:
+    def test_zero_coverage_zeroes_z(self):
         """Coverage 0.0 should produce zero effective Z."""
-        orig: dict = _load("slab_001.npz")
-        ads: dict = _load("ads_zero.npz")
-        n_orig: int = orig["cart_positions"].shape[0]
-        ads_z: float = float(ads["cart_positions"][n_orig, 3])
+        orig = _load("slab_001.npz")
+        ads = _load("ads_zero.npz")
+        n_orig = orig["cart_positions"].shape[0]
+        ads_z = float(ads["cart_positions"][n_orig, 3])
         chex.assert_trees_all_close(ads_z, 0.0, atol=1e-10)
