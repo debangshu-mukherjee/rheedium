@@ -1,4 +1,4 @@
-"""Test suite for recon/surface_defects.py.
+"""Test suite for procs/surface_modifier.py.
 
 Tests vicinal surface step splitting and incoherent domain averaging.
 """
@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
 
-from rheedium.recon.surface_defects import (
+from rheedium.procs.surface_modifier import (
     incoherent_domain_average,
     vicinal_surface_step_splitting,
 )

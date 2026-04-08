@@ -16,8 +16,10 @@ Routine Listings
     Data input/output operations for crystal structures and RHEED images.
 :mod:`plots`
     Visualization tools for RHEED patterns and crystal structures.
+:mod:`procs`
+    Differentiable procedural models and preprocessing utilities.
 :mod:`recon`
-    Surface reconstruction analysis and modeling utilities.
+    Inverse-problem utilities for inferring structure from RHEED data.
 :mod:`simul`
     RHEED pattern simulation using kinematic diffraction theory.
 :mod:`tools`
@@ -75,14 +77,15 @@ if (
 jax.config.update("jax_enable_x64", True)
 
 from . import (  # noqa: E402, I001
+    audit,
     inout,
     plots,
+    procs,
     recon,
     simul,
     tools,
     types,
     ucell,
-    audit,
 )
 
 __version__: str = version("rheedium")
@@ -91,6 +94,7 @@ __all__: list[str] = [
     "audit",
     "inout",
     "plots",
+    "procs",
     "recon",
     "simul",
     "tools",

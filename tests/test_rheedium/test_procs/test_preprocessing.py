@@ -1,4 +1,4 @@
-"""Test suite for recon/preprocessing.py.
+"""Test suite for procs/preprocessing.py.
 
 Verifies differentiable preprocessing pipeline for experimental RHEED
 images: soft masking, background subtraction, log transform,
@@ -10,7 +10,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from rheedium.recon.preprocessing import (
+from rheedium.procs.preprocessing import (
     log_intensity_transform,
     normalize_image,
     preprocess_experimental,

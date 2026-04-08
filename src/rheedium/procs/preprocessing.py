@@ -100,8 +100,10 @@ def soft_threshold_mask(
     >>> import jax.numpy as jnp
     >>> import rheedium as rh
     >>> dist = jnp.linspace(0.0, 1.0, 64).reshape(8, 8)
-    >>> mask = rh.recon.soft_threshold_mask(
-    ...     dist, jnp.float64(0.5), jnp.float64(20.0),
+    >>> mask = rh.procs.soft_threshold_mask(
+    ...     dist,
+    ...     jnp.float64(0.5),
+    ...     jnp.float64(20.0),
     ... )
     >>> mask.shape
     (8, 8)
@@ -144,7 +146,7 @@ def subtract_background(
     >>> import rheedium as rh
     >>> img = jnp.ones((8, 8)) * 100.0
     >>> bg = jnp.ones((8, 8)) * 30.0
-    >>> sub = rh.recon.subtract_background(img, bg)
+    >>> sub = rh.procs.subtract_background(img, bg)
     >>> float(sub[0, 0])
     70.0
     """
@@ -198,7 +200,7 @@ def log_intensity_transform(
     >>> import jax.numpy as jnp
     >>> import rheedium as rh
     >>> img = jnp.array([[0.0, 1.0], [100.0, 10000.0]])
-    >>> transformed = rh.recon.log_intensity_transform(img)
+    >>> transformed = rh.procs.log_intensity_transform(img)
     >>> transformed.shape
     (2, 2)
     """
@@ -241,7 +243,7 @@ def normalize_image(
     >>> import jax.numpy as jnp
     >>> import rheedium as rh
     >>> img = jnp.array([[0.0, 50.0], [100.0, 200.0]])
-    >>> normed = rh.recon.normalize_image(img)
+    >>> normed = rh.procs.normalize_image(img)
     >>> float(normed.min()), float(normed.max())
     (0.0, 1.0)
     """
@@ -319,8 +321,10 @@ def preprocess_experimental(
     >>> import rheedium as rh
     >>> raw = jnp.ones((64, 64)) * 500.0
     >>> bg = jnp.ones((64, 64)) * 100.0
-    >>> processed = rh.recon.preprocess_experimental(
-    ...     raw, background=bg, log_scale=True,
+    >>> processed = rh.procs.preprocess_experimental(
+    ...     raw,
+    ...     background=bg,
+    ...     log_scale=True,
     ... )
     >>> processed.shape
     (64, 64)

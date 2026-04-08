@@ -1,11 +1,11 @@
-"""Surface defect models for RHEED pattern modification.
+"""Differentiable surface modifiers for RHEED forward models.
 
 Extended Summary
 ----------------
-Provides functions for modeling the effect of surface defects on
-RHEED intensity profiles. Includes vicinal surface step splitting
-of crystal truncation rods and incoherent averaging over multiple
-surface domains with different orientations or terminations.
+Provides differentiable modifiers that perturb ideal surfaces before or
+after forward simulation. Current functionality includes vicinal step
+splitting of crystal truncation rods and incoherent averaging over
+multiple surface domains with different orientations or terminations.
 
 Routine Listings
 ----------------
@@ -20,8 +20,8 @@ Notes
 -----
 All functions are implemented with pure JAX operations and are
 differentiable via ``jax.grad``. Step height, terrace width, and
-domain fractions are continuous parameters that can be optimized
-against experimental data.
+domain fractions are continuous parameters that inverse models can
+optimize against experimental data.
 """
 
 import jax.numpy as jnp
@@ -78,6 +78,8 @@ def vicinal_surface_step_splitting(
        appropriate for a regular step array.
     4. Normalize to unit maximum.
     """
+    del hk_index  # Reserved for future rod-dependent step models.
+
     step_height_angstrom: Float[Array, ""] = jnp.asarray(
         step_height_angstrom, dtype=jnp.float64
     )

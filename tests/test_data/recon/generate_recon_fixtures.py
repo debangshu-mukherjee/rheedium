@@ -43,7 +43,7 @@ OUT_DIR: Path = Path(__file__).resolve().parent
 
 sys.path.insert(0, str(SRC_ROOT))
 
-from rheedium.recon import (
+from rheedium.procs import (
     add_adsorbate_layer,
     apply_surface_reconstruction,
     create_surface_slab,

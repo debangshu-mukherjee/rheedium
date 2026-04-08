@@ -1,4 +1,4 @@
-"""Test suite for recon/surface_builder.py.
+"""Test suite for procs/surface_builder.py.
 
 Tests surface slab construction, surface reconstruction application,
 and adsorbate layer addition. All slabs are loaded from pre-built
@@ -13,7 +13,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
 
-from rheedium.recon.surface_builder import (
+from rheedium.procs.surface_builder import (
     add_adsorbate_layer,
     apply_surface_reconstruction,
     create_surface_slab,

@@ -1,13 +1,13 @@
-"""Pre-parameterized surface reconstruction library.
+"""Pre-parameterized differentiable surface model library.
 
 Extended Summary
 ----------------
-Provides factory functions that return ``CrystalStructure`` slabs
-for common experimentally studied surfaces. Each function constructs
-a bulk unit cell with known lattice parameters, creates a surface
-slab of standard thickness, and optionally applies the canonical
-surface reconstruction. All parameters are JAX-traceable scalars
-so lattice constants and temperature can be optimized.
+Provides factory functions that return ``CrystalStructure`` slabs for
+common experimentally studied surfaces. Each function constructs a bulk
+unit cell with known lattice parameters, creates a surface slab of
+standard thickness, and optionally applies the canonical surface
+reconstruction. All parameters are JAX-traceable scalars so lattice
+constants and defect or process variables can be optimized.
 
 Routine Listings
 ----------------
