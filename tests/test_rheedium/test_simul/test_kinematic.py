@@ -18,8 +18,10 @@ from rheedium.simul import (
     kinematic_spot_simulator,
     make_ewald_sphere,
     project_on_detector,
-    simple_structure_factor as kinematic_structure_factor,
     wavelength_ang as kinematic_wavelength,
+)
+from rheedium.simul.kinematic import (
+    simple_structure_factor as kinematic_structure_factor,
 )
 from rheedium.types import create_crystal_structure
 from rheedium.ucell import miller_to_reciprocal, reciprocal_lattice_vectors

@@ -17,8 +17,8 @@ from rheedium.simul import (
     debye_waller_factor,
     get_mean_square_displacement,
     kirkland_form_factor,
-    load_kirkland_parameters,
 )
+from rheedium.simul.form_factors import load_kirkland_parameters
 from rheedium.tools import jax_safe
 
 

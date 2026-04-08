@@ -43,71 +43,12 @@ through ``jnp.fft``.
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from beartype import beartype
-from beartype.typing import Callable, Tuple
+from beartype.typing import Callable
 from jaxtyping import Array, Complex, Float, jaxtyped
-from numpy import ndarray as NDArray  # noqa: N812
 
+from rheedium.tools.quadrature import gauss_hermite_nodes_weights
 from rheedium.types import scalar_float
-
-
-@jaxtyped(typechecker=beartype)
-def gauss_hermite_nodes_weights(
-    n_points: int,
-) -> Tuple[Float[Array, " N"], Float[Array, " N"]]:
-    r"""Compute Gauss-Hermite quadrature nodes and weights.
-
-    Extended Summary
-    ----------------
-    Returns the nodes :math:`x_i` and weights :math:`w_i` for
-    Gauss-Hermite quadrature, which integrates functions against the
-    weight :math:`\exp(-x^2)`:
-
-    .. math::
-
-        \int_{-\infty}^{\infty} f(x) e^{-x^2} dx
-        \approx \sum_{i=1}^{n} w_i f(x_i)
-
-    To average over a Gaussian distribution
-    :math:`\mathcal{N}(\mu, \sigma^2)`, map nodes as
-    :math:`\alpha_i = \mu + \sqrt{2} \sigma x_i` and normalize by
-    :math:`1/\sqrt{\pi}`.
-
-    Parameters
-    ----------
-    n_points : int
-        Number of quadrature nodes. Must be positive. For RHEED
-        averaging, 5--9 is sufficient.
-
-    Returns
-    -------
-    nodes : Float[Array, " N"]
-        Quadrature nodes :math:`x_i`.
-    weights : Float[Array, " N"]
-        Quadrature weights :math:`w_i`.
-
-    Notes
-    -----
-    1. **Compute nodes and weights** --
-       Use NumPy polynomial Gauss-Hermite routine (exact for
-       polynomials up to degree :math:`2n - 1`).
-    2. **Convert to JAX arrays** --
-       Cast to float64 JAX arrays for downstream computation.
-
-    Examples
-    --------
-    >>> import rheedium as rh
-    >>> nodes, weights = rh.simul.gauss_hermite_nodes_weights(7)
-    >>> nodes.shape
-    (7,)
-    """
-    np_nodes: Float[NDArray, "N"]
-    np_weights: Float[NDArray, "N"]
-    np_nodes, np_weights = np.polynomial.hermite.hermgauss(n_points)
-    nodes: Float[Array, " N"] = jnp.asarray(np_nodes, dtype=jnp.float64)
-    weights: Float[Array, " N"] = jnp.asarray(np_weights, dtype=jnp.float64)
-    return nodes, weights
 
 
 @jaxtyped(typechecker=beartype)

@@ -12,8 +12,6 @@ Routine Listings
     Calculate angle in degrees between two vectors.
 :func:`atom_scraper`
     Filter atoms within specified depth from surface along zone axis.
-:func:`bessel_kv`
-    Modified Bessel function of second kind, arbitrary order.
 :func:`build_cell_vectors`
     Convert lattice parameters to Cartesian cell vectors.
 :func:`compute_lengths_angles`
@@ -32,7 +30,6 @@ Routine Listings
     Calculate reciprocal unit cell from direct cell vectors.
 """
 
-from .bessel import bessel_kv
 from .helper import (
     angle_in_degrees,
     compute_lengths_angles,
@@ -52,7 +49,6 @@ from .unitcell import (
 __all__: list[str] = [
     "angle_in_degrees",
     "atom_scraper",
-    "bessel_kv",
     "build_cell_vectors",
     "bulk_to_slice",
     "compute_lengths_angles",

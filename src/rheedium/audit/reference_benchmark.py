@@ -214,8 +214,8 @@ def simulate_detector_image_from_metadata(
     from ..simul import (
         detector_psf_convolve,
         ewald_simulator,
-        gauss_hermite_nodes_weights,
     )
+    from ..tools import gauss_hermite_nodes_weights
 
     metadata = _coerce_metadata(reference)
     if metadata.simulation_mode != "ewald":

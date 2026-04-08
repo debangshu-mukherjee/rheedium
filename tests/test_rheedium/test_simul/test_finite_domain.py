@@ -19,8 +19,8 @@ from rheedium.simul import (
     compute_shell_sigma,
     extent_to_rod_sigma,
     finite_domain_intensities,
-    rod_ewald_overlap,
 )
+from rheedium.simul.finite_domain import rod_ewald_overlap
 from rheedium.types import create_crystal_structure
 
 

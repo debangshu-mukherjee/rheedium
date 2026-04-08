@@ -12,7 +12,7 @@ import pytest
 from absl.testing import parameterized
 from jaxtyping import Array, Float
 
-from rheedium.simul import bessel_k0, bessel_k1
+from rheedium.tools import bessel_k0, bessel_k1
 
 
 class TestBesselK0(chex.TestCase, parameterized.TestCase):

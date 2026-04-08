@@ -1,19 +1,44 @@
-"""Audit utilities for benchmark-driven RHEED validation.
+"""Audit utilities for RHEED simulation validation.
 
 Extended Summary
 ----------------
-This module provides experiment-facing audit tools for comparing
-simulated detector images against stored reference cases. The initial
-focus is realism benchmarking: image similarity metrics, peak and
-streak measurements, and a lightweight benchmark runner that
-re-simulates reference configurations and reports quantitative errors.
+This module provides two complementary audit tracks for the rheedium
+simulation pipeline:
+
+1. **Physics invariants** (:mod:`.invariants`) verify that any correct
+   RHEED simulator must obey explicit physical laws — elastic-scattering
+   closure, Friedel symmetry, form-factor positivity and monotonicity,
+   relativistic wavelength consistency. These checks are stateless with
+   respect to disk and catch sign errors, missing factors, normalization
+   mistakes, and frame-of-reference bugs that regression comparison
+   against stored images cannot.
+2. **Reference benchmarking** (:mod:`.reference_benchmark`,
+   :mod:`.metrics`) compares regenerated simulations against stored
+   detector images using image-space similarity metrics. These detect
+   *changes* relative to a baseline rather than physics correctness, and
+   are intended as a guardrail against unintended drift.
 
 Routine Listings
 ----------------
+:class:`InvariantResult`
+    Structured pass/fail container for one physics invariant check.
 :func:`benchmark_reference_case`
     Compare one stored reference case against a regenerated simulation.
 :func:`benchmark_reference_suite`
     Run the full reference bundle and return an aggregate summary.
+:func:`check_elastic_closure_ewald`
+    Verify ``ewald_simulator`` reflections lie on the Ewald sphere.
+:func:`check_form_factor_kirkland_lobato_close`
+    Coarse cross-check that the two parameterizations agree.
+:func:`check_form_factor_monotonic_decrease`
+    Verify electron form factors decrease monotonically with q.
+:func:`check_form_factor_positivity`
+    Verify electron form factors are positive over their valid range.
+:func:`check_friedel_law_structure_factor`
+    Verify :math:`I(\\mathbf{G}) = I(-\\mathbf{G})` for the kinematic
+    structure factor.
+:func:`check_wavelength_relativistic_consistency`
+    Verify ``wavelength_ang`` matches an independent CODATA evaluation.
 :func:`dominant_peak_positions`
     Extract the strongest peak positions from an image projection.
 :func:`extract_streak_profile`
@@ -28,6 +53,8 @@ Routine Listings
     Compare bright-region centroids between two images.
 :func:`rod_spacing_error_px`
     Compare peak-to-peak spacing between two patterns.
+:func:`run_default_invariants`
+    Run the full default physics-invariant suite.
 :func:`simulate_detector_image_from_metadata`
     Regenerate a reference detector image from its stored metadata.
 :func:`specular_offset_px`
@@ -38,14 +65,26 @@ Routine Listings
 Notes
 -----
 The benchmark fixtures currently shipped with the test suite are
-synthetic detector images generated from rheedium itself. They are used
-to validate the audit pipeline and data format until calibrated
-experimental references are added.
+synthetic detector images generated from rheedium itself. They validate
+the benchmark pipeline and data format until calibrated experimental
+references are added. The physics-invariant suite, by contrast, needs
+no fixtures and is suitable for use as a CI gate against silent
+simulation regressions.
 """
 
 from importlib import import_module
 from typing import Any
 
+from .invariants import (
+    InvariantResult,
+    check_elastic_closure_ewald,
+    check_form_factor_kirkland_lobato_close,
+    check_form_factor_monotonic_decrease,
+    check_form_factor_positivity,
+    check_friedel_law_structure_factor,
+    check_wavelength_relativistic_consistency,
+    run_default_invariants,
+)
 from .metrics import (
     dominant_peak_positions,
     extract_streak_profile,
@@ -87,8 +126,15 @@ __all__: list[str] = [
     "benchmark_reference_suite",
     "BenchmarkCaseResult",
     "BenchmarkSuiteResult",
+    "check_elastic_closure_ewald",
+    "check_form_factor_kirkland_lobato_close",
+    "check_form_factor_monotonic_decrease",
+    "check_form_factor_positivity",
+    "check_friedel_law_structure_factor",
+    "check_wavelength_relativistic_consistency",
     "dominant_peak_positions",
     "extract_streak_profile",
+    "InvariantResult",
     "load_reference_cases",
     "normalized_cross_correlation",
     "peak_centroid",
@@ -97,6 +143,7 @@ __all__: list[str] = [
     "ReferenceMetadata",
     "REQUIRED_REFERENCE_METADATA_KEYS",
     "rod_spacing_error_px",
+    "run_default_invariants",
     "simulate_detector_image_from_metadata",
     "specular_offset_px",
     "streak_fwhm_px",

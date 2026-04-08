@@ -12,7 +12,7 @@ from absl.testing import parameterized
 from scipy.special import kv as scipy_kv
 from scipy.special import iv as scipy_iv
 
-from rheedium.ucell.bessel import (
+from rheedium.tools.special import (
     _bessel_iv_series,
     _bessel_k0_series,
     _bessel_k_half,

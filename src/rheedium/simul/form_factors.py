@@ -71,7 +71,7 @@ from rheedium.types import (
     scalar_int,
 )
 
-from .bessel import bessel_k0, bessel_k1
+from rheedium.tools.special import bessel_k0, bessel_k1
 
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()

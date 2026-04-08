@@ -17,12 +17,12 @@ import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
 
-from rheedium.simul import (
+from rheedium.simul.multislice import (
     build_transmission_function,
-    crystal_projected_potential,
     fresnel_propagator,
     multislice_one_step,
 )
+from rheedium.simul.potential import crystal_projected_potential
 
 
 def _make_grid_params() -> tuple[tuple[int, int], jnp.ndarray, float, float]:

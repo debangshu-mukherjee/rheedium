@@ -17,9 +17,9 @@ from rheedium.simul import (
     coherence_envelope,
     detector_psf_convolve,
     energy_spread_average,
-    gauss_hermite_nodes_weights,
     instrument_broadened_pattern,
 )
+from rheedium.tools import gauss_hermite_nodes_weights
 from rheedium.types import scalar_float
 
 H: int = 32
