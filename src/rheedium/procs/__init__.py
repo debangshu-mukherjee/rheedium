@@ -12,12 +12,28 @@ Routine Listings
 ----------------
 :func:`add_adsorbate_layer`
     Add an adsorbate layer with fractional coverage to a slab.
+:func:`apply_antisite_field`
+    Blend host and substitute species with continuous site-wise mixing.
+:func:`apply_interstitial_field`
+    Append continuously weighted interstitial candidates.
+:func:`apply_misorientation_distribution`
+    Average explicit orientation samples under a smooth angle density.
+:func:`apply_step_edge_field`
+    Apply a smooth periodic step-edge displacement field to a slab.
+:func:`apply_surface_displacement_field`
+    Apply per-atom displacement vectors to the top surface region.
+:func:`apply_surface_occupancy_field`
+    Attenuate effective atomic numbers near the top surface.
 :func:`apply_surface_reconstruction`
     Apply an m x n surface reconstruction to a slab.
+:func:`apply_vacancy_field`
+    Attenuate site scattering strength with continuous occupancies.
 :func:`create_surface_slab`
     Construct a surface slab from a bulk crystal.
 :func:`gaas001_2x4`
     GaAs(001)-2x4 beta2 As-rich surface slab.
+:func:`grain_distribution_average`
+    Incoherently average patterns from a grain population.
 :func:`incoherent_domain_average`
     Incoherently average RHEED patterns from multiple domains.
 :func:`log_intensity_transform`
@@ -50,6 +66,15 @@ structure processing. This namespace is intentionally broader than the
 inverse-facing :mod:`rheedium.recon` package.
 """
 
+from .crystal_defects import (
+    apply_antisite_field,
+    apply_interstitial_field,
+    apply_vacancy_field,
+)
+from .grains import (
+    apply_misorientation_distribution,
+    grain_distribution_average,
+)
 from .library import (
     gaas001_2x4,
     mgo001_bulk_terminated,
@@ -71,15 +96,26 @@ from .surface_builder import (
     create_surface_slab,
 )
 from .surface_modifier import (
+    apply_step_edge_field,
+    apply_surface_displacement_field,
+    apply_surface_occupancy_field,
     incoherent_domain_average,
     vicinal_surface_step_splitting,
 )
 
 __all__: list[str] = [
     "add_adsorbate_layer",
+    "apply_antisite_field",
+    "apply_interstitial_field",
+    "apply_misorientation_distribution",
+    "apply_step_edge_field",
+    "apply_surface_displacement_field",
+    "apply_surface_occupancy_field",
     "apply_surface_reconstruction",
+    "apply_vacancy_field",
     "create_surface_slab",
     "gaas001_2x4",
+    "grain_distribution_average",
     "incoherent_domain_average",
     "log_intensity_transform",
     "mgo001_bulk_terminated",

@@ -27,6 +27,8 @@ Routine Listings
     Convert pymatgen Structure to CrystalStructure.
 :func:`kirkland_potentials`
     Loads Kirkland scattering factors from CSV file.
+:func:`load_from_h5`
+    Load one or more rheedium PyTrees from an HDF5 file.
 :func:`lobato_potentials`
     Loads Lobato-van Dyck scattering factor parameters
     from CSV file.
@@ -50,6 +52,8 @@ Routine Listings
     Parse full trajectory from vasprun.xml.
 :func:`parse_xyz`
     Parses XYZ files and returns atoms with element symbols and 3D coordinates.
+:func:`save_to_h5`
+    Save one or more rheedium PyTrees to an HDF5 file.
 :func:`symmetry_expansion`
     Apply symmetry operations to expand fractional positions.
 :func:`to_ase`
@@ -70,6 +74,7 @@ ImportError with installation instructions if not available.
 
 from .cif import parse_cif, symmetry_expansion
 from .crystal import lattice_to_cell_params, parse_crystal, xyz_to_crystal
+from .hdf5 import load_from_h5, save_to_h5
 from .interop import from_ase, from_pymatgen, to_ase, to_pymatgen
 from .poscar import parse_poscar
 from .tiff import (
@@ -102,6 +107,7 @@ __all__: list[str] = [
     "kirkland_potentials",
     "lobato_potentials",
     "lattice_to_cell_params",
+    "load_from_h5",
     "load_tiff_as_rheed_image",
     "load_tiff_sequence",
     "normalize_sequence",
@@ -111,6 +117,7 @@ __all__: list[str] = [
     "parse_vaspxml",
     "parse_vaspxml_trajectory",
     "parse_xyz",
+    "save_to_h5",
     "symmetry_expansion",
     "to_ase",
     "to_pymatgen",

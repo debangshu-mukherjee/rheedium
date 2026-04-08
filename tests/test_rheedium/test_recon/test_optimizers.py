@@ -1,4 +1,4 @@
-"""Tests for recon/losses.py and recon/optimizers.py.
+"""Tests for recon/optimizers.py.
 
 Verifies the first optimizer-based reconstruction routines against a
 small linear forward model so convergence is deterministic and cheap to
@@ -15,7 +15,6 @@ from rheedium.recon import (
     adam_reconstruction,
     gauss_newton_least_squares,
     gauss_newton_reconstruction,
-    weighted_image_residual,
     weighted_mean_squared_error,
 )
 
@@ -49,39 +48,6 @@ def _initial_params() -> dict[str, jnp.ndarray]:
         "scale": jnp.float64(0.0),
         "offset": jnp.float64(0.0),
     }
-
-
-class TestWeightedLosses(chex.TestCase):
-    """Tests for weighted residual and loss builders."""
-
-    def test_weighted_image_residual_scales_by_sqrt_weights(self):
-        """Residual weights should enter as square roots."""
-        simulated = jnp.array([[3.0, 4.0], [5.0, 6.0]])
-        experimental = jnp.ones((2, 2))
-        weight_map = jnp.array([[1.0, 0.0], [4.0, 0.25]])
-
-        residual = weighted_image_residual(
-            simulated_image=simulated,
-            experimental_image=experimental,
-            weight_map=weight_map,
-        )
-
-        expected = jnp.array([[2.0, 0.0], [8.0, 2.5]])
-        chex.assert_trees_all_close(residual, expected, atol=1e-12)
-
-    def test_weighted_mean_squared_error_normalizes_by_weight_sum(self):
-        """Weighted MSE should divide by the sum of retained weights."""
-        simulated = jnp.array([[2.0, 3.0], [4.0, 5.0]])
-        experimental = jnp.array([[1.0, 1.0], [1.0, 1.0]])
-        weight_map = jnp.array([[1.0, 1.0], [0.0, 0.0]])
-
-        loss = weighted_mean_squared_error(
-            simulated_image=simulated,
-            experimental_image=experimental,
-            weight_map=weight_map,
-        )
-
-        chex.assert_trees_all_close(loss, 2.5, atol=1e-12)
 
 
 class TestGaussNewtonReconstruction(chex.TestCase):
@@ -230,4 +196,3 @@ class TestReconNamespace(chex.TestCase):
         )
         self.assertIs(recon.adam_reconstruction, adam_reconstruction)
         self.assertIs(recon.adagrad_reconstruction, adagrad_reconstruction)
-        self.assertIs(recon.weighted_image_residual, weighted_image_residual)
