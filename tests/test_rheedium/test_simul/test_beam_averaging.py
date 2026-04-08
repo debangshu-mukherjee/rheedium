@@ -19,7 +19,6 @@ from rheedium.simul import (
     energy_spread_average,
     instrument_broadened_pattern,
 )
-from rheedium.tools import gauss_hermite_nodes_weights
 from rheedium.types import scalar_float
 
 H: int = 32
@@ -51,41 +50,6 @@ def _dummy_energy_sim(
     yy, xx = jnp.meshgrid(y, x, indexing="ij")
     shift: scalar_float = (energy_kev - 20.0) * 0.01
     return jnp.exp(-((xx - shift) ** 2 + yy**2) / 0.02)
-
-
-class TestGaussHermiteNodesWeights(chex.TestCase):
-    """Tests for Gauss-Hermite quadrature computation."""
-
-    def test_correct_count(self) -> None:
-        """Returned arrays have the requested number of points."""
-        for n in [3, 5, 7, 9]:
-            nodes, weights = gauss_hermite_nodes_weights(n)
-            chex.assert_shape(nodes, (n,))
-            chex.assert_shape(weights, (n,))
-
-    def test_weights_positive(self) -> None:
-        """All Gauss-Hermite weights are positive."""
-        nodes, weights = gauss_hermite_nodes_weights(7)
-        self.assertTrue(jnp.all(weights > 0.0))
-
-    def test_nodes_symmetric(self) -> None:
-        """Nodes are symmetric about zero."""
-        nodes, weights = gauss_hermite_nodes_weights(7)
-        sorted_nodes: Float[Array, " N"] = jnp.sort(nodes)
-        chex.assert_trees_all_close(
-            sorted_nodes,
-            -jnp.flip(sorted_nodes),
-            atol=1e-12,
-        )
-
-    def test_weights_sum(self) -> None:
-        """Weights sum to sqrt(pi) (Gauss-Hermite normalization)."""
-        _, weights = gauss_hermite_nodes_weights(7)
-        chex.assert_trees_all_close(
-            jnp.sum(weights),
-            jnp.sqrt(jnp.pi),
-            atol=1e-12,
-        )
 
 
 class TestAngularDivergenceAverage(chex.TestCase):

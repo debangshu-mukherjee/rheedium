@@ -71,7 +71,7 @@ from rheedium.types import (
     scalar_int,
 )
 
-from rheedium.tools.special import bessel_k0, bessel_k1
+from rheedium.tools import bessel_k0, bessel_k1
 
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
@@ -519,7 +519,7 @@ def lobato_projected_potential(
         \right]
 
     where K_0 and K_1 are modified Bessel functions of the second
-    kind, obtained from :mod:`rheedium.simul.bessel`.
+    kind, obtained from :mod:`rheedium.tools`.
 
     The prefactor :math:`h^2 / (2\pi m_e e)` evaluates to
     47.87801 V-Angstrom^2.
@@ -541,8 +541,8 @@ def lobato_projected_potential(
     load_lobato_parameters : Load the Lobato coefficients
     lobato_form_factor : Reciprocal-space form factor
     kirkland_projected_potential : Alternative Kirkland parameterization
-    rheedium.simul.bessel.bessel_k0 : Modified Bessel K_0
-    rheedium.simul.bessel.bessel_k1 : Modified Bessel K_1
+    rheedium.tools.bessel_k0 : Modified Bessel K_0
+    rheedium.tools.bessel_k1 : Modified Bessel K_1
 
     References
     ----------

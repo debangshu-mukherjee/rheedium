@@ -1,17 +1,14 @@
-"""Tests for ucell.bessel module.
-
-Tests the JAX-compatible modified Bessel function implementations,
-including internal helper functions.
-"""
+"""Tests for shared special functions in rheedium.tools."""
 
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-from scipy.special import kv as scipy_kv
 from scipy.special import iv as scipy_iv
+from scipy.special import kv as scipy_kv
 
+from rheedium.tools import bessel_k0, bessel_k1, bessel_kv
 from rheedium.tools.special import (
     _bessel_iv_series,
     _bessel_k0_series,
@@ -20,16 +17,149 @@ from rheedium.tools.special import (
     _bessel_kv_large,
     _bessel_kv_small_integer,
     _bessel_kv_small_non_integer,
-    bessel_kv,
 )
+
+
+class TestBesselK0(chex.TestCase, parameterized.TestCase):
+    """Test bessel_k0 against scipy reference values."""
+
+    @parameterized.named_parameters(
+        ("x_0p1", 0.1, 2.4270690247),
+        ("x_0p5", 0.5, 0.9244190712),
+        ("x_1p0", 1.0, 0.4210244382),
+        ("x_2p0", 2.0, 0.1138938727),
+        ("x_5p0", 5.0, 0.0036910983),
+        ("x_10p0", 10.0, 0.0000177801),
+    )
+    def test_known_values(self, x_val: float, expected: float) -> None:
+        """K_0 matches scipy.special.k0 at representative points."""
+        result = bessel_k0(jnp.array(x_val))
+        chex.assert_trees_all_close(result, expected, rtol=1e-5)
+
+    def test_positive_output(self) -> None:
+        """K_0(x) > 0 for all x > 0."""
+        x = jnp.linspace(0.01, 20.0, 200)
+        result = bessel_k0(x)
+        chex.assert_tree_all_finite(result)
+        assert jnp.all(result > 0)
+
+    def test_monotone_decreasing(self) -> None:
+        """K_0(x) is strictly decreasing for x > 0."""
+        x = jnp.linspace(0.01, 20.0, 200)
+        result = bessel_k0(x)
+        diffs = jnp.diff(result)
+        assert jnp.all(diffs < 0)
+
+    def test_batch_shapes(self) -> None:
+        """Preserves arbitrary batch dimensions."""
+        x_1d = jnp.linspace(0.1, 5.0, 50)
+        x_2d = jnp.ones((8, 16)) * 2.0
+        chex.assert_shape(bessel_k0(x_1d), (50,))
+        chex.assert_shape(bessel_k0(x_2d), (8, 16))
+
+    def test_jit_matches_eager(self) -> None:
+        """JIT-compiled output matches eager evaluation."""
+        x = jnp.array([0.5, 1.0, 2.0, 5.0])
+        eager = bessel_k0(x)
+        jitted = jax.jit(bessel_k0)(x)
+        chex.assert_trees_all_close(eager, jitted, rtol=1e-12)
+
+    def test_gradient_finite(self) -> None:
+        """Gradient of K_0 w.r.t. x is finite and non-zero."""
+        grad_fn = jax.grad(lambda x: jnp.sum(bessel_k0(x)))
+        grad_val = grad_fn(jnp.array(1.0))
+        chex.assert_tree_all_finite(grad_val)
+        assert jnp.abs(grad_val) > 0
+
+    def test_gradient_equals_negative_k1(self) -> None:
+        """dK_0/dx = -K_1(x)."""
+        x = jnp.array([0.5, 1.0, 2.0, 5.0])
+        grad_fn = jax.vmap(jax.grad(lambda xi: bessel_k0(xi[None])[0]))
+        grad_vals = grad_fn(x)
+        neg_k1_vals = -bessel_k1(x)
+        chex.assert_trees_all_close(grad_vals, neg_k1_vals, rtol=1e-4)
+
+    def test_vmap(self) -> None:
+        """vmap over batch dimension works correctly."""
+        x = jnp.array([0.5, 1.0, 2.0, 5.0])
+        vmapped = jax.vmap(lambda xi: bessel_k0(xi[None])[0])
+        result = vmapped(x)
+        expected = bessel_k0(x)
+        chex.assert_trees_all_close(result, expected, rtol=1e-12)
+
+
+class TestBesselK1(chex.TestCase, parameterized.TestCase):
+    """Test bessel_k1 against scipy reference values."""
+
+    @parameterized.named_parameters(
+        ("x_0p1", 0.1, 9.8538447809),
+        ("x_0p5", 0.5, 1.6564411200),
+        ("x_1p0", 1.0, 0.6019072302),
+        ("x_2p0", 2.0, 0.1398658818),
+        ("x_5p0", 5.0, 0.0040446134),
+        ("x_10p0", 10.0, 0.0000186488),
+    )
+    def test_known_values(self, x_val: float, expected: float) -> None:
+        """K_1 matches scipy.special.k1 at representative points."""
+        result = bessel_k1(jnp.array(x_val))
+        chex.assert_trees_all_close(result, expected, rtol=1e-5)
+
+    def test_positive_output(self) -> None:
+        """K_1(x) > 0 for all x > 0."""
+        x = jnp.linspace(0.01, 20.0, 200)
+        result = bessel_k1(x)
+        chex.assert_tree_all_finite(result)
+        assert jnp.all(result > 0)
+
+    def test_monotone_decreasing(self) -> None:
+        """K_1(x) is strictly decreasing for x > 0."""
+        x = jnp.linspace(0.01, 20.0, 200)
+        result = bessel_k1(x)
+        diffs = jnp.diff(result)
+        assert jnp.all(diffs < 0)
+
+    def test_batch_shapes(self) -> None:
+        """Preserves arbitrary batch dimensions."""
+        x_1d = jnp.linspace(0.1, 5.0, 50)
+        x_2d = jnp.ones((8, 16)) * 2.0
+        chex.assert_shape(bessel_k1(x_1d), (50,))
+        chex.assert_shape(bessel_k1(x_2d), (8, 16))
+
+    def test_gradient_finite(self) -> None:
+        """Gradient of K_1 w.r.t. x is finite and non-zero."""
+        grad_fn = jax.grad(lambda x: jnp.sum(bessel_k1(x)))
+        grad_val = grad_fn(jnp.array(1.0))
+        chex.assert_tree_all_finite(grad_val)
+        assert jnp.abs(grad_val) > 0
+
+    def test_k1_greater_than_k0(self) -> None:
+        """K_1(x) > K_0(x) for all x > 0."""
+        x = jnp.linspace(0.01, 10.0, 100)
+        assert jnp.all(bessel_k1(x) > bessel_k0(x))
+
+
+class TestBesselBranchTransition(chex.TestCase):
+    """Test continuity at x=2 where polynomial branches switch."""
+
+    def test_k0_continuity_at_branch(self) -> None:
+        """K_0 is continuous across the x=2 branch point."""
+        x_below = jnp.array(1.999)
+        x_above = jnp.array(2.001)
+        k0_below = bessel_k0(x_below)
+        k0_above = bessel_k0(x_above)
+        chex.assert_trees_all_close(k0_below, k0_above, rtol=5e-3)
+
+    def test_k1_continuity_at_branch(self) -> None:
+        """K_1 is continuous across the x=2 branch point."""
+        x_below = jnp.array(1.999)
+        x_above = jnp.array(2.001)
+        k1_below = bessel_k1(x_below)
+        k1_above = bessel_k1(x_above)
+        chex.assert_trees_all_close(k1_below, k1_above, rtol=5e-3)
 
 
 class TestBesselIvSeries(chex.TestCase):
     """Test _bessel_iv_series function."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5),
@@ -43,30 +173,28 @@ class TestBesselIvSeries(chex.TestCase):
         ("v0p25_x0p5", 0.25, 0.5),
     )
     def test_iv_series_against_scipy(self, v: float, x: float) -> None:
-        """Test I_v(x) series expansion against scipy reference."""
+        """I_v(x) series expansion matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_iv_series(v, x_arr, x_arr.dtype)
         expected = scipy_iv(v, x)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
 
     def test_iv_series_vectorized(self) -> None:
-        """Test I_v(x) with vectorized input."""
+        """I_v(x) supports vectorized input."""
         x_arr = jnp.array([0.5, 1.0, 1.5, 2.0], dtype=jnp.float64)
-        v = 1.0
-        result = _bessel_iv_series(v, x_arr, x_arr.dtype)
-        expected = scipy_iv(v, np.array([0.5, 1.0, 1.5, 2.0]))
+        result = _bessel_iv_series(1.0, x_arr, x_arr.dtype)
+        expected = scipy_iv(1.0, np.array([0.5, 1.0, 1.5, 2.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-6)
 
     def test_iv_series_negative_order(self) -> None:
-        """Test I_v(x) with negative order (used in K_v calculation)."""
+        """Negative orders work for the K_v path."""
         x_arr = jnp.array([1.0], dtype=jnp.float64)
-        v = -0.5
-        result = _bessel_iv_series(v, x_arr, x_arr.dtype)
-        expected = scipy_iv(v, 1.0)
+        result = _bessel_iv_series(-0.5, x_arr, x_arr.dtype)
+        expected = scipy_iv(-0.5, 1.0)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-5)
 
     def test_iv_series_output_shape(self) -> None:
-        """Test that output shape matches input shape."""
+        """Output shape matches input shape."""
         x_arr = jnp.array([[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64)
         result = _bessel_iv_series(0.0, x_arr, x_arr.dtype)
         chex.assert_shape(result, (2, 2))
@@ -75,10 +203,6 @@ class TestBesselIvSeries(chex.TestCase):
 class TestBesselK0Series(chex.TestCase):
     """Test _bessel_k0_series function."""
 
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
-
     @parameterized.named_parameters(
         ("x0p5", 0.5, 0.9244190712276656),
         ("x1", 1.0, 0.42102443824070834),
@@ -86,54 +210,52 @@ class TestBesselK0Series(chex.TestCase):
         ("x2", 2.0, 0.11389387274953341),
     )
     def test_k0_series_against_scipy(self, x: float, expected: float) -> None:
-        """Test K_0(x) series expansion against scipy reference."""
+        """K_0(x) series expansion matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_k0_series(x_arr, x_arr.dtype)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_k0_series_vectorized(self) -> None:
-        """Test K_0(x) with vectorized input."""
+        """K_0(x) supports vectorized input."""
         x_arr = jnp.array([0.5, 1.0, 1.5, 2.0], dtype=jnp.float64)
         result = _bessel_k0_series(x_arr, x_arr.dtype)
         expected = scipy_kv(0, np.array([0.5, 1.0, 1.5, 2.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_k0_series_output_shape(self) -> None:
-        """Test that output shape matches input shape."""
+        """Output shape matches input shape."""
         x_arr = jnp.array([[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64)
         result = _bessel_k0_series(x_arr, x_arr.dtype)
         chex.assert_shape(result, (2, 2))
 
     def test_k0_series_positive_values(self) -> None:
-        """Test that K_0(x) returns positive values for positive x."""
+        """K_0(x) stays positive for x > 0."""
         x_arr = jnp.array([0.1, 0.5, 1.0, 2.0], dtype=jnp.float64)
         result = _bessel_k0_series(x_arr, x_arr.dtype)
-        assert jnp.all(result > 0), "K_0(x) should be positive for x > 0"
+        assert jnp.all(result > 0)
 
 
-class TestBesselKnRecurrence(chex.TestCase):
+class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
     """Test _bessel_kn_recurrence function."""
 
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
-
     def test_kn_recurrence_n0(self) -> None:
-        """Test K_n recurrence returns K_0 when n=0."""
+        """n=0 returns K_0."""
         x = jnp.array([1.0], dtype=jnp.float64)
         k0 = jnp.array([0.42102443824070834], dtype=jnp.float64)
         k1 = jnp.array([0.6019072301972346], dtype=jnp.float64)
-        n = jnp.array(0, dtype=jnp.int32)
-        result = _bessel_kn_recurrence(n, x, k0, k1)
+        result = _bessel_kn_recurrence(
+            jnp.array(0, dtype=jnp.int32), x, k0, k1
+        )
         chex.assert_trees_all_close(result, k0, atol=1e-10)
 
     def test_kn_recurrence_n1(self) -> None:
-        """Test K_n recurrence returns K_1 when n=1."""
+        """n=1 returns K_1."""
         x = jnp.array([1.0], dtype=jnp.float64)
         k0 = jnp.array([0.42102443824070834], dtype=jnp.float64)
         k1 = jnp.array([0.6019072301972346], dtype=jnp.float64)
-        n = jnp.array(1, dtype=jnp.int32)
-        result = _bessel_kn_recurrence(n, x, k0, k1)
+        result = _bessel_kn_recurrence(
+            jnp.array(1, dtype=jnp.int32), x, k0, k1
+        )
         chex.assert_trees_all_close(result, k1, atol=1e-10)
 
     @parameterized.named_parameters(
@@ -146,16 +268,17 @@ class TestBesselKnRecurrence(chex.TestCase):
     def test_kn_recurrence_higher_orders(
         self, n: int, x: float, expected: float
     ) -> None:
-        """Test K_n recurrence for higher orders against scipy."""
+        """Higher-order recurrence matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         k0 = jnp.array([scipy_kv(0, x)], dtype=jnp.float64)
         k1 = jnp.array([scipy_kv(1, x)], dtype=jnp.float64)
-        n_arr = jnp.array(n, dtype=jnp.int32)
-        result = _bessel_kn_recurrence(n_arr, x_arr, k0, k1)
+        result = _bessel_kn_recurrence(
+            jnp.array(n, dtype=jnp.int32), x_arr, k0, k1
+        )
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_kn_recurrence_vectorized(self) -> None:
-        """Test K_n recurrence with vectorized x input."""
+        """Vectorized x input works."""
         x_arr = jnp.array([0.5, 1.0, 2.0], dtype=jnp.float64)
         k0 = jnp.array(
             scipy_kv(0, np.array([0.5, 1.0, 2.0])), dtype=jnp.float64
@@ -163,18 +286,15 @@ class TestBesselKnRecurrence(chex.TestCase):
         k1 = jnp.array(
             scipy_kv(1, np.array([0.5, 1.0, 2.0])), dtype=jnp.float64
         )
-        n = jnp.array(2, dtype=jnp.int32)
-        result = _bessel_kn_recurrence(n, x_arr, k0, k1)
+        result = _bessel_kn_recurrence(
+            jnp.array(2, dtype=jnp.int32), x_arr, k0, k1
+        )
         expected = scipy_kv(2, np.array([0.5, 1.0, 2.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
 
-class TestBesselKvSmallNonInteger(chex.TestCase):
+class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
     """Test _bessel_kv_small_non_integer function."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
 
     @parameterized.named_parameters(
         ("v0p25_x0p5", 0.25, 0.5, 0.9603163249318826),
@@ -185,29 +305,21 @@ class TestBesselKvSmallNonInteger(chex.TestCase):
     def test_kv_small_non_integer(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Test K_v(x) for small x and non-integer v."""
+        """Small-x non-integer branch matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_kv_small_non_integer(v, x_arr, x_arr.dtype)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     def test_kv_small_non_integer_vectorized(self) -> None:
-        """Test with vectorized input."""
+        """Vectorized non-integer input works."""
         x_arr = jnp.array([0.5, 1.0, 1.5], dtype=jnp.float64)
-        v = 0.25
-        result = _bessel_kv_small_non_integer(v, x_arr, x_arr.dtype)
-        expected = scipy_kv(v, np.array([0.5, 1.0, 1.5]))
+        result = _bessel_kv_small_non_integer(0.25, x_arr, x_arr.dtype)
+        expected = scipy_kv(0.25, np.array([0.5, 1.0, 1.5]))
         chex.assert_trees_all_close(result, expected, rtol=5e-2)
 
 
-class TestBesselKvSmallInteger(chex.TestCase):
-    """Test _bessel_kv_small_integer function.
-
-    Note: K_0 uses accurate polynomial approx. K_1+ has limited accuracy.
-    """
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
+class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
+    """Test _bessel_kv_small_integer function."""
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5, 0.9244190712276656),
@@ -217,27 +329,25 @@ class TestBesselKvSmallInteger(chex.TestCase):
     def test_kv_small_integer_v0(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Test K_0(x) - the most accurate case."""
+        """K_0(x) is the most accurate small-x integer branch."""
         x_arr = jnp.array([x], dtype=jnp.float64)
-        v_arr = jnp.array(v, dtype=jnp.float64)
-        result = _bessel_kv_small_integer(v_arr, x_arr, x_arr.dtype)
+        result = _bessel_kv_small_integer(
+            jnp.array(v, dtype=jnp.float64), x_arr, x_arr.dtype
+        )
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     def test_kv_small_integer_positive(self) -> None:
-        """Test that K_v returns positive values."""
+        """K_v stays positive on the tested domain."""
         x_arr = jnp.array([0.5, 1.0, 1.5], dtype=jnp.float64)
         for v_val in [0.0, 1.0, 2.0]:
-            v = jnp.array(v_val, dtype=jnp.float64)
-            result = _bessel_kv_small_integer(v, x_arr, x_arr.dtype)
-            assert jnp.all(result > 0), f"K_{v_val}(x) should be positive"
+            result = _bessel_kv_small_integer(
+                jnp.array(v_val, dtype=jnp.float64), x_arr, x_arr.dtype
+            )
+            assert jnp.all(result > 0)
 
 
-class TestBesselKvLarge(chex.TestCase):
+class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
     """Test _bessel_kv_large function."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
 
     @parameterized.named_parameters(
         ("v0_x5", 0.0, 5.0, 0.0036910983340425942),
@@ -248,34 +358,28 @@ class TestBesselKvLarge(chex.TestCase):
         ("v0p5_x5", 0.5, 5.0, 0.0037766133746428825),
     )
     def test_kv_large_x(self, v: float, x: float, expected: float) -> None:
-        """Test asymptotic expansion for large x."""
+        """Asymptotic branch matches scipy at large x."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_kv_large(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_kv_large_vectorized(self) -> None:
-        """Test asymptotic expansion with vectorized input."""
+        """Vectorized large-x input works."""
         x_arr = jnp.array([5.0, 10.0, 15.0], dtype=jnp.float64)
-        v = 0.0
-        result = _bessel_kv_large(v, x_arr)
-        expected = scipy_kv(v, np.array([5.0, 10.0, 15.0]))
+        result = _bessel_kv_large(0.0, x_arr)
+        expected = scipy_kv(0.0, np.array([5.0, 10.0, 15.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_kv_large_decays_exponentially(self) -> None:
-        """Test that K_v(x) decays exponentially for large x."""
+        """Large-x branch decays monotonically."""
         x_arr = jnp.array([5.0, 10.0, 20.0, 50.0], dtype=jnp.float64)
         result = _bessel_kv_large(0.0, x_arr)
-        # Values should decrease monotonically
         for i in range(len(result) - 1):
-            assert result[i] > result[i + 1], "K_v(x) should decay for large x"
+            assert result[i] > result[i + 1]
 
 
-class TestBesselKHalf(chex.TestCase):
+class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
     """Test _bessel_k_half function."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
 
     @parameterized.named_parameters(
         ("x0p5", 0.5, 1.0750476034999203),
@@ -284,33 +388,29 @@ class TestBesselKHalf(chex.TestCase):
         ("x5", 5.0, 0.0037766133746428825),
     )
     def test_k_half_against_scipy(self, x: float, expected: float) -> None:
-        """Test K_{1/2}(x) against scipy reference."""
+        """K_{1/2}(x) matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_k_half(x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-10)
 
     def test_k_half_formula(self) -> None:
-        """Test K_{1/2}(x) = sqrt(pi/(2x)) * exp(-x)."""
+        """Closed form matches the direct expression."""
         x_arr = jnp.array([0.5, 1.0, 2.0, 5.0], dtype=jnp.float64)
         result = _bessel_k_half(x_arr)
         expected = jnp.sqrt(jnp.pi / (2.0 * x_arr)) * jnp.exp(-x_arr)
         chex.assert_trees_all_close(result, expected, atol=1e-14)
 
     def test_k_half_vectorized(self) -> None:
-        """Test K_{1/2}(x) with vectorized input."""
+        """Vectorized input works."""
         x_arr = jnp.array([[0.5, 1.0], [2.0, 5.0]], dtype=jnp.float64)
         result = _bessel_k_half(x_arr)
-        chex.assert_shape(result, (2, 2))
         expected = jnp.sqrt(jnp.pi / (2.0 * x_arr)) * jnp.exp(-x_arr)
+        chex.assert_shape(result, (2, 2))
         chex.assert_trees_all_close(result, expected, atol=1e-14)
 
 
-class TestBesselKv(chex.TestCase):
+class TestBesselKv(chex.TestCase, parameterized.TestCase):
     """Test bessel_kv main function."""
-
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -324,10 +424,9 @@ class TestBesselKv(chex.TestCase):
     def test_bessel_kv_integer_orders(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Test K_v(x) for integer orders against scipy reference."""
+        """Integer-order K_v(x) matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
-        result = var_bessel_kv(v, x_arr)
+        result = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -340,10 +439,9 @@ class TestBesselKv(chex.TestCase):
     def test_bessel_kv_half_order(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Test K_{1/2}(x) special case."""
+        """Half-order special case works."""
         x_arr = jnp.array([x], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
-        result = var_bessel_kv(v, x_arr)
+        result = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -358,77 +456,62 @@ class TestBesselKv(chex.TestCase):
     def test_bessel_kv_non_integer_orders(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Test K_v(x) for non-integer orders against scipy reference."""
+        """Non-integer K_v(x) matches scipy within approximation tolerance."""
         x_arr = jnp.array([x], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
-        result = var_bessel_kv(v, x_arr)
+        result = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_vectorized(self) -> None:
-        """Test K_v(x) with vectorized x input."""
+        """Vectorized x input works."""
         x_arr = jnp.array([0.5, 1.0, 2.0, 5.0], dtype=jnp.float64)
-        v = 0.0
-        var_bessel_kv = self.variant(bessel_kv)
-        result = var_bessel_kv(v, x_arr)
-        expected = scipy_kv(v, np.array([0.5, 1.0, 2.0, 5.0]))
+        result = self.variant(bessel_kv)(0.0, x_arr)
+        expected = scipy_kv(0.0, np.array([0.5, 1.0, 2.0, 5.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_2d_input(self) -> None:
-        """Test K_v(x) with 2D array input."""
+        """2D array input works."""
         x_arr = jnp.array([[2.0, 3.0], [5.0, 10.0]], dtype=jnp.float64)
-        v = 0.0
-        var_bessel_kv = self.variant(bessel_kv)
-        result = var_bessel_kv(v, x_arr)
+        result = self.variant(bessel_kv)(0.0, x_arr)
+        expected = scipy_kv(0.0, np.array([[2.0, 3.0], [5.0, 10.0]]))
         chex.assert_shape(result, (2, 2))
-        expected = scipy_kv(v, np.array([[2.0, 3.0], [5.0, 10.0]]))
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_positive_values(self) -> None:
-        """Test that K_v(x) returns positive values for positive x."""
+        """K_v(x) stays positive for positive x."""
         x_arr = jnp.array([0.1, 0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
         for v in [0.0, 0.5, 1.0, 2.0]:
-            result = var_bessel_kv(v, x_arr)
-            assert jnp.all(
-                result > 0
-            ), f"K_{v}(x) should be positive for x > 0"
+            result = self.variant(bessel_kv)(v, x_arr)
+            assert jnp.all(result > 0)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_monotonic_decay(self) -> None:
-        """Test that K_v(x) decays monotonically for fixed v."""
+        """K_v(x) decays monotonically for fixed v."""
         x_arr = jnp.array([0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
         for v in [0.0, 0.5, 1.0, 2.0]:
-            result = var_bessel_kv(v, x_arr)
+            result = self.variant(bessel_kv)(v, x_arr)
             for i in range(len(result) - 1):
-                assert (
-                    result[i] > result[i + 1]
-                ), f"K_{v}(x) should decay monotonically"
+                assert result[i] > result[i + 1]
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_order_relation(self) -> None:
-        """Test K_v(x) > K_v+1(x) for small x."""
+        """K_0(x) < K_1(x) at small x."""
         x_arr = jnp.array([0.5], dtype=jnp.float64)
-        var_bessel_kv = self.variant(bessel_kv)
-        k0 = var_bessel_kv(0.0, x_arr)[0]
-        k1 = var_bessel_kv(1.0, x_arr)[0]
-        # For small x, K_0(x) < K_1(x) due to singularity behavior
-        # Actually K_n increases with n for small x
-        assert k0 < k1, "K_0(x) < K_1(x) for small x"
+        k0 = self.variant(bessel_kv)(0.0, x_arr)[0]
+        k1 = self.variant(bessel_kv)(1.0, x_arr)[0]
+        assert k0 < k1
 
     def test_bessel_kv_jit_compilation(self) -> None:
-        """Test that bessel_kv can be JIT compiled."""
+        """bessel_kv can be JIT compiled."""
         x_arr = jnp.array([1.0], dtype=jnp.float64)
-        jit_bessel = jax.jit(bessel_kv, static_argnums=(0,))
-        result = jit_bessel(0.0, x_arr)
+        result = jax.jit(bessel_kv, static_argnums=(0,))(0.0, x_arr)
         expected = scipy_kv(0, 1.0)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     def test_bessel_kv_jit_works(self) -> None:
-        """Test that bessel_kv works with JIT on various inputs."""
+        """JIT works across representative orders."""
         x_arr = jnp.array([5.0, 10.0], dtype=jnp.float64)
         jit_bessel = jax.jit(bessel_kv, static_argnums=(0,))
         for v in [0.0, 0.5, 1.0]:
@@ -440,33 +523,24 @@ class TestBesselKv(chex.TestCase):
 class TestBesselKvEdgeCases(chex.TestCase):
     """Test edge cases and numerical stability."""
 
-    def setUp(self) -> None:
-        """Set up test fixtures."""
-        super().setUp()
-
     def test_bessel_kv_small_x_boundary(self) -> None:
-        """Test behavior near the small/large x boundary."""
-        # Boundary is at x=2.0
+        """Behavior near the small/large branch boundary stays stable."""
         x_near_boundary = jnp.array([1.9, 2.0, 2.1], dtype=jnp.float64)
         result = bessel_kv(0.0, x_near_boundary)
         expected = scipy_kv(0, np.array([1.9, 2.0, 2.1]))
         chex.assert_trees_all_close(result, expected, rtol=5e-3)
 
     def test_bessel_kv_large_x(self) -> None:
-        """Test behavior for large x values."""
+        """Behavior for large x values stays accurate."""
         x_large = jnp.array([10.0, 20.0, 50.0], dtype=jnp.float64)
         result = bessel_kv(0.0, x_large)
         expected = scipy_kv(0, np.array([10.0, 20.0, 50.0]))
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     def test_bessel_kv_higher_integer_order(self) -> None:
-        """Test higher integer orders at large x (where asymptotic is used)."""
+        """Higher integer orders work in the large-x regime."""
         x_arr = jnp.array([5.0, 10.0], dtype=jnp.float64)
         for n in [3, 4, 5]:
             result = bessel_kv(float(n), x_arr)
             expected = scipy_kv(n, np.array([5.0, 10.0]))
             chex.assert_trees_all_close(result, expected, rtol=1e-2)
-
-
-if __name__ == "__main__":
-    chex.TestCase.main()

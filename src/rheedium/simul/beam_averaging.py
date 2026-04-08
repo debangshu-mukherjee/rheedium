@@ -47,7 +47,7 @@ from beartype import beartype
 from beartype.typing import Callable
 from jaxtyping import Array, Complex, Float, jaxtyped
 
-from rheedium.tools.quadrature import gauss_hermite_nodes_weights
+from rheedium.tools import gauss_hermite_nodes_weights
 from rheedium.types import scalar_float
 
 

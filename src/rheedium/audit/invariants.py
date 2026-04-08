@@ -71,7 +71,6 @@ from rheedium.simul import (
     lobato_form_factor,
     wavelength_ang,
 )
-from rheedium.simul.kinematic import simple_structure_factor
 from rheedium.types import (
     create_crystal_structure,
     scalar_float,
@@ -108,6 +107,21 @@ class InvariantResult:
     tolerance: float
     units: str
     detail: str
+
+
+def _simple_structure_factor(
+    reciprocal_vector: Float[Array, "3"],
+    atom_positions: Float[Array, "M 3"],
+    atomic_numbers: Array,
+) -> Float[Array, ""]:
+    """Compute a minimal kinematic structure factor intensity locally."""
+    scattering_factors: Float[Array, "M"] = atomic_numbers.astype(jnp.float64)
+    dot_products: Float[Array, "M"] = jnp.dot(
+        atom_positions, reciprocal_vector
+    )
+    phases = jnp.exp(1j * dot_products)
+    structure_factor = jnp.sum(scattering_factors * phases)
+    return jnp.abs(structure_factor) ** 2
 
 
 def _result(
@@ -468,10 +482,10 @@ def check_friedel_law_structure_factor(
         g_pos = jnp.array(g, dtype=jnp.float64)
         g_neg = -g_pos
         intensity_pos = float(
-            simple_structure_factor(g_pos, atom_positions, atomic_numbers)
+            _simple_structure_factor(g_pos, atom_positions, atomic_numbers)
         )
         intensity_neg = float(
-            simple_structure_factor(g_neg, atom_positions, atomic_numbers)
+            _simple_structure_factor(g_neg, atom_positions, atomic_numbers)
         )
         denom = max(abs(intensity_pos), 1.0e-30)
         rel_error = abs(intensity_pos - intensity_neg) / denom
