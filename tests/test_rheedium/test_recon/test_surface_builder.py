@@ -1,11 +1,11 @@
 """Test suite for recon/surface_builder.py.
 
 Tests surface slab construction, surface reconstruction application,
-and adsorbate layer addition.  All slabs are loaded from pre-built
-.npz fixtures in tests/test_data/recon/ — no JIT at test time.
+and adsorbate layer addition. All slabs are loaded from pre-built
+.npz fixtures in tests/test_data/recon/ and a small set of direct
+unit tests exercises the branch-heavy geometry builders.
 """
 
-import os
 from pathlib import Path
 
 import chex
@@ -15,7 +15,13 @@ from absl.testing import parameterized
 from jaxtyping import Float
 from numpy import ndarray as NDArray  # noqa: N812
 
-from rheedium.types import CrystalStructure
+from rheedium.recon.surface_builder import (
+    add_adsorbate_layer,
+    apply_surface_reconstruction,
+    create_surface_slab,
+)
+from rheedium.types import CrystalStructure, create_crystal_structure
+from rheedium.ucell import build_cell_vectors
 
 _DATA_DIR: Path = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
@@ -23,6 +29,197 @@ _DATA_DIR: Path = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 def _load(name: str) -> dict[str, object]:
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
+
+
+def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
+    """Build a minimal cubic bulk crystal for direct slab tests."""
+    frac_positions = jnp.array(
+        [
+            [0.0, 0.0, 0.0, 14.0],
+            [0.5, 0.5, 0.5, 14.0],
+        ]
+    )
+    cell_vectors = build_cell_vectors(a, a, a, 90.0, 90.0, 90.0)
+    cart_positions = jnp.column_stack(
+        [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
+    )
+    return create_crystal_structure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=jnp.array([a, a, a]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
+def _make_test_slab() -> CrystalStructure:
+    """Build a simple orthorhombic slab for direct reconstruction tests."""
+    cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
+    cart_positions = jnp.array(
+        [
+            [0.2, 0.2, 0.5, 14.0],
+            [0.4, 0.4, 4.2, 14.0],
+            [1.2, 1.6, 5.0, 8.0],
+        ]
+    )
+    frac_positions = jnp.column_stack(
+        [
+            cart_positions[:, :3] @ jnp.linalg.inv(cell_vectors).T,
+            cart_positions[:, 3],
+        ]
+    )
+    return create_crystal_structure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=jnp.array([2.0, 2.0, 6.0]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
+class TestSurfaceBuilderDirect(chex.TestCase):
+    """Direct unit tests for branch-heavy geometry builders."""
+
+    def test_create_surface_slab_handles_aligned_surface_normal(self) -> None:
+        """(001) cuts should keep the in-plane cubic metric."""
+        slab = create_surface_slab(
+            _make_cubic_bulk(),
+            jnp.array([0, 0, 1], dtype=jnp.int32),
+            3.0,
+            5.0,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(slab.cell_lengths),
+            np.array([2.0, 2.0, 8.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(slab.cell_angles),
+            np.array([90.0, 90.0, 90.0]),
+            atol=1e-6,
+        )
+        assert float(slab.cart_positions[:, 2].min()) >= 0.0
+        assert float(slab.cart_positions[:, 2].max()) <= 3.0 + 1e-6
+
+    def test_create_surface_slab_rotates_non_aligned_surface_normal(
+        self,
+    ) -> None:
+        """Non-(001) cuts should still yield a finite, bounded slab."""
+        slab = create_surface_slab(
+            _make_cubic_bulk(),
+            jnp.array([1, 1, 0], dtype=jnp.int32),
+            3.0,
+            5.0,
+        )
+
+        assert slab.cart_positions.shape == (5, 4)
+        np.testing.assert_allclose(
+            np.asarray(slab.cell_lengths),
+            np.array([2.0, 2.0, 8.0]),
+            atol=1e-6,
+        )
+        assert float(slab.cart_positions[:, 2].max()) <= 3.0 + 1e-6
+        assert np.all(np.isfinite(np.asarray(slab.frac_positions)))
+
+    def test_apply_surface_reconstruction_moves_only_requested_surface_atoms(
+        self,
+    ) -> None:
+        """Only the first n displaced surface atoms should be updated."""
+        reconstructed = apply_surface_reconstruction(
+            _make_test_slab(),
+            jnp.array([[1, 0], [0, 1]], dtype=jnp.int32),
+            1.0,
+            jnp.array([[0.1, 0.2, 0.3]], dtype=jnp.float64),
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(reconstructed.cart_positions),
+            np.array(
+                [
+                    [0.2, 0.2, 0.5, 14.0],
+                    [0.5, 0.6, 4.5, 14.0],
+                    [1.2, 1.6, 5.0, 8.0],
+                ]
+            ),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(reconstructed.cell_lengths),
+            np.array([2.0, 2.0, 6.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(reconstructed.cell_angles),
+            np.array([90.0, 90.0, 90.0]),
+            atol=1e-6,
+        )
+
+    def test_apply_surface_reconstruction_shears_the_in_plane_cell(
+        self,
+    ) -> None:
+        """Off-diagonal reconstruction matrices should shear the cell."""
+        reconstructed = apply_surface_reconstruction(
+            _make_test_slab(),
+            jnp.array([[1, 1], [0, 1]], dtype=jnp.int32),
+            0.0,
+            jnp.zeros((0, 3), dtype=jnp.float64),
+        )
+
+        assert reconstructed.cart_positions.shape == (3, 4)
+        np.testing.assert_allclose(
+            np.asarray(reconstructed.cell_lengths),
+            np.array([np.sqrt(8.0), 2.0, 6.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(reconstructed.cell_angles),
+            np.array([90.0, 90.0, 45.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.sort(np.asarray(reconstructed.cart_positions[:, 2])),
+            np.array([0.5, 4.2, 5.0]),
+            atol=1e-6,
+        )
+
+    def test_add_adsorbate_layer_appends_weighted_cartesian_positions(
+        self,
+    ) -> None:
+        """Adsorbates should be appended in both coordinate systems."""
+        slab = _make_test_slab()
+        decorated = add_adsorbate_layer(
+            slab,
+            jnp.array(
+                [[0.25, 0.5, 0.75], [0.75, 0.25, 0.25]], dtype=jnp.float64
+            ),
+            jnp.array([8.0, 16.0], dtype=jnp.float64),
+            0.25,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(decorated.cart_positions[-2:]),
+            np.array(
+                [
+                    [0.5, 1.0, 4.5, 2.0],
+                    [1.5, 0.5, 1.5, 4.0],
+                ]
+            ),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(decorated.frac_positions[-2:]),
+            np.array(
+                [
+                    [0.25, 0.5, 0.75, 2.0],
+                    [0.75, 0.25, 0.25, 4.0],
+                ]
+            ),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(decorated.cell_lengths),
+            np.asarray(slab.cell_lengths),
+            atol=1e-6,
+        )
 
 
 class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
