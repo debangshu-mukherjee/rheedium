@@ -36,6 +36,7 @@ All returned data structures are JAX-compatible arrays.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import defusedxml.ElementTree as DefusedET
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple, Union
@@ -48,7 +49,7 @@ from rheedium.types import (
     create_xyz_data,
 )
 
-from .crystal import lattice_to_cell_params
+from .lattice import lattice_to_cell_params
 from .xyz import atomic_symbol
 
 
@@ -138,7 +139,8 @@ def _extract_structure_block(
             row: list[float] = [float(x) for x in v.text.split()]
             lattice_rows.append(row)
 
-    if len(lattice_rows) != 3:
+    n_lattice_vecs = 3
+    if len(lattice_rows) != n_lattice_vecs:
         raise ValueError(
             f"Invalid lattice: expected 3 vectors, got {len(lattice_rows)}"
         )
@@ -233,7 +235,8 @@ def _extract_stress(
             row: list[float] = [float(x) for x in v.text.split()]
             stress_rows.append(row)
 
-    if len(stress_rows) != 3:
+    n_stress_rows = 3
+    if len(stress_rows) != n_stress_rows:
         return None
 
     stress: Float[Array, "3 3"] = jnp.array(stress_rows, dtype=jnp.float64)
@@ -275,7 +278,7 @@ def _extract_energy(
 
 
 @jaxtyped(typechecker=beartype)
-def parse_vaspxml(
+def parse_vaspxml(  # noqa: PLR0912, PLR0915
     file_path: Union[str, Path],
     step: int = -1,
     include_forces: bool = False,
@@ -338,7 +341,7 @@ def parse_vaspxml(
         raise FileNotFoundError(f"vasprun.xml file not found: {path}")
 
     try:
-        tree: ET.ElementTree = ET.parse(path)
+        tree: ET.ElementTree = DefusedET.parse(path)
         root: ET.Element = tree.getroot()
     except ET.ParseError as err:
         raise ValueError(f"Invalid XML in vasprun.xml: {err}") from err
@@ -379,14 +382,16 @@ def parse_vaspxml(
 
         if calc_idx < 0 or calc_idx >= len(calculations):
             raise ValueError(
-                f"Step {step} out of range. Available steps: 0-{len(calculations)-1}"
+                f"Step {step} out of range. "
+                f"Available steps: 0-{len(calculations)-1}"
             )
 
         calculation: ET.Element = calculations[calc_idx]
         structure = calculation.find("structure")
         if structure is None:
             raise ValueError(
-                f"Invalid vasprun.xml: no structure in calculation step {calc_idx}"
+                "Invalid vasprun.xml: no structure "
+                f"in calculation step {calc_idx}"
             )
 
         lattice, frac_positions = _extract_structure_block(structure)
@@ -410,24 +415,23 @@ def parse_vaspxml(
             properties=properties,
             comment=f"From vasprun.xml step {step}",
         )
-    else:
-        cell_lengths: Float[Array, "3"]
-        cell_angles: Float[Array, "3"]
-        cell_lengths, cell_angles = lattice_to_cell_params(lattice)
+    cell_lengths: Float[Array, "3"]
+    cell_angles: Float[Array, "3"]
+    cell_lengths, cell_angles = lattice_to_cell_params(lattice)
 
-        frac_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
-            [frac_positions, atomic_numbers.astype(jnp.float64)]
-        )
-        cart_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
-            [cart_positions, atomic_numbers.astype(jnp.float64)]
-        )
+    frac_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
+        [frac_positions, atomic_numbers.astype(jnp.float64)]
+    )
+    cart_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
+        [cart_positions, atomic_numbers.astype(jnp.float64)]
+    )
 
-        return create_crystal_structure(
-            frac_positions=frac_positions_4,
-            cart_positions=cart_positions_4,
-            cell_lengths=cell_lengths,
-            cell_angles=cell_angles,
-        )
+    return create_crystal_structure(
+        frac_positions=frac_positions_4,
+        cart_positions=cart_positions_4,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -482,7 +486,7 @@ def parse_vaspxml_trajectory(
         raise FileNotFoundError(f"vasprun.xml file not found: {path}")
 
     try:
-        tree: ET.ElementTree = ET.parse(path)
+        tree: ET.ElementTree = DefusedET.parse(path)
         root: ET.Element = tree.getroot()
     except ET.ParseError as err:
         raise ValueError(f"Invalid XML in vasprun.xml: {err}") from err

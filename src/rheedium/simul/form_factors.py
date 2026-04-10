@@ -114,7 +114,8 @@ def get_debye_temperature(
     atomic_idx: Int[Array, ""] = jnp.clip(
         jnp.asarray(atomic_number, dtype=jnp.int32) - 1, 0, 102
     )
-    return DEBYE_TEMPERATURES[atomic_idx]
+    theta_d: Float[Array, ""] = DEBYE_TEMPERATURES[atomic_idx]
+    return theta_d
 
 
 @jaxtyped(typechecker=beartype)
@@ -144,7 +145,8 @@ def get_atomic_mass(
     atomic_idx: Int[Array, ""] = jnp.clip(
         jnp.asarray(atomic_number, dtype=jnp.int32) - 1, 0, 102
     )
-    return ATOMIC_MASSES[atomic_idx]
+    mass: Float[Array, ""] = ATOMIC_MASSES[atomic_idx]
+    return mass
 
 
 @jaxtyped(typechecker=beartype)
@@ -205,12 +207,13 @@ def load_kirkland_parameters(
     )
     amplitudes: Float[Array, "6"] = atom_params[a_indices]
     scales: Float[Array, "6"] = atom_params[b_indices]
-    return create_kirkland_parameters(
+    parameters: KirklandParameters = create_kirkland_parameters(
         lorentzian_amplitudes=amplitudes[:3],
         lorentzian_scales=scales[:3],
         gaussian_amplitudes=amplitudes[3:],
         gaussian_scales=scales[3:],
     )
+    return parameters
 
 
 @jaxtyped(typechecker=beartype)
@@ -425,7 +428,7 @@ def load_lobato_parameters(
     b_indices: Int[Array, "5"] = jnp.array([1, 3, 5, 7, 9], dtype=jnp.int32)
     a_coeffs: Float[Array, "5"] = atom_params[a_indices]
     b_coeffs: Float[Array, "5"] = atom_params[b_indices]
-    return a_coeffs, b_coeffs
+    return (a_coeffs, b_coeffs)
 
 
 @jaxtyped(typechecker=beartype)
@@ -563,8 +566,8 @@ def lobato_projected_potential(
     load_lobato_parameters : Load the Lobato coefficients
     lobato_form_factor : Reciprocal-space form factor
     kirkland_projected_potential : Alternative Kirkland parameterization
-    rheedium.tools.bessel_k0 : Modified Bessel K_0
-    rheedium.tools.bessel_k1 : Modified Bessel K_1
+    bessel_k0 : Modified Bessel K_0
+    bessel_k1 : Modified Bessel K_1
 
     References
     ----------
@@ -657,7 +660,7 @@ def get_mean_square_displacement(
     temperature: scalar_float,
     is_surface: Optional[scalar_bool] = False,
     surface_enhancement: Optional[scalar_float] = 2.0,
-) -> scalar_float:
+) -> Float[Array, ""]:
     r"""Calculate mean square displacement for thermal vibrations.
 
     Uses element-specific Debye temperatures when available for accurate
@@ -677,7 +680,7 @@ def get_mean_square_displacement(
 
     Returns
     -------
-    mean_square_displacement : scalar_float
+    mean_square_displacement : Float[Array, ""]
         Mean square displacement ⟨u²⟩ in Ų
 
     Notes

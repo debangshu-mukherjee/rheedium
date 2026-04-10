@@ -30,7 +30,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Optional, Tuple, Union
+from beartype.typing import Optional, Union
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import (
@@ -41,106 +41,11 @@ from rheedium.types import (
 )
 
 from .cif import parse_cif
+from .lattice import lattice_to_cell_params
+from .poscar import parse_poscar
 from .xyz import parse_xyz
 
 logger = logging.getLogger(__name__)
-
-
-@jaxtyped(typechecker=beartype)
-def lattice_to_cell_params(
-    lattice: Float[Array, "3 3"],
-) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
-    r"""Convert lattice vectors to cell lengths and angles.
-
-    Computes crystallographic cell parameters (a, b, c, alpha, beta, gamma)
-    from a 3x3 matrix of lattice vectors. This is the inverse operation of
-    constructing lattice vectors from cell parameters.
-
-    Parameters
-    ----------
-    lattice : Float[Array, "3 3"]
-        Lattice vectors as rows: [[a1, a2, a3], [b1, b2, b3], [c1, c2, c3]].
-        Each row represents one lattice vector (a, b, c respectively) with
-        components in Cartesian coordinates (Angstroms).
-
-    Returns
-    -------
-    cell_lengths : Float[Array, "3"]
-        Unit cell lengths [a, b, c] in Angstroms. Computed as the Euclidean
-        norm of each lattice vector.
-    cell_angles : Float[Array, "3"]
-        Unit cell angles [alpha, beta, gamma] in degrees.
-
-        - ``alpha`` : angle between vectors b and c
-        - ``beta`` : angle between vectors a and c
-        - ``gamma`` : angle between vectors a and b
-
-    Notes
-    -----
-    The conversion uses the standard crystallographic definitions:
-
-    .. math::
-
-        a = |\\mathbf{a}|, \\quad b = |\\mathbf{b}|, \\quad c = |\\mathbf{c}|
-
-    .. math::
-
-        \\cos(\\alpha) = \\frac{\\mathbf{b} \\cdot \\mathbf{c}}{bc}
-
-    Cosine values are clipped to [-1, 1] to prevent numerical issues with
-    arccos when vectors are nearly parallel or antiparallel.
-
-    1. **Cell lengths** --
-       Euclidean norm of each lattice vector.
-    2. **Cell angles** --
-       :math:`\\cos(\\alpha) = (b \\cdot c) / (bc)`,
-       etc., with clipping to [-1, 1].
-    3. **Convert to degrees** --
-       :func:`jnp.degrees` of :func:`jnp.arccos`.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-    >>> from rheedium.inout import lattice_to_cell_params
-    >>> lattice = jnp.eye(3) * 4.2
-    >>> lengths, angles = lattice_to_cell_params(lattice)
-    >>> lengths
-    Array([4.2, 4.2, 4.2], dtype=float64)
-    >>> angles
-    Array([90., 90., 90.], dtype=float64)
-
-    Non-orthogonal lattice (hexagonal):
-
-    >>> hex_lattice = jnp.array([
-    ...     [3.0, 0.0, 0.0],
-    ...     [-1.5, 2.598, 0.0],
-    ...     [0.0, 0.0, 5.0]
-    ... ])
-    >>> lengths, angles = lattice_to_cell_params(hex_lattice)
-    """
-    a_vec: Float[Array, "3"] = lattice[0]
-    b_vec: Float[Array, "3"] = lattice[1]
-    c_vec: Float[Array, "3"] = lattice[2]
-
-    a: Float[Array, ""] = jnp.linalg.norm(a_vec)
-    b: Float[Array, ""] = jnp.linalg.norm(b_vec)
-    c: Float[Array, ""] = jnp.linalg.norm(c_vec)
-    cell_lengths: Float[Array, "3"] = jnp.array([a, b, c])
-
-    cos_alpha: Float[Array, ""] = jnp.dot(b_vec, c_vec) / (b * c)
-    cos_beta: Float[Array, ""] = jnp.dot(a_vec, c_vec) / (a * c)
-    cos_gamma: Float[Array, ""] = jnp.dot(a_vec, b_vec) / (a * b)
-
-    cos_alpha: Float[Array, ""] = jnp.clip(cos_alpha, min=-1.0, max=1.0)
-    cos_beta: Float[Array, ""] = jnp.clip(cos_beta, min=-1.0, max=1.0)
-    cos_gamma: Float[Array, ""] = jnp.clip(cos_gamma, min=-1.0, max=1.0)
-
-    alpha: Float[Array, ""] = jnp.degrees(jnp.arccos(cos_alpha))
-    beta: Float[Array, ""] = jnp.degrees(jnp.arccos(cos_beta))
-    gamma: Float[Array, ""] = jnp.degrees(jnp.arccos(cos_gamma))
-    cell_angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
-
-    return cell_lengths, cell_angles
 
 
 @jaxtyped(typechecker=beartype)
@@ -441,8 +346,6 @@ def parse_crystal(
         return xyz_to_crystal(xyz_data)
 
     if name in ("POSCAR", "CONTCAR") or suffix in (".poscar", ".contcar"):
-        from .poscar import parse_poscar
-
         return parse_poscar(path)
 
     supported: str = ".cif, .xyz, POSCAR, CONTCAR"

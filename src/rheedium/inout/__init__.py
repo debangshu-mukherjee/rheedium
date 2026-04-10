@@ -73,9 +73,10 @@ ImportError with installation instructions if not available.
 """
 
 from .cif import parse_cif, symmetry_expansion
-from .crystal import lattice_to_cell_params, parse_crystal, xyz_to_crystal
+from .crystal import parse_crystal, xyz_to_crystal
 from .hdf5 import load_from_h5, save_to_h5
 from .interop import from_ase, from_pymatgen, to_ase, to_pymatgen
+from .lattice import lattice_to_cell_params
 from .poscar import parse_poscar
 from .tiff import (
     FrameMetadata,

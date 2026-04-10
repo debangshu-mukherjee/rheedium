@@ -39,7 +39,7 @@ gradient-based optimization and inverse problems.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Tuple
+from beartype.typing import Final, Tuple
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import (
@@ -68,6 +68,8 @@ from .form_factors import (
     projected_potential,
 )
 from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
+
+_VALID_THRESHOLD: Final[float] = 0.5
 
 
 @jaxtyped(typechecker=beartype)
@@ -590,7 +592,7 @@ def find_ctr_ewald_intersection(
 
 
 @jaxtyped(typechecker=beartype)
-def ewald_simulator(  # noqa: PLR0913
+def ewald_simulator(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
     voltage_kv: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
@@ -739,7 +741,7 @@ def ewald_simulator(  # noqa: PLR0913
     l_all, k_out_all, valid_all = jax.vmap(_find_intersection)(rod_indices)
 
     # Filter to valid intersections
-    valid_mask: Bool[Array, "N"] = valid_all > 0.5
+    valid_mask: Bool[Array, "N"] = valid_all > _VALID_THRESHOLD
     valid_indices: Int[Array, "K"] = jnp.where(
         valid_mask, size=n_rods, fill_value=-1
     )[0]

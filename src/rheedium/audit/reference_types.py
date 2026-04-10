@@ -23,8 +23,9 @@ Routine Listings
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from typing import Any, Mapping
+from typing import Any
 
 from jaxtyping import Float
 from numpy import ndarray as NDArray  # noqa: N812
@@ -57,6 +58,20 @@ REQUIRED_REFERENCE_METADATA_KEYS: tuple[str, ...] = (
     "psf_sigma_pixels",
     "spot_sigma_px",
 )
+
+_SUMMARY_CANONICAL_ABS_TOL: float = 1e-10
+
+
+def _canonicalize_summary_float(value: float) -> float:
+    """Snap machine-noise values to exact metric boundaries for JSON output."""
+    float_value = float(value)
+    if abs(float_value) <= _SUMMARY_CANONICAL_ABS_TOL:
+        return 0.0
+    if abs(float_value - 1.0) <= _SUMMARY_CANONICAL_ABS_TOL:
+        return 1.0
+    if abs(float_value + 1.0) <= _SUMMARY_CANONICAL_ABS_TOL:
+        return -1.0
+    return float_value
 
 
 @dataclass(frozen=True)
@@ -253,13 +268,27 @@ class BenchmarkCaseResult:
             "surface": self.surface,
             "source_kind": self.source_kind,
             "simulation_mode": self.simulation_mode,
-            "normalized_cross_correlation": self.normalized_cross_correlation,
-            "specular_offset_px": self.specular_offset_px,
-            "peak_centroid_error_px": self.peak_centroid_error_px,
-            "rod_spacing_error_px": self.rod_spacing_error_px,
-            "reference_streak_fwhm_px": self.reference_streak_fwhm_px,
-            "simulated_streak_fwhm_px": self.simulated_streak_fwhm_px,
-            "streak_fwhm_abs_error_px": self.streak_fwhm_abs_error_px,
+            "normalized_cross_correlation": _canonicalize_summary_float(
+                self.normalized_cross_correlation
+            ),
+            "specular_offset_px": _canonicalize_summary_float(
+                self.specular_offset_px
+            ),
+            "peak_centroid_error_px": _canonicalize_summary_float(
+                self.peak_centroid_error_px
+            ),
+            "rod_spacing_error_px": _canonicalize_summary_float(
+                self.rod_spacing_error_px
+            ),
+            "reference_streak_fwhm_px": _canonicalize_summary_float(
+                self.reference_streak_fwhm_px
+            ),
+            "simulated_streak_fwhm_px": _canonicalize_summary_float(
+                self.simulated_streak_fwhm_px
+            ),
+            "streak_fwhm_abs_error_px": _canonicalize_summary_float(
+                self.streak_fwhm_abs_error_px
+            ),
         }
 
 
@@ -278,10 +307,16 @@ class BenchmarkSuiteResult:
         return {
             "reference_count": self.reference_count,
             "mean_normalized_cross_correlation": (
-                self.mean_normalized_cross_correlation
+                _canonicalize_summary_float(
+                    self.mean_normalized_cross_correlation
+                )
             ),
-            "mean_specular_offset_px": self.mean_specular_offset_px,
-            "max_streak_fwhm_abs_error_px": self.max_streak_fwhm_abs_error_px,
+            "mean_specular_offset_px": _canonicalize_summary_float(
+                self.mean_specular_offset_px
+            ),
+            "max_streak_fwhm_abs_error_px": _canonicalize_summary_float(
+                self.max_streak_fwhm_abs_error_px
+            ),
             "cases": [case.to_dict() for case in self.cases],
         }
 

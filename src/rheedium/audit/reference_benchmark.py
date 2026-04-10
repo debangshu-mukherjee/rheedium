@@ -39,8 +39,15 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Float
 from numpy import ndarray as NDArray  # noqa: N812
+
+from rheedium.inout import parse_cif
+from rheedium.simul import (
+    detector_psf_convolve,
+    ewald_simulator,
+)
+from rheedium.tools import gauss_hermite_nodes_weights
 
 from .metrics import (
     dominant_peak_positions,
@@ -210,13 +217,6 @@ def simulate_detector_image_from_metadata(
     detector_image : Float[NDArray, "H W"]
         Simulated detector image.
     """
-    from ..inout import parse_cif
-    from ..simul import (
-        detector_psf_convolve,
-        ewald_simulator,
-    )
-    from ..tools import gauss_hermite_nodes_weights
-
     metadata = _coerce_metadata(reference)
     if metadata.simulation_mode != "ewald":
         raise ValueError(
@@ -245,7 +245,7 @@ def simulate_detector_image_from_metadata(
             temperature=metadata.temperature_kelvin,
             surface_roughness=metadata.surface_roughness_angstrom,
         )
-        image = render_pattern_to_image(
+        return render_pattern_to_image(
             detector_points_mm=np.asarray(pattern.detector_points),
             intensities=np.asarray(pattern.intensities),
             image_shape_px=image_shape_px,
@@ -253,7 +253,6 @@ def simulate_detector_image_from_metadata(
             beam_center_px=beam_center_px,
             spot_sigma_px=spot_sigma_px,
         )
-        return image
 
     theta_deg = metadata.theta_deg
     phi_deg = metadata.phi_deg

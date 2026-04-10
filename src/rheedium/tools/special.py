@@ -19,7 +19,7 @@ SAFE_X: Final[float] = 2.0
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Modified Bessel function of the second kind, order zero."""
+    r"""Compute modified Bessel function of the second kind, order zero."""
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
     t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)
@@ -73,7 +73,7 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Modified Bessel function of the second kind, order one."""
+    r"""Compute modified Bessel function of the second kind, order one."""
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
     t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)

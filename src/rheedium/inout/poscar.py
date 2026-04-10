@@ -32,7 +32,7 @@ from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import CrystalStructure, create_crystal_structure
 
-from .crystal import lattice_to_cell_params
+from .lattice import lattice_to_cell_params
 from .xyz import atomic_symbol
 
 
@@ -40,7 +40,7 @@ from .xyz import atomic_symbol
 def _parse_poscar_header(
     lines: List[str],
 ) -> Tuple[float, Float[Array, "3 3"], List[str], List[int]]:
-    """Extract scaling factor, lattice vectors, species, and counts from header.
+    """Extract scaling factor, lattice vectors, species and counts.
 
     Parses the first 7 lines of a VASP 5.x POSCAR file to extract the
     universal scaling factor, lattice vectors, element species names,
@@ -95,9 +95,11 @@ def _parse_poscar_header(
     for i in range(2, 5):
         try:
             row_values: List[float] = [float(x) for x in lines[i].split()]
-            if len(row_values) != 3:
+            n_components = 3
+            if len(row_values) != n_components:
                 raise ValueError(
-                    f"Invalid POSCAR: lattice vector on line {i + 1} must have "
+                    f"Invalid POSCAR: lattice vector on "
+                    f"line {i + 1} must have "
                     f"3 components, got {len(row_values)}"
                 )
             lattice_rows.append(row_values)
@@ -122,12 +124,13 @@ def _parse_poscar_header(
         counts: List[int] = [int(x) for x in lines[6].split()]
         if len(counts) != len(species):
             raise ValueError(
-                f"Invalid POSCAR: species count ({len(species)}) does not match "
+                f"Invalid POSCAR: species count "
+                f"({len(species)}) does not match "
                 f"atom counts ({len(counts)}) on line 7"
             )
     except (ValueError, IndexError) as err:
         raise ValueError(
-            f"Invalid POSCAR: cannot parse atom counts on line 7"
+            "Invalid POSCAR: cannot parse atom counts on line 7"
         ) from err
 
     return scaling, lattice, species, counts
@@ -188,7 +191,8 @@ def _parse_poscar_positions(
             )
 
         parts: List[str] = lines[line_idx].split()
-        if len(parts) < 3:
+        min_coord_cols = 3
+        if len(parts) < min_coord_cols:
             raise ValueError(
                 f"Invalid POSCAR: position line {line_idx + 1} must have "
                 f"at least 3 coordinates, got {len(parts)}"
@@ -198,7 +202,8 @@ def _parse_poscar_positions(
             coords: List[float] = [float(parts[j]) for j in range(3)]
         except ValueError as err:
             raise ValueError(
-                f"Invalid POSCAR: cannot parse coordinates on line {line_idx + 1}"
+                "Invalid POSCAR: cannot parse coordinates "
+                f"on line {line_idx + 1}"
             ) from err
 
         positions.append(coords)

@@ -23,12 +23,12 @@ import matplotlib.colors as mcolors
 import matplotlib.image as mimage
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import ndarray as NDArray  # noqa: N812
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple
 from jaxtyping import Float
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
+from numpy import ndarray as NDArray  # noqa: N812
 from scipy.interpolate import griddata
 
 from rheedium.types import RHEEDPattern, scalar_float

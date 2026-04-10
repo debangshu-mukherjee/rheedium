@@ -50,10 +50,9 @@ References
 
 from __future__ import annotations
 
-from beartype.typing import Tuple
-
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Float, jaxtyped
 
 from rheedium.tools import incident_wavevector
@@ -231,8 +230,10 @@ def compute_shell_sigma(
 
     .. math::
 
-        \\sigma_{shell} = k \\times \\sqrt{\\left(\\frac{\\Delta E}{2E}\\right)^2
+        \\sigma_{shell} = k \\times
+        \\sqrt{\\left(\\frac{\\Delta E}{2E}\\right)^2
         + \\Delta\\theta^2}
+
 
     For typical RHEED conditions (15 kV, ΔE/E = 10⁻⁴, Δθ = 1 mrad):
     - k ≈ 73 Å⁻¹
@@ -336,7 +337,9 @@ def rod_ewald_overlap(
     >>> k_mag = jnp.linalg.norm(k_in)
     >>> rod_sigma = jnp.array([0.05, 0.05])
     >>> shell_sigma = jnp.array(0.07)
-    >>> overlap = rod_ewald_overlap(g_vecs, k_in, k_mag, rod_sigma, shell_sigma)
+    >>> overlap = rod_ewald_overlap(
+    ...     g_vecs, k_in, k_mag, rod_sigma, shell_sigma
+    ... )
 
     See Also
     --------
@@ -357,7 +360,8 @@ def rod_ewald_overlap(
     rod_sigma_eff_sq: Float[Array, "N"] = (rod_sigma_x * cos_phi) ** 2 + (
         rod_sigma_y * sin_phi
     ) ** 2
-    is_vertical: Bool[Array, "N"] = k_out_xy_mag < 1e-8
+    vertical_threshold: float = 1e-8
+    is_vertical: Bool[Array, "N"] = k_out_xy_mag < vertical_threshold
     rod_sigma_mean_sq: Float[Array, ""] = (rod_sigma_x**2 + rod_sigma_y**2) / 2
     rod_sigma_eff_sq: Float[Array, "N"] = jnp.where(
         is_vertical, rod_sigma_mean_sq, rod_sigma_eff_sq

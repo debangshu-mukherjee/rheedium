@@ -38,13 +38,11 @@ Notes
 All functions are JAX-compatible and support automatic differentiation.
 """
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
-
 from jax import lax
+from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
@@ -621,7 +619,8 @@ def atom_scraper(
         jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
         1e-3,
     )
-    # Project thickness onto zone axis to get scalar thickness along that direction
+    # Project thickness onto zone axis for scalar
+    # thickness along that direction
     thickness_along_axis: Float[Array, ""] = jnp.abs(
         jnp.dot(thickness, zone_axis_hat)
     )
@@ -889,7 +888,7 @@ def miller_to_reciprocal(
 
 
 @jaxtyped(typechecker=beartype)
-def bulk_to_slice(
+def bulk_to_slice(  # noqa: PLR0915
     bulk_crystal: CrystalStructure,
     orientation: Int[Array, "3"],
     depth: scalar_float,

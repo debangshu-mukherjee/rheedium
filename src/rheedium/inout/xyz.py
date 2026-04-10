@@ -284,7 +284,8 @@ def _load_lobato_csv(
         skiprows=1,
         usecols=range(2, 12),
     )
-    if lobato_numpy.shape[0] != 103:
+    n_elements = 103
+    if lobato_numpy.shape[0] != n_elements:
         raise ValueError(f"Expected 103 rows, got {lobato_numpy.shape[0]}")
     a_cols: Float[NDArray, "103 5"] = lobato_numpy[:, :5]
     b_cols: Float[NDArray, "103 5"] = lobato_numpy[:, 5:]

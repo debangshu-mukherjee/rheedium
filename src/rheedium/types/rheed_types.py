@@ -48,12 +48,18 @@ JAX Validation Pattern:
 
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple, Tuple, Union
+from beartype.typing import Final, NamedTuple, Tuple, Union
 from jax import lax
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import scalar_float, scalar_num
+
+_NDIM_POSITIONS: Final[int] = 2
+_NCOLS_CART: Final[int] = 4
+_MAX_ATOMIC_NUMBER: Final[int] = 118
+_MAX_CELL_ANGLE: Final[int] = 180
+_SELF_DISTANCE_TOL: Final[float] = 0.1
 
 
 @register_pytree_node_class
@@ -516,8 +522,8 @@ def create_rheed_image(
 
         def _check_calibration() -> Union[Float[Array, "2"], Float[Array, ""]]:
             """Check the calibration is positive."""
-            # Use jnp.all to ensure scalar predicate regardless of calibration shape
-            # Both branches are traced by JAX, so both predicates must be scalar
+            # jnp.all ensures scalar predicate regardless
+            # of calibration shape; both branches traced
             return lax.cond(
                 jnp.all(calibration > 0),
                 lambda: calibration,
@@ -550,8 +556,9 @@ def create_rheed_image(
 class SlicedCrystal(NamedTuple):
     """JAX-compatible surface-oriented crystal structure for RHEED simulation.
 
-    This PyTree represents a crystal structure that has been sliced and oriented
-    for RHEED simulations. The structure contains atoms from a surface region
+    This PyTree represents a crystal structure that has been sliced
+    and oriented for RHEED simulations. The structure contains atoms
+    from a surface region
     extended in x and y directions to cover a large area (>100 Å typically),
     with a specified depth perpendicular to the surface.
 
@@ -582,8 +589,9 @@ class SlicedCrystal(NamedTuple):
 
     Notes
     -----
-    This class is registered as a PyTree node, making it compatible with JAX
-    transformations. The structure is designed specifically for RHEED simulations
+    This class is registered as a PyTree node, making it compatible
+    with JAX transformations. The structure is designed specifically
+    for RHEED simulations
     where:
     - The z-direction is perpendicular to the surface (beam grazing angle)
     - The x-y plane is the surface plane
@@ -731,8 +739,11 @@ def create_sliced_crystal(
             n_atoms: int = cart_positions.shape[0]
             return lax.cond(
                 jnp.logical_and(
-                    cart_positions.ndim == 2,
-                    jnp.logical_and(cart_positions.shape[1] == 4, n_atoms > 0),
+                    cart_positions.ndim == _NDIM_POSITIONS,
+                    jnp.logical_and(
+                        cart_positions.shape[1] == _NCOLS_CART,
+                        n_atoms > 0,
+                    ),
                 ),
                 lambda: cart_positions,
                 lambda: lax.stop_gradient(
@@ -759,7 +770,8 @@ def create_sliced_crystal(
             atomic_nums: Float[Array, "N"] = cart_positions[:, 3]
             return lax.cond(
                 jnp.logical_and(
-                    jnp.all(atomic_nums >= 1), jnp.all(atomic_nums <= 118)
+                    jnp.all(atomic_nums >= 1),
+                    jnp.all(atomic_nums <= _MAX_ATOMIC_NUMBER),
                 ),
                 lambda: cart_positions,
                 lambda: lax.stop_gradient(
@@ -787,7 +799,8 @@ def create_sliced_crystal(
                 jnp.logical_and(
                     cell_angles.shape == (3,),
                     jnp.logical_and(
-                        jnp.all(cell_angles > 0), jnp.all(cell_angles < 180)
+                        jnp.all(cell_angles > 0),
+                        jnp.all(cell_angles < _MAX_CELL_ANGLE),
                     ),
                 ),
                 lambda: cell_angles,
@@ -900,10 +913,13 @@ class SurfaceConfig(NamedTuple):
     explicit_mask: Bool[Array, "N"] | None = None
 
 
+_DEFAULT_SURFACE_CONFIG: Final[SurfaceConfig] = SurfaceConfig()
+
+
 @jaxtyped(typechecker=beartype)
 def identify_surface_atoms(
     atom_positions: Float[Array, "N 3"],
-    config: SurfaceConfig = SurfaceConfig(),
+    config: SurfaceConfig = _DEFAULT_SURFACE_CONFIG,
 ) -> Bool[Array, "N"]:
     """Identify surface atoms using the specified method.
 
@@ -965,7 +981,7 @@ def identify_surface_atoms(
         )
         return z_coords >= z_threshold
 
-    elif config.method == "coordination":
+    if config.method == "coordination":
         # Coordination-based: count neighbors for each atom
         # Compute pairwise distances
         diff: Float[Array, "N N 3"] = (
@@ -976,7 +992,7 @@ def identify_surface_atoms(
         # Count neighbors within cutoff (excluding self)
         neighbor_mask: Bool[Array, "N N"] = (
             distances < config.coordination_cutoff
-        ) & (distances > 0.1)
+        ) & (distances > _SELF_DISTANCE_TOL)
         neighbor_counts: Int[Array, "N"] = jnp.sum(neighbor_mask, axis=-1)
 
         # Surface atoms have fewer neighbors than threshold
@@ -985,7 +1001,7 @@ def identify_surface_atoms(
         )
         return is_surface
 
-    elif config.method == "layers":
+    if config.method == "layers":
         # Layer-based: identify discrete z-layers and mark top N
         # Sort z-coordinates to find layer boundaries
         z_sorted: Float[Array, "N"] = jnp.sort(z_coords)
@@ -1019,15 +1035,14 @@ def identify_surface_atoms(
         )
         return is_surface
 
-    else:
-        # Default: height-based method
-        z_max: Float[Array, ""] = jnp.max(z_coords)
-        z_min: Float[Array, ""] = jnp.min(z_coords)
-        z_threshold: Float[Array, ""] = z_max - config.height_fraction * (
-            z_max - z_min
-        )
-        is_surface: Bool[Array, "N"] = z_coords >= z_threshold
-        return is_surface
+    # Default: height-based method
+    z_max: Float[Array, ""] = jnp.max(z_coords)
+    z_min: Float[Array, ""] = jnp.min(z_coords)
+    z_threshold: Float[Array, ""] = z_max - config.height_fraction * (
+        z_max - z_min
+    )
+    is_surface: Bool[Array, "N"] = z_coords >= z_threshold
+    return is_surface
 
 
 class DetectorGeometry(NamedTuple):

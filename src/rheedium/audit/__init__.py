@@ -1,4 +1,4 @@
-"""Audit utilities for RHEED simulation validation.
+r"""Audit utilities for RHEED simulation validation.
 
 Extended Summary
 ----------------
@@ -96,11 +96,11 @@ from .metrics import (
     streak_fwhm_px,
 )
 from .reference_types import (
+    REQUIRED_REFERENCE_METADATA_KEYS,
     BenchmarkCaseResult,
     BenchmarkSuiteResult,
     ReferenceCase,
     ReferenceMetadata,
-    REQUIRED_REFERENCE_METADATA_KEYS,
 )
 
 _BENCHMARK_EXPORTS: frozenset[str] = frozenset(

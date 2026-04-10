@@ -29,6 +29,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import h5py
 import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
@@ -79,31 +80,18 @@ class _PyTreeMeta:
     uses_tree_methods: bool = True
 
 
-def _require_h5py() -> Any:  # noqa: ANN401
-    """Import ``h5py`` lazily so package import does not hard-fail."""
-    try:
-        import h5py
-    except ImportError as exc:  # pragma: no cover - exercised in user envs
-        msg = (
-            "h5py is required for rheedium HDF5 I/O. "
-            "Install rheedium with the HDF5 dependency available."
-        )
-        raise ImportError(msg) from exc
-    return h5py
-
-
 def _encode_none(
     _aux: None,  # noqa: ARG001
 ) -> None:
     """Encode ``None`` auxiliary data for JSON storage."""
-    return None
+    return
 
 
 def _decode_none(
     _val: None,  # noqa: ARG001
 ) -> None:
     """Decode JSON ``null`` back to ``None`` auxiliary data."""
-    return None
+    return
 
 
 def _scalar_to_python(
@@ -117,7 +105,7 @@ def _scalar_to_python(
     return scalar_array.item()
 
 
-def _encode_json_value(
+def _encode_json_value(  # noqa: PLR0911
     value: Any,  # noqa: ANN401
 ) -> Any:  # noqa: ANN401
     """Convert a Python value into a JSON-serializable representation."""
@@ -196,9 +184,10 @@ def _decode_potential_slices_aux(
 ) -> tuple[Any, Any, Any]:
     """Decode PotentialSlices scalar auxiliary metadata."""
     decoded: Any = _decode_json_value(value)
-    return tuple(
+    components: list[Any] = [
         jnp.asarray(component, dtype=jnp.float64) for component in decoded
-    )
+    ]
+    return (components[0], components[1], components[2])
 
 
 def _encode_json_aux(
@@ -474,7 +463,6 @@ def _read_value(
     node: Any,  # noqa: ANN401
 ) -> Any:  # noqa: ANN401
     """Read one supported value from an HDF5 dataset or group."""
-    h5py = _require_h5py()
     if isinstance(node, h5py.Dataset):
         data: Shaped[NDArray, "..."] = node[()]
         return jnp.asarray(data)
@@ -568,7 +556,6 @@ def save_to_h5(
         msg = "compression_opts requires compression to be set."
         raise ValueError(msg)
 
-    h5py = _require_h5py()
     file_path: Path = Path(path)
     with h5py.File(file_path, "w") as handle:
         for group_name, pytree in pytrees.items():
@@ -612,7 +599,6 @@ def load_from_h5(
     TypeError
         If the file contains an unsupported serialized node.
     """
-    h5py = _require_h5py()
     file_path: Path = Path(path)
     with h5py.File(file_path, "r") as handle:
         if name is not None:
