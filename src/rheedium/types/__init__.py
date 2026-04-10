@@ -61,8 +61,26 @@ Routine Listings
     Union type for scalar integer values (int or JAX scalar array).
 :obj:`scalar_num`
     Union type for scalar numeric values (int, float, or JAX scalar array).
-:mod:`constants`
-    Physical constants with ``Final`` annotations.
+:obj:`AMU_TO_KG`
+    Atomic mass unit to kg conversion factor.
+:obj:`BOLTZMANN_CONSTANT_JK`
+    Boltzmann constant in J/K.
+:obj:`ELECTRON_MASS_KG`
+    Electron rest mass in kg.
+:obj:`ELEMENTARY_CHARGE_C`
+    Elementary charge in C.
+:obj:`H_OVER_SQRT_2ME_ANG_VSQRT`
+    Electron wavelength prefactor *h / sqrt(2 m_e e)* in Ang V^0.5.
+:obj:`HBAR_JS`
+    Reduced Planck constant in J s.
+:obj:`M2_TO_ANG2`
+    Square metres to square angstroms conversion factor.
+:obj:`PLANCK_CONSTANT_JS`
+    Planck constant *h* in J s.
+:obj:`RELATIVISTIC_COEFF_PER_V`
+    Relativistic correction coefficient *e / (2 m_e c^2)* in 1/V.
+:obj:`SPEED_OF_LIGHT_MS`
+    Speed of light in vacuum in m/s.
 
 Notes
 -----

@@ -27,14 +27,15 @@ from beartype import beartype
 from beartype.typing import Union
 from jaxtyping import Array, Float, Num, jaxtyped
 
-from rheedium.types import scalar_float, scalar_num
-from rheedium.types.constants import (
+from rheedium.types import (
     ELECTRON_MASS_KG,
     ELEMENTARY_CHARGE_C,
     H_OVER_SQRT_2ME_ANG_VSQRT,
     PLANCK_CONSTANT_JS,
     RELATIVISTIC_COEFF_PER_V,
     SPEED_OF_LIGHT_MS,
+    scalar_float,
+    scalar_num,
 )
 
 

@@ -43,10 +43,12 @@ from beartype.typing import List, NamedTuple, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
 from numpy import ndarray as NDArray  # noqa: N812
 
-from rheedium.types import RHEEDImage, create_rheed_image, scalar_float
-from rheedium.types.constants import (
+from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,
     RELATIVISTIC_COEFF_PER_V,
+    RHEEDImage,
+    create_rheed_image,
+    scalar_float,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)

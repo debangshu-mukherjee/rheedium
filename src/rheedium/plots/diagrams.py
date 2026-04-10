@@ -67,10 +67,10 @@ from rheedium.simul import (
     get_mean_square_displacement,
     kirkland_form_factor,
 )
-from rheedium.types import CrystalStructure
-from rheedium.types.constants import (
+from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,
     RELATIVISTIC_COEFF_PER_V,
+    CrystalStructure,
 )
 
 _LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
