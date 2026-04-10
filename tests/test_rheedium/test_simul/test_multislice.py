@@ -63,9 +63,9 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
 
     def test_zero_potential_gives_unity(self):
         """T = 1 everywhere when V = 0."""
-        grid, _, voltage, dz = _make_grid_params()
+        grid, _, voltage, _ = _make_grid_params()
         v = _zero_potential(grid)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         chex.assert_shape(t, grid)
         chex.assert_trees_all_close(
             t, jnp.ones(grid, dtype=jnp.complex128), atol=1e-12
@@ -73,48 +73,51 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
 
     def test_modulus_bounded_by_one(self):
         """|T| <= 1 everywhere (absorption only removes amplitude)."""
-        grid, cell, voltage, dz = _make_grid_params()
+        grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         modulus = jnp.abs(t)
         assert float(jnp.max(modulus)) <= 1.0 + 1e-6
 
     def test_real_potential_gives_unit_modulus(self):
         """Pure-real V (no absorption) gives |T| = 1 everywhere."""
-        grid, cell, voltage, dz = _make_grid_params()
+        grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.0)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         modulus = jnp.abs(t)
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-6)
 
     def test_absorption_reduces_modulus(self):
         """Higher absorption fraction lowers |T|."""
-        grid, cell, voltage, dz = _make_grid_params()
+        grid, cell, voltage, _ = _make_grid_params()
         v_low = _single_atom_potential(grid, cell, absorption=0.05)
         v_high = _single_atom_potential(grid, cell, absorption=0.5)
-        t_low = build_transmission_function(v_low, voltage, dz)
-        t_high = build_transmission_function(v_high, voltage, dz)
+        t_low = build_transmission_function(v_low, voltage)
+        t_high = build_transmission_function(v_high, voltage)
         assert float(jnp.min(jnp.abs(t_high))) < float(jnp.min(jnp.abs(t_low)))
 
     def test_jit_matches_eager(self):
         """JIT-compiled output matches eager output."""
-        grid, cell, voltage, dz = _make_grid_params()
+        grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
-        eager = build_transmission_function(v, voltage, dz)
+        eager = build_transmission_function(v, voltage)
         jit_fn = jax.jit(
             build_transmission_function,
             static_argnums=(),
         )
-        compiled = jit_fn(v, voltage, dz)
+        compiled = jit_fn(v, voltage)
         chex.assert_trees_all_close(eager, compiled, atol=1e-10)
 
-    def test_projected_potential_input_is_independent_of_dz_argument(self):
-        """Projected-potential transmission does not multiply by dz twice."""
+    def test_explicit_projected_potential_keyword_matches_positional(self):
+        """The explicit projected-potential keyword matches positional use."""
         grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
-        t_thin = build_transmission_function(v, voltage, 1.0)
-        t_thick = build_transmission_function(v, voltage, 5.0)
-        chex.assert_trees_all_close(t_thin, t_thick, atol=1e-12)
+        positional = build_transmission_function(v, voltage)
+        keyword = build_transmission_function(
+            projected_potential_volt_angstrom=v,
+            voltage_kv=voltage,
+        )
+        chex.assert_trees_all_close(positional, keyword, atol=1e-12)
 
 
 class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
@@ -156,7 +159,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         """Zero potential leaves |psi| unchanged (free propagation)."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _zero_potential(grid)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         p = fresnel_propagator(grid, cell, voltage, dz)
         psi_in = jnp.ones(grid, dtype=jnp.complex128)
         psi_out = multislice_one_step(psi_in, t, p)
@@ -168,7 +171,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         """Non-zero absorption reduces wavefunction norm."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.3)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         p = fresnel_propagator(grid, cell, voltage, dz)
         psi_in = jnp.ones(grid, dtype=jnp.complex128)
         psi_out = multislice_one_step(psi_in, t, p)
@@ -180,7 +183,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         """Norm decreases monotonically over many absorbing slices."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.2)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         p = fresnel_propagator(grid, cell, voltage, dz)
         psi = jnp.ones(grid, dtype=jnp.complex128)
         norms = [float(jnp.sum(jnp.abs(psi) ** 2))]
@@ -194,7 +197,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         """Output shape equals input shape."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         p = fresnel_propagator(grid, cell, voltage, dz)
         psi_in = jnp.ones(grid, dtype=jnp.complex128)
         psi_out = multislice_one_step(psi_in, t, p)
@@ -204,7 +207,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         """JIT-compiled multislice step matches eager output."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell)
-        t = build_transmission_function(v, voltage, dz)
+        t = build_transmission_function(v, voltage)
         p = fresnel_propagator(grid, cell, voltage, dz)
         psi_in = jnp.ones(grid, dtype=jnp.complex128)
         eager = multislice_one_step(psi_in, t, p)
@@ -229,7 +232,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
                 absorption_fraction=absorption,
                 parameterization="lobato",
             )
-            t = build_transmission_function(v, voltage, dz)
+            t = build_transmission_function(v, voltage)
             psi_out = multislice_one_step(psi_in, t, p)
             return jnp.sum(jnp.abs(psi_out) ** 2).real
 

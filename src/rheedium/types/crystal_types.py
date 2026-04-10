@@ -14,6 +14,8 @@ Routine Listings
     Cartesian coordinates.
 :class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
+:class:`KirklandParameters`
+    Structured Kirkland coefficients for one element.
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice
     potential data.
@@ -628,6 +630,157 @@ def create_ewald_data(
 
 
 @register_pytree_node_class
+class KirklandParameters(NamedTuple):
+    """Structured Kirkland coefficients for one element.
+
+    This PyTree holds the three Lorentzian and three Gaussian
+    amplitude/scale pairs from the Kirkland parameterization of
+    electron scattering factors.
+
+    Attributes
+    ----------
+    lorentzian_amplitudes : Float[Array, "3"]
+        Lorentzian amplitude coefficients (a_1, a_2, a_3).
+    lorentzian_scales : Float[Array, "3"]
+        Lorentzian scale coefficients (b_1, b_2, b_3).
+    gaussian_amplitudes : Float[Array, "3"]
+        Gaussian amplitude coefficients (c_1, c_2, c_3).
+    gaussian_scales : Float[Array, "3"]
+        Gaussian scale coefficients (d_1, d_2, d_3).
+
+    This class is registered as a PyTree node, making it compatible
+    with JAX transformations like jit, grad, and vmap. All fields are
+    JAX arrays and are stored as leaf nodes.
+    """
+
+    lorentzian_amplitudes: Float[Array, "3"]
+    lorentzian_scales: Float[Array, "3"]
+    gaussian_amplitudes: Float[Array, "3"]
+    gaussian_scales: Float[Array, "3"]
+
+    def tree_flatten(
+        self,
+    ) -> Tuple[
+        Tuple[
+            Float[Array, "3"],
+            Float[Array, "3"],
+            Float[Array, "3"],
+            Float[Array, "3"],
+        ],
+        None,
+    ]:
+        """Flatten the PyTree into a tuple of arrays."""
+        return (
+            (
+                self.lorentzian_amplitudes,
+                self.lorentzian_scales,
+                self.gaussian_amplitudes,
+                self.gaussian_scales,
+            ),
+            None,
+        )
+
+    @classmethod
+    def tree_unflatten(
+        cls,
+        aux_data: None,
+        children: Tuple[
+            Float[Array, "3"],
+            Float[Array, "3"],
+            Float[Array, "3"],
+            Float[Array, "3"],
+        ],
+    ) -> "KirklandParameters":
+        """Unflatten the PyTree into a KirklandParameters instance."""
+        del aux_data
+        return cls(*children)
+
+
+@jaxtyped(typechecker=beartype)
+def create_kirkland_parameters(
+    lorentzian_amplitudes: Float[Array, "3"],
+    lorentzian_scales: Float[Array, "3"],
+    gaussian_amplitudes: Float[Array, "3"],
+    gaussian_scales: Float[Array, "3"],
+) -> KirklandParameters:
+    """Create a KirklandParameters PyTree with data validation.
+
+    Parameters
+    ----------
+    lorentzian_amplitudes : Float[Array, "3"]
+        Lorentzian amplitude coefficients (a_1, a_2, a_3).
+    lorentzian_scales : Float[Array, "3"]
+        Lorentzian scale coefficients (b_1, b_2, b_3).
+    gaussian_amplitudes : Float[Array, "3"]
+        Gaussian amplitude coefficients (c_1, c_2, c_3).
+    gaussian_scales : Float[Array, "3"]
+        Gaussian scale coefficients (d_1, d_2, d_3).
+
+    Returns
+    -------
+    validated_kirkland_parameters : KirklandParameters
+        Validated KirklandParameters instance.
+
+    Notes
+    -----
+    1. Convert inputs to JAX float64 arrays.
+    2. Validate all arrays have exactly 3 elements.
+    3. Ensure all values are finite.
+    4. Create and return KirklandParameters instance.
+    """
+    lorentzian_amplitudes = jnp.asarray(
+        lorentzian_amplitudes, dtype=jnp.float64
+    )
+    lorentzian_scales = jnp.asarray(lorentzian_scales, dtype=jnp.float64)
+    gaussian_amplitudes = jnp.asarray(gaussian_amplitudes, dtype=jnp.float64)
+    gaussian_scales = jnp.asarray(gaussian_scales, dtype=jnp.float64)
+    n_coeffs: int = 3
+
+    def _validate_and_create() -> KirklandParameters:
+        def _check_shapes() -> None:
+            for arr in (
+                lorentzian_amplitudes,
+                lorentzian_scales,
+                gaussian_amplitudes,
+                gaussian_scales,
+            ):
+                lax.cond(
+                    arr.shape[0] == n_coeffs,
+                    lambda: None,
+                    lambda: lax.stop_gradient(
+                        lax.cond(False, lambda: None, lambda: None)
+                    ),
+                )
+
+        def _check_finite() -> None:
+            for arr in (
+                lorentzian_amplitudes,
+                lorentzian_scales,
+                gaussian_amplitudes,
+                gaussian_scales,
+            ):
+                lax.cond(
+                    jnp.all(jnp.isfinite(arr)),
+                    lambda: None,
+                    lambda: lax.stop_gradient(
+                        lax.cond(False, lambda: None, lambda: None)
+                    ),
+                )
+
+        _check_shapes()
+        _check_finite()
+        return KirklandParameters(
+            lorentzian_amplitudes=lorentzian_amplitudes,
+            lorentzian_scales=lorentzian_scales,
+            gaussian_amplitudes=gaussian_amplitudes,
+            gaussian_scales=gaussian_scales,
+        )
+
+    validated_kirkland_parameters: KirklandParameters = _validate_and_create()
+    return validated_kirkland_parameters
+
+
+@register_pytree_node_class
 class PotentialSlices(NamedTuple):
     """JAX-compatible multislice potential data for electron beam propagation.
 
@@ -638,9 +791,10 @@ class PotentialSlices(NamedTuple):
     Attributes
     ----------
     slices : Float[Array, "n_slices height width"]
-        3D array containing potential data for each slice. First dimension
-        indexes slices, second and third dimensions are spatial coordinates.
-        Units: Volts or appropriate potential units.
+        3D array containing projected-potential data for each slice.
+        First dimension indexes slices, second and third dimensions are
+        spatial coordinates. Units: Volt-Angstrom. These are projected
+        slice potentials, not volumetric potentials.
     slice_thickness : scalar_float
         Thickness of each slice in Ångstroms. Determines the z-spacing
         between consecutive slices.
@@ -719,7 +873,8 @@ def create_potential_slices(
     Parameters
     ----------
     slices : Float[Array, "n_slices height width"]
-        3D array containing potential data for each slice.
+        3D array containing projected-potential data in Volt-Angstrom
+        for each slice.
     slice_thickness : scalar_float
         Thickness of each slice in Ångstroms.
     x_calibration : scalar_float

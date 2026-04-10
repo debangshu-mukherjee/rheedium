@@ -392,10 +392,9 @@ def detector_psf_convolve(
 
 @jaxtyped(typechecker=beartype)
 def instrument_broadened_pattern(
-    simulate_angle_fn: Callable[
-        [scalar_float, scalar_float], Float[Array, "H W"]
+    simulate_fn: Callable[
+        [scalar_float, scalar_float, scalar_float], Float[Array, "H W"]
     ],
-    simulate_energy_fn: Callable[[scalar_float], Float[Array, "H W"]],
     nominal_polar_angle_rad: scalar_float,
     nominal_azimuth_angle_rad: scalar_float,
     nominal_energy_kev: scalar_float,
@@ -421,13 +420,12 @@ def instrument_broadened_pattern(
 
     Parameters
     ----------
-    simulate_angle_fn : Callable[[scalar_float, scalar_float], \
+    simulate_fn : Callable[[scalar_float, scalar_float, scalar_float], \
             Float[Array, "H W"]]
-        Function mapping ``(polar_angle_rad, azimuth_angle_rad)`` to
-        intensity pattern. Must be vmappable.
-    simulate_energy_fn : Callable[[scalar_float], Float[Array, "H W"]]
-        Function mapping ``energy_kev`` to intensity pattern at the
-        nominal angles. Must be vmappable.
+        Function mapping
+        ``(polar_angle_rad, azimuth_angle_rad, energy_kev)`` to an
+        intensity pattern. Must be vmappable over both angle and energy
+        samples.
     nominal_polar_angle_rad : scalar_float
         Mean incidence angle :math:`\alpha_0` in radians.
     nominal_azimuth_angle_rad : scalar_float
@@ -454,15 +452,15 @@ def instrument_broadened_pattern(
 
     Notes
     -----
-    1. **Angular averaging** --
-       Call :func:`angular_divergence_average` with ``simulate_angle_fn``
-       and beam divergence.
-    2. **Energy averaging** --
-       Call :func:`energy_spread_average` with ``simulate_energy_fn``
-       and energy spread.
-    3. **Combine** --
-       Average the angular-averaged and energy-averaged patterns with
-       equal weight.
+    1. **Build quadrature grids** --
+       Gauss-Hermite nodes and weights for angular and energy
+       broadening.
+    2. **Joint simulation** --
+       Evaluate ``simulate_fn(alpha_i, phi_0, E_j)`` on the tensor
+       product of the angular and energy nodes.
+    3. **Weighted sum** --
+       Integrate the joint intensity distribution with a product
+       quadrature weight and normalize by :math:`\pi`.
     4. **PSF convolution** --
        Apply :func:`detector_psf_convolve` to the combined pattern.
     5. **Clip** --
@@ -472,12 +470,11 @@ def instrument_broadened_pattern(
     --------
     >>> import jax.numpy as jnp
     >>> import rheedium as rh
-    >>> def angle_sim(polar, azimuth):
-    ...     return jnp.ones((64, 64)) * polar
-    >>> def energy_sim(energy_kev):
-    ...     return jnp.ones((64, 64)) * energy_kev
+    >>> def joint_sim(polar, azimuth, energy_kev):
+    ...     del azimuth
+    ...     return jnp.ones((64, 64)) * (polar + energy_kev)
     >>> pattern = rh.simul.instrument_broadened_pattern(
-    ...     angle_sim, energy_sim,
+    ...     joint_sim,
     ...     jnp.float64(0.035), jnp.float64(0.0),
     ...     jnp.float64(20.0), jnp.float64(0.5),
     ...     jnp.float64(0.5), jnp.float64(1.0),
@@ -485,20 +482,51 @@ def instrument_broadened_pattern(
     >>> pattern.shape
     (64, 64)
     """
-    angle_averaged: Float[Array, "H W"] = angular_divergence_average(
-        simulate_fn=simulate_angle_fn,
-        nominal_polar_angle_rad=nominal_polar_angle_rad,
-        nominal_azimuth_angle_rad=nominal_azimuth_angle_rad,
-        angular_divergence_mrad=angular_divergence_mrad,
-        n_quadrature_points=n_angular_samples,
+    divergence_rad: scalar_float = angular_divergence_mrad * 1e-3
+    spread_kev: scalar_float = energy_spread_ev * 1e-3
+    angle_nodes: Float[Array, " N_a"]
+    angle_weights: Float[Array, " N_a"]
+    energy_nodes: Float[Array, " N_e"]
+    energy_weights: Float[Array, " N_e"]
+    angle_nodes, angle_weights = gauss_hermite_nodes_weights(n_angular_samples)
+    energy_nodes, energy_weights = gauss_hermite_nodes_weights(
+        n_energy_samples
     )
-    energy_averaged: Float[Array, "H W"] = energy_spread_average(
-        simulate_fn=simulate_energy_fn,
-        nominal_energy_kev=nominal_energy_kev,
-        energy_spread_ev=energy_spread_ev,
-        n_quadrature_points=n_energy_samples,
+    angle_samples: Float[Array, " N_a"] = (
+        nominal_polar_angle_rad + jnp.sqrt(2.0) * divergence_rad * angle_nodes
     )
-    combined: Float[Array, "H W"] = 0.5 * (angle_averaged + energy_averaged)
+    azimuth_samples: Float[Array, " N_a"] = jnp.full_like(
+        angle_samples, nominal_azimuth_angle_rad
+    )
+    energy_samples: Float[Array, " N_e"] = (
+        nominal_energy_kev + jnp.sqrt(2.0) * spread_kev * energy_nodes
+    )
+
+    def _simulate_at_angle(
+        polar_angle_rad: scalar_float,
+        azimuth_angle_rad: scalar_float,
+    ) -> Float[Array, "N_e H W"]:
+        return jax.vmap(
+            lambda energy_kev: simulate_fn(
+                polar_angle_rad,
+                azimuth_angle_rad,
+                energy_kev,
+            )
+        )(energy_samples)
+
+    patterns: Float[Array, "N_a N_e H W"] = jax.vmap(_simulate_at_angle)(
+        angle_samples,
+        azimuth_samples,
+    )
+    combined: Float[Array, "H W"] = (
+        jnp.einsum(
+            "i,j,ijhw->hw",
+            angle_weights,
+            energy_weights,
+            patterns,
+        )
+        / jnp.pi
+    )
     final_pattern: Float[Array, "H W"] = detector_psf_convolve(
         detector_image=combined,
         psf_sigma_pixels=psf_sigma_pixels,

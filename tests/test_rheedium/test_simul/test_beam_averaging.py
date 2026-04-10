@@ -45,6 +45,17 @@ def _dummy_energy_sim(
     return jnp.exp(-((xx - shift) ** 2 + yy**2) / 0.02)
 
 
+def _dummy_joint_sim(
+    polar_rad,
+    azimuth_rad,
+    energy_kev,
+):
+    """Simulate a pattern with coupled angular and energy dependence."""
+    return _dummy_angle_sim(polar_rad, azimuth_rad) * _dummy_energy_sim(
+        energy_kev
+    )
+
+
 class TestAngularDivergenceAverage(chex.TestCase):
     """Tests for angular divergence averaging."""
 
@@ -287,8 +298,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
     def test_shape_preserved(self):
         """Output shape matches pattern shape."""
         pattern = instrument_broadened_pattern(
-            simulate_angle_fn=_dummy_angle_sim,
-            simulate_energy_fn=_dummy_energy_sim,
+            simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
             nominal_energy_kev=jnp.float64(20.0),
@@ -301,8 +311,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
     def test_finite_values(self):
         """No NaN or Inf in final output."""
         pattern = instrument_broadened_pattern(
-            simulate_angle_fn=_dummy_angle_sim,
-            simulate_energy_fn=_dummy_energy_sim,
+            simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
             nominal_energy_kev=jnp.float64(20.0),
@@ -315,8 +324,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
     def test_nonnegative(self):
         """All pixels in the final pattern are non-negative."""
         pattern = instrument_broadened_pattern(
-            simulate_angle_fn=_dummy_angle_sim,
-            simulate_energy_fn=_dummy_energy_sim,
+            simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
             nominal_energy_kev=jnp.float64(20.0),
@@ -329,8 +337,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
     def test_jit_agrees(self):
         """JIT and non-JIT results agree to 1e-4."""
         kwargs = dict(
-            simulate_angle_fn=_dummy_angle_sim,
-            simulate_energy_fn=_dummy_energy_sim,
+            simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
             nominal_energy_kev=jnp.float64(20.0),
@@ -344,8 +351,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         jitted = jax.jit(
             instrument_broadened_pattern,
             static_argnames=(
-                "simulate_angle_fn",
-                "simulate_energy_fn",
+                "simulate_fn",
                 "n_angular_samples",
                 "n_energy_samples",
             ),
@@ -422,8 +428,7 @@ class TestGradients(chex.TestCase):
 
         def loss(divergence):
             pattern = instrument_broadened_pattern(
-                simulate_angle_fn=_dummy_angle_sim,
-                simulate_energy_fn=_dummy_energy_sim,
+                simulate_fn=_dummy_joint_sim,
                 nominal_polar_angle_rad=jnp.float64(0.035),
                 nominal_azimuth_angle_rad=jnp.float64(0.0),
                 nominal_energy_kev=jnp.float64(20.0),

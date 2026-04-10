@@ -17,7 +17,7 @@ Routine Listings
 :func:`build_ewald_data`
     Build angle-independent EwaldData from crystal and beam parameters.
 :func:`build_transmission_function`
-    Construct ``T(x,y) = exp(i sigma V dz)`` from a complex projected
+    Construct ``T(x,y) = exp(i sigma V_proj)`` from a complex projected
     potential.
 :func:`crystal_projected_potential`
     Build complex projected potential V_real + i*V_abs for one
@@ -88,8 +88,9 @@ Routine Listings
     Lateral width profile of rods due to finite correlation length.
 :func:`roughness_damping`
     Gaussian roughness damping factor for CTR intensities.
-:func:`sliced_crystal_to_potential`
-    Convert SlicedCrystal to PotentialSlices for multislice simulation.
+:func:`sliced_crystal_to_projected_potential_slices`
+    Convert SlicedCrystal to projected-potential slices for multislice
+    simulation.
 :func:`surface_structure_factor`
     Calculate structure factor for surface with q_z dependence.
 """
@@ -133,7 +134,7 @@ from .simulator import (
     multislice_simulator,
     project_on_detector,
     project_on_detector_geometry,
-    sliced_crystal_to_potential,
+    sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
     calculate_ctr_intensity,
@@ -184,6 +185,6 @@ __all__: list[str] = [
     "project_on_detector_geometry",
     "rod_profile_function",
     "roughness_damping",
-    "sliced_crystal_to_potential",
+    "sliced_crystal_to_projected_potential_slices",
     "surface_structure_factor",
 ]

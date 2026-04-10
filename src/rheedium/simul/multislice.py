@@ -29,9 +29,9 @@ Notes
 -----
 All functions are pure JAX, JIT-compatible, and differentiable.
 The interaction constant sigma is computed via
-:func:`rheedium.tools.interaction_constant`. Slice thickness is a
-continuous parameter and remains differentiable through the
-exponential.
+:func:`rheedium.tools.interaction_constant`. The transmission function
+acts directly on projected potentials in Volt-Angstrom units, while
+slice thickness only enters the Fresnel propagator.
 """
 
 import jax.numpy as jnp
@@ -45,25 +45,20 @@ from rheedium.types import scalar_float
 
 @jaxtyped(typechecker=beartype)
 def build_transmission_function(
-    projected_potential: Complex[Array, "H W"],
+    projected_potential_volt_angstrom: Complex[Array, "H W"],
     voltage_kv: scalar_float,
-    slice_thickness_angstrom: scalar_float,
 ) -> Complex[Array, "H W"]:
     r"""Construct the transmission function for one multislice slice.
 
     Parameters
     ----------
-    projected_potential : Complex[Array, "H W"]
+    projected_potential_volt_angstrom : Complex[Array, "H W"]
         Complex projected potential V_real + i*V_abs in V*Angstrom
         units, e.g. from
         :func:`rheedium.simul.crystal_projected_potential`.
     voltage_kv : scalar_float
         Accelerating voltage in kV. Used to compute the relativistic
         interaction constant sigma.
-    slice_thickness_angstrom : scalar_float
-        Retained for backward compatibility. The input potential is
-        already projected through the slice thickness, so this value is
-        ignored.
 
     Returns
     -------
@@ -90,10 +85,11 @@ def build_transmission_function(
     voltage_kv_arr: Float[Array, ""] = jnp.asarray(
         voltage_kv, dtype=jnp.float64
     )
-    del slice_thickness_angstrom
     wavelength: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
     sigma: Float[Array, ""] = interaction_constant(voltage_kv_arr, wavelength)
-    phase_arg: Complex[Array, "H W"] = 1j * sigma * projected_potential
+    phase_arg: Complex[Array, "H W"] = (
+        1j * sigma * projected_potential_volt_angstrom
+    )
     transmission: Complex[Array, "H W"] = jnp.exp(phase_arg)
     return transmission
 

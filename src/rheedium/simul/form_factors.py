@@ -67,6 +67,8 @@ from rheedium.types import (
     BOLTZMANN_CONSTANT_JK,
     HBAR_JS,
     M2_TO_ANG2,
+    KirklandParameters,
+    create_kirkland_parameters,
     scalar_bool,
     scalar_float,
     scalar_int,
@@ -148,7 +150,7 @@ def get_atomic_mass(
 @jaxtyped(typechecker=beartype)
 def load_kirkland_parameters(
     atomic_number: scalar_int,
-) -> Tuple[Float[Array, "6"], Float[Array, "6"]]:
+) -> KirklandParameters:
     """Load Kirkland scattering parameters for a given atomic number.
 
     Extracts the Kirkland parameterization coefficients for atomic form
@@ -162,12 +164,9 @@ def load_kirkland_parameters(
 
     Returns
     -------
-    a_coeffs : Float[Array, "6"]
-        Amplitude coefficients in the order
-        ``[a1, a2, a3, c1, c2, c3]``
-    b_coeffs : Float[Array, "6"]
-        Scale coefficients in the order
-        ``[b1, b2, b3, d1, d2, d3]``
+    parameters : KirklandParameters
+        Structured coefficient container with Lorentzian amplitudes and
+        scales plus Gaussian amplitudes and scales.
 
     Notes
     -----
@@ -204,9 +203,14 @@ def load_kirkland_parameters(
     b_indices: Int[Array, "6"] = jnp.array(
         [1, 3, 5, 7, 9, 11], dtype=jnp.int32
     )
-    a_coeffs: Float[Array, "6"] = atom_params[a_indices]
-    b_coeffs: Float[Array, "6"] = atom_params[b_indices]
-    return a_coeffs, b_coeffs
+    amplitudes: Float[Array, "6"] = atom_params[a_indices]
+    scales: Float[Array, "6"] = atom_params[b_indices]
+    return create_kirkland_parameters(
+        lorentzian_amplitudes=amplitudes[:3],
+        lorentzian_scales=scales[:3],
+        gaussian_amplitudes=amplitudes[3:],
+        gaussian_scales=scales[3:],
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -257,24 +261,20 @@ def kirkland_form_factor(
     atomic_scattering_factor : Form factor with Debye-Waller damping
     debye_waller_factor : Thermal damping factor
     """
-    a_coeffs: Float[Array, "6"]
-    b_coeffs: Float[Array, "6"]
-    a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
+    parameters: KirklandParameters = load_kirkland_parameters(atomic_number)
     four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
     q_over_4pi: Float[Array, "..."] = q_magnitude / four_pi
     q_over_4pi_squared: Float[Array, "... 1"] = jnp.square(q_over_4pi)[
         ..., jnp.newaxis
     ]
-    lorentzian_amplitudes: Float[Array, "3"] = a_coeffs[:3]
-    lorentzian_scales: Float[Array, "3"] = b_coeffs[:3]
-    gaussian_amplitudes: Float[Array, "3"] = a_coeffs[3:]
-    gaussian_scales: Float[Array, "3"] = b_coeffs[3:]
-    lorentzian_terms: Float[Array, "... 3"] = lorentzian_amplitudes[
+    lorentzian_terms: Float[Array, "... 3"] = parameters.lorentzian_amplitudes[
         jnp.newaxis, :
-    ] / (q_over_4pi_squared + lorentzian_scales[jnp.newaxis, :])
-    gaussian_terms: Float[Array, "... 3"] = gaussian_amplitudes[
+    ] / (q_over_4pi_squared + parameters.lorentzian_scales[jnp.newaxis, :])
+    gaussian_terms: Float[Array, "... 3"] = parameters.gaussian_amplitudes[
         jnp.newaxis, :
-    ] * jnp.exp(-gaussian_scales[jnp.newaxis, :] * q_over_4pi_squared)
+    ] * jnp.exp(
+        -parameters.gaussian_scales[jnp.newaxis, :] * q_over_4pi_squared
+    )
     form_factor: Float[Array, "..."] = jnp.sum(
         lorentzian_terms + gaussian_terms,
         axis=-1,
@@ -339,9 +339,7 @@ def kirkland_projected_potential(
     ----------
     Kirkland, E.J. "Advanced Computing in Electron Microscopy" (2010)
     """
-    a_coeffs: Float[Array, "6"]
-    b_coeffs: Float[Array, "6"]
-    a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
+    parameters: KirklandParameters = load_kirkland_parameters(atomic_number)
     two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
     prefactor: Float[Array, ""] = jnp.asarray(
         47.87801 * 2.0 * jnp.pi,
@@ -349,20 +347,21 @@ def kirkland_projected_potential(
     )
     r_safe: Float[Array, "..."] = jnp.maximum(r, 1e-10)
     expanded_r: Float[Array, "... 1"] = r_safe[..., jnp.newaxis]
-    lorentzian_amplitudes: Float[Array, "3"] = a_coeffs[:3]
-    lorentzian_scales: Float[Array, "3"] = b_coeffs[:3]
-    gaussian_amplitudes: Float[Array, "3"] = a_coeffs[3:]
-    gaussian_scales: Float[Array, "3"] = b_coeffs[3:]
     lorentzian_arguments: Float[Array, "... 3"] = (
-        two_pi * expanded_r * jnp.sqrt(lorentzian_scales[jnp.newaxis, :])
+        two_pi
+        * expanded_r
+        * jnp.sqrt(parameters.lorentzian_scales[jnp.newaxis, :])
     )
-    lorentzian_terms: Float[Array, "... 3"] = lorentzian_amplitudes[
+    lorentzian_terms: Float[Array, "... 3"] = parameters.lorentzian_amplitudes[
         jnp.newaxis, :
     ] * bessel_k0(lorentzian_arguments)
     gaussian_terms: Float[Array, "... 3"] = (
-        gaussian_amplitudes[jnp.newaxis, :] / gaussian_scales[jnp.newaxis, :]
+        parameters.gaussian_amplitudes[jnp.newaxis, :]
+        / parameters.gaussian_scales[jnp.newaxis, :]
     ) * jnp.exp(
-        -(jnp.pi**2) * expanded_r**2 / gaussian_scales[jnp.newaxis, :]
+        -(jnp.pi**2)
+        * expanded_r**2
+        / parameters.gaussian_scales[jnp.newaxis, :]
     )
     potential: Float[Array, "..."] = prefactor * jnp.sum(
         lorentzian_terms + gaussian_terms,

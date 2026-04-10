@@ -16,6 +16,8 @@ Routine Listings
     Complete specification of an electron beam for RHEED simulation.
 :class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
+:class:`KirklandParameters`
+    Structured Kirkland coefficients for one element.
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice potential data.
 :class:`RHEEDImage`
@@ -35,6 +37,8 @@ Routine Listings
     Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
+:func:`create_kirkland_parameters`
+    Factory function to create KirklandParameters instances.
 :func:`create_potential_slices`
     Factory function to create PotentialSlices instances.
 :func:`create_rheed_image`
@@ -107,10 +111,12 @@ from .constants import (
 from .crystal_types import (
     CrystalStructure,
     EwaldData,
+    KirklandParameters,
     PotentialSlices,
     XYZData,
     create_crystal_structure,
     create_ewald_data,
+    create_kirkland_parameters,
     create_potential_slices,
     create_xyz_data,
 )
@@ -149,6 +155,7 @@ __all__: list[str] = [
     "create_crystal_structure",
     "create_electron_beam",
     "create_ewald_data",
+    "create_kirkland_parameters",
     "create_potential_slices",
     "create_rheed_image",
     "create_rheed_pattern",
@@ -159,6 +166,7 @@ __all__: list[str] = [
     "ElectronBeam",
     "EwaldData",
     "float_image",
+    "KirklandParameters",
     "identify_surface_atoms",
     "int_image",
     "non_jax_number",

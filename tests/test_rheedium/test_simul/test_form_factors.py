@@ -79,17 +79,30 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         which is physically meaningful for scattering.
         """
         var_load_params = self.variant(load_kirkland_parameters)
-        a_coeffs, b_coeffs = var_load_params(atomic_number)
+        params = var_load_params(atomic_number)
 
-        chex.assert_shape(a_coeffs, (6,))
-        chex.assert_shape(b_coeffs, (6,))
+        chex.assert_shape(params.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params.lorentzian_scales, (3,))
+        chex.assert_shape(params.gaussian_amplitudes, (3,))
+        chex.assert_shape(params.gaussian_scales, (3,))
 
-        chex.assert_tree_all_finite(a_coeffs)
-        chex.assert_tree_all_finite(b_coeffs)
+        chex.assert_tree_all_finite(params.lorentzian_amplitudes)
+        chex.assert_tree_all_finite(params.lorentzian_scales)
+        chex.assert_tree_all_finite(params.gaussian_amplitudes)
+        chex.assert_tree_all_finite(params.gaussian_scales)
 
-        chex.assert_trees_all_equal(jnp.all(b_coeffs > 0), True)
+        chex.assert_trees_all_equal(
+            jnp.all(params.lorentzian_scales > 0),
+            True,
+        )
+        chex.assert_trees_all_equal(
+            jnp.all(params.gaussian_scales > 0),
+            True,
+        )
 
-        a_sum = jnp.sum(a_coeffs)
+        a_sum = jnp.sum(params.lorentzian_amplitudes) + jnp.sum(
+            params.gaussian_amplitudes
+        )
         chex.assert_scalar_positive(float(a_sum))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -105,21 +118,37 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_load_params = self.variant(load_kirkland_parameters)
 
-        a_min, b_min = var_load_params(1)
-        a_max, b_max = var_load_params(103)
+        params_min = var_load_params(1)
+        params_max = var_load_params(103)
 
-        chex.assert_shape(a_min, (6,))
-        chex.assert_shape(b_min, (6,))
-        chex.assert_shape(a_max, (6,))
-        chex.assert_shape(b_max, (6,))
+        chex.assert_shape(params_min.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params_min.gaussian_amplitudes, (3,))
+        chex.assert_shape(params_max.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params_max.gaussian_amplitudes, (3,))
 
-        a_clip_low, b_clip_low = var_load_params(0)
-        a_clip_high, b_clip_high = var_load_params(150)
+        params_clip_low = var_load_params(0)
+        params_clip_high = var_load_params(150)
 
-        chex.assert_trees_all_close(a_clip_low, a_min, rtol=1e-10)
-        chex.assert_trees_all_close(b_clip_low, b_min, rtol=1e-10)
-        chex.assert_trees_all_close(a_clip_high, a_max, rtol=1e-10)
-        chex.assert_trees_all_close(b_clip_high, b_max, rtol=1e-10)
+        chex.assert_trees_all_close(
+            params_clip_low.lorentzian_amplitudes,
+            params_min.lorentzian_amplitudes,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_low.lorentzian_scales,
+            params_min.lorentzian_scales,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_high.gaussian_amplitudes,
+            params_max.gaussian_amplitudes,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_high.gaussian_scales,
+            params_max.gaussian_scales,
+            rtol=1e-10,
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(

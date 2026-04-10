@@ -24,7 +24,7 @@ from rheedium.simul.simulator import (
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
-    sliced_crystal_to_potential,
+    sliced_crystal_to_projected_potential_slices,
 )
 from rheedium.tools import wavelength_ang
 from rheedium.tools.wrappers import jax_safe
@@ -350,8 +350,10 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(k_out, (1, 3))
 
 
-class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
-    """Test suite for converting sliced crystals to potential arrays."""
+class TestSlicedCrystalToProjectedPotentialSlices(
+    chex.TestCase, parameterized.TestCase
+):
+    """Test suite for converting sliced crystals to projected-potential slices."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -384,13 +386,14 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(sliced_crystal_to_potential)
+        var_convert = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
 
         potential = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=0.5,
-            voltage_kv=20.0,
         )
 
         # Check slices array exists
@@ -410,13 +413,14 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(sliced_crystal_to_potential)
+        var_convert = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
 
         potential = var_convert(
             self.si_sliced,
             slice_thickness=thickness,
             pixel_size=0.5,
-            voltage_kv=20.0,
         )
 
         chex.assert_tree_all_finite(potential.slices)
@@ -435,13 +439,14 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(sliced_crystal_to_potential)
+        var_convert = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
 
         potential = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=pixel_size,
-            voltage_kv=20.0,
         )
 
         chex.assert_tree_all_finite(potential.slices)
@@ -453,49 +458,23 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
-        ("low", 10.0),
-        ("medium", 20.0),
-        ("high", 30.0),
+        ("lobato", "lobato"),
+        ("kirkland", "kirkland"),
     )
-    def test_voltage_variation(self, voltage):
-        """Test potential generation at different voltages.
-
-        Note: JIT compilation not supported due to dynamic grid dimensions.
-        """
-        var_convert = self.variant(sliced_crystal_to_potential)
+    def test_parameterization_variation(self, parameterization):
+        """Projected-potential slices are finite for both models."""
+        var_convert = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
 
         potential = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=0.5,
-            voltage_kv=voltage,
+            parameterization=parameterization,
         )
 
         chex.assert_tree_all_finite(potential.slices)
-
-    @chex.variants(with_device=True, without_jit=True)
-    def test_potential_is_voltage_independent(self):
-        """Stored potential slices should not be pre-multiplied by sigma."""
-        var_convert = self.variant(sliced_crystal_to_potential)
-
-        potential_low = var_convert(
-            self.si_sliced,
-            slice_thickness=2.0,
-            pixel_size=0.5,
-            voltage_kv=10.0,
-        )
-        potential_high = var_convert(
-            self.si_sliced,
-            slice_thickness=2.0,
-            pixel_size=0.5,
-            voltage_kv=30.0,
-        )
-
-        chex.assert_trees_all_close(
-            potential_low.slices,
-            potential_high.slices,
-            atol=1e-10,
-        )
 
     @chex.variants(with_device=True, without_jit=True)
     def test_calibration_stored(self):
@@ -503,7 +482,9 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(sliced_crystal_to_potential)
+        var_convert = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
 
         pixel_size = 0.3
         slice_thickness = 1.5
@@ -512,7 +493,6 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
             self.si_sliced,
             slice_thickness=slice_thickness,
             pixel_size=pixel_size,
-            voltage_kv=20.0,
         )
 
         chex.assert_trees_all_close(
@@ -1528,11 +1508,10 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         )
 
         def loss(voltage):
-            potential = sliced_crystal_to_potential(
+            potential = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
-                voltage_kv=voltage,
             )
             psi_exit = multislice_propagate(
                 potential,
@@ -1560,11 +1539,10 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         )
 
         def f(voltage):
-            potential = sliced_crystal_to_potential(
+            potential = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
-                voltage_kv=voltage,
             )
             psi_exit = multislice_propagate(
                 potential,

@@ -26,8 +26,8 @@ Routine Listings
     Project wavevectors onto detector plane.
 :func:`project_on_detector_geometry`
     Project wavevectors with full detector geometry support.
-:func:`sliced_crystal_to_potential`
-    Convert SlicedCrystal to PotentialSlices for multislice
+:func:`sliced_crystal_to_projected_potential_slices`
+    Convert SlicedCrystal to projected-potential slices for multislice
     simulation.
 
 Notes
@@ -845,14 +845,13 @@ def ewald_simulator(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
-def sliced_crystal_to_potential(
+def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
     pixel_size: scalar_float = 0.1,
-    voltage_kv: scalar_float = 20.0,
     parameterization: str = "lobato",
 ) -> PotentialSlices:
-    r"""Convert a SlicedCrystal into PotentialSlices for multislice.
+    r"""Convert a SlicedCrystal into projected-potential slices.
 
     This function takes a surface-oriented crystal slab and generates 3D
     potential slices suitable for multislice electron diffraction simulations.
@@ -874,10 +873,6 @@ def sliced_crystal_to_potential(
     pixel_size : scalar_float, optional
         Real-space pixel size in Ångstroms. Default: 0.1 Å
         Sets the lateral resolution of the potential grid.
-    voltage_kv : scalar_float, optional
-        Electron beam voltage in kV. Retained for backward compatibility;
-        not used because projected potentials are beam-independent.
-        Default: 20.0 kV.
     parameterization : str, optional
         Atomic potential model: ``"lobato"`` (default) or ``"kirkland"``.
         Not JIT-compiled; resolved at trace time.
@@ -886,7 +881,8 @@ def sliced_crystal_to_potential(
     Returns
     -------
     potential_slices : PotentialSlices
-        3D potential array with calibration information.
+        3D projected-potential array in Volt-Angstrom with calibration
+        information.
 
     Notes
     -----
@@ -906,7 +902,6 @@ def sliced_crystal_to_potential(
 
     See Also
     --------
-    wavelength_ang : Compute electron wavelength from voltage.
     projected_potential : Projected atomic potential calculation.
     create_potential_slices : Create PotentialSlices from array.
     multislice_propagate : Propagate wave through potential slices.
@@ -926,7 +921,7 @@ def sliced_crystal_to_potential(
     ... )
     >>>
     >>> # Convert to potential slices
-    >>> potential = rh.simul.sliced_crystal_to_potential(
+    >>> potential = rh.simul.sliced_crystal_to_projected_potential_slices(
     ...     sliced_crystal=slab,
     ...     slice_thickness=2.0,
     ...     pixel_size=0.1
@@ -936,7 +931,6 @@ def sliced_crystal_to_potential(
         slice_thickness, dtype=jnp.float64
     )
     pixel_size: Float[Array, ""] = jnp.asarray(pixel_size, dtype=jnp.float64)
-    del voltage_kv
     positions: Float[Array, "N 3"] = sliced_crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "N"] = sliced_crystal.cart_positions[:, 3]
     x_extent: Float[Array, ""] = sliced_crystal.x_extent
@@ -1083,7 +1077,8 @@ def multislice_propagate(
     See Also
     --------
     wavelength_ang : Compute electron wavelength from voltage.
-    sliced_crystal_to_potential : Create potential slices from crystal.
+    sliced_crystal_to_projected_potential_slices : Create projected-potential
+        slices from crystal.
     multislice_simulator : Complete multislice RHEED simulation.
 
     References
@@ -1189,7 +1184,8 @@ def multislice_simulator(
     Parameters
     ----------
     potential_slices : PotentialSlices
-        3D array of projected potentials from sliced_crystal_to_potential()
+        3D array of projected potentials from
+        sliced_crystal_to_projected_potential_slices()
     voltage_kv : scalar_float
         Accelerating voltage in kilovolts (typically 10-30 keV for RHEED)
     theta_deg : scalar_float
@@ -1245,7 +1241,8 @@ def multislice_simulator(
     --------
     multislice_propagate : Core propagation algorithm
     simulate_rheed_pattern : Kinematic approximation simulator
-    sliced_crystal_to_potential : Convert SlicedCrystal to potential slices
+    sliced_crystal_to_projected_potential_slices : Convert SlicedCrystal to
+        projected-potential slices
 
     References
     ----------
@@ -1341,5 +1338,5 @@ __all__: list[str] = [
     "multislice_simulator",
     "project_on_detector",
     "project_on_detector_geometry",
-    "sliced_crystal_to_potential",
+    "sliced_crystal_to_projected_potential_slices",
 ]
