@@ -123,7 +123,7 @@ def _(mo):
 
 @app.cell
 def _(rh, voltage_kV):
-    lam_ang = rh.simul.wavelength_ang(voltage_kV)
+    lam_ang = rh.tools.wavelength_ang(voltage_kV)
     lam_ang
     return (lam_ang,)
 

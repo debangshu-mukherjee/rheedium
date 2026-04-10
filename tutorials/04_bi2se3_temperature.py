@@ -163,7 +163,7 @@ def _(jnp, rh):
     theta_range = [1.0, 2.0, 3.0, 4.0]  # degrees
 
     # Electron wavelength and wavevector
-    wavelength = rh.simul.wavelength_ang(voltage_kV)
+    wavelength = rh.tools.wavelength_ang(voltage_kV)
     k_magnitude = 2 * jnp.pi / wavelength
     print(f"Electron wavelength: {float(wavelength):.4f} Å")
     print(f"Electron energy: {voltage_kV} keV")

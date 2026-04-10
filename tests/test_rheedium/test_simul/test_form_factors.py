@@ -11,13 +11,16 @@ import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
 
+from rheedium.inout import kirkland_potentials
 from rheedium.simul.form_factors import (
     atomic_scattering_factor,
     debye_waller_factor,
     get_mean_square_displacement,
     kirkland_form_factor,
+    kirkland_projected_potential,
     load_kirkland_parameters,
 )
+from rheedium.tools import bessel_k0
 from rheedium.tools.wrappers import jax_safe
 
 
@@ -195,6 +198,46 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         )
         f_batch_3d = var_form_factor(14, q_batch_3d)
         chex.assert_shape(f_batch_3d, q_batch_3d.shape)
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_kirkland_form_factor_matches_tabulated_formula(self):
+        """Kirkland form factor matches the mixed Lorentz/Gauss fit."""
+        var_form_factor = self.variant(kirkland_form_factor)
+        q_values = jnp.array([0.0, 0.5, 2.0, 8.0], dtype=jnp.float64)
+        params = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes = params[::2]
+        scales = params[1::2]
+        s_squared = (q_values / (4.0 * jnp.pi))[:, jnp.newaxis] ** 2
+        expected = jnp.sum(
+            amplitudes[:3][jnp.newaxis, :] / (s_squared + scales[:3])
+            + amplitudes[3:][jnp.newaxis, :]
+            * jnp.exp(-scales[3:] * s_squared),
+            axis=-1,
+        )
+
+        actual = jnp.ravel(var_form_factor(14, q_values))
+        chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_kirkland_projected_potential_matches_tabulated_formula(self):
+        """Projected potential matches the analytic Kirkland real-space form."""
+        var_projected_potential = self.variant(kirkland_projected_potential)
+        radial_positions = jnp.array([0.05, 0.2, 0.8], dtype=jnp.float64)
+        params = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes = params[::2]
+        scales = params[1::2]
+        prefactor = 47.87801 * 2.0 * jnp.pi
+        r_expanded = radial_positions[:, jnp.newaxis]
+        expected = prefactor * jnp.sum(
+            amplitudes[:3][jnp.newaxis, :]
+            * bessel_k0(2.0 * jnp.pi * r_expanded * jnp.sqrt(scales[:3]))
+            + (amplitudes[3:][jnp.newaxis, :] / scales[3:])
+            * jnp.exp(-(jnp.pi**2) * r_expanded**2 / scales[3:]),
+            axis=-1,
+        )
+
+        actual = jnp.ravel(var_projected_potential(14, radial_positions))
+        chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(

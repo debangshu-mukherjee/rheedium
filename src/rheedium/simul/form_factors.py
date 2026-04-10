@@ -152,8 +152,8 @@ def load_kirkland_parameters(
     """Load Kirkland scattering parameters for a given atomic number.
 
     Extracts the Kirkland parameterization coefficients for atomic form
-    factors from the preloaded data. The Kirkland model uses 6 Gaussian
-    terms to approximate the atomic scattering factor.
+    factors from the preloaded data. The Kirkland model uses three
+    Lorentzian terms followed by three Gaussian terms.
 
     Parameters
     ----------
@@ -163,9 +163,11 @@ def load_kirkland_parameters(
     Returns
     -------
     a_coeffs : Float[Array, "6"]
-        Amplitude coefficients for Gaussian terms
+        Amplitude coefficients in the order
+        ``[a1, a2, a3, c1, c2, c3]``
     b_coeffs : Float[Array, "6"]
-        Width coefficients for Gaussian terms in Ų
+        Scale coefficients in the order
+        ``[b1, b2, b3, d1, d2, d3]``
 
     Notes
     -----
@@ -176,8 +178,9 @@ def load_kirkland_parameters(
     3. **Extract row** --
        Select row for the specified atomic number.
     4. **Split coefficients** --
-       Amplitude :math:`a_i` at even indices (0, 2, …, 10),
-       width :math:`b_i` at odd indices (1, 3, …, 11).
+       Return alternating coefficients so downstream code can split
+       them into the first three Lorentzian pairs and last three
+       Gaussian pairs.
 
     See Also
     --------
@@ -214,8 +217,14 @@ def kirkland_form_factor(
     r"""Calculate atomic form factor f(q) using Kirkland parameterization.
 
     Computes the atomic scattering factor for electrons using the Kirkland
-    parameterization, which represents the form factor as a sum of Gaussians.
-    This is optimized for electron diffraction calculations.
+    parameterization:
+
+    .. math::
+
+        f_e(s) = \sum_{i=1}^{3} \frac{a_i}{s^2 + b_i}
+        + \sum_{i=1}^{3} c_i \exp(-d_i s^2)
+
+    where :math:`s = q / (4\pi)`.
 
     Parameters
     ----------
@@ -235,10 +244,12 @@ def kirkland_form_factor(
        Kirkland :math:`a_i, b_i` for the element.
     2. **Prepare q term** --
        :math:`s = q / (4\\pi)`.
-    3. **Gaussian terms** --
-       :math:`a_i \\exp(-b_i s^2)` for :math:`i = 1 \\ldots 6`.
-    4. **Sum contributions** --
-       :math:`f(q) = \\sum_i a_i \\exp(-b_i s^2)`.
+    3. **Lorentzian terms** --
+       :math:`a_i / (s^2 + b_i)` for :math:`i = 1 \\ldots 3`.
+    4. **Gaussian terms** --
+       :math:`c_i \\exp(-d_i s^2)` for :math:`i = 1 \\ldots 3`.
+    5. **Sum contributions** --
+       Add both families of terms.
 
     See Also
     --------
@@ -251,20 +262,23 @@ def kirkland_form_factor(
     a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
     four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
     q_over_4pi: Float[Array, "..."] = q_magnitude / four_pi
-    q_over_4pi_squared: Float[Array, "..."] = jnp.square(q_over_4pi)
-    expanded_q_squared: Float[Array, "... 1"] = q_over_4pi_squared[
+    q_over_4pi_squared: Float[Array, "... 1"] = jnp.square(q_over_4pi)[
         ..., jnp.newaxis
     ]
-    expanded_b_coeffs: Float[Array, "1 6"] = b_coeffs[jnp.newaxis, :]
-    exponent_terms: Float[Array, "... 6"] = (
-        -expanded_b_coeffs * expanded_q_squared
+    lorentzian_amplitudes: Float[Array, "3"] = a_coeffs[:3]
+    lorentzian_scales: Float[Array, "3"] = b_coeffs[:3]
+    gaussian_amplitudes: Float[Array, "3"] = a_coeffs[3:]
+    gaussian_scales: Float[Array, "3"] = b_coeffs[3:]
+    lorentzian_terms: Float[Array, "... 3"] = lorentzian_amplitudes[
+        jnp.newaxis, :
+    ] / (q_over_4pi_squared + lorentzian_scales[jnp.newaxis, :])
+    gaussian_terms: Float[Array, "... 3"] = gaussian_amplitudes[
+        jnp.newaxis, :
+    ] * jnp.exp(-gaussian_scales[jnp.newaxis, :] * q_over_4pi_squared)
+    form_factor: Float[Array, "..."] = jnp.sum(
+        lorentzian_terms + gaussian_terms,
+        axis=-1,
     )
-    gaussian_terms: Float[Array, "... 6"] = jnp.exp(exponent_terms)
-    expanded_a_coeffs: Float[Array, "1 6"] = a_coeffs[jnp.newaxis, :]
-    weighted_gaussians: Float[Array, "... 6"] = (
-        expanded_a_coeffs * gaussian_terms
-    )
-    form_factor: Float[Array, "..."] = jnp.sum(weighted_gaussians, axis=-1)
     return form_factor
 
 
@@ -293,31 +307,28 @@ def kirkland_projected_potential(
 
     Notes
     -----
-    The Kirkland projected potential is given by:
+    The Kirkland projected potential is the analytic real-space partner
+    of the mixed Lorentzian/Gaussian reciprocal-space fit:
 
-        V(r) = Σᵢ [aᵢ × K₀(2π·r·√bᵢ) + cᵢ × K₀(2π·r·√dᵢ)]
+    .. math::
 
-    where K₀ is the modified Bessel function of zeroth order. For numerical
-    stability at small r, we use an asymptotic approximation.
-
-    The first 6 parameters (a,b) describe the real part and the last 6
-    (c,d) describe additional terms. The potential is in Volt·Angstroms.
-
-    The conversion factor (4π²a₀e)/(m₀e) includes:
-    - a₀ = 0.529177 Å (Bohr radius)
-    - e = elementary charge
-    - Kirkland uses different units, so we include a conversion
+        V_z(r) = 4\pi^2 a_0 e
+        \left[
+            \sum_{i=1}^{3} a_i K_0(2\pi r \sqrt{b_i}) +
+            \sum_{i=1}^{3} \frac{c_i}{d_i}
+            \exp\!\left(-\frac{\pi^2 r^2}{d_i}\right)
+        \right]
 
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
     2. **Safe radial distance** --
        Clamp :math:`r` to avoid singularity at zero.
-    3. **Gaussian terms** --
-       :math:`(a_i / b_i) \\exp(-\\pi r^2 / b_i)` for
-       each of the six terms.
-    4. **Sum and scale** --
-       Multiply sum by :math:`2\\pi` for projected
-       potential in Volt·Ångstrom.
+    3. **Lorentzian terms** --
+       Evaluate :math:`a_i K_0(2\pi r \sqrt{b_i})`.
+    4. **Gaussian terms** --
+       Evaluate :math:`(c_i / d_i) \exp(-\pi^2 r^2 / d_i)`.
+    5. **Sum and scale** --
+       Multiply by :math:`4\pi^2 a_0 e`.
 
     See Also
     --------
@@ -332,18 +343,31 @@ def kirkland_projected_potential(
     b_coeffs: Float[Array, "6"]
     a_coeffs, b_coeffs = load_kirkland_parameters(atomic_number)
     two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
+    prefactor: Float[Array, ""] = jnp.asarray(
+        47.87801 * 2.0 * jnp.pi,
+        dtype=jnp.float64,
+    )
     r_safe: Float[Array, "..."] = jnp.maximum(r, 1e-10)
     expanded_r: Float[Array, "... 1"] = r_safe[..., jnp.newaxis]
-    expanded_b_coeffs: Float[Array, "1 6"] = b_coeffs[jnp.newaxis, :]
-    expanded_a_coeffs: Float[Array, "1 6"] = a_coeffs[jnp.newaxis, :]
-    exponent_terms: Float[Array, "... 6"] = (
-        -jnp.pi * expanded_r**2 / expanded_b_coeffs
+    lorentzian_amplitudes: Float[Array, "3"] = a_coeffs[:3]
+    lorentzian_scales: Float[Array, "3"] = b_coeffs[:3]
+    gaussian_amplitudes: Float[Array, "3"] = a_coeffs[3:]
+    gaussian_scales: Float[Array, "3"] = b_coeffs[3:]
+    lorentzian_arguments: Float[Array, "... 3"] = (
+        two_pi * expanded_r * jnp.sqrt(lorentzian_scales[jnp.newaxis, :])
     )
-    gaussian_terms: Float[Array, "... 6"] = jnp.exp(exponent_terms)
-    weighted_terms: Float[Array, "... 6"] = (
-        expanded_a_coeffs / expanded_b_coeffs * gaussian_terms
+    lorentzian_terms: Float[Array, "... 3"] = lorentzian_amplitudes[
+        jnp.newaxis, :
+    ] * bessel_k0(lorentzian_arguments)
+    gaussian_terms: Float[Array, "... 3"] = (
+        gaussian_amplitudes[jnp.newaxis, :] / gaussian_scales[jnp.newaxis, :]
+    ) * jnp.exp(
+        -(jnp.pi**2) * expanded_r**2 / gaussian_scales[jnp.newaxis, :]
     )
-    potential: Float[Array, "..."] = two_pi * jnp.sum(weighted_terms, axis=-1)
+    potential: Float[Array, "..."] = prefactor * jnp.sum(
+        lorentzian_terms + gaussian_terms,
+        axis=-1,
+    )
     return potential
 
 

@@ -89,7 +89,7 @@ def _(rh):
     detector_distance = 80.0  # Sample-to-detector distance (mm)
 
     # Calculate electron wavelength
-    wavelength = rh.simul.wavelength_ang(voltage_kV)
+    wavelength = rh.tools.wavelength_ang(voltage_kV)
     print(f"Electron wavelength: {float(wavelength):.4f} Å")
     return detector_distance, hmax, kmax, theta_deg, voltage_kV
 

@@ -80,8 +80,8 @@ def crystal_projected_potential(
     -----
     1. Build real-space coordinate grids ``xx(H, W)`` and ``yy(H, W)``
        from ``cell_dimensions_angstrom`` and ``grid_shape``.
-    2. For each atom: compute the radial distance to every grid pixel
-       and evaluate the projected atomic potential via
+    2. For each atom: compute the minimum-image radial distance to
+       every grid pixel and evaluate the projected atomic potential via
        :func:`rheedium.simul.projected_potential`.
     3. Sum contributions from all atoms with ``jax.vmap`` + ``jnp.sum``
        (differentiable through every atom).
@@ -110,6 +110,8 @@ def crystal_projected_potential(
         """Project a single atom's potential onto the grid."""
         dx: Float[Array, "H W"] = xx - atom_pos[0]
         dy: Float[Array, "H W"] = yy - atom_pos[1]
+        dx = dx - lx * jnp.round(dx / lx)
+        dy = dy - ly * jnp.round(dy / ly)
         r: Float[Array, "H W"] = jnp.sqrt(dx**2 + dy**2)
         v_atom: Float[Array, "H W"] = projected_potential(
             atom_z, r, parameterization

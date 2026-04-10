@@ -108,6 +108,14 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         compiled = jit_fn(v, voltage, dz)
         chex.assert_trees_all_close(eager, compiled, atol=1e-10)
 
+    def test_projected_potential_input_is_independent_of_dz_argument(self):
+        """Projected-potential transmission does not multiply by dz twice."""
+        grid, cell, voltage, _ = _make_grid_params()
+        v = _single_atom_potential(grid, cell)
+        t_thin = build_transmission_function(v, voltage, 1.0)
+        t_thick = build_transmission_function(v, voltage, 5.0)
+        chex.assert_trees_all_close(t_thin, t_thick, atol=1e-12)
+
 
 class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
     """Tests for fresnel_propagator."""

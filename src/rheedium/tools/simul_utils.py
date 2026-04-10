@@ -183,12 +183,11 @@ def interaction_constant(
     1. **Convert units** --
        Convert voltage from kV to V and wavelength from
        Ångstroms to metres.
-    2. **Compute Lorentz factors** --
-       Calculate relativistic :math:`\\gamma` and :math:`\\beta`
-       from accelerating voltage.
+    2. **Compute Lorentz factor** --
+       Calculate relativistic :math:`\\gamma` from accelerating voltage.
     3. **Evaluate interaction constant** --
        :math:`\\sigma = (2\\pi m_e e \\lambda / h^2)
-       \\times (\\gamma / \\beta)` in SI, then convert
+       \\times \\gamma` in SI, then convert
        to :math:`1/(V \\cdot \\text{Å})`.
 
     Parameters
@@ -212,9 +211,6 @@ def interaction_constant(
     gamma: Float[Array, ""] = 1.0 + (ELEMENTARY_CHARGE_C * voltage_v) / (
         ELECTRON_MASS_KG * SPEED_OF_LIGHT_MS * SPEED_OF_LIGHT_MS
     )
-    beta: Float[Array, ""] = 1.0 + (ELEMENTARY_CHARGE_C * voltage_v) / (
-        2.0 * ELECTRON_MASS_KG * SPEED_OF_LIGHT_MS * SPEED_OF_LIGHT_MS
-    )
     sigma_si: Float[Array, ""] = (
         2.0
         * jnp.pi
@@ -222,7 +218,7 @@ def interaction_constant(
         * ELEMENTARY_CHARGE_C
         * lam_m
         / (PLANCK_CONSTANT_JS**2)
-    ) * (gamma / beta)
+    ) * gamma
 
     # Convert from 1/(V·m) to 1/(V·Å)
     sigma_ang: Float[Array, ""] = sigma_si * 1e-10

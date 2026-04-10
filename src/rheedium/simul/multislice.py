@@ -16,7 +16,7 @@ multislice loops without re-implementing the standard kernels.
 Routine Listings
 ----------------
 :func:`build_transmission_function`
-    Construct ``T(x, y) = exp(i sigma V(x, y) dz)`` from a complex
+    Construct ``T(x, y) = exp(i sigma V_proj(x, y))`` from a complex
     projected potential.
 :func:`fresnel_propagator`
     Construct the reciprocal-space Fresnel free-space propagator
@@ -61,12 +61,14 @@ def build_transmission_function(
         Accelerating voltage in kV. Used to compute the relativistic
         interaction constant sigma.
     slice_thickness_angstrom : scalar_float
-        Thickness of this slice dz in Angstroms.
+        Retained for backward compatibility. The input potential is
+        already projected through the slice thickness, so this value is
+        ignored.
 
     Returns
     -------
     transmission_function : Complex[Array, "H W"]
-        Complex transmission ``T(x, y) = exp(i sigma V dz)``.
+        Complex transmission ``T(x, y) = exp(i sigma V_proj)``.
 
     Notes
     -----
@@ -74,8 +76,9 @@ def build_transmission_function(
        :func:`rheedium.tools.wavelength_ang`.
     2. Compute the interaction constant sigma via
        :func:`rheedium.tools.interaction_constant`.
-    3. Form the complex argument ``i * sigma * V * dz``. Because V is
-       complex, ``T`` has both phase modulation (elastic scattering
+    3. Form the complex argument ``i * sigma * V_proj``. Because
+       ``V_proj`` is complex, ``T`` has both phase modulation
+       (elastic scattering
        from the real part) and amplitude modulation
        (absorption from the imaginary part).
     4. Return ``exp`` of the argument.
@@ -87,14 +90,10 @@ def build_transmission_function(
     voltage_kv_arr: Float[Array, ""] = jnp.asarray(
         voltage_kv, dtype=jnp.float64
     )
-    slice_thickness_arr: Float[Array, ""] = jnp.asarray(
-        slice_thickness_angstrom, dtype=jnp.float64
-    )
+    del slice_thickness_angstrom
     wavelength: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
     sigma: Float[Array, ""] = interaction_constant(voltage_kv_arr, wavelength)
-    phase_arg: Complex[Array, "H W"] = (
-        1j * sigma * projected_potential * slice_thickness_arr
-    )
+    phase_arg: Complex[Array, "H W"] = 1j * sigma * projected_potential
     transmission: Complex[Array, "H W"] = jnp.exp(phase_arg)
     return transmission
 

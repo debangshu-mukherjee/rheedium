@@ -158,7 +158,7 @@ def _(jnp, rh):
     print("(ΔE/E = 10⁻⁴, Δθ = 1 mrad)")
     print("=" * 45)
     for V in voltages_kv:
-        lam = rh.simul.wavelength_ang(V)
+        lam = rh.tools.wavelength_ang(V)
         _k = 2 * jnp.pi / lam
         _sigma_shell = rh.simul.compute_shell_sigma(
             _k, energy_spread_frac=0.0001, beam_divergence_rad=0.001

@@ -290,13 +290,19 @@ def coherence_envelope(
     >>> damped.shape
     (64, 64)
     """
-    l_t: scalar_float = transverse_coherence_length_angstrom
-    l_l: scalar_float = longitudinal_coherence_length_angstrom
+    l_t: scalar_float = jnp.maximum(
+        transverse_coherence_length_angstrom,
+        1e-12,
+    )
+    l_l: scalar_float = jnp.maximum(
+        longitudinal_coherence_length_angstrom,
+        1e-12,
+    )
     envelope_transverse: Float[Array, "H W"] = jnp.exp(
-        -0.5 * q_parallel**2 * l_t**2
+        -0.5 * q_parallel**2 / l_t**2
     )
     envelope_longitudinal: Float[Array, "H W"] = jnp.exp(
-        -0.5 * q_z**2 * l_l**2
+        -0.5 * q_z**2 / l_l**2
     )
     damped_amplitude: Complex[Array, "H W"] = (
         reciprocal_space_amplitude

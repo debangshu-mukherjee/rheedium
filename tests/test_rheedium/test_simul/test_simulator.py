@@ -474,6 +474,30 @@ class TestSlicedCrystalToPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(potential.slices)
 
     @chex.variants(with_device=True, without_jit=True)
+    def test_potential_is_voltage_independent(self):
+        """Stored potential slices should not be pre-multiplied by sigma."""
+        var_convert = self.variant(sliced_crystal_to_potential)
+
+        potential_low = var_convert(
+            self.si_sliced,
+            slice_thickness=2.0,
+            pixel_size=0.5,
+            voltage_kv=10.0,
+        )
+        potential_high = var_convert(
+            self.si_sliced,
+            slice_thickness=2.0,
+            pixel_size=0.5,
+            voltage_kv=30.0,
+        )
+
+        chex.assert_trees_all_close(
+            potential_low.slices,
+            potential_high.slices,
+            atol=1e-10,
+        )
+
+    @chex.variants(with_device=True, without_jit=True)
     def test_calibration_stored(self):
         """Test that calibration values are stored correctly.
 

@@ -186,13 +186,21 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         """Interaction constant matches reference values."""
         var_sigma = self.variant(interaction_constant)
 
-        voltages_kv = jnp.array([10.0, 20.0, 30.0])
+        voltages_kv = jnp.array([10.0, 20.0, 30.0, 100.0, 300.0])
         wavelengths = jax.vmap(wavelength_ang)(voltages_kv)
         sigmas = jax.vmap(var_sigma)(voltages_kv, wavelengths)
 
-        expected = jnp.array([0.0025738, 0.0018283, 0.0014993])
+        expected = jnp.array(
+            [
+                0.0025990366192425313,
+                0.0018640613383894631,
+                0.0015432749751989857,
+                0.000924398840308211,
+                0.0006526182578014016,
+            ]
+        )
 
-        chex.assert_trees_all_close(sigmas, expected, rtol=5e-4, atol=5e-6)
+        chex.assert_trees_all_close(sigmas, expected, rtol=5e-7, atol=5e-8)
         chex.assert_tree_all_finite(sigmas)
 
     @chex.all_variants(without_device=False, with_pmap=False)

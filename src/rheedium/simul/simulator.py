@@ -810,9 +810,9 @@ def ewald_simulator(  # noqa: PLR0913
         sin_pi_l: Float[Array, ""] = jnp.sin(jnp.pi * l_val)
         ctr_modulation: Float[Array, ""] = 1.0 / (sin_pi_l**2 + 0.01)
 
-        # Roughness damping: exp(-σ²q_z²)
+        # Roughness damping: exp(-½σ²q_z²)
         roughness_damping: Float[Array, ""] = jnp.exp(
-            -(surface_roughness**2) * q_z**2
+            -0.5 * (surface_roughness**2) * q_z**2
         )
 
         # Total intensity
@@ -852,7 +852,7 @@ def sliced_crystal_to_potential(
     voltage_kv: scalar_float = 20.0,
     parameterization: str = "lobato",
 ) -> PotentialSlices:
-    r"""Convert a SlicedCrystal into PotentialSlices for multislice calculation.
+    r"""Convert a SlicedCrystal into PotentialSlices for multislice.
 
     This function takes a surface-oriented crystal slab and generates 3D
     potential slices suitable for multislice electron diffraction simulations.
@@ -860,10 +860,9 @@ def sliced_crystal_to_potential(
     parameterization (Lobato-van Dyck by default) for accurate projected
     atomic potentials.
 
-    The interaction constant sigma = 2*pi*m*e*lambda/h^2 is computed in
-    simplified form as 2*pi/(lambda*V) with units 1/(Volt*Angstrom^2).
-    Each atom contributes a projected potential, which provides accurate
-    scattering for all elements 1-103.
+    Each atom contributes a raw projected potential in Volt-Angstrom
+    units. The electron-specimen interaction constant is applied later
+    when the transmission function is built during propagation.
 
     Parameters
     ----------
@@ -876,11 +875,13 @@ def sliced_crystal_to_potential(
         Real-space pixel size in Ångstroms. Default: 0.1 Å
         Sets the lateral resolution of the potential grid.
     voltage_kv : scalar_float, optional
-        Electron beam voltage in kV. Default: 20.0 kV
+        Electron beam voltage in kV. Retained for backward compatibility;
+        not used because projected potentials are beam-independent.
+        Default: 20.0 kV.
     parameterization : str, optional
         Atomic potential model: ``"lobato"`` (default) or ``"kirkland"``.
         Not JIT-compiled; resolved at trace time.
-        Used for interaction constant calculation.
+        Used for projected-potential evaluation.
 
     Returns
     -------
@@ -897,12 +898,10 @@ def sliced_crystal_to_potential(
     1. **Grid dimensions** --
        Compute nx, ny from extents and pixel size, nz from
        depth and slice thickness.
-    2. **Interaction constant** --
-       :math:`\\sigma` from voltage and wavelength.
-    3. **Per-slice potential** --
+    2. **Per-slice potential** --
        For each z-range, select atoms in slice, project
-       potentials onto xy grid, and sum.
-    4. **Package result** --
+       potentials onto xy grid with periodic wrapping, and sum.
+    3. **Package result** --
        Return :class:`PotentialSlices` with calibration.
 
     See Also
@@ -937,7 +936,7 @@ def sliced_crystal_to_potential(
         slice_thickness, dtype=jnp.float64
     )
     pixel_size: Float[Array, ""] = jnp.asarray(pixel_size, dtype=jnp.float64)
-    voltage_kv: Float[Array, ""] = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    del voltage_kv
     positions: Float[Array, "N 3"] = sliced_crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "N"] = sliced_crystal.cart_positions[:, 3]
     x_extent: Float[Array, ""] = sliced_crystal.x_extent
@@ -951,8 +950,6 @@ def sliced_crystal_to_potential(
     xx: Float[Array, "nx ny"]
     yy: Float[Array, "nx ny"]
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
-    wavelength: Float[Array, ""] = wavelength_ang(voltage_kv)
-    sigma: Float[Array, ""] = interaction_constant(voltage_kv, wavelength)
     n_atoms: int = positions.shape[0]
 
     def _calculate_slice_potential(slice_idx: int) -> Float[Array, "nx ny"]:
@@ -973,9 +970,13 @@ def sliced_crystal_to_potential(
             is_in_slice: Bool[Array, ""] = in_slice[atom_idx]
             dx: Float[Array, "nx ny"] = xx - pos[0]
             dy: Float[Array, "nx ny"] = yy - pos[1]
+            dx = dx - x_extent * jnp.round(dx / x_extent)
+            dy = dy - y_extent * jnp.round(dy / y_extent)
             r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2)
-            atom_potential: Float[Array, "nx ny"] = (
-                sigma * projected_potential(z_number, r, parameterization)
+            atom_potential: Float[Array, "nx ny"] = projected_potential(
+                z_number,
+                r,
+                parameterization,
             )
             return jnp.where(is_in_slice, atom_potential, 0.0)
 
@@ -1110,10 +1111,15 @@ def multislice_propagate(
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
     voltage_v: scalar_float = voltage_kv * 1000.0
-    refraction_factor: scalar_float = jnp.sqrt(
-        1.0 + inner_potential_v0 / voltage_v
+    refraction_index: scalar_float = jnp.sqrt(
+        jnp.maximum(1.0 + inner_potential_v0 / voltage_v, 1e-12)
     )
-    theta_crystal: scalar_float = theta_rad * refraction_factor
+    cos_theta_crystal: scalar_float = jnp.clip(
+        jnp.cos(theta_rad) / refraction_index,
+        -1.0,
+        1.0,
+    )
+    theta_crystal: scalar_float = jnp.arccos(cos_theta_crystal)
     k_in_x: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.cos(phi_rad)
     k_in_y: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.sin(phi_rad)
     x_grid: Float[Array, " nx ny"]
@@ -1165,7 +1171,7 @@ def multislice_simulator(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> RHEEDPattern:
-    r"""Simulate RHEED pattern from potential slices using multislice algorithm.
+    r"""Simulate a RHEED pattern from potential slices with multislice.
 
     This function implements the complete multislice RHEED simulation pipeline:
     1. Propagate electron wave through crystal (multislice_propagate)

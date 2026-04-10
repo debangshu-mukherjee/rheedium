@@ -220,6 +220,21 @@ class TestCoherenceEnvelope(chex.TestCase):
         )
         self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
 
+    def test_longer_coherence_damps_less(self):
+        """Longer coherence lengths preserve more high-q amplitude."""
+        amp = jnp.ones((H, W), dtype=jnp.complex128)
+        q_par = jnp.full((H, W), 0.2)
+        q_z = jnp.full((H, W), 0.1)
+        damped_short = coherence_envelope(
+            amp, jnp.float64(10.0), jnp.float64(20.0), q_par, q_z
+        )
+        damped_long = coherence_envelope(
+            amp, jnp.float64(1000.0), jnp.float64(2000.0), q_par, q_z
+        )
+        self.assertTrue(
+            jnp.abs(damped_long[0, 0]) > jnp.abs(damped_short[0, 0])
+        )
+
 
 class TestDetectorPsfConvolve(chex.TestCase):
     """Tests for detector PSF convolution."""

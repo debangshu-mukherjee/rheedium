@@ -48,6 +48,7 @@ from beartype import beartype
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.types import CrystalStructure, scalar_float
+from rheedium.ucell import reciprocal_lattice_vectors
 
 from .form_factors import atomic_scattering_factor
 
@@ -127,8 +128,17 @@ def calculate_ctr_intensity(
     ].astype(jnp.int32)
     n_atoms: int = atomic_positions.shape[0]
     cell_lengths: Float[Array, "3"] = crystal.cell_lengths
-    reciprocal_a: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[0]
-    reciprocal_b: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[1]
+    cell_angles: Float[Array, "3"] = crystal.cell_angles
+    reciprocal_vectors: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        cell_lengths[0],
+        cell_lengths[1],
+        cell_lengths[2],
+        cell_angles[0],
+        cell_angles[1],
+        cell_angles[2],
+    )
+    reciprocal_a: Float[Array, "3"] = reciprocal_vectors[0]
+    reciprocal_b: Float[Array, "3"] = reciprocal_vectors[1]
 
     # Default: no surface enhancement (prevents double-application)
     surface_mask: Bool[Array, "n_atoms"] = (
@@ -143,12 +153,16 @@ def calculate_ctr_intensity(
         """Calculate intensity for a single (h,k) rod at all q_z values."""
         h_val: Float[Array, ""] = jnp.float64(hk[0])
         k_val: Float[Array, ""] = jnp.float64(hk[1])
-        q_x: Float[Array, ""] = h_val * reciprocal_a
-        q_y: Float[Array, ""] = k_val * reciprocal_b
+        q_parallel: Float[Array, "3"] = (
+            h_val * reciprocal_a + k_val * reciprocal_b
+        )
 
         def calculate_at_qz(qz_val: Float[Array, ""]) -> Float[Array, ""]:
             """Calculate intensity at single q_z value."""
-            q_vector: Float[Array, "3"] = jnp.array([q_x, q_y, qz_val])
+            q_vector: Float[Array, "3"] = q_parallel + jnp.array(
+                [0.0, 0.0, qz_val],
+                dtype=jnp.float64,
+            )
             structure_factor: Complex[Array, ""] = surface_structure_factor(
                 q_vector=q_vector,
                 atomic_positions=atomic_positions,
@@ -243,8 +257,17 @@ def calculate_ctr_amplitude(
     ].astype(jnp.int32)
     n_atoms: int = atomic_positions.shape[0]
     cell_lengths: Float[Array, "3"] = crystal.cell_lengths
-    reciprocal_a: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[0]
-    reciprocal_b: Float[Array, ""] = 2.0 * jnp.pi / cell_lengths[1]
+    cell_angles: Float[Array, "3"] = crystal.cell_angles
+    reciprocal_vectors: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        cell_lengths[0],
+        cell_lengths[1],
+        cell_lengths[2],
+        cell_angles[0],
+        cell_angles[1],
+        cell_angles[2],
+    )
+    reciprocal_a: Float[Array, "3"] = reciprocal_vectors[0]
+    reciprocal_b: Float[Array, "3"] = reciprocal_vectors[1]
 
     # Default: no surface enhancement (prevents double-application)
     surface_mask: Bool[Array, "n_atoms"] = (
@@ -259,12 +282,16 @@ def calculate_ctr_amplitude(
         """Calculate amplitude for a single (h,k) rod at all q_z values."""
         h_val: Float[Array, ""] = jnp.float64(hk[0])
         k_val: Float[Array, ""] = jnp.float64(hk[1])
-        q_x: Float[Array, ""] = h_val * reciprocal_a
-        q_y: Float[Array, ""] = k_val * reciprocal_b
+        q_parallel: Float[Array, "3"] = (
+            h_val * reciprocal_a + k_val * reciprocal_b
+        )
 
         def calculate_at_qz(qz_val: Float[Array, ""]) -> Complex[Array, ""]:
             """Calculate amplitude at single q_z value."""
-            q_vector: Float[Array, "3"] = jnp.array([q_x, q_y, qz_val])
+            q_vector: Float[Array, "3"] = q_parallel + jnp.array(
+                [0.0, 0.0, qz_val],
+                dtype=jnp.float64,
+            )
             structure_factor: Complex[Array, ""] = surface_structure_factor(
                 q_vector=q_vector,
                 atomic_positions=atomic_positions,
@@ -436,7 +463,7 @@ def gaussian_rod_profile(
     q_perpendicular: Float[Array, "..."],
     correlation_length: scalar_float,
 ) -> Float[Array, "..."]:
-    r"""Gaussian lateral width profile of rods due to finite correlation length.
+    r"""Gaussian lateral width profile of rods with finite correlation length.
 
     Calculates the Gaussian lateral intensity profile of CTRs perpendicular
     to the rod direction. The width in reciprocal space is inversely
@@ -482,7 +509,7 @@ def lorentzian_rod_profile(
     q_perpendicular: Float[Array, "..."],
     correlation_length: scalar_float,
 ) -> Float[Array, "..."]:
-    r"""Lorentzian lateral width profile of rods with finite correlation length.
+    r"""Lorentzian lateral width profile for finite correlation length rods.
 
     Calculates the Lorentzian lateral intensity profile of CTRs perpendicular
     to the rod direction. This profile corresponds to exponentially decaying
