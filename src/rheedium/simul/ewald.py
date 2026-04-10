@@ -29,6 +29,7 @@ import jax.numpy as jnp
 from beartype import beartype
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
+from rheedium.tools import wavelength_ang
 from rheedium.types import (
     CrystalStructure,
     EwaldData,
@@ -51,7 +52,6 @@ from .form_factors import (
     get_mean_square_displacement,
     kirkland_form_factor,
 )
-from .simul_utils import wavelength_ang
 
 
 def _compute_structure_factor_single(

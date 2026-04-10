@@ -32,6 +32,7 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
+from rheedium.tools import incident_wavevector, wavelength_ang
 from rheedium.types import (
     CrystalStructure,
     RHEEDPattern,
@@ -41,7 +42,6 @@ from rheedium.types import (
 )
 from rheedium.ucell import generate_reciprocal_points
 
-from .simul_utils import incident_wavevector, wavelength_ang
 from .simulator import find_kinematic_reflections, project_on_detector
 
 

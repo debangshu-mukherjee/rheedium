@@ -52,12 +52,8 @@ Routine Listings
     Gaussian lateral width profile of rods due to finite correlation length.
 :func:`get_mean_square_displacement`
     Calculate mean square displacement for given temperature.
-:func:`incident_wavevector`
-    Calculate incident electron wavevector from beam parameters.
 :func:`instrument_broadened_pattern`
     Full instrument-averaged RHEED pattern combining all effects.
-:func:`interaction_constant`
-    Calculate relativistic electron-specimen interaction constant.
 :func:`integrated_rod_intensity`
     Integrate CTR intensity over finite detector acceptance.
 :func:`kinematic_spot_simulator`
@@ -96,8 +92,6 @@ Routine Listings
     Convert SlicedCrystal to PotentialSlices for multislice simulation.
 :func:`surface_structure_factor`
     Calculate structure factor for surface with q_z dependence.
-:func:`wavelength_ang`
-    Calculate electron wavelength in angstroms.
 """
 
 from .beam_averaging import (
@@ -130,11 +124,6 @@ from .multislice import (
     build_transmission_function,
 )
 from .potential import crystal_projected_potential
-from .simul_utils import (
-    incident_wavevector,
-    interaction_constant,
-    wavelength_ang,
-)
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     ewald_simulator,
@@ -178,9 +167,7 @@ __all__: list[str] = [
     "finite_domain_intensities",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
-    "incident_wavevector",
     "instrument_broadened_pattern",
-    "interaction_constant",
     "integrated_rod_intensity",
     "kinematic_spot_simulator",
     "kirkland_form_factor",
@@ -199,5 +186,4 @@ __all__: list[str] = [
     "roughness_damping",
     "sliced_crystal_to_potential",
     "surface_structure_factor",
-    "wavelength_ang",
 ]

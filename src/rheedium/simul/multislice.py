@@ -29,7 +29,7 @@ Notes
 -----
 All functions are pure JAX, JIT-compatible, and differentiable.
 The interaction constant sigma is computed via
-:func:`rheedium.simul.interaction_constant`. Slice thickness is a
+:func:`rheedium.tools.interaction_constant`. Slice thickness is a
 continuous parameter and remains differentiable through the
 exponential.
 """
@@ -39,9 +39,8 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Complex, Float, jaxtyped
 
+from rheedium.tools import interaction_constant, wavelength_ang
 from rheedium.types import scalar_float
-
-from .simul_utils import interaction_constant, wavelength_ang
 
 
 @jaxtyped(typechecker=beartype)
@@ -72,9 +71,9 @@ def build_transmission_function(
     Notes
     -----
     1. Compute the relativistic electron wavelength via
-       :func:`rheedium.simul.wavelength_ang`.
+       :func:`rheedium.tools.wavelength_ang`.
     2. Compute the interaction constant sigma via
-       :func:`rheedium.simul.interaction_constant`.
+       :func:`rheedium.tools.interaction_constant`.
     3. Form the complex argument ``i * sigma * V * dz``. Because V is
        complex, ``T`` has both phase modulation (elastic scattering
        from the real part) and amplitude modulation

@@ -72,7 +72,7 @@ def test_form_factor_kirkland_lobato_close():
 
 
 def test_wavelength_relativistic_consistency():
-    """rheedium.simul.wavelength_ang matches CODATA-derived de Broglie."""
+    """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
     result = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
     assert (

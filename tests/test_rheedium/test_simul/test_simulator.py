@@ -17,7 +17,6 @@ import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
 
-from rheedium.simul.simul_utils import wavelength_ang
 from rheedium.simul.simulator import (
     compute_kinematic_intensities_with_ctrs,
     ewald_simulator,
@@ -27,6 +26,7 @@ from rheedium.simul.simulator import (
     project_on_detector,
     sliced_crystal_to_potential,
 )
+from rheedium.tools import wavelength_ang
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types.crystal_types import (
     create_crystal_structure,

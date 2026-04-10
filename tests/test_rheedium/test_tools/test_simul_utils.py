@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from absl.testing import parameterized
 from jax.test_util import check_grads
 
-from rheedium.simul.simul_utils import (
+from rheedium.tools.simul_utils import (
     incident_wavevector,
     interaction_constant,
     wavelength_ang,

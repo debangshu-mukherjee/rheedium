@@ -19,18 +19,16 @@ from rheedium.simul.kinematic import (
 from rheedium.simul.kinematic import (
     simple_structure_factor as kinematic_structure_factor,
 )
-from rheedium.simul.simul_utils import (
-    incident_wavevector as kinematic_incident_wavevector,
-)
-from rheedium.simul.simul_utils import (
-    wavelength_ang as kinematic_wavelength,
-)
 from rheedium.simul.simulator import (
     find_kinematic_reflections as kinematic_ewald_sphere,
 )
 from rheedium.simul.simulator import (
     project_on_detector,
 )
+from rheedium.tools import (
+    incident_wavevector as kinematic_incident_wavevector,
+)
+from rheedium.tools import wavelength_ang as kinematic_wavelength
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.ucell.unitcell import (
     miller_to_reciprocal,

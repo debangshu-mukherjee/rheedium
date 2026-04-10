@@ -47,7 +47,7 @@ import jax.numpy as jnp
 from beartype import beartype
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
-from rheedium.types import CrystalStructure, scalar_bool, scalar_float
+from rheedium.types import CrystalStructure, scalar_float
 
 from .form_factors import atomic_scattering_factor
 

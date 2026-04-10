@@ -17,8 +17,9 @@ Routine Listings
 
 Notes
 -----
-These functions are re-exported from the main simul module for backward
-compatibility. Import from rheedium.simul, not rheedium.simul.simul_utils.
+These functions live in :mod:`rheedium.tools`. Prefer importing from
+``rheedium.tools`` rather than the old deleted
+``rheedium.simul.simul_utils`` module path.
 """
 
 import jax.numpy as jnp
@@ -89,7 +90,7 @@ def wavelength_ang(
     --------
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
-    >>> lam = rh.simul.wavelength_ang(jnp.asarray(20.0))  # 20 keV
+    >>> lam = rh.tools.wavelength_ang(jnp.asarray(20.0))  # 20 keV
     >>> print(f"λ = {lam:.4f} Å")
     λ = 0.0859 Å
     """

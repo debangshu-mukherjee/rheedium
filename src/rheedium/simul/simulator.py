@@ -42,6 +42,11 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
+from rheedium.tools import (
+    incident_wavevector,
+    interaction_constant,
+    wavelength_ang,
+)
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
@@ -61,11 +66,6 @@ from rheedium.ucell import reciprocal_lattice_vectors
 from .form_factors import (
     atomic_scattering_factor,
     projected_potential,
-)
-from .simul_utils import (
-    incident_wavevector,
-    interaction_constant,
-    wavelength_ang,
 )
 from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 

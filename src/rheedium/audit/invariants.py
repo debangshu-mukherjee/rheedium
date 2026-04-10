@@ -66,9 +66,11 @@ from jaxtyping import Array, Float
 
 from rheedium.simul import (
     ewald_simulator,
-    incident_wavevector,
     kirkland_form_factor,
     lobato_form_factor,
+)
+from rheedium.tools import (
+    incident_wavevector,
     wavelength_ang,
 )
 from rheedium.types import (
@@ -374,7 +376,7 @@ def check_wavelength_relativistic_consistency(
                   {\sqrt{2 m_e e V \left(1 + \frac{eV}{2 m_e c^2}\right)}}
 
     using independent CODATA constants and compares against
-    :func:`rheedium.simul.wavelength_ang`. A mismatch points to a wrong
+    :func:`rheedium.tools.wavelength_ang`. A mismatch points to a wrong
     constant, a unit confusion, or a missing relativistic correction.
 
     Parameters

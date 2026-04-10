@@ -7,6 +7,11 @@ array utilities all live here.
 
 from .parallel import shard_array
 from .quadrature import gauss_hermite_nodes_weights
+from .simul_utils import (
+    incident_wavevector,
+    interaction_constant,
+    wavelength_ang,
+)
 from .special import bessel_k0, bessel_k1, bessel_kv
 from .wrappers import jax_safe
 
@@ -15,6 +20,9 @@ __all__: list[str] = [
     "bessel_k1",
     "bessel_kv",
     "gauss_hermite_nodes_weights",
+    "incident_wavevector",
+    "interaction_constant",
     "jax_safe",
     "shard_array",
+    "wavelength_ang",
 ]

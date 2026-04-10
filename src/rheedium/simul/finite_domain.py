@@ -52,17 +52,15 @@ from __future__ import annotations
 
 from beartype.typing import Tuple
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from jaxtyping import Array, Bool, Float, jaxtyped
 
+from rheedium.tools import incident_wavevector
 from rheedium.types import (
     EwaldData,
     scalar_float,
 )
-
-from .simul_utils import incident_wavevector, wavelength_ang
 
 _MIN_EXTENT_ANG: float = 1.0
 
