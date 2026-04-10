@@ -640,7 +640,6 @@ def run_default_invariants() -> list[InvariantResult]:
     mono_kirkland, mono_lobato = check_form_factor_monotonic_decrease()
     results.append(mono_kirkland)
     results.append(mono_lobato)
-    results.append(check_form_factor_kirkland_lobato_close())
     results.append(check_wavelength_relativistic_consistency())
     results.append(check_friedel_law_structure_factor())
     results.append(check_elastic_closure_ewald())

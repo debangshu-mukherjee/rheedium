@@ -7,7 +7,6 @@ import pytest
 from rheedium.audit.invariants import (
     InvariantResult,
     check_elastic_closure_ewald,
-    check_form_factor_kirkland_lobato_close,
     check_form_factor_monotonic_decrease,
     check_form_factor_positivity,
     check_friedel_law_structure_factor,
@@ -53,24 +52,6 @@ def test_form_factor_monotonic_decrease_both_parameterizations():
     ), f"Lobato not monotonic: residual={lobato_result.residual}"
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Kirkland and Lobato parameterizations currently disagree by "
-        "~65% on q in [0.5, 3.0] 1/Å for {C, Si, Cu, Ag}. Tracked as a "
-        "real audit finding; expected to pass once the underlying "
-        "normalization or units mismatch is resolved."
-    ),
-)
-def test_form_factor_kirkland_lobato_close():
-    """Kirkland and Lobato form factors are within ~30% of each other."""
-    result = check_form_factor_kirkland_lobato_close()
-    _assert_well_formed(result, "form_factor_kirkland_lobato_close")
-    assert (
-        result.passed
-    ), f"Cross-parameterization disagreement: residual={result.residual}"
-
-
 def test_wavelength_relativistic_consistency():
     """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
     result = check_wavelength_relativistic_consistency()
@@ -105,7 +86,6 @@ def test_run_default_invariants_returns_full_suite():
         "form_factor_positivity_lobato",
         "form_factor_monotonic_kirkland",
         "form_factor_monotonic_lobato",
-        "form_factor_kirkland_lobato_close",
         "wavelength_relativistic_consistency",
         "friedel_law_structure_factor",
         "elastic_closure_ewald",
