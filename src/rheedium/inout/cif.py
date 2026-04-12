@@ -168,8 +168,14 @@ def _parse_atom_positions(
 
     Examples
     --------
-    >>> lines = ["loop_", "_atom_site_type_symbol", "_atom_site_fract_x",
-    ...          "_atom_site_fract_y", "_atom_site_fract_z", "Si 0.0 0.0 0.0"]
+    >>> lines = [
+    ...     "loop_",
+    ...     "_atom_site_type_symbol",
+    ...     "_atom_site_fract_x",
+    ...     "_atom_site_fract_y",
+    ...     "_atom_site_fract_z",
+    ...     "Si 0.0 0.0 0.0",
+    ... ]
     >>> positions = _parse_atom_positions(lines)
     >>> positions[0]
     [0.0, 0.0, 0.0, 14]
@@ -526,11 +532,11 @@ def _apply_symmetry_ops(
 
     for pos in frac_positions:
         xyz: Array = pos[:3]
-        atomic_number: float = pos[3]
+        atomic_number: Array = pos[3:4]
         for op in ops:
             new_xyz: Array = jnp.mod(op(xyz), 1.0)
             expanded_positions.append(
-                jnp.concatenate([new_xyz, atomic_number[None]])
+                jnp.concatenate([new_xyz, atomic_number])
             )
 
     return jnp.array(expanded_positions)
@@ -565,11 +571,13 @@ def _deduplicate_positions(
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> positions = jnp.array([
-    ...     [0.0, 0.0, 0.0, 14.0],
-    ...     [0.01, 0.01, 0.01, 14.0],
-    ...     [2.0, 2.0, 2.0, 8.0],
-    ... ])
+    >>> positions = jnp.array(
+    ...     [
+    ...         [0.0, 0.0, 0.0, 14.0],
+    ...         [0.01, 0.01, 0.01, 14.0],
+    ...         [2.0, 2.0, 2.0, 8.0],
+    ...     ]
+    ... )
     >>> unique = _deduplicate_positions(positions, tol=0.1)
     >>> unique.shape[0]
     2

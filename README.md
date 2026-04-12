@@ -8,7 +8,8 @@
 [![codecov](https://codecov.io/gh/debangshu-mukherjee/rheedium/branch/main/graph/badge.svg)](https://codecov.io/gh/debangshu-mukherjee/rheedium)
 [![Documentation Status](https://readthedocs.org/projects/rheedium/badge/?version=latest)](https://rheedium.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14757400.svg)](https://doi.org/10.5281/zenodo.14757400)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/badge/lint%20and%20format-ruff-D7FF64?logo=ruff&logoColor=1D1D1D)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 [![jax_badge](https://tinyurl.com/mucknrvu)](https://docs.jax.dev/)
 [![Lines of Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/.github/badges/loc.json)](https://github.com/debangshu-mukherjee/rheedium)
 
@@ -49,6 +50,29 @@ See the [tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.ht
 ### API Reference
 
 See the [full API documentation](https://rheedium.readthedocs.io/en/latest/api/index.html) on Read the Docs.
+
+## Development
+
+Install the development environment with:
+
+```bash
+uv sync --extra dev
+```
+
+Run the static type checker with:
+
+```bash
+uv run ty check src
+```
+
+Recommended local validation before pushing:
+
+```bash
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
+uv run ty check src
+uv run pytest -v
+```
 
 ## License
 

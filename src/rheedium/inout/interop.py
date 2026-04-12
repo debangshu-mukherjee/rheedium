@@ -92,7 +92,7 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
     --------
     >>> from ase.build import bulk
     >>> import rheedium as rh
-    >>> si = bulk('Si', 'diamond', a=5.43)
+    >>> si = bulk("Si", "diamond", a=5.43)
     >>> crystal = rh.inout.from_ase(si)
     >>> crystal.cell_lengths
     Array([5.43, 5.43, 5.43], dtype=float64)
@@ -117,7 +117,7 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
             "Please define a valid unit cell."
         )
 
-    lattice: Float[Array, "3 3"] = jnp.asarray(cell[:], dtype=jnp.float64)
+    lattice: Float[Array, "3 3"] = jnp.asarray(cell.array, dtype=jnp.float64)
     positions: Float[Array, "N 3"] = jnp.asarray(
         atoms.get_positions(), dtype=jnp.float64
     )

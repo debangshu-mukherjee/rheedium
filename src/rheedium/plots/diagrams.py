@@ -232,7 +232,7 @@ def plot_form_factors(
         q_range[0], q_range[1], n_points
     )
     q_jax: Any = jnp.array(q_values)
-    colors: Float[NDArray, "N 4"] = plt.cm.tab10(
+    colors: Float[NDArray, "N 4"] = plt.get_cmap("tab10")(
         np.linspace(0, 1, len(atomic_numbers))
     )
     for i, z in enumerate(atomic_numbers):
@@ -308,7 +308,7 @@ def plot_debye_waller(
         q_range[0], q_range[1], n_points
     )
     q_jax: Any = jnp.array(q_values)
-    colors: Float[NDArray, "N 4"] = plt.cm.coolwarm(
+    colors: Float[NDArray, "N 4"] = plt.get_cmap("coolwarm")(
         np.linspace(0, 1, len(temperatures))
     )
     symbol: str = _ELEMENT_SYMBOLS.get(atomic_number, f"Z={atomic_number}")
@@ -444,7 +444,7 @@ def plot_roughness_damping(
     q_z: Float[NDArray, "N"] = np.linspace(
         q_z_range[0], q_z_range[1], n_points
     )
-    colors: Float[NDArray, "N 4"] = plt.cm.viridis(
+    colors: Float[NDArray, "N 4"] = plt.get_cmap("viridis")(
         np.linspace(0, 0.9, len(sigma_values))
     )
     for i, sigma in enumerate(sigma_values):
@@ -511,7 +511,7 @@ def plot_rod_broadening(
     q_perp: Float[NDArray, "N"] = np.linspace(
         q_perp_range[0], q_perp_range[1], n_points
     )
-    colors: Float[NDArray, "N 4"] = plt.cm.plasma(
+    colors: Float[NDArray, "N 4"] = plt.get_cmap("plasma")(
         np.linspace(0.1, 0.9, len(correlation_lengths))
     )
     for i, xi in enumerate(correlation_lengths):
@@ -1186,7 +1186,7 @@ def plot_structure_factor_phases(
         fig: Figure
         fig, ax = plt.subplots(figsize=(8, 8))
     h, k = g_vector
-    colors: Float[NDArray, "N 4"] = plt.cm.tab10(
+    colors: Float[NDArray, "N 4"] = plt.get_cmap("tab10")(
         np.linspace(0, 1, len(atom_positions_2d))
     )
     total_real: float = 0

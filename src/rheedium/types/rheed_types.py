@@ -103,7 +103,7 @@ class RHEEDPattern(NamedTuple):
     ...     G_indices=G_indices,
     ...     k_out=k_out,
     ...     detector_points=detector_points,
-    ...     intensities=intensities
+    ...     intensities=intensities,
     ... )
     """
 
@@ -193,9 +193,9 @@ class RHEEDImage(NamedTuple):
     >>> rheed_img = rh.types.create_rheed_image(
     ...     img_array=image,
     ...     incoming_angle=2.0,  # 2 degree grazing angle
-    ...     calibration=0.01,    # 0.01 units per pixel
+    ...     calibration=0.01,  # 0.01 units per pixel
     ...     electron_wavelength=0.037,  # 10 keV electrons
-    ...     detector_distance=1000.0     # 1000 Å to detector
+    ...     detector_distance=1000.0,  # 1000 Å to detector
     ... )
     """
 
@@ -604,8 +604,12 @@ class SlicedCrystal(NamedTuple):
     >>> import rheedium as rh
     >>>
     >>> # Create a (111) surface slab
-    >>> cart_positions = jnp.array([[0.0, 0.0, 0.0, 14.0],  # Si atom
-    ...                              [1.0, 1.0, 0.5, 14.0]]) # Another Si
+    >>> cart_positions = jnp.array(
+    ...     [
+    ...         [0.0, 0.0, 0.0, 14.0],  # Si atom
+    ...         [1.0, 1.0, 0.5, 14.0],
+    ...     ]
+    ... )  # Another Si
     >>> sliced = rh.types.create_sliced_crystal(
     ...     cart_positions=cart_positions,
     ...     cell_lengths=jnp.array([150.0, 150.0, 20.0]),
@@ -613,7 +617,7 @@ class SlicedCrystal(NamedTuple):
     ...     orientation=jnp.array([1, 1, 1]),
     ...     depth=20.0,
     ...     x_extent=150.0,
-    ...     y_extent=150.0
+    ...     y_extent=150.0,
     ... )
     """
 

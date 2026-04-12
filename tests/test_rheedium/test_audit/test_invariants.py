@@ -31,12 +31,12 @@ def test_form_factor_positivity_both_parameterizations():
     kirkland_result, lobato_result = check_form_factor_positivity()
     _assert_well_formed(kirkland_result, "form_factor_positivity_kirkland")
     _assert_well_formed(lobato_result, "form_factor_positivity_lobato")
-    assert (
-        kirkland_result.passed
-    ), f"Kirkland form factor went negative: residual={kirkland_result.residual}"
-    assert (
-        lobato_result.passed
-    ), f"Lobato form factor went negative: residual={lobato_result.residual}"
+    assert kirkland_result.passed, (
+        f"Kirkland form factor went negative: residual={kirkland_result.residual}"
+    )
+    assert lobato_result.passed, (
+        f"Lobato form factor went negative: residual={lobato_result.residual}"
+    )
 
 
 def test_form_factor_monotonic_decrease_both_parameterizations():
@@ -44,39 +44,39 @@ def test_form_factor_monotonic_decrease_both_parameterizations():
     kirkland_result, lobato_result = check_form_factor_monotonic_decrease()
     _assert_well_formed(kirkland_result, "form_factor_monotonic_kirkland")
     _assert_well_formed(lobato_result, "form_factor_monotonic_lobato")
-    assert (
-        kirkland_result.passed
-    ), f"Kirkland not monotonic: residual={kirkland_result.residual}"
-    assert (
-        lobato_result.passed
-    ), f"Lobato not monotonic: residual={lobato_result.residual}"
+    assert kirkland_result.passed, (
+        f"Kirkland not monotonic: residual={kirkland_result.residual}"
+    )
+    assert lobato_result.passed, (
+        f"Lobato not monotonic: residual={lobato_result.residual}"
+    )
 
 
 def test_wavelength_relativistic_consistency():
     """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
     result = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
-    assert (
-        result.passed
-    ), f"Wavelength mismatch vs CODATA: residual={result.residual}"
+    assert result.passed, (
+        f"Wavelength mismatch vs CODATA: residual={result.residual}"
+    )
 
 
 def test_friedel_law_structure_factor():
     """I(G) = I(-G) for a non-centrosymmetric three-atom basis."""
     result = check_friedel_law_structure_factor()
     _assert_well_formed(result, "friedel_law_structure_factor")
-    assert (
-        result.passed
-    ), f"Friedel symmetry violated: residual={result.residual}"
+    assert result.passed, (
+        f"Friedel symmetry violated: residual={result.residual}"
+    )
 
 
 def test_elastic_closure_ewald_simulator():
     """ewald_simulator reflections lie exactly on the Ewald sphere."""
     result = check_elastic_closure_ewald()
     _assert_well_formed(result, "elastic_closure_ewald")
-    assert (
-        result.passed
-    ), f"Elastic closure violated: residual={result.residual}"
+    assert result.passed, (
+        f"Elastic closure violated: residual={result.residual}"
+    )
 
 
 def test_run_default_invariants_returns_full_suite():

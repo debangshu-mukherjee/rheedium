@@ -22,8 +22,6 @@ system and can be used with various JAX transformations
 including ``jit``, ``grad``, and ``vmap``.
 """
 
-from collections.abc import Sequence
-
 import jax
 from jax.sharding import NamedSharding, PartitionSpec
 from jaxtyping import Array, Num
@@ -31,8 +29,8 @@ from jaxtyping import Array, Num
 
 def shard_array(
     input_array: Num[Array, " ..."],
-    shard_axes: int | Sequence[int],
-    devices: Sequence[jax.Device] | None = None,
+    shard_axes: int | list[int] | tuple[int, ...],
+    devices: list[jax.Device] | tuple[jax.Device, ...] | None = None,
 ) -> Num[Array, " ..."]:
     """Shard an array across specified axes and devices.
 

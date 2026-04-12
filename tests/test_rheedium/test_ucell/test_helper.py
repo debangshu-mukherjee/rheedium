@@ -329,9 +329,9 @@ Si10 Si 0.5 0.5 0.9
         chex.assert_scalar_positive(int(n_atoms1))
         chex.assert_scalar_positive(int(n_atoms2))
         # More thickness should include more or equal atoms
-        assert int(n_atoms2) >= int(
-            n_atoms1
-        ), "More thickness should include more or equal atoms"
+        assert int(n_atoms2) >= int(n_atoms1), (
+            "More thickness should include more or equal atoms"
+        )
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thin_slice(self):

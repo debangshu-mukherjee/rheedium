@@ -194,7 +194,9 @@ def energy_spread_average(
     >>> def dummy_sim(energy_kev):
     ...     return jnp.ones((64, 64)) * energy_kev
     >>> avg = rh.simul.energy_spread_average(
-    ...     dummy_sim, jnp.float64(20.0), jnp.float64(0.5),
+    ...     dummy_sim,
+    ...     jnp.float64(20.0),
+    ...     jnp.float64(0.5),
     ... )
     >>> avg.shape
     (64, 64)
@@ -284,8 +286,11 @@ def coherence_envelope(
     >>> q_par = jnp.ones((64, 64)) * 0.1
     >>> q_z = jnp.ones((64, 64)) * 0.05
     >>> damped = rh.simul.coherence_envelope(
-    ...     amp, jnp.float64(500.0), jnp.float64(1000.0),
-    ...     q_par, q_z,
+    ...     amp,
+    ...     jnp.float64(500.0),
+    ...     jnp.float64(1000.0),
+    ...     q_par,
+    ...     q_z,
     ... )
     >>> damped.shape
     (64, 64)
@@ -366,7 +371,8 @@ def detector_psf_convolve(
     >>> import rheedium as rh
     >>> img = jnp.ones((64, 64))
     >>> blurred = rh.simul.detector_psf_convolve(
-    ...     img, jnp.float64(1.5),
+    ...     img,
+    ...     jnp.float64(1.5),
     ... )
     >>> blurred.shape
     (64, 64)

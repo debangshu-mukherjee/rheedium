@@ -26,6 +26,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple
 from jaxtyping import Float
+from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from numpy import ndarray as NDArray  # noqa: N812
@@ -227,7 +228,7 @@ def plot_rheed(
         cmap = plt.get_cmap(cmap_name)
 
     fig: Figure
-    ax: plt.Axes
+    ax: Axes
     fig, ax = plt.subplots(figsize=figsize)
     im: mimage.AxesImage = ax.imshow(
         image,

@@ -106,7 +106,7 @@ def compute_domain_extent(
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> positions = jnp.array([[0., 0., 0.], [10., 10., 5.]])
+    >>> positions = jnp.array([[0.0, 0.0, 0.0], [10.0, 10.0, 5.0]])
     >>> extent = compute_domain_extent(positions)
     >>> extent
     Array([10., 10.,  5.], dtype=float64)
@@ -170,7 +170,7 @@ def extent_to_rod_sigma(
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> extent = jnp.array([100., 100., 50.])
+    >>> extent = jnp.array([100.0, 100.0, 50.0])
     >>> sigma = extent_to_rod_sigma(extent)
     >>> sigma  # Approximately [0.025, 0.025] 1/Å
     Array([0.02506628, 0.02506628], dtype=float64)
@@ -332,13 +332,17 @@ def rod_ewald_overlap(
     Examples
     --------
     >>> import jax.numpy as jnp
-    >>> g_vecs = jnp.array([[0., 0., 1.], [1., 0., 0.]])
-    >>> k_in = jnp.array([1., 0., -0.1])
+    >>> g_vecs = jnp.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    >>> k_in = jnp.array([1.0, 0.0, -0.1])
     >>> k_mag = jnp.linalg.norm(k_in)
     >>> rod_sigma = jnp.array([0.05, 0.05])
     >>> shell_sigma = jnp.array(0.07)
     >>> overlap = rod_ewald_overlap(
-    ...     g_vecs, k_in, k_mag, rod_sigma, shell_sigma
+    ...     g_vecs,
+    ...     k_in,
+    ...     k_mag,
+    ...     rod_sigma,
+    ...     shell_sigma,
     ... )
 
     See Also
@@ -431,9 +435,10 @@ def finite_domain_intensities(
     --------
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
-    >>> ewald = rh.simul.build_ewald_data(crystal, voltage_kv=15.0,
-    ...                                    hmax=3, kmax=3, lmax=2)
-    >>> domain = jnp.array([100., 100., 50.])
+    >>> ewald = rh.simul.build_ewald_data(
+    ...     crystal, voltage_kv=15.0, hmax=3, kmax=3, lmax=2
+    ... )
+    >>> domain = jnp.array([100.0, 100.0, 50.0])
     >>> overlap, intensities = rh.simul.finite_domain_intensities(
     ...     ewald, theta_deg=2.0, phi_deg=0.0, domain_extent_ang=domain
     ... )

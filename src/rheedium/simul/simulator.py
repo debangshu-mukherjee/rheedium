@@ -917,16 +917,12 @@ def sliced_crystal_to_projected_potential_slices(
     >>> # Create surface slab
     >>> bulk = rh.inout.parse_cif("SrTiO3.cif")
     >>> slab = rh.ucell.bulk_to_slice(
-    ...     bulk_crystal=bulk,
-    ...     orientation=jnp.array([1, 1, 1]),
-    ...     depth=20.0
+    ...     bulk_crystal=bulk, orientation=jnp.array([1, 1, 1]), depth=20.0
     ... )
     >>>
     >>> # Convert to potential slices
     >>> potential = rh.simul.sliced_crystal_to_projected_potential_slices(
-    ...     sliced_crystal=slab,
-    ...     slice_thickness=2.0,
-    ...     pixel_size=0.1
+    ...     sliced_crystal=slab, slice_thickness=2.0, pixel_size=0.1
     ... )
     """
     slice_thickness: Float[Array, ""] = jnp.asarray(

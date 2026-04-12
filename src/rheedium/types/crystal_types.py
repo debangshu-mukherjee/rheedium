@@ -96,7 +96,7 @@ class CrystalStructure(NamedTuple):
     ...     frac_positions=frac_pos,
     ...     cart_positions=cart_pos,
     ...     cell_lengths=cell_lengths,
-    ...     cell_angles=cell_angles
+    ...     cell_angles=cell_angles,
     ... )
     """
 
@@ -232,9 +232,9 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_atom_count() -> (
-            Tuple[Float[Array, "... 4"], Num[Array, "... 4"]]
-        ):
+        def _check_atom_count() -> Tuple[
+            Float[Array, "... 4"], Num[Array, "... 4"]
+        ]:
             return lax.cond(
                 frac_positions.shape[0] == cart_positions.shape[0],
                 lambda: (frac_positions, cart_positions),
@@ -247,9 +247,9 @@ def create_crystal_structure(
                 ),
             )
 
-        def _check_atomic_numbers() -> (
-            Tuple[Float[Array, "... 4"], Num[Array, "... 4"]]
-        ):
+        def _check_atomic_numbers() -> Tuple[
+            Float[Array, "... 4"], Num[Array, "... 4"]
+        ]:
             return lax.cond(
                 jnp.all(frac_positions[:, 3] == cart_positions[:, 3]),
                 lambda: (frac_positions, cart_positions),
@@ -349,7 +349,9 @@ class EwaldData(NamedTuple):
     >>> ewald = rh.ucell.build_ewald_data(
     ...     crystal=crystal,
     ...     voltage_kv=15.0,
-    ...     hmax=3, kmax=3, lmax=2,
+    ...     hmax=3,
+    ...     kmax=3,
+    ...     lmax=2,
     ... )
     >>> print(f"Sphere radius: {ewald.sphere_radius:.2f} 1/Å")
     """
@@ -819,8 +821,8 @@ class PotentialSlices(NamedTuple):
     >>> potential_slices = rh.types.create_potential_slices(
     ...     slices=slices_data,
     ...     slice_thickness=2.0,  # 2 Å per slice
-    ...     x_calibration=0.1,    # 0.1 Å per pixel in x
-    ...     y_calibration=0.1     # 0.1 Å per pixel in y
+    ...     x_calibration=0.1,  # 0.1 Å per pixel in x
+    ...     y_calibration=0.1,  # 0.1 Å per pixel in y
     ... )
     """
 
@@ -1040,13 +1042,17 @@ class XYZData(NamedTuple):
     >>>
     >>> # Create XYZ data for water molecule
     >>> positions = jnp.array(
-    ...     [[0.0, 0.0, 0.0], [0.76, 0.59, 0.0], [-0.76, 0.59, 0.0]]
+    ...     [
+    ...         [0.0, 0.0, 0.0],
+    ...         [0.76, 0.59, 0.0],
+    ...         [-0.76, 0.59, 0.0],
+    ...     ]
     ... )
     >>> atomic_numbers = jnp.array([8, 1, 1])  # O, H, H
     >>> xyz_data = rh.types.create_xyz_data(
     ...     positions=positions,
     ...     atomic_numbers=atomic_numbers,
-    ...     comment="Water molecule"
+    ...     comment="Water molecule",
     ... )
     """
 

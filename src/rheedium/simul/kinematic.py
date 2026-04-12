@@ -235,7 +235,9 @@ def kinematic_spot_simulator(
     ...     crystal=crystal,
     ...     voltage_kv=20.0,
     ...     theta_deg=2.0,
-    ...     hmax=3, kmax=3, lmax=5,
+    ...     hmax=3,
+    ...     kmax=3,
+    ...     lmax=5,
     ... )
     >>> print(f"Found {len(pattern.intensities)} spots")
 

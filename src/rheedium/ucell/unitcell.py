@@ -224,8 +224,12 @@ def get_unit_cell_matrix(
     >>>
     >>> # Get transformation matrix for a cubic cell
     >>> matrix = get_unit_cell_matrix(
-    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-    ...     alpha=90.0, beta=90.0, gamma=90.0
+    ...     a=3.0,
+    ...     b=3.0,
+    ...     c=3.0,  # 3 Å cubic cell
+    ...     alpha=90.0,
+    ...     beta=90.0,
+    ...     gamma=90.0,
     ... )
     >>> print(f"Transformation matrix:\n{matrix}")
     >>>
@@ -312,8 +316,12 @@ def build_cell_vectors(
     >>>
     >>> # Build vectors for a cubic cell
     >>> vectors = build_cell_vectors(
-    ...     a=3.0, b=3.0, c=3.0,  # 3 Å cubic cell
-    ...     alpha=90.0, beta=90.0, gamma=90.0
+    ...     a=3.0,
+    ...     b=3.0,
+    ...     c=3.0,  # 3 Å cubic cell
+    ...     alpha=90.0,
+    ...     beta=90.0,
+    ...     gamma=90.0,
     ... )
     >>> print(f"Cell vectors:\n{vectors}")
     >>>
@@ -383,11 +391,13 @@ def compute_lengths_angles(
     >>> import jax.numpy as jnp
     >>>
     >>> # Create some cell vectors
-    >>> vectors = jnp.array([
-    ...     [3.0, 0.0, 0.0],  # a vector
-    ...     [0.0, 3.0, 0.0],  # b vector
-    ...     [0.0, 0.0, 3.0]   # c vector
-    ... ])
+    >>> vectors = jnp.array(
+    ...     [
+    ...         [3.0, 0.0, 0.0],  # a vector
+    ...         [0.0, 3.0, 0.0],  # b vector
+    ...         [0.0, 0.0, 3.0],  # c vector
+    ...     ]
+    ... )
     >>>
     >>> # Compute lengths and angles
     >>> lengths, angles = compute_lengths_angles(vectors)
@@ -478,7 +488,7 @@ def generate_reciprocal_points(
     ...     crystal=crystal,
     ...     hmax=2,
     ...     kmax=2,
-    ...     lmax=1
+    ...     lmax=1,
     ... )
     >>> print(f"Number of G vectors: {len(G_vectors)}")
     >>> print(f"First few G vectors:\n{G_vectors[:5]}")
@@ -583,7 +593,7 @@ def atom_scraper(
     >>> filtered = atom_scraper(
     ...     crystal=crystal,
     ...     zone_axis=jnp.array([1.0, 1.0, 1.0]),
-    ...     thickness=jnp.array([12.0, 12.0, 12.0])
+    ...     thickness=jnp.array([12.0, 12.0, 12.0]),
     ... )
     >>> print(f"Original atoms: {len(crystal.frac_positions)}")
     >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")

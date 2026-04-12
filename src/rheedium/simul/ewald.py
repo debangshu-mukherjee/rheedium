@@ -198,8 +198,10 @@ def build_ewald_data(
     >>> ewald = rh.simul.build_ewald_data(
     ...     crystal=crystal,
     ...     voltage_kv=15.0,
-    ...     hmax=3, kmax=3, lmax=2,
-    ...     temperature=300.0
+    ...     hmax=3,
+    ...     kmax=3,
+    ...     lmax=2,
+    ...     temperature=300.0,
     ... )
     >>> print(f"λ = {float(ewald.wavelength_ang):.4f} Å")
     >>> print(f"k_mag = {float(ewald.k_magnitude):.2f} 1/Å")
@@ -371,7 +373,7 @@ def ewald_allowed_reflections(
     Finite domain mode:
 
     >>> import jax.numpy as jnp
-    >>> domain = jnp.array([100., 100., 50.])  # 100x100x50 Å domain
+    >>> domain = jnp.array([100.0, 100.0, 50.0])  # 100x100x50 Å domain
     >>> indices, k_out, intensities = rh.simul.ewald_allowed_reflections(
     ...     ewald=ewald,
     ...     theta_deg=2.0,

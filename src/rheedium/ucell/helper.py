@@ -64,9 +64,9 @@ def angle_in_degrees(
     90.0
     """
 
-    def _check_vector_dimensions() -> (
-        Tuple[Float[Array, "n"], Float[Array, "n"]]
-    ):
+    def _check_vector_dimensions() -> Tuple[
+        Float[Array, "n"], Float[Array, "n"]
+    ]:
         return jax.lax.cond(
             v1.shape == v2.shape,
             lambda: (v1, v2),
@@ -109,11 +109,13 @@ def compute_lengths_angles(
     >>> import jax.numpy as jnp
     >>> import rheedium as rh
     >>> # Cubic unit cell with a=5.0 Å
-    >>> vectors = jnp.array([
-    ...     [5.0, 0.0, 0.0],
-    ...     [0.0, 5.0, 0.0],
-    ...     [0.0, 0.0, 5.0]
-    ... ])
+    >>> vectors = jnp.array(
+    ...     [
+    ...         [5.0, 0.0, 0.0],
+    ...         [0.0, 5.0, 0.0],
+    ...         [0.0, 0.0, 5.0],
+    ...     ]
+    ... )
     >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
     >>> print(lengths)
     [5.0 5.0 5.0]

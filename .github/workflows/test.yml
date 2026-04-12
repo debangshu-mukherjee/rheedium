@@ -66,9 +66,14 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev
 
-    - name: Lint with black
+    - name: Lint with Ruff
       run: |
-        uv run black --check --diff src/ tests/
+        uv run ruff check src/ tests/
+        uv run ruff format --check src/ tests/
+
+    - name: Type check with ty
+      run: |
+        uv run ty check src
 
     - name: Type check with beartype (runtime)
       run: |

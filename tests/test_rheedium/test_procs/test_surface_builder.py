@@ -286,8 +286,9 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         """A thicker slab should contain more atoms."""
         thin = _load("thin_slab.npz")
         thick = _load("slab_001.npz")
-        assert thick["cart_positions"].shape[0] >= (
-            thin["cart_positions"].shape[0]
+        assert (
+            thick["cart_positions"].shape[0]
+            >= (thin["cart_positions"].shape[0])
         )
 
     def test_frac_and_cart_shapes_match(self):
@@ -323,8 +324,9 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
         """2x2 recon should have more atoms than 1x1."""
         orig = _load("slab_001.npz")
         recon = _load("recon_2x2.npz")
-        assert recon["cart_positions"].shape[0] > (
-            orig["cart_positions"].shape[0]
+        assert (
+            recon["cart_positions"].shape[0]
+            > (orig["cart_positions"].shape[0])
         )
 
     def test_displacement_moves_atoms(self):

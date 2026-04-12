@@ -52,7 +52,7 @@ Debye temperatures are from:
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Optional, Tuple
+from beartype.typing import Tuple
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.inout import (
@@ -658,8 +658,8 @@ def projected_potential(
 def get_mean_square_displacement(
     atomic_number: scalar_int,
     temperature: scalar_float,
-    is_surface: Optional[scalar_bool] = False,
-    surface_enhancement: Optional[scalar_float] = 2.0,
+    is_surface: scalar_bool = False,
+    surface_enhancement: scalar_float = 2.0,
 ) -> Float[Array, ""]:
     r"""Calculate mean square displacement for thermal vibrations.
 
@@ -751,7 +751,7 @@ def get_mean_square_displacement(
         z_scaling: Float[Array, ""] = jnp.sqrt(12.0 / atomic_number_float)
         t_ratio: Float[Array, ""] = temperature_float / room_temp
         b_factor: Float[Array, ""] = base_b * z_scaling * t_ratio
-        eight_pi_sq: Float[Array, ""] = 8.0 * jnp.pi**2
+        eight_pi_sq: Float[Array, ""] = jnp.asarray(8.0) * (jnp.pi**2)
         return b_factor / eight_pi_sq
 
     has_debye_temp: Float[Array, ""] = theta_d > 0.0
@@ -823,8 +823,8 @@ def debye_waller_factor(
 def atomic_scattering_factor(
     atomic_number: scalar_int,
     q_vector: Float[Array, "... 3"],
-    temperature: Optional[scalar_float] = 300.0,
-    is_surface: Optional[scalar_bool] = False,
+    temperature: scalar_float = 300.0,
+    is_surface: scalar_bool = False,
 ) -> Float[Array, "..."]:
     r"""Calculate combined atomic scattering factor with thermal damping.
 
@@ -874,7 +874,7 @@ def atomic_scattering_factor(
     ...     atomic_number=14,  # Silicon
     ...     q_vector=q_vec,
     ...     temperature=300.0,
-    ...     is_surface=False
+    ...     is_surface=False,
     ... )
     >>> print(f"Si scattering factor at q=1.0: {f_si:.3f}")
 
@@ -888,7 +888,7 @@ def atomic_scattering_factor(
     form_factor: Float[Array, "..."] = kirkland_form_factor(
         atomic_number, q_magnitude
     )
-    mean_square_disp: scalar_float = get_mean_square_displacement(
+    mean_square_disp: Float[Array, ""] = get_mean_square_displacement(
         atomic_number, temperature, is_surface
     )
     dw_factor: Float[Array, "..."] = debye_waller_factor(

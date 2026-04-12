@@ -383,7 +383,7 @@ def parse_vaspxml(  # noqa: PLR0912, PLR0915
         if calc_idx < 0 or calc_idx >= len(calculations):
             raise ValueError(
                 f"Step {step} out of range. "
-                f"Available steps: 0-{len(calculations)-1}"
+                f"Available steps: 0-{len(calculations) - 1}"
             )
 
         calculation: ET.Element = calculations[calc_idx]

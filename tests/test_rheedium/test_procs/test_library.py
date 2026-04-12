@@ -54,8 +54,9 @@ class TestSi111_7x7(chex.TestCase):
         """7x7 slab should have more atoms than 1x1."""
         d_1x1 = _load("si111_1x1.npz")
         d_7x7 = _load("si111_7x7.npz")
-        assert d_7x7["cart_positions"].shape[0] > (
-            d_1x1["cart_positions"].shape[0]
+        assert (
+            d_7x7["cart_positions"].shape[0]
+            > (d_1x1["cart_positions"].shape[0])
         )
 
     def test_has_twelve_extra_atoms(self):

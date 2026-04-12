@@ -132,9 +132,9 @@ class TestKinematicEwaldSphere(chex.TestCase):
         valid_k_out = k_out[indices >= 0]
         k_out_mags = jnp.linalg.norm(valid_k_out, axis=1)
         for k_mag_out in k_out_mags:
-            assert (
-                jnp.abs(k_mag_out - k_mag) / k_mag < 0.1
-            ), "Elastic scattering"
+            assert jnp.abs(k_mag_out - k_mag) / k_mag < 0.1, (
+                "Elastic scattering"
+            )
 
         # All valid k_out should have positive z (upward scattering for RHEED)
         assert jnp.all(valid_k_out[:, 2] > 0.0), "RHEED requires k_out_z > 0"
@@ -293,9 +293,9 @@ class TestKinematicSimulator(chex.TestCase):
 
         # Check that we found some reflections
         n_reflections = len(pattern.intensities)
-        assert (
-            n_reflections > 0
-        ), "Should find reflections at grazing incidence"
+        assert n_reflections > 0, (
+            "Should find reflections at grazing incidence"
+        )
 
         # Check intensities are positive
         assert jnp.all(pattern.intensities >= 0.0)
@@ -504,9 +504,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         cls.sto_crystal = parse_cif(cif_path)
 
         # Verify we got the right number of atoms
-        assert (
-            len(cls.sto_crystal.cart_positions) == 5
-        ), f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
+        assert len(cls.sto_crystal.cart_positions) == 5, (
+            f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
+        )
 
         # Get reciprocal lattice vectors
         cls.recip_vectors = reciprocal_lattice_vectors(
