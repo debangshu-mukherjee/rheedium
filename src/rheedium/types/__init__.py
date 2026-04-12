@@ -18,6 +18,8 @@ Routine Listings
     Angle-independent Ewald sphere data for RHEED simulation.
 :class:`KirklandParameters`
     Structured Kirkland coefficients for one element.
+:class:`OrientationDistribution`
+    Probability distribution over azimuthal domain orientations.
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice potential data.
 :class:`RHEEDImage`
@@ -27,6 +29,8 @@ Routine Listings
     intensities.
 :class:`SlicedCrystal`
     JAX-compatible crystal structure sliced for multislice simulation.
+:class:`SizeDistribution`
+    Probability distribution over coherent domain sizes.
 :class:`SurfaceConfig`
     Configuration for surface atom identification method and parameters.
 :class:`XYZData`
@@ -37,8 +41,16 @@ Routine Listings
     Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
+:func:`create_discrete_orientation`
+    Create a sharp rotational-variant distribution.
+:func:`create_gaussian_orientation`
+    Create a Gaussian mosaic orientation distribution.
 :func:`create_kirkland_parameters`
     Factory function to create KirklandParameters instances.
+:func:`create_lognormal_size`
+    Create a lognormal domain-size distribution.
+:func:`create_mixed_orientation`
+    Create discrete orientation variants with mosaic broadening.
 :func:`create_potential_slices`
     Factory function to create PotentialSlices instances.
 :func:`create_rheed_image`
@@ -49,8 +61,14 @@ Routine Listings
     Factory function to create SlicedCrystal instances.
 :func:`create_xyz_data`
     Factory function to create XYZData instances.
+:func:`discretize_orientation`
+    Convert an orientation distribution to quadrature samples.
+:func:`discretize_orientation_static`
+    Python-branching orientation discretization for non-JIT use.
 :func:`identify_surface_atoms`
     Identify surface atoms using configurable methods.
+:func:`integrate_over_orientation`
+    Simulate and incoherently average over orientation samples.
 :obj:`float_image`
     Type alias for float-valued 2D image arrays.
 :obj:`int_image`
@@ -129,6 +147,17 @@ from .custom_types import (
     scalar_int,
     scalar_num,
 )
+from .distributions import (
+    OrientationDistribution,
+    SizeDistribution,
+    create_discrete_orientation,
+    create_gaussian_orientation,
+    create_lognormal_size,
+    create_mixed_orientation,
+    discretize_orientation,
+    discretize_orientation_static,
+    integrate_over_orientation,
+)
 from .rheed_types import (
     DetectorGeometry,
     RHEEDImage,
@@ -153,9 +182,13 @@ __all__: list[str] = [
     "RELATIVISTIC_COEFF_PER_V",
     "SPEED_OF_LIGHT_MS",
     "create_crystal_structure",
+    "create_discrete_orientation",
     "create_electron_beam",
     "create_ewald_data",
+    "create_gaussian_orientation",
     "create_kirkland_parameters",
+    "create_lognormal_size",
+    "create_mixed_orientation",
     "create_potential_slices",
     "create_rheed_image",
     "create_rheed_pattern",
@@ -166,10 +199,14 @@ __all__: list[str] = [
     "ElectronBeam",
     "EwaldData",
     "float_image",
+    "integrate_over_orientation",
     "KirklandParameters",
     "identify_surface_atoms",
     "int_image",
     "non_jax_number",
+    "discretize_orientation",
+    "discretize_orientation_static",
+    "OrientationDistribution",
     "PotentialSlices",
     "RHEEDImage",
     "RHEEDPattern",
@@ -178,6 +215,7 @@ __all__: list[str] = [
     "scalar_int",
     "scalar_num",
     "SlicedCrystal",
+    "SizeDistribution",
     "SurfaceConfig",
     "XYZData",
 ]

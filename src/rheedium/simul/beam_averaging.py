@@ -234,12 +234,12 @@ def coherence_envelope(
     .. math::
 
         E_t(q_\parallel) = \exp\!\bigl(
-            -q_\parallel^2 L_t^2 / 2
+            -q_\parallel^2 / (2 L_t^2)
         \bigr)
 
     .. math::
 
-        E_l(q_z) = \exp\!\bigl(-q_z^2 L_l^2 / 2\bigr)
+        E_l(q_z) = \exp\!\bigl(-q_z^2 / (2 L_l^2)\bigr)
 
     These envelopes model the finite spatial extent of electron
     wavepackets and set the maximum spatial frequency that can
@@ -272,9 +272,9 @@ def coherence_envelope(
     Notes
     -----
     1. **Transverse envelope** --
-       :math:`E_t = \exp(-q_\parallel^2 L_t^2 / 2)`.
+       :math:`E_t = \exp(-q_\parallel^2 / (2 L_t^2))`.
     2. **Longitudinal envelope** --
-       :math:`E_l = \exp(-q_z^2 L_l^2 / 2)`.
+       :math:`E_l = \exp(-q_z^2 / (2 L_l^2))`.
     3. **Apply damping** --
        Return :math:`F(\mathbf{q}) \cdot E_t \cdot E_l`.
 

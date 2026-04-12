@@ -12,6 +12,9 @@ Routine Listings
 ----------------
 :func:`compute_kinematic_intensities_with_ctrs`
     Calculate kinematic intensities with CTR contributions.
+:func:`ewald_simulator_with_orientation_distribution`
+    Simulate and incoherently combine an orientation distribution of
+    Ewald patterns.
 :func:`ewald_simulator`
     Simulate RHEED using exact Ewald sphere-CTR intersection.
 :func:`find_kinematic_reflections`
@@ -40,6 +43,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Final, Tuple
+from jax.core import Tracer
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import (
@@ -50,12 +54,15 @@ from rheedium.tools import (
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
+    OrientationDistribution,
     PotentialSlices,
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
     create_potential_slices,
     create_rheed_pattern,
+    discretize_orientation,
+    discretize_orientation_static,
     identify_surface_atoms,
     scalar_float,
     scalar_int,
@@ -847,6 +854,127 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
 
 
 @jaxtyped(typechecker=beartype)
+def _discretize_orientation_for_sparse_pattern(
+    orientation_distribution: OrientationDistribution,
+    n_mosaic_points: scalar_int,
+) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
+    """Discretize orientations while keeping eager sparse patterns compact."""
+    if isinstance(orientation_distribution.mosaic_fwhm_deg, Tracer):
+        return discretize_orientation(
+            orientation_distribution,
+            n_mosaic_points=n_mosaic_points,
+        )
+    return discretize_orientation_static(
+        orientation_distribution,
+        n_mosaic_points=n_mosaic_points,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def _incoherent_pattern_union(
+    pattern_bank: RHEEDPattern,
+    weights: Float[Array, "N_orientations"],
+) -> RHEEDPattern:
+    """Flatten a weighted bank of sparse patterns into one pattern."""
+    weighted_intensities: Float[Array, "N_orientations N_reflections"] = (
+        pattern_bank.intensities * weights[:, None]
+    )
+    return create_rheed_pattern(
+        g_indices=pattern_bank.G_indices.reshape(-1),
+        k_out=pattern_bank.k_out.reshape(-1, 3),
+        detector_points=pattern_bank.detector_points.reshape(-1, 2),
+        intensities=weighted_intensities.reshape(-1),
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    orientation_distribution: OrientationDistribution,
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.5,
+    surface_config: SurfaceConfig | None = None,
+    n_mosaic_points: scalar_int = 7,
+) -> RHEEDPattern:
+    r"""Simulate a weighted union of Ewald patterns over orientations.
+
+    This wrapper promotes :class:`~rheedium.types.OrientationDistribution`
+    to a first-class simulator input. The azimuthal support is discretized,
+    :func:`ewald_simulator` is evaluated at each quadrature angle, and the
+    resulting sparse spot patterns are combined as an incoherent detector
+    intensity sum.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure with atomic positions and cell parameters.
+    orientation_distribution : OrientationDistribution
+        Probability distribution over azimuthal orientations in degrees.
+    voltage_kv : scalar_num, optional
+        Electron beam energy in kiloelectron volts. Default: 20.0
+    theta_deg : scalar_num, optional
+        Grazing angle of incidence in degrees. Default: 2.0
+    hmax : scalar_int, optional
+        Maximum h Miller index for CTR grid. Default: 5
+    kmax : scalar_int, optional
+        Maximum k Miller index for CTR grid. Default: 5
+    detector_distance : scalar_float, optional
+        Distance from sample to detector plane in mm. Default: 1000.0
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller factors. Default: 300.0
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in Ångstroms for CTR damping. Default: 0.5
+    surface_config : SurfaceConfig | None, optional
+        Configuration for surface atom identification. Default: None
+    n_mosaic_points : scalar_int, optional
+        Quadrature points per orientation peak for mosaic broadening.
+        Default: 7. For purely discrete variants, ``1`` gives the most
+        compact sparse output.
+
+    Returns
+    -------
+    pattern : RHEEDPattern
+        Sparse detector pattern containing the weighted union of all
+        orientation-specific reflections. Intensities add incoherently.
+
+    Notes
+    -----
+    The output keeps one detector spot entry per simulated orientation sample.
+    Reflections from different orientations are not merged by Miller index,
+    because their detector coordinates generally differ. Downstream detector
+    rendering should therefore sum the returned spot intensities directly.
+    """
+    angles_deg: Float[Array, "N"]
+    weights: Float[Array, "N"]
+    angles_deg, weights = _discretize_orientation_for_sparse_pattern(
+        orientation_distribution,
+        n_mosaic_points=n_mosaic_points,
+    )
+
+    def _simulate_at_orientation(phi_deg: scalar_float) -> RHEEDPattern:
+        return ewald_simulator(
+            crystal=crystal,
+            voltage_kv=voltage_kv,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            surface_config=surface_config,
+        )
+
+    pattern_bank: RHEEDPattern = jax.vmap(_simulate_at_orientation)(angles_deg)
+    return _incoherent_pattern_union(pattern_bank, weights)
+
+
+@jaxtyped(typechecker=beartype)
 def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
@@ -1329,6 +1457,7 @@ def multislice_simulator(
 
 __all__: list[str] = [
     "compute_kinematic_intensities_with_ctrs",
+    "ewald_simulator_with_orientation_distribution",
     "ewald_simulator",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",

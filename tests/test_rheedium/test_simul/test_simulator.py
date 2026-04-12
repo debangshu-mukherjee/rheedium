@@ -10,6 +10,8 @@ Tests the integration of:
 - Detector projection
 """
 
+from unittest.mock import patch
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -20,6 +22,7 @@ from jax.test_util import check_grads
 from rheedium.simul.simulator import (
     compute_kinematic_intensities_with_ctrs,
     ewald_simulator,
+    ewald_simulator_with_orientation_distribution,
     find_kinematic_reflections,
     multislice_propagate,
     multislice_simulator,
@@ -32,6 +35,7 @@ from rheedium.types.crystal_types import (
     create_crystal_structure,
     create_potential_slices,
 )
+from rheedium.types.distributions import create_discrete_orientation
 from rheedium.types.rheed_types import (
     RHEEDPattern,
     SurfaceConfig,
@@ -1345,6 +1349,138 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             int(jnp.sum(valid_mask)),
             0,
             f"Grazing angle {theta_deg} should produce valid reflections",
+        )
+
+    def test_orientation_distribution_matches_manual_incoherent_union(self):
+        """Orientation wrapper matches explicit per-angle pattern union."""
+        orientation_dist = create_discrete_orientation(
+            angles_deg=jnp.array([0.0, 45.0]),
+            weights=jnp.array([0.25, 0.75]),
+        )
+
+        def fake_ewald_simulator(
+            crystal,
+            voltage_kv,
+            theta_deg,
+            phi_deg,
+            hmax,
+            kmax,
+            detector_distance,
+            temperature,
+            surface_roughness,
+            surface_config,
+        ):
+            del (
+                crystal,
+                voltage_kv,
+                theta_deg,
+                hmax,
+                kmax,
+                detector_distance,
+                temperature,
+                surface_roughness,
+                surface_config,
+            )
+            phi = jnp.asarray(phi_deg, dtype=jnp.float64)
+            return RHEEDPattern(
+                G_indices=jnp.array([3, 7], dtype=jnp.int32),
+                k_out=jnp.array(
+                    [
+                        [1.0 + phi, 0.0, 2.0],
+                        [2.0 + phi, 1.0, 3.0],
+                    ],
+                    dtype=jnp.float64,
+                ),
+                detector_points=jnp.array(
+                    [
+                        [phi, phi + 1.0],
+                        [phi + 2.0, phi + 3.0],
+                    ],
+                    dtype=jnp.float64,
+                ),
+                intensities=jnp.array([1.0, phi + 2.0], dtype=jnp.float64),
+            )
+
+        with patch(
+            "rheedium.simul.simulator.ewald_simulator",
+            side_effect=fake_ewald_simulator,
+        ):
+            averaged = ewald_simulator_with_orientation_distribution(
+                crystal=_SI_CRYSTAL_2ATOM,
+                orientation_distribution=orientation_dist,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                hmax=1,
+                kmax=1,
+                n_mosaic_points=1,
+            )
+
+        expected_g_indices = jnp.array([3, 7, 3, 7], dtype=jnp.int32)
+        expected_k_out = jnp.array(
+            [
+                [1.0, 0.0, 2.0],
+                [2.0, 1.0, 3.0],
+                [46.0, 0.0, 2.0],
+                [47.0, 1.0, 3.0],
+            ],
+            dtype=jnp.float64,
+        )
+        expected_detector_points = jnp.array(
+            [
+                [0.0, 1.0],
+                [2.0, 3.0],
+                [45.0, 46.0],
+                [47.0, 48.0],
+            ],
+            dtype=jnp.float64,
+        )
+        expected_intensities = jnp.array(
+            [0.25, 0.5, 0.75, 35.25],
+            dtype=jnp.float64,
+        )
+
+        chex.assert_trees_all_close(averaged.G_indices, expected_g_indices)
+        chex.assert_trees_all_close(averaged.k_out, expected_k_out, atol=1e-10)
+        chex.assert_trees_all_close(
+            averaged.detector_points,
+            expected_detector_points,
+            atol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            averaged.intensities,
+            expected_intensities,
+            atol=1e-10,
+        )
+
+    def test_orientation_distribution_wrapper_jits(self):
+        """Orientation-distribution wrapper should compile under jax.jit."""
+        orientation_dist = create_discrete_orientation(
+            angles_deg=jnp.array([0.0, 30.0]),
+            weights=jnp.array([0.4, 0.6]),
+        )
+
+        pattern = jax.jit(
+            ewald_simulator_with_orientation_distribution,
+            static_argnames=("hmax", "kmax", "n_mosaic_points"),
+        )(
+            crystal=_SI_CRYSTAL_2ATOM,
+            orientation_distribution=orientation_dist,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            hmax=1,
+            kmax=1,
+            n_mosaic_points=1,
+        )
+
+        valid_mask = pattern.G_indices >= 0
+        self.assertGreater(
+            int(jnp.sum(valid_mask)),
+            0,
+            "JIT-compiled orientation simulation should produce reflections",
+        )
+        self.assertTrue(
+            jnp.all(pattern.intensities >= 0.0),
+            "Orientation-averaged intensities should be non-negative",
         )
 
 
