@@ -16,6 +16,16 @@ Routine Listings
     Build a weighted least-squares residual field between two images.
 :func:`weighted_mean_squared_error`
     Compute a normalized weighted mean-squared error.
+:class:`OrientationFitResult`
+    Result container for orientation-distribution fitting.
+:func:`orientation_loss`
+    Compute a masked image loss for an orientation distribution.
+:func:`fit_orientation_weights`
+    Recover discrete orientation weights on a fixed candidate support.
+:func:`compute_fisher_information`
+    Fisher information for fitted orientation-weight logits.
+:func:`estimate_weight_uncertainty`
+    Propagate Fisher information to 1σ weight uncertainties.
 :func:`gauss_newton_least_squares`
     Gauss-Newton optimizer for arbitrary least-squares residuals.
 :func:`adam_optimize`
@@ -44,15 +54,27 @@ from .optimizers import (
     gauss_newton_least_squares,
     gauss_newton_reconstruction,
 )
+from .orientation import (
+    OrientationFitResult,
+    compute_fisher_information,
+    estimate_weight_uncertainty,
+    fit_orientation_weights,
+    orientation_loss,
+)
 
 __all__: list[str] = [
     "ReconstructionResult",
+    "OrientationFitResult",
     "adagrad_optimize",
     "adagrad_reconstruction",
     "adam_optimize",
     "adam_reconstruction",
+    "compute_fisher_information",
+    "estimate_weight_uncertainty",
+    "fit_orientation_weights",
     "gauss_newton_least_squares",
     "gauss_newton_reconstruction",
+    "orientation_loss",
     "weighted_image_residual",
     "weighted_mean_squared_error",
 ]
