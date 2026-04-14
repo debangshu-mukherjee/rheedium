@@ -12,6 +12,8 @@ Routine Listings
 ----------------
 :func:`compute_kinematic_intensities_with_ctrs`
     Calculate kinematic intensities with CTR contributions.
+:func:`detector_extent_mm`
+    Convert detector pixel calibration and beam centre to imshow extent.
 :func:`ewald_simulator_with_orientation_distribution`
     Simulate and incoherently combine an orientation distribution of
     Ewald patterns.
@@ -19,6 +21,8 @@ Routine Listings
     Simulate RHEED using exact Ewald sphere-CTR intersection.
 :func:`find_kinematic_reflections`
     Find reflections satisfying kinematic conditions.
+:func:`log_compress_image`
+    Apply normalized log compression for screen-style visualization.
 :func:`multislice_propagate`
     Propagate electron wave through potential slices using multislice
     algorithm.
@@ -29,6 +33,10 @@ Routine Listings
     Project wavevectors onto detector plane.
 :func:`project_on_detector_geometry`
     Project wavevectors with full detector geometry support.
+:func:`render_pattern_to_image`
+    Rasterize a sparse RHEEDPattern onto a dense detector image grid.
+:func:`simulate_detector_image`
+    High-level kinematic detector-image orchestration with beam broadening.
 :func:`sliced_crystal_to_projected_potential_slices`
     Convert SlicedCrystal to projected-potential slices for multislice
     simulation.
@@ -70,6 +78,7 @@ from rheedium.types import (
 )
 from rheedium.ucell import reciprocal_lattice_vectors
 
+from .beam_averaging import instrument_broadened_pattern
 from .form_factors import (
     atomic_scattering_factor,
     projected_potential,
@@ -975,6 +984,289 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
+def render_pattern_to_image(
+    pattern: RHEEDPattern,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+) -> Float[Array, "H W"]:
+    """Rasterize a sparse RHEEDPattern onto a dense detector image.
+
+    Parameters
+    ----------
+    pattern : RHEEDPattern
+        Sparse detector pattern with positions in millimetres.
+    image_shape_px : Tuple[int, int]
+        Output detector image shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float]
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float]
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)`` as
+        ``(center_x_px, center_y_px)``.
+    spot_sigma_px : scalar_float
+        Gaussian spot width in detector pixels.
+
+    Returns
+    -------
+    image : Float[Array, "H W"]
+        Rasterized image normalized to unit maximum.
+
+    Notes
+    -----
+    This is the dense-image bridge between sparse reciprocal-space
+    simulations and experiment-like detector rendering. Each sparse hit is
+    painted as a Gaussian on a calibrated pixel grid.
+    """
+    height_px, width_px = image_shape_px
+    x_mm_per_px, y_mm_per_px = pixel_size_mm
+    center_x_px, center_y_px = beam_center_px
+    sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
+
+    x_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    )
+    y_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    )
+    intensities: Float[Array, "N"] = jnp.asarray(
+        pattern.intensities, dtype=jnp.float64
+    )
+
+    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+    x_grid: Float[Array, "H W"]
+    y_grid: Float[Array, "H W"]
+    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+
+    def _render_one_spot(
+        x0_px: Float[Array, ""],
+        y0_px: Float[Array, ""],
+        intensity: Float[Array, ""],
+    ) -> Float[Array, "H W"]:
+        return intensity * jnp.exp(
+            -((x_grid - x0_px) ** 2 + (y_grid - y0_px) ** 2)
+            / (2.0 * sigma_px**2)
+        )
+
+    image: Float[Array, "H W"] = jnp.sum(
+        jax.vmap(_render_one_spot)(x_pixels, y_pixels, intensities),
+        axis=0,
+    )
+    max_intensity: Float[Array, ""] = jnp.maximum(jnp.max(image), 1e-12)
+    return image / max_intensity
+
+
+@beartype
+def detector_extent_mm(
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+) -> Tuple[float, float, float, float]:
+    """Compute matplotlib-style detector extent in millimetres.
+
+    Parameters
+    ----------
+    image_shape_px : Tuple[int, int]
+        Detector image shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float]
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float]
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+
+    Returns
+    -------
+    extent_mm : Tuple[float, float, float, float]
+        ``(x_min, x_max, y_min, y_max)`` extent in millimetres.
+    """
+    height_px, width_px = image_shape_px
+    x_mm_per_px, y_mm_per_px = pixel_size_mm
+    center_x_px, center_y_px = beam_center_px
+    return (
+        -center_x_px * x_mm_per_px,
+        (width_px - center_x_px) * x_mm_per_px,
+        -center_y_px * y_mm_per_px,
+        (height_px - center_y_px) * y_mm_per_px,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def log_compress_image(
+    image: Float[Array, "H W"],
+    gain: scalar_float = 25.0,
+) -> Float[Array, "H W"]:
+    """Apply normalized log compression for detector-style display.
+
+    Parameters
+    ----------
+    image : Float[Array, "H W"]
+        Non-negative detector image.
+    gain : scalar_float, optional
+        Logarithmic gain factor. Default: 25.0
+
+    Returns
+    -------
+    compressed_image : Float[Array, "H W"]
+        Log-compressed image normalized to ``[0, 1]``.
+    """
+    gain_safe: Float[Array, ""] = jnp.maximum(
+        jnp.asarray(gain, dtype=jnp.float64), 1e-12
+    )
+    normalized: Float[Array, "H W"] = image / jnp.maximum(
+        jnp.max(image), 1e-12
+    )
+    return jnp.log1p(gain_safe * normalized) / jnp.log1p(gain_safe)
+
+
+@jaxtyped(typechecker=beartype)
+def simulate_detector_image(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    phi_deg: scalar_num = 0.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance_mm: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.5,
+    image_shape_px: Tuple[int, int] = (192, 192),
+    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
+    beam_center_px: Tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: scalar_float = 1.4,
+    angular_divergence_mrad: scalar_float = 0.35,
+    energy_spread_ev: scalar_float = 0.35,
+    psf_sigma_pixels: scalar_float = 1.2,
+    n_angular_samples: int = 5,
+    n_energy_samples: int = 5,
+    orientation_distribution: OrientationDistribution | None = None,
+    n_mosaic_points: scalar_int = 7,
+    surface_config: SurfaceConfig | None = None,
+) -> Float[Array, "H W"]:
+    """Simulate a broadened kinematic detector image from a crystal.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to simulate.
+    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+        Beam energy and incidence geometry. Defaults are 20 keV, 2°, 0°.
+    hmax, kmax : scalar_int, optional
+        In-plane CTR grid bounds. Default: 5, 5.
+    detector_distance_mm : scalar_float, optional
+        Sample-to-detector distance in millimetres. Default: 1000.0
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller damping. Default: 300.0
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in Ångstroms. Default: 0.5
+    image_shape_px : Tuple[int, int], optional
+        Detector image shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float], optional
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float], optional
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    spot_sigma_px : scalar_float, optional
+        Sparse-hit rasterization width in pixels. Default: 1.4
+    angular_divergence_mrad : scalar_float, optional
+        Beam angular divergence. Default: 0.35 mrad
+    energy_spread_ev : scalar_float, optional
+        Beam energy spread. Default: 0.35 eV
+    psf_sigma_pixels : scalar_float, optional
+        Detector PSF width in pixels. Default: 1.2
+    n_angular_samples, n_energy_samples : int, optional
+        Gauss-Hermite quadrature sizes for beam broadening.
+    orientation_distribution : OrientationDistribution | None, optional
+        Optional azimuthal orientation distribution. When supplied, its
+        angles are interpreted relative to ``phi_deg``.
+    n_mosaic_points : scalar_int, optional
+        Orientation quadrature points per peak when
+        ``orientation_distribution`` is supplied. Default: 7
+    surface_config : SurfaceConfig | None, optional
+        Surface atom identification configuration. Default: None
+
+    Returns
+    -------
+    detector_image : Float[Array, "H W"]
+        Dense detector image normalized to unit maximum.
+
+    Notes
+    -----
+    This orchestrator combines four steps into one public API:
+
+    1. Kinematic sparse pattern generation via :func:`ewald_simulator`
+       or :func:`ewald_simulator_with_orientation_distribution`.
+    2. Rasterization onto a calibrated detector pixel grid.
+    3. Joint angular-divergence and energy-spread averaging via
+       :func:`instrument_broadened_pattern`.
+    4. Detector PSF broadening and final normalization.
+    """
+
+    def _simulate_dense_image(
+        polar_angle_rad: scalar_float,
+        azimuth_angle_rad: scalar_float,
+        energy_kev: scalar_float,
+    ) -> Float[Array, "H W"]:
+        if orientation_distribution is None:
+            sparse_pattern = ewald_simulator(
+                crystal=crystal,
+                voltage_kv=energy_kev,
+                theta_deg=jnp.rad2deg(polar_angle_rad),
+                phi_deg=jnp.rad2deg(azimuth_angle_rad),
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                surface_config=surface_config,
+            )
+        else:
+            shifted_distribution = OrientationDistribution(
+                discrete_angles_deg=(
+                    orientation_distribution.discrete_angles_deg
+                    + jnp.rad2deg(azimuth_angle_rad)
+                ),
+                discrete_weights=orientation_distribution.discrete_weights,
+                mosaic_fwhm_deg=orientation_distribution.mosaic_fwhm_deg,
+                distribution_id=orientation_distribution.distribution_id,
+            )
+            sparse_pattern = ewald_simulator_with_orientation_distribution(
+                crystal=crystal,
+                orientation_distribution=shifted_distribution,
+                voltage_kv=energy_kev,
+                theta_deg=jnp.rad2deg(polar_angle_rad),
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                surface_config=surface_config,
+                n_mosaic_points=n_mosaic_points,
+            )
+        return render_pattern_to_image(
+            pattern=sparse_pattern,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+        )
+
+    detector_image: Float[Array, "H W"] = instrument_broadened_pattern(
+        simulate_fn=_simulate_dense_image,
+        nominal_polar_angle_rad=jnp.deg2rad(theta_deg),
+        nominal_azimuth_angle_rad=jnp.deg2rad(phi_deg),
+        nominal_energy_kev=voltage_kv,
+        angular_divergence_mrad=angular_divergence_mrad,
+        energy_spread_ev=energy_spread_ev,
+        psf_sigma_pixels=psf_sigma_pixels,
+        n_angular_samples=n_angular_samples,
+        n_energy_samples=n_energy_samples,
+    )
+    max_intensity: Float[Array, ""] = jnp.maximum(
+        jnp.max(detector_image), 1e-12
+    )
+    return detector_image / max_intensity
+
+
+@jaxtyped(typechecker=beartype)
 def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
@@ -1457,13 +1749,17 @@ def multislice_simulator(
 
 __all__: list[str] = [
     "compute_kinematic_intensities_with_ctrs",
+    "detector_extent_mm",
     "ewald_simulator_with_orientation_distribution",
     "ewald_simulator",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
+    "log_compress_image",
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",
     "project_on_detector_geometry",
+    "render_pattern_to_image",
+    "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",
 ]

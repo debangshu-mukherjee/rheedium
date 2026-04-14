@@ -21,12 +21,16 @@ from jax.test_util import check_grads
 
 from rheedium.simul.simulator import (
     compute_kinematic_intensities_with_ctrs,
+    detector_extent_mm,
     ewald_simulator,
     ewald_simulator_with_orientation_distribution,
     find_kinematic_reflections,
+    log_compress_image,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
+    render_pattern_to_image,
+    simulate_detector_image,
     sliced_crystal_to_projected_potential_slices,
 )
 from rheedium.tools import wavelength_ang
@@ -1501,6 +1505,145 @@ def _make_si_crystal_2atom():
 
 
 _SI_CRYSTAL_2ATOM = _make_si_crystal_2atom()
+
+
+class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
+    """Tests for dense detector-image helpers built on ewald_simulator."""
+
+    def test_render_pattern_to_image_shape_and_normalization(self):
+        """Rasterized detector image has requested shape and unit maximum."""
+        pattern = RHEEDPattern(
+            G_indices=jnp.array([0, 1], dtype=jnp.int32),
+            k_out=jnp.array(
+                [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]], dtype=jnp.float64
+            ),
+            detector_points=jnp.array(
+                [[0.0, 0.0], [2.0, 4.0]], dtype=jnp.float64
+            ),
+            intensities=jnp.array([1.0, 0.5], dtype=jnp.float64),
+        )
+
+        image = render_pattern_to_image(
+            pattern=pattern,
+            image_shape_px=(32, 40),
+            pixel_size_mm=(1.0, 2.0),
+            beam_center_px=(20.0, 4.0),
+            spot_sigma_px=1.5,
+        )
+
+        chex.assert_shape(image, (32, 40))
+        chex.assert_tree_all_finite(image)
+        chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
+        self.assertTrue(jnp.all(image >= 0.0))
+
+    def test_detector_extent_mm_matches_calibration(self):
+        """Display extent converts beam centre and pixel pitch correctly."""
+        extent = detector_extent_mm(
+            image_shape_px=(100, 200),
+            pixel_size_mm=(1.5, 3.0),
+            beam_center_px=(80.0, 5.0),
+        )
+        self.assertEqual(extent, (-120.0, 180.0, -15.0, 285.0))
+
+    def test_log_compress_image_preserves_bounds(self):
+        """Log compression maps a normalized image back into [0, 1]."""
+        image = jnp.array([[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64)
+        compressed = log_compress_image(image, gain=20.0)
+        chex.assert_shape(compressed, (2, 2))
+        chex.assert_tree_all_finite(compressed)
+        self.assertTrue(jnp.all(compressed >= 0.0))
+        self.assertTrue(jnp.all(compressed <= 1.0))
+        chex.assert_trees_all_close(compressed[0, 0], 0.0, atol=1e-12)
+        chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
+
+    def test_simulate_detector_image_matches_direct_render_when_unbroadened(
+        self,
+    ):
+        """Zero broadening reduces to direct rasterization of sparse pattern."""
+        kwargs = dict(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+        )
+        sparse_pattern = RHEEDPattern(
+            G_indices=jnp.array([0, 1], dtype=jnp.int32),
+            k_out=jnp.array(
+                [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]], dtype=jnp.float64
+            ),
+            detector_points=jnp.array(
+                [[0.0, 0.0], [6.0, 8.0]], dtype=jnp.float64
+            ),
+            intensities=jnp.array([1.0, 0.4], dtype=jnp.float64),
+        )
+        direct_image = render_pattern_to_image(
+            pattern=sparse_pattern,
+            image_shape_px=kwargs["image_shape_px"],
+            pixel_size_mm=kwargs["pixel_size_mm"],
+            beam_center_px=kwargs["beam_center_px"],
+            spot_sigma_px=kwargs["spot_sigma_px"],
+        )
+        with patch(
+            "rheedium.simul.simulator.ewald_simulator",
+            return_value=sparse_pattern,
+        ):
+            orchestrated_image = simulate_detector_image(
+                **kwargs,
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+                psf_sigma_pixels=0.0,
+                n_angular_samples=1,
+                n_energy_samples=1,
+            )
+
+        chex.assert_trees_all_close(
+            orchestrated_image,
+            direct_image,
+            atol=1e-10,
+        )
+
+    def test_simulate_detector_image_with_orientation_distribution(self):
+        """Orientation-distribution orchestration yields a valid dense image."""
+        orientation_dist = create_discrete_orientation(
+            angles_deg=jnp.array([0.0, 10.0]),
+            weights=jnp.array([0.4, 0.6]),
+        )
+        image = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            orientation_distribution=orientation_dist,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.2,
+            energy_spread_ev=0.2,
+            psf_sigma_pixels=0.8,
+            n_angular_samples=3,
+            n_energy_samples=3,
+            n_mosaic_points=1,
+        )
+
+        chex.assert_shape(image, (16, 24))
+        chex.assert_tree_all_finite(image)
+        self.assertTrue(jnp.all(image >= 0.0))
+        chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
 
 
 class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):

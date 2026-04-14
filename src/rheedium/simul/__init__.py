@@ -45,6 +45,8 @@ Routine Listings
 :func:`ewald_simulator_with_orientation_distribution`
     Simulate and incoherently combine an orientation distribution of
     Ewald patterns.
+:func:`detector_extent_mm`
+    Convert detector calibration and beam center to display extent.
 :func:`find_ctr_ewald_intersection`
     Find intersection of CTR with Ewald sphere for given (h, k) rod.
 :func:`find_kinematic_reflections`
@@ -87,10 +89,14 @@ Routine Listings
     Project reciprocal lattice points onto detector screen.
 :func:`project_on_detector_geometry`
     Project reciprocal lattice points with full detector geometry support.
+:func:`render_pattern_to_image`
+    Rasterize a sparse RHEEDPattern onto a dense detector image.
 :func:`rod_profile_function`
     Lateral width profile of rods due to finite correlation length.
 :func:`roughness_damping`
     Gaussian roughness damping factor for CTR intensities.
+:func:`simulate_detector_image`
+    High-level kinematic detector-image orchestration.
 :func:`sliced_crystal_to_projected_potential_slices`
     Convert SlicedCrystal to projected-potential slices for multislice
     simulation.
@@ -130,14 +136,18 @@ from .multislice import (
 from .potential import crystal_projected_potential
 from .simulator import (
     compute_kinematic_intensities_with_ctrs,
+    detector_extent_mm,
     ewald_simulator,
     ewald_simulator_with_orientation_distribution,
     find_ctr_ewald_intersection,
     find_kinematic_reflections,
+    log_compress_image,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
     project_on_detector_geometry,
+    render_pattern_to_image,
+    simulate_detector_image,
     sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
@@ -161,6 +171,7 @@ __all__: list[str] = [
     "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
     "compute_shell_sigma",
+    "detector_extent_mm",
     "debye_waller_factor",
     "detector_psf_convolve",
     "energy_spread_average",
@@ -190,6 +201,9 @@ __all__: list[str] = [
     "project_on_detector_geometry",
     "rod_profile_function",
     "roughness_damping",
+    "render_pattern_to_image",
+    "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",
     "surface_structure_factor",
+    "log_compress_image",
 ]

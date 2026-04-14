@@ -15,21 +15,17 @@ def _():
 def _(mo):
     mo.md(
         r"""
-    # RHEED Simulation: MgO (001) Surface
+    # Full Kinematic RHEED: MgO (001)
 
-    This tutorial demonstrates kinematic RHEED simulation for MgO following the approach in arXiv:2207.06642.
+    This notebook is intentionally thin. The heavy lifting now lives in
+    `rh.simul.simulate_detector_image`, which orchestrates:
 
-    ## Experimental Setup
-    - **Crystal**: MgO (magnesium oxide, rock salt structure)
-    - **Surface**: (001) orientation
-    - **Electron energy**: 30 keV
-    - **Grazing angle**: 2°
+    - exact CTR-Ewald intersections
+    - detector rasterization
+    - angular and energy broadening
+    - detector PSF blur
 
-    ## Expected Pattern
-    For MgO (001), we expect:
-    - Vertical streaks (crystal truncation rods)
-    - Mirror symmetry about the vertical axis
-    - FCC extinction rules (h,k,l all even or all odd)
+    The notebook just picks parameters and visualizes the result.
     """
     )
     return
@@ -37,13 +33,13 @@ def _(mo):
 
 @app.cell
 def _():
-    import jax.numpy as jnp
     import matplotlib.pyplot as plt
     import numpy as np
     from pathlib import Path
+
     import rheedium as rh
 
-    return Path, jnp, np, plt, rh
+    return Path, np, plt, rh
 
 
 @app.cell
@@ -52,172 +48,132 @@ def _(Path):
     return (repo_root,)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ## Load Crystal Structure
-    """
-    )
-    return
-
-
 @app.cell
 def _(repo_root, rh):
     crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
-    print(f"Cell parameters: a={crystal.cell_lengths[0]:.3f} Å")
-    print(f"Number of atoms: {crystal.cart_positions.shape[0]}")
+    print(f"Loaded MgO with a = {float(crystal.cell_lengths[0]):.3f} A")
     return (crystal,)
 
 
+@app.cell
+def _():
+    settings = {
+        "voltage_kv": 20.0,
+        "theta_deg": 2.2,
+        "phi_deg": 0.0,
+        "hmax": 5,
+        "kmax": 5,
+        "detector_distance_mm": 1000.0,
+        "temperature": 300.0,
+        "surface_roughness": 0.45,
+        "image_shape_px": (132, 160),
+        "pixel_size_mm": (1.8, 4.0),
+        "beam_center_px": (80.0, 4.0),
+        "spot_sigma_px": 1.4,
+        "angular_divergence_mrad": 0.35,
+        "energy_spread_ev": 0.35,
+        "psf_sigma_pixels": 1.2,
+        "n_angular_samples": 5,
+        "n_energy_samples": 3,
+        "log_gain": 24.0,
+    }
+    return (settings,)
+
+
 @app.cell(hide_code=True)
-def _(mo):
+def _(mo, settings):
     mo.md(
-        r"""
-    ## Simulation Parameters
+        f"""
+    ## Parameter Set
+
+    - Energy: `{settings["voltage_kv"]:.1f}` keV
+    - Grazing angle: `{settings["theta_deg"]:.1f}` deg
+    - Azimuth: `{settings["phi_deg"]:.1f}` deg
+    - CTR grid: `h,k = +/-{settings["hmax"]}`
     """
     )
     return
 
 
 @app.cell
-def _(rh):
-    # RHEED simulation parameters
-    voltage_kV = 30.0  # Electron beam voltage
-    theta_deg = 2.0  # Grazing angle
-    hmax, kmax = 2, 2  # In-plane reciprocal lattice bounds
-    detector_distance = 80.0  # Sample-to-detector distance (mm)
-
-    # Calculate electron wavelength
-    wavelength = rh.tools.wavelength_ang(voltage_kV)
-    print(f"Electron wavelength: {float(wavelength):.4f} Å")
-    return detector_distance, hmax, kmax, theta_deg, voltage_kV
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ## Spot Pattern (Discrete 3D Reciprocal Lattice)
-
-    The `kinematic_spot_simulator` treats the reciprocal lattice as discrete 3D points.
-    This produces spots where integer (h,k,l) points intersect the Ewald sphere.
-    """
-    )
-    return
-
-
-@app.cell
-def _(crystal, detector_distance, hmax, kmax, rh, theta_deg, voltage_kV):
-    spot_pattern = rh.simul.kinematic_spot_simulator(
+def _(crystal, rh, settings):
+    sparse_pattern = rh.simul.ewald_simulator(
         crystal=crystal,
-        voltage_kv=voltage_kV,
-        theta_deg=theta_deg,
-        hmax=hmax,
-        kmax=kmax,
-        lmax=20,
-        detector_distance=detector_distance,
-        tolerance=0.5,
+        voltage_kv=settings["voltage_kv"],
+        theta_deg=settings["theta_deg"],
+        phi_deg=settings["phi_deg"],
+        hmax=settings["hmax"],
+        kmax=settings["kmax"],
+        detector_distance=settings["detector_distance_mm"],
+        temperature=settings["temperature"],
+        surface_roughness=settings["surface_roughness"],
     )
-
-    print(f"Number of spots: {len(spot_pattern.intensities)}")
-    return (spot_pattern,)
-
-
-@app.cell
-def _(rh, spot_pattern):
-    rh.plots.plot_rheed(spot_pattern, grid_size=300, interp_type="gaussian")
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ## Surface Pattern (Exact CTR-Ewald Intersection)
-
-    The `ewald_simulator` solves the exact intersection between each crystal truncation
-    rod and the Ewald sphere. This is the recommended surface-sensitive simulator and
-    produces the characteristic vertical streaks seen in real RHEED patterns.
-    """
-    )
-    return
-
-
-@app.cell
-def _(crystal, detector_distance, hmax, jnp, kmax, rh, theta_deg, voltage_kV):
-    streak_pattern = rh.simul.ewald_simulator(
+    detector_image = rh.simul.simulate_detector_image(
         crystal=crystal,
-        voltage_kv=voltage_kV,
-        theta_deg=theta_deg,
-        hmax=hmax,
-        kmax=kmax,
-        detector_distance=detector_distance,
-        temperature=300.0,
-        surface_roughness=0.5,
+        voltage_kv=settings["voltage_kv"],
+        theta_deg=settings["theta_deg"],
+        phi_deg=settings["phi_deg"],
+        hmax=settings["hmax"],
+        kmax=settings["kmax"],
+        detector_distance_mm=settings["detector_distance_mm"],
+        temperature=settings["temperature"],
+        surface_roughness=settings["surface_roughness"],
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
+        spot_sigma_px=settings["spot_sigma_px"],
+        angular_divergence_mrad=settings["angular_divergence_mrad"],
+        energy_spread_ev=settings["energy_spread_ev"],
+        psf_sigma_pixels=settings["psf_sigma_pixels"],
+        n_angular_samples=settings["n_angular_samples"],
+        n_energy_samples=settings["n_energy_samples"],
     )
-
-    print(f"Number of rod intersections: {len(streak_pattern.intensities)}")
-    print(
-        f"Number of unique rods: {len(jnp.unique(streak_pattern.G_indices))}"
-    )
-    return (streak_pattern,)
+    print(f"Sparse intersections: {len(sparse_pattern.intensities)}")
+    return detector_image, sparse_pattern
 
 
 @app.cell
-def _(rh, streak_pattern):
-    rh.plots.plot_rheed(
-        streak_pattern,
-        grid_size=300,
-        interp_type="gaussian",
-        x_extent=(-4.0, 4.0),
-        y_extent=(0.0, 3.0),
+def _(detector_image, np, plt, rh, settings, sparse_pattern):
+    sparse_image = rh.simul.render_pattern_to_image(
+        pattern=sparse_pattern,
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
+        spot_sigma_px=settings["spot_sigma_px"],
     )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ## Alternative Visualization
-
-    Manual Gaussian broadening for finer control over spot width.
-    """
+    sparse_display = rh.simul.log_compress_image(
+        sparse_image, gain=settings["log_gain"]
     )
-    return
+    detector_display = rh.simul.log_compress_image(
+        detector_image, gain=settings["log_gain"]
+    )
+    extent_mm = rh.simul.detector_extent_mm(
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
+    )
+    cmap = rh.plots.create_phosphor_colormap()
 
-
-@app.cell
-def _(np, plt, streak_pattern):
-    x_np = np.asarray(streak_pattern.detector_points[:, 0])
-    y_np = np.asarray(streak_pattern.detector_points[:, 1])
-    i_np = np.asarray(streak_pattern.intensities)
-
-    x_axis = np.linspace(-4, 4, 400)
-    y_axis = np.linspace(0, 5, 400)
-    xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
-
-    image = np.zeros_like(xx)
-    spot_width = 0.08
-
-    for idx in range(len(i_np)):
-        image += i_np[idx] * np.exp(
-            -((xx - x_np[idx]) ** 2 + (yy - y_np[idx]) ** 2)
-            / (2 * spot_width**2)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
+    panels = [
+        (np.asarray(sparse_display), "Sparse CTR Intersections"),
+        (np.asarray(detector_display), "Broadened Detector Image"),
+    ]
+    for ax, (image, title) in zip(axes, panels, strict=True):
+        ax.imshow(
+            image,
+            extent=extent_mm,
+            origin="lower",
+            cmap=cmap,
+            aspect="auto",
+            vmin=0.0,
+            vmax=1.0,
         )
-
-    fig, ax = plt.subplots(figsize=(8, 10))
-    ax.imshow(
-        image,
-        extent=[-4, 4, 0, 5],
-        origin="lower",
-        cmap="Greens",
-        aspect="auto",
-    )
-    ax.set_xlabel("x_d (mm)")
-    ax.set_ylabel("y_d (mm)")
-    ax.set_title("MgO(001) RHEED Streak Pattern")
+        ax.set_title(title)
+        ax.set_xlabel("detector x (mm)")
+    axes[0].set_ylabel("detector y (mm)")
+    plt.suptitle("MgO(001) Kinematic RHEED", fontsize=16, y=1.02)
+    plt.tight_layout()
     plt.show()
     return
 
