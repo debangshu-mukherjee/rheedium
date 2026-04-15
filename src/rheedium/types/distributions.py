@@ -13,6 +13,8 @@ Routine Listings
     Probability distribution over domain azimuthal orientations.
 :class:`SizeDistribution`
     Probability distribution over coherent domain sizes.
+:func:`create_orientation_distribution`
+    Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
     Factory for discrete rotational variants (e.g., ±33.7° domains).
 :func:`create_gaussian_orientation`
@@ -34,15 +36,15 @@ and exact summation for discrete variants.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable, NamedTuple, Optional, Tuple
+from beartype.typing import Callable, Final, NamedTuple, Optional, Tuple
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
 
-from .custom_types import scalar_float, scalar_int
+from .custom_types import float_jax_image, scalar_float, scalar_int
 
-_ZERO_MOSAIC_FWHM_DEG: float = 1e-6
+_ZERO_MOSAIC_FWHM_DEG: Final[float] = 1e-6
 
 
 @jaxtyped(typechecker=beartype)
@@ -261,6 +263,54 @@ class SizeDistribution(NamedTuple):
 
 
 @jaxtyped(typechecker=beartype)
+def create_orientation_distribution(
+    angles_deg: Float[Array, "M"],
+    weights: Optional[Float[Array, "M"]] = None,
+    mosaic_fwhm_deg: scalar_float = 0.0,
+    distribution_id: Optional[str] = None,
+) -> OrientationDistribution:
+    """Create an OrientationDistribution with normalized JAX arrays.
+
+    Parameters
+    ----------
+    angles_deg : Float[Array, "M"]
+        Rotation angles for each supported orientation in degrees.
+    weights : Optional[Float[Array, "M"]], optional
+        Probability weights for each angle. Default: equal weights.
+    mosaic_fwhm_deg : scalar_float, optional
+        Gaussian mosaic broadening FWHM in degrees. Negative values are
+        clamped to 0.0. Default: 0.0
+    distribution_id : Optional[str], optional
+        Identifier for the distribution.
+
+    Returns
+    -------
+    dist : OrientationDistribution
+        Orientation distribution with normalized weights and a
+        non-negative mosaic width.
+    """
+    angles_arr: Float[Array, "M"] = jnp.atleast_1d(
+        jnp.asarray(angles_deg, dtype=jnp.float64)
+    )
+    n_angles: int = angles_arr.shape[0]
+    weights_arr: Float[Array, "M"]
+    if weights is None:
+        weights_arr = jnp.ones(n_angles, dtype=jnp.float64) / n_angles
+    else:
+        weights_arr = _normalize_probability_weights(weights)
+    mosaic_fwhm_arr: Float[Array, ""] = jnp.maximum(
+        jnp.asarray(mosaic_fwhm_deg, dtype=jnp.float64),
+        0.0,
+    )
+    return OrientationDistribution(
+        discrete_angles_deg=angles_arr,
+        discrete_weights=weights_arr,
+        mosaic_fwhm_deg=mosaic_fwhm_arr,
+        distribution_id=distribution_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def create_discrete_orientation(
     angles_deg: Float[Array, "M"],
     weights: Optional[Float[Array, "M"]] = None,
@@ -296,20 +346,10 @@ def create_discrete_orientation(
     ...     angles_deg=jnp.array([0.0, 90.0, 180.0, 270.0]),
     ... )
     """
-    angles_arr: Float[Array, "M"] = jnp.atleast_1d(
-        jnp.asarray(angles_deg, dtype=jnp.float64)
-    )
-    n_angles: int = angles_arr.shape[0]
-    weights_arr: Float[Array, "M"]
-    if weights is None:
-        weights_arr = jnp.ones(n_angles, dtype=jnp.float64) / n_angles
-    else:
-        weights_arr = _normalize_probability_weights(weights)
-    mosaic_fwhm: Float[Array, ""] = jnp.array(0.0, dtype=jnp.float64)
-    return OrientationDistribution(
-        discrete_angles_deg=angles_arr,
-        discrete_weights=weights_arr,
-        mosaic_fwhm_deg=mosaic_fwhm,
+    return create_orientation_distribution(
+        angles_deg=angles_deg,
+        weights=weights,
+        mosaic_fwhm_deg=0.0,
         distribution_id=distribution_id,
     )
 
@@ -343,12 +383,10 @@ def create_gaussian_orientation(
     center_arr: Float[Array, "1"] = jnp.atleast_1d(
         jnp.asarray(center_deg, dtype=jnp.float64)
     )
-    weights_arr: Float[Array, "1"] = jnp.array([1.0], dtype=jnp.float64)
-    fwhm_arr: Float[Array, ""] = jnp.asarray(fwhm_deg, dtype=jnp.float64)
-    return OrientationDistribution(
-        discrete_angles_deg=center_arr,
-        discrete_weights=weights_arr,
-        mosaic_fwhm_deg=fwhm_arr,
+    return create_orientation_distribution(
+        angles_deg=center_arr,
+        weights=None,
+        mosaic_fwhm_deg=fwhm_deg,
         distribution_id=distribution_id,
     )
 
@@ -383,22 +421,10 @@ def create_mixed_orientation(
     Each discrete variant peak is broadened by a Gaussian with the
     specified FWHM. This is the most realistic model for real surfaces.
     """
-    angles_arr: Float[Array, "M"] = jnp.atleast_1d(
-        jnp.asarray(angles_deg, dtype=jnp.float64)
-    )
-    n_angles: int = angles_arr.shape[0]
-    weights_arr: Float[Array, "M"]
-    if weights is None:
-        weights_arr = jnp.ones(n_angles, dtype=jnp.float64) / n_angles
-    else:
-        weights_arr = _normalize_probability_weights(weights)
-    fwhm_arr: Float[Array, ""] = jnp.asarray(
-        mosaic_fwhm_deg, dtype=jnp.float64
-    )
-    return OrientationDistribution(
-        discrete_angles_deg=angles_arr,
-        discrete_weights=weights_arr,
-        mosaic_fwhm_deg=fwhm_arr,
+    return create_orientation_distribution(
+        angles_deg=angles_deg,
+        weights=weights,
+        mosaic_fwhm_deg=mosaic_fwhm_deg,
         distribution_id=distribution_id,
     )
 
@@ -540,10 +566,10 @@ def discretize_orientation_static(
 
 @jaxtyped(typechecker=beartype)
 def integrate_over_orientation(
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
+    simulate_fn: Callable[[scalar_float], float_jax_image],
     orientation_dist: OrientationDistribution,
     n_mosaic_points: scalar_int = 7,
-) -> Float[Array, "H W"]:
+) -> float_jax_image:
     r"""Compute incoherent intensity sum over orientation distribution.
 
     Description
@@ -602,7 +628,7 @@ def integrate_over_orientation(
     )
     patterns: Float[Array, "N H W"] = jax.vmap(simulate_fn)(angles_deg)
     weights_expanded: Float[Array, "N 1 1"] = weights[:, None, None]
-    weighted_sum: Float[Array, "H W"] = jnp.sum(
+    weighted_sum: float_jax_image = jnp.sum(
         weights_expanded * patterns, axis=0
     )
     return weighted_sum
@@ -652,6 +678,7 @@ def create_lognormal_size(
 __all__: list[str] = [
     "OrientationDistribution",
     "SizeDistribution",
+    "create_orientation_distribution",
     "create_discrete_orientation",
     "create_gaussian_orientation",
     "create_lognormal_size",

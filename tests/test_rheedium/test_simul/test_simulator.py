@@ -15,6 +15,7 @@ from unittest.mock import patch
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
@@ -33,7 +34,7 @@ from rheedium.simul.simulator import (
     simulate_detector_image,
     sliced_crystal_to_projected_potential_slices,
 )
-from rheedium.tools import wavelength_ang
+from rheedium.tools import incident_wavevector, wavelength_ang
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types.crystal_types import (
     create_crystal_structure,
@@ -45,6 +46,7 @@ from rheedium.types.rheed_types import (
     SurfaceConfig,
     create_sliced_crystal,
 )
+from rheedium.ucell import reciprocal_lattice_vectors
 
 
 class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
@@ -1142,6 +1144,163 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "All valid reflections should have k_out_z > 0",
         )
 
+    @staticmethod
+    def _raw_ctr_detector_points(
+        crystal,
+        voltage_kv,
+        theta_deg,
+        phi_deg,
+        hmax,
+        kmax,
+        detector_distance,
+    ):
+        """Construct detector intersections directly from both rod branches."""
+        lam_ang = float(wavelength_ang(voltage_kv))
+        k_in = np.asarray(
+            incident_wavevector(lam_ang, theta_deg, phi_deg),
+            dtype=np.float64,
+        )
+        recip_a, recip_b, recip_c = np.asarray(
+            reciprocal_lattice_vectors(
+                *crystal.cell_lengths,
+                *crystal.cell_angles,
+                in_degrees=True,
+            ),
+            dtype=np.float64,
+        )
+        k_mag_sq = float(np.dot(k_in, k_in))
+        rows: list[tuple[float, float]] = []
+        for h in range(-hmax, hmax + 1):
+            for k in range(-kmax, kmax + 1):
+                g_hk = h * recip_a + k * recip_b
+                p_vec = k_in + g_hk
+                a_coef = float(np.dot(recip_c, recip_c))
+                b_coef = float(2.0 * np.dot(p_vec, recip_c))
+                c_coef = float(np.dot(p_vec, p_vec) - k_mag_sq)
+                discriminant = b_coef * b_coef - 4.0 * a_coef * c_coef
+                if discriminant < 0.0:
+                    continue
+                sqrt_disc = discriminant**0.5
+                for l_val in (
+                    (-b_coef + sqrt_disc) / (2.0 * a_coef),
+                    (-b_coef - sqrt_disc) / (2.0 * a_coef),
+                ):
+                    k_out = p_vec + l_val * recip_c
+                    if k_out[0] <= 0.0 or k_out[2] <= 0.0:
+                        continue
+                    scale = detector_distance / max(float(k_out[0]), 1e-12)
+                    rows.append(
+                        (float(k_out[1] * scale), float(k_out[2] * scale))
+                    )
+        detector_points = np.asarray(rows, dtype=np.float64)
+        order = np.lexsort((detector_points[:, 1], detector_points[:, 0]))
+        return detector_points[order]
+
+    @staticmethod
+    def _create_sto_crystal():
+        """Create a simple cubic SrTiO3 unit cell for Ewald tests."""
+        a_sto = 3.905
+        frac_coords = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],
+                [0.5, 0.5, 0.0],
+                [0.5, 0.0, 0.5],
+                [0.0, 0.5, 0.5],
+            ]
+        )
+        cart_coords = frac_coords * a_sto
+        atomic_numbers = jnp.array([38.0, 22.0, 8.0, 8.0, 8.0])
+        return create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=jnp.array([a_sto, a_sto, a_sto]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    @parameterized.parameters(1.5, 2.5, 4.0)
+    def test_matches_raw_dual_branch_geometry(self, theta_deg):
+        """Sparse Ewald output matches direct two-branch rod geometry."""
+        detector_distance = 900.0
+        hmax = 8
+        kmax = 8
+        raw_points = self._raw_ctr_detector_points(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=theta_deg,
+            phi_deg=0.0,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance,
+        )
+        pattern = ewald_simulator(
+            crystal=self.mgo_crystal,
+            voltage_kv=20.0,
+            theta_deg=theta_deg,
+            phi_deg=0.0,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance,
+        )
+        valid_mask = pattern.G_indices >= 0
+        detector_points = np.asarray(pattern.detector_points[valid_mask])
+        order = np.lexsort((detector_points[:, 1], detector_points[:, 0]))
+        detector_points = detector_points[order]
+
+        self.assertEqual(
+            raw_points.shape,
+            detector_points.shape,
+            "Raw and sparse Ewald geometry should emit the same number of hits",
+        )
+        self.assertTrue(
+            np.allclose(raw_points, detector_points, atol=1e-9, rtol=0.0),
+            "Sparse Ewald intersections should match direct rod geometry",
+        )
+
+    @parameterized.parameters(1.5, 2.5, 4.0)
+    def test_sto_matches_raw_dual_branch_geometry(self, theta_deg):
+        """SrTiO3 sparse Ewald output matches the raw detector geometry."""
+        sto_crystal = self._create_sto_crystal()
+        detector_distance = 900.0
+        hmax = 14
+        kmax = 14
+        raw_points = self._raw_ctr_detector_points(
+            crystal=sto_crystal,
+            voltage_kv=18.0,
+            theta_deg=theta_deg,
+            phi_deg=0.0,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance,
+        )
+        pattern = ewald_simulator(
+            crystal=sto_crystal,
+            voltage_kv=18.0,
+            theta_deg=theta_deg,
+            phi_deg=0.0,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance,
+            temperature=300.0,
+            surface_roughness=0.55,
+        )
+        valid_mask = pattern.G_indices >= 0
+        detector_points = np.asarray(pattern.detector_points[valid_mask])
+        raw_points = np.unique(np.round(raw_points, 6), axis=0)
+        detector_points = np.unique(np.round(detector_points, 6), axis=0)
+        raw_order = np.lexsort((raw_points[:, 1], raw_points[:, 0]))
+        detector_order = np.lexsort(
+            (detector_points[:, 1], detector_points[:, 0])
+        )
+        raw_points = raw_points[raw_order]
+        detector_points = detector_points[detector_order]
+
+        self.assertEqual(raw_points.shape, detector_points.shape)
+        self.assertTrue(
+            np.allclose(raw_points, detector_points, atol=2e-6, rtol=0.0),
+            "SrTiO3 sparse Ewald intersections should match direct rod geometry",
+        )
+
     def test_elastic_scattering_constraint(self):
         """Test that |k_out| = |k_in| (elastic scattering)."""
         pattern = ewald_simulator(
@@ -1559,7 +1718,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_matches_direct_render_when_unbroadened(
         self,
     ):
-        """Zero broadening reduces to direct rasterization of sparse pattern."""
+        """Spot-render mode matches direct rasterization when unbroadened."""
         kwargs = dict(
             crystal=_SI_CRYSTAL_2ATOM,
             voltage_kv=20.0,
@@ -1603,12 +1762,46 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 psf_sigma_pixels=0.0,
                 n_angular_samples=1,
                 n_energy_samples=1,
+                render_ctrs_as_streaks=False,
             )
 
         chex.assert_trees_all_close(
             orchestrated_image,
             direct_image,
             atol=1e-10,
+        )
+
+    def test_simulate_detector_image_renders_streaks_by_default(self):
+        """Default dense rendering elongates CTRs vertically on the detector."""
+        image = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(48, 32),
+            pixel_size_mm=(6.0, 8.0),
+            beam_center_px=(16.0, 2.0),
+            spot_sigma_px=1.0,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+        )
+
+        peak_row, peak_col = jnp.unravel_index(jnp.argmax(image), image.shape)
+        vertical_support = jnp.sum(image[:, peak_col] > 0.25)
+        horizontal_support = jnp.sum(image[peak_row, :] > 0.25)
+
+        self.assertGreater(
+            int(vertical_support),
+            int(horizontal_support),
+            "Default detector rendering should produce an elongated streak",
         )
 
     def test_simulate_detector_image_with_orientation_distribution(self):

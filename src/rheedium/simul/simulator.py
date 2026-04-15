@@ -549,11 +549,11 @@ def find_ctr_ewald_intersection(
     recip_a: Float[Array, "3"],
     recip_b: Float[Array, "3"],
     recip_c: Float[Array, "3"],
-) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
+) -> Tuple[Float[Array, "2"], Float[Array, "2 3"], Float[Array, "2"]]:
     """Find where a crystal truncation rod intersects the Ewald sphere.
 
-    Solves quadratic equation for rod-sphere intersection and returns
-    the solution with upward scattering (k_out_z > 0).
+    Solves the quadratic rod-sphere equation and returns both valid
+    upward-scattering branches, if present.
 
     Parameters
     ----------
@@ -572,12 +572,12 @@ def find_ctr_ewald_intersection(
 
     Returns
     -------
-    l_intersect : Float[Array, ""]
-        The l value at intersection (NaN if no valid intersection).
-    k_out : Float[Array, "3"]
-        Outgoing wavevector at intersection.
-    valid : Float[Array, ""]
-        1.0 if intersection exists and is physical, 0.0 otherwise.
+    l_intersect : Float[Array, "2"]
+        The plus and minus branch l values, zeroed when invalid.
+    k_out : Float[Array, "2 3"]
+        Outgoing wavevectors for the plus and minus branches.
+    valid : Float[Array, "2"]
+        Branch validity flags as floats in ``{0.0, 1.0}``.
     """
     g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
     c_star: Float[Array, "3"] = recip_c
@@ -595,15 +595,12 @@ def find_ctr_ewald_intersection(
     k_out_minus: Float[Array, "3"] = p_vec + l_minus * c_star
     valid_plus: Float[Array, ""] = (discriminant >= 0) & (k_out_plus[2] > 0)
     valid_minus: Float[Array, ""] = (discriminant >= 0) & (k_out_minus[2] > 0)
-    use_plus: Float[Array, ""] = valid_plus & (
-        ~valid_minus | (k_out_plus[2] > k_out_minus[2])
-    )
-    l_intersect: Float[Array, ""] = jnp.where(use_plus, l_plus, l_minus)
-    k_out: Float[Array, "3"] = jnp.where(use_plus, k_out_plus, k_out_minus)
-    any_valid: Float[Array, ""] = valid_plus | valid_minus
-    l_intersect: Float[Array, ""] = jnp.where(any_valid, l_intersect, 0.0)
-    k_out: Float[Array, "3"] = jnp.where(any_valid, k_out, 0.0)
-    valid: Float[Array, ""] = any_valid.astype(jnp.float64)
+    l_intersect: Float[Array, "2"] = jnp.array([l_plus, l_minus])
+    k_out: Float[Array, "2 3"] = jnp.stack([k_out_plus, k_out_minus], axis=0)
+    valid_mask: Bool[Array, "2"] = jnp.array([valid_plus, valid_minus])
+    l_intersect = jnp.where(valid_mask, l_intersect, 0.0)
+    k_out = jnp.where(valid_mask[:, None], k_out, 0.0)
+    valid: Float[Array, "2"] = valid_mask.astype(jnp.float64)
     return l_intersect, k_out, valid
 
 
@@ -675,7 +672,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     - :math:`b = 2 (k_{in} + h a^* + k b^*) \cdot c^*`
     - :math:`c = |k_{in} + h a^* + k b^*|^2 - |k_{in}|^2`
 
-    The solution with :math:`k_{out,z} > 0` (upward scattering) is selected.
+    Both solutions with :math:`k_{out,z} > 0` (upward scattering) are kept.
 
     Intensity includes:
     - Structure factor :math:`|F(G)|^2` with Kirkland form factors
@@ -738,7 +735,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     # Find Ewald-CTR intersection for each rod using vmap
     def _find_intersection(
         idx: Int[Array, ""],
-    ) -> Tuple[Float[Array, ""], Float[Array, "3"], Float[Array, ""]]:
+    ) -> Tuple[Float[Array, "2"], Float[Array, "2 3"], Float[Array, "2"]]:
         h_val: Int[Array, ""] = h_flat[idx]
         k_val: Int[Array, ""] = k_flat[idx]
         return find_ctr_ewald_intersection(
@@ -751,22 +748,29 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
         )
 
     rod_indices: Int[Array, "N"] = jnp.arange(n_rods, dtype=jnp.int32)
-    l_all: Float[Array, "N"]
-    k_out_all: Float[Array, "N 3"]
-    valid_all: Float[Array, "N"]
+    l_all: Float[Array, "N 2"]
+    k_out_all: Float[Array, "N 2 3"]
+    valid_all: Float[Array, "N 2"]
     l_all, k_out_all, valid_all = jax.vmap(_find_intersection)(rod_indices)
+    l_all = l_all.reshape(-1)
+    k_out_all = k_out_all.reshape(-1, 3)
+    valid_all = valid_all.reshape(-1)
+    h_all: Int[Array, "N2"] = jnp.repeat(h_flat, 2)
+    k_all: Int[Array, "N2"] = jnp.repeat(k_flat, 2)
+    hk_linear_indices: Int[Array, "N2"] = jnp.repeat(rod_indices, 2)
+    n_candidates: int = l_all.shape[0]
 
     # Filter to valid intersections
-    valid_mask: Bool[Array, "N"] = valid_all > _VALID_THRESHOLD
+    valid_mask: Bool[Array, "N2"] = valid_all > _VALID_THRESHOLD
     valid_indices: Int[Array, "K"] = jnp.where(
-        valid_mask, size=n_rods, fill_value=-1
+        valid_mask, size=n_candidates, fill_value=-1
     )[0]
     safe_indices: Int[Array, "K"] = jnp.maximum(valid_indices, 0)
 
     l_valid: Float[Array, "K"] = l_all[safe_indices]
     k_out: Float[Array, "K 3"] = k_out_all[safe_indices]
-    h_valid: Int[Array, "K"] = h_flat[safe_indices]
-    k_valid: Int[Array, "K"] = k_flat[safe_indices]
+    h_valid: Int[Array, "K"] = h_all[safe_indices]
+    k_valid: Int[Array, "K"] = k_all[safe_indices]
 
     # Compute G vectors at intersection points
     g_vectors: Float[Array, "K 3"] = (
@@ -854,7 +858,9 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
 
     # Create pattern
     pattern: RHEEDPattern = create_rheed_pattern(
-        g_indices=valid_indices,
+        g_indices=jnp.where(
+            valid_indices >= 0, hk_linear_indices[safe_indices], -1
+        ),
         k_out=k_out,
         detector_points=detector_points,
         intensities=intensities,
@@ -1057,6 +1063,170 @@ def render_pattern_to_image(
     return image / max_intensity
 
 
+@jaxtyped(typechecker=beartype)
+def _render_ctr_streaks_to_image(  # noqa: PLR0913, PLR0915
+    pattern: RHEEDPattern,
+    crystal: CrystalStructure,
+    k_in: Float[Array, "3"],
+    hmax: scalar_int,
+    kmax: scalar_int,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    detector_distance_mm: scalar_float,
+    surface_config: SurfaceConfig | None = None,
+) -> Float[Array, "H W"]:
+    """Render continuous CTR streaks on the detector from a sparse pattern."""
+    height_px, width_px = image_shape_px
+    x_mm_per_px, y_mm_per_px = pixel_size_mm
+    center_x_px, center_y_px = beam_center_px
+    sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
+    detector_distance_mm = jnp.asarray(detector_distance_mm, dtype=jnp.float64)
+    hmax_int: int = int(hmax)
+    kmax_int: int = int(kmax)
+    row_width: int = 2 * kmax_int + 1
+
+    safe_g_indices: Int[Array, "N"] = jnp.maximum(pattern.G_indices, 0)
+    h_indices: Int[Array, "N"] = safe_g_indices // row_width - hmax_int
+    k_indices: Int[Array, "N"] = safe_g_indices % row_width - kmax_int
+    hk_indices: Int[Array, "N 2"] = jnp.stack([h_indices, k_indices], axis=-1)
+
+    reciprocal_vectors: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        *crystal.cell_lengths,
+        *crystal.cell_angles,
+        in_degrees=True,
+    )
+    reciprocal_a: Float[Array, "3"] = reciprocal_vectors[0]
+    reciprocal_b: Float[Array, "3"] = reciprocal_vectors[1]
+    reciprocal_c: Float[Array, "3"] = reciprocal_vectors[2]
+    c_star_z: Float[Array, ""] = reciprocal_c[2]
+    q_parallel: Float[Array, "N 3"] = (
+        hk_indices[:, 0:1] * reciprocal_a + hk_indices[:, 1:2] * reciprocal_b
+    )
+
+    atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
+        jnp.int32
+    )
+    config: SurfaceConfig = (
+        surface_config
+        if surface_config is not None
+        else SurfaceConfig(method="height", height_fraction=0.3)
+    )
+    is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
+        atom_positions, config
+    )
+    n_atoms: int = atom_positions.shape[0]
+
+    y_axis_mm: Float[Array, "H"] = (
+        jnp.arange(height_px, dtype=jnp.float64) - center_y_px
+    ) * y_mm_per_px
+    k_out_x: Float[Array, "N"] = k_in[0] + q_parallel[:, 0]
+    q_z_profiles: Float[Array, "N H"] = (
+        y_axis_mm[None, :] * k_out_x[:, None] / (detector_distance_mm + 1e-10)
+        - k_in[2]
+        - q_parallel[:, 2:3]
+    )
+    q_z_intersections: Float[Array, "N"] = (
+        pattern.k_out[:, 2] - k_in[2] - q_parallel[:, 2]
+    )
+    q_z_sigma: Float[Array, ""] = jnp.maximum(1.25 * jnp.abs(c_star_z), 0.35)
+    q_vectors: Float[Array, "N H 3"] = q_parallel[:, None, :] + jnp.stack(
+        [
+            jnp.zeros_like(q_z_profiles),
+            jnp.zeros_like(q_z_profiles),
+            q_z_profiles,
+        ],
+        axis=-1,
+    )
+    phases: Float[Array, "N H M"] = jnp.einsum(
+        "nhc,mc->nhm",
+        q_vectors,
+        atom_positions,
+    )
+    structure_factor: Complex[Array, "N H"] = jnp.zeros(
+        q_z_profiles.shape,
+        dtype=jnp.complex128,
+    )
+    for atom_idx in range(n_atoms):
+        scattering: Float[Array, "N H"] = atomic_scattering_factor(
+            atomic_number=atomic_numbers[atom_idx],
+            q_vector=q_vectors,
+            temperature=temperature,
+            is_surface=is_surface_atom[atom_idx],
+        )
+        structure_factor = structure_factor + scattering * jnp.exp(
+            1j * phases[:, :, atom_idx]
+        )
+    l_values: Float[Array, "N H"] = q_z_profiles / jnp.maximum(
+        jnp.abs(c_star_z),
+        1e-12,
+    )
+    ctr_modulation: Float[Array, "N H"] = 1.0 / (
+        jnp.sin(jnp.pi * l_values) ** 2 + 0.01
+    )
+    damping: Float[Array, "N H"] = jnp.exp(
+        -0.5 * (surface_roughness**2) * q_z_profiles**2
+    )
+    ewald_envelope: Float[Array, "N H"] = jnp.exp(
+        -0.5 * ((q_z_profiles - q_z_intersections[:, None]) / q_z_sigma) ** 2
+    )
+    row_profiles: Float[Array, "N H"] = (
+        jnp.abs(structure_factor) ** 2
+        * ctr_modulation
+        * damping
+        * ewald_envelope
+    )
+
+    valid_mask: Bool[Array, "N"] = pattern.G_indices >= 0
+    upward_mask: Bool[Array, "N H"] = k_out_x[:, None] > 0.0
+    visible_profiles: Float[Array, "N H"] = jnp.where(
+        valid_mask[:, None] & upward_mask,
+        row_profiles,
+        0.0,
+    )
+
+    x_centers_px: Float[Array, "N"] = (
+        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    )
+    x_axis_px: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    transverse_profiles: Float[Array, "N W"] = jnp.exp(
+        -0.5 * ((x_axis_px[None, :] - x_centers_px[:, None]) / sigma_px) ** 2
+    )
+
+    image: Float[Array, "H W"] = jnp.einsum(
+        "nh,nw->hw",
+        visible_profiles,
+        transverse_profiles,
+    )
+    # Keep the CTR renderer visibly streak-like, but avoid washing rods into
+    # overly broad phosphor bands before instrument broadening is applied.
+    streak_sigma_px_value: float = max(1.2 * float(spot_sigma_px), 0.75)
+    pad_y: int = max(int(3.0 * streak_sigma_px_value), 1)
+    kernel_axis: Float[Array, "K"] = jnp.arange(
+        -pad_y,
+        pad_y + 1,
+        dtype=jnp.float64,
+    )
+    vertical_kernel: Float[Array, "K"] = jnp.exp(
+        -0.5 * (kernel_axis / streak_sigma_px_value) ** 2
+    )
+    vertical_kernel = vertical_kernel / jnp.sum(vertical_kernel)
+    image = jax.vmap(
+        lambda column: jnp.convolve(column, vertical_kernel, mode="full")[
+            pad_y : pad_y + height_px
+        ],
+        in_axes=1,
+        out_axes=1,
+    )(image)
+    image = jnp.maximum(image, 0.0)
+    max_intensity: Float[Array, ""] = jnp.maximum(jnp.max(image), 1e-12)
+    return image / max_intensity
+
+
 @beartype
 def detector_extent_mm(
     image_shape_px: Tuple[int, int],
@@ -1141,6 +1311,7 @@ def simulate_detector_image(  # noqa: PLR0913
     orientation_distribution: OrientationDistribution | None = None,
     n_mosaic_points: scalar_int = 7,
     surface_config: SurfaceConfig | None = None,
+    render_ctrs_as_streaks: bool = True,
 ) -> Float[Array, "H W"]:
     """Simulate a broadened kinematic detector image from a crystal.
 
@@ -1182,6 +1353,10 @@ def simulate_detector_image(  # noqa: PLR0913
         ``orientation_distribution`` is supplied. Default: 7
     surface_config : SurfaceConfig | None, optional
         Surface atom identification configuration. Default: None
+    render_ctrs_as_streaks : bool, optional
+        If True, render each valid crystal truncation rod as a continuous
+        detector streak in the dense image. If False, rasterize only the
+        discrete Ewald intersections as circular spots. Default: True
 
     Returns
     -------
@@ -1192,9 +1367,9 @@ def simulate_detector_image(  # noqa: PLR0913
     -----
     This orchestrator combines four steps into one public API:
 
-    1. Kinematic sparse pattern generation via :func:`ewald_simulator`
-       or :func:`ewald_simulator_with_orientation_distribution`.
-    2. Rasterization onto a calibrated detector pixel grid.
+    1. Kinematic sparse pattern generation via :func:`ewald_simulator`.
+    2. Dense detector rasterization as either discrete spots or
+       continuous CTR streaks.
     3. Joint angular-divergence and energy-spread averaging via
        :func:`instrument_broadened_pattern`.
     4. Detector PSF broadening and final normalization.
@@ -1205,12 +1380,47 @@ def simulate_detector_image(  # noqa: PLR0913
         azimuth_angle_rad: scalar_float,
         energy_kev: scalar_float,
     ) -> Float[Array, "H W"]:
+        theta_sample_deg: Float[Array, ""] = jnp.rad2deg(polar_angle_rad)
+        phi_sample_deg: Float[Array, ""] = jnp.rad2deg(azimuth_angle_rad)
+        k_in: Float[Array, "3"] = incident_wavevector(
+            wavelength_ang(energy_kev),
+            theta_sample_deg,
+            phi_sample_deg,
+        )
+
+        def _render_sparse_pattern(
+            pattern: RHEEDPattern,
+        ) -> Float[Array, "H W"]:
+            if render_ctrs_as_streaks:
+                return _render_ctr_streaks_to_image(
+                    pattern=pattern,
+                    crystal=crystal,
+                    k_in=k_in,
+                    hmax=hmax,
+                    kmax=kmax,
+                    temperature=temperature,
+                    surface_roughness=surface_roughness,
+                    image_shape_px=image_shape_px,
+                    pixel_size_mm=pixel_size_mm,
+                    beam_center_px=beam_center_px,
+                    spot_sigma_px=spot_sigma_px,
+                    detector_distance_mm=detector_distance_mm,
+                    surface_config=surface_config,
+                )
+            return render_pattern_to_image(
+                pattern=pattern,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+            )
+
         if orientation_distribution is None:
             sparse_pattern = ewald_simulator(
                 crystal=crystal,
                 voltage_kv=energy_kev,
-                theta_deg=jnp.rad2deg(polar_angle_rad),
-                phi_deg=jnp.rad2deg(azimuth_angle_rad),
+                theta_deg=theta_sample_deg,
+                phi_deg=phi_sample_deg,
                 hmax=hmax,
                 kmax=kmax,
                 detector_distance=detector_distance_mm,
@@ -1218,7 +1428,9 @@ def simulate_detector_image(  # noqa: PLR0913
                 surface_roughness=surface_roughness,
                 surface_config=surface_config,
             )
-        else:
+            return _render_sparse_pattern(sparse_pattern)
+
+        if render_ctrs_as_streaks:
             shifted_distribution = OrientationDistribution(
                 discrete_angles_deg=(
                     orientation_distribution.discrete_angles_deg
@@ -1228,26 +1440,84 @@ def simulate_detector_image(  # noqa: PLR0913
                 mosaic_fwhm_deg=orientation_distribution.mosaic_fwhm_deg,
                 distribution_id=orientation_distribution.distribution_id,
             )
-            sparse_pattern = ewald_simulator_with_orientation_distribution(
-                crystal=crystal,
-                orientation_distribution=shifted_distribution,
-                voltage_kv=energy_kev,
-                theta_deg=jnp.rad2deg(polar_angle_rad),
-                hmax=hmax,
-                kmax=kmax,
-                detector_distance=detector_distance_mm,
-                temperature=temperature,
-                surface_roughness=surface_roughness,
-                surface_config=surface_config,
+            angles_deg: Float[Array, "N"]
+            weights: Float[Array, "N"]
+            angles_deg, weights = _discretize_orientation_for_sparse_pattern(
+                shifted_distribution,
                 n_mosaic_points=n_mosaic_points,
             )
-        return render_pattern_to_image(
-            pattern=sparse_pattern,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
+
+            def _render_at_orientation(
+                sample_phi_deg: scalar_float,
+            ) -> Float[Array, "H W"]:
+                sparse_pattern = ewald_simulator(
+                    crystal=crystal,
+                    voltage_kv=energy_kev,
+                    theta_deg=theta_sample_deg,
+                    phi_deg=sample_phi_deg,
+                    hmax=hmax,
+                    kmax=kmax,
+                    detector_distance=detector_distance_mm,
+                    temperature=temperature,
+                    surface_roughness=surface_roughness,
+                    surface_config=surface_config,
+                )
+                sample_k_in: Float[Array, "3"] = incident_wavevector(
+                    wavelength_ang(energy_kev),
+                    theta_sample_deg,
+                    sample_phi_deg,
+                )
+                return _render_ctr_streaks_to_image(
+                    pattern=sparse_pattern,
+                    crystal=crystal,
+                    k_in=sample_k_in,
+                    hmax=hmax,
+                    kmax=kmax,
+                    temperature=temperature,
+                    surface_roughness=surface_roughness,
+                    image_shape_px=image_shape_px,
+                    pixel_size_mm=pixel_size_mm,
+                    beam_center_px=beam_center_px,
+                    spot_sigma_px=spot_sigma_px,
+                    detector_distance_mm=detector_distance_mm,
+                    surface_config=surface_config,
+                )
+
+            pattern_bank: Float[Array, "N H W"] = jax.vmap(
+                _render_at_orientation
+            )(angles_deg)
+            combined_image: Float[Array, "H W"] = jnp.einsum(
+                "n,nhw->hw",
+                weights,
+                pattern_bank,
+            )
+            max_intensity: Float[Array, ""] = jnp.maximum(
+                jnp.max(combined_image), 1e-12
+            )
+            return combined_image / max_intensity
+
+        shifted_distribution = OrientationDistribution(
+            discrete_angles_deg=(
+                orientation_distribution.discrete_angles_deg + phi_sample_deg
+            ),
+            discrete_weights=orientation_distribution.discrete_weights,
+            mosaic_fwhm_deg=orientation_distribution.mosaic_fwhm_deg,
+            distribution_id=orientation_distribution.distribution_id,
         )
+        sparse_pattern = ewald_simulator_with_orientation_distribution(
+            crystal=crystal,
+            orientation_distribution=shifted_distribution,
+            voltage_kv=energy_kev,
+            theta_deg=theta_sample_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            surface_config=surface_config,
+            n_mosaic_points=n_mosaic_points,
+        )
+        return _render_sparse_pattern(sparse_pattern)
 
     detector_image: Float[Array, "H W"] = instrument_broadened_pattern(
         simulate_fn=_simulate_dense_image,

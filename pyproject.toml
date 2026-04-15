@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2026.4.10"
+version = "2026.4.13"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
 license = {file = "LICENSE"}
@@ -52,7 +52,6 @@ docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=3.0.2",
     "myst-parser>=2.0.0",
-    "marimo>=0.10.0",
     "sphinx-marimo>=0.3.0",
     "sphinx-autobuild>=2024.10.3",
     "furo>=2025.7.19",
@@ -65,19 +64,15 @@ test = [
     "pytest-xdist>=3.0.0",
     "chex>=0.1.89",
 ]
-interop = [
-    "ase>=3.26.0",
-    "pymatgen>=2025.10.7",
-]
 notebooks = [
     "ipython>=8.31.0",
     "jupyter>=1.1.1",
-"ipywidgets>=8.1.0",
+    "ipywidgets>=8.1.0",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
 ]
 dev = [
-    "rheedium[docs,test,notebooks,interop]",
+    "rheedium[docs,test,notebooks]",
     "build>=1.2.2.post1",
     "ruff>=0.12.9",
     "ty>=0.0.27",

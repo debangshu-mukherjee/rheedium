@@ -48,6 +48,8 @@ from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import (
     OrientationDistribution,
+    create_orientation_distribution,
+    float_jax_image,
     integrate_over_orientation,
     scalar_float,
     scalar_int,
@@ -61,7 +63,6 @@ _ADAM_BETA2: Final[float] = 0.999
 _ADAM_EPSILON: Final[float] = 1e-8
 
 
-@register_pytree_node_class
 class _OrientationWeightParameters(NamedTuple):
     """Internal unconstrained parameterization for weight fitting."""
 
@@ -88,7 +89,6 @@ class _OrientationWeightParameters(NamedTuple):
         return cls(*children)
 
 
-@register_pytree_node_class
 class _OrientationAdamState(NamedTuple):
     """Internal Adam optimizer state for orientation fitting."""
 
@@ -175,7 +175,7 @@ class OrientationFitResult(NamedTuple):
         Whether the optimizer met its stopping tolerance.
     n_iterations : int
         Number of recorded optimization iterations.
-    residual_pattern : Float[Array, "H W"]
+    residual_pattern : float_jax_image
         Difference ``I_observed - I_fitted`` for diagnostics.
     """
 
@@ -184,7 +184,7 @@ class OrientationFitResult(NamedTuple):
     loss_history: Float[Array, "N_steps"]
     converged: bool
     n_iterations: int
-    residual_pattern: Float[Array, "H W"]
+    residual_pattern: float_jax_image
 
     def tree_flatten(
         self,
@@ -193,7 +193,7 @@ class OrientationFitResult(NamedTuple):
             OrientationDistribution,
             Float[Array, ""],
             Float[Array, "N_steps"],
-            Float[Array, "H W"],
+            float_jax_image,
         ],
         Tuple[bool, int],
     ]:
@@ -216,7 +216,7 @@ class OrientationFitResult(NamedTuple):
             OrientationDistribution,
             Float[Array, ""],
             Float[Array, "N_steps"],
-            Float[Array, "H W"],
+            float_jax_image,
         ],
     ) -> "OrientationFitResult":
         """Unflatten from a JAX PyTree."""
@@ -232,16 +232,16 @@ class OrientationFitResult(NamedTuple):
 
 @jaxtyped(typechecker=beartype)
 def _normalize_pattern(
-    pattern: Float[Array, "H W"],
-    mask: Optional[Float[Array, "H W"]] = None,
-) -> Float[Array, "H W"]:
+    pattern: float_jax_image,
+    mask: Optional[float_jax_image] = None,
+) -> float_jax_image:
     """Normalize a detector image to unit sum within an optional mask."""
-    mask_array: Float[Array, "H W"]
+    mask_array: float_jax_image
     if mask is None:
         mask_array = jnp.ones_like(pattern)
     else:
         mask_array = jnp.asarray(mask, dtype=jnp.float64)
-    masked_pattern: Float[Array, "H W"] = pattern * mask_array
+    masked_pattern: float_jax_image = pattern * mask_array
     total_intensity: Float[Array, ""] = (
         jnp.sum(masked_pattern) + _PROBABILITY_EPS
     )
@@ -292,18 +292,10 @@ def _sanitize_distribution(
     distribution: OrientationDistribution,
 ) -> OrientationDistribution:
     """Return a numerically safe orientation distribution."""
-    return OrientationDistribution(
-        discrete_angles_deg=jnp.asarray(
-            distribution.discrete_angles_deg,
-            dtype=jnp.float64,
-        ),
-        discrete_weights=_normalize_probability_weights(
-            distribution.discrete_weights
-        ),
-        mosaic_fwhm_deg=jnp.maximum(
-            jnp.asarray(distribution.mosaic_fwhm_deg, dtype=jnp.float64),
-            0.0,
-        ),
+    return create_orientation_distribution(
+        angles_deg=distribution.discrete_angles_deg,
+        weights=distribution.discrete_weights,
+        mosaic_fwhm_deg=distribution.mosaic_fwhm_deg,
         distribution_id=distribution.distribution_id,
     )
 
@@ -314,12 +306,9 @@ def _distribution_from_parameters(
     params: _OrientationWeightParameters,
 ) -> OrientationDistribution:
     """Build a physical distribution from unconstrained optimizer params."""
-    return OrientationDistribution(
-        discrete_angles_deg=jnp.asarray(
-            candidate_angles_deg,
-            dtype=jnp.float64,
-        ),
-        discrete_weights=_softmax_weights(params.weight_logits),
+    return create_orientation_distribution(
+        angles_deg=candidate_angles_deg,
+        weights=_softmax_weights(params.weight_logits),
         mosaic_fwhm_deg=_softplus(params.mosaic_param),
         distribution_id=None,
     )
@@ -327,10 +316,10 @@ def _distribution_from_parameters(
 
 @jaxtyped(typechecker=beartype)
 def _simulate_distribution_pattern(
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
+    simulate_fn: Callable[[scalar_float], float_jax_image],
     distribution: OrientationDistribution,
     n_mosaic_points: scalar_int,
-) -> Float[Array, "H W"]:
+) -> float_jax_image:
     """Evaluate the forward model for one orientation distribution."""
     return integrate_over_orientation(
         simulate_fn,
@@ -423,10 +412,10 @@ def _adam_update(
 
 @jaxtyped(typechecker=beartype)
 def _prepare_pattern_for_loss(
-    pattern: Float[Array, "H W"],
-    mask: Optional[Float[Array, "H W"]] = None,
+    pattern: float_jax_image,
+    mask: Optional[float_jax_image] = None,
     normalize: bool = True,
-) -> Float[Array, "H W"]:
+) -> float_jax_image:
     """Apply masking and optional normalization to a detector pattern."""
     if normalize:
         return _normalize_pattern(pattern, mask)
@@ -441,9 +430,9 @@ def _prepare_pattern_for_loss(
 @jaxtyped(typechecker=beartype)
 def orientation_loss(
     distribution: OrientationDistribution,
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
-    observed_pattern: Float[Array, "H W"],
-    mask: Optional[Float[Array, "H W"]] = None,
+    simulate_fn: Callable[[scalar_float], float_jax_image],
+    observed_pattern: float_jax_image,
+    mask: Optional[float_jax_image] = None,
     normalize: bool = True,
     regularization_strength: scalar_float = 0.0,
     entropy_weight: scalar_float = 0.0,
@@ -492,24 +481,24 @@ def orientation_loss(
     sanitized_distribution: OrientationDistribution = _sanitize_distribution(
         distribution
     )
-    simulated_pattern: Float[Array, "H W"] = _simulate_distribution_pattern(
+    simulated_pattern: float_jax_image = _simulate_distribution_pattern(
         simulate_fn,
         sanitized_distribution,
         n_mosaic_points=n_mosaic_points,
     )
 
-    prepared_observed: Float[Array, "H W"] = _prepare_pattern_for_loss(
+    prepared_observed: float_jax_image = _prepare_pattern_for_loss(
         observed_pattern,
         mask=mask,
         normalize=normalize,
     )
-    prepared_simulated: Float[Array, "H W"] = _prepare_pattern_for_loss(
+    prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
         simulated_pattern,
         mask=mask,
         normalize=normalize,
     )
 
-    mask_array: Float[Array, "H W"]
+    mask_array: float_jax_image
     if mask is None:
         mask_array = jnp.ones_like(observed_pattern)
     else:
@@ -542,10 +531,10 @@ def orientation_loss(
 
 @jaxtyped(typechecker=beartype)
 def fit_orientation_weights(  # noqa: PLR0913, PLR0915
-    observed_pattern: Float[Array, "H W"],
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
+    observed_pattern: float_jax_image,
+    simulate_fn: Callable[[scalar_float], float_jax_image],
     candidate_angles_deg: Float[Array, "M"],
-    mask: Optional[Float[Array, "H W"]] = None,
+    mask: Optional[float_jax_image] = None,
     initial_weights: Optional[Float[Array, "M"]] = None,
     learning_rate: scalar_float = 0.1,
     n_iterations: scalar_int = 500,
@@ -860,12 +849,12 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
             fitted_params,
         )
     )
-    simulated_pattern: Float[Array, "H W"] = _simulate_distribution_pattern(
+    simulated_pattern: float_jax_image = _simulate_distribution_pattern(
         simulate_fn,
         fitted_distribution,
         n_mosaic_points=n_mosaic_points,
     )
-    residual_pattern: Float[Array, "H W"] = (
+    residual_pattern: float_jax_image = (
         jnp.asarray(observed_pattern, dtype=jnp.float64) - simulated_pattern
     )
     if completed_steps_int == 0:
@@ -895,10 +884,10 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
 
 @jaxtyped(typechecker=beartype)
 def compute_fisher_information(
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
+    simulate_fn: Callable[[scalar_float], float_jax_image],
     distribution: OrientationDistribution,
     noise_variance: scalar_float = 1.0,
-    mask: Optional[Float[Array, "H W"]] = None,
+    mask: Optional[float_jax_image] = None,
     normalize: bool = True,
     n_mosaic_points: scalar_int = 7,
 ) -> Float[Array, "M M"]:
@@ -943,19 +932,19 @@ def compute_fisher_information(
         weight_logits: Float[Array, "M"],
     ) -> Float[Array, "P"]:
         current_distribution: OrientationDistribution = (
-            OrientationDistribution(
-                discrete_angles_deg=sanitized_distribution.discrete_angles_deg,
-                discrete_weights=_softmax_weights(weight_logits),
+            create_orientation_distribution(
+                angles_deg=sanitized_distribution.discrete_angles_deg,
+                weights=_softmax_weights(weight_logits),
                 mosaic_fwhm_deg=sanitized_distribution.mosaic_fwhm_deg,
                 distribution_id=sanitized_distribution.distribution_id,
             )
         )
-        pattern: Float[Array, "H W"] = _simulate_distribution_pattern(
+        pattern: float_jax_image = _simulate_distribution_pattern(
             simulate_fn,
             current_distribution,
             n_mosaic_points=n_mosaic_points,
         )
-        prepared_pattern: Float[Array, "H W"] = _prepare_pattern_for_loss(
+        prepared_pattern: float_jax_image = _prepare_pattern_for_loss(
             pattern,
             mask=mask,
             normalize=normalize,
@@ -975,9 +964,9 @@ def compute_fisher_information(
 @jaxtyped(typechecker=beartype)
 def estimate_weight_uncertainty(
     result: OrientationFitResult,
-    simulate_fn: Callable[[scalar_float], Float[Array, "H W"]],
+    simulate_fn: Callable[[scalar_float], float_jax_image],
     noise_variance: scalar_float = 1.0,
-    mask: Optional[Float[Array, "H W"]] = None,
+    mask: Optional[float_jax_image] = None,
     normalize: bool = True,
     n_mosaic_points: scalar_int = 7,
 ) -> Float[Array, "M"]:

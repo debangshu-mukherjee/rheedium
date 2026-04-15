@@ -301,6 +301,7 @@ Rheedium defines custom type aliases in `types/custom_types.py` for unified scal
 ```python
 from typing import TypeAlias, Union
 from jaxtyping import Float, Integer, Bool, Num, Array
+from numpy import ndarray as NDArray
 
 # Accept both Python scalars and 0-d JAX arrays
 scalar_float: TypeAlias = Union[float, Float[Array, " "]]
@@ -309,8 +310,10 @@ scalar_bool: TypeAlias = Union[bool, Bool[Array, " "]]
 scalar_num: TypeAlias = Union[int, float, Num[Array, " "]]
 
 # Image array types
-float_image: TypeAlias = Float[Array, " H W"]
-int_image: TypeAlias = Integer[Array, " H W"]
+float_jax_image: TypeAlias = Float[Array, " H W"]
+int_jax_image: TypeAlias = Integer[Array, " H W"]
+float_np_image: TypeAlias = Float[NDArray, " H W"]
+int_np_image: TypeAlias = Integer[NDArray, " H W"]
 ```
 
 This allows functions to accept either Python primitives or JAX arrays transparently.

@@ -41,6 +41,8 @@ Routine Listings
     Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
+:func:`create_orientation_distribution`
+    Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
     Create a sharp rotational-variant distribution.
 :func:`create_gaussian_orientation`
@@ -69,10 +71,14 @@ Routine Listings
     Identify surface atoms using configurable methods.
 :func:`integrate_over_orientation`
     Simulate and incoherently average over orientation samples.
-:obj:`float_image`
-    Type alias for float-valued 2D image arrays.
-:obj:`int_image`
-    Type alias for integer-valued 2D image arrays.
+:obj:`float_jax_image`
+    Type alias for float-valued 2D JAX image arrays.
+:obj:`float_np_image`
+    Type alias for float-valued 2D numpy image arrays.
+:obj:`int_jax_image`
+    Type alias for integer-valued 2D JAX image arrays.
+:obj:`int_np_image`
+    Type alias for integer-valued 2D numpy image arrays.
 :obj:`non_jax_number`
     Union type for non-JAX numeric values (int or float).
 :obj:`scalar_bool`
@@ -139,8 +145,10 @@ from .crystal_types import (
     create_xyz_data,
 )
 from .custom_types import (
-    float_image,
-    int_image,
+    float_jax_image,
+    float_np_image,
+    int_jax_image,
+    int_np_image,
     non_jax_number,
     scalar_bool,
     scalar_float,
@@ -154,6 +162,7 @@ from .distributions import (
     create_gaussian_orientation,
     create_lognormal_size,
     create_mixed_orientation,
+    create_orientation_distribution,
     discretize_orientation,
     discretize_orientation_static,
     integrate_over_orientation,
@@ -186,6 +195,7 @@ __all__: list[str] = [
     "create_electron_beam",
     "create_ewald_data",
     "create_gaussian_orientation",
+    "create_orientation_distribution",
     "create_kirkland_parameters",
     "create_lognormal_size",
     "create_mixed_orientation",
@@ -198,11 +208,13 @@ __all__: list[str] = [
     "DetectorGeometry",
     "ElectronBeam",
     "EwaldData",
-    "float_image",
+    "float_jax_image",
+    "float_np_image",
     "integrate_over_orientation",
     "KirklandParameters",
     "identify_surface_atoms",
-    "int_image",
+    "int_jax_image",
+    "int_np_image",
     "non_jax_number",
     "discretize_orientation",
     "discretize_orientation_static",

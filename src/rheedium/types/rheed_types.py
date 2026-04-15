@@ -53,7 +53,7 @@ from jax import lax
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
-from .custom_types import scalar_float, scalar_num
+from .custom_types import float_jax_image, scalar_float, scalar_num
 
 _NDIM_POSITIONS: Final[int] = 2
 _NCOLS_CART: Final[int] = 4
@@ -160,7 +160,7 @@ class RHEEDImage(NamedTuple):
 
     Attributes
     ----------
-    img_array : Float[Array, "H W"]
+    img_array : float_jax_image
         2D image array with shape (height, width) containing pixel intensity
         values. Non-negative finite values.
     incoming_angle : scalar_float
@@ -199,7 +199,7 @@ class RHEEDImage(NamedTuple):
     ... )
     """
 
-    img_array: Float[Array, "H W"]
+    img_array: float_jax_image
     incoming_angle: scalar_float
     calibration: Union[Float[Array, "2"], scalar_float]
     electron_wavelength: scalar_float
@@ -209,7 +209,7 @@ class RHEEDImage(NamedTuple):
         self,
     ) -> Tuple[
         Tuple[
-            Float[Array, "H W"],
+            float_jax_image,
             scalar_float,
             Union[Float[Array, "2"], scalar_float],
             scalar_float,
@@ -234,7 +234,7 @@ class RHEEDImage(NamedTuple):
         cls,
         aux_data: None,
         children: Tuple[
-            Float[Array, "H W"],
+            float_jax_image,
             scalar_float,
             Union[Float[Array, "2"], scalar_float],
             scalar_float,
@@ -390,7 +390,7 @@ def create_rheed_pattern(
 
 @jaxtyped(typechecker=beartype)
 def create_rheed_image(
-    img_array: Float[Array, "H W"],
+    img_array: float_jax_image,
     incoming_angle: scalar_float,
     calibration: Union[Float[Array, "2"], scalar_float],
     electron_wavelength: scalar_float,
@@ -400,7 +400,7 @@ def create_rheed_image(
 
     Parameters
     ----------
-    img_array : Float[Array, "H W"]
+    img_array : float_jax_image
         The image in 2D array format.
     incoming_angle : scalar_float
         The angle of the incoming electron beam in degrees.
@@ -429,7 +429,7 @@ def create_rheed_image(
        values are positive.
     5. Create and return RHEEDImage instance.
     """
-    img_array: Float[Array, "H W"] = jnp.asarray(img_array, dtype=jnp.float64)
+    img_array: float_jax_image = jnp.asarray(img_array, dtype=jnp.float64)
     incoming_angle: Float[Array, ""] = jnp.asarray(
         incoming_angle, dtype=jnp.float64
     )
@@ -448,7 +448,7 @@ def create_rheed_image(
     def _validate_and_create() -> RHEEDImage:
         """Validate and create a RHEEDImage instance."""
 
-        def _check_2d() -> Float[Array, "H W"]:
+        def _check_2d() -> float_jax_image:
             """Check the image array is 2D."""
             return lax.cond(
                 img_array.ndim == image_dimensions,
@@ -458,7 +458,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_finite() -> Float[Array, "H W"]:
+        def _check_finite() -> float_jax_image:
             """Check the image array is finite."""
             return lax.cond(
                 jnp.all(jnp.isfinite(img_array)),
@@ -468,7 +468,7 @@ def create_rheed_image(
                 ),
             )
 
-        def _check_nonnegative() -> Float[Array, "H W"]:
+        def _check_nonnegative() -> float_jax_image:
             """Check the image array is non-negative."""
             return lax.cond(
                 jnp.all(img_array >= 0),
