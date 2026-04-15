@@ -13,8 +13,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # Full Kinematic RHEED: MgO (001)
 
     This notebook is intentionally thin. The heavy lifting now lives in
@@ -26,8 +25,7 @@ def _(mo):
     - detector PSF blur
 
     The notebook just picks parameters and visualizes the result.
-    """
-    )
+    """)
     return
 
 
@@ -82,16 +80,14 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Parameter Set
 
     - Energy: `{settings["voltage_kv"]:.1f}` keV
     - Grazing angle: `{settings["theta_deg"]:.1f}` deg
     - Azimuth: `{settings["phi_deg"]:.1f}` deg
     - CTR grid: `h,k = +/-{settings["hmax"]}`
-    """
-    )
+    """)
     return
 
 
