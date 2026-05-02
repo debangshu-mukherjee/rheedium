@@ -89,6 +89,30 @@ _VALID_THRESHOLD: Final[float] = 0.5
 
 
 @jaxtyped(typechecker=beartype)
+def _compose_ewald_intensity(
+    sf_intensity: scalar_float,
+    l_value: scalar_float,
+    q_z: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+) -> Tuple[Float[Array, ""], Float[Array, ""], Float[Array, ""]]:
+    """Combine sparse Ewald intensity terms with tunable powers."""
+    sin_pi_l: Float[Array, ""] = jnp.sin(jnp.pi * l_value)
+    ctr_modulation: Float[Array, ""] = 1.0 / (sin_pi_l**2 + ctr_regularization)
+    roughness_damping: Float[Array, ""] = jnp.exp(
+        -0.5 * (surface_roughness**2) * q_z**2
+    )
+    total_intensity: Float[Array, ""] = (
+        sf_intensity
+        * ctr_modulation**ctr_power
+        * roughness_damping**roughness_power
+    )
+    return total_intensity, ctr_modulation, roughness_damping
+
+
+@jaxtyped(typechecker=beartype)
 def project_on_detector(
     k_out: Float[Array, "N 3"],
     detector_distance: scalar_float,
@@ -309,7 +333,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     k_out: Float[Array, "N 3"],
     hkl_indices: Int[Array, "N 3"] | None = None,
     temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.5,
+    surface_roughness: scalar_float = 0.0,
     detector_acceptance: scalar_float = 0.01,
     surface_fraction: scalar_float = 0.3,
     surface_config: SurfaceConfig | None = None,
@@ -614,7 +638,10 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     kmax: scalar_int = 5,
     detector_distance: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.5,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
     surface_config: SurfaceConfig | None = None,
 ) -> RHEEDPattern:
     r"""Simulate RHEED pattern using exact Ewald sphere-CTR intersection.
@@ -645,6 +672,16 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
     surface_roughness : scalar_float, optional
         RMS surface roughness in Ångstroms for CTR damping. Default: 0.5
+    ctr_regularization : scalar_float, optional
+        Additive regularization in the CTR factor ``1 / (sin^2(pi l) + eps)``.
+        Default: 0.01
+    ctr_power : scalar_float, optional
+        Exponent applied to the CTR modulation term. Set to ``0.0`` to disable
+        CTR weighting while leaving the geometry unchanged. Default: 1.0
+    roughness_power : scalar_float, optional
+        Exponent applied to the roughness damping term. Set to ``0.0`` to
+        disable roughness damping while leaving the geometry unchanged.
+        Default: 0.25
     surface_config : SurfaceConfig | None, optional
         Configuration for surface atom identification. Default: None
 
@@ -828,19 +865,15 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
         structure_factor: Complex[Array, ""] = jnp.sum(contribs)
         sf_intensity: Float[Array, ""] = jnp.abs(structure_factor) ** 2
 
-        # CTR intensity modulation: 1/sin²(πl) with regularization
-        sin_pi_l: Float[Array, ""] = jnp.sin(jnp.pi * l_val)
-        ctr_modulation: Float[Array, ""] = 1.0 / (sin_pi_l**2 + 0.01)
-
-        # Roughness damping: exp(-½σ²q_z²)
-        roughness_damping: Float[Array, ""] = jnp.exp(
-            -0.5 * (surface_roughness**2) * q_z**2
-        )
-
-        # Total intensity
-        intensity: Float[Array, ""] = (
-            sf_intensity * ctr_modulation * roughness_damping
-        )
+        intensity: Float[Array, ""] = _compose_ewald_intensity(
+            sf_intensity=sf_intensity,
+            l_value=l_val,
+            q_z=q_z,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+        )[0]
         return jnp.where(is_valid, intensity, 0.0)
 
     n_valid: int = valid_indices.shape[0]
@@ -912,7 +945,10 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
     kmax: scalar_int = 5,
     detector_distance: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.5,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
     surface_config: SurfaceConfig | None = None,
     n_mosaic_points: scalar_int = 7,
 ) -> RHEEDPattern:
@@ -944,6 +980,13 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
     surface_roughness : scalar_float, optional
         RMS surface roughness in Ångstroms for CTR damping. Default: 0.5
+    ctr_regularization : scalar_float, optional
+        Additive regularization in the sparse CTR intensity factor.
+        Default: 0.01
+    ctr_power : scalar_float, optional
+        Exponent applied to the CTR modulation term. Default: 1.0
+    roughness_power : scalar_float, optional
+        Exponent applied to the roughness damping term. Default: 0.25
     surface_config : SurfaceConfig | None, optional
         Configuration for surface atom identification. Default: None
     n_mosaic_points : scalar_int, optional
@@ -982,6 +1025,9 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
             detector_distance=detector_distance,
             temperature=temperature,
             surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
             surface_config=surface_config,
         )
 
@@ -1064,165 +1110,76 @@ def render_pattern_to_image(
 
 
 @jaxtyped(typechecker=beartype)
-def _render_ctr_streaks_to_image(  # noqa: PLR0913, PLR0915
+def _render_ctr_streaks_to_image(
     pattern: RHEEDPattern,
-    crystal: CrystalStructure,
-    k_in: Float[Array, "3"],
-    hmax: scalar_int,
-    kmax: scalar_int,
-    temperature: scalar_float,
-    surface_roughness: scalar_float,
     image_shape_px: Tuple[int, int],
     pixel_size_mm: Tuple[float, float],
     beam_center_px: Tuple[float, float],
     spot_sigma_px: scalar_float,
-    detector_distance_mm: scalar_float,
-    surface_config: SurfaceConfig | None = None,
 ) -> Float[Array, "H W"]:
-    """Render continuous CTR streaks on the detector from a sparse pattern."""
+    """Render detector-anchored streaks with visible Bragg spot cores."""
     height_px, width_px = image_shape_px
     x_mm_per_px, y_mm_per_px = pixel_size_mm
     center_x_px, center_y_px = beam_center_px
-    sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
-    detector_distance_mm = jnp.asarray(detector_distance_mm, dtype=jnp.float64)
-    hmax_int: int = int(hmax)
-    kmax_int: int = int(kmax)
-    row_width: int = 2 * kmax_int + 1
-
-    safe_g_indices: Int[Array, "N"] = jnp.maximum(pattern.G_indices, 0)
-    h_indices: Int[Array, "N"] = safe_g_indices // row_width - hmax_int
-    k_indices: Int[Array, "N"] = safe_g_indices % row_width - kmax_int
-    hk_indices: Int[Array, "N 2"] = jnp.stack([h_indices, k_indices], axis=-1)
-
-    reciprocal_vectors: Float[Array, "3 3"] = reciprocal_lattice_vectors(
-        *crystal.cell_lengths,
-        *crystal.cell_angles,
-        in_degrees=True,
+    sigma_x_px: Float[Array, ""] = jnp.asarray(
+        spot_sigma_px,
+        dtype=jnp.float64,
     )
-    reciprocal_a: Float[Array, "3"] = reciprocal_vectors[0]
-    reciprocal_b: Float[Array, "3"] = reciprocal_vectors[1]
-    reciprocal_c: Float[Array, "3"] = reciprocal_vectors[2]
-    c_star_z: Float[Array, ""] = reciprocal_c[2]
-    q_parallel: Float[Array, "N 3"] = (
-        hk_indices[:, 0:1] * reciprocal_a + hk_indices[:, 1:2] * reciprocal_b
-    )
-
-    atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
-        jnp.int32
-    )
-    config: SurfaceConfig = (
-        surface_config
-        if surface_config is not None
-        else SurfaceConfig(method="height", height_fraction=0.3)
-    )
-    is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
-        atom_positions, config
-    )
-    n_atoms: int = atom_positions.shape[0]
-
-    y_axis_mm: Float[Array, "H"] = (
-        jnp.arange(height_px, dtype=jnp.float64) - center_y_px
-    ) * y_mm_per_px
-    k_out_x: Float[Array, "N"] = k_in[0] + q_parallel[:, 0]
-    q_z_profiles: Float[Array, "N H"] = (
-        y_axis_mm[None, :] * k_out_x[:, None] / (detector_distance_mm + 1e-10)
-        - k_in[2]
-        - q_parallel[:, 2:3]
-    )
-    q_z_intersections: Float[Array, "N"] = (
-        pattern.k_out[:, 2] - k_in[2] - q_parallel[:, 2]
-    )
-    q_z_sigma: Float[Array, ""] = jnp.maximum(1.25 * jnp.abs(c_star_z), 0.35)
-    q_vectors: Float[Array, "N H 3"] = q_parallel[:, None, :] + jnp.stack(
-        [
-            jnp.zeros_like(q_z_profiles),
-            jnp.zeros_like(q_z_profiles),
-            q_z_profiles,
-        ],
-        axis=-1,
-    )
-    phases: Float[Array, "N H M"] = jnp.einsum(
-        "nhc,mc->nhm",
-        q_vectors,
-        atom_positions,
-    )
-    structure_factor: Complex[Array, "N H"] = jnp.zeros(
-        q_z_profiles.shape,
-        dtype=jnp.complex128,
-    )
-    for atom_idx in range(n_atoms):
-        scattering: Float[Array, "N H"] = atomic_scattering_factor(
-            atomic_number=atomic_numbers[atom_idx],
-            q_vector=q_vectors,
-            temperature=temperature,
-            is_surface=is_surface_atom[atom_idx],
-        )
-        structure_factor = structure_factor + scattering * jnp.exp(
-            1j * phases[:, :, atom_idx]
-        )
-    l_values: Float[Array, "N H"] = q_z_profiles / jnp.maximum(
-        jnp.abs(c_star_z),
-        1e-12,
-    )
-    ctr_modulation: Float[Array, "N H"] = 1.0 / (
-        jnp.sin(jnp.pi * l_values) ** 2 + 0.01
-    )
-    damping: Float[Array, "N H"] = jnp.exp(
-        -0.5 * (surface_roughness**2) * q_z_profiles**2
-    )
-    ewald_envelope: Float[Array, "N H"] = jnp.exp(
-        -0.5 * ((q_z_profiles - q_z_intersections[:, None]) / q_z_sigma) ** 2
-    )
-    row_profiles: Float[Array, "N H"] = (
-        jnp.abs(structure_factor) ** 2
-        * ctr_modulation
-        * damping
-        * ewald_envelope
-    )
+    sigma_y_px: Float[Array, ""] = jnp.maximum(4.0 * sigma_x_px, 2.5)
+    spot_core_weight: Float[Array, ""] = jnp.asarray(1.0, dtype=jnp.float64)
+    streak_halo_weight: Float[Array, ""] = jnp.asarray(0.6, dtype=jnp.float64)
 
     valid_mask: Bool[Array, "N"] = pattern.G_indices >= 0
-    upward_mask: Bool[Array, "N H"] = k_out_x[:, None] > 0.0
-    visible_profiles: Float[Array, "N H"] = jnp.where(
-        valid_mask[:, None] & upward_mask,
-        row_profiles,
+    x_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    )
+    y_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    )
+    intensities: Float[Array, "N"] = jnp.where(
+        valid_mask,
+        jnp.asarray(pattern.intensities, dtype=jnp.float64),
         0.0,
     )
 
-    x_centers_px: Float[Array, "N"] = (
-        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
-    )
-    x_axis_px: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
-    transverse_profiles: Float[Array, "N W"] = jnp.exp(
-        -0.5 * ((x_axis_px[None, :] - x_centers_px[:, None]) / sigma_px) ** 2
-    )
+    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+    x_grid: Float[Array, "H W"]
+    y_grid: Float[Array, "H W"]
+    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
 
-    image: Float[Array, "H W"] = jnp.einsum(
-        "nh,nw->hw",
-        visible_profiles,
-        transverse_profiles,
+    def _render_one_spot_core(
+        x0_px: Float[Array, ""],
+        y0_px: Float[Array, ""],
+        intensity: Float[Array, ""],
+    ) -> Float[Array, "H W"]:
+        return intensity * jnp.exp(
+            -0.5 * ((x_grid - x0_px) / sigma_x_px) ** 2
+            - 0.5 * ((y_grid - y0_px) / sigma_x_px) ** 2
+        )
+
+    def _render_one_streak_halo(
+        x0_px: Float[Array, ""],
+        y0_px: Float[Array, ""],
+        intensity: Float[Array, ""],
+    ) -> Float[Array, "H W"]:
+        return intensity * jnp.exp(
+            -0.5 * ((x_grid - x0_px) / sigma_x_px) ** 2
+            - 0.5 * ((y_grid - y0_px) / sigma_y_px) ** 2
+        )
+
+    spot_core_image: Float[Array, "H W"] = jnp.sum(
+        jax.vmap(_render_one_spot_core)(x_pixels, y_pixels, intensities),
+        axis=0,
     )
-    # Keep the CTR renderer visibly streak-like, but avoid washing rods into
-    # overly broad phosphor bands before instrument broadening is applied.
-    streak_sigma_px_value: float = max(1.2 * float(spot_sigma_px), 0.75)
-    pad_y: int = max(int(3.0 * streak_sigma_px_value), 1)
-    kernel_axis: Float[Array, "K"] = jnp.arange(
-        -pad_y,
-        pad_y + 1,
-        dtype=jnp.float64,
+    streak_halo_image: Float[Array, "H W"] = jnp.sum(
+        jax.vmap(_render_one_streak_halo)(x_pixels, y_pixels, intensities),
+        axis=0,
     )
-    vertical_kernel: Float[Array, "K"] = jnp.exp(
-        -0.5 * (kernel_axis / streak_sigma_px_value) ** 2
+    image: Float[Array, "H W"] = (
+        spot_core_weight * spot_core_image
+        + streak_halo_weight * streak_halo_image
     )
-    vertical_kernel = vertical_kernel / jnp.sum(vertical_kernel)
-    image = jax.vmap(
-        lambda column: jnp.convolve(column, vertical_kernel, mode="full")[
-            pad_y : pad_y + height_px
-        ],
-        in_axes=1,
-        out_axes=1,
-    )(image)
-    image = jnp.maximum(image, 0.0)
     max_intensity: Float[Array, ""] = jnp.maximum(jnp.max(image), 1e-12)
     return image / max_intensity
 
@@ -1298,7 +1255,10 @@ def simulate_detector_image(  # noqa: PLR0913
     kmax: scalar_int = 5,
     detector_distance_mm: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.5,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
     image_shape_px: Tuple[int, int] = (192, 192),
     pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
     beam_center_px: Tuple[float, float] = (96.0, 8.0),
@@ -1328,7 +1288,14 @@ def simulate_detector_image(  # noqa: PLR0913
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller damping. Default: 300.0
     surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms. Default: 0.5
+        RMS surface roughness in Ångstroms. Default: 0.0
+    ctr_regularization : scalar_float, optional
+        Additive regularization in the sparse CTR intensity factor.
+        Default: 0.01
+    ctr_power : scalar_float, optional
+        Exponent applied to the CTR modulation term. Default: 1.0
+    roughness_power : scalar_float, optional
+        Exponent applied to the roughness damping term. Default: 0.25
     image_shape_px : Tuple[int, int], optional
         Detector image shape as ``(height_px, width_px)``.
     pixel_size_mm : Tuple[float, float], optional
@@ -1382,11 +1349,6 @@ def simulate_detector_image(  # noqa: PLR0913
     ) -> Float[Array, "H W"]:
         theta_sample_deg: Float[Array, ""] = jnp.rad2deg(polar_angle_rad)
         phi_sample_deg: Float[Array, ""] = jnp.rad2deg(azimuth_angle_rad)
-        k_in: Float[Array, "3"] = incident_wavevector(
-            wavelength_ang(energy_kev),
-            theta_sample_deg,
-            phi_sample_deg,
-        )
 
         def _render_sparse_pattern(
             pattern: RHEEDPattern,
@@ -1394,18 +1356,10 @@ def simulate_detector_image(  # noqa: PLR0913
             if render_ctrs_as_streaks:
                 return _render_ctr_streaks_to_image(
                     pattern=pattern,
-                    crystal=crystal,
-                    k_in=k_in,
-                    hmax=hmax,
-                    kmax=kmax,
-                    temperature=temperature,
-                    surface_roughness=surface_roughness,
                     image_shape_px=image_shape_px,
                     pixel_size_mm=pixel_size_mm,
                     beam_center_px=beam_center_px,
                     spot_sigma_px=spot_sigma_px,
-                    detector_distance_mm=detector_distance_mm,
-                    surface_config=surface_config,
                 )
             return render_pattern_to_image(
                 pattern=pattern,
@@ -1426,6 +1380,9 @@ def simulate_detector_image(  # noqa: PLR0913
                 detector_distance=detector_distance_mm,
                 temperature=temperature,
                 surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
                 surface_config=surface_config,
             )
             return _render_sparse_pattern(sparse_pattern)
@@ -1460,27 +1417,17 @@ def simulate_detector_image(  # noqa: PLR0913
                     detector_distance=detector_distance_mm,
                     temperature=temperature,
                     surface_roughness=surface_roughness,
+                    ctr_regularization=ctr_regularization,
+                    ctr_power=ctr_power,
+                    roughness_power=roughness_power,
                     surface_config=surface_config,
-                )
-                sample_k_in: Float[Array, "3"] = incident_wavevector(
-                    wavelength_ang(energy_kev),
-                    theta_sample_deg,
-                    sample_phi_deg,
                 )
                 return _render_ctr_streaks_to_image(
                     pattern=sparse_pattern,
-                    crystal=crystal,
-                    k_in=sample_k_in,
-                    hmax=hmax,
-                    kmax=kmax,
-                    temperature=temperature,
-                    surface_roughness=surface_roughness,
                     image_shape_px=image_shape_px,
                     pixel_size_mm=pixel_size_mm,
                     beam_center_px=beam_center_px,
                     spot_sigma_px=spot_sigma_px,
-                    detector_distance_mm=detector_distance_mm,
-                    surface_config=surface_config,
                 )
 
             pattern_bank: Float[Array, "N H W"] = jax.vmap(
@@ -1514,6 +1461,9 @@ def simulate_detector_image(  # noqa: PLR0913
             detector_distance=detector_distance_mm,
             temperature=temperature,
             surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
             surface_config=surface_config,
             n_mosaic_points=n_mosaic_points,
         )

@@ -22,6 +22,9 @@ notebooks/__pycache__/
 /.claude/XYZ_CIF_Unite.md
 /.claude/ROADMAP.md
 
+#Temp folder for image generation
+.tmp/
+.tmp/*.png
 *.py[cod]
 /openspec/
 /openspec/*
