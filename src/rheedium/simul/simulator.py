@@ -368,7 +368,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
         Default: 300.0
     surface_roughness : scalar_float, optional
         RMS surface roughness in angstroms.
-        Default: 0.5
+        Default: 0.0
     detector_acceptance : scalar_float, optional
         Detector angular acceptance in reciprocal angstroms.
         Default: 0.01
@@ -671,7 +671,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
     surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms for CTR damping. Default: 0.5
+        RMS surface roughness in Ångstroms for CTR damping. Default: 0.0
     ctr_regularization : scalar_float, optional
         Additive regularization in the CTR factor ``1 / (sin^2(pi l) + eps)``.
         Default: 0.01
@@ -979,7 +979,7 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
     surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms for CTR damping. Default: 0.5
+        RMS surface roughness in Ångstroms for CTR damping. Default: 0.0
     ctr_regularization : scalar_float, optional
         Additive regularization in the sparse CTR intensity factor.
         Default: 0.01
