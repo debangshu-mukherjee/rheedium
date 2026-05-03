@@ -22,7 +22,7 @@ def _chunked_phi_bank(crystal, phi_values, settings, batch_size):
         stop = min(start + batch_size, len(phi_values))
         chunk = jnp.asarray(phi_values[start:stop])
         print(
-            f"building Bi2Se3 phi chunk {start}:{stop} of {len(phi_values)}",
+            f"building MgO phi chunk {start}:{stop} of {len(phi_values)}",
             flush=True,
         )
         chunk_bank = rh.simul.simulate_detector_image_phi_sweep(
@@ -59,8 +59,7 @@ def _chunked_roughness_bank(crystal, roughness_values, settings, batch_size):
         stop = min(start + batch_size, len(roughness_values))
         chunk = jnp.asarray(roughness_values[start:stop])
         print(
-            "building Bi2Se3 roughness chunk "
-            f"{start}:{stop} of {len(roughness_values)}",
+            f"building MgO roughness chunk {start}:{stop} of {len(roughness_values)}",
             flush=True,
         )
         chunk_bank = rh.simul.simulate_detector_image_roughness_sweep(
@@ -152,24 +151,22 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     sweeps_dir = repo_root / "tutorials" / "sweeps"
     sweeps_dir.mkdir(parents=True, exist_ok=True)
-    crystal = rh.inout.parse_cif(
-        repo_root / "tests" / "test_data" / "bi2se3" / "Bi2Se3.cif"
-    )
+    crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
     settings = {
-        "material": "Bi2Se3",
-        "voltage_kv": 30.0,
-        "theta_deg": 2.5,
+        "material": "MgO",
+        "voltage_kv": 20.0,
+        "theta_deg": 2.2,
         "phi_deg": 0.0,
-        "hmax": 3,
-        "kmax": 3,
-        "detector_distance_mm": 80.0,
+        "hmax": 5,
+        "kmax": 5,
+        "detector_distance_mm": 1000.0,
         "temperature": 300.0,
         "surface_roughness": 0.0,
         "ctr_regularization": 0.01,
         "ctr_power": 1.0,
         "roughness_power": 0.25,
         "image_shape_px": (300, 300),
-        "pixel_size_mm": (0.8, 0.8),
+        "pixel_size_mm": (2.16, 2.16),
         "beam_center_px": (150.0, 0.0),
         "spot_sigma_px": 1.1,
         "angular_divergence_mrad": 0.35,
@@ -190,12 +187,7 @@ def main() -> None:
     )
 
     phi_values = np.linspace(0.0, 45.0, 10)
-    phi_bank = _chunked_phi_bank(
-        crystal=crystal,
-        phi_values=phi_values,
-        settings=settings,
-        batch_size=2,
-    )
+    phi_bank = _chunked_phi_bank(crystal, phi_values, settings, batch_size=2)
     phi_display_bank = np.asarray(
         [
             rh.simul.log_compress_image(
@@ -207,15 +199,15 @@ def main() -> None:
         ]
     )
     np.savez_compressed(
-        sweeps_dir / "bi2se3_theta2p5_phi_sweep.npz",
+        sweeps_dir / "mgo_theta2p2_phi_sweep.npz",
         image_bank=phi_display_bank,
         parameter_values=phi_values,
         parameter_name="phi_deg",
         title_prefix="phi",
         material=settings["material"],
         extent_mm=extent_mm,
-        xlim=np.asarray([-120.0, 120.0]),
-        ylim=np.asarray([0.0, 120.0]),
+        xlim=np.asarray([-220.0, 220.0]),
+        ylim=np.asarray([0.0, 220.0]),
         theta_deg=settings["theta_deg"],
         voltage_kv=settings["voltage_kv"],
         dynamic_range_floor=dynamic_range_floor,
@@ -224,10 +216,7 @@ def main() -> None:
 
     roughness_values = np.asarray([0.0, 0.25, 0.5, 1.0])
     roughness_bank = _chunked_roughness_bank(
-        crystal=crystal,
-        roughness_values=roughness_values,
-        settings=settings,
-        batch_size=2,
+        crystal, roughness_values, settings, batch_size=2
     )
     roughness_display_bank = np.asarray(
         [
@@ -240,15 +229,15 @@ def main() -> None:
         ]
     )
     np.savez_compressed(
-        sweeps_dir / "bi2se3_theta2p5_roughness_sweep.npz",
+        sweeps_dir / "mgo_theta2p2_roughness_sweep.npz",
         image_bank=roughness_display_bank,
         parameter_values=roughness_values,
         parameter_name="surface_roughness",
         title_prefix="surface roughness",
         material=settings["material"],
         extent_mm=extent_mm,
-        xlim=np.asarray([-120.0, 120.0]),
-        ylim=np.asarray([0.0, 120.0]),
+        xlim=np.asarray([-220.0, 220.0]),
+        ylim=np.asarray([0.0, 220.0]),
         phi_deg=settings["phi_deg"],
         theta_deg=settings["theta_deg"],
         voltage_kv=settings["voltage_kv"],
@@ -256,8 +245,8 @@ def main() -> None:
         log_gain=settings["log_gain"],
     )
 
-    print(sweeps_dir / "bi2se3_theta2p5_phi_sweep.npz")
-    print(sweeps_dir / "bi2se3_theta2p5_roughness_sweep.npz")
+    print(sweeps_dir / "mgo_theta2p2_phi_sweep.npz")
+    print(sweeps_dir / "mgo_theta2p2_roughness_sweep.npz")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,13 @@
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "jax",
+#   "numpy",
+#   "rheedium",
+# ]
+# ///
+
 from pathlib import Path
 
 import jax.numpy as jnp

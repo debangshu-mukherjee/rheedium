@@ -15,29 +15,23 @@ def _():
 def _(mo):
     mo.md(
         r"""
-    # Calibrated Kinematic RHEED: Bi2Se3 (001)
+    # Calibrated Kinematic RHEED: MgO (001)
 
-    This notebook mirrors the `SrTiO3` tutorial structure, but for pristine
-    `Bi2Se3`. The goal is the same: separate the geometric question of where
-    the allowed Bragg intersections land from the display question of which of
-    those intersections are actually visible in a detector-style image.
+    This notebook uses the same tutorial structure as the `SrTiO3` and
+    `Bi2Se3` kinematic examples, but for `MgO (001)`.
 
-    The structure is layered and strongly anisotropic, so `Bi2Se3` makes a good
-    contrast case to the more compact cubic `SrTiO3` example.
+    The goal is to separate three things:
+
+    1. the sparse Bragg intersections set by the Ewald construction,
+    2. the dense detector image built from those intersections,
+    3. the display cutoff that controls which weak reflections are visible.
 
     We hold one geometry fixed:
 
-    - `theta = 2.5 deg`
+    - `theta = 2.2 deg`
     - `phi = 0 deg`
     - square detector pixels
     - perfect-crystal baseline (`surface_roughness = 0`)
-
-    Then we look at:
-
-    1. the sparse Bragg intersections,
-    2. the roughness-free dense detector image,
-    3. a fixed display cutoff derived from the faintest Bragg-associated pixels,
-    4. a roughness sweep at the same detector calibration and display floor.
     """
     )
     return
@@ -63,34 +57,27 @@ def _(Path):
 
 @app.cell
 def _(repo_root, rh):
-    crystal = rh.inout.parse_cif(
-        repo_root / "tests" / "test_data" / "bi2se3" / "Bi2Se3.cif"
-    )
-    print(
-        "Loaded Bi2Se3 with cell = "
-        f"[{float(crystal.cell_lengths[0]):.3f}, "
-        f"{float(crystal.cell_lengths[1]):.3f}, "
-        f"{float(crystal.cell_lengths[2]):.3f}] A"
-    )
+    crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
+    print(f"Loaded MgO with a = {float(crystal.cell_lengths[0]):.3f} A")
     return (crystal,)
 
 
 @app.cell
 def _():
     settings = {
-        "voltage_kv": 30.0,
-        "theta_deg": 2.5,
+        "voltage_kv": 20.0,
+        "theta_deg": 2.2,
         "phi_deg": 0.0,
-        "hmax": 3,
-        "kmax": 3,
-        "detector_distance_mm": 80.0,
+        "hmax": 5,
+        "kmax": 5,
+        "detector_distance_mm": 1000.0,
         "temperature": 300.0,
         "surface_roughness": 0.0,
         "ctr_regularization": 0.01,
         "ctr_power": 1.0,
         "roughness_power": 0.25,
         "image_shape_px": (300, 300),
-        "pixel_size_mm": (0.8, 0.8),
+        "pixel_size_mm": (2.16, 2.16),
         "beam_center_px": (150.0, 0.0),
         "spot_sigma_px": 1.1,
         "angular_divergence_mrad": 0.35,
@@ -117,21 +104,13 @@ def _(mo, settings):
     - Detector distance: `{settings["detector_distance_mm"]:.1f}` mm
     - Surface roughness: `{settings["surface_roughness"]:.1f}` A
 
-    As in the `SrTiO3` notebook, `theta` is the grazing incidence angle and
-    `phi` is the in-plane azimuthal rotation around the surface normal. Here we
-    keep `phi = 0 deg` fixed so the only later changes come from display cutoff
-    or roughness, not from changing the in-plane crystal direction.
+    `theta` is the grazing incidence angle and `phi` is the in-plane azimuthal
+    rotation about the surface normal. Here `phi = 0 deg` is held fixed so the
+    only later changes come from the intensity/display model and roughness.
 
-    Instead of hard-coding a display floor ahead of time, this notebook derives
-    one from the simulated perfect-crystal detector image. The workflow is:
-
-    1. simulate the roughness-free dense image,
-    2. sample the dense image at the sparse Bragg-hit pixel positions,
-    3. find the faintest nonzero Bragg-associated intensity,
-    4. set the display floor to `{settings["dynamic_range_scale"]:.1f} x` that value.
-
-    That produces a detector-style cutoff that is tied to the actual Bragg
-    family for this geometry rather than to an arbitrary fixed number.
+    As in the `Bi2Se3` notebook, the display floor is derived from the
+    roughness-free detector image by sampling the Bragg-hit pixels and using
+    the faintest nonzero Bragg-associated intensity as the reference scale.
     """
     )
     return
@@ -246,8 +225,8 @@ def _(mo):
     ## Bragg Spots
 
     Start with the sparse Ewald intersections. These are the allowed detector
-    hits from the scattering geometry before detector-space broadening and
-    before any display cutoff is applied.
+    hits before detector-space streak rendering and before any display cutoff is
+    applied.
     """
     )
     return
@@ -266,8 +245,8 @@ def _(extent_mm, np, plt, rh, sparse_display):
         vmin=0.0,
         vmax=1.0,
     )
-    _ax.set_xlim(-120.0, 120.0)
-    _ax.set_ylim(0.0, 120.0)
+    _ax.set_xlim(-220.0, 220.0)
+    _ax.set_ylim(0.0, 220.0)
     _ax.set_title("Sparse Bragg Spots")
     _ax.set_xlabel("detector x (mm)")
     _ax.set_ylabel("detector y (mm)")
@@ -282,17 +261,13 @@ def _(dynamic_range_floor, faintest_bragg_pixel, mo):
         f"""
     ## Perfect-Crystal RHEED
 
-    The cutoff display uses a floor derived from the simulated image itself:
-
     - faintest Bragg-associated pixel intensity:
       `{faintest_bragg_pixel:.3e}`
     - display floor:
       `{dynamic_range_floor:.3e}`
 
-    This is still only a display threshold. It does not change the underlying
-    detector image or the scattering calculation. It only suppresses the dimmest
-    part of the already-simulated intensity scale so the weaker allowed spots
-    become easier to inspect.
+    The cutoff is a display threshold only. It does not change the scattering
+    calculation or move any spots.
     """
     )
     return
@@ -327,8 +302,8 @@ def _(
             vmin=0.0,
             vmax=1.0,
         )
-        _ax.set_xlim(-120.0, 120.0)
-        _ax.set_ylim(0.0, 120.0)
+        _ax.set_xlim(-220.0, 220.0)
+        _ax.set_ylim(0.0, 220.0)
         _ax.set_title(title)
         _ax.set_xlabel("detector x (mm)")
     _axes[0].set_ylabel("detector y (mm)")
@@ -351,12 +326,9 @@ def _(dynamic_range_floor, mo):
         f"""
     ## Roughness Sweep
 
-    The panels below keep the detector geometry and display floor fixed while
-    varying only the physical roughness parameter.
-
-    The display floor remains `{dynamic_range_floor:.3e}` in every panel so the
-    visual comparison is on one consistent scale rather than being autoscaled
-    independently.
+    The detector geometry and display floor remain fixed at
+    `{dynamic_range_floor:.3e}` while varying only the physical roughness
+    parameter.
     """
     )
     return
@@ -416,13 +388,13 @@ def _(crystal, dynamic_range_floor, jnp, np, plt, rh, settings):
             vmin=0.0,
             vmax=1.0,
         )
-        _ax.set_xlim(-120.0, 120.0)
-        _ax.set_ylim(0.0, 120.0)
+        _ax.set_xlim(-220.0, 220.0)
+        _ax.set_ylim(0.0, 220.0)
         _ax.set_title(f"surface_roughness = {roughness:.2f} A")
         _ax.set_xlabel("detector x (mm)")
         _ax.set_ylabel("detector y (mm)")
     plt.suptitle(
-        "Bi2Se3(001) RHEED With Fixed Display Dynamic Range",
+        "MgO(001) RHEED With Fixed Display Dynamic Range",
         fontsize=16,
         y=1.02,
     )
@@ -437,7 +409,7 @@ def _(mo):
         r"""
     ## Precomputed Sweep Viewer
 
-    This final section loads the precomputed `Bi2Se3` sweep banks from
+    This final section loads the precomputed `MgO` sweep banks from
     `tutorials/sweeps` and lets you scrub through them instantly with a slider.
     """
     )
@@ -446,51 +418,49 @@ def _(mo):
 
 @app.cell
 def _(np, repo_root):
-    bi2se3_phi_sweep_data = np.load(
-        repo_root / "tutorials" / "sweeps" / "bi2se3_theta2p5_phi_sweep.npz",
+    mgo_phi_sweep_data = np.load(
+        repo_root / "tutorials" / "sweeps" / "mgo_theta2p2_phi_sweep.npz",
         allow_pickle=False,
     )
-    bi2se3_roughness_sweep_data = np.load(
+    mgo_roughness_sweep_data = np.load(
         repo_root
         / "tutorials"
         / "sweeps"
-        / "bi2se3_theta2p5_roughness_sweep.npz",
+        / "mgo_theta2p2_roughness_sweep.npz",
         allow_pickle=False,
     )
-    return bi2se3_phi_sweep_data, bi2se3_roughness_sweep_data
+    return mgo_phi_sweep_data, mgo_roughness_sweep_data
 
 
 @app.cell
 def _(mo):
-    bi2se3_sweep_kind = mo.ui.dropdown(
+    mgo_sweep_kind = mo.ui.dropdown(
         options={
             "Phi sweep": "phi",
             "Roughness sweep": "roughness",
         },
         value="phi",
-        label="Bi2Se3 sweep",
+        label="MgO sweep",
     )
-    mo.vstack([bi2se3_sweep_kind])
-    return (bi2se3_sweep_kind,)
+    mo.vstack([mgo_sweep_kind])
+    return (mgo_sweep_kind,)
 
 
 @app.cell
-def _(
-    bi2se3_phi_sweep_data, bi2se3_roughness_sweep_data, bi2se3_sweep_kind, np
-):
+def _(mgo_phi_sweep_data, mgo_roughness_sweep_data, mgo_sweep_kind, np):
     _selected_data = (
-        bi2se3_phi_sweep_data
-        if bi2se3_sweep_kind.value == "phi"
-        else bi2se3_roughness_sweep_data
+        mgo_phi_sweep_data
+        if mgo_sweep_kind.value == "phi"
+        else mgo_roughness_sweep_data
     )
-    bi2se3_sweep_extent_mm = _selected_data["extent_mm"]
-    bi2se3_sweep_image_bank = _selected_data["image_bank"]
-    bi2se3_sweep_parameter_name = str(_selected_data["parameter_name"])
-    bi2se3_sweep_parameter_values = _selected_data["parameter_values"]
-    bi2se3_sweep_title_prefix = str(_selected_data["title_prefix"])
-    bi2se3_sweep_xlim = _selected_data["xlim"]
-    bi2se3_sweep_ylim = _selected_data["ylim"]
-    bi2se3_sweep_metadata = {
+    mgo_sweep_extent_mm = _selected_data["extent_mm"]
+    mgo_sweep_image_bank = _selected_data["image_bank"]
+    mgo_sweep_parameter_name = str(_selected_data["parameter_name"])
+    mgo_sweep_parameter_values = _selected_data["parameter_values"]
+    mgo_sweep_title_prefix = str(_selected_data["title_prefix"])
+    mgo_sweep_xlim = _selected_data["xlim"]
+    mgo_sweep_ylim = _selected_data["ylim"]
+    mgo_sweep_metadata = {
         key: _selected_data[key].item()
         if np.asarray(_selected_data[key]).shape == ()
         else _selected_data[key]
@@ -507,84 +477,84 @@ def _(
         }
     }
     return (
-        bi2se3_sweep_extent_mm,
-        bi2se3_sweep_image_bank,
-        bi2se3_sweep_metadata,
-        bi2se3_sweep_parameter_name,
-        bi2se3_sweep_parameter_values,
-        bi2se3_sweep_title_prefix,
-        bi2se3_sweep_xlim,
-        bi2se3_sweep_ylim,
+        mgo_sweep_extent_mm,
+        mgo_sweep_image_bank,
+        mgo_sweep_metadata,
+        mgo_sweep_parameter_name,
+        mgo_sweep_parameter_values,
+        mgo_sweep_title_prefix,
+        mgo_sweep_xlim,
+        mgo_sweep_ylim,
     )
 
 
 @app.cell
-def _(bi2se3_sweep_parameter_name, bi2se3_sweep_parameter_values, mo):
-    bi2se3_sweep_index = mo.ui.slider(
+def _(mgo_sweep_parameter_name, mgo_sweep_parameter_values, mo):
+    mgo_sweep_index = mo.ui.slider(
         start=0,
-        stop=len(bi2se3_sweep_parameter_values) - 1,
+        stop=len(mgo_sweep_parameter_values) - 1,
         step=1,
         value=0,
-        label=f"{bi2se3_sweep_parameter_name} index",
+        label=f"{mgo_sweep_parameter_name} index",
     )
-    bi2se3_sweep_value = mo.md(
-        f"**Current {bi2se3_sweep_parameter_name}:** "
-        f"`{bi2se3_sweep_parameter_values[bi2se3_sweep_index.value]:.3f}`"
+    mgo_sweep_value = mo.md(
+        f"**Current {mgo_sweep_parameter_name}:** "
+        f"`{mgo_sweep_parameter_values[mgo_sweep_index.value]:.3f}`"
     )
-    mo.vstack([bi2se3_sweep_index, bi2se3_sweep_value])
-    return bi2se3_sweep_index, bi2se3_sweep_value
+    mo.vstack([mgo_sweep_index, mgo_sweep_value])
+    return mgo_sweep_index, mgo_sweep_value
 
 
 @app.cell
 def _(  # noqa: PLR0913
-    bi2se3_sweep_extent_mm,
-    bi2se3_sweep_image_bank,
-    bi2se3_sweep_index,
-    bi2se3_sweep_metadata,
-    bi2se3_sweep_parameter_values,
-    bi2se3_sweep_title_prefix,
-    bi2se3_sweep_xlim,
-    bi2se3_sweep_ylim,
+    mgo_sweep_extent_mm,
+    mgo_sweep_image_bank,
+    mgo_sweep_index,
+    mgo_sweep_metadata,
+    mgo_sweep_parameter_values,
+    mgo_sweep_title_prefix,
+    mgo_sweep_xlim,
+    mgo_sweep_ylim,
     np,
     plt,
 ):
-    bi2se3_sweep_fig, _ax = plt.subplots(figsize=(7, 6))
+    mgo_sweep_fig, _ax = plt.subplots(figsize=(7, 6))
     _ax.imshow(
-        np.asarray(bi2se3_sweep_image_bank[bi2se3_sweep_index.value]),
-        extent=bi2se3_sweep_extent_mm,
+        np.asarray(mgo_sweep_image_bank[mgo_sweep_index.value]),
+        extent=mgo_sweep_extent_mm,
         origin="lower",
         cmap="inferno",
         aspect="equal",
         vmin=0.0,
         vmax=1.0,
     )
-    _ax.set_xlim(float(bi2se3_sweep_xlim[0]), float(bi2se3_sweep_xlim[1]))
-    _ax.set_ylim(float(bi2se3_sweep_ylim[0]), float(bi2se3_sweep_ylim[1]))
+    _ax.set_xlim(float(mgo_sweep_xlim[0]), float(mgo_sweep_xlim[1]))
+    _ax.set_ylim(float(mgo_sweep_ylim[0]), float(mgo_sweep_ylim[1]))
     _ax.set_xlabel("detector x (mm)")
     _ax.set_ylabel("detector y (mm)")
     _ax.set_title(
-        f"Bi2Se3 sweep: {bi2se3_sweep_title_prefix} = "
-        f"{bi2se3_sweep_parameter_values[bi2se3_sweep_index.value]:.3f}"
+        f"MgO sweep: {mgo_sweep_title_prefix} = "
+        f"{mgo_sweep_parameter_values[mgo_sweep_index.value]:.3f}"
     )
-    bi2se3_sweep_summary = "\n".join(
+    mgo_sweep_summary = "\n".join(
         [
-            f"**theta:** `{float(bi2se3_sweep_metadata['theta_deg']):.1f} deg`",
-            f"**voltage:** `{float(bi2se3_sweep_metadata['voltage_kv']):.1f} keV`",
+            f"**theta:** `{float(mgo_sweep_metadata['theta_deg']):.1f} deg`",
+            f"**voltage:** `{float(mgo_sweep_metadata['voltage_kv']):.1f} keV`",
             "**dynamic range floor:** "
-            f"`{float(bi2se3_sweep_metadata['dynamic_range_floor']):.3e}`",
-            f"**phi:** `{float(bi2se3_sweep_metadata.get('phi_deg', 0.0)):.1f} deg`",
+            f"`{float(mgo_sweep_metadata['dynamic_range_floor']):.3e}`",
+            f"**phi:** `{float(mgo_sweep_metadata.get('phi_deg', 0.0)):.1f} deg`",
         ]
     )
-    return bi2se3_sweep_fig, bi2se3_sweep_summary
+    return mgo_sweep_fig, mgo_sweep_summary
 
 
 @app.cell(hide_code=True)
-def _(bi2se3_sweep_fig, bi2se3_sweep_summary, bi2se3_sweep_value, mo):
+def _(mgo_sweep_fig, mgo_sweep_summary, mgo_sweep_value, mo):
     mo.vstack(
         [
-            bi2se3_sweep_value,
-            mo.md(bi2se3_sweep_summary),
-            bi2se3_sweep_fig,
+            mgo_sweep_value,
+            mo.md(mgo_sweep_summary),
+            mgo_sweep_fig,
         ]
     )
     return
