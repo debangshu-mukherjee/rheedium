@@ -1,98 +1,113 @@
 #!/usr/bin/env python3
-"""Export Marimo tutorial notebooks and regenerate the tutorials index.
+"""Generate Read the Docs friendly tutorial pages from Marimo notebooks.
 
 For each ``tutorials/*.py`` Marimo notebook this script:
 
-1. Runs it and exports it to static HTML via ``marimo export html`` into
-   ``docs/source/_extra/marimo/<stem>/index.html``. Sphinx is configured
-   (via ``html_extra_path``) to copy ``_extra`` verbatim into the build
-   root, so each notebook ends up at ``<build>/marimo/<stem>/index.html``.
-2. Regenerates ``tutorials/index.rst`` with one link per notebook
-   pointing at the corresponding generated HTML bundle.
+1. Generates a static reStructuredText page in ``docs/source/tutorials``
+   that links to the notebook source and includes the full notebook script
+   with ``literalinclude``.
+2. Regenerates ``docs/source/tutorials/index.rst`` with a ``toctree``
+   pointing at those generated tutorial pages.
 
-Run as part of the docs build (see ``.readthedocs.yaml``) or manually
-with ``python docs/update_tutorials_index.py``.
+This avoids depending on ``marimo export html`` during Read the Docs builds,
+which is fragile for heavy JAX-based notebooks. The notebooks remain fully
+editable and runnable locally with Marimo, while RTD gets a plain Sphinx
+representation that is reliable to build.
 """
 
 from __future__ import annotations
 
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 DOCS_DIR = Path(__file__).parent
 REPO_ROOT = DOCS_DIR.parent
 TUTORIALS_DIR = REPO_ROOT / "tutorials"
-EXTRA_DIR = DOCS_DIR / "source" / "_extra" / "marimo"
+DOCS_TUTORIALS_DIR = DOCS_DIR / "source" / "tutorials"
 
 
-def export_notebook(notebook: Path, out_dir: Path) -> None:
-    """Export a single Marimo notebook to static HTML."""
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / "index.html"
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "marimo",
-            "export",
-            "html",
-            str(notebook),
-            "-o",
-            str(out_file),
-            "-f",
-        ],
-        check=True,
-    )
+def tutorial_title(notebook: Path) -> str:
+    """Convert a tutorial filename into a readable title."""
+    return notebook.stem.replace("_", " ")
+
+
+def write_tutorial_page(notebook: Path) -> None:
+    """Write a static tutorial page for one Marimo notebook."""
+    page_path = DOCS_TUTORIALS_DIR / f"{notebook.stem}.rst"
+    source_rel = Path("../../../tutorials") / notebook.name
+    title = tutorial_title(notebook)
+    title_underline = "=" * len(title)
+    page_lines = [
+        title,
+        title_underline,
+        "",
+        (
+            "This tutorial is authored as a "
+            "`Marimo <https://marimo.io>`_ notebook,"
+        ),
+        (
+            "but Read the Docs renders it as a static source page for "
+            "reliability."
+        ),
+        "",
+        "To run it interactively on your own machine:",
+        "",
+        ".. code-block:: bash",
+        "",
+        f"   marimo edit tutorials/{notebook.name}",
+        "",
+        f"Notebook source: ``tutorials/{notebook.name}``",
+        "",
+        ".. literalinclude:: " + str(source_rel),
+        "   :language: python",
+        "   :linenos:",
+        "",
+    ]
+    page_path.write_text("\n".join(page_lines))
+    print(f"Wrote {page_path.relative_to(REPO_ROOT)}")
 
 
 def write_index(notebooks: list[Path]) -> None:
-    """Write ``tutorials/index.rst`` linking to each exported notebook."""
+    """Write ``docs/source/tutorials/index.rst`` with a Sphinx toctree."""
     lines = [
         "Tutorials",
         "=========",
         "",
-        "Rendered `Marimo <https://marimo.io>`_ notebooks demonstrating",
-        "how to use Rheedium for RHEED pattern simulation. These pages",
-        "capture the full notebook output from the docs build so the",
-        "heavy JAX-based examples remain viewable on Read the Docs.",
+        "Tutorial notebooks for Rheedium. The original notebooks are written",
+        (
+            "in `Marimo <https://marimo.io>`_, but on Read the Docs "
+            "they are shown"
+        ),
+        "as static source pages so the documentation build does not depend on",
+        "live notebook export or execution.",
         "",
         ".. note::",
         "",
-        "   For true in-browser interactivity, see the lightweight WASM",
-        "   demos under the Interactive section. To run the full tutorial",
-        "   notebooks locally, clone the repository, install Marimo",
+        (
+            "   For true notebook interactivity, clone the repository, "
+            "install Marimo"
+        ),
         "   (``pip install marimo``), and launch",
         "   ``marimo edit tutorials/<notebook>.py``.",
         "",
-        "Available tutorials",
-        "-------------------",
+        ".. toctree::",
+        "   :maxdepth: 1",
         "",
     ]
     for nb in notebooks:
-        title = nb.stem.replace("_", " ")
-        lines.append(f"- `{title} <../marimo/{nb.stem}/index.html>`_")
+        lines.append(f"   {nb.stem}")
     lines.append("")
 
-    index_file = TUTORIALS_DIR / "index.rst"
+    index_file = DOCS_TUTORIALS_DIR / "index.rst"
     index_file.write_text("\n".join(lines))
     print(f"Wrote {index_file} with {len(notebooks)} tutorials")
 
 
 def main() -> None:
+    """Generate static tutorial pages and their index."""
     notebooks = sorted(TUTORIALS_DIR.glob("*.py"))
-    if not notebooks:
-        print("No Marimo notebooks found in tutorials/", file=sys.stderr)
-        return
-
-    EXTRA_DIR.mkdir(parents=True, exist_ok=True)
+    DOCS_TUTORIALS_DIR.mkdir(parents=True, exist_ok=True)
     for nb in notebooks:
-        out_dir = EXTRA_DIR / nb.stem
-        print(f"Exporting {nb.name} -> {out_dir.relative_to(REPO_ROOT)}")
-        export_notebook(nb, out_dir)
+        write_tutorial_page(nb)
 
     write_index(notebooks)
 
