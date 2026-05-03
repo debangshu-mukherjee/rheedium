@@ -13,8 +13,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # Calibrated Kinematic RHEED: SrTiO3 (001)
 
     This notebook is a worked `SrTiO3 (001)` RHEED example built around one
@@ -40,8 +39,7 @@ def _(mo):
     visibility** are different problems. The Ewald construction determines where
     the allowed intersections land. The intensity model and the display model
     determine which of those allowed intersections are obvious to the eye.
-    """
-    )
+    """)
     return
 
 
@@ -103,8 +101,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Fixed Setup
 
     This tutorial intentionally holds almost everything fixed so that the role
@@ -144,8 +141,7 @@ def _(mo, settings):
     range: a physically present but extremely weak spot can be mathematically in
     the image while still being effectively invisible to the detector or to the
     person inspecting the frame.
-    """
-    )
+    """)
     return
 
 
@@ -234,8 +230,7 @@ def _(detector_image, np, rh, settings, sparse_pattern):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Bragg Spots
 
     Start with the sparse Ewald intersections. These are the detector positions
@@ -252,8 +247,7 @@ def _(mo):
     the problem is geometric. If the Bragg spots are in believable places but
     are hard to see later in the dense pattern, the problem is in intensity
     weighting, broadening, or display range.
-    """
-    )
+    """)
     return
 
 
@@ -282,8 +276,7 @@ def _(extent_mm, np, plt, rh, sparse_display):
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Perfect-Crystal RHEED
 
     These two panels use the same roughness-free simulation and the same spot
@@ -306,8 +299,7 @@ def _(mo, settings):
     not changing the scattering calculation. It only suppresses the dimmest part
     of the rendered intensity scale so that the eye can separate weak features
     from background more easily.
-    """
-    )
+    """)
     return
 
 
@@ -360,8 +352,7 @@ def _(
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Roughness Sweep
 
     The final comparison keeps the detector geometry, the beam settings, and the
@@ -381,8 +372,7 @@ def _(mo, settings):
     relatively easier to see. This sweep is therefore a controlled way to study
     how much of the visible RHEED pattern survives as the surface departs from
     the perfect-crystal limit.
-    """
-    )
+    """)
     return
 
 
@@ -458,8 +448,7 @@ def _(crystal, jnp, np, plt, rh, settings):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Precomputed Sweep Viewer
 
     The tutorial above works through one fixed geometry in detail. The section
@@ -474,8 +463,7 @@ def _(mo):
     Here we keep the scope to `SrTiO3` only, so the same notebook now covers
     both the calibrated single-geometry explanation and the fast sweep
     exploration workflow.
-    """
-    )
+    """)
     return
 
 
@@ -564,14 +552,14 @@ def _(mo, sweep_parameter_name, sweep_parameter_values):
 
 
 @app.cell
-def _(  # noqa: PLR0913
+def _(
+    np,
+    plt,
     sweep_extent_mm,
     sweep_image_bank,
-    sweep_metadata,
-    np,
-    sweep_parameter_values,
-    plt,
     sweep_index,
+    sweep_metadata,
+    sweep_parameter_values,
     sweep_title_prefix,
     sweep_xlim,
     sweep_ylim,
