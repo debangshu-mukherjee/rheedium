@@ -1502,6 +1502,240 @@ def simulate_detector_image(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
+def simulate_detector_image_phi_sweep(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    phi_deg_values: Float[Array, "N"],
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance_mm: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
+    image_shape_px: Tuple[int, int] = (192, 192),
+    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
+    beam_center_px: Tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: scalar_float = 1.4,
+    angular_divergence_mrad: scalar_float = 0.35,
+    energy_spread_ev: scalar_float = 0.35,
+    psf_sigma_pixels: scalar_float = 1.2,
+    n_angular_samples: int = 5,
+    n_energy_samples: int = 5,
+    orientation_distribution: OrientationDistribution | None = None,
+    n_mosaic_points: scalar_int = 7,
+    surface_config: SurfaceConfig | None = None,
+    render_ctrs_as_streaks: bool = True,
+) -> Float[Array, "N H W"]:
+    """Simulate a bank of detector images over azimuthal angle.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to simulate.
+    phi_deg_values : Float[Array, "N"]
+        Azimuth angles in degrees to evaluate.
+    voltage_kv, theta_deg : scalar_num, optional
+        Beam energy and grazing incidence angle. Defaults are 20 keV, 2°.
+    hmax, kmax : scalar_int, optional
+        In-plane CTR grid bounds. Default: 5, 5.
+    detector_distance_mm : scalar_float, optional
+        Sample-to-detector distance in millimetres. Default: 1000.0
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller damping. Default: 300.0
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in Ångstroms. Default: 0.0
+    ctr_regularization : scalar_float, optional
+        Additive regularization in the sparse CTR intensity factor.
+        Default: 0.01
+    ctr_power : scalar_float, optional
+        Exponent applied to the CTR modulation term. Default: 1.0
+    roughness_power : scalar_float, optional
+        Exponent applied to the roughness damping term. Default: 0.25
+    image_shape_px, pixel_size_mm, beam_center_px : tuple, optional
+        Detector rasterization and calibration parameters.
+    spot_sigma_px : scalar_float, optional
+        Sparse-hit rasterization width in pixels. Default: 1.4
+    angular_divergence_mrad, energy_spread_ev, psf_sigma_pixels : scalar_float
+        Instrument broadening controls for each simulated image.
+    n_angular_samples, n_energy_samples : int, optional
+        Gauss-Hermite quadrature sizes for beam broadening.
+    orientation_distribution : OrientationDistribution | None, optional
+        Optional azimuthal distribution interpreted relative to each
+        swept ``phi`` value.
+    n_mosaic_points : scalar_int, optional
+        Orientation quadrature points per peak when
+        ``orientation_distribution`` is supplied. Default: 7
+    surface_config : SurfaceConfig | None, optional
+        Surface atom identification configuration. Default: None
+    render_ctrs_as_streaks : bool, optional
+        If True, render streak-like dense images. If False, rasterize
+        discrete sparse intersections. Default: True
+
+    Returns
+    -------
+    image_bank : Float[Array, "N H W"]
+        One dense detector image per supplied ``phi`` value.
+
+    Notes
+    -----
+    This helper is a thin ``jax.vmap`` wrapper around
+    :func:`simulate_detector_image`. It keeps the dense-image path single
+    sourced while making tutorial and calibration sweeps much easier to write.
+    """
+    phi_bank: Float[Array, "N"] = jnp.asarray(phi_deg_values)
+
+    def _simulate_one(phi_deg: scalar_float) -> Float[Array, "H W"]:
+        return simulate_detector_image(
+            crystal=crystal,
+            voltage_kv=voltage_kv,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            angular_divergence_mrad=angular_divergence_mrad,
+            energy_spread_ev=energy_spread_ev,
+            psf_sigma_pixels=psf_sigma_pixels,
+            n_angular_samples=n_angular_samples,
+            n_energy_samples=n_energy_samples,
+            orientation_distribution=orientation_distribution,
+            n_mosaic_points=n_mosaic_points,
+            surface_config=surface_config,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
+        )
+
+    return jax.vmap(_simulate_one)(phi_bank)
+
+
+@jaxtyped(typechecker=beartype)
+def simulate_detector_image_roughness_sweep(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    surface_roughness_values: Float[Array, "N"],
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    phi_deg: scalar_num = 0.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance_mm: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
+    image_shape_px: Tuple[int, int] = (192, 192),
+    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
+    beam_center_px: Tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: scalar_float = 1.4,
+    angular_divergence_mrad: scalar_float = 0.35,
+    energy_spread_ev: scalar_float = 0.35,
+    psf_sigma_pixels: scalar_float = 1.2,
+    n_angular_samples: int = 5,
+    n_energy_samples: int = 5,
+    orientation_distribution: OrientationDistribution | None = None,
+    n_mosaic_points: scalar_int = 7,
+    surface_config: SurfaceConfig | None = None,
+    render_ctrs_as_streaks: bool = True,
+) -> Float[Array, "N H W"]:
+    """Simulate a bank of detector images over surface roughness.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to simulate.
+    surface_roughness_values : Float[Array, "N"]
+        Surface roughness values in Ångstroms to evaluate.
+    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+        Beam energy and incidence geometry. Defaults are 20 keV, 2°, 0°.
+    hmax, kmax : scalar_int, optional
+        In-plane CTR grid bounds. Default: 5, 5.
+    detector_distance_mm : scalar_float, optional
+        Sample-to-detector distance in millimetres. Default: 1000.0
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller damping. Default: 300.0
+    ctr_regularization : scalar_float, optional
+        Additive regularization in the sparse CTR intensity factor.
+        Default: 0.01
+    ctr_power : scalar_float, optional
+        Exponent applied to the CTR modulation term. Default: 1.0
+    roughness_power : scalar_float, optional
+        Exponent applied to the roughness damping term. Default: 0.25
+    image_shape_px, pixel_size_mm, beam_center_px : tuple, optional
+        Detector rasterization and calibration parameters.
+    spot_sigma_px : scalar_float, optional
+        Sparse-hit rasterization width in pixels. Default: 1.4
+    angular_divergence_mrad, energy_spread_ev, psf_sigma_pixels : scalar_float
+        Instrument broadening controls for each simulated image.
+    n_angular_samples, n_energy_samples : int, optional
+        Gauss-Hermite quadrature sizes for beam broadening.
+    orientation_distribution : OrientationDistribution | None, optional
+        Optional azimuthal distribution interpreted relative to ``phi_deg``.
+    n_mosaic_points : scalar_int, optional
+        Orientation quadrature points per peak when
+        ``orientation_distribution`` is supplied. Default: 7
+    surface_config : SurfaceConfig | None, optional
+        Surface atom identification configuration. Default: None
+    render_ctrs_as_streaks : bool, optional
+        If True, render streak-like dense images. If False, rasterize
+        discrete sparse intersections. Default: True
+
+    Returns
+    -------
+    image_bank : Float[Array, "N H W"]
+        One dense detector image per supplied roughness value.
+
+    Notes
+    -----
+    This helper is a thin ``jax.vmap`` wrapper around
+    :func:`simulate_detector_image`. It is intended for side-by-side
+    calibration sweeps where geometry is held fixed and only the roughness
+    physics varies.
+    """
+    roughness_bank: Float[Array, "N"] = jnp.asarray(surface_roughness_values)
+
+    def _simulate_one(surface_roughness: scalar_float) -> Float[Array, "H W"]:
+        return simulate_detector_image(
+            crystal=crystal,
+            voltage_kv=voltage_kv,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            angular_divergence_mrad=angular_divergence_mrad,
+            energy_spread_ev=energy_spread_ev,
+            psf_sigma_pixels=psf_sigma_pixels,
+            n_angular_samples=n_angular_samples,
+            n_energy_samples=n_energy_samples,
+            orientation_distribution=orientation_distribution,
+            n_mosaic_points=n_mosaic_points,
+            surface_config=surface_config,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
+        )
+
+    return jax.vmap(_simulate_one)(roughness_bank)
+
+
+@jaxtyped(typechecker=beartype)
 def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
@@ -1995,6 +2229,8 @@ __all__: list[str] = [
     "project_on_detector",
     "project_on_detector_geometry",
     "render_pattern_to_image",
+    "simulate_detector_image_phi_sweep",
+    "simulate_detector_image_roughness_sweep",
     "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",
 ]

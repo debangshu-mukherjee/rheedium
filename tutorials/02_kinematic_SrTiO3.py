@@ -17,20 +17,29 @@ def _(mo):
         r"""
     # Calibrated Kinematic RHEED: SrTiO3 (001)
 
-    This notebook uses the exact `SrTiO3` setup we validated during the
-    simulator calibration work:
+    This notebook is a worked `SrTiO3 (001)` RHEED example built around one
+    fixed and calibrated geometry. The goal is not just to produce a plausible
+    image, but to make each stage of the simulation interpretable.
+
+    We use the exact `SrTiO3` setup that was validated during the simulator
+    calibration work:
 
     - `theta = 4 deg`
     - `phi = 0 deg`
     - square detector pixels
     - perfect-crystal baseline (`surface_roughness = 0`)
 
-    The goal is to show three things on one consistent detector calibration:
+    The notebook is organized around three questions:
 
-    1. the sparse Ewald/Bragg intersections,
-    2. the actual dense RHEED image,
-    3. a detector-style dynamic-range cutoff that makes faint Bragg spots
-       visible without changing the underlying simulation.
+    1. Where are the Bragg intersections on the detector?
+    2. How do those discrete intersections turn into a dense RHEED pattern?
+    3. How much of what we "see" depends on the detector display range rather
+       than on the underlying scattering physics?
+
+    A recurring theme in this tutorial is that **spot position** and **spot
+    visibility** are different problems. The Ewald construction determines where
+    the allowed intersections land. The intensity model and the display model
+    determine which of those allowed intersections are obvious to the eye.
     """
     )
     return
@@ -97,6 +106,9 @@ def _(mo, settings):
         f"""
     ## Fixed Setup
 
+    This tutorial intentionally holds almost everything fixed so that the role
+    of each parameter is clear.
+
     - Energy: `{settings["voltage_kv"]:.1f}` keV
     - Grazing angle: `{settings["theta_deg"]:.1f}` deg
     - Azimuth: `{settings["phi_deg"]:.1f}` deg
@@ -105,8 +117,32 @@ def _(mo, settings):
     - Surface roughness: `{settings["surface_roughness"]:.1f}` A
     - Dynamic-range floor: `{settings["dynamic_range_floor"]:.3e}`
 
-    The dynamic-range floor is a display cutoff only. It does not modify the
-    underlying sparse or dense simulation values.
+    Two angular parameters matter most for interpreting the geometry:
+
+    - `theta` is the grazing incidence angle of the incoming electron beam with
+      respect to the sample surface. Increasing `theta` tilts the beam more
+      strongly into the crystal, which changes where the Ewald sphere cuts the
+      surface rods. In practical detector space, changing `theta` moves the
+      visible Bragg family up and down and can change how many low-order spots
+      appear in the first visible arc.
+    - `phi` is the in-plane azimuthal rotation of the sample around the surface
+      normal. Changing `phi` rotates which reciprocal-lattice directions are
+      aligned with the beam. In practice, this changes the lateral arrangement
+      of the diffraction family on the detector and determines which surface
+      symmetry direction you are probing.
+
+    In this tutorial we set `phi = 0 deg` and keep it there on purpose. That
+    means every change you see later is coming from intensity or roughness, not
+    from changing the in-plane orientation.
+
+    The `dynamic_range_floor` is a **display cutoff only**. It does not change
+    the underlying sparse intersections, and it does not alter the detector
+    image before compression. Instead, it tells the plotting pipeline to hide
+    everything below a chosen normalized intensity threshold. This is useful
+    because real phosphor screens and cameras also have a limited visible dynamic
+    range: a physically present but extremely weak spot can be mathematically in
+    the image while still being effectively invisible to the detector or to the
+    person inspecting the frame.
     """
     )
     return
@@ -201,8 +237,20 @@ def _(mo):
         r"""
     ## Bragg Spots
 
-    Start with the sparse Ewald intersections. These are the Bragg/CTR hits on
-    the detector before any streak rendering or detector-style display cutoff.
+    Start with the sparse Ewald intersections. These are the detector positions
+    obtained directly from the scattering geometry before any detector-space
+    streak rendering is added.
+
+    This panel is the cleanest way to answer the question: **where is the
+    simulator saying diffraction is allowed?** Each bright point corresponds to
+    an allowed reciprocal-space intersection projected onto the detector. At
+    this stage there is no attempt to model extended streak shape, phosphor
+    response, or detector cutoff. The image is therefore discrete and idealized.
+
+    This separation is important. If the Bragg spots are in the wrong places,
+    the problem is geometric. If the Bragg spots are in believable places but
+    are hard to see later in the dense pattern, the problem is in intensity
+    weighting, broadening, or display range.
     """
     )
     return
@@ -237,10 +285,26 @@ def _(mo, settings):
         f"""
     ## Perfect-Crystal RHEED
 
+    These two panels use the same roughness-free simulation and the same spot
+    positions, but they are shown in two different display modes.
+
     The left panel applies the fixed detector-style display cutoff,
     `dynamic_range_floor = {settings["dynamic_range_floor"]:.3e}`, and overlays
-    the Bragg spots. The right panel is the plain log-compressed detector image
-    from the same roughness-free simulation.
+    the Bragg spot locations. The cutoff is chosen so that even very faint Bragg
+    spots start to become visible without rescaling the image panel-by-panel.
+    In other words, it is a controlled visibility threshold.
+
+    The right panel is the plain log-compressed detector image from the same
+    simulation, without that extra floor. Comparing the two panels shows why a
+    display model matters in RHEED: many allowed reflections are physically
+    present, but only a subset are immediately visible unless the dynamic range
+    is restricted.
+
+    This is also a good place to stress what the cutoff is **not** doing. It is
+    not adding intensity to missing reflections. It is not moving spots. It is
+    not changing the scattering calculation. It only suppresses the dimmest part
+    of the rendered intensity scale so that the eye can separate weak features
+    from background more easily.
     """
     )
     return
@@ -299,11 +363,23 @@ def _(mo, settings):
         f"""
     ## Roughness Sweep
 
-    The panels below keep the same detector calibration and the same display
-    cutoff, `dynamic_range_floor = {settings["dynamic_range_floor"]:.3e}`, while
-    varying only the physical surface roughness parameter. This makes it easier
-    to see how roughness changes the visible spot family without conflating that
-    with autoscaled display contrast.
+    The final comparison keeps the detector geometry, the beam settings, and the
+    display cutoff fixed while varying only the physical surface roughness
+    parameter.
+
+    The display floor remains
+    `dynamic_range_floor = {settings["dynamic_range_floor"]:.3e}` in every
+    panel. That matters because it lets you compare roughness cases on a common
+    visible scale. If each panel were autoscaled independently, a rough sample
+    could be made to look deceptively similar to a perfect one simply because
+    the colormap stretched to fill the available range.
+
+    In this model, increasing `surface_roughness` damps higher-`q_z` features
+    more strongly. Qualitatively, that should reduce the visibility of weaker
+    and higher-order spots first, while leaving the strongest low-order family
+    relatively easier to see. This sweep is therefore a controlled way to study
+    how much of the visible RHEED pattern survives as the surface departs from
+    the perfect-crystal limit.
     """
     )
     return
@@ -318,33 +394,38 @@ def _(crystal, np, plt, rh, settings):
         beam_center_px=settings["beam_center_px"],
     )
     cmap = rh.plots.create_phosphor_colormap()
+    image_bank = rh.simul.simulate_detector_image_roughness_sweep(
+        crystal=crystal,
+        surface_roughness_values=np.asarray(roughness_values),
+        voltage_kv=settings["voltage_kv"],
+        theta_deg=settings["theta_deg"],
+        phi_deg=settings["phi_deg"],
+        hmax=settings["hmax"],
+        kmax=settings["kmax"],
+        detector_distance_mm=settings["detector_distance_mm"],
+        temperature=settings["temperature"],
+        ctr_regularization=settings["ctr_regularization"],
+        ctr_power=settings["ctr_power"],
+        roughness_power=settings["roughness_power"],
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
+        spot_sigma_px=settings["spot_sigma_px"],
+        angular_divergence_mrad=settings["angular_divergence_mrad"],
+        energy_spread_ev=settings["energy_spread_ev"],
+        psf_sigma_pixels=settings["psf_sigma_pixels"],
+        n_angular_samples=settings["n_angular_samples"],
+        n_energy_samples=settings["n_energy_samples"],
+        render_ctrs_as_streaks=True,
+    )
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, sharey=True)
-    for ax, roughness in zip(axes.flat, roughness_values, strict=True):
-        detector_image = rh.simul.simulate_detector_image(
-            crystal=crystal,
-            voltage_kv=settings["voltage_kv"],
-            theta_deg=settings["theta_deg"],
-            phi_deg=settings["phi_deg"],
-            hmax=settings["hmax"],
-            kmax=settings["kmax"],
-            detector_distance_mm=settings["detector_distance_mm"],
-            temperature=settings["temperature"],
-            surface_roughness=roughness,
-            ctr_regularization=settings["ctr_regularization"],
-            ctr_power=settings["ctr_power"],
-            roughness_power=settings["roughness_power"],
-            image_shape_px=settings["image_shape_px"],
-            pixel_size_mm=settings["pixel_size_mm"],
-            beam_center_px=settings["beam_center_px"],
-            spot_sigma_px=settings["spot_sigma_px"],
-            angular_divergence_mrad=settings["angular_divergence_mrad"],
-            energy_spread_ev=settings["energy_spread_ev"],
-            psf_sigma_pixels=settings["psf_sigma_pixels"],
-            n_angular_samples=settings["n_angular_samples"],
-            n_energy_samples=settings["n_energy_samples"],
-            render_ctrs_as_streaks=True,
-        )
+    for ax, roughness, detector_image in zip(
+        axes.flat,
+        roughness_values,
+        image_bank,
+        strict=True,
+    ):
         detector_display = rh.simul.log_compress_image(
             detector_image,
             gain=settings["log_gain"],

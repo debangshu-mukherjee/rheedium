@@ -148,6 +148,8 @@ from .simulator import (
     project_on_detector_geometry,
     render_pattern_to_image,
     simulate_detector_image,
+    simulate_detector_image_phi_sweep,
+    simulate_detector_image_roughness_sweep,
     sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
@@ -202,6 +204,8 @@ __all__: list[str] = [
     "rod_profile_function",
     "roughness_damping",
     "render_pattern_to_image",
+    "simulate_detector_image_phi_sweep",
+    "simulate_detector_image_roughness_sweep",
     "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",
     "surface_structure_factor",
