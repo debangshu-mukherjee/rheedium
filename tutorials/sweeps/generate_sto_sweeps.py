@@ -6,6 +6,80 @@ import numpy as np
 import rheedium as rh
 
 
+def _chunked_phi_bank(crystal, phi_values, settings, batch_size):
+    bank_parts = []
+    for start in range(0, len(phi_values), batch_size):
+        stop = min(start + batch_size, len(phi_values))
+        chunk = jnp.asarray(phi_values[start:stop])
+        print(
+            f"building phi chunk {start}:{stop} of {len(phi_values)}",
+            flush=True,
+        )
+        chunk_bank = rh.simul.simulate_detector_image_phi_sweep(
+            crystal=crystal,
+            phi_deg_values=chunk,
+            voltage_kv=settings["voltage_kv"],
+            theta_deg=settings["theta_deg"],
+            hmax=settings["hmax"],
+            kmax=settings["kmax"],
+            detector_distance_mm=settings["detector_distance_mm"],
+            temperature=settings["temperature"],
+            surface_roughness=settings["surface_roughness"],
+            ctr_regularization=settings["ctr_regularization"],
+            ctr_power=settings["ctr_power"],
+            roughness_power=settings["roughness_power"],
+            image_shape_px=settings["image_shape_px"],
+            pixel_size_mm=settings["pixel_size_mm"],
+            beam_center_px=settings["beam_center_px"],
+            spot_sigma_px=settings["spot_sigma_px"],
+            angular_divergence_mrad=settings["angular_divergence_mrad"],
+            energy_spread_ev=settings["energy_spread_ev"],
+            psf_sigma_pixels=settings["psf_sigma_pixels"],
+            n_angular_samples=settings["n_angular_samples"],
+            n_energy_samples=settings["n_energy_samples"],
+            render_ctrs_as_streaks=True,
+        )
+        bank_parts.append(np.asarray(chunk_bank))
+    return np.concatenate(bank_parts, axis=0)
+
+
+def _chunked_roughness_bank(crystal, roughness_values, settings, batch_size):
+    bank_parts = []
+    for start in range(0, len(roughness_values), batch_size):
+        stop = min(start + batch_size, len(roughness_values))
+        chunk = jnp.asarray(roughness_values[start:stop])
+        print(
+            f"building roughness chunk {start}:{stop} of {len(roughness_values)}",
+            flush=True,
+        )
+        chunk_bank = rh.simul.simulate_detector_image_roughness_sweep(
+            crystal=crystal,
+            surface_roughness_values=chunk,
+            voltage_kv=settings["voltage_kv"],
+            theta_deg=settings["theta_deg"],
+            phi_deg=settings["phi_deg"],
+            hmax=settings["hmax"],
+            kmax=settings["kmax"],
+            detector_distance_mm=settings["detector_distance_mm"],
+            temperature=settings["temperature"],
+            ctr_regularization=settings["ctr_regularization"],
+            ctr_power=settings["ctr_power"],
+            roughness_power=settings["roughness_power"],
+            image_shape_px=settings["image_shape_px"],
+            pixel_size_mm=settings["pixel_size_mm"],
+            beam_center_px=settings["beam_center_px"],
+            spot_sigma_px=settings["spot_sigma_px"],
+            angular_divergence_mrad=settings["angular_divergence_mrad"],
+            energy_spread_ev=settings["energy_spread_ev"],
+            psf_sigma_pixels=settings["psf_sigma_pixels"],
+            n_angular_samples=settings["n_angular_samples"],
+            n_energy_samples=settings["n_energy_samples"],
+            render_ctrs_as_streaks=True,
+        )
+        bank_parts.append(np.asarray(chunk_bank))
+    return np.concatenate(bank_parts, axis=0)
+
+
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     sweeps_dir = repo_root / "tutorials" / "sweeps"
@@ -34,8 +108,8 @@ def main() -> None:
         "angular_divergence_mrad": 0.35,
         "energy_spread_ev": 0.35,
         "psf_sigma_pixels": 1.0,
-        "n_angular_samples": 5,
-        "n_energy_samples": 3,
+        "n_angular_samples": 1,
+        "n_energy_samples": 1,
         "log_gain": 22.0,
         "dynamic_range_floor": 1.3001876993458826e-05,
     }
@@ -49,38 +123,20 @@ def main() -> None:
     )
 
     phi_values = np.linspace(0.0, 45.0, 10)
-    phi_bank = rh.simul.simulate_detector_image_phi_sweep(
+    phi_bank = _chunked_phi_bank(
         crystal=crystal,
-        phi_deg_values=jnp.asarray(phi_values),
-        voltage_kv=settings["voltage_kv"],
-        theta_deg=settings["theta_deg"],
-        hmax=settings["hmax"],
-        kmax=settings["kmax"],
-        detector_distance_mm=settings["detector_distance_mm"],
-        temperature=settings["temperature"],
-        surface_roughness=settings["surface_roughness"],
-        ctr_regularization=settings["ctr_regularization"],
-        ctr_power=settings["ctr_power"],
-        roughness_power=settings["roughness_power"],
-        image_shape_px=settings["image_shape_px"],
-        pixel_size_mm=settings["pixel_size_mm"],
-        beam_center_px=settings["beam_center_px"],
-        spot_sigma_px=settings["spot_sigma_px"],
-        angular_divergence_mrad=settings["angular_divergence_mrad"],
-        energy_spread_ev=settings["energy_spread_ev"],
-        psf_sigma_pixels=settings["psf_sigma_pixels"],
-        n_angular_samples=settings["n_angular_samples"],
-        n_energy_samples=settings["n_energy_samples"],
-        render_ctrs_as_streaks=True,
+        phi_values=phi_values,
+        settings=settings,
+        batch_size=2,
     )
     phi_display_bank = np.asarray(
         [
             rh.simul.log_compress_image(
-                image,
+                jnp.asarray(image),
                 gain=settings["log_gain"],
                 dynamic_range_floor=settings["dynamic_range_floor"],
             )
-            for image in np.asarray(phi_bank)
+            for image in phi_bank
         ]
     )
     np.savez_compressed(
@@ -99,38 +155,20 @@ def main() -> None:
     )
 
     roughness_values = np.asarray([0.0, 0.25, 0.5, 1.0])
-    roughness_bank = rh.simul.simulate_detector_image_roughness_sweep(
+    roughness_bank = _chunked_roughness_bank(
         crystal=crystal,
-        surface_roughness_values=jnp.asarray(roughness_values),
-        voltage_kv=settings["voltage_kv"],
-        theta_deg=settings["theta_deg"],
-        phi_deg=settings["phi_deg"],
-        hmax=settings["hmax"],
-        kmax=settings["kmax"],
-        detector_distance_mm=settings["detector_distance_mm"],
-        temperature=settings["temperature"],
-        ctr_regularization=settings["ctr_regularization"],
-        ctr_power=settings["ctr_power"],
-        roughness_power=settings["roughness_power"],
-        image_shape_px=settings["image_shape_px"],
-        pixel_size_mm=settings["pixel_size_mm"],
-        beam_center_px=settings["beam_center_px"],
-        spot_sigma_px=settings["spot_sigma_px"],
-        angular_divergence_mrad=settings["angular_divergence_mrad"],
-        energy_spread_ev=settings["energy_spread_ev"],
-        psf_sigma_pixels=settings["psf_sigma_pixels"],
-        n_angular_samples=settings["n_angular_samples"],
-        n_energy_samples=settings["n_energy_samples"],
-        render_ctrs_as_streaks=True,
+        roughness_values=roughness_values,
+        settings=settings,
+        batch_size=2,
     )
     roughness_display_bank = np.asarray(
         [
             rh.simul.log_compress_image(
-                image,
+                jnp.asarray(image),
                 gain=settings["log_gain"],
                 dynamic_range_floor=settings["dynamic_range_floor"],
             )
-            for image in np.asarray(roughness_bank)
+            for image in roughness_bank
         ]
     )
     np.savez_compressed(
