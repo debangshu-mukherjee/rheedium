@@ -1221,6 +1221,7 @@ def detector_extent_mm(
 def log_compress_image(
     image: Float[Array, "H W"],
     gain: scalar_float = 25.0,
+    dynamic_range_floor: scalar_float = 0.0,
 ) -> Float[Array, "H W"]:
     """Apply normalized log compression for detector-style display.
 
@@ -1230,6 +1231,10 @@ def log_compress_image(
         Non-negative detector image.
     gain : scalar_float, optional
         Logarithmic gain factor. Default: 25.0
+    dynamic_range_floor : scalar_float, optional
+        Normalized detector cutoff in ``[0, 1)`` applied before display
+        compression. Pixels below the cutoff are hidden, and pixels above
+        it are rescaled onto the visible range. Default: 0.0
 
     Returns
     -------
@@ -1239,10 +1244,20 @@ def log_compress_image(
     gain_safe: Float[Array, ""] = jnp.maximum(
         jnp.asarray(gain, dtype=jnp.float64), 1e-12
     )
+    floor_safe: Float[Array, ""] = jnp.clip(
+        jnp.asarray(dynamic_range_floor, dtype=jnp.float64),
+        0.0,
+        1.0 - 1e-12,
+    )
     normalized: Float[Array, "H W"] = image / jnp.maximum(
         jnp.max(image), 1e-12
     )
-    return jnp.log1p(gain_safe * normalized) / jnp.log1p(gain_safe)
+    visible: Float[Array, "H W"] = jnp.where(
+        normalized >= floor_safe,
+        (normalized - floor_safe) / jnp.maximum(1.0 - floor_safe, 1e-12),
+        0.0,
+    )
+    return jnp.log1p(gain_safe * visible) / jnp.log1p(gain_safe)
 
 
 @jaxtyped(typechecker=beartype)

@@ -1715,6 +1715,21 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(compressed[0, 0], 0.0, atol=1e-12)
         chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
 
+    def test_log_compress_image_applies_dynamic_range_floor(self):
+        """Display floor hides weak pixels and rescales the visible range."""
+        image = jnp.array([[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64)
+        compressed = log_compress_image(
+            image,
+            gain=20.0,
+            dynamic_range_floor=0.5,
+        )
+        chex.assert_shape(compressed, (2, 2))
+        chex.assert_tree_all_finite(compressed)
+        chex.assert_trees_all_close(compressed[0, 0], 0.0, atol=1e-12)
+        chex.assert_trees_all_close(compressed[0, 1], 0.0, atol=1e-12)
+        chex.assert_trees_all_close(compressed[1, 0], 0.0, atol=1e-12)
+        chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
+
     def test_simulate_detector_image_matches_direct_render_when_unbroadened(
         self,
     ):
