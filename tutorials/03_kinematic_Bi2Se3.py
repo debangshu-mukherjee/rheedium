@@ -467,7 +467,7 @@ def _(mo):
             "Phi sweep": "phi",
             "Roughness sweep": "roughness",
         },
-        value="phi",
+        value="Phi sweep",
         label="Bi2Se3 sweep",
     )
     mo.vstack([bi2se3_sweep_kind])
