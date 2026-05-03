@@ -47,13 +47,14 @@ def _(mo):
 
 @app.cell
 def _():
+    import jax.numpy as jnp
     import matplotlib.pyplot as plt
     import numpy as np
     from pathlib import Path
 
     import rheedium as rh
 
-    return Path, np, plt, rh
+    return Path, jnp, np, plt, rh
 
 
 @app.cell
@@ -258,22 +259,22 @@ def _(mo):
 
 @app.cell
 def _(extent_mm, np, plt, rh, sparse_display):
-    cmap = rh.plots.create_phosphor_colormap()
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
-    ax.imshow(
+    _cmap = rh.plots.create_phosphor_colormap()
+    _fig, _ax = plt.subplots(figsize=(6.5, 5.5))
+    _ax.imshow(
         np.asarray(sparse_display),
         extent=extent_mm,
         origin="lower",
-        cmap=cmap,
+        cmap=_cmap,
         aspect="equal",
         vmin=0.0,
         vmax=1.0,
     )
-    ax.set_xlim(-300.0, 300.0)
-    ax.set_ylim(0.0, 300.0)
-    ax.set_title("Sparse Bragg Spots")
-    ax.set_xlabel("detector x (mm)")
-    ax.set_ylabel("detector y (mm)")
+    _ax.set_xlim(-300.0, 300.0)
+    _ax.set_ylim(0.0, 300.0)
+    _ax.set_title("Sparse Bragg Spots")
+    _ax.set_xlabel("detector x (mm)")
+    _ax.set_ylabel("detector y (mm)")
     plt.tight_layout()
     plt.show()
     return
@@ -320,31 +321,31 @@ def _(
     plt,
     rh,
 ):
-    cmap = rh.plots.create_phosphor_colormap()
-    fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.5), sharey=True)
-    panels = [
+    _cmap = rh.plots.create_phosphor_colormap()
+    _fig, _axes = plt.subplots(1, 2, figsize=(12.5, 5.5), sharey=True)
+    _panels = [
         (
             np.asarray(detector_cutoff_display),
             "Cutoff Display With Bragg Overlay",
         ),
         (np.asarray(detector_display), "Plain Log-Compressed Image"),
     ]
-    for ax, (image, title) in zip(axes, panels, strict=True):
-        ax.imshow(
+    for _ax, (image, title) in zip(_axes, _panels, strict=True):
+        _ax.imshow(
             image,
             extent=extent_mm,
             origin="lower",
-            cmap=cmap,
+            cmap=_cmap,
             aspect="equal",
             vmin=0.0,
             vmax=1.0,
         )
-        ax.set_xlim(-300.0, 300.0)
-        ax.set_ylim(0.0, 300.0)
-        ax.set_title(title)
-        ax.set_xlabel("detector x (mm)")
-    axes[0].set_ylabel("detector y (mm)")
-    axes[0].scatter(
+        _ax.set_xlim(-300.0, 300.0)
+        _ax.set_ylim(0.0, 300.0)
+        _ax.set_title(title)
+        _ax.set_xlabel("detector x (mm)")
+    _axes[0].set_ylabel("detector y (mm)")
+    _axes[0].scatter(
         bragg_points_mm[:, 0],
         bragg_points_mm[:, 1],
         s=18,
@@ -386,17 +387,17 @@ def _(mo, settings):
 
 
 @app.cell
-def _(crystal, np, plt, rh, settings):
+def _(crystal, jnp, np, plt, rh, settings):
     roughness_values = [0.0, 0.25, 0.5, 1.0]
-    extent_mm = rh.simul.detector_extent_mm(
+    _extent_mm = rh.simul.detector_extent_mm(
         image_shape_px=settings["image_shape_px"],
         pixel_size_mm=settings["pixel_size_mm"],
         beam_center_px=settings["beam_center_px"],
     )
-    cmap = rh.plots.create_phosphor_colormap()
+    _cmap = rh.plots.create_phosphor_colormap()
     image_bank = rh.simul.simulate_detector_image_roughness_sweep(
         crystal=crystal,
-        surface_roughness_values=np.asarray(roughness_values),
+        surface_roughness_values=jnp.asarray(roughness_values),
         voltage_kv=settings["voltage_kv"],
         theta_deg=settings["theta_deg"],
         phi_deg=settings["phi_deg"],
@@ -419,32 +420,32 @@ def _(crystal, np, plt, rh, settings):
         render_ctrs_as_streaks=True,
     )
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, sharey=True)
-    for ax, roughness, detector_image in zip(
-        axes.flat,
+    _fig, _axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, sharey=True)
+    for _ax, roughness, _detector_image in zip(
+        _axes.flat,
         roughness_values,
         image_bank,
         strict=True,
     ):
-        detector_display = rh.simul.log_compress_image(
-            detector_image,
+        _detector_display = rh.simul.log_compress_image(
+            _detector_image,
             gain=settings["log_gain"],
             dynamic_range_floor=settings["dynamic_range_floor"],
         )
-        ax.imshow(
-            np.asarray(detector_display),
-            extent=extent_mm,
+        _ax.imshow(
+            np.asarray(_detector_display),
+            extent=_extent_mm,
             origin="lower",
-            cmap=cmap,
+            cmap=_cmap,
             aspect="equal",
             vmin=0.0,
             vmax=1.0,
         )
-        ax.set_xlim(-300.0, 300.0)
-        ax.set_ylim(0.0, 300.0)
-        ax.set_title(f"surface_roughness = {roughness:.2f} A")
-        ax.set_xlabel("detector x (mm)")
-        ax.set_ylabel("detector y (mm)")
+        _ax.set_xlim(-300.0, 300.0)
+        _ax.set_ylim(0.0, 300.0)
+        _ax.set_title(f"surface_roughness = {roughness:.2f} A")
+        _ax.set_xlabel("detector x (mm)")
+        _ax.set_ylabel("detector y (mm)")
     plt.suptitle(
         "SrTiO3(001) RHEED With Fixed Display Dynamic Range",
         fontsize=16,
@@ -452,6 +453,164 @@ def _(crystal, np, plt, rh, settings):
     )
     plt.tight_layout()
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Precomputed Sweep Viewer
+
+    The tutorial above works through one fixed geometry in detail. The section
+    below switches to precomputed sweep banks stored under
+    `tutorials/sweeps`. This is the intended interactive workflow for heavier
+    parameter exploration:
+
+    - generate the expensive detector-image bank once,
+    - save it as a compressed `.npz`,
+    - scrub through the bank instantly with a slider.
+
+    Here we keep the scope to `SrTiO3` only, so the same notebook now covers
+    both the calibrated single-geometry explanation and the fast sweep
+    exploration workflow.
+    """
+    )
+    return
+
+
+@app.cell
+def _(np, repo_root):
+    sweep_data = np.load(
+        repo_root / "tutorials" / "sweeps" / "sto_theta4_phi_sweep.npz",
+        allow_pickle=False,
+    )
+    roughness_sweep_data = np.load(
+        repo_root / "tutorials" / "sweeps" / "sto_theta4_roughness_sweep.npz",
+        allow_pickle=False,
+    )
+    return roughness_sweep_data, sweep_data
+
+
+@app.cell
+def _(mo):
+    sweep_kind = mo.ui.dropdown(
+        options={
+            "Phi sweep": "phi",
+            "Roughness sweep": "roughness",
+        },
+        value="phi",
+        label="SrTiO3 sweep",
+    )
+    mo.vstack([sweep_kind])
+    return (sweep_kind,)
+
+
+@app.cell
+def _(np, roughness_sweep_data, sweep_data, sweep_kind):
+    selected_data = (
+        sweep_data if sweep_kind.value == "phi" else roughness_sweep_data
+    )
+    sweep_image_bank = selected_data["image_bank"]
+    sweep_parameter_values = selected_data["parameter_values"]
+    sweep_parameter_name = str(selected_data["parameter_name"])
+    sweep_title_prefix = str(selected_data["title_prefix"])
+    sweep_extent_mm = selected_data["extent_mm"]
+    sweep_xlim = selected_data["xlim"]
+    sweep_ylim = selected_data["ylim"]
+    sweep_metadata = {
+        key: selected_data[key].item()
+        if np.asarray(selected_data[key]).shape == ()
+        else selected_data[key]
+        for key in selected_data.files
+        if key
+        not in {
+            "image_bank",
+            "parameter_values",
+            "parameter_name",
+            "title_prefix",
+            "extent_mm",
+            "xlim",
+            "ylim",
+        }
+    }
+    return (
+        sweep_extent_mm,
+        sweep_image_bank,
+        sweep_metadata,
+        sweep_parameter_name,
+        sweep_parameter_values,
+        sweep_title_prefix,
+        sweep_xlim,
+        sweep_ylim,
+    )
+
+
+@app.cell
+def _(mo, sweep_parameter_name, sweep_parameter_values):
+    sweep_index = mo.ui.slider(
+        start=0,
+        stop=len(sweep_parameter_values) - 1,
+        step=1,
+        value=0,
+        label=f"{sweep_parameter_name} index",
+    )
+    sweep_value = mo.md(
+        f"**Current {sweep_parameter_name}:** "
+        f"`{sweep_parameter_values[sweep_index.value]:.3f}`"
+    )
+    mo.vstack([sweep_index, sweep_value])
+    return sweep_index, sweep_value
+
+
+@app.cell
+def _(  # noqa: PLR0913
+    sweep_extent_mm,
+    sweep_image_bank,
+    sweep_metadata,
+    np,
+    sweep_parameter_values,
+    plt,
+    sweep_index,
+    sweep_title_prefix,
+    sweep_xlim,
+    sweep_ylim,
+):
+    sweep_fig, _ax = plt.subplots(figsize=(7, 6))
+    _ax.imshow(
+        np.asarray(sweep_image_bank[sweep_index.value]),
+        extent=sweep_extent_mm,
+        origin="lower",
+        cmap="inferno",
+        aspect="equal",
+        vmin=0.0,
+        vmax=1.0,
+    )
+    _ax.set_xlim(float(sweep_xlim[0]), float(sweep_xlim[1]))
+    _ax.set_ylim(float(sweep_ylim[0]), float(sweep_ylim[1]))
+    _ax.set_xlabel("detector x (mm)")
+    _ax.set_ylabel("detector y (mm)")
+    _ax.set_title(
+        f"SrTiO3 sweep: {sweep_title_prefix} = "
+        f"{sweep_parameter_values[sweep_index.value]:.3f}"
+    )
+    sweep_summary_lines = [
+        f"**theta:** `{float(sweep_metadata['theta_deg']):.1f} deg`",
+        f"**voltage:** `{float(sweep_metadata['voltage_kv']):.1f} keV`",
+        "**dynamic range floor:** "
+        f"`{float(sweep_metadata['dynamic_range_floor']):.3e}`",
+    ]
+    if "phi_deg" in sweep_metadata:
+        sweep_summary_lines.append(
+            f"**phi:** `{float(sweep_metadata['phi_deg']):.1f} deg`"
+        )
+    sweep_summary = "\n".join(sweep_summary_lines)
+    return sweep_fig, sweep_summary
+
+
+@app.cell(hide_code=True)
+def _(mo, sweep_fig, sweep_summary, sweep_value):
+    mo.vstack([sweep_value, mo.md(sweep_summary), sweep_fig])
     return
 
 
