@@ -13,8 +13,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # Calibrated Kinematic RHEED: MgO (001)
 
     This notebook uses the same tutorial structure as the `SrTiO3` and
@@ -32,8 +31,7 @@ def _(mo):
     - `phi = 0 deg`
     - square detector pixels
     - perfect-crystal baseline (`surface_roughness = 0`)
-    """
-    )
+    """)
     return
 
 
@@ -93,8 +91,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Fixed Setup
 
     - Energy: `{settings["voltage_kv"]:.1f}` keV
@@ -111,8 +108,7 @@ def _(mo, settings):
     As in the `Bi2Se3` notebook, the display floor is derived from the
     roughness-free detector image by sampling the Bragg-hit pixels and using
     the faintest nonzero Bragg-associated intensity as the reference scale.
-    """
-    )
+    """)
     return
 
 
@@ -220,15 +216,13 @@ def _(detector_image, np, rh, settings, sparse_pattern):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Bragg Spots
 
     Start with the sparse Ewald intersections. These are the allowed detector
     hits before detector-space streak rendering and before any display cutoff is
     applied.
-    """
-    )
+    """)
     return
 
 
@@ -257,8 +251,7 @@ def _(extent_mm, np, plt, rh, sparse_display):
 
 @app.cell(hide_code=True)
 def _(dynamic_range_floor, faintest_bragg_pixel, mo):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Perfect-Crystal RHEED
 
     - faintest Bragg-associated pixel intensity:
@@ -268,8 +261,7 @@ def _(dynamic_range_floor, faintest_bragg_pixel, mo):
 
     The cutoff is a display threshold only. It does not change the scattering
     calculation or move any spots.
-    """
-    )
+    """)
     return
 
 
@@ -322,15 +314,13 @@ def _(
 
 @app.cell(hide_code=True)
 def _(dynamic_range_floor, mo):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Roughness Sweep
 
     The detector geometry and display floor remain fixed at
     `{dynamic_range_floor:.3e}` while varying only the physical roughness
     parameter.
-    """
-    )
+    """)
     return
 
 
@@ -405,14 +395,12 @@ def _(crystal, dynamic_range_floor, jnp, np, plt, rh, settings):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Precomputed Sweep Viewer
 
     This final section loads the precomputed `MgO` sweep banks from
     `tutorials/sweeps` and lets you scrub through them instantly with a slider.
-    """
-    )
+    """)
     return
 
 
@@ -506,7 +494,7 @@ def _(mgo_sweep_parameter_name, mgo_sweep_parameter_values, mo):
 
 
 @app.cell
-def _(  # noqa: PLR0913
+def _(
     mgo_sweep_extent_mm,
     mgo_sweep_image_bank,
     mgo_sweep_index,

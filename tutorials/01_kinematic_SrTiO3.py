@@ -73,7 +73,7 @@ def _(repo_root, rh):
 @app.cell
 def _():
     settings = {
-        "voltage_kv": 18.0,
+        "voltage_kv": 9.0,
         "theta_deg": 4.0,
         "phi_deg": 0.0,
         "hmax": 14,
@@ -543,12 +543,17 @@ def _(mo, sweep_parameter_name, sweep_parameter_values):
         value=0,
         label=f"{sweep_parameter_name} index",
     )
+    mo.vstack([sweep_index])
+    return (sweep_index,)
+
+
+@app.cell
+def _(mo, sweep_index, sweep_parameter_name, sweep_parameter_values):
     sweep_value = mo.md(
         f"**Current {sweep_parameter_name}:** "
         f"`{sweep_parameter_values[sweep_index.value]:.3f}`"
     )
-    mo.vstack([sweep_index, sweep_value])
-    return sweep_index, sweep_value
+    return (sweep_value,)
 
 
 @app.cell

@@ -13,8 +13,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # Calibrated Kinematic RHEED: Bi2Se3 (001)
 
     This notebook mirrors the `SrTiO3` tutorial structure, but for pristine
@@ -38,8 +37,7 @@ def _(mo):
     2. the roughness-free dense detector image,
     3. a fixed display cutoff derived from the faintest Bragg-associated pixels,
     4. a roughness sweep at the same detector calibration and display floor.
-    """
-    )
+    """)
     return
 
 
@@ -106,8 +104,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo, settings):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Fixed Setup
 
     - Energy: `{settings["voltage_kv"]:.1f}` keV
@@ -132,8 +129,7 @@ def _(mo, settings):
 
     That produces a detector-style cutoff that is tied to the actual Bragg
     family for this geometry rather than to an arbitrary fixed number.
-    """
-    )
+    """)
     return
 
 
@@ -241,15 +237,13 @@ def _(detector_image, np, rh, settings, sparse_pattern):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Bragg Spots
 
     Start with the sparse Ewald intersections. These are the allowed detector
     hits from the scattering geometry before detector-space broadening and
     before any display cutoff is applied.
-    """
-    )
+    """)
     return
 
 
@@ -278,8 +272,7 @@ def _(extent_mm, np, plt, rh, sparse_display):
 
 @app.cell(hide_code=True)
 def _(dynamic_range_floor, faintest_bragg_pixel, mo):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Perfect-Crystal RHEED
 
     The cutoff display uses a floor derived from the simulated image itself:
@@ -293,8 +286,7 @@ def _(dynamic_range_floor, faintest_bragg_pixel, mo):
     detector image or the scattering calculation. It only suppresses the dimmest
     part of the already-simulated intensity scale so the weaker allowed spots
     become easier to inspect.
-    """
-    )
+    """)
     return
 
 
@@ -347,8 +339,7 @@ def _(
 
 @app.cell(hide_code=True)
 def _(dynamic_range_floor, mo):
-    mo.md(
-        f"""
+    mo.md(f"""
     ## Roughness Sweep
 
     The panels below keep the detector geometry and display floor fixed while
@@ -357,8 +348,7 @@ def _(dynamic_range_floor, mo):
     The display floor remains `{dynamic_range_floor:.3e}` in every panel so the
     visual comparison is on one consistent scale rather than being autoscaled
     independently.
-    """
-    )
+    """)
     return
 
 
@@ -433,14 +423,12 @@ def _(crystal, dynamic_range_floor, jnp, np, plt, rh, settings):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## Precomputed Sweep Viewer
 
     This final section loads the precomputed `Bi2Se3` sweep banks from
     `tutorials/sweeps` and lets you scrub through them instantly with a slider.
-    """
-    )
+    """)
     return
 
 
@@ -476,7 +464,10 @@ def _(mo):
 
 @app.cell
 def _(
-    bi2se3_phi_sweep_data, bi2se3_roughness_sweep_data, bi2se3_sweep_kind, np
+    bi2se3_phi_sweep_data,
+    bi2se3_roughness_sweep_data,
+    bi2se3_sweep_kind,
+    np,
 ):
     _selected_data = (
         bi2se3_phi_sweep_data
@@ -536,7 +527,7 @@ def _(bi2se3_sweep_parameter_name, bi2se3_sweep_parameter_values, mo):
 
 
 @app.cell
-def _(  # noqa: PLR0913
+def _(
     bi2se3_sweep_extent_mm,
     bi2se3_sweep_image_bank,
     bi2se3_sweep_index,
