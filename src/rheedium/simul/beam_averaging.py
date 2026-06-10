@@ -70,6 +70,8 @@ def angular_divergence_average(
     wavepackets. Uses Gauss-Hermite quadrature for accurate integration
     with minimal function evaluations.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_beam_averaging.TestAngularDivergenceAverage`
+
     Parameters
     ----------
     simulate_fn : Callable[[scalar_float, scalar_float], \
@@ -154,6 +156,8 @@ def energy_spread_average(
     incoherent because electrons with different energies do not
     interfere. Uses Gauss-Hermite quadrature with the same structure
     as angular averaging.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_beam_averaging.TestEnergySpreadAverage`
 
     Parameters
     ----------
@@ -244,6 +248,8 @@ def coherence_envelope(
     These envelopes model the finite spatial extent of electron
     wavepackets and set the maximum spatial frequency that can
     produce visible interference fringes.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_beam_averaging.TestCoherenceEnvelope`
 
     Parameters
     ----------
@@ -340,6 +346,8 @@ def detector_psf_convolve(
     (the Fourier transform of a Gaussian is a Gaussian), avoiding the
     need to explicitly build and FFT the kernel.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_beam_averaging.TestDetectorPsfConvolve`
+
     Parameters
     ----------
     detector_image : Float[Array, "H W"]
@@ -423,6 +431,8 @@ def instrument_broadened_pattern(
 
     This is the function to call for any comparison with experimental
     data. All operations are differentiable via ``jax.grad``.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_beam_averaging.TestInstrumentBroadenedPattern`
 
     Parameters
     ----------

@@ -3,7 +3,7 @@
 import chex
 import jax
 import jax.numpy as jnp
-from jax import tree_util
+from jax import Array, tree_util
 
 from rheedium.types import (
     OrientationDistribution,
@@ -163,7 +163,7 @@ class TestOrientationIntegration(chex.TestCase):
             weights=jnp.array([0.25, 0.75]),
         )
 
-        def simulate_fn(phi_deg):
+        def simulate_fn(phi_deg: Array) -> Array:
             return jnp.ones((2, 2), dtype=jnp.float64) * phi_deg**2
 
         pattern = integrate_over_orientation(simulate_fn, dist, 5)
@@ -172,7 +172,7 @@ class TestOrientationIntegration(chex.TestCase):
     def test_grad_flows_through_orientation_angle(self) -> None:
         """Orientation integration remains differentiable in angle space."""
 
-        def loss(angle_deg):
+        def loss(angle_deg: Array) -> Array:
             dist = create_discrete_orientation(jnp.atleast_1d(angle_deg))
             pattern = integrate_over_orientation(
                 lambda phi_deg: jnp.ones((2, 2), dtype=jnp.float64)
@@ -190,7 +190,7 @@ class TestOrientationIntegration(chex.TestCase):
         """Orientation integration should compile under jax.jit."""
 
         @jax.jit
-        def run(center_deg):
+        def run(center_deg: Array) -> Array:
             dist = create_gaussian_orientation(
                 center_deg=center_deg, fwhm_deg=0.0
             )

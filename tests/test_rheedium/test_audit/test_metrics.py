@@ -9,6 +9,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jax import Array
 
 from rheedium.audit.metrics import (
     dominant_peak_positions,
@@ -33,8 +34,8 @@ _REFERENCE_DIR = (
 
 
 def _synthetic_three_peak_image(
-    peak_positions_px,
-):
+    peak_positions_px: tuple[int, ...],
+) -> Array:
     """Create a simple three-peak detector image for metric tests."""
     image_height = 80
     image_width = 96

@@ -19,6 +19,8 @@ def lattice_to_cell_params(
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     r"""Convert lattice vectors to crystallographic cell parameters.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_lattice.TestLatticeToCellParams`
+
     Parameters
     ----------
     lattice : Float[Array, "3 3"]

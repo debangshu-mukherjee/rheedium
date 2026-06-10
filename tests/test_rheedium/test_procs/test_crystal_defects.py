@@ -4,17 +4,19 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax import Array
 
 from rheedium.procs.crystal_defects import (
     apply_antisite_field,
     apply_interstitial_field,
     apply_vacancy_field,
 )
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.ucell.unitcell import build_cell_vectors
 
 
-def _make_bulk_crystal():
+def _make_bulk_crystal() -> CrystalStructure:
     """Build a small orthorhombic crystal for defect tests."""
     frac_positions = jnp.array(
         [
@@ -65,7 +67,7 @@ class TestApplyVacancyField(chex.TestCase):
     def test_grad_flows_through_occupancy(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def objective(occupancy):
+        def objective(occupancy: Array) -> Array:
             return jnp.sum(
                 apply_vacancy_field(
                     crystal,
@@ -95,7 +97,7 @@ class TestApplyVacancyField(chex.TestCase):
     def test_vmap_supports_batched_occupancies(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def summed_intensity(occupancy):
+        def summed_intensity(occupancy: Array) -> Array:
             return jnp.sum(
                 apply_vacancy_field(
                     crystal,
@@ -153,7 +155,7 @@ class TestApplyInterstitialField(chex.TestCase):
     def test_grad_flows_through_interstitial_occupancy(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def objective(occupancy):
+        def objective(occupancy: Array) -> Array:
             return jnp.sum(
                 apply_interstitial_field(
                     crystal,
@@ -187,7 +189,7 @@ class TestApplyInterstitialField(chex.TestCase):
     def test_vmap_supports_batched_occupancies(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def summed_intensity(occupancy):
+        def summed_intensity(occupancy: Array) -> Array:
             return jnp.sum(
                 apply_interstitial_field(
                     crystal,
@@ -239,7 +241,7 @@ class TestApplyAntisiteField(chex.TestCase):
     def test_grad_flows_through_mixing_fraction(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def objective(mixing_fraction):
+        def objective(mixing_fraction: Array) -> Array:
             return jnp.sum(
                 apply_antisite_field(
                     crystal,
@@ -271,7 +273,7 @@ class TestApplyAntisiteField(chex.TestCase):
     def test_vmap_supports_batched_mixing_fraction(self) -> None:
         crystal = _make_bulk_crystal()
 
-        def summed_intensity(mixing_fraction):
+        def summed_intensity(mixing_fraction: Array) -> Array:
             return jnp.sum(
                 apply_antisite_field(
                     crystal,

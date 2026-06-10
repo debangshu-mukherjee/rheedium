@@ -45,7 +45,9 @@ class TestKinematicWavelength(chex.TestCase):
         ("20kV", 20.0, 0.0859),
         ("30kV", 30.0, 0.0698),
     )
-    def test_wavelength_values(self, voltage_kv, expected_lambda) -> None:
+    def test_wavelength_values(
+        self, voltage_kv: float, expected_lambda: float
+    ) -> None:
         """Test wavelength calculation matches expected values."""
         var_wavelength = self.variant(kinematic_wavelength)
 
@@ -367,7 +369,7 @@ class TestMgOExtinctionRules(chex.TestCase):
     """
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """Load MgO crystal structure from CIF file."""
         test_data_dir = Path(__file__).parent.parent.parent / "test_data"
         cif_path = test_data_dir / "MgO.cif"
@@ -380,7 +382,9 @@ class TestMgOExtinctionRules(chex.TestCase):
             in_degrees=True,
         )
 
-    def _get_structure_factor_intensity(self, h, k, ell):
+    def _get_structure_factor_intensity(
+        self, h: int, k: int, ell: int
+    ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
         hkl = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
@@ -497,7 +501,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
     """
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """Load SrTiO3 crystal structure from CIF file."""
         test_data_dir = Path(__file__).parent.parent.parent / "test_data"
         cif_path = test_data_dir / "SrTiO3.cif"
@@ -515,7 +519,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
             in_degrees=True,
         )
 
-    def _get_structure_factor_intensity(self, h, k, ell):
+    def _get_structure_factor_intensity(
+        self, h: int, k: int, ell: int
+    ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
         hkl = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]

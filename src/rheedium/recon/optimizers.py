@@ -481,6 +481,8 @@ def gauss_newton_reconstruction(  # noqa: PLR0913
 ) -> ReconstructionResult:
     r"""Reconstruct parameters by least-squares image matching.
 
+    :see: :class:`tests.test_rheedium.test_recon.test_optimizers.TestGaussNewtonReconstruction`
+
     Parameters
     ----------
     initial_params : Any

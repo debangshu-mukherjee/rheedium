@@ -15,7 +15,7 @@ from rheedium.audit.invariants import (
 )
 
 
-def _assert_well_formed(result, expected_name):
+def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
     """Assert an InvariantResult has all fields populated correctly."""
     assert isinstance(result, InvariantResult)
     assert result.name == expected_name

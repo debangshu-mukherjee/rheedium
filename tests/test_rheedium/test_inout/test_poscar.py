@@ -422,7 +422,7 @@ Direct
         ("iron", "Fe", 26),
         ("gold", "Au", 79),
     )
-    def test_various_elements(self, element, expected_z) -> None:
+    def test_various_elements(self, element: str, expected_z: int) -> None:
         """Test parsing various element types."""
         poscar_content = f"""Element test
 1.0

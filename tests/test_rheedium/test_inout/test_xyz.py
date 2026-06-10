@@ -34,7 +34,7 @@ class TestAtomicSymbol(chex.TestCase):
         ("silver", "Ag", 47),
         ("gold", "Au", 79),
     )
-    def test_common_elements(self, symbol, expected) -> None:
+    def test_common_elements(self, symbol: str, expected: int) -> None:
         """Test common element symbols."""
         result = atomic_symbol(symbol)
         assert result == expected

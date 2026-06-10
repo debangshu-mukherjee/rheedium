@@ -91,6 +91,8 @@ class OrientationDistribution(NamedTuple):
 
         I(G) = \\sum_i w_i \\, |F(G, \\theta_i)|^2
 
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+
     Attributes
     ----------
     discrete_angles_deg : Float[Array, "M"]

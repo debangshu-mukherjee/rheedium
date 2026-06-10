@@ -4,6 +4,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax import Array
 
 from rheedium.procs.grains import (
     apply_misorientation_distribution,
@@ -55,7 +56,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             axis=0,
         )
 
-        def objective(weight):
+        def objective(weight: Array) -> Array:
             return jnp.sum(
                 grain_distribution_average(
                     patterns,
@@ -94,7 +95,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             axis=0,
         )
 
-        def first_pixel(fractions):
+        def first_pixel(fractions: Array) -> Array:
             return grain_distribution_average(patterns, fractions)[0, 0]
 
         batch = jnp.array(
@@ -163,7 +164,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             axis=0,
         )
 
-        def objective(mean_angle):
+        def objective(mean_angle: Array) -> Array:
             return jnp.sum(
                 apply_misorientation_distribution(
                     patterns,
@@ -211,7 +212,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             axis=0,
         )
 
-        def first_pixel(mean_angle):
+        def first_pixel(mean_angle: Array) -> Array:
             return apply_misorientation_distribution(
                 patterns,
                 jnp.array([-1.0, 0.0, 1.0]),

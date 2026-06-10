@@ -71,6 +71,8 @@ def soft_threshold_mask(
     As sharpness :math:`s \to \infty`, this converges to a hard step
     function, but remains differentiable for any finite :math:`s`.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_preprocessing.TestSoftThresholdMask`
+
     Parameters
     ----------
     distance_field : Float[Array, "H W"]
@@ -119,6 +121,8 @@ def subtract_background(
     background: Float[Array, "H W"],
 ) -> Float[Array, "H W"]:
     """Subtract dark frame background with non-negative clipping.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_preprocessing.TestSubtractBackground`
 
     Parameters
     ----------
@@ -175,6 +179,8 @@ def log_intensity_transform(
     at zero intensity and controls the transition between linear
     (small :math:`I`) and logarithmic (large :math:`I`) regimes.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_preprocessing.TestLogIntensityTransform`
+
     Parameters
     ----------
     image : Float[Array, "H W"]
@@ -219,6 +225,8 @@ def normalize_image(
     Linear rescaling to unit range. Uses a small floor on the
     denominator to avoid division by zero for uniform images, while
     preserving differentiability.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_preprocessing.TestNormalizeImage`
 
     Parameters
     ----------
@@ -273,6 +281,8 @@ def preprocess_experimental(
 
     The pipeline applies: background subtraction, soft masking,
     optional log-scale compression, and normalization to [0, 1].
+
+    :see: :class:`tests.test_rheedium.test_procs.test_preprocessing.TestPreprocessExperimental`
 
     Parameters
     ----------

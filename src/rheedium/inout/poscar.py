@@ -46,6 +46,8 @@ def _parse_poscar_header(
     universal scaling factor, lattice vectors, element species names,
     and atom counts per species.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscarHeader`
+
     Parameters
     ----------
     lines : List[str]
@@ -150,6 +152,8 @@ def _parse_poscar_positions(
     Direct (fractional) and Cartesian coordinate modes. Selective
     dynamics flags (T/F) are parsed but not stored.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscarPositions`
+
     Parameters
     ----------
     lines : List[str]
@@ -231,6 +235,8 @@ def parse_poscar(
     CrystalStructure suitable for RHEED simulation. Supports VASP 5.x format
     with species names and both Direct (fractional) and Cartesian coordinate
     modes.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscar`
 
     Parameters
     ----------

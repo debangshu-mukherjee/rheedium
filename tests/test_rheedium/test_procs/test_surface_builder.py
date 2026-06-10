@@ -18,18 +18,19 @@ from rheedium.procs.surface_builder import (
     apply_surface_reconstruction,
     create_surface_slab,
 )
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.ucell.unitcell import build_cell_vectors
 
 _DATA_DIR = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
 
-def _load(name):
+def _load(name: str) -> dict[str, np.ndarray]:
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
 
 
-def _make_cubic_bulk(a=2.0):
+def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
     """Build a minimal cubic bulk crystal for direct slab tests."""
     frac_positions = jnp.array(
         [
@@ -49,7 +50,7 @@ def _make_cubic_bulk(a=2.0):
     )
 
 
-def _make_test_slab():
+def _make_test_slab() -> CrystalStructure:
     """Build a simple orthorhombic slab for direct reconstruction tests."""
     cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
     cart_positions = jnp.array(
@@ -276,7 +277,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         ("110", "slab_110.npz"),
         ("111", "slab_111.npz"),
     )
-    def test_various_orientations(self, fname) -> None:
+    def test_various_orientations(self, fname: str) -> None:
         """Slabs for various Miller indices should have atoms."""
         d = _load(fname)
         assert d["cart_positions"].shape[0] > 0

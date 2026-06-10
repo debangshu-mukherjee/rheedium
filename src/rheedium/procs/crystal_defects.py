@@ -65,6 +65,8 @@ def apply_vacancy_field(
 ) -> CrystalStructure:
     """Apply a continuous vacancy field to an existing crystal.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_crystal_defects.TestApplyVacancyField`
+
     Parameters
     ----------
     crystal : CrystalStructure
@@ -118,6 +120,8 @@ def apply_interstitial_field(
     interstitial_occupancies: Float[Array, "N_interstitial"],
 ) -> CrystalStructure:
     """Append continuously weighted interstitial sites to a crystal.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_crystal_defects.TestApplyInterstitialField`
 
     Parameters
     ----------
@@ -195,6 +199,8 @@ def apply_antisite_field(
     replacement_atomic_numbers: Float[Array, "N_atoms"],
 ) -> CrystalStructure:
     """Blend host and substitute species with continuous mixing fractions.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_crystal_defects.TestApplyAntisiteField`
 
     Parameters
     ----------

@@ -32,13 +32,14 @@ from rheedium.plots.diagrams import (
     plot_wavelength_curve,
     view_atoms,
 )
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestDiagramPlots:
     """Smoke tests for diagram plotting functions."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
@@ -309,7 +310,7 @@ class TestDiagramPlots:
 class TestDiagramPlotsWithProvidedAxes:
     """Test that all functions accept user-provided axes."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
@@ -364,7 +365,7 @@ class TestDiagramPlotsWithProvidedAxes:
 class TestDiagramViewingAngles:
     """Test 3D viewing angle parameters."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 
@@ -378,7 +379,9 @@ class TestDiagramViewingAngles:
             (-30.0, 135.0),  # Unusual angle
         ],
     )
-    def test_ewald_sphere_3d_viewing_angles(self, elev, azim) -> None:
+    def test_ewald_sphere_3d_viewing_angles(
+        self, elev: float, azim: float
+    ) -> None:
         """Test Ewald sphere 3D with various viewing angles."""
         ax = plot_ewald_sphere_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
@@ -391,7 +394,9 @@ class TestDiagramViewingAngles:
             (90.0, 0.0),
         ],
     )
-    def test_unit_cell_3d_viewing_angles(self, elev, azim) -> None:
+    def test_unit_cell_3d_viewing_angles(
+        self, elev: float, azim: float
+    ) -> None:
         """Test unit cell 3D with various viewing angles."""
         ax = plot_unit_cell_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
@@ -404,7 +409,9 @@ class TestDiagramViewingAngles:
             (60.0, 120.0),
         ],
     )
-    def test_crystal_structure_3d_viewing_angles(self, elev, azim) -> None:
+    def test_crystal_structure_3d_viewing_angles(
+        self, elev: float, azim: float
+    ) -> None:
         """Test crystal structure 3D with various viewing angles."""
         positions = np.array([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]])
         atomic_numbers = np.array([14, 14])
@@ -417,7 +424,7 @@ class TestDiagramViewingAngles:
         assert isinstance(ax, Axes3D)
 
 
-def _make_crystal(n_atoms=4):
+def _make_crystal(n_atoms: int = 4) -> CrystalStructure:
     """Create a simple CrystalStructure for view_atoms tests."""
     all_pos = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
@@ -442,7 +449,7 @@ def _make_crystal(n_atoms=4):
 class TestViewAtoms:
     """Tests for view_atoms function."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 

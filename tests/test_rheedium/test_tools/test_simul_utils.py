@@ -9,6 +9,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
+from jax import Array
 from jax.test_util import check_grads
 
 from rheedium.tools.simul_utils import (
@@ -161,7 +162,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         ("phi_90", 90.0),
         ("phi_180", 180.0),
     )
-    def test_magnitude_invariant_under_phi(self, phi) -> None:
+    def test_magnitude_invariant_under_phi(self, phi: float) -> None:
         """Wavevector magnitude is independent of azimuthal angle."""
         var_k = self.variant(incident_wavevector)
 
@@ -233,7 +234,7 @@ class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
     def test_wavelength_grad_correct(self) -> None:
         """Relativistic wavelength grad matches finite diff to 2nd order."""
 
-        def f(voltage):
+        def f(voltage: Array) -> Array:
             return wavelength_ang(voltage)
 
         check_grads(jax_safe(f), (jnp.float64(20.0),), order=2, atol=1e-4)

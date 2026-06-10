@@ -16,7 +16,7 @@ from rheedium.types.crystal_types import (
 )
 
 
-def _make_simple_crystal():
+def _make_simple_crystal() -> CrystalStructure:
     """Create a simple test crystal (MgO rock salt)."""
     frac_positions = jnp.array(
         [
@@ -45,7 +45,7 @@ class TestAseInterop(chex.TestCase):
     """Test ASE interoperability."""
 
     @pytest.fixture(autouse=True)
-    def check_ase_available(self):
+    def check_ase_available(self) -> None:
         """Skip tests if ASE is not installed."""
         pytest.importorskip("ase")
 
@@ -165,7 +165,7 @@ class TestPymatgenInterop(chex.TestCase):
     """Test pymatgen interoperability."""
 
     @pytest.fixture(autouse=True)
-    def check_pymatgen_available(self):
+    def check_pymatgen_available(self) -> None:
         """Skip tests if pymatgen is not installed."""
         pytest.importorskip("pymatgen")
 
@@ -310,7 +310,7 @@ class TestCrossLibraryConversion(chex.TestCase):
     """Test conversion between ASE and pymatgen via rheedium."""
 
     @pytest.fixture(autouse=True)
-    def check_both_available(self):
+    def check_both_available(self) -> None:
         """Skip tests if either library is missing."""
         pytest.importorskip("ase")
         pytest.importorskip("pymatgen")
@@ -353,7 +353,7 @@ class TestInteropEdgeCases(chex.TestCase):
     """Test edge cases in interop functions."""
 
     @pytest.fixture(autouse=True)
-    def check_ase_available(self):
+    def check_ase_available(self) -> None:
         """Skip tests if ASE is not installed."""
         pytest.importorskip("ase")
 
@@ -396,7 +396,7 @@ class TestInteropEdgeCases(chex.TestCase):
         ("iron", "Fe", 26),
         ("oxygen", "O", 8),
     )
-    def test_various_elements(self, symbol, expected_z) -> None:
+    def test_various_elements(self, symbol: str, expected_z: int) -> None:
         """Test conversion with various elements."""
         from ase import Atoms
 

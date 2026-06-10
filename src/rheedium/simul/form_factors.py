@@ -383,6 +383,8 @@ def load_lobato_parameters(
     for electron scattering factors from the preloaded data. The model
     uses 5 terms of the form a_i (2 + b_i q^2) / (1 + b_i q^2)^2.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLoadLobatoPotentials`
+
     Parameters
     ----------
     atomic_number : scalar_int
@@ -442,6 +444,8 @@ def lobato_form_factor(
     Lobato-van Dyck (2014) parameterization, which obeys all physical
     constraints including the correct high-q Bethe asymptotic
     :math:`f_e \propto q^{-2}`.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLobatoFormFactor`
 
     Parameters
     ----------
@@ -516,6 +520,8 @@ def lobato_projected_potential(
     using the Lobato-van Dyck (2014) parameterization. This is the integral
     of the 3D atomic potential along the beam direction, expressed
     analytically in terms of modified Bessel functions K_0 and K_1.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLobatoProjectedPotential`
 
     Parameters
     ----------
@@ -611,6 +617,8 @@ def projected_potential(
     Dispatches to either the Lobato-van Dyck or Kirkland projected
     potential calculation via ``jax.lax.cond``. Both parameterizations
     share the same call signature and return shape.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestProjectedPotentialDispatch`
 
     Parameters
     ----------

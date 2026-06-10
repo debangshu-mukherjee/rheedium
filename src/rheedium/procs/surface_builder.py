@@ -52,6 +52,8 @@ def create_surface_slab(  # noqa: PLR0915
 ) -> CrystalStructure:
     """Construct a surface slab from a bulk crystal.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_builder.TestCreateSurfaceSlab`
+
     Parameters
     ----------
     bulk_crystal : CrystalStructure
@@ -229,6 +231,8 @@ def apply_surface_reconstruction(  # noqa: PLR0915
 ) -> CrystalStructure:
     """Apply an m x n surface reconstruction to a slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_builder.TestApplySurfaceReconstruction`
+
     Parameters
     ----------
     slab : CrystalStructure
@@ -382,6 +386,8 @@ def add_adsorbate_layer(
     coverage_fraction: scalar_float,
 ) -> CrystalStructure:
     """Add an adsorbate layer to a surface slab.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_builder.TestAddAdsorbateLayer`
 
     Parameters
     ----------

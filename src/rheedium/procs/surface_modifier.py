@@ -102,6 +102,8 @@ def apply_step_edge_field(
 ) -> CrystalStructure:
     """Apply a smooth periodic step-edge field to a surface slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_modifier.TestApplyStepEdgeField`
+
     Parameters
     ----------
     slab : CrystalStructure
@@ -193,6 +195,8 @@ def apply_surface_occupancy_field(
 ) -> CrystalStructure:
     """Apply a continuous occupancy field to the top surface region.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_modifier.TestApplySurfaceOccupancyField`
+
     Parameters
     ----------
     slab : CrystalStructure
@@ -255,6 +259,8 @@ def apply_surface_displacement_field(
 ) -> CrystalStructure:
     """Apply per-atom displacement vectors to the top surface region.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_modifier.TestApplySurfaceDisplacementField`
+
     Parameters
     ----------
     slab : CrystalStructure
@@ -310,6 +316,8 @@ def vicinal_surface_step_splitting(
 ) -> Float[Array, "N_qz"]:
     """Compute CTR intensity modification from periodic steps.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_modifier.TestVicinalSurfaceStepSplitting`
+
     Parameters
     ----------
     hk_index : Int[Array, "2"]
@@ -360,6 +368,8 @@ def incoherent_domain_average(
     domain_volume_fractions: Float[Array, "N_domains"],
 ) -> Float[Array, "H W"]:
     """Compute an incoherently averaged RHEED pattern from domains.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_surface_modifier.TestIncoherentDomainAverage`
 
     Parameters
     ----------

@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+from jax import Array
 
 from rheedium.procs.surface_modifier import (
     apply_step_edge_field,
@@ -16,11 +17,12 @@ from rheedium.procs.surface_modifier import (
     incoherent_domain_average,
     vicinal_surface_step_splitting,
 )
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.ucell.unitcell import build_cell_vectors
 
 
-def _make_test_slab():
+def _make_test_slab() -> CrystalStructure:
     """Build a small orthorhombic slab with two surface atoms."""
     cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
     cart_positions = jnp.array(
@@ -176,7 +178,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
     def test_grad_flows_through_surface_occupancy(self) -> None:
         slab = _make_test_slab()
 
-        def objective(occupancy):
+        def objective(occupancy: Array) -> Array:
             return jnp.sum(
                 apply_surface_occupancy_field(
                     slab,
@@ -208,7 +210,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
     def test_vmap_supports_batched_surface_occupancies(self) -> None:
         slab = _make_test_slab()
 
-        def top_layer_weight(occupancy):
+        def top_layer_weight(occupancy: Array) -> Array:
             return apply_surface_occupancy_field(
                 slab,
                 0.8,
@@ -274,7 +276,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
     def test_grad_flows_through_surface_displacement(self) -> None:
         slab = _make_test_slab()
 
-        def objective(delta_z):
+        def objective(delta_z: Array) -> Array:
             return apply_surface_displacement_field(
                 slab,
                 0.8,
@@ -316,7 +318,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
     def test_vmap_supports_batched_displacement_scales(self) -> None:
         slab = _make_test_slab()
 
-        def top_atom_z(scale):
+        def top_atom_z(scale: Array) -> Array:
             return apply_surface_displacement_field(
                 slab,
                 0.8,
@@ -373,7 +375,7 @@ class TestApplyStepEdgeField(chex.TestCase):
     def test_grad_flows_through_step_height(self) -> None:
         slab = _make_test_slab()
 
-        def objective(step_height):
+        def objective(step_height: Array) -> Array:
             return apply_step_edge_field(
                 slab,
                 step_height,
@@ -405,7 +407,7 @@ class TestApplyStepEdgeField(chex.TestCase):
     def test_vmap_supports_batched_step_heights(self) -> None:
         slab = _make_test_slab()
 
-        def top_atom_z(step_height):
+        def top_atom_z(step_height: Array) -> Array:
             return apply_step_edge_field(
                 slab,
                 step_height,

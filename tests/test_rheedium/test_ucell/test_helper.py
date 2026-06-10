@@ -34,7 +34,9 @@ class TestAngleInDegrees(chex.TestCase):
         ("45_degrees", [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], 45.0),
         ("60_degrees", [1.0, 0.0, 0.0], [0.5, 0.866025, 0.0], 60.0),
     )
-    def test_angle_calculation(self, v1, v2, expected_angle) -> None:
+    def test_angle_calculation(
+        self, v1: list[float], v2: list[float], expected_angle: float
+    ) -> None:
         """Test angle calculation between various vector pairs."""
         v1_array = jnp.array(v1)
         v2_array = jnp.array(v2)
@@ -132,7 +134,10 @@ class TestComputeLengthsAngles(chex.TestCase):
         ),
     )
     def test_compute_lengths_angles_known_cells(
-        self, vectors, expected_lengths, expected_angles
+        self,
+        vectors: list[list[float]],
+        expected_lengths: list[float],
+        expected_angles: list[float],
     ) -> None:
         """Test length and angle computation for known unit cells."""
         vectors_array = jnp.array(vectors)
@@ -245,7 +250,7 @@ Si10 Si 0.5 0.5 0.9
         ) as self.temp_file:
             self.temp_file.write(self.test_cif_content)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Clean up temporary files."""
         os.unlink(self.temp_file.name)
         super().tearDown()
@@ -277,7 +282,7 @@ Si10 Si 0.5 0.5 0.9
         ("diagonal", [1.0, 1.0, 1.0], [3.0, 3.0, 3.0]),
     )
     def test_parse_cif_and_scrape_different_axes(
-        self, zone_axis, thickness
+        self, zone_axis: list[float], thickness: list[float]
     ) -> None:
         """Test scraping along different zone axes."""
         zone_axis_array = jnp.array(zone_axis)

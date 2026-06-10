@@ -14,10 +14,11 @@ from matplotlib.colors import LinearSegmentedColormap
 matplotlib.use("Agg")
 
 from rheedium.plots.figuring import create_phosphor_colormap, plot_rheed
+from rheedium.types import RHEEDPattern
 from rheedium.types.rheed_types import create_rheed_pattern
 
 
-def _make_test_pattern(n=20):
+def _make_test_pattern(n: int = 20) -> RHEEDPattern:
     """Create a simple RHEEDPattern for testing."""
     rng = np.random.default_rng(42)
     g_indices = jnp.arange(n, dtype=jnp.int32)
@@ -96,7 +97,7 @@ class TestCreatePhosphorColormap:
 class TestPlotRheed:
     """Tests for plot_rheed function."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
 

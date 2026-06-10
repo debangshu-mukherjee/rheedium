@@ -1256,6 +1256,8 @@ def view_atoms(
     each atom type is displayed with a different color using CPK coloring.
     Atom sizes are proportional to atomic number with optional scaling.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestViewAtoms`
+
     Parameters
     ----------
     crystal : CrystalStructure

@@ -54,6 +54,8 @@ def wavelength_ang(
     This is more accurate than simplified approximations, especially at
     higher voltages (>=30 keV) where the difference can be several percent.
 
+    :see: :class:`tests.test_rheedium.test_tools.test_simul_utils.TestWavelengthAng`
+
     Parameters
     ----------
     voltage_kv : Union[scalar_num, Num[Array, "..."]]
@@ -118,6 +120,8 @@ def incident_wavevector(
 ) -> Float[Array, "3"]:
     r"""Calculate the incident electron wavevector for RHEED geometry.
 
+    :see: :class:`tests.test_rheedium.test_tools.test_simul_utils.TestIncidentWavevector`
+
     Parameters
     ----------
     lam_ang : scalar_float
@@ -177,6 +181,8 @@ def interaction_constant(
     Computes the relativistic interaction constant :math:`\\sigma`
     used in multislice calculations. Includes relativistic mass
     correction via the Lorentz factor.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_simul_utils.TestInteractionConstant`
 
     Notes
     -----

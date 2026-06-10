@@ -9,6 +9,7 @@ end-to-end differentiability through all beam averaging operations.
 import chex
 import jax
 import jax.numpy as jnp
+from jax import Array
 
 from rheedium.simul.beam_averaging import (
     angular_divergence_average,
@@ -23,9 +24,9 @@ W = 32
 
 
 def _dummy_angle_sim(
-    polar_rad,
-    azimuth_rad,
-):
+    polar_rad: Array,
+    azimuth_rad: Array,
+) -> Array:
     """Simulate pattern that broadens with polar angle."""
     y = jnp.linspace(-1.0, 1.0, H)
     x = jnp.linspace(-1.0, 1.0, W)
@@ -35,8 +36,8 @@ def _dummy_angle_sim(
 
 
 def _dummy_energy_sim(
-    energy_kev,
-):
+    energy_kev: Array,
+) -> Array:
     """Simulate pattern that shifts peak with energy."""
     y = jnp.linspace(-1.0, 1.0, H)
     x = jnp.linspace(-1.0, 1.0, W)
@@ -46,10 +47,10 @@ def _dummy_energy_sim(
 
 
 def _dummy_joint_sim(
-    polar_rad,
-    azimuth_rad,
-    energy_kev,
-):
+    polar_rad: Array,
+    azimuth_rad: Array,
+    energy_kev: Array,
+) -> Array:
     """Simulate a pattern with coupled angular and energy dependence."""
     return _dummy_angle_sim(polar_rad, azimuth_rad) * _dummy_energy_sim(
         energy_kev
@@ -336,7 +337,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_jit_agrees(self) -> None:
         """JIT and non-JIT results agree to 1e-4."""
-        kwargs = dict(
+        kwargs: dict[str, object] = dict(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -365,7 +366,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_angular_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. divergence is finite."""
 
-        def loss(divergence):
+        def loss(divergence: Array) -> Array:
             pattern = angular_divergence_average(
                 simulate_fn=_dummy_angle_sim,
                 nominal_polar_angle_rad=jnp.float64(0.035),
@@ -381,7 +382,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_energy_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. spread is finite."""
 
-        def loss(spread):
+        def loss(spread: Array) -> Array:
             pattern = energy_spread_average(
                 simulate_fn=_dummy_energy_sim,
                 nominal_energy_kev=jnp.float64(20.0),
@@ -396,7 +397,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_psf_convolve(self) -> None:
         """jax.grad of sum(convolved) w.r.t. psf_sigma is finite."""
 
-        def loss(sigma):
+        def loss(sigma: Array) -> Array:
             img = jnp.ones((H, W))
             blurred = detector_psf_convolve(img, sigma)
             return jnp.sum(blurred)
@@ -407,7 +408,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_coherence_envelope(self) -> None:
         """jax.grad of sum(|damped|^2) w.r.t. coherence length is finite."""
 
-        def loss(l_t):
+        def loss(l_t: Array) -> Array:
             amp = jnp.ones((H, W), dtype=jnp.complex128)
             q_par = jnp.ones((H, W)) * 0.005
             q_z = jnp.ones((H, W)) * 0.002
@@ -426,7 +427,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_full_pipeline(self) -> None:
         """jax.grad flows through the full instrument pipeline."""
 
-        def loss(divergence):
+        def loss(divergence: Array) -> Array:
             pattern = instrument_broadened_pattern(
                 simulate_fn=_dummy_joint_sim,
                 nominal_polar_angle_rad=jnp.float64(0.035),

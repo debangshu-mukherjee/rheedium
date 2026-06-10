@@ -9,6 +9,7 @@ meaningful multi-device and ``pmap`` tests via ``chex.variants``.
 import chex
 import jax
 import jax.numpy as jnp
+from jax import Array
 from jax.sharding import NamedSharding
 
 from rheedium.tools.parallel import shard_array
@@ -173,7 +174,7 @@ class TestPmapCompatibility(chex.TestCase):
         """JIT-compiled function should work on sharded data."""
 
         @self.variant
-        def add_one(x):
+        def add_one(x: Array) -> Array:
             return x + 1.0
 
         arr = jnp.arange(8.0)

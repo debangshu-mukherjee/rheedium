@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax import Array
 from jax.test_util import check_grads
 
 from rheedium.simul.surface_rods import (
@@ -21,6 +22,7 @@ from rheedium.simul.surface_rods import (
     surface_structure_factor,
 )
 from rheedium.tools.wrappers import jax_safe
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 
 
@@ -85,7 +87,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("medium_roughness", 1.0),
         ("large_roughness", 2.0),
     )
-    def test_roughness_damping_single(self, sigma) -> None:
+    def test_roughness_damping_single(self, sigma: float) -> None:
         """Test roughness damping for single q_z values.
 
         Tests the surface roughness damping factor exp(-q_z²σ²/2) for
@@ -163,7 +165,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("large_corr", 100.0),
         ("very_large_corr", 500.0),
     )
-    def test_gaussian_rod_profile(self, correlation_length) -> None:
+    def test_gaussian_rod_profile(self, correlation_length: float) -> None:
         """Test Gaussian rod profile for different correlation lengths.
 
         Tests the Gaussian profile function exp(-q_perp²ξ²/2) that
@@ -196,7 +198,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("large_corr", 100.0),
         ("very_large_corr", 500.0),
     )
-    def test_lorentzian_rod_profile(self, correlation_length) -> None:
+    def test_lorentzian_rod_profile(self, correlation_length: float) -> None:
         """Test Lorentzian rod profile for different correlation lengths.
 
         Tests the Lorentzian profile function 1/(1 + (q_perpξ)²) that
@@ -225,7 +227,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("gaussian", "gaussian"),
         ("lorentzian", "lorentzian"),
     )
-    def test_rod_profile_function_selector(self, profile_type) -> None:
+    def test_rod_profile_function_selector(self, profile_type: str) -> None:
         """Test rod profile function selector without JIT.
 
         Tests the dynamic selection between Gaussian and Lorentzian rod
@@ -280,7 +282,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("high_temp_surface", 600.0, True),
         ("low_temp_bulk", 100.0, False),
     )
-    def test_surface_structure_factor(self, temperature, is_surface) -> None:
+    def test_surface_structure_factor(
+        self, temperature: float, is_surface: bool
+    ) -> None:
         """Test surface structure factor calculation.
 
         Tests the calculation of the complex structure factor F(q) =
@@ -375,7 +379,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("diagonal_rod", [1, 1], 1.5),
         ("high_order", [2, 0], 2.0),
     )
-    def test_calculate_ctr_intensity(self, hk_index, roughness) -> None:
+    def test_calculate_ctr_intensity(
+        self, hk_index: list[int], roughness: float
+    ) -> None:
         """Test CTR intensity calculation for different rods.
 
         Tests crystal truncation rod intensity I(h,k,q_z) = |F(h,k,q_z)|²
@@ -500,8 +506,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     )
     def test_integrated_rod_intensity(
         self,
-        q_z_range,
-        detector_acceptance,
+        q_z_range: tuple[float, float],
+        detector_acceptance: float,
     ) -> None:
         """Test integrated CTR intensity over detector acceptance.
 
@@ -584,7 +590,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_ctr = self.variant(calculate_ctr_intensity)
 
-        def ctr_for_roughness(sigma):
+        def ctr_for_roughness(sigma: Array) -> Array:
             return var_ctr(
                 hk_indices=jnp.array([[1, 0]], dtype=jnp.int32),
                 q_z=self.q_z_values[:10],
@@ -599,7 +605,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         expected_shape = (len(self.roughness_values), 1, 10)
         chex.assert_shape(intensities_batch, expected_shape)
 
-        def loss_fn(sigma):
+        def loss_fn(sigma: float) -> Array:
             intensities = var_ctr(
                 hk_indices=jnp.array([[0, 0]], dtype=jnp.int32),
                 q_z=jnp.array([2.0]),
@@ -699,7 +705,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(expected_intensity)
 
 
-def _make_si_crystal():
+def _make_si_crystal() -> CrystalStructure:
     """Create a 2-atom Si crystal for gradient tests."""
     a_si = 5.431
     frac_coords = jnp.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]])
@@ -726,7 +732,7 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         hk_indices = jnp.array([[1, 0]])
         q_z = jnp.linspace(0.5, 3.0, 5)
 
-        def loss(roughness):
+        def loss(roughness: Array) -> Array:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -746,7 +752,7 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         hk_indices = jnp.array([[1, 0]])
         q_z = jnp.linspace(0.5, 3.0, 5)
 
-        def loss(temp):
+        def loss(temp: Array) -> Array:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -765,7 +771,7 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         hk_indices = jnp.array([[1, 0]])
         q_z = jnp.linspace(0.5, 3.0, 5)
 
-        def f(roughness):
+        def f(roughness: Array) -> Array:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -783,7 +789,7 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         hk_indices = jnp.array([[1, 0]])
         q_z = jnp.linspace(0.5, 3.0, 5)
 
-        def f(temp):
+        def f(temp: Array) -> Array:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -805,7 +811,7 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
         hk_indices = jnp.array([[1, 0]])
         q_z = jnp.linspace(0.5, 3.0, 5)
 
-        def f(roughness):
+        def f(roughness: Array) -> Array:
             return calculate_ctr_intensity(
                 hk_indices=hk_indices,
                 q_z=q_z,

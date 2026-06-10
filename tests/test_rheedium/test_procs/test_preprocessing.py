@@ -9,6 +9,7 @@ ensure jax.grad flows through all operations.
 import chex
 import jax
 import jax.numpy as jnp
+from jax import Array
 
 from rheedium.procs.preprocessing import (
     log_intensity_transform,
@@ -234,7 +235,7 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_soft_mask(self) -> None:
         """jax.grad flows through soft_threshold_mask."""
 
-        def loss(threshold):
+        def loss(threshold: Array) -> Array:
             dist = jnp.linspace(0.0, 1.0, H * W).reshape(H, W)
             mask = soft_threshold_mask(dist, threshold, jnp.float64(10.0))
             return jnp.sum(mask)
@@ -246,7 +247,7 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_background_subtraction(self) -> None:
         """jax.grad flows through subtract_background."""
 
-        def loss(bg_level):
+        def loss(bg_level: Array) -> Array:
             img = jnp.ones((H, W)) * 100.0
             bg = jnp.ones((H, W)) * bg_level
             result = subtract_background(img, bg)
@@ -258,7 +259,7 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_log_transform(self) -> None:
         """jax.grad flows through log_intensity_transform."""
 
-        def loss(epsilon):
+        def loss(epsilon: Array) -> Array:
             img = jnp.ones((H, W)) * 100.0
             result = log_intensity_transform(img, epsilon)
             return jnp.sum(result)
@@ -270,7 +271,7 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_normalize(self) -> None:
         """jax.grad flows through normalize_image."""
 
-        def loss(scale):
+        def loss(scale: Array) -> Array:
             img = jnp.linspace(0.0, 1.0, H * W).reshape(H, W) * scale
             result = normalize_image(img)
             return jnp.sum(result)
@@ -281,7 +282,7 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_full_preprocess(self) -> None:
         """jax.grad flows through preprocess_experimental without NaN."""
 
-        def loss(bg_level):
+        def loss(bg_level: Array) -> Array:
             raw = jnp.linspace(10.0, 500.0, H * W).reshape(H, W)
             bg = jnp.ones((H, W)) * bg_level
             mask = jnp.ones((H, W)) * 0.9

@@ -27,7 +27,7 @@ from rheedium.ucell.unitcell import (
 )
 
 
-def _make_simple_crystal(n_atoms=8):
+def _make_simple_crystal(n_atoms: int = 8) -> CrystalStructure:
     """Create a simple cubic CrystalStructure for testing."""
     rng = np.random.default_rng(0)
     frac_xyz = rng.uniform(size=(n_atoms, 3))
@@ -190,7 +190,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         # Create a simple cubic crystal with atoms at different z positions
         self.cubic_crystal = self._create_layered_crystal()
 
-    def _create_layered_crystal(self):
+    def _create_layered_crystal(self) -> CrystalStructure:
         """Create a crystal with atoms at different z heights.
 
         Creates 5 atoms stacked along z-axis at z = 0, 2, 4, 6, 8 Angstroms.
@@ -224,7 +224,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    def _create_xy_plane_crystal(self):
+    def _create_xy_plane_crystal(self) -> CrystalStructure:
         """Create a crystal with atoms spread in XY plane at same z."""
         a = 10.0
 
@@ -312,7 +312,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         ("neg_z_axis", [0.0, 0.0, -1.0]),
         ("z_axis_scaled", [0.0, 0.0, 2.0]),
     )
-    def test_zone_axis_normalization(self, zone_axis) -> None:
+    def test_zone_axis_normalization(self, zone_axis: list[float]) -> None:
         """Test that zone axis is properly normalized."""
         zone_axis_arr = jnp.array(zone_axis)
         thickness = jnp.array([5.0, 5.0, 3.0])
@@ -497,7 +497,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         ("thick", 10.0, 5),
     )
     def test_thickness_controls_atom_count(
-        self, z_thickness, min_expected
+        self, z_thickness: float, min_expected: int
     ) -> None:
         """Test that increasing thickness includes more atoms."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
@@ -756,7 +756,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
         ("medium_cell", 5.0, 5.0, 5.0),
         ("large_cell", 10.0, 10.0, 10.0),
     )
-    def test_various_cell_sizes(self, a, b, c) -> None:
+    def test_various_cell_sizes(self, a: float, b: float, c: float) -> None:
         """Test with various cell sizes."""
         lengths, angles = reciprocal_unitcell(
             a=a,
@@ -1434,7 +1434,7 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
         # Create a simple cubic crystal
         self.cubic_crystal = self._create_cubic_crystal()
 
-    def _create_cubic_crystal(self):
+    def _create_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal."""
         a = 3.0
         cart_coords = jnp.array([[0.0, 0.0, 0.0]])
@@ -1518,7 +1518,7 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
         ("medium", 2, 2, 2),
         ("asymmetric", 3, 2, 1),
     )
-    def test_various_ranges(self, hmax, kmax, lmax) -> None:
+    def test_various_ranges(self, hmax: int, kmax: int, lmax: int) -> None:
         """Test various hkl ranges."""
         g_vecs = generate_reciprocal_points(
             crystal=self.cubic_crystal,

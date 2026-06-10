@@ -10,12 +10,14 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax import Array
 
 from rheedium.simul.ewald import (
     _compute_structure_factor_single,
     build_ewald_data,
     ewald_allowed_reflections,
 )
+from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 
 
@@ -71,7 +73,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("g_z", jnp.array([0.0, 0.0, 1.0])),
         ("g_diagonal", jnp.array([1.0, 1.0, 1.0])),
     )
-    def test_single_atom_at_origin_nonzero_g(self, g_vector) -> None:
+    def test_single_atom_at_origin_nonzero_g(self, g_vector: Array) -> None:
         """Test structure factor for single atom at origin with nonzero G.
 
         For atom at origin, phase factor is always 1 regardless of G,
@@ -172,7 +174,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("room_temp", 300.0),
         ("high_temp", 600.0),
     )
-    def test_temperature_dependence(self, temperature) -> None:
+    def test_temperature_dependence(self, temperature: float) -> None:
         """Test that structure factor depends on temperature.
 
         Higher temperature increases Debye-Waller damping, reducing |F(G)|.
@@ -277,7 +279,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     def test_gradient_flow(self) -> None:
         """Test that gradients flow through structure factor calculation."""
 
-        def loss_fn(temperature):
+        def loss_fn(temperature: Array) -> Array:
             g_vector = jnp.array([1.0, 0.0, 0.0])
             sf = _compute_structure_factor_single(
                 g_vector=g_vector,
@@ -303,7 +305,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         super().setUp()
         self.crystal = self._create_simple_cubic_crystal()
 
-    def _create_simple_cubic_crystal(self):
+    def _create_simple_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal for testing."""
         a = 4.0  # lattice constant in Angstroms
 
@@ -400,7 +402,9 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         ("medium_grid", 2, 2, 1, 75),  # 5*5*3 = 75
         ("asymmetric", 3, 2, 1, 105),  # 7*5*3 = 105
     )
-    def test_grid_size(self, hmax, kmax, lmax, expected_n) -> None:
+    def test_grid_size(
+        self, hmax: int, kmax: int, lmax: int, expected_n: int
+    ) -> None:
         """Test that the correct number of G vectors are generated."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -512,7 +516,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
         )
 
-    def _create_simple_cubic_crystal(self):
+    def _create_simple_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal for testing."""
         a = 4.0
         frac_coords = jnp.array([[0.0, 0.0, 0.0]])
@@ -569,7 +573,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("theta_2", 2.0),
         ("theta_5", 5.0),
     )
-    def test_different_theta_angles(self, theta_deg) -> None:
+    def test_different_theta_angles(self, theta_deg: float) -> None:
         """Test reflection finding at different incidence angles."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -585,7 +589,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("phi_45", 45.0),
         ("phi_90", 90.0),
     )
-    def test_different_phi_angles(self, phi_deg) -> None:
+    def test_different_phi_angles(self, phi_deg: float) -> None:
         """Test reflection finding at different azimuthal angles."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,

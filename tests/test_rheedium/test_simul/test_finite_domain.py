@@ -109,7 +109,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         ("medium_padding", 5.0),
         ("large_padding", 10.0),
     )
-    def test_padding_applied_correctly(self, padding) -> None:
+    def test_padding_applied_correctly(self, padding: float) -> None:
         """Test that padding is added correctly (2×padding per dimension).
 
         Padding should be applied symmetrically on both sides.
@@ -610,7 +610,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         ("theta_2deg", 2.0),
         ("theta_5deg", 5.0),
     )
-    def test_different_angles(self, theta) -> None:
+    def test_different_angles(self, theta: float) -> None:
         """Test that function works for various incidence angles."""
         var_intensities = self.variant(finite_domain_intensities)
 

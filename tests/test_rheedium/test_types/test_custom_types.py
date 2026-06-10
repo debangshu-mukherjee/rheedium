@@ -18,12 +18,12 @@ from rheedium.types.custom_types import (
 )
 
 
-def _accepts(value, hint):
+def _accepts(value: object, hint: object) -> object:
     die_if_unbearable(value, hint)
     return value
 
 
-def _assert_rejected(value, hint):
+def _assert_rejected(value: object, hint: object) -> None:
     with pytest.raises(Exception):
         die_if_unbearable(value, hint)
 

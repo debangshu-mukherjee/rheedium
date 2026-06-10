@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax import Array
 
 from rheedium.inout.xyz import lobato_potentials
 from rheedium.simul.form_factors import (
@@ -65,7 +66,7 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Cu", 29),
         ("Au", 79),
     )
-    def test_zero_angle_limit(self, z) -> None:
+    def test_zero_angle_limit(self, z: int) -> None:
         """f_e(0) = sum_i 2*a_i (Mott-Bethe zero-angle limit)."""
         a, _ = load_lobato_parameters(z)
         expected_f0 = jnp.sum(2.0 * a)
@@ -79,7 +80,7 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Cu", 29),
         ("Au", 79),
     )
-    def test_nonnegative(self, z) -> None:
+    def test_nonnegative(self, z: int) -> None:
         """f_e(q) >= 0 for all q >= 0."""
         q = jnp.linspace(0.0, 30.0, 300)
         fe = lobato_form_factor(z, q)
@@ -113,7 +114,7 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Si", 14),
         ("Au", 79),
     )
-    def test_vs_kirkland_same_order_of_magnitude(self, z) -> None:
+    def test_vs_kirkland_same_order_of_magnitude(self, z: int) -> None:
         """Lobato and Kirkland f_e(0) within an order of magnitude.
 
         The Kirkland implementation in rheedium uses a simplified
@@ -130,7 +131,7 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
     def test_gradient_finite(self) -> None:
         """jax.grad through lobato_form_factor is finite."""
 
-        def loss(q):
+        def loss(q: Array) -> Array:
             return jnp.sum(lobato_form_factor(14, q))
 
         grad_fn = jax.grad(loss)
@@ -155,7 +156,7 @@ class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
         ("Cu", 29),
         ("Au", 79),
     )
-    def test_positive_for_r_gt_zero(self, z) -> None:
+    def test_positive_for_r_gt_zero(self, z: int) -> None:
         """V_z(r) > 0 for r > 0 (attractive potential)."""
         r = jnp.linspace(0.01, 5.0, 100)
         vz = lobato_projected_potential(z, r)
@@ -179,7 +180,7 @@ class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
     def test_gradient_finite(self) -> None:
         """jax.grad through lobato_projected_potential is finite."""
 
-        def loss(r):
+        def loss(r: Array) -> Array:
             return jnp.sum(lobato_projected_potential(14, r))
 
         grad_fn = jax.grad(loss)
@@ -263,7 +264,7 @@ class TestProjectedPotentialDispatch(chex.TestCase):
     def test_gradient_through_dispatch(self) -> None:
         """jax.grad works through the lax.cond dispatch."""
 
-        def loss(r):
+        def loss(r: Array) -> Array:
             return jnp.sum(projected_potential(14, r, "lobato"))
 
         grad_fn = jax.grad(loss)

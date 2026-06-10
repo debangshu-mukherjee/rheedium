@@ -223,6 +223,8 @@ def si111_1x1(
 ) -> CrystalStructure:
     """Construct bulk-terminated Si(111) surface slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestSi111_1x1`
+
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
@@ -275,6 +277,8 @@ def si111_7x7(
 ) -> CrystalStructure:
     """Construct Si(111)-7x7 DAS reconstruction slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestSi111_7x7`
+
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
@@ -325,6 +329,8 @@ def si100_2x1(
     vacuum_gap_angstrom: scalar_float = 15.0,
 ) -> CrystalStructure:
     """Construct Si(100)-2x1 symmetric dimer row slab.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestSi100_2x1`
 
     Parameters
     ----------
@@ -385,6 +391,8 @@ def gaas001_2x4(
 ) -> CrystalStructure:
     """Construct GaAs(001)-2x4 beta2 As-rich surface slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestGaAs001_2x4`
+
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
@@ -444,6 +452,8 @@ def mgo001_bulk_terminated(
 ) -> CrystalStructure:
     """Construct bulk-terminated MgO(001) surface slab.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestMgO001BulkTerminated`
+
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
@@ -496,6 +506,8 @@ def srtio3_001_2x1(
     vacuum_gap_angstrom: scalar_float = 15.0,
 ) -> CrystalStructure:
     """Construct SrTiO3(001)-2x1 TiO2 double-layer slab.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_library.TestSrTiO3_001_2x1`
 
     Parameters
     ----------

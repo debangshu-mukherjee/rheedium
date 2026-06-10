@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -15,7 +16,7 @@ from rheedium.types import DetectorGeometry, SurfaceConfig, XYZData
 pytest.importorskip("h5py")
 
 
-def _assert_round_trip_equal(actual, expected) -> None:
+def _assert_round_trip_equal(actual: Any, expected: Any) -> None:
     """Recursively compare nested rheedium pytrees exactly."""
     if expected is None or isinstance(expected, str):
         assert actual == expected

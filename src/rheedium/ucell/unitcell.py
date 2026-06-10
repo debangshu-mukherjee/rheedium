@@ -72,6 +72,8 @@ def reciprocal_unitcell(
     Computes reciprocal lattice parameters (a*, b*, c*, α*, β*, γ*) from
     direct lattice parameters using crystallographic relationships.
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestReciprocalUnitcell`
+
     Parameters
     ----------
     a : scalar_float
@@ -191,6 +193,8 @@ def get_unit_cell_matrix(
 ) -> Float[Array, "3 3"]:
     r"""Build transformation matrix between direct and reciprocal space.
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestGetUnitCellMatrix`
+
     Parameters
     ----------
     a, b, c : scalar_float
@@ -280,6 +284,8 @@ def build_cell_vectors(
 ) -> Float[Array, "3 3"]:
     r"""Construct unit cell vectors from lengths and angles.
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestBuildCellVectors`
+
     Parameters
     ----------
     a, b, c : scalar_float
@@ -360,6 +366,8 @@ def compute_lengths_angles(
     vectors: Float[Array, "3 3"],
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestComputeLengthsAngles`
 
     Parameters
     ----------
@@ -444,6 +452,8 @@ def generate_reciprocal_points(
     in_degrees: scalar_bool = True,
 ) -> Float[Array, "M 3"]:
     r"""Generate reciprocal-lattice vectors based on the crystal structure.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestGenerateReciprocalPoints`
 
     Parameters
     ----------
@@ -537,6 +547,8 @@ def atom_scraper(
     thickness: Float[Array, "3"],
 ) -> CrystalStructure:
     """Filter atoms within specified thickness along zone axis.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestAtomScraper`
 
     Parameters
     ----------
@@ -732,6 +744,8 @@ def reciprocal_lattice_vectors(
     b₂ = 2π(a₃ × a₁)/(a₁ · (a₂ × a₃))
     b₃ = 2π(a₁ × a₂)/(a₁ · (a₂ × a₃))
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestReciprocalLatticeVectors`
+
     Parameters
     ----------
     a : scalar_float
@@ -836,6 +850,8 @@ def miller_to_reciprocal(
     is computed as G = h*b₁ + k*b₂ + l*b₃ where b₁, b₂, b₃ are the
     reciprocal lattice basis vectors.
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestMillerToReciprocal`
+
     Parameters
     ----------
     hkl : Int[Array, "... 3"]
@@ -912,6 +928,8 @@ def bulk_to_slice(  # noqa: PLR0915
     extended in the x and y directions to create a large surface area
     suitable for RHEED simulations, with atoms selected within a
     specified depth from the surface.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_unitcell.TestBulkToSlice`
 
     Parameters
     ----------

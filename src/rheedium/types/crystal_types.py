@@ -60,6 +60,8 @@ class CrystalStructure(NamedTuple):
     parameters. It's designed for efficient crystal structure calculations and
     electron diffraction simulations.
 
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestCrystalStructure`
+
     Attributes
     ----------
     frac_positions : Num[Array, "N 4"]
@@ -151,6 +153,8 @@ def create_crystal_structure(
     cell_angles: Num[Array, "3"],
 ) -> CrystalStructure:
     """Create a CrystalStructure PyTree with data validation.
+
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestCrystalStructure`
 
     Parameters
     ----------
@@ -314,6 +318,8 @@ class EwaldData(NamedTuple):
     beam orientation angles. This enables efficient reuse when scanning beam
     azimuth or incidence angle.
 
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestEwaldData`
+
     Attributes
     ----------
     wavelength_ang : Float[Array, ""]
@@ -432,6 +438,8 @@ def create_ewald_data(
     intensities: Float[Array, "N"],
 ) -> EwaldData:
     r"""Create an EwaldData PyTree with validation.
+
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestEwaldData`
 
     Parameters
     ----------
@@ -790,6 +798,8 @@ class PotentialSlices(NamedTuple):
     electron diffraction calculations. It contains 3D potential slices with
     associated calibration information for accurate physical modeling.
 
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestPotentialSlices`
+
     Attributes
     ----------
     slices : Float[Array, "n_slices height width"]
@@ -871,6 +881,8 @@ def create_potential_slices(
     y_calibration: scalar_float,
 ) -> PotentialSlices:
     """Create a PotentialSlices PyTree with data validation.
+
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestPotentialSlices`
 
     Parameters
     ----------
@@ -1035,6 +1047,8 @@ class XYZData(NamedTuple):
     JAX arrays while metadata is preserved as auxiliary data. All data is
     immutable for functional programming patterns.
 
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestXYZData`
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -1151,6 +1165,8 @@ def create_xyz_data(
     comment: Optional[str] = None,
 ) -> XYZData:
     """Create a XYZData PyTree with runtime validation.
+
+    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestXYZData`
 
     Parameters
     ----------

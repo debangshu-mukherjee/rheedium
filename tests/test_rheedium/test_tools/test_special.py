@@ -33,7 +33,7 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         ("x_5p0", 5.0, 0.0036910983),
         ("x_10p0", 10.0, 0.0000177801),
     )
-    def test_known_values(self, x_val, expected) -> None:
+    def test_known_values(self, x_val: float, expected: float) -> None:
         """K_0 matches scipy.special.k0 at representative points."""
         result = bessel_k0(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
@@ -101,7 +101,7 @@ class TestBesselK1(chex.TestCase, parameterized.TestCase):
         ("x_5p0", 5.0, 0.0040446134),
         ("x_10p0", 10.0, 0.0000186488),
     )
-    def test_known_values(self, x_val, expected) -> None:
+    def test_known_values(self, x_val: float, expected: float) -> None:
         """K_1 matches scipy.special.k1 at representative points."""
         result = bessel_k1(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
@@ -174,7 +174,7 @@ class TestBesselIvSeries(chex.TestCase):
         ("v0p5_x1", 0.5, 1.0),
         ("v0p25_x0p5", 0.25, 0.5),
     )
-    def test_iv_series_against_scipy(self, v, x) -> None:
+    def test_iv_series_against_scipy(self, v: float, x: float) -> None:
         """I_v(x) series expansion matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_iv_series(v, x_arr, x_arr.dtype)
@@ -211,7 +211,7 @@ class TestBesselK0Series(chex.TestCase):
         ("x1p5", 1.5, 0.21380556264752564),
         ("x2", 2.0, 0.11389387274953341),
     )
-    def test_k0_series_against_scipy(self, x, expected) -> None:
+    def test_k0_series_against_scipy(self, x: float, expected: float) -> None:
         """K_0(x) series expansion matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_k0_series(x_arr, x_arr.dtype)
@@ -267,7 +267,9 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         ("n3_x1", 3, 1.0, 7.101262824737945),
         ("n4_x1", 4, 1.0, 44.23241584706284),
     )
-    def test_kn_recurrence_higher_orders(self, n, x, expected) -> None:
+    def test_kn_recurrence_higher_orders(
+        self, n: int, x: float, expected: float
+    ) -> None:
         """Higher-order recurrence matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         k0 = jnp.array([scipy_kv(0, x)], dtype=jnp.float64)
@@ -302,7 +304,9 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
         ("v1p5_x0p5", 1.5, 0.5, 3.225142810499761),
         ("v1p5_x1", 1.5, 1.0, 0.9221370088957893),
     )
-    def test_kv_small_non_integer(self, v, x, expected) -> None:
+    def test_kv_small_non_integer(
+        self, v: float, x: float, expected: float
+    ) -> None:
         """Small-x non-integer branch matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_kv_small_non_integer(v, x_arr, x_arr.dtype)
@@ -324,7 +328,9 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
         ("v0_x1", 0.0, 1.0, 0.42102443824070834),
         ("v0_x2", 0.0, 2.0, 0.11389387274953341),
     )
-    def test_kv_small_integer_v0(self, v, x, expected) -> None:
+    def test_kv_small_integer_v0(
+        self, v: float, x: float, expected: float
+    ) -> None:
         """K_0(x) is the most accurate small-x integer branch."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_kv_small_integer(
@@ -353,7 +359,7 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
         ("v2_x5", 2.0, 5.0, 0.00530894371222346),
         ("v0p5_x5", 0.5, 5.0, 0.0037766133746428825),
     )
-    def test_kv_large_x(self, v, x, expected) -> None:
+    def test_kv_large_x(self, v: float, x: float, expected: float) -> None:
         """Asymptotic branch matches scipy at large x."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_kv_large(v, x_arr)
@@ -383,7 +389,7 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
         ("x2", 2.0, 0.11993777196806146),
         ("x5", 5.0, 0.0037766133746428825),
     )
-    def test_k_half_against_scipy(self, x, expected) -> None:
+    def test_k_half_against_scipy(self, x: float, expected: float) -> None:
         """K_{1/2}(x) matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = _bessel_k_half(x_arr)
@@ -417,7 +423,9 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         ("v1_x5", 1.0, 5.0, 0.004044613445452164),
         ("v2_x5", 2.0, 5.0, 0.00530894371222346),
     )
-    def test_bessel_kv_integer_orders(self, v, x, expected) -> None:
+    def test_bessel_kv_integer_orders(
+        self, v: float, x: float, expected: float
+    ) -> None:
         """Integer-order K_v(x) matches scipy."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = self.variant(bessel_kv)(v, x_arr)
@@ -430,7 +438,9 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         ("v0p5_x2", 0.5, 2.0, 0.11993777196806146),
         ("v0p5_x5", 0.5, 5.0, 0.0037766133746428825),
     )
-    def test_bessel_kv_half_order(self, v, x, expected) -> None:
+    def test_bessel_kv_half_order(
+        self, v: float, x: float, expected: float
+    ) -> None:
         """Half-order special case works."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = self.variant(bessel_kv)(v, x_arr)
@@ -445,7 +455,9 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         ("v1p5_x0p5", 1.5, 0.5, 3.225142810499761),
         ("v1p5_x2", 1.5, 2.0, 0.1799066579520922),
     )
-    def test_bessel_kv_non_integer_orders(self, v, x, expected) -> None:
+    def test_bessel_kv_non_integer_orders(
+        self, v: float, x: float, expected: float
+    ) -> None:
         """Non-integer K_v(x) matches scipy within approximation tolerance."""
         x_arr = jnp.array([x], dtype=jnp.float64)
         result = self.variant(bessel_kv)(v, x_arr)

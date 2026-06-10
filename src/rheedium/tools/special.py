@@ -19,7 +19,10 @@ SAFE_X: Final[float] = 2.0
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Compute modified Bessel function of the second kind, order zero."""
+    r"""Compute modified Bessel function of the second kind, order zero.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselK0`
+    """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
     t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)
@@ -73,7 +76,10 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    r"""Compute modified Bessel function of the second kind, order one."""
+    r"""Compute modified Bessel function of the second kind, order one.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselK1`
+    """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
     t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)
@@ -130,7 +136,10 @@ def _bessel_iv_series(
     x_val: Float[Array, "..."],
     dtype: jnp.dtype,
 ) -> Float[Array, "..."]:
-    """Compute I_v(x) using series expansion for Bessel function."""
+    """Compute I_v(x) using series expansion for Bessel function.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselIvSeries`
+    """
     x_half: Float[Array, "..."] = x_val / 2.0
     x_half_v: Float[Array, "..."] = jnp.power(x_half, v_order)
     x2_quarter: Float[Array, "..."] = (x_val * x_val) / 4.0
@@ -155,7 +164,10 @@ def _bessel_k0_series(
     x: Float[Array, "..."],
     dtype: jnp.dtype,
 ) -> Float[Array, "..."]:
-    """Compute K_0(x) using series expansion."""
+    """Compute K_0(x) using series expansion.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselK0Series`
+    """
     i0: Float[Array, "..."] = jax.scipy.special.i0(x)
     coeffs: Float[Array, "7"] = jnp.array(
         [
@@ -185,7 +197,10 @@ def _bessel_kn_recurrence(
     k0: Float[Array, "..."],
     k1: Float[Array, "..."],
 ) -> Float[Array, "..."]:
-    """Compute K_n(x) using recurrence relation."""
+    """Compute K_n(x) using recurrence relation.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKnRecurrence`
+    """
 
     def _compute_kn() -> Float[Array, "..."]:
         init: Tuple[Float[Array, "..."], Float[Array, "..."]] = (k0, k1)
@@ -221,7 +236,10 @@ def _bessel_kv_small_non_integer(
     x: Float[Array, "..."],
     dtype: jnp.dtype,
 ) -> Float[Array, "..."]:
-    """Compute K_v(x) for small x and non-integer v."""
+    """Compute K_v(x) for small x and non-integer v.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKvSmallNonInteger`
+    """
     error_bound: Float[Array, ""] = jnp.asarray(1e-10)
     iv_pos: Float[Array, "..."] = _bessel_iv_series(v, x, dtype)
     iv_neg: Float[Array, "..."] = _bessel_iv_series(-v, x, dtype)
@@ -239,7 +257,10 @@ def _bessel_kv_small_integer(
     x: Float[Array, "..."],
     dtype: jnp.dtype,
 ) -> Float[Array, "..."]:
-    """Compute K_v(x) for small x and integer v."""
+    """Compute K_v(x) for small x and integer v.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKvSmallInteger`
+    """
     v_int: Float[Array, ""] = jnp.round(v)
     n: Int[Array, ""] = jnp.abs(v_int).astype(jnp.int32)
 
@@ -266,7 +287,10 @@ def _bessel_kv_large(
     v: scalar_float,
     x: Float[Array, "..."],
 ) -> Float[Array, "..."]:
-    """Asymptotic expansion for K_v(x) for large x."""
+    """Asymptotic expansion for K_v(x) for large x.
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKvLarge`
+    """
     sqrt_term: Float[Array, "..."] = jnp.sqrt(jnp.pi / (2.0 * x))
     exp_term: Float[Array, "..."] = jnp.exp(-x)
 
@@ -293,7 +317,10 @@ def _bessel_kv_large(
 
 @jaxtyped(typechecker=beartype)
 def _bessel_k_half(x: Float[Array, "..."]) -> Float[Array, "..."]:
-    """Compute special case K_{1/2}(x) = sqrt(pi/(2x)) * exp(-x)."""
+    """Compute special case K_{1/2}(x) = sqrt(pi/(2x)) * exp(-x).
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKHalf`
+    """
     sqrt_pi_over_2x: Float[Array, "..."] = jnp.sqrt(jnp.pi / (2.0 * x))
     exp_neg_x: Float[Array, "..."] = jnp.exp(-x)
     return sqrt_pi_over_2x * exp_neg_x
@@ -302,7 +329,10 @@ def _bessel_k_half(x: Float[Array, "..."]) -> Float[Array, "..."]:
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
-    """Compute the modified Bessel function of the second kind K_v(x)."""
+    """Compute the modified Bessel function of the second kind K_v(x).
+
+    :see: :class:`tests.test_rheedium.test_tools.test_special.TestBesselKv`
+    """
     v = jnp.asarray(v)
     x = jnp.asarray(x)
     dtype: jnp.dtype = x.dtype

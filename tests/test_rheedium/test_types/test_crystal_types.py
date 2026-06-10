@@ -4,10 +4,13 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from absl.testing import parameterized
-from jax import tree_util
+from jax import Array, tree_util
 from jaxtyping import TypeCheckError
 
 from rheedium.types.crystal_types import (
+    CrystalStructure,
+    PotentialSlices,
+    XYZData,
     create_crystal_structure,
     create_ewald_data,
     create_potential_slices,
@@ -71,7 +74,9 @@ class TestCrystalStructure(chex.TestCase):
         ("triclinic_large", 100, "triclinic"),
         ("hexagonal_xlarge", 1000, "hexagonal"),
     )
-    def test_crystal_structure_various_cells(self, n_atoms, cell_type) -> None:
+    def test_crystal_structure_various_cells(
+        self, n_atoms: int, cell_type: str
+    ) -> None:
         """Test CrystalStructure with various cell types and atom counts."""
         cell_params = {
             "cubic": ([5.0, 5.0, 5.0], [90.0, 90.0, 90.0]),
@@ -115,11 +120,11 @@ class TestCrystalStructure(chex.TestCase):
         """Test JIT compilation of CrystalStructure operations."""
 
         def create_and_process(
-            frac_pos,
-            cart_pos,
-            lengths,
-            angles,
-        ):
+            frac_pos: Array,
+            cart_pos: Array,
+            lengths: Array,
+            angles: Array,
+        ) -> Array:
             crystal = create_crystal_structure(
                 frac_pos, cart_pos, lengths, angles
             )
@@ -145,7 +150,7 @@ class TestCrystalStructure(chex.TestCase):
         """Test that invalid inputs are properly handled during JIT compilation."""
         n_atoms = 5
 
-        def create_with_wrong_shape():
+        def create_with_wrong_shape() -> CrystalStructure:
             wrong_shape_frac = jnp.ones((n_atoms, 3))
             cart_positions = jnp.ones((n_atoms, 4))
             cell_lengths = jnp.array([3.0, 4.0, 5.0])
@@ -154,7 +159,7 @@ class TestCrystalStructure(chex.TestCase):
                 wrong_shape_frac, cart_positions, cell_lengths, cell_angles
             )
 
-        def create_with_mismatched_positions():
+        def create_with_mismatched_positions() -> CrystalStructure:
             frac_positions = jnp.ones((n_atoms, 4))
             cart_positions = jnp.ones((n_atoms + 1, 4))
             cell_lengths = jnp.array([3.0, 4.0, 5.0])
@@ -173,7 +178,7 @@ class TestCrystalStructure(chex.TestCase):
 class TestEwaldData(chex.TestCase, parameterized.TestCase):
     """Test suite for EwaldData PyTree and create_ewald_data validation."""
 
-    def _make_valid_ewald_kwargs(self, n_points=7):
+    def _make_valid_ewald_kwargs(self, n_points: int = 7) -> dict[str, Array]:
         """Build valid keyword arguments for create_ewald_data."""
         wavelength_ang = jnp.array(0.0859)
         k_magnitude = 2.0 * jnp.pi / wavelength_ang
@@ -267,7 +272,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         ("medium", 27),
         ("large", 125),
     )
-    def test_ewald_data_various_sizes(self, n_points) -> None:
+    def test_ewald_data_various_sizes(self, n_points: int) -> None:
         """Test EwaldData with various numbers of reciprocal points."""
         kwargs = self._make_valid_ewald_kwargs(n_points)
         create_fn = self.variant(create_ewald_data)
@@ -283,7 +288,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
     def test_ewald_data_jit_compilation(self) -> None:
         """Test JIT compilation of EwaldData operations."""
 
-        def create_and_process(**kw):
+        def create_and_process(**kw: object) -> Array:
             ewald = create_ewald_data(**kw)
             return jnp.sum(ewald.intensities) + ewald.wavelength_ang
 
@@ -393,7 +398,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         ("wide_slice", 50, 256, 512, 3.0),
     )
     def test_potential_slices_various_sizes(
-        self, n_slices, height, width, thickness
+        self, n_slices: int, height: int, width: int, thickness: float
     ) -> None:
         """Test PotentialSlices with various dimensions."""
         slices = jax.random.normal(self.rng, (n_slices, height, width))
@@ -412,7 +417,9 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
     def test_potential_slices_jit_compilation(self) -> None:
         """Test JIT compilation of PotentialSlices operations."""
 
-        def create_and_process(slices, thickness, x_cal, y_cal):
+        def create_and_process(
+            slices: Array, thickness: float, x_cal: float, y_cal: float
+        ) -> Array:
             potential = create_potential_slices(
                 slices, thickness, x_cal, y_cal
             )
@@ -432,20 +439,20 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
     def test_potential_slices_validation_errors(self) -> None:
         """Test that invalid inputs are properly handled during JIT compilation."""
 
-        def create_with_wrong_shape():
+        def create_with_wrong_shape() -> PotentialSlices:
             wrong_shape_slices = jnp.ones((10, 32))
             return jax.jit(create_potential_slices)(
                 wrong_shape_slices, 1.0, 0.1, 0.1
             )
 
-        def create_with_negative_thickness():
+        def create_with_negative_thickness() -> PotentialSlices:
             slices = jnp.ones((10, 32, 32))
             negative_thickness = -1.0
             return jax.jit(create_potential_slices)(
                 slices, negative_thickness, 0.1, 0.1
             )
 
-        def create_with_negative_calibration():
+        def create_with_negative_calibration() -> PotentialSlices:
             slices = jnp.ones((10, 32, 32))
             negative_calibration = -0.1
             return jax.jit(create_potential_slices)(
@@ -559,10 +566,10 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     )
     def test_xyz_data_optional_fields(
         self,
-        n_atoms,
-        include_lattice,
-        include_stress,
-        include_energy,
+        n_atoms: int,
+        include_lattice: bool,
+        include_stress: bool,
+        include_energy: bool,
     ) -> None:
         """Test XYZData with various combinations of optional fields."""
         positions = jax.random.normal(self.rng, (n_atoms, 3))
@@ -599,7 +606,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         lattice = jnp.eye(3) * 5.0
         xyz_data = create_xyz_data(positions, atomic_numbers, lattice=lattice)
 
-        def process_xyz_data(xyz):
+        def process_xyz_data(xyz: XYZData) -> Array:
             return jnp.sum(xyz.positions) + jnp.sum(xyz.atomic_numbers)
 
         jitted_fn = self.variant(process_xyz_data)
@@ -629,7 +636,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
-        def scale_positions(x):
+        def scale_positions(x: Array) -> Array:
             if isinstance(x, jnp.ndarray) and x.shape == positions.shape:
                 return x * 2.0
             return x

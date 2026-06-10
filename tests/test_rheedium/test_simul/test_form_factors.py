@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jax import Array
 from jax.test_util import check_grads
 
 from rheedium.inout import kirkland_potentials
@@ -68,7 +69,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("gold", 79),
         ("uranium", 92),
     )
-    def test_load_kirkland_parameters(self, atomic_number) -> None:
+    def test_load_kirkland_parameters(self, atomic_number: int) -> None:
         """Test loading Kirkland parameters for various elements.
 
         Verifies that Kirkland parameterization coefficients are loaded
@@ -158,7 +159,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("gold_low_q", 79, 0.1),
         ("gold_high_q", 79, 10.0),
     )
-    def test_kirkland_form_factor_single(self, atomic_number, q_mag) -> None:
+    def test_kirkland_form_factor_single(
+        self, atomic_number: int, q_mag: float
+    ) -> None:
         """Test Kirkland form factor for single q values.
 
         Validates the Kirkland electron scattering form factor calculation
@@ -280,7 +283,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("hydrogen_low_temp", 1, 100.0, False),
     )
     def test_get_mean_square_displacement(
-        self, atomic_number, temperature, is_surface
+        self, atomic_number: int, temperature: float, is_surface: bool
     ) -> None:
         """Test mean square displacement calculation.
 
@@ -354,7 +357,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("large_msd_high_q", 0.1, 5.0),
         ("zero_q", 0.01, 0.0),
     )
-    def test_debye_waller_factor_single(self, msd, q_mag) -> None:
+    def test_debye_waller_factor_single(
+        self, msd: float, q_mag: float
+    ) -> None:
         """Test Debye-Waller factor for single values.
 
         Validates the Debye-Waller factor calculation which accounts for
@@ -446,7 +451,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("hydrogen_low_temp", 1, 100.0, False),
     )
     def test_atomic_scattering_factor(
-        self, atomic_number, temperature, is_surface
+        self, atomic_number: int, temperature: float, is_surface: bool
     ) -> None:
         """Test combined atomic scattering factor.
 
@@ -542,7 +547,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         var_form_factor = self.variant(kirkland_form_factor)
 
         @jax.jit
-        def jitted_form_factor(z, q):
+        def jitted_form_factor(z: int, q: Array) -> Array:
             return var_form_factor(z, q)
 
         q_test = self.q_magnitudes
@@ -558,7 +563,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         f_vmapped = vmapped_ff(atomic_nums)
         chex.assert_shape(f_vmapped, (len(atomic_nums), 1))
 
-        def loss_fn(q):
+        def loss_fn(q: float) -> Array:
             f_val = var_form_factor(14, jnp.array(q))
             return jnp.squeeze(f_val)
 
@@ -600,7 +605,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         atomic_nums = jnp.array([6, 14, 29])
 
-        def scattering_fn(z, t):
+        def scattering_fn(z: Array, t: Array) -> Array:
             return var_scattering(z, q_single, t, False)
 
         nested_vmap = jax.vmap(
@@ -648,7 +653,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("random_vectors", jax.random.normal(jax.random.PRNGKey(0), (10, 3))),
         ("large_magnitude", jnp.array([[100.0, 0.0, 0.0]])),
     )
-    def test_q_vector_invariance(self, q_vectors) -> None:
+    def test_q_vector_invariance(self, q_vectors: Array) -> None:
         """Test that scattering depends only on |q|, not direction.
 
         Validates the fundamental isotropy of atomic scattering - the
@@ -683,7 +688,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_form_factor_grad_q(self) -> None:
         """Kirkland form factor gradient w.r.t. q is finite and smooth."""
 
-        def f(q):
+        def f(q: Array) -> Array:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
         grad_fn = jax.grad(f)
@@ -696,7 +701,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_debye_waller_grad_temperature(self) -> None:
         """DW factor gradient w.r.t. temperature is negative."""
 
-        def dw_at_temp(temp):
+        def dw_at_temp(temp: Array) -> Array:
             msd = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
@@ -712,7 +717,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_msd_grad_temperature(self) -> None:
         """MSD gradient w.r.t. temperature is positive."""
 
-        def msd_fn(temp):
+        def msd_fn(temp: Array) -> Array:
             return get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
@@ -724,7 +729,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_form_factor_grad_correct(self) -> None:
         """Kirkland form factor analytical grad matches finite diff."""
 
-        def f(q):
+        def f(q: Array) -> Array:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
         check_grads(jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
@@ -732,7 +737,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_debye_waller_grad_correct(self) -> None:
         """DW factor analytical grad matches finite diff."""
 
-        def f(temp):
+        def f(temp: Array) -> Array:
             msd = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
@@ -746,7 +751,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_msd_grad_correct(self) -> None:
         """MSD analytical grad matches finite diff."""
 
-        def f(temp):
+        def f(temp: Array) -> Array:
             return get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
@@ -760,7 +765,7 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
     def test_form_factor_vmap_consistent(self) -> None:
         """Batched form factor matches sequential per-element result."""
 
-        def f(q):
+        def f(q: Array) -> Array:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
         q_batch = jnp.array([0.5, 1.0, 2.0, 4.0])
@@ -771,7 +776,7 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
     def test_debye_waller_vmap_consistent(self) -> None:
         """Batched DW factor matches sequential evaluation."""
 
-        def f(temp):
+        def f(temp: Array) -> Array:
             msd = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )

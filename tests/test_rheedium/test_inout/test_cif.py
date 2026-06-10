@@ -445,7 +445,9 @@ class TestCifAtomicNumbers(chex.TestCase):
         ("iron", "Fe", 26),
         ("gold", "Au", 79),
     )
-    def test_element_atomic_numbers(self, element, expected_z) -> None:
+    def test_element_atomic_numbers(
+        self, element: str, expected_z: int
+    ) -> None:
         """Verify correct atomic numbers for various elements."""
         cif_content = f"""
 data_test

@@ -81,7 +81,7 @@ class TestLatticeToCellParams(chex.TestCase):
         ("medium_cubic", 5.43),
         ("large_cubic", 10.0),
     )
-    def test_various_cell_sizes(self, a) -> None:
+    def test_various_cell_sizes(self, a: float) -> None:
         """Test with various cell sizes."""
         lattice = jnp.eye(3) * a
         lengths, angles = lattice_to_cell_params(lattice)

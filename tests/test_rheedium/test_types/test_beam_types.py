@@ -3,8 +3,9 @@
 import chex
 import jax
 import jax.numpy as jnp
-from jax import tree_util
+from jax import Array, tree_util
 
+from rheedium.types import scalar_float
 from rheedium.types.beam_types import ElectronBeam, create_electron_beam
 
 
@@ -68,7 +69,7 @@ class TestElectronBeam(chex.TestCase):
         """ElectronBeam should be creatable inside jit."""
 
         @jax.jit
-        def make_beam(energy):
+        def make_beam(energy: Array) -> ElectronBeam:
             return create_electron_beam(energy_kev=energy)
 
         beam = make_beam(jnp.float64(25.0))
@@ -77,7 +78,7 @@ class TestElectronBeam(chex.TestCase):
     def test_electron_beam_vmap(self) -> None:
         """vmap over energy should produce batched beams."""
 
-        def make_beam(energy):
+        def make_beam(energy: Array) -> scalar_float:
             beam = create_electron_beam(energy_kev=energy)
             return beam.energy_kev
 
@@ -192,7 +193,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_grad_energy(self) -> None:
         """Gradient should flow through energy_kev."""
 
-        def loss(energy):
+        def loss(energy: Array) -> scalar_float:
             beam = create_electron_beam(energy_kev=energy)
             return beam.energy_kev**2
 
@@ -203,7 +204,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_grad_energy_spread(self) -> None:
         """Gradient should flow through energy_spread_ev."""
 
-        def loss(spread):
+        def loss(spread: Array) -> scalar_float:
             beam = create_electron_beam(energy_spread_ev=spread)
             return beam.energy_spread_ev**2
 
@@ -214,7 +215,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_grad_divergence(self) -> None:
         """Gradient should flow through angular_divergence_mrad."""
 
-        def loss(div):
+        def loss(div: Array) -> scalar_float:
             beam = create_electron_beam(angular_divergence_mrad=div)
             return beam.angular_divergence_mrad**2
 
@@ -225,7 +226,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_grad_coherence_lengths(self) -> None:
         """Gradient should flow through both coherence lengths."""
 
-        def loss(lt, ll):
+        def loss(lt: Array, ll: Array) -> scalar_float:
             beam = create_electron_beam(
                 coherence_length_transverse_angstrom=lt,
                 coherence_length_longitudinal_angstrom=ll,
@@ -246,7 +247,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_grad_spot_size(self) -> None:
         """Gradient should flow through spot_size_um."""
 
-        def loss(spot):
+        def loss(spot: Array) -> Array:
             beam = create_electron_beam(spot_size_um=spot)
             return jnp.sum(beam.spot_size_um**2)
 
@@ -258,7 +259,7 @@ class TestElectronBeamGradients(chex.TestCase):
     def test_jacrev_multi_param(self) -> None:
         """jacrev over (energy, spread) produces correct Jacobian."""
 
-        def loss(params):
+        def loss(params: Array) -> scalar_float:
             beam = create_electron_beam(
                 energy_kev=params[0],
                 energy_spread_ev=params[1],

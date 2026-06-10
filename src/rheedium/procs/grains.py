@@ -38,6 +38,8 @@ def grain_distribution_average(
 ) -> Float[Array, "H W"]:
     """Average domain patterns with continuous grain fractions.
 
+    :see: :class:`tests.test_rheedium.test_procs.test_grains.TestGrainDistributionAverage`
+
     Parameters
     ----------
     domain_patterns : Float[Array, "N_grains H W"]
@@ -84,6 +86,8 @@ def apply_misorientation_distribution(
     angular_width_deg: scalar_float,
 ) -> Float[Array, "H W"]:
     """Average explicit orientation samples with a smooth angle density.
+
+    :see: :class:`tests.test_rheedium.test_procs.test_grains.TestApplyMisorientationDistribution`
 
     Parameters
     ----------

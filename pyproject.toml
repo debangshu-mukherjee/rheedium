@@ -232,7 +232,6 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "D",      # Ignore all docstring issues
-    "ANN",    # Tests are intentionally annotation-free
     "S",      # Ignore security issues (tests may use assert, random, etc.)
     "PLR",    # Ignore refactoring suggestions
     "ARG",    # Ignore unused arguments

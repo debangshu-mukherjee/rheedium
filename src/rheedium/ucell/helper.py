@@ -41,6 +41,8 @@ def angle_in_degrees(
     As long as the vectors have the same number of elements,
     any dimensional vectors will work.
 
+    :see: :class:`tests.test_rheedium.test_ucell.test_helper.TestAngleInDegrees`
+
     Parameters
     ----------
     v1 : Float[Array, "n"]
@@ -91,6 +93,8 @@ def compute_lengths_angles(
     vectors: Float[Array, "3 3"],
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
     """Compute unit cell lengths and angles from lattice vectors.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_helper.TestComputeLengthsAngles`
 
     Parameters
     ----------
@@ -146,6 +150,8 @@ def parse_cif_and_scrape(
     Parse a CIF file, apply symmetry operations to obtain all equivalent
     atomic positions, and scrape (filter) atoms within specified thickness
     along a given zone axis.
+
+    :see: :class:`tests.test_rheedium.test_ucell.test_helper.TestParseCifAndScrape`
 
     Parameters
     ----------

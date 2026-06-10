@@ -447,6 +447,8 @@ def orientation_loss(
     image and the incoherently averaged forward model implied by an
     :class:`OrientationDistribution`.
 
+    :see: :class:`tests.test_rheedium.test_recon.test_orientation.TestOrientationLoss`
+
     Parameters
     ----------
     distribution : OrientationDistribution

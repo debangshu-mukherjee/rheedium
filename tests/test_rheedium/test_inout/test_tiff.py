@@ -13,6 +13,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import tifffile
+from jax import Array
 
 from rheedium.inout.tiff import (
     FrameMetadata,
@@ -29,9 +30,9 @@ W = 48
 
 
 def _write_multipage_tiff(
-    path,
-    n_frames=5,
-):
+    path: Path,
+    n_frames: int = 5,
+) -> np.ndarray:
     """Write a multi-page TIFF and return the data."""
     rng = np.random.default_rng(42)
     data = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(np.float32)
@@ -40,9 +41,9 @@ def _write_multipage_tiff(
 
 
 def _write_single_frame_tiffs(
-    dirpath,
-    n_frames=5,
-):
+    dirpath: Path,
+    n_frames: int = 5,
+) -> np.ndarray:
     """Write individual TIFF files to a directory and return data."""
     rng = np.random.default_rng(42)
     data = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(np.float32)
@@ -62,7 +63,7 @@ class TestLoadTiffSequence(chex.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmpdir.name)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Clean up temporary directory."""
         self._tmpdir.cleanup()
         super().tearDown()
@@ -155,7 +156,7 @@ class TestExtractFrameMetadata(chex.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmpdir.name)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Clean up temporary directory."""
         self._tmpdir.cleanup()
         super().tearDown()
@@ -325,7 +326,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmpdir.name)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Clean up temporary directory."""
         self._tmpdir.cleanup()
         super().tearDown()
@@ -433,7 +434,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_normalize(self) -> None:
         """jax.grad flows through normalize_sequence."""
 
-        def loss(scale):
+        def loss(scale: Array) -> Array:
             seq = jnp.linspace(1.0, 100.0, 3 * H * W).reshape(3, H, W) * scale
             result = normalize_sequence(seq)
             return jnp.sum(result)
@@ -444,7 +445,7 @@ class TestGradients(chex.TestCase):
     def test_grad_through_detect_beam_center(self) -> None:
         """jax.grad flows through detect_beam_center."""
 
-        def loss(peak_row):
+        def loss(peak_row: Array) -> Array:
             y = jnp.arange(H, dtype=jnp.float64)
             x = jnp.arange(W, dtype=jnp.float64)
             yy, xx = jnp.meshgrid(y, x, indexing="ij")

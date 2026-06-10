@@ -16,6 +16,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
+from jax import Array
 
 from rheedium.simul.multislice import (
     build_transmission_function,
@@ -25,7 +26,7 @@ from rheedium.simul.multislice import (
 from rheedium.simul.potential import crystal_projected_potential
 
 
-def _make_grid_params():
+def _make_grid_params() -> tuple[tuple[int, int], Array, float, float]:
     """Standard test grid parameters."""
     grid = (16, 16)
     cell = jnp.array([8.0, 8.0])
@@ -34,17 +35,17 @@ def _make_grid_params():
     return grid, cell, voltage, dz
 
 
-def _zero_potential(grid):
+def _zero_potential(grid: tuple[int, int]) -> Array:
     """Zero complex potential of given shape."""
     return jnp.zeros(grid, dtype=jnp.complex128)
 
 
 def _single_atom_potential(
-    grid,
-    cell,
-    z=14,
-    absorption=0.1,
-):
+    grid: tuple[int, int],
+    cell: Array,
+    z: int = 14,
+    absorption: float = 0.1,
+) -> Array:
     """Single atom at the cell center."""
     pos = jnp.array([[float(cell[0]) / 2.0, float(cell[1]) / 2.0, 0.0]])
     z_arr = jnp.array([z], dtype=jnp.int32)
@@ -225,7 +226,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         z_arr = jnp.array([14], dtype=jnp.int32)
         p = fresnel_propagator(grid, cell, voltage, dz)
 
-        def loss_fn(absorption):
+        def loss_fn(absorption: float) -> Array:
             v = crystal_projected_potential(
                 atomic_positions_angstrom=pos,
                 atomic_numbers=z_arr,
@@ -321,7 +322,7 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         ("lobato", "lobato"),
         ("kirkland", "kirkland"),
     )
-    def test_parameterization_switch(self, parameterization) -> None:
+    def test_parameterization_switch(self, parameterization: str) -> None:
         """Both parameterizations produce same-shape complex output."""
         grid, cell, _, _ = _make_grid_params()
         pos = jnp.array([[float(cell[0]) / 2.0, float(cell[1]) / 2.0, 0.0]])

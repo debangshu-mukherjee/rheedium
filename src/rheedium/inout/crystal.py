@@ -59,6 +59,8 @@ def _infer_lattice_from_positions(
     all atomic positions with specified padding. This is used as a fallback
     when XYZ files lack explicit lattice information.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_crystal.TestInferLatticeFromPositions`
+
     Parameters
     ----------
     positions : Float[Array, "N 3"]
@@ -123,6 +125,8 @@ def xyz_to_crystal(
     Transforms parsed XYZ file data into a CrystalStructure object suitable
     for RHEED simulation. Handles cell parameter determination from multiple
     sources with automatic fallback logic.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_crystal.TestXyzToCrystal`
 
     Parameters
     ----------
@@ -246,6 +250,8 @@ def parse_crystal(
     Provides a unified interface for loading crystal structures from common
     file formats. Auto-detects the format based on file extension or filename
     and delegates to the appropriate parser.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_crystal.TestParseCrystal`
 
     Parameters
     ----------

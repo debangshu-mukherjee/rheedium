@@ -13,7 +13,7 @@ import numpy as np
 _DATA_DIR = Path(__file__).resolve().parents[2] / "test_data" / "recon"
 
 
-def _load(name):
+def _load(name: str) -> dict[str, np.ndarray]:
     """Load a fixture .npz by name."""
     return dict(np.load(_DATA_DIR / name))
 
