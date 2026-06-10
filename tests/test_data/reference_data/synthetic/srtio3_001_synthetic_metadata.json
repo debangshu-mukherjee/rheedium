@@ -29,7 +29,7 @@
   ],
   "specular_position_px": [
     161.9999999999021,
-    15.035397511794097
+    15.035397511794098
   ],
   "voltage_kv": 18.0,
   "theta_deg": 1.6,
@@ -51,9 +51,9 @@
   "profile_band_half_width_px": 2,
   "notes": "Synthetic SrTiO3 detector image for audit-pipeline validation.",
   "dominant_peak_positions_px": [
-    153.0,
+    123.0,
     162.0,
-    171.0
+    214.0
   ],
   "reference_streak_fwhm_px": 5.0
 }
