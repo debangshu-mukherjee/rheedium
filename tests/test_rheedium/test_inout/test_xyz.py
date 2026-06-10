@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import chex
 import jax.numpy as jnp
@@ -132,9 +133,10 @@ class TestParseXyzMetadata(chex.TestCase):
         metadata = _parse_xyz_metadata(line)
 
         assert "properties" in metadata
-        assert len(metadata["properties"]) == 2
-        assert metadata["properties"][0]["name"] == "species"
-        assert metadata["properties"][1]["name"] == "pos"
+        properties = cast(list[dict[str, object]], metadata["properties"])
+        assert len(properties) == 2
+        assert properties[0]["name"] == "species"
+        assert properties[1]["name"] == "pos"
 
     def test_empty_line(self):
         """Empty line returns empty metadata."""

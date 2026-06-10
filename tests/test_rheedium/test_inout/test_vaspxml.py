@@ -394,8 +394,12 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             trajectory = parse_vaspxml_trajectory(xml_file)
 
             # Cell shrinks during relaxation
-            cell_a_0 = jnp.linalg.norm(trajectory[0].lattice[0])
-            cell_a_2 = jnp.linalg.norm(trajectory[2].lattice[0])
+            lattice_0 = trajectory[0].lattice
+            lattice_2 = trajectory[2].lattice
+            assert lattice_0 is not None
+            assert lattice_2 is not None
+            cell_a_0 = jnp.linalg.norm(lattice_0[0])
+            cell_a_2 = jnp.linalg.norm(lattice_2[0])
 
             assert cell_a_0 > cell_a_2  # Cell shrinks
 

@@ -116,6 +116,9 @@ Documentation = "https://rheedium.readthedocs.io/"
 requires = ["uv_build>=0.8.3,<0.9.0"]
 build-backend = "uv_build"
 
+[tool.uv]
+link-mode = "copy"
+
 [tool.uv.build-backend]
 module-name = "rheedium"
 namespace = true
@@ -281,7 +284,7 @@ require-yield-section-when-yielding = true
 root = ["src/"]
 
 [tool.ty.src]
-exclude = ["tests/"]
+include = ["src", "tests"]
 
 [tool.ty.rules]
 # ty does not understand beartype/jaxtyping decorator stacks, causing
@@ -298,6 +301,37 @@ invalid-assignment = "ignore"
 invalid-argument-type = "ignore"
 # beartype-wrapped functions lose attribute visibility for ty.
 unresolved-attribute = "ignore"
+
+# Pyright / Pylance (VS Code) configuration. Pylance does not understand the
+# jaxtyping + beartype + JAX idioms this project relies on, producing false
+# positives on otherwise-correct code. These rules mirror the [tool.ty.rules]
+# suppressions above so the editor matches the project's actual type checker.
+[tool.pyright]
+include = ["src"]
+exclude = ["**/__pycache__", ".venv", "build", "dist", "tests", "tutorials"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+# Re-annotating a parameter with a concrete jaxtyping shape inside the body
+# (e.g. `x: Float[Array, "n 3"] = jnp.asarray(x)`) is an intentional idiom.
+reportRedeclaration = "none"
+# jaxtyping scalar types (scalar_int, scalar_float) are unions of int|float|
+# Array, and JAX/NumPy operations return Array where a Python scalar is
+# declared. Same rationale as ty's invalid-assignment / invalid-argument-type.
+reportAssignmentType = "none"
+reportArgumentType = "none"
+# np.loadtxt(Optional[Path]) and jnp.linspace(num=scalar_int) overload
+# resolution fails in the stubs; beartype decorators also confuse call checks.
+reportCallIssue = "none"
+# jax.Device and jaxtyping dimension specifiers are seen as "variables" in
+# type expressions by Pyright's view of the JAX stubs.
+reportInvalidTypeForm = "none"
+# Namespace-package re-exports: names listed in __all__ are present in the
+# submodules but Pyright cannot resolve them through the namespace layout.
+reportUnsupportedDunderAll = "none"
+# beartype-wrapped functions lose attribute visibility, matching ty's
+# unresolved-attribute suppression.
+reportAttributeAccessIssue = "none"
 
 [tool.interrogate]
 fail-under = 90
