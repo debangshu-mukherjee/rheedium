@@ -22,7 +22,7 @@ from rheedium.types.crystal_types import create_crystal_structure
 class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     """Test suite for _compute_structure_factor_single internal function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures with simple crystal structures."""
         super().setUp()
 
@@ -44,7 +44,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
         self.temperature = 300.0
 
-    def test_single_atom_at_origin_g_zero(self):
+    def test_single_atom_at_origin_g_zero(self) -> None:
         """Test structure factor for single atom at origin with G=0.
 
         For a single atom at the origin, the phase factor exp(i*G*r) = 1
@@ -71,7 +71,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("g_z", jnp.array([0.0, 0.0, 1.0])),
         ("g_diagonal", jnp.array([1.0, 1.0, 1.0])),
     )
-    def test_single_atom_at_origin_nonzero_g(self, g_vector):
+    def test_single_atom_at_origin_nonzero_g(self, g_vector) -> None:
         """Test structure factor for single atom at origin with nonzero G.
 
         For atom at origin, phase factor is always 1 regardless of G,
@@ -90,7 +90,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         # Real part should be positive (form factor is positive)
         chex.assert_scalar_positive(float(jnp.real(sf)))
 
-    def test_structure_factor_decreases_with_g_magnitude(self):
+    def test_structure_factor_decreases_with_g_magnitude(self) -> None:
         """Test that |F(G)| decreases with increasing |G|.
 
         Due to the form factor and Debye-Waller factor both decreasing
@@ -119,7 +119,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         differences = jnp.diff(sf_magnitudes)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
-    def test_two_atom_interference(self):
+    def test_two_atom_interference(self) -> None:
         """Test interference effects between two atoms.
 
         For two atoms separated by distance d along x, G = (2*pi/d, 0, 0)
@@ -149,7 +149,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             float(jnp.abs(sf_constr) - jnp.abs(sf_destr))
         )
 
-    def test_multi_element_structure(self):
+    def test_multi_element_structure(self) -> None:
         """Test structure factor with multiple element types.
 
         Different atomic numbers should contribute different form factors.
@@ -172,7 +172,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("room_temp", 300.0),
         ("high_temp", 600.0),
     )
-    def test_temperature_dependence(self, temperature):
+    def test_temperature_dependence(self, temperature) -> None:
         """Test that structure factor depends on temperature.
 
         Higher temperature increases Debye-Waller damping, reducing |F(G)|.
@@ -189,7 +189,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(sf)
         chex.assert_scalar_positive(float(jnp.abs(sf)))
 
-    def test_temperature_ordering(self):
+    def test_temperature_ordering(self) -> None:
         """Test that higher temperature gives lower |F(G)| for G != 0."""
         g_vector = jnp.array([2.0, 0.0, 0.0])
 
@@ -209,7 +209,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         # Lower temperature should give larger |F(G)|
         chex.assert_scalar_positive(float(jnp.abs(sf_low) - jnp.abs(sf_high)))
 
-    def test_complex_phase_correctness(self):
+    def test_complex_phase_correctness(self) -> None:
         """Test that phase is computed correctly for off-origin atoms.
 
         For an atom at position r, the phase contribution is exp(i*G*r).
@@ -232,7 +232,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         self.assertLess(float(jnp.real(sf)), 0.0)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_jit_compatibility(self):
+    def test_jit_compatibility(self) -> None:
         """Test that _compute_structure_factor_single works with JIT."""
         var_compute_sf = self.variant(_compute_structure_factor_single)
 
@@ -248,7 +248,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(sf)
         chex.assert_scalar_positive(float(jnp.abs(sf)))
 
-    def test_vmap_over_g_vectors(self):
+    def test_vmap_over_g_vectors(self) -> None:
         """Test vmapping _compute_structure_factor_single over G vectors."""
         g_vectors = jnp.array(
             [
@@ -274,7 +274,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(sfs, (5,))
         chex.assert_tree_all_finite(sfs)
 
-    def test_gradient_flow(self):
+    def test_gradient_flow(self) -> None:
         """Test that gradients flow through structure factor calculation."""
 
         def loss_fn(temperature):
@@ -298,7 +298,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
     """Test suite for build_ewald_data public function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures with a simple crystal structure."""
         super().setUp()
         self.crystal = self._create_simple_cubic_crystal()
@@ -321,7 +321,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    def test_basic_ewald_data_creation(self):
+    def test_basic_ewald_data_creation(self) -> None:
         """Test basic EwaldData creation with minimal parameters."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -342,7 +342,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(ewald.structure_factors)
         chex.assert_tree_all_finite(ewald.intensities)
 
-    def test_wavelength_calculation(self):
+    def test_wavelength_calculation(self) -> None:
         """Test that wavelength is correctly computed from voltage."""
         ewald_10kv = build_ewald_data(
             crystal=self.crystal,
@@ -368,7 +368,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         self.assertGreater(float(ewald_10kv.wavelength_ang), 0.05)
         self.assertLess(float(ewald_10kv.wavelength_ang), 0.15)
 
-    def test_k_magnitude_relation(self):
+    def test_k_magnitude_relation(self) -> None:
         """Test that k_magnitude = 2*pi / wavelength."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -381,7 +381,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         expected_k = 2.0 * jnp.pi / ewald.wavelength_ang
         chex.assert_trees_all_close(ewald.k_magnitude, expected_k, rtol=1e-10)
 
-    def test_sphere_radius_equals_k_magnitude(self):
+    def test_sphere_radius_equals_k_magnitude(self) -> None:
         """Test that Ewald sphere radius equals k magnitude."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -400,7 +400,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         ("medium_grid", 2, 2, 1, 75),  # 5*5*3 = 75
         ("asymmetric", 3, 2, 1, 105),  # 7*5*3 = 105
     )
-    def test_grid_size(self, hmax, kmax, lmax, expected_n):
+    def test_grid_size(self, hmax, kmax, lmax, expected_n) -> None:
         """Test that the correct number of G vectors are generated."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -416,7 +416,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(ewald.structure_factors, (expected_n,))
         chex.assert_shape(ewald.intensities, (expected_n,))
 
-    def test_intensities_are_squared_magnitudes(self):
+    def test_intensities_are_squared_magnitudes(self) -> None:
         """Test that intensities = |structure_factors|^2."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -431,7 +431,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             ewald.intensities, expected_intensities, rtol=1e-10
         )
 
-    def test_intensities_nonnegative(self):
+    def test_intensities_nonnegative(self) -> None:
         """Test that all intensities are non-negative."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -443,7 +443,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_equal(jnp.all(ewald.intensities >= 0), True)
 
-    def test_g_magnitudes_nonnegative(self):
+    def test_g_magnitudes_nonnegative(self) -> None:
         """Test that all G magnitudes are non-negative."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -455,7 +455,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_equal(jnp.all(ewald.g_magnitudes >= 0), True)
 
-    def test_g_magnitude_consistency(self):
+    def test_g_magnitude_consistency(self) -> None:
         """Test that g_magnitudes matches norm of g_vectors."""
         ewald = build_ewald_data(
             crystal=self.crystal,
@@ -470,7 +470,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             ewald.g_magnitudes, computed_mags, rtol=1e-10
         )
 
-    def test_temperature_affects_intensities(self):
+    def test_temperature_affects_intensities(self) -> None:
         """Test that temperature affects structure factors/intensities."""
         ewald_low_t = build_ewald_data(
             crystal=self.crystal,
@@ -499,7 +499,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
     """Test suite for ewald_allowed_reflections function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures with pre-computed EwaldData."""
         super().setUp()
         self.crystal = self._create_simple_cubic_crystal()
@@ -526,7 +526,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    def test_basic_reflection_finding(self):
+    def test_basic_reflection_finding(self) -> None:
         """Test basic reflection finding with default parameters."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -539,7 +539,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(k_out, (n, 3))
         chex.assert_shape(intensities, (n,))
 
-    def test_upward_scattering_only(self):
+    def test_upward_scattering_only(self) -> None:
         """Test that only upward scattering reflections are returned."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -554,7 +554,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         if valid_k_out.shape[0] > 0:
             chex.assert_trees_all_equal(jnp.all(valid_k_out[:, 2] > 0), True)
 
-    def test_intensities_nonnegative(self):
+    def test_intensities_nonnegative(self) -> None:
         """Test that all returned intensities are non-negative."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -569,7 +569,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("theta_2", 2.0),
         ("theta_5", 5.0),
     )
-    def test_different_theta_angles(self, theta_deg):
+    def test_different_theta_angles(self, theta_deg) -> None:
         """Test reflection finding at different incidence angles."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -585,7 +585,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("phi_45", 45.0),
         ("phi_90", 90.0),
     )
-    def test_different_phi_angles(self, phi_deg):
+    def test_different_phi_angles(self, phi_deg) -> None:
         """Test reflection finding at different azimuthal angles."""
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -596,7 +596,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(k_out)
         chex.assert_tree_all_finite(intensities)
 
-    def test_tolerance_effect(self):
+    def test_tolerance_effect(self) -> None:
         """Test that larger tolerance allows more reflections."""
         _, _, intensities_tight = ewald_allowed_reflections(
             ewald=self.ewald,
@@ -617,7 +617,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
         self.assertGreaterEqual(int(n_loose), int(n_tight))
 
-    def test_finite_domain_mode(self):
+    def test_finite_domain_mode(self) -> None:
         """Test finite domain mode with domain_extent_ang parameter."""
         domain = jnp.array([100.0, 100.0, 50.0])
 
@@ -632,7 +632,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-    def test_finite_domain_overlap_weighting(self):
+    def test_finite_domain_overlap_weighting(self) -> None:
         """Test that finite domain mode applies overlap weighting."""
         domain = jnp.array([50.0, 50.0, 25.0])
 
@@ -654,7 +654,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities_binary)
         chex.assert_tree_all_finite(intensities_finite)
 
-    def test_k_out_is_k_in_plus_g(self):
+    def test_k_out_is_k_in_plus_g(self) -> None:
         """Test that k_out = k_in + G for allowed reflections."""
         theta_deg = 2.0
         phi_deg = 0.0

@@ -9,19 +9,19 @@ from rheedium.tools.quadrature import gauss_hermite_nodes_weights
 class TestGaussHermiteNodesWeights(chex.TestCase):
     """Tests for Gauss-Hermite quadrature computation."""
 
-    def test_correct_count(self):
+    def test_correct_count(self) -> None:
         """Returned arrays have the requested number of points."""
         for n in [3, 5, 7, 9]:
             nodes, weights = gauss_hermite_nodes_weights(n)
             chex.assert_shape(nodes, (n,))
             chex.assert_shape(weights, (n,))
 
-    def test_weights_positive(self):
+    def test_weights_positive(self) -> None:
         """All Gauss-Hermite weights are positive."""
         _, weights = gauss_hermite_nodes_weights(7)
         assert jnp.all(weights > 0.0)
 
-    def test_nodes_symmetric(self):
+    def test_nodes_symmetric(self) -> None:
         """Nodes are symmetric about zero."""
         nodes, _ = gauss_hermite_nodes_weights(7)
         sorted_nodes = jnp.sort(nodes)
@@ -31,7 +31,7 @@ class TestGaussHermiteNodesWeights(chex.TestCase):
             atol=1e-12,
         )
 
-    def test_weights_sum(self):
+    def test_weights_sum(self) -> None:
         """Weights sum to sqrt(pi)."""
         _, weights = gauss_hermite_nodes_weights(7)
         chex.assert_trees_all_close(

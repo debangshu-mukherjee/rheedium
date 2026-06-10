@@ -61,7 +61,7 @@ def _single_atom_potential(
 class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
     """Tests for build_transmission_function."""
 
-    def test_zero_potential_gives_unity(self):
+    def test_zero_potential_gives_unity(self) -> None:
         """T = 1 everywhere when V = 0."""
         grid, _, voltage, _ = _make_grid_params()
         v = _zero_potential(grid)
@@ -71,7 +71,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
             t, jnp.ones(grid, dtype=jnp.complex128), atol=1e-12
         )
 
-    def test_modulus_bounded_by_one(self):
+    def test_modulus_bounded_by_one(self) -> None:
         """|T| <= 1 everywhere (absorption only removes amplitude)."""
         grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -79,7 +79,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         modulus = jnp.abs(t)
         assert float(jnp.max(modulus)) <= 1.0 + 1e-6
 
-    def test_real_potential_gives_unit_modulus(self):
+    def test_real_potential_gives_unit_modulus(self) -> None:
         """Pure-real V (no absorption) gives |T| = 1 everywhere."""
         grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.0)
@@ -87,7 +87,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         modulus = jnp.abs(t)
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-6)
 
-    def test_absorption_reduces_modulus(self):
+    def test_absorption_reduces_modulus(self) -> None:
         """Higher absorption fraction lowers |T|."""
         grid, cell, voltage, _ = _make_grid_params()
         v_low = _single_atom_potential(grid, cell, absorption=0.05)
@@ -96,7 +96,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         t_high = build_transmission_function(v_high, voltage)
         assert float(jnp.min(jnp.abs(t_high))) < float(jnp.min(jnp.abs(t_low)))
 
-    def test_jit_matches_eager(self):
+    def test_jit_matches_eager(self) -> None:
         """JIT-compiled output matches eager output."""
         grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -108,7 +108,9 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         compiled = jit_fn(v, voltage)
         chex.assert_trees_all_close(eager, compiled, atol=1e-10)
 
-    def test_explicit_projected_potential_keyword_matches_positional(self):
+    def test_explicit_projected_potential_keyword_matches_positional(
+        self,
+    ) -> None:
         """The explicit projected-potential keyword matches positional use."""
         grid, cell, voltage, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -123,14 +125,14 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
 class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
     """Tests for fresnel_propagator."""
 
-    def test_unitarity(self):
+    def test_unitarity(self) -> None:
         """|P(qx, qy)| = 1 everywhere — propagation is unitary."""
         grid, cell, voltage, dz = _make_grid_params()
         p = fresnel_propagator(grid, cell, voltage, dz)
         modulus = jnp.abs(p)
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-10)
 
-    def test_zero_thickness_is_identity(self):
+    def test_zero_thickness_is_identity(self) -> None:
         """dz = 0 gives P = 1 (no propagation)."""
         grid, cell, voltage, _ = _make_grid_params()
         p = fresnel_propagator(grid, cell, voltage, 0.0)
@@ -138,14 +140,14 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
             p, jnp.ones(grid, dtype=jnp.complex128), atol=1e-12
         )
 
-    def test_dc_component_is_unity(self):
+    def test_dc_component_is_unity(self) -> None:
         """At qx = qy = 0 the propagator equals 1 for any dz."""
         grid, cell, voltage, dz = _make_grid_params()
         p = fresnel_propagator(grid, cell, voltage, dz)
         chex.assert_trees_all_close(float(jnp.real(p[0, 0])), 1.0, atol=1e-12)
         chex.assert_trees_all_close(float(jnp.imag(p[0, 0])), 0.0, atol=1e-12)
 
-    def test_shape(self):
+    def test_shape(self) -> None:
         """Output shape matches grid."""
         grid, cell, voltage, dz = _make_grid_params()
         p = fresnel_propagator(grid, cell, voltage, dz)
@@ -155,7 +157,7 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
 class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
     """Tests for multislice_one_step."""
 
-    def test_vacuum_preserves_norm(self):
+    def test_vacuum_preserves_norm(self) -> None:
         """Zero potential leaves |psi| unchanged (free propagation)."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _zero_potential(grid)
@@ -167,7 +169,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         norm_out = float(jnp.sum(jnp.abs(psi_out) ** 2))
         chex.assert_trees_all_close(norm_out, norm_in, rtol=1e-6)
 
-    def test_absorption_reduces_norm(self):
+    def test_absorption_reduces_norm(self) -> None:
         """Non-zero absorption reduces wavefunction norm."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.3)
@@ -179,7 +181,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         norm_out = float(jnp.sum(jnp.abs(psi_out) ** 2))
         assert norm_out < norm_in
 
-    def test_norm_monotonic_with_depth(self):
+    def test_norm_monotonic_with_depth(self) -> None:
         """Norm decreases monotonically over many absorbing slices."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.2)
@@ -193,7 +195,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         for i in range(len(norms) - 1):
             assert norms[i + 1] <= norms[i] + 1e-6
 
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Output shape equals input shape."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -203,7 +205,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         psi_out = multislice_one_step(psi_in, t, p)
         chex.assert_shape(psi_out, grid)
 
-    def test_jit_compilation(self):
+    def test_jit_compilation(self) -> None:
         """JIT-compiled multislice step matches eager output."""
         grid, cell, voltage, dz = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -215,7 +217,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         compiled = jit_step(psi_in, t, p)
         chex.assert_trees_all_close(eager, compiled, atol=1e-10)
 
-    def test_grad_flows_through_potential(self):
+    def test_grad_flows_through_potential(self) -> None:
         """jax.grad through multislice w.r.t. absorption is finite."""
         grid, cell, voltage, dz = _make_grid_params()
         psi_in = jnp.ones(grid, dtype=jnp.complex128)
@@ -244,25 +246,25 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
 class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
     """Tests for crystal_projected_potential."""
 
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Output shape matches grid_shape."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
         chex.assert_shape(v, grid)
 
-    def test_output_is_complex(self):
+    def test_output_is_complex(self) -> None:
         """Output dtype is complex."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
         assert jnp.iscomplexobj(v)
 
-    def test_real_part_nonnegative(self):
+    def test_real_part_nonnegative(self) -> None:
         """Real part of V is non-negative for all atoms."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
         assert float(jnp.min(jnp.real(v))) >= -1e-6
 
-    def test_imag_part_proportional_to_real(self):
+    def test_imag_part_proportional_to_real(self) -> None:
         """V_abs = absorption_fraction * V_real."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.2)
@@ -270,13 +272,13 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         v_imag = jnp.imag(v)
         chex.assert_trees_all_close(v_imag, 0.2 * v_real, atol=1e-6)
 
-    def test_zero_absorption_gives_real_potential(self):
+    def test_zero_absorption_gives_real_potential(self) -> None:
         """absorption_fraction=0 yields purely real potential."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell, absorption=0.0)
         chex.assert_trees_all_close(jnp.imag(v), jnp.zeros(grid), atol=1e-12)
 
-    def test_higher_z_gives_stronger_potential(self):
+    def test_higher_z_gives_stronger_potential(self) -> None:
         """Heavier atom (Z=82) gives higher peak potential than Z=6."""
         grid, cell, _, _ = _make_grid_params()
         v_carbon = _single_atom_potential(grid, cell, z=6)
@@ -285,7 +287,7 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         peak_pb = float(jnp.max(jnp.real(v_lead)))
         assert peak_pb > peak_c
 
-    def test_two_atoms_gives_two_peaks(self):
+    def test_two_atoms_gives_two_peaks(self) -> None:
         """Two atoms produce two peaks in the potential."""
         grid, cell, _, _ = _make_grid_params()
         pos = jnp.array(
@@ -308,7 +310,7 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert float(col_at_y4[grid[0] // 4]) > 0.0
         assert float(col_at_y4[3 * grid[0] // 4]) > 0.0
 
-    def test_finite_everywhere(self):
+    def test_finite_everywhere(self) -> None:
         """Output is finite (no NaN, no Inf)."""
         grid, cell, _, _ = _make_grid_params()
         v = _single_atom_potential(grid, cell)
@@ -319,7 +321,7 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         ("lobato", "lobato"),
         ("kirkland", "kirkland"),
     )
-    def test_parameterization_switch(self, parameterization):
+    def test_parameterization_switch(self, parameterization) -> None:
         """Both parameterizations produce same-shape complex output."""
         grid, cell, _, _ = _make_grid_params()
         pos = jnp.array([[float(cell[0]) / 2.0, float(cell[1]) / 2.0, 0.0]])

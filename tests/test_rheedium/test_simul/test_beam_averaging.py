@@ -59,7 +59,7 @@ def _dummy_joint_sim(
 class TestAngularDivergenceAverage(chex.TestCase):
     """Tests for angular divergence averaging."""
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape matches single-pattern shape."""
         avg = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
@@ -70,7 +70,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
         )
         chex.assert_shape(avg, (H, W))
 
-    def test_nonnegative(self):
+    def test_nonnegative(self) -> None:
         """All pixels in the averaged pattern are non-negative."""
         avg = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
@@ -81,7 +81,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
         )
         self.assertTrue(jnp.all(avg >= 0.0))
 
-    def test_broader_than_single(self):
+    def test_broader_than_single(self) -> None:
         """Averaged pattern is broader than single-angle pattern."""
         single = _dummy_angle_sim(jnp.float64(0.035), jnp.float64(0.0))
         avg = angular_divergence_average(
@@ -99,7 +99,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
         avg_fwhm = int(jnp.sum(avg_row > avg_half_max))
         self.assertGreaterEqual(avg_fwhm, single_fwhm)
 
-    def test_zero_divergence_matches_single(self):
+    def test_zero_divergence_matches_single(self) -> None:
         """Zero divergence reproduces the single-angle pattern."""
         single = _dummy_angle_sim(jnp.float64(0.035), jnp.float64(0.0))
         avg = angular_divergence_average(
@@ -111,7 +111,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
         )
         chex.assert_trees_all_close(avg, single, atol=1e-10)
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
         avg = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
@@ -125,7 +125,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
 class TestEnergySpreadAverage(chex.TestCase):
     """Tests for energy spread averaging."""
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape matches single-energy pattern shape."""
         avg = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
@@ -135,7 +135,7 @@ class TestEnergySpreadAverage(chex.TestCase):
         )
         chex.assert_shape(avg, (H, W))
 
-    def test_nonnegative(self):
+    def test_nonnegative(self) -> None:
         """All pixels in the averaged pattern are non-negative."""
         avg = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
@@ -144,14 +144,14 @@ class TestEnergySpreadAverage(chex.TestCase):
         )
         self.assertTrue(jnp.all(avg >= 0.0))
 
-    def test_shifts_streaks(self):
+    def test_shifts_streaks(self) -> None:
         """Different energies produce slightly different patterns."""
         pattern_low = _dummy_energy_sim(jnp.float64(19.5))
         pattern_high = _dummy_energy_sim(jnp.float64(20.5))
         diff = jnp.max(jnp.abs(pattern_low - pattern_high))
         self.assertTrue(diff > 1e-6)
 
-    def test_zero_spread_matches_single(self):
+    def test_zero_spread_matches_single(self) -> None:
         """Zero energy spread reproduces the single-energy pattern."""
         single = _dummy_energy_sim(jnp.float64(20.0))
         avg = energy_spread_average(
@@ -162,7 +162,7 @@ class TestEnergySpreadAverage(chex.TestCase):
         )
         chex.assert_trees_all_close(avg, single, atol=1e-10)
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
         avg = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
@@ -175,7 +175,7 @@ class TestEnergySpreadAverage(chex.TestCase):
 class TestCoherenceEnvelope(chex.TestCase):
     """Tests for coherence envelope damping."""
 
-    def test_damps_high_q(self):
+    def test_damps_high_q(self) -> None:
         """High-q amplitude is reduced more than low-q."""
         amp = jnp.ones((H, W), dtype=jnp.complex128)
         q_par_low = jnp.full((H, W), 0.01)
@@ -197,7 +197,7 @@ class TestCoherenceEnvelope(chex.TestCase):
         )
         self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
 
-    def test_zero_q_unchanged(self):
+    def test_zero_q_unchanged(self) -> None:
         """At q=0 the envelope is unity (no damping)."""
         amp = jnp.ones((H, W), dtype=jnp.complex128) * (2.0 + 1.0j)
         q_par = jnp.zeros((H, W))
@@ -207,7 +207,7 @@ class TestCoherenceEnvelope(chex.TestCase):
         )
         chex.assert_trees_all_close(damped, amp, atol=1e-14)
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape matches input amplitude shape."""
         amp = jnp.ones((H, W), dtype=jnp.complex128)
         q_par = jnp.ones((H, W)) * 0.1
@@ -217,7 +217,7 @@ class TestCoherenceEnvelope(chex.TestCase):
         )
         chex.assert_shape(damped, (H, W))
 
-    def test_longitudinal_damping(self):
+    def test_longitudinal_damping(self) -> None:
         """Longitudinal coherence damps along q_z."""
         amp = jnp.ones((H, W), dtype=jnp.complex128)
         q_par = jnp.zeros((H, W))
@@ -231,7 +231,7 @@ class TestCoherenceEnvelope(chex.TestCase):
         )
         self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
 
-    def test_longer_coherence_damps_less(self):
+    def test_longer_coherence_damps_less(self) -> None:
         """Longer coherence lengths preserve more high-q amplitude."""
         amp = jnp.ones((H, W), dtype=jnp.complex128)
         q_par = jnp.full((H, W), 0.2)
@@ -250,19 +250,19 @@ class TestCoherenceEnvelope(chex.TestCase):
 class TestDetectorPsfConvolve(chex.TestCase):
     """Tests for detector PSF convolution."""
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape equals input shape."""
         img = jnp.ones((H, W))
         blurred = detector_psf_convolve(img, jnp.float64(1.0))
         chex.assert_shape(blurred, (H, W))
 
-    def test_zero_sigma_unchanged(self):
+    def test_zero_sigma_unchanged(self) -> None:
         """Zero PSF sigma leaves image unchanged."""
         img = jnp.eye(H, W)
         blurred = detector_psf_convolve(img, jnp.float64(0.0))
         chex.assert_trees_all_close(blurred, img, atol=1e-12)
 
-    def test_energy_conserved(self):
+    def test_energy_conserved(self) -> None:
         """Total intensity is preserved to within 1%."""
         img = jnp.eye(H, W) * 100.0
         blurred = detector_psf_convolve(img, jnp.float64(1.5))
@@ -271,13 +271,13 @@ class TestDetectorPsfConvolve(chex.TestCase):
         relative_error = jnp.abs(blurred_sum - original_sum) / original_sum
         self.assertTrue(relative_error < 0.01)
 
-    def test_nonnegative(self):
+    def test_nonnegative(self) -> None:
         """Output is non-negative."""
         img = jnp.ones((H, W))
         blurred = detector_psf_convolve(img, jnp.float64(2.0))
         self.assertTrue(jnp.all(blurred >= 0.0))
 
-    def test_blurs_delta(self):
+    def test_blurs_delta(self) -> None:
         """PSF spreads a delta function into a wider peak."""
         img = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1.0)
@@ -285,7 +285,7 @@ class TestDetectorPsfConvolve(chex.TestCase):
         self.assertTrue(blurred[H // 2, W // 2] < 1.0)
         self.assertTrue(blurred[H // 2 + 1, W // 2] > 0.0)
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
         img = jnp.ones((H, W)) * 50.0
         blurred = detector_psf_convolve(img, jnp.float64(1.0))
@@ -295,7 +295,7 @@ class TestDetectorPsfConvolve(chex.TestCase):
 class TestInstrumentBroadenedPattern(chex.TestCase):
     """Tests for the full instrument-broadened pipeline."""
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape matches pattern shape."""
         pattern = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
@@ -308,7 +308,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         )
         chex.assert_shape(pattern, (H, W))
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in final output."""
         pattern = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
@@ -321,7 +321,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         )
         chex.assert_tree_all_finite(pattern)
 
-    def test_nonnegative(self):
+    def test_nonnegative(self) -> None:
         """All pixels in the final pattern are non-negative."""
         pattern = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
@@ -334,7 +334,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         )
         self.assertTrue(jnp.all(pattern >= 0.0))
 
-    def test_jit_agrees(self):
+    def test_jit_agrees(self) -> None:
         """JIT and non-JIT results agree to 1e-4."""
         kwargs = dict(
             simulate_fn=_dummy_joint_sim,
@@ -362,7 +362,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 class TestGradients(chex.TestCase):
     """Gradient tests for beam averaging functions."""
 
-    def test_grad_through_angular_average(self):
+    def test_grad_through_angular_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. divergence is finite."""
 
         def loss(divergence):
@@ -378,7 +378,7 @@ class TestGradients(chex.TestCase):
         grad_val = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
 
-    def test_grad_through_energy_average(self):
+    def test_grad_through_energy_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. spread is finite."""
 
         def loss(spread):
@@ -393,7 +393,7 @@ class TestGradients(chex.TestCase):
         grad_val = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
 
-    def test_grad_through_psf_convolve(self):
+    def test_grad_through_psf_convolve(self) -> None:
         """jax.grad of sum(convolved) w.r.t. psf_sigma is finite."""
 
         def loss(sigma):
@@ -404,7 +404,7 @@ class TestGradients(chex.TestCase):
         grad_val = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_val)
 
-    def test_grad_through_coherence_envelope(self):
+    def test_grad_through_coherence_envelope(self) -> None:
         """jax.grad of sum(|damped|^2) w.r.t. coherence length is finite."""
 
         def loss(l_t):
@@ -423,7 +423,7 @@ class TestGradients(chex.TestCase):
             "Gradient through coherence envelope should be non-zero",
         )
 
-    def test_grad_through_full_pipeline(self):
+    def test_grad_through_full_pipeline(self) -> None:
         """jax.grad flows through the full instrument pipeline."""
 
         def loss(divergence):

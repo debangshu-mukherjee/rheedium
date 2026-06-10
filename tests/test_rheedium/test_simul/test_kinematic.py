@@ -45,7 +45,7 @@ class TestKinematicWavelength(chex.TestCase):
         ("20kV", 20.0, 0.0859),
         ("30kV", 30.0, 0.0698),
     )
-    def test_wavelength_values(self, voltage_kv, expected_lambda):
+    def test_wavelength_values(self, voltage_kv, expected_lambda) -> None:
         """Test wavelength calculation matches expected values."""
         var_wavelength = self.variant(kinematic_wavelength)
 
@@ -60,7 +60,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
     """Test incident wavevector construction."""
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_incident_wavevector_magnitude(self):
+    def test_incident_wavevector_magnitude(self) -> None:
         """Test |k_in| = 2π/λ."""
         var_k_in = self.variant(kinematic_incident_wavevector)
 
@@ -76,7 +76,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_incident_wavevector_components(self):
+    def test_incident_wavevector_components(self) -> None:
         """Test k_in = k·[cos(θ), 0, -sin(θ)] (beam going into surface)."""
         var_k_in = self.variant(kinematic_incident_wavevector)
 
@@ -103,7 +103,7 @@ class TestKinematicEwaldSphere(chex.TestCase):
     """Test Ewald sphere construction."""
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_sphere_elastic_scattering(self):
+    def test_ewald_sphere_elastic_scattering(self) -> None:
         """Test that all k_out satisfy |k_out| ≈ |k_in|."""
         var_ewald = self.variant(kinematic_ewald_sphere)
 
@@ -155,7 +155,7 @@ class TestDetectorProjection(chex.TestCase):
     """
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_detector_projection_roundtrip(self):
+    def test_detector_projection_roundtrip(self) -> None:
         """Test that ray-tracing projection gives reasonable coordinates.
 
         The simplified projection uses: x_d = k_y * d / k_x, y_d = k_z * d / k_x
@@ -182,7 +182,7 @@ class TestDetectorProjection(chex.TestCase):
         chex.assert_trees_all_close(y_d, expected_y, rtol=1e-4)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_detector_projection_specular(self):
+    def test_detector_projection_specular(self) -> None:
         """Test projection for near-specular reflection.
 
         Specular: k_out_z ≈ |k_in_z| but positive (upward).
@@ -212,7 +212,7 @@ class TestKinematicStructureFactor(chex.TestCase):
     """Test structure factor calculation."""
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_structure_factor_single_atom(self):
+    def test_structure_factor_single_atom(self) -> None:
         """Test structure factor for single atom at origin."""
         var_sf = self.variant(kinematic_structure_factor)
 
@@ -228,7 +228,7 @@ class TestKinematicStructureFactor(chex.TestCase):
         chex.assert_trees_all_close(intensity, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_structure_factor_systematic_absence(self):
+    def test_structure_factor_systematic_absence(self) -> None:
         """Test that (100) is forbidden for diamond structure."""
         var_sf = self.variant(kinematic_structure_factor)
 
@@ -253,7 +253,7 @@ class TestKinematicStructureFactor(chex.TestCase):
 class TestKinematicSimulator(chex.TestCase):
     """Test complete kinematic simulator."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test crystal."""
         super().setUp()
 
@@ -271,7 +271,7 @@ class TestKinematicSimulator(chex.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-    def test_kinematic_spot_simulator_runs(self):
+    def test_kinematic_spot_simulator_runs(self) -> None:
         """Test that simulator runs without errors."""
         # Note: lmax=5 needed to get upward scattering at θ=2° grazing angle
         # because G_z must exceed |k_in_z| ≈ k0*sin(2°) ≈ 2.5 1/Å
@@ -300,7 +300,7 @@ class TestKinematicSimulator(chex.TestCase):
         # Check intensities are positive
         assert jnp.all(pattern.intensities >= 0.0)
 
-    def test_kinematic_spot_simulator_detector_coords(self):
+    def test_kinematic_spot_simulator_detector_coords(self) -> None:
         """Test detector coordinates are reasonable."""
         pattern = kinematic_spot_simulator(
             crystal=self.crystal,
@@ -325,7 +325,7 @@ class TestMakeEwaldSphere(chex.TestCase):
     """Test Ewald sphere generation."""
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ewald_sphere_geometry(self):
+    def test_ewald_sphere_geometry(self) -> None:
         """Test center and radius calculation."""
         var_make_sphere = self.variant(make_ewald_sphere)
 
@@ -395,7 +395,7 @@ class TestMgOExtinctionRules(chex.TestCase):
         )
         return float(intensity)
 
-    def test_mgo_allowed_reflections_nonzero(self):
+    def test_mgo_allowed_reflections_nonzero(self) -> None:
         """Test that allowed FCC reflections have non-zero intensity.
 
         For FCC: (h,k,l) all even or all odd => allowed
@@ -428,7 +428,7 @@ class TestMgOExtinctionRules(chex.TestCase):
                 f"intensity, got {intensity}"
             )
 
-    def test_mgo_forbidden_reflections_zero(self):
+    def test_mgo_forbidden_reflections_zero(self) -> None:
         """Test that forbidden FCC reflections have zero intensity.
 
         For FCC: mixed indices (not all even, not all odd) => forbidden
@@ -465,7 +465,7 @@ class TestMgOExtinctionRules(chex.TestCase):
                 f"This indicates the structure factor calculation is WRONG."
             )
 
-    def test_mgo_origin_reflection(self):
+    def test_mgo_origin_reflection(self) -> None:
         """Test that (0,0,0) reflection gives expected intensity.
 
         F(0,0,0) = sum of all atomic scattering factors
@@ -530,7 +530,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         )
         return float(intensity)
 
-    def test_sto_origin_reflection(self):
+    def test_sto_origin_reflection(self) -> None:
         """Test that (0,0,0) reflection gives expected intensity.
 
         F(0,0,0) = sum of all atomic scattering factors
@@ -544,7 +544,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
-    def test_sto_100_reflection(self):
+    def test_sto_100_reflection(self) -> None:
         """Test (1,0,0) reflection intensity.
 
         For perovskite with:
@@ -564,7 +564,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
-    def test_sto_110_reflection(self):
+    def test_sto_110_reflection(self) -> None:
         """Test (1,1,0) reflection intensity.
 
         For (1,1,0):
@@ -583,7 +583,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
-    def test_sto_111_reflection(self):
+    def test_sto_111_reflection(self) -> None:
         """Test (1,1,1) reflection intensity.
 
         For (1,1,1):
@@ -602,7 +602,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
-    def test_sto_all_reflections_nonzero(self):
+    def test_sto_all_reflections_nonzero(self) -> None:
         """Test that various reflections have non-zero intensity.
 
         Unlike FCC, perovskite has no systematic extinctions from the lattice.

@@ -34,28 +34,28 @@ class TestAtomicSymbol(chex.TestCase):
         ("silver", "Ag", 47),
         ("gold", "Au", 79),
     )
-    def test_common_elements(self, symbol, expected):
+    def test_common_elements(self, symbol, expected) -> None:
         """Test common element symbols."""
         result = atomic_symbol(symbol)
         assert result == expected
 
-    def test_case_insensitive(self):
+    def test_case_insensitive(self) -> None:
         """Symbol lookup should be case insensitive."""
         assert atomic_symbol("fe") == 26
         assert atomic_symbol("FE") == 26
         assert atomic_symbol("Fe") == 26
 
-    def test_whitespace_handling(self):
+    def test_whitespace_handling(self) -> None:
         """Whitespace should be stripped."""
         assert atomic_symbol("  Si  ") == 14
         assert atomic_symbol("\tAu\n") == 79
 
-    def test_invalid_symbol_raises(self):
+    def test_invalid_symbol_raises(self) -> None:
         """Invalid symbol should raise KeyError."""
         with pytest.raises(KeyError, match="not found"):
             atomic_symbol("Xx")
 
-    def test_empty_string_raises(self):
+    def test_empty_string_raises(self) -> None:
         """Empty string should raise KeyError."""
         with pytest.raises(KeyError):
             atomic_symbol("")
@@ -64,22 +64,22 @@ class TestAtomicSymbol(chex.TestCase):
 class TestKirklandPotentials(chex.TestCase):
     """Test Kirkland potential loading."""
 
-    def test_returns_array(self):
+    def test_returns_array(self) -> None:
         """Should return JAX array."""
         potentials = kirkland_potentials()
         assert isinstance(potentials, jnp.ndarray)
 
-    def test_correct_shape(self):
+    def test_correct_shape(self) -> None:
         """Should have shape (103, 12)."""
         potentials = kirkland_potentials()
         assert potentials.shape == (103, 12)
 
-    def test_values_finite(self):
+    def test_values_finite(self) -> None:
         """All values should be finite."""
         potentials = kirkland_potentials()
         assert jnp.all(jnp.isfinite(potentials))
 
-    def test_cached_access(self):
+    def test_cached_access(self) -> None:
         """Multiple calls should return same object."""
         p1 = kirkland_potentials()
         p2 = kirkland_potentials()
@@ -89,7 +89,7 @@ class TestKirklandPotentials(chex.TestCase):
 class TestParseXyzMetadata(chex.TestCase):
     """Test XYZ metadata parsing."""
 
-    def test_lattice_extraction(self):
+    def test_lattice_extraction(self) -> None:
         """Extract lattice from extended XYZ format."""
         line = 'Lattice="4.2 0.0 0.0 0.0 4.2 0.0 0.0 0.0 4.2"'
         metadata = _parse_xyz_metadata(line)
@@ -104,7 +104,7 @@ class TestParseXyzMetadata(chex.TestCase):
         )
         chex.assert_trees_all_close(metadata["lattice"], expected, atol=1e-10)
 
-    def test_stress_extraction(self):
+    def test_stress_extraction(self) -> None:
         """Extract stress tensor from metadata."""
         line = 'stress="1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0"'
         metadata = _parse_xyz_metadata(line)
@@ -112,7 +112,7 @@ class TestParseXyzMetadata(chex.TestCase):
         assert "stress" in metadata
         assert metadata["stress"].shape == (3, 3)
 
-    def test_energy_extraction(self):
+    def test_energy_extraction(self) -> None:
         """Extract energy from metadata."""
         line = "energy=-123.456"
         metadata = _parse_xyz_metadata(line)
@@ -120,14 +120,14 @@ class TestParseXyzMetadata(chex.TestCase):
         assert "energy" in metadata
         assert metadata["energy"] == pytest.approx(-123.456)
 
-    def test_energy_scientific_notation(self):
+    def test_energy_scientific_notation(self) -> None:
         """Extract energy with scientific notation."""
         line = "energy=-1.23e-4"
         metadata = _parse_xyz_metadata(line)
 
         assert metadata["energy"] == pytest.approx(-1.23e-4)
 
-    def test_properties_extraction(self):
+    def test_properties_extraction(self) -> None:
         """Extract properties descriptor."""
         line = "Properties=species:S:1:pos:R:3"
         metadata = _parse_xyz_metadata(line)
@@ -138,17 +138,17 @@ class TestParseXyzMetadata(chex.TestCase):
         assert properties[0]["name"] == "species"
         assert properties[1]["name"] == "pos"
 
-    def test_empty_line(self):
+    def test_empty_line(self) -> None:
         """Empty line returns empty metadata."""
         metadata = _parse_xyz_metadata("")
         assert metadata == {}
 
-    def test_comment_only(self):
+    def test_comment_only(self) -> None:
         """Plain comment returns empty metadata."""
         metadata = _parse_xyz_metadata("This is a comment")
         assert metadata == {}
 
-    def test_invalid_lattice_raises(self):
+    def test_invalid_lattice_raises(self) -> None:
         """Wrong number of lattice values should raise."""
         line = 'Lattice="4.2 0.0 0.0 0.0 4.2"'
         with pytest.raises(ValueError, match="9 values"):
@@ -158,7 +158,7 @@ class TestParseXyzMetadata(chex.TestCase):
 class TestParseAtomLine(chex.TestCase):
     """Test single atom line parsing."""
 
-    def test_standard_format(self):
+    def test_standard_format(self) -> None:
         """Parse standard 4-column XYZ line."""
         parts = ["Si", "1.5", "2.5", "3.5"]
         symbol, x, y, z = _parse_atom_line(parts)
@@ -168,7 +168,7 @@ class TestParseAtomLine(chex.TestCase):
         assert y == pytest.approx(2.5)
         assert z == pytest.approx(3.5)
 
-    def test_extended_format(self):
+    def test_extended_format(self) -> None:
         """Parse extended XYZ with extra columns."""
         parts = ["Fe", "0.0", "0.0", "0.0", "1.0"]
         symbol, x, y, z = _parse_atom_line(parts)
@@ -176,7 +176,7 @@ class TestParseAtomLine(chex.TestCase):
         assert symbol == "Fe"
         assert x == pytest.approx(0.0)
 
-    def test_additional_columns(self):
+    def test_additional_columns(self) -> None:
         """Parse line with many extra columns."""
         parts = ["Au", "1.0", "2.0", "3.0", "0.5", "1.0", "0.8"]
         symbol, x, y, z = _parse_atom_line(parts)
@@ -188,7 +188,7 @@ class TestParseAtomLine(chex.TestCase):
 class TestParseXyz(chex.TestCase):
     """Test complete XYZ file parsing."""
 
-    def test_simple_xyz(self):
+    def test_simple_xyz(self) -> None:
         """Parse simple XYZ file."""
         xyz_content = """3
 Simple H2O molecule
@@ -208,7 +208,7 @@ H  -0.24 0.93 0.0
             assert int(data.atomic_numbers[0]) == 8
             assert int(data.atomic_numbers[1]) == 1
 
-    def test_extended_xyz_with_lattice(self):
+    def test_extended_xyz_with_lattice(self) -> None:
         """Parse extended XYZ with lattice."""
         xyz_content = """2
 Lattice="4.2 0.0 0.0 0.0 4.2 0.0 0.0 0.0 4.2"
@@ -224,7 +224,7 @@ O  2.1 2.1 2.1
             assert data.lattice is not None
             chex.assert_trees_all_close(data.lattice[0, 0], 4.2, atol=1e-10)
 
-    def test_atomic_numbers_as_symbols(self):
+    def test_atomic_numbers_as_symbols(self) -> None:
         """XYZ with atomic numbers instead of symbols."""
         xyz_content = """2
 Test with atomic numbers
@@ -240,7 +240,7 @@ Test with atomic numbers
             assert int(data.atomic_numbers[0]) == 14
             assert int(data.atomic_numbers[1]) == 8
 
-    def test_preserves_comment(self):
+    def test_preserves_comment(self) -> None:
         """Comment line should be preserved."""
         xyz_content = """1
 This is a custom comment
@@ -254,7 +254,7 @@ Fe 0.0 0.0 0.0
 
             assert data.comment == "This is a custom comment"
 
-    def test_path_as_string(self):
+    def test_path_as_string(self) -> None:
         """String path should work."""
         xyz_content = """1
 comment
@@ -268,7 +268,7 @@ C 0.0 0.0 0.0
 
             assert isinstance(data, XYZData)
 
-    def test_too_few_lines_raises(self):
+    def test_too_few_lines_raises(self) -> None:
         """File with fewer than 2 lines should raise."""
         xyz_content = "1"
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -278,7 +278,7 @@ C 0.0 0.0 0.0
             with pytest.raises(ValueError, match="fewer than 2 lines"):
                 parse_xyz(xyz_file)
 
-    def test_invalid_atom_count_raises(self):
+    def test_invalid_atom_count_raises(self) -> None:
         """Non-integer atom count should raise."""
         xyz_content = """abc
 comment
@@ -290,7 +290,7 @@ comment
             with pytest.raises(ValueError, match="number of atoms"):
                 parse_xyz(xyz_file)
 
-    def test_insufficient_atoms_raises(self):
+    def test_insufficient_atoms_raises(self) -> None:
         """Fewer atoms than declared should raise."""
         xyz_content = """3
 comment
@@ -304,7 +304,7 @@ H 1.0 0.0 0.0
             with pytest.raises(ValueError, match="Expected 3 atoms"):
                 parse_xyz(xyz_file)
 
-    def test_bad_line_format_raises(self):
+    def test_bad_line_format_raises(self) -> None:
         """Malformed atom line should raise."""
         xyz_content = """1
 comment
@@ -321,7 +321,7 @@ O 0.0 0.0
 class TestXyzDataStructure(chex.TestCase):
     """Test XYZData structure and fields."""
 
-    def test_positions_dtype(self):
+    def test_positions_dtype(self) -> None:
         """Positions should be float64."""
         xyz_content = """1
 comment
@@ -335,7 +335,7 @@ Si 1.5 2.5 3.5
 
             assert data.positions.dtype == jnp.float64
 
-    def test_atomic_numbers_dtype(self):
+    def test_atomic_numbers_dtype(self) -> None:
         """Atomic numbers should be int32."""
         xyz_content = """1
 comment
@@ -349,7 +349,7 @@ Fe 0.0 0.0 0.0
 
             assert data.atomic_numbers.dtype == jnp.int32
 
-    def test_optional_fields_none(self):
+    def test_optional_fields_none(self) -> None:
         """Optional fields should be None when not present."""
         xyz_content = """1
 plain comment
@@ -369,7 +369,7 @@ C 0.0 0.0 0.0
 class TestXyzLargeFiles(chex.TestCase):
     """Test XYZ parsing with larger files."""
 
-    def test_many_atoms(self):
+    def test_many_atoms(self) -> None:
         """Parse file with many atoms."""
         n_atoms = 100
         lines = [f"{n_atoms}", "Many atoms test"]

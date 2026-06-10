@@ -19,7 +19,7 @@ from rheedium.types.crystal_types import CrystalStructure, create_xyz_data
 class TestInferLatticeFromPositions(chex.TestCase):
     """Test lattice inference from atomic positions."""
 
-    def test_single_atom(self):
+    def test_single_atom(self) -> None:
         """Single atom should create minimum extent cell."""
         positions = jnp.array([[0.0, 0.0, 0.0]])
         lattice = _infer_lattice_from_positions(positions, padding_ang=2.0)
@@ -29,7 +29,7 @@ class TestInferLatticeFromPositions(chex.TestCase):
         expected = jnp.diag(jnp.array([4.0, 4.0, 4.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
-    def test_atoms_with_extent(self):
+    def test_atoms_with_extent(self) -> None:
         """Atoms spanning 0-10 A in each direction."""
         positions = jnp.array(
             [
@@ -45,7 +45,7 @@ class TestInferLatticeFromPositions(chex.TestCase):
         expected = jnp.diag(jnp.array([14.0, 14.0, 14.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
-    def test_asymmetric_extent(self):
+    def test_asymmetric_extent(self) -> None:
         """Atoms with different extents in each direction."""
         positions = jnp.array(
             [
@@ -59,7 +59,7 @@ class TestInferLatticeFromPositions(chex.TestCase):
         expected = jnp.diag(jnp.array([7.0, 12.0, 17.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
-    def test_minimum_extent_enforced(self):
+    def test_minimum_extent_enforced(self) -> None:
         """Minimum extent of 1 A should be enforced."""
         positions = jnp.array([[5.0, 5.0, 5.0]])  # Single atom
         lattice = _infer_lattice_from_positions(positions, padding_ang=0.0)
@@ -72,7 +72,7 @@ class TestInferLatticeFromPositions(chex.TestCase):
 class TestXyzToCrystal(chex.TestCase):
     """Test XYZ to CrystalStructure conversion."""
 
-    def test_with_explicit_lattice(self):
+    def test_with_explicit_lattice(self) -> None:
         """XYZData with explicit cell_vectors override."""
         positions = jnp.array([[0.0, 0.0, 0.0], [2.1, 2.1, 2.1]])
         atomic_numbers = jnp.array([12, 8])  # Mg, O
@@ -107,7 +107,7 @@ class TestXyzToCrystal(chex.TestCase):
             crystal.frac_positions[:, :3], expected_frac, atol=1e-10
         )
 
-    def test_with_cell_vectors_override(self):
+    def test_with_cell_vectors_override(self) -> None:
         """Test explicit cell_vectors parameter overrides xyz_data.lattice."""
         positions = jnp.array([[0.0, 0.0, 0.0]])
         atomic_numbers = jnp.array([14])  # Si
@@ -127,7 +127,7 @@ class TestXyzToCrystal(chex.TestCase):
             crystal.cell_lengths, jnp.array([10.0, 10.0, 10.0]), atol=1e-6
         )
 
-    def test_non_orthorhombic_lattice(self):
+    def test_non_orthorhombic_lattice(self) -> None:
         """XYZ with non-orthorhombic (hexagonal) lattice."""
         a = 3.2
         c = 5.2
@@ -153,7 +153,7 @@ class TestXyzToCrystal(chex.TestCase):
             crystal.cell_angles[:2], jnp.array([90.0, 90.0]), atol=1e-5
         )
 
-    def test_preserves_atomic_numbers(self):
+    def test_preserves_atomic_numbers(self) -> None:
         """Atomic numbers correctly transferred to 4th column."""
         positions = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
@@ -177,7 +177,7 @@ class TestXyzToCrystal(chex.TestCase):
             crystal.cart_positions[:, 3], expected, atol=1e-10
         )
 
-    def test_cartesian_positions_preserved(self):
+    def test_cartesian_positions_preserved(self) -> None:
         """Cartesian positions should be preserved exactly."""
         positions = jnp.array([[1.5, 2.5, 3.5], [4.0, 5.0, 6.0]])
         atomic_numbers = jnp.array([6, 7])  # C, N
@@ -195,7 +195,7 @@ class TestXyzToCrystal(chex.TestCase):
             crystal.cart_positions[:, :3], positions, atol=1e-10
         )
 
-    def test_returns_crystal_structure(self):
+    def test_returns_crystal_structure(self) -> None:
         """Should return CrystalStructure instance."""
         positions = jnp.array([[0.0, 0.0, 0.0]])
         atomic_numbers = jnp.array([1])
@@ -215,7 +215,7 @@ class TestXyzToCrystal(chex.TestCase):
 class TestParseCrystal(chex.TestCase):
     """Test unified crystal parser."""
 
-    def test_parse_cif(self):
+    def test_parse_cif(self) -> None:
         """Parse CIF file via parse_crystal."""
         cif_content = """
 data_MgO
@@ -246,7 +246,7 @@ O  0.5 0.5 0.5
                 atol=1e-3,
             )
 
-    def test_parse_xyz(self):
+    def test_parse_xyz(self) -> None:
         """Parse XYZ file via parse_crystal."""
         xyz_content = """2
 Lattice="4.2 0.0 0.0 0.0 4.2 0.0 0.0 0.0 4.2"
@@ -267,7 +267,7 @@ O  2.1 2.1 2.1
                 atol=1e-6,
             )
 
-    def test_unsupported_format(self):
+    def test_unsupported_format(self) -> None:
         """Raise ValueError for unsupported format."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             bad_file = Path(tmp_dir) / "test.pdb"
@@ -276,12 +276,12 @@ O  2.1 2.1 2.1
             with pytest.raises(ValueError, match="Unsupported file format"):
                 parse_crystal(bad_file)
 
-    def test_file_not_found(self):
+    def test_file_not_found(self) -> None:
         """Raise FileNotFoundError for missing file."""
         with pytest.raises(FileNotFoundError):
             parse_crystal("/nonexistent/path.cif")
 
-    def test_cif_xyz_equivalence(self):
+    def test_cif_xyz_equivalence(self) -> None:
         """Same structure from CIF and XYZ should give similar results."""
         # Simple cubic MgO
         cif_content = """
@@ -330,7 +330,7 @@ O  2.106 2.106 2.106
                 == crystal_xyz.cart_positions.shape[0]
             )
 
-    def test_path_as_string(self):
+    def test_path_as_string(self) -> None:
         """Test that string paths work."""
         cif_content = """
 data_test
@@ -360,7 +360,7 @@ Si 0.0 0.0 0.0
 class TestCrystalRoundtrip(chex.TestCase):
     """Test consistency between lattice and cell parameter conversions."""
 
-    def test_orthorhombic_roundtrip(self):
+    def test_orthorhombic_roundtrip(self) -> None:
         """Orthorhombic lattice survives roundtrip conversion."""
         a, b, c = 4.0, 5.0, 6.0
         lattice = jnp.array([[a, 0, 0], [0, b, 0], [0, 0, c]])
@@ -375,7 +375,7 @@ class TestCrystalRoundtrip(chex.TestCase):
             angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-10
         )
 
-    def test_xyz_to_crystal_fractional_consistency(self):
+    def test_xyz_to_crystal_fractional_consistency(self) -> None:
         """Fractional coords times lattice should give Cartesian coords."""
         positions = jnp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         atomic_numbers = jnp.array([6, 7])

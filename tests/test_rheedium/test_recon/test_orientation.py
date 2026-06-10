@@ -47,7 +47,7 @@ def _true_distribution() -> OrientationDistribution:
 class TestOrientationLoss(chex.TestCase):
     """Tests for the forward loss used in orientation fitting."""
 
-    def test_orientation_loss_is_zero_for_matching_distribution(self):
+    def test_orientation_loss_is_zero_for_matching_distribution(self) -> None:
         """The loss should vanish when the trial distribution matches data."""
         distribution = _true_distribution()
         observed = integrate_over_orientation(
@@ -70,7 +70,7 @@ class TestOrientationLoss(chex.TestCase):
 class TestOrientationFitting(chex.TestCase):
     """Tests for weight recovery on a fixed orientation support."""
 
-    def test_fit_orientation_weights_recovers_synthetic_weights(self):
+    def test_fit_orientation_weights_recovers_synthetic_weights(self) -> None:
         """The inverse fit should recover the synthetic mixture weights."""
         true_distribution = _true_distribution()
         observed = integrate_over_orientation(
@@ -109,7 +109,7 @@ class TestOrientationFitting(chex.TestCase):
 class TestOrientationUncertainty(chex.TestCase):
     """Tests for Fisher-based orientation uncertainty estimates."""
 
-    def test_fisher_information_tracks_discrete_weight_count(self):
+    def test_fisher_information_tracks_discrete_weight_count(self) -> None:
         """Fisher shape should depend on discrete weights, not quadrature."""
         distribution = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 20.0]),
@@ -129,7 +129,9 @@ class TestOrientationUncertainty(chex.TestCase):
         chex.assert_trees_all_close(fisher, fisher.T, atol=1e-10)
         self.assertTrue(bool(jnp.all(jnp.linalg.eigvalsh(fisher) >= -1e-10)))
 
-    def test_estimate_weight_uncertainty_returns_one_sigma_per_weight(self):
+    def test_estimate_weight_uncertainty_returns_one_sigma_per_weight(
+        self,
+    ) -> None:
         """Uncertainty output should match the fitted weight dimension."""
         distribution = _true_distribution()
         observed = integrate_over_orientation(
@@ -162,7 +164,7 @@ class TestOrientationUncertainty(chex.TestCase):
 class TestReconNamespace(chex.TestCase):
     """Tests for public recon exports."""
 
-    def test_namespace_exports_orientation_entry_points(self):
+    def test_namespace_exports_orientation_entry_points(self) -> None:
         """Orientation APIs should be re-exported from rheedium.recon."""
         self.assertIs(recon.orientation_loss, orientation_loss)
         self.assertIs(recon.fit_orientation_weights, fit_orientation_weights)

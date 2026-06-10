@@ -19,7 +19,7 @@ from rheedium.types.crystal_types import CrystalStructure
 class TestParsePoscarHeader(chex.TestCase):
     """Test POSCAR header parsing."""
 
-    def test_simple_cubic(self):
+    def test_simple_cubic(self) -> None:
         """Parse simple cubic Si header."""
         lines = [
             "Simple cubic Si",
@@ -41,7 +41,7 @@ class TestParsePoscarHeader(chex.TestCase):
         assert species == ["Si"]
         assert counts == [1]
 
-    def test_multi_species(self):
+    def test_multi_species(self) -> None:
         """Parse multi-species structure (NaCl)."""
         lines = [
             "NaCl rock salt",
@@ -57,7 +57,7 @@ class TestParsePoscarHeader(chex.TestCase):
         assert species == ["Na", "Cl"]
         assert counts == [4, 4]
 
-    def test_scaling_factor(self):
+    def test_scaling_factor(self) -> None:
         """Scaling factor applied to lattice vectors."""
         lines = [
             "Scaled Si",
@@ -78,7 +78,7 @@ class TestParsePoscarHeader(chex.TestCase):
             atol=1e-10,
         )
 
-    def test_invalid_scaling_factor(self):
+    def test_invalid_scaling_factor(self) -> None:
         """Invalid scaling factor raises ValueError."""
         lines = [
             "Invalid",
@@ -92,7 +92,7 @@ class TestParsePoscarHeader(chex.TestCase):
         with pytest.raises(ValueError, match="scaling factor"):
             _parse_poscar_header(lines)
 
-    def test_invalid_lattice_vector(self):
+    def test_invalid_lattice_vector(self) -> None:
         """Invalid lattice vector raises ValueError."""
         lines = [
             "Invalid",
@@ -106,7 +106,7 @@ class TestParsePoscarHeader(chex.TestCase):
         with pytest.raises(ValueError, match="lattice vector"):
             _parse_poscar_header(lines)
 
-    def test_mismatched_species_counts(self):
+    def test_mismatched_species_counts(self) -> None:
         """Mismatched species and counts raises ValueError."""
         lines = [
             "Mismatch",
@@ -124,7 +124,7 @@ class TestParsePoscarHeader(chex.TestCase):
 class TestParsePoscarPositions(chex.TestCase):
     """Test POSCAR position parsing."""
 
-    def test_direct_coordinates(self):
+    def test_direct_coordinates(self) -> None:
         """Parse Direct (fractional) coordinates."""
         lines = [
             "0.0 0.0 0.0",
@@ -138,7 +138,7 @@ class TestParsePoscarPositions(chex.TestCase):
         expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
-    def test_cartesian_coordinates(self):
+    def test_cartesian_coordinates(self) -> None:
         """Parse Cartesian coordinates and convert to fractional."""
         lines = [
             "0.0 0.0 0.0",
@@ -153,7 +153,7 @@ class TestParsePoscarPositions(chex.TestCase):
         expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
-    def test_selective_dynamics_ignored(self):
+    def test_selective_dynamics_ignored(self) -> None:
         """Selective dynamics flags (T/F) are ignored."""
         lines = [
             "0.0 0.0 0.0 T T T",
@@ -167,7 +167,7 @@ class TestParsePoscarPositions(chex.TestCase):
         expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
-    def test_insufficient_atoms(self):
+    def test_insufficient_atoms(self) -> None:
         """Requesting more atoms than available raises ValueError."""
         lines = [
             "0.0 0.0 0.0",
@@ -186,7 +186,7 @@ class TestParsePoscarPositions(chex.TestCase):
 class TestParsePoscar(chex.TestCase):
     """Test complete POSCAR file parsing."""
 
-    def test_simple_cubic_si(self):
+    def test_simple_cubic_si(self) -> None:
         """Parse simple cubic Si POSCAR."""
         poscar_content = """Simple cubic Si
 1.0
@@ -221,7 +221,7 @@ Direct
                 crystal.frac_positions[0, 3], 14.0, atol=1e-10
             )
 
-    def test_mgo_rock_salt(self):
+    def test_mgo_rock_salt(self) -> None:
         """Parse MgO rock salt structure."""
         poscar_content = """MgO rock salt
 1.0
@@ -248,7 +248,7 @@ Direct
                 atol=1e-10,
             )
 
-    def test_cartesian_mode(self):
+    def test_cartesian_mode(self) -> None:
         """Parse POSCAR with Cartesian coordinates."""
         poscar_content = """Cartesian Si
 1.0
@@ -274,7 +274,7 @@ Cartesian
                 atol=1e-3,
             )
 
-    def test_selective_dynamics(self):
+    def test_selective_dynamics(self) -> None:
         """Parse POSCAR with selective dynamics."""
         poscar_content = """Selective dynamics Si
 1.0
@@ -301,7 +301,7 @@ Direct
                 atol=1e-10,
             )
 
-    def test_scaling_factor(self):
+    def test_scaling_factor(self) -> None:
         """Scaling factor applied correctly."""
         poscar_content = """Scaled Si
 2.0
@@ -326,7 +326,7 @@ Direct
                 atol=1e-3,
             )
 
-    def test_non_orthogonal_cell(self):
+    def test_non_orthogonal_cell(self) -> None:
         """Parse POSCAR with non-orthogonal (hexagonal) cell."""
         a = 3.0
         c = 5.0
@@ -358,12 +358,12 @@ Direct
                 crystal.cell_angles[2], 120.0, atol=1e-1
             )
 
-    def test_file_not_found(self):
+    def test_file_not_found(self) -> None:
         """Missing file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError, match="not found"):
             parse_poscar("/nonexistent/path/POSCAR")
 
-    def test_too_few_lines(self):
+    def test_too_few_lines(self) -> None:
         """File with too few lines raises ValueError."""
         poscar_content = """Short file
 1.0
@@ -376,7 +376,7 @@ Direct
             with pytest.raises(ValueError, match="at least"):
                 parse_poscar(poscar_file)
 
-    def test_invalid_coordinate_mode(self):
+    def test_invalid_coordinate_mode(self) -> None:
         """Invalid coordinate mode raises ValueError."""
         poscar_content = """Invalid mode
 1.0
@@ -395,7 +395,7 @@ Invalid
             with pytest.raises(ValueError, match="Direct.*Cartesian"):
                 parse_poscar(poscar_file)
 
-    def test_string_path(self):
+    def test_string_path(self) -> None:
         """Accept string path as well as Path object."""
         poscar_content = """Si
 1.0
@@ -422,7 +422,7 @@ Direct
         ("iron", "Fe", 26),
         ("gold", "Au", 79),
     )
-    def test_various_elements(self, element, expected_z):
+    def test_various_elements(self, element, expected_z) -> None:
         """Test parsing various element types."""
         poscar_content = f"""Element test
 1.0
@@ -449,7 +449,7 @@ Direct
 class TestPoscarRoundtrip(chex.TestCase):
     """Test POSCAR parsing consistency."""
 
-    def test_frac_cart_consistency(self):
+    def test_frac_cart_consistency(self) -> None:
         """Fractional and Cartesian positions should be consistent."""
         poscar_content = """MgO
 1.0
@@ -478,7 +478,7 @@ Direct
                 atol=1e-6,
             )
 
-    def test_atomic_numbers_preserved(self):
+    def test_atomic_numbers_preserved(self) -> None:
         """Atomic numbers match in both frac and cart positions."""
         poscar_content = """Multi-element
 1.0

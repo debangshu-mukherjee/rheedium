@@ -23,7 +23,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
     """Tests for relativistic electron wavelength calculation."""
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_known_voltages(self):
+    def test_known_voltages(self) -> None:
         """Relativistic wavelength matches reference values."""
         var_wavelength = self.variant(wavelength_ang)
 
@@ -36,7 +36,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(wavelengths)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_higher_voltage_shorter_wavelength(self):
+    def test_higher_voltage_shorter_wavelength(self) -> None:
         """Higher voltage produces shorter wavelength."""
         var_wavelength = self.variant(wavelength_ang)
 
@@ -46,7 +46,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         assert float(lam_30) < float(lam_10)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_positive_output(self):
+    def test_positive_output(self) -> None:
         """Wavelength is always positive."""
         var_wavelength = self.variant(wavelength_ang)
 
@@ -55,12 +55,12 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_equal(jnp.all(wavelengths > 0), True)
 
-    def test_scalar_input(self):
+    def test_scalar_input(self) -> None:
         """Accepts scalar float input."""
         lam = wavelength_ang(20.0)
         chex.assert_tree_all_finite(lam)
 
-    def test_array_broadcast(self):
+    def test_array_broadcast(self) -> None:
         """Handles batched array input."""
         voltages = jnp.array([10.0, 20.0, 30.0])
         wavelengths = wavelength_ang(voltages)
@@ -72,7 +72,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     """Tests for incident wavevector calculation."""
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Returns a 3-component vector."""
         var_k = self.variant(incident_wavevector)
 
@@ -84,7 +84,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(k_in)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_magnitude_equals_2pi_over_lambda(self):
+    def test_magnitude_equals_2pi_over_lambda(self) -> None:
         """Wavevector magnitude equals 2*pi/lambda."""
         var_k = self.variant(incident_wavevector)
 
@@ -100,7 +100,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_negative_z_component(self):
+    def test_negative_z_component(self) -> None:
         """k_z is negative (beam enters from above the surface)."""
         var_k = self.variant(incident_wavevector)
 
@@ -112,7 +112,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         assert float(k_in[2]) < 0, "k_z should be negative"
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_grazing_angle_controls_z(self):
+    def test_grazing_angle_controls_z(self) -> None:
         """Steeper grazing angle gives larger |k_z|."""
         var_k = self.variant(incident_wavevector)
 
@@ -129,7 +129,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         assert float(jnp.abs(k_steep[2])) > float(jnp.abs(k_shallow[2]))
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_phi_zero_no_y_component(self):
+    def test_phi_zero_no_y_component(self) -> None:
         """At phi=0, k_y should be zero (beam along x)."""
         var_k = self.variant(incident_wavevector)
 
@@ -142,7 +142,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(k_in[1], 0.0, atol=1e-10)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_phi_90_no_x_component(self):
+    def test_phi_90_no_x_component(self) -> None:
         """At phi=90, k_x should be zero (beam along y)."""
         var_k = self.variant(incident_wavevector)
 
@@ -161,7 +161,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         ("phi_90", 90.0),
         ("phi_180", 180.0),
     )
-    def test_magnitude_invariant_under_phi(self, phi):
+    def test_magnitude_invariant_under_phi(self, phi) -> None:
         """Wavevector magnitude is independent of azimuthal angle."""
         var_k = self.variant(incident_wavevector)
 
@@ -182,7 +182,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
     """Tests for relativistic interaction constant."""
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_known_values(self):
+    def test_known_values(self) -> None:
         """Interaction constant matches reference values."""
         var_sigma = self.variant(interaction_constant)
 
@@ -204,7 +204,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(sigmas)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_positive_output(self):
+    def test_positive_output(self) -> None:
         """Interaction constant is always positive."""
         var_sigma = self.variant(interaction_constant)
 
@@ -214,7 +214,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         assert float(sigma) > 0
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_decreases_with_voltage(self):
+    def test_decreases_with_voltage(self) -> None:
         """Higher voltage gives smaller interaction constant."""
         var_sigma = self.variant(interaction_constant)
 
@@ -230,7 +230,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
 class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
     """Verify analytical gradients match finite differences."""
 
-    def test_wavelength_grad_correct(self):
+    def test_wavelength_grad_correct(self) -> None:
         """Relativistic wavelength grad matches finite diff to 2nd order."""
 
         def f(voltage):
@@ -242,7 +242,7 @@ class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
 class TestSimulUtilsVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential for utility functions."""
 
-    def test_wavelength_vmap_consistent(self):
+    def test_wavelength_vmap_consistent(self) -> None:
         """Batched wavelength matches sequential evaluation."""
         voltages = jnp.array([10.0, 20.0, 30.0, 50.0])
         batched = jax.vmap(wavelength_ang)(voltages)

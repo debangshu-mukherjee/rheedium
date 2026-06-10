@@ -16,7 +16,7 @@ from rheedium.recon import (
 class TestWeightedLosses(chex.TestCase):
     """Tests for weighted residual and loss builders."""
 
-    def test_weighted_image_residual_scales_by_sqrt_weights(self):
+    def test_weighted_image_residual_scales_by_sqrt_weights(self) -> None:
         """Residual weights should enter as square roots."""
         simulated = jnp.array([[3.0, 4.0], [5.0, 6.0]])
         experimental = jnp.ones((2, 2))
@@ -31,7 +31,9 @@ class TestWeightedLosses(chex.TestCase):
         expected = jnp.array([[2.0, 0.0], [8.0, 2.5]])
         chex.assert_trees_all_close(residual, expected, atol=1e-12)
 
-    def test_weighted_mean_squared_error_normalizes_by_weight_sum(self):
+    def test_weighted_mean_squared_error_normalizes_by_weight_sum(
+        self,
+    ) -> None:
         """Weighted MSE should divide by the sum of retained weights."""
         simulated = jnp.array([[2.0, 3.0], [4.0, 5.0]])
         experimental = jnp.array([[1.0, 1.0], [1.0, 1.0]])

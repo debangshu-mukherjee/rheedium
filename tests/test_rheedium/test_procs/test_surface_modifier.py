@@ -47,7 +47,7 @@ def _make_test_slab():
 class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
     """Tests for vicinal_surface_step_splitting function."""
 
-    def test_output_shape_matches_input(self):
+    def test_output_shape_matches_input(self) -> None:
         """Output should have same shape as q_z input."""
         q_z = jnp.linspace(0.0, 10.0, 100)
         result = vicinal_surface_step_splitting(
@@ -58,7 +58,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_shape(result, (100,))
 
-    def test_output_nonnegative(self):
+    def test_output_nonnegative(self) -> None:
         """All intensity values should be >= 0."""
         q_z = jnp.linspace(0.0, 10.0, 200)
         result = vicinal_surface_step_splitting(
@@ -69,7 +69,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         )
         assert float(jnp.min(result)) >= -1e-10
 
-    def test_output_bounded_by_one(self):
+    def test_output_bounded_by_one(self) -> None:
         """Normalized intensity should not exceed 1."""
         q_z = jnp.linspace(0.0, 10.0, 200)
         result = vicinal_surface_step_splitting(
@@ -80,7 +80,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         )
         assert float(jnp.max(result)) <= 1.0 + 1e-10
 
-    def test_antiphase_condition_dip(self):
+    def test_antiphase_condition_dip(self) -> None:
         """At q_z * d = pi, intensity should show a minimum."""
         step_height = 2.0
         q_at_pi = jnp.pi / step_height
@@ -93,7 +93,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         )
         assert float(result[1]) < float(result[0])
 
-    def test_in_phase_condition_peak(self):
+    def test_in_phase_condition_peak(self) -> None:
         """At q_z * d = 2*pi, intensity should be at maximum."""
         step_height = 2.0
         q_at_2pi = 2.0 * jnp.pi / step_height
@@ -106,7 +106,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_trees_all_close(float(result[0]), 1.0, atol=1e-6)
 
-    def test_wider_terraces_sharper_peaks(self):
+    def test_wider_terraces_sharper_peaks(self) -> None:
         """Wider terraces should produce sharper (narrower) peaks."""
         q_z = jnp.linspace(0.0, 10.0, 1000)
         narrow = vicinal_surface_step_splitting(
@@ -125,7 +125,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         wide_mean = float(jnp.mean(wide))
         assert wide_mean < narrow_mean
 
-    def test_no_nan_or_inf(self):
+    def test_no_nan_or_inf(self) -> None:
         """Output should be finite everywhere."""
         q_z = jnp.linspace(0.0, 20.0, 500)
         result = vicinal_surface_step_splitting(
@@ -140,7 +140,7 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 class TestApplySurfaceOccupancyField(chex.TestCase):
     """Tests for apply_surface_occupancy_field."""
 
-    def test_scales_only_surface_region_atomic_numbers(self):
+    def test_scales_only_surface_region_atomic_numbers(self) -> None:
         slab = _make_test_slab()
         modified = apply_surface_occupancy_field(
             slab,
@@ -159,7 +159,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
             atol=1e-6,
         )
 
-    def test_clips_surface_occupancies(self):
+    def test_clips_surface_occupancies(self) -> None:
         slab = _make_test_slab()
         modified = apply_surface_occupancy_field(
             slab,
@@ -173,7 +173,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
             atol=1e-5,
         )
 
-    def test_grad_flows_through_surface_occupancy(self):
+    def test_grad_flows_through_surface_occupancy(self) -> None:
         slab = _make_test_slab()
 
         def objective(occupancy):
@@ -188,7 +188,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         grad_value = jax.grad(objective)(0.5)
         chex.assert_trees_all_close(float(grad_value), 14.0, atol=1e-4)
 
-    def test_jit_compiles(self):
+    def test_jit_compiles(self) -> None:
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda occupancy: apply_surface_occupancy_field(
@@ -205,7 +205,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
             atol=1e-5,
         )
 
-    def test_vmap_supports_batched_surface_occupancies(self):
+    def test_vmap_supports_batched_surface_occupancies(self) -> None:
         slab = _make_test_slab()
 
         def top_layer_weight(occupancy):
@@ -226,7 +226,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 class TestApplySurfaceDisplacementField(chex.TestCase):
     """Tests for apply_surface_displacement_field."""
 
-    def test_applies_displacements_only_near_surface(self):
+    def test_applies_displacements_only_near_surface(self) -> None:
         slab = _make_test_slab()
         modified = apply_surface_displacement_field(
             slab,
@@ -257,7 +257,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
             atol=1e-6,
         )
 
-    def test_zero_displacement_field_is_identity(self):
+    def test_zero_displacement_field_is_identity(self) -> None:
         slab = _make_test_slab()
         modified = apply_surface_displacement_field(
             slab,
@@ -271,7 +271,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
             atol=1e-6,
         )
 
-    def test_grad_flows_through_surface_displacement(self):
+    def test_grad_flows_through_surface_displacement(self) -> None:
         slab = _make_test_slab()
 
         def objective(delta_z):
@@ -290,7 +290,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         grad_value = jax.grad(objective)(0.3)
         chex.assert_trees_all_close(float(grad_value), 1.0, atol=1e-4)
 
-    def test_jit_compiles(self):
+    def test_jit_compiles(self) -> None:
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda scale: apply_surface_displacement_field(
@@ -313,7 +313,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
             atol=1e-5,
         )
 
-    def test_vmap_supports_batched_displacement_scales(self):
+    def test_vmap_supports_batched_displacement_scales(self) -> None:
         slab = _make_test_slab()
 
         def top_atom_z(scale):
@@ -340,7 +340,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 class TestApplyStepEdgeField(chex.TestCase):
     """Tests for apply_step_edge_field."""
 
-    def test_modulates_surface_heights_with_periodic_steps(self):
+    def test_modulates_surface_heights_with_periodic_steps(self) -> None:
         slab = _make_test_slab()
         modified = apply_step_edge_field(
             slab,
@@ -355,7 +355,7 @@ class TestApplyStepEdgeField(chex.TestCase):
             atol=1e-3,
         )
 
-    def test_zero_step_height_is_identity(self):
+    def test_zero_step_height_is_identity(self) -> None:
         slab = _make_test_slab()
         modified = apply_step_edge_field(
             slab,
@@ -370,7 +370,7 @@ class TestApplyStepEdgeField(chex.TestCase):
             atol=1e-6,
         )
 
-    def test_grad_flows_through_step_height(self):
+    def test_grad_flows_through_step_height(self) -> None:
         slab = _make_test_slab()
 
         def objective(step_height):
@@ -384,7 +384,7 @@ class TestApplyStepEdgeField(chex.TestCase):
         grad_value = jax.grad(objective)(1.0)
         chex.assert_trees_all_close(float(grad_value), 0.5, atol=1e-3)
 
-    def test_jit_compiles(self):
+    def test_jit_compiles(self) -> None:
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda step_height: apply_step_edge_field(
@@ -402,7 +402,7 @@ class TestApplyStepEdgeField(chex.TestCase):
             atol=1e-3,
         )
 
-    def test_vmap_supports_batched_step_heights(self):
+    def test_vmap_supports_batched_step_heights(self) -> None:
         slab = _make_test_slab()
 
         def top_atom_z(step_height):
@@ -424,7 +424,7 @@ class TestApplyStepEdgeField(chex.TestCase):
 class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
     """Tests for incoherent_domain_average function."""
 
-    def test_single_domain_unchanged(self):
+    def test_single_domain_unchanged(self) -> None:
         """Single domain with f=1 should return pattern unchanged."""
         pattern = jnp.ones((1, 8, 8)) * 5.0
         fractions = jnp.array([1.0])
@@ -435,7 +435,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(result, (8, 8))
         chex.assert_trees_all_close(result, 5.0, atol=1e-6)
 
-    def test_two_equal_domains_average(self):
+    def test_two_equal_domains_average(self) -> None:
         """50/50 mix should be the average of two patterns."""
         p1 = jnp.ones((8, 8)) * 2.0
         p2 = jnp.ones((8, 8)) * 6.0
@@ -448,7 +448,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         expected = jnp.ones((8, 8)) * 4.0
         chex.assert_trees_all_close(result, expected, atol=1e-6)
 
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Output should be (H, W) regardless of number of domains."""
         patterns = jnp.ones((3, 16, 32))
         fractions = jnp.array([0.5, 0.3, 0.2])
@@ -458,7 +458,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_shape(result, (16, 32))
 
-    def test_output_nonnegative(self):
+    def test_output_nonnegative(self) -> None:
         """Result should be non-negative for non-negative inputs."""
         rng = np.random.default_rng(42)
         patterns = jnp.array(rng.uniform(0, 10, size=(4, 8, 8)))
@@ -469,7 +469,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         )
         assert float(jnp.min(result)) >= -1e-10
 
-    def test_weighted_sum_correct(self):
+    def test_weighted_sum_correct(self) -> None:
         """Weighted sum should equal manual calculation."""
         p1 = jnp.ones((4, 4)) * 10.0
         p2 = jnp.ones((4, 4)) * 20.0
@@ -486,7 +486,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
             atol=1e-6,
         )
 
-    def test_fractions_auto_normalized(self):
+    def test_fractions_auto_normalized(self) -> None:
         """Non-unit fractions should be auto-normalized."""
         p1 = jnp.ones((4, 4)) * 10.0
         patterns = jnp.expand_dims(p1, axis=0)
@@ -497,7 +497,7 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_trees_all_close(result, 10.0, atol=1e-6)
 
-    def test_no_nan_or_inf(self):
+    def test_no_nan_or_inf(self) -> None:
         """Output should be finite."""
         rng = np.random.default_rng(0)
         patterns = jnp.array(rng.uniform(0, 100, size=(5, 8, 8)))

@@ -237,7 +237,7 @@ def _build_sample_pytrees() -> dict[str, object]:
 class TestHdf5RoundTrip(chex.TestCase):
     """Round-trip tests for rheedium HDF5 serialization."""
 
-    def test_save_and_load_all_supported_pytrees(self):
+    def test_save_and_load_all_supported_pytrees(self) -> None:
         """Every public rheedium PyTree should survive an HDF5 round-trip."""
         payload = _build_sample_pytrees()
 
@@ -251,7 +251,7 @@ class TestHdf5RoundTrip(chex.TestCase):
         for key, expected in payload.items():
             _assert_round_trip_equal(loaded[key], expected)
 
-    def test_load_single_named_object(self):
+    def test_load_single_named_object(self) -> None:
         """A single group can be loaded by name."""
         payload = _build_sample_pytrees()
 

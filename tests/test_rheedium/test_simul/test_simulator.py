@@ -52,7 +52,7 @@ from rheedium.ucell import reciprocal_lattice_vectors
 class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
     """Test suite for updated RHEED simulator with proper surface physics."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
@@ -113,7 +113,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         temperature,
         surface_roughness,
         surface_fraction,
-    ):
+    ) -> None:
         """Test intensity calculation with CTR contributions."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -150,7 +150,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             chex.assert_scalar_positive(float(max_intensity))
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_surface_enhancement_effect(self):
+    def test_surface_enhancement_effect(self) -> None:
         """Test that surface atoms have enhanced thermal motion."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -189,12 +189,12 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     """Test suite for detector projection functionality."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_basic_projection(self):
+    def test_basic_projection(self) -> None:
         """Test basic projection onto detector plane."""
         var_project = self.variant(project_on_detector)
 
@@ -222,7 +222,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
         ("medium", 100.0),
         ("far", 500.0),
     )
-    def test_detector_distance_scaling(self, distance):
+    def test_detector_distance_scaling(self, distance) -> None:
         """Test that coordinates scale linearly with detector distance."""
         var_project = self.variant(project_on_detector)
 
@@ -238,7 +238,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Test output has correct shape for various inputs."""
         var_project = self.variant(project_on_detector)
 
@@ -251,13 +251,13 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     """Test suite for kinematic reflection finding."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.k_mag = 73.0  # Typical |k| for 20 keV electrons
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_elastic_scattering_constraint(self):
+    def test_elastic_scattering_constraint(self) -> None:
         """Test that output wavevectors satisfy |k_out| ≈ |k_in|."""
         var_find = self.variant(find_kinematic_reflections)
 
@@ -284,7 +284,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         ("medium", 0.05),
         ("loose", 0.2),
     )
-    def test_tolerance_variation(self, tolerance):
+    def test_tolerance_variation(self, tolerance) -> None:
         """Test that tighter tolerances allow fewer reflections."""
         var_find = self.variant(find_kinematic_reflections)
 
@@ -311,7 +311,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(k_out)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_z_sign_positive(self):
+    def test_z_sign_positive(self) -> None:
         """Test filtering with positive z_sign (forward scattering)."""
         var_find = self.variant(find_kinematic_reflections)
 
@@ -329,7 +329,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(allowed_indices, (3,))
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_z_sign_negative(self):
+    def test_z_sign_negative(self) -> None:
         """Test filtering with negative z_sign (back scattering - RHEED)."""
         var_find = self.variant(find_kinematic_reflections)
 
@@ -347,7 +347,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(allowed_indices, (3,))
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_empty_g_vectors(self):
+    def test_empty_g_vectors(self) -> None:
         """Test handling of single G vector."""
         var_find = self.variant(find_kinematic_reflections)
 
@@ -365,7 +365,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 ):
     """Test suite for converting sliced crystals to projected-potential slices."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.si_sliced = self._create_simple_sliced_crystal()
@@ -391,7 +391,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         )
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Test that output potential has expected shape.
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
@@ -418,7 +418,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("medium", 2.0),
         ("thick", 5.0),
     )
-    def test_slice_thickness_variation(self, thickness):
+    def test_slice_thickness_variation(self, thickness) -> None:
         """Test potential generation with different slice thicknesses.
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
@@ -444,7 +444,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("medium", 0.5),
         ("coarse", 1.0),
     )
-    def test_pixel_size_variation(self, pixel_size):
+    def test_pixel_size_variation(self, pixel_size) -> None:
         """Test potential generation with different pixel sizes.
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
@@ -471,7 +471,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("lobato", "lobato"),
         ("kirkland", "kirkland"),
     )
-    def test_parameterization_variation(self, parameterization):
+    def test_parameterization_variation(self, parameterization) -> None:
         """Projected-potential slices are finite for both models."""
         var_convert = self.variant(
             sliced_crystal_to_projected_potential_slices
@@ -487,7 +487,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         chex.assert_tree_all_finite(potential.slices)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_calibration_stored(self):
+    def test_calibration_stored(self) -> None:
         """Test that calibration values are stored correctly.
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
@@ -519,7 +519,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     """Test suite for multislice wave propagation."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.simple_potential = self._create_simple_potential()
@@ -540,7 +540,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Test that exit wave has same shape as input grid."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -554,7 +554,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(exit_wave)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_exit_wave_nonzero(self):
+    def test_exit_wave_nonzero(self) -> None:
         """Test that exit wave has non-zero amplitude."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -573,7 +573,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("medium", 20.0),
         ("high", 30.0),
     )
-    def test_voltage_variation(self, voltage):
+    def test_voltage_variation(self, voltage) -> None:
         """Test propagation at different voltages."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -594,7 +594,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("medium", 2.0),
         ("steep", 5.0),
     )
-    def test_grazing_angle_variation(self, theta):
+    def test_grazing_angle_variation(self, theta) -> None:
         """Test propagation at different grazing angles."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -612,7 +612,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("phi_45", 45.0),
         ("phi_90", 90.0),
     )
-    def test_azimuthal_angle_variation(self, phi):
+    def test_azimuthal_angle_variation(self, phi) -> None:
         """Test propagation at different azimuthal angles."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -631,7 +631,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("small_inner", 10.0),
         ("large_inner", 20.0),
     )
-    def test_inner_potential_variation(self, v0):
+    def test_inner_potential_variation(self, v0) -> None:
         """Test effect of inner potential on propagation."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -650,7 +650,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("two_thirds", 2.0 / 3.0),
         ("full", 1.0),
     )
-    def test_bandwidth_limit_variation(self, limit):
+    def test_bandwidth_limit_variation(self, limit) -> None:
         """Test different bandwidth limiting values."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -664,7 +664,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(exit_wave)
 
     @chex.all_variants(without_device=False, with_pmap=False)
-    def test_zero_potential_propagation(self):
+    def test_zero_potential_propagation(self) -> None:
         """Test propagation through zero potential (free space)."""
         var_propagate = self.variant(multislice_propagate)
 
@@ -692,7 +692,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
     """Test suite for complete multislice RHEED simulation."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.simple_potential = self._create_test_potential()
@@ -714,7 +714,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_returns_rheed_pattern(self):
+    def test_returns_rheed_pattern(self) -> None:
         """Test that simulator returns valid RHEEDPattern.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -732,7 +732,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(pattern.intensities >= 0), True)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_pattern_shapes_consistent(self):
+    def test_pattern_shapes_consistent(self) -> None:
         """Test that all pattern arrays have consistent shapes.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -756,7 +756,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("medium", 100.0),
         ("far", 500.0),
     )
-    def test_detector_distance_variation(self, distance):
+    def test_detector_distance_variation(self, distance) -> None:
         """Test simulation at different detector distances.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -778,7 +778,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("medium", 20.0),
         ("high", 30.0),
     )
-    def test_voltage_variation(self, voltage):
+    def test_voltage_variation(self, voltage) -> None:
         """Test simulation at different voltages.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -799,7 +799,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("medium", 2.0),
         ("steep", 5.0),
     )
-    def test_angle_variation(self, theta):
+    def test_angle_variation(self, theta) -> None:
         """Test simulation at different grazing angles.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -815,7 +815,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(pattern.intensities)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ewald_sphere_constraint(self):
+    def test_ewald_sphere_constraint(self) -> None:
         """Test that output wavevectors approximately satisfy Ewald sphere.
 
         Note: JIT not supported due to dynamic array sizes.
@@ -853,7 +853,7 @@ class TestComputeKinematicIntensitiesExtended(
 ):
     """Extended tests for kinematic intensity calculation with CTRs."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.si_crystal = self._create_si_crystal()
@@ -889,7 +889,7 @@ class TestComputeKinematicIntensitiesExtended(
         )
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_mode_none(self):
+    def test_ctr_mode_none(self) -> None:
         """Test intensity calculation with no CTR contribution.
 
         Note: JIT not supported due to string ctr_mixing_mode parameter.
@@ -909,7 +909,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_mode_coherent(self):
+    def test_ctr_mode_coherent(self) -> None:
         """Test intensity calculation with coherent CTR mixing.
 
         Note: JIT not supported due to string ctr_mixing_mode parameter.
@@ -929,7 +929,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_mode_incoherent(self):
+    def test_ctr_mode_incoherent(self) -> None:
         """Test intensity calculation with incoherent CTR mixing.
 
         Note: JIT not supported due to string ctr_mixing_mode parameter.
@@ -954,7 +954,7 @@ class TestComputeKinematicIntensitiesExtended(
         ("half", 0.5),
         ("full", 1.0),
     )
-    def test_ctr_weight_variation(self, weight):
+    def test_ctr_weight_variation(self, weight) -> None:
         """Test effect of CTR weight on intensities."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -969,7 +969,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_surface_config_height(self):
+    def test_surface_config_height(self) -> None:
         """Test with height-based surface atom identification.
 
         Note: JIT not supported due to SurfaceConfig with string method.
@@ -989,7 +989,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_surface_config_layers(self):
+    def test_surface_config_layers(self) -> None:
         """Test with layer-based surface atom identification.
 
         Note: JIT not supported due to SurfaceConfig with string method.
@@ -1014,7 +1014,7 @@ class TestComputeKinematicIntensitiesExtended(
         ("medium", 0.1),
         ("loose", 0.5),
     )
-    def test_hk_tolerance_variation(self, tolerance):
+    def test_hk_tolerance_variation(self, tolerance) -> None:
         """Test effect of h,k tolerance for CTR application."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -1029,7 +1029,7 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_tree_all_finite(intensities)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_gating_uses_explicit_hkl(self):
+    def test_ctr_gating_uses_explicit_hkl(self) -> None:
         """Explicit hkl should enable CTR when |G| misses tolerance."""
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -1068,7 +1068,7 @@ class TestComputeKinematicIntensitiesExtended(
 class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     """Test suite for ewald_simulator with exact Ewald-CTR intersection."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
         self.mgo_crystal = self._create_mgo_crystal()
@@ -1098,7 +1098,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
         return crystal
 
-    def test_basic_pattern_generation(self):
+    def test_basic_pattern_generation(self) -> None:
         """Test that ewald_simulator produces a valid RHEED pattern."""
         pattern = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1126,7 +1126,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "Valid detector points should be finite",
         )
 
-    def test_upward_scattering_only(self):
+    def test_upward_scattering_only(self) -> None:
         """Only upward-scattered reflections are returned (k_out_z > 0)."""
         pattern = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1219,7 +1219,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     @parameterized.parameters(1.5, 2.5, 4.0)
-    def test_matches_raw_dual_branch_geometry(self, theta_deg):
+    def test_matches_raw_dual_branch_geometry(self, theta_deg) -> None:
         """Sparse Ewald output matches direct two-branch rod geometry."""
         detector_distance = 900.0
         hmax = 8
@@ -1258,7 +1258,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     @parameterized.parameters(1.5, 2.5, 4.0)
-    def test_sto_matches_raw_dual_branch_geometry(self, theta_deg):
+    def test_sto_matches_raw_dual_branch_geometry(self, theta_deg) -> None:
         """SrTiO3 sparse Ewald output matches the raw detector geometry."""
         sto_crystal = self._create_sto_crystal()
         detector_distance = 900.0
@@ -1301,7 +1301,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "SrTiO3 sparse Ewald intersections should match direct rod geometry",
         )
 
-    def test_elastic_scattering_constraint(self):
+    def test_elastic_scattering_constraint(self) -> None:
         """Test that |k_out| = |k_in| (elastic scattering)."""
         pattern = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1325,7 +1325,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "k_out magnitudes should match k_in (elastic scattering)",
         )
 
-    def test_azimuthal_rotation_changes_pattern(self):
+    def test_azimuthal_rotation_changes_pattern(self) -> None:
         """Changing phi_deg rotates the pattern."""
         pattern_0 = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1352,7 +1352,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "Different azimuths should produce different patterns",
         )
 
-    def test_temperature_affects_intensity(self):
+    def test_temperature_affects_intensity(self) -> None:
         """Higher temperature reduces intensity (Debye-Waller)."""
         pattern_low_T = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1386,7 +1386,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "High T pattern should have reflections",
         )
 
-    def test_roughness_affects_intensity(self):
+    def test_roughness_affects_intensity(self) -> None:
         """Surface roughness affects CTR intensity."""
         pattern_smooth = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1420,7 +1420,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "Rough surface should have reflections",
         )
 
-    def test_voltage_affects_wavevector(self):
+    def test_voltage_affects_wavevector(self) -> None:
         """Different voltages give different k magnitudes."""
         pattern_10kv = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1451,7 +1451,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
                 "Higher voltage should give larger k magnitude",
             )
 
-    def test_jax_jit_compatible(self):
+    def test_jax_jit_compatible(self) -> None:
         """ewald_simulator works under JAX JIT compilation."""
         pattern = jax.jit(
             ewald_simulator,
@@ -1471,7 +1471,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "JIT-compiled simulation should work",
         )
 
-    def test_surface_config_parameter(self):
+    def test_surface_config_parameter(self) -> None:
         """surface_config parameter works correctly."""
         config = SurfaceConfig(method="height", height_fraction=0.5)
 
@@ -1497,7 +1497,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         {"theta_deg": 3.0},
         {"theta_deg": 5.0},
     )
-    def test_various_grazing_angles(self, theta_deg):
+    def test_various_grazing_angles(self, theta_deg) -> None:
         """Various grazing angles produce valid patterns."""
         pattern = ewald_simulator(
             crystal=self.mgo_crystal,
@@ -1514,7 +1514,9 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             f"Grazing angle {theta_deg} should produce valid reflections",
         )
 
-    def test_orientation_distribution_matches_manual_incoherent_union(self):
+    def test_orientation_distribution_matches_manual_incoherent_union(
+        self,
+    ) -> None:
         """Orientation wrapper matches explicit per-angle pattern union."""
         orientation_dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 45.0]),
@@ -1615,7 +1617,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             atol=1e-10,
         )
 
-    def test_orientation_distribution_wrapper_jits(self):
+    def test_orientation_distribution_wrapper_jits(self) -> None:
         """Orientation-distribution wrapper should compile under jax.jit."""
         orientation_dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 30.0]),
@@ -1669,7 +1671,7 @@ _SI_CRYSTAL_2ATOM = _make_si_crystal_2atom()
 class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     """Tests for dense detector-image helpers built on ewald_simulator."""
 
-    def test_render_pattern_to_image_shape_and_normalization(self):
+    def test_render_pattern_to_image_shape_and_normalization(self) -> None:
         """Rasterized detector image has requested shape and unit maximum."""
         pattern = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
@@ -1695,7 +1697,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
         self.assertTrue(jnp.all(image >= 0.0))
 
-    def test_detector_extent_mm_matches_calibration(self):
+    def test_detector_extent_mm_matches_calibration(self) -> None:
         """Display extent converts beam centre and pixel pitch correctly."""
         extent = detector_extent_mm(
             image_shape_px=(100, 200),
@@ -1704,7 +1706,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         self.assertEqual(extent, (-120.0, 180.0, -15.0, 285.0))
 
-    def test_log_compress_image_preserves_bounds(self):
+    def test_log_compress_image_preserves_bounds(self) -> None:
         """Log compression maps a normalized image back into [0, 1]."""
         image = jnp.array([[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64)
         compressed = log_compress_image(image, gain=20.0)
@@ -1715,7 +1717,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(compressed[0, 0], 0.0, atol=1e-12)
         chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
 
-    def test_log_compress_image_applies_dynamic_range_floor(self):
+    def test_log_compress_image_applies_dynamic_range_floor(self) -> None:
         """Display floor hides weak pixels and rescales the visible range."""
         image = jnp.array([[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64)
         compressed = log_compress_image(
@@ -1732,7 +1734,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
     def test_simulate_detector_image_matches_direct_render_when_unbroadened(
         self,
-    ):
+    ) -> None:
         """Spot-render mode matches direct rasterization when unbroadened."""
         kwargs = dict(
             crystal=_SI_CRYSTAL_2ATOM,
@@ -1786,7 +1788,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             atol=1e-10,
         )
 
-    def test_simulate_detector_image_renders_streaks_by_default(self):
+    def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
         """Default dense rendering elongates CTRs vertically on the detector."""
         image = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
@@ -1819,7 +1821,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "Default detector rendering should produce an elongated streak",
         )
 
-    def test_simulate_detector_image_with_orientation_distribution(self):
+    def test_simulate_detector_image_with_orientation_distribution(
+        self,
+    ) -> None:
         """Orientation-distribution orchestration yields a valid dense image."""
         orientation_dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
@@ -1873,7 +1877,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         pattern = ewald_simulator(**defaults)
         return jnp.sum(pattern.intensities)
 
-    def test_grad_temperature(self):
+    def test_grad_temperature(self) -> None:
         """Gradient w.r.t. temperature is finite and non-zero."""
 
         def loss(temp):
@@ -1883,7 +1887,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
         assert jnp.abs(g) > 1e-12
 
-    def test_grad_roughness(self):
+    def test_grad_roughness(self) -> None:
         """Gradient w.r.t. surface roughness is finite and non-zero."""
 
         def loss(roughness):
@@ -1893,7 +1897,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
         assert jnp.abs(g) > 1e-12
 
-    def test_grad_polar_angle(self):
+    def test_grad_polar_angle(self) -> None:
         """Gradient w.r.t. incidence angle is finite."""
 
         def loss(theta):
@@ -1902,7 +1906,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         g = jax.grad(loss)(jnp.float64(2.0))
         chex.assert_tree_all_finite(g)
 
-    def test_grad_voltage(self):
+    def test_grad_voltage(self) -> None:
         """Gradient w.r.t. beam voltage is finite."""
 
         def loss(voltage):
@@ -1911,7 +1915,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         g = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
 
-    def test_vmap_grad(self):
+    def test_vmap_grad(self) -> None:
         """vmap(grad(loss)) over temperatures produces correct shape."""
 
         def loss(temp):
@@ -1924,7 +1928,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(grads, (3,))
         chex.assert_tree_all_finite(grads)
 
-    def test_jacrev(self):
+    def test_jacrev(self) -> None:
         """jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian."""
 
         def loss(params):
@@ -1939,7 +1943,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(jac, (2,))
         chex.assert_tree_all_finite(jac)
 
-    def test_ewald_simulator_grad_temperature_correct(self):
+    def test_ewald_simulator_grad_temperature_correct(self) -> None:
         """Ewald simulator grad w.r.t. temperature matches finite diff."""
 
         def f(temp):
@@ -1957,7 +1961,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
 
         check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-2)
 
-    def test_ewald_simulator_grad_roughness_correct(self):
+    def test_ewald_simulator_grad_roughness_correct(self) -> None:
         """Ewald simulator grad w.r.t. roughness matches finite diff."""
 
         def f(roughness):
@@ -1979,7 +1983,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
 class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
     """Gradient existence and correctness for multislice forward model."""
 
-    def test_multislice_grad_voltage(self):
+    def test_multislice_grad_voltage(self) -> None:
         """Gradient through multislice propagation w.r.t. voltage."""
         cart_positions = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
@@ -2010,7 +2014,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         g = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
 
-    def test_multislice_grad_voltage_correct(self):
+    def test_multislice_grad_voltage_correct(self) -> None:
         """Multislice grad w.r.t. voltage matches finite diff."""
         cart_positions = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
@@ -2044,7 +2048,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
 class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential for ewald_simulator."""
 
-    def test_ewald_simulator_vmap_temperature_consistent(self):
+    def test_ewald_simulator_vmap_temperature_consistent(self) -> None:
         """Batched ewald_simulator over temps matches sequential."""
 
         def f(temp):

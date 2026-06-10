@@ -56,7 +56,7 @@ def _write_single_frame_tiffs(
 class TestLoadTiffSequence(chex.TestCase):
     """Tests for load_tiff_sequence."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Create temporary directory for test files."""
         super().setUp()
         self._tmpdir = tempfile.TemporaryDirectory()
@@ -67,7 +67,7 @@ class TestLoadTiffSequence(chex.TestCase):
         self._tmpdir.cleanup()
         super().tearDown()
 
-    def test_multipage_shape(self):
+    def test_multipage_shape(self) -> None:
         """Multi-page TIFF loads with correct shape."""
         n_frames = 5
         _write_multipage_tiff(self.tmp_path / "stack.tif", n_frames)
@@ -75,13 +75,13 @@ class TestLoadTiffSequence(chex.TestCase):
         chex.assert_shape(seq, (n_frames, H, W))
         self.assertEqual(len(meta), n_frames)
 
-    def test_multipage_dtype(self):
+    def test_multipage_dtype(self) -> None:
         """Loaded data is float64 JAX array."""
         _write_multipage_tiff(self.tmp_path / "stack.tif", 3)
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
         self.assertEqual(seq.dtype, jnp.float64)
 
-    def test_multipage_values(self):
+    def test_multipage_values(self) -> None:
         """Loaded values match written data."""
         expected = _write_multipage_tiff(self.tmp_path / "stack.tif", 3)
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
@@ -89,7 +89,7 @@ class TestLoadTiffSequence(chex.TestCase):
             seq, jnp.asarray(expected, dtype=jnp.float64), atol=1e-4
         )
 
-    def test_directory_shape(self):
+    def test_directory_shape(self) -> None:
         """Directory of TIFFs loads with correct shape."""
         n_frames = 4
         _write_single_frame_tiffs(self.tmp_path / "frames", n_frames)
@@ -97,7 +97,7 @@ class TestLoadTiffSequence(chex.TestCase):
         chex.assert_shape(seq, (n_frames, H, W))
         self.assertEqual(len(meta), n_frames)
 
-    def test_directory_values(self):
+    def test_directory_values(self) -> None:
         """Directory values match written data."""
         expected = _write_single_frame_tiffs(self.tmp_path / "frames", 3)
         seq, _ = load_tiff_sequence(self.tmp_path / "frames")
@@ -105,7 +105,7 @@ class TestLoadTiffSequence(chex.TestCase):
             seq, jnp.asarray(expected, dtype=jnp.float64), atol=1e-4
         )
 
-    def test_metadata_indices(self):
+    def test_metadata_indices(self) -> None:
         """Frame indices are sequential starting from 0."""
         n_frames = 4
         _write_multipage_tiff(self.tmp_path / "stack.tif", n_frames)
@@ -113,7 +113,7 @@ class TestLoadTiffSequence(chex.TestCase):
         indices = [m.frame_index for m in meta]
         self.assertEqual(indices, list(range(n_frames)))
 
-    def test_single_frame_file(self):
+    def test_single_frame_file(self) -> None:
         """Single-frame TIFF loads as (1, H, W)."""
         data = np.ones((H, W), dtype=np.float32) * 42.0
         tifffile.imwrite(str(self.tmp_path / "single.tif"), data)
@@ -121,25 +121,25 @@ class TestLoadTiffSequence(chex.TestCase):
         chex.assert_shape(seq, (1, H, W))
         self.assertEqual(len(meta), 1)
 
-    def test_file_not_found(self):
+    def test_file_not_found(self) -> None:
         """Raises FileNotFoundError for missing path."""
         with self.assertRaises(FileNotFoundError):
             load_tiff_sequence("/nonexistent/path.tif")
 
-    def test_empty_directory(self):
+    def test_empty_directory(self) -> None:
         """Raises ValueError for directory with no TIFFs."""
         empty_dir = self.tmp_path / "empty"
         empty_dir.mkdir()
         with self.assertRaises(ValueError):
             load_tiff_sequence(empty_dir)
 
-    def test_invalid_sort_by(self):
+    def test_invalid_sort_by(self) -> None:
         """Raises ValueError for invalid sort_by."""
         _write_multipage_tiff(self.tmp_path / "stack.tif", 2)
         with self.assertRaises(ValueError):
             load_tiff_sequence(self.tmp_path / "stack.tif", sort_by="invalid")
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in loaded data."""
         _write_multipage_tiff(self.tmp_path / "stack.tif", 3)
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
@@ -149,7 +149,7 @@ class TestLoadTiffSequence(chex.TestCase):
 class TestExtractFrameMetadata(chex.TestCase):
     """Tests for extract_frame_metadata."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Create temporary directory for test files."""
         super().setUp()
         self._tmpdir = tempfile.TemporaryDirectory()
@@ -160,7 +160,7 @@ class TestExtractFrameMetadata(chex.TestCase):
         self._tmpdir.cleanup()
         super().tearDown()
 
-    def test_returns_named_tuple(self):
+    def test_returns_named_tuple(self) -> None:
         """Returns a FrameMetadata instance."""
         data = np.ones((H, W), dtype=np.float32)
         fpath = self.tmp_path / "meta.tif"
@@ -170,7 +170,7 @@ class TestExtractFrameMetadata(chex.TestCase):
         self.assertIsInstance(meta, FrameMetadata)
         self.assertEqual(meta.frame_index, 7)
 
-    def test_description_string(self):
+    def test_description_string(self) -> None:
         """Description is a string (possibly empty)."""
         data = np.ones((H, W), dtype=np.float32)
         fpath = self.tmp_path / "desc.tif"
@@ -183,13 +183,13 @@ class TestExtractFrameMetadata(chex.TestCase):
 class TestNormalizeSequence(chex.TestCase):
     """Tests for normalize_sequence."""
 
-    def test_shape_preserved(self):
+    def test_shape_preserved(self) -> None:
         """Output shape matches input shape."""
         seq = jnp.ones((5, H, W)) * 500.0
         result = normalize_sequence(seq)
         chex.assert_shape(result, (5, H, W))
 
-    def test_output_range(self):
+    def test_output_range(self) -> None:
         """Each frame is normalized to [0, 1]."""
         rng = np.random.default_rng(99)
         np_data = rng.uniform(10.0, 1000.0, size=(5, H, W))
@@ -200,7 +200,7 @@ class TestNormalizeSequence(chex.TestCase):
             chex.assert_trees_all_close(jnp.min(frame), 0.0, atol=1e-10)
             chex.assert_trees_all_close(jnp.max(frame), 1.0, atol=1e-10)
 
-    def test_with_background(self):
+    def test_with_background(self) -> None:
         """Background subtraction reduces values."""
         seq = jnp.ones((3, H, W)) * 500.0
         bg = jnp.ones((H, W)) * 200.0
@@ -208,7 +208,7 @@ class TestNormalizeSequence(chex.TestCase):
         chex.assert_shape(result, (3, H, W))
         chex.assert_tree_all_finite(result)
 
-    def test_with_flat_field(self):
+    def test_with_flat_field(self) -> None:
         """Flat-field correction applied without errors."""
         rng = np.random.default_rng(99)
         np_data = rng.uniform(10.0, 1000.0, size=(3, H, W))
@@ -218,7 +218,7 @@ class TestNormalizeSequence(chex.TestCase):
         chex.assert_shape(result, (3, H, W))
         chex.assert_tree_all_finite(result)
 
-    def test_with_all_corrections(self):
+    def test_with_all_corrections(self) -> None:
         """Full correction pipeline works."""
         rng = np.random.default_rng(99)
         np_data = rng.uniform(100.0, 1000.0, size=(3, H, W))
@@ -231,14 +231,14 @@ class TestNormalizeSequence(chex.TestCase):
         self.assertTrue(jnp.all(result >= 0.0))
         self.assertTrue(jnp.all(result <= 1.0))
 
-    def test_nonnegative(self):
+    def test_nonnegative(self) -> None:
         """Output is non-negative even when background exceeds signal."""
         seq = jnp.ones((2, H, W)) * 10.0
         bg = jnp.ones((H, W)) * 100.0
         result = normalize_sequence(seq, background=bg)
         self.assertTrue(jnp.all(result >= 0.0))
 
-    def test_uniform_frames(self):
+    def test_uniform_frames(self) -> None:
         """Uniform frames normalize to zero (no range)."""
         seq = jnp.ones((3, H, W)) * 42.0
         result = normalize_sequence(seq)
@@ -248,14 +248,14 @@ class TestNormalizeSequence(chex.TestCase):
 class TestDetectBeamCenter(chex.TestCase):
     """Tests for detect_beam_center."""
 
-    def test_shape(self):
+    def test_shape(self) -> None:
         """Output is a 2-element array."""
         img = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1000.0)
         center = detect_beam_center(img)
         chex.assert_shape(center, (2,))
 
-    def test_centered_spot(self):
+    def test_centered_spot(self) -> None:
         """Detects a centered spot correctly."""
         row_center = H // 2
         col_center = W // 2
@@ -272,7 +272,7 @@ class TestDetectBeamCenter(chex.TestCase):
             atol=1.0,
         )
 
-    def test_offset_spot(self):
+    def test_offset_spot(self) -> None:
         """Detects an off-center spot correctly."""
         row_center = H // 4
         col_center = 3 * W // 4
@@ -289,13 +289,13 @@ class TestDetectBeamCenter(chex.TestCase):
             atol=1.5,
         )
 
-    def test_finite_values(self):
+    def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
         img = jnp.ones((H, W)) * 50.0
         center = detect_beam_center(img)
         chex.assert_tree_all_finite(center)
 
-    def test_noisy_spot(self):
+    def test_noisy_spot(self) -> None:
         """Detects spot in noisy image."""
         row_center = H // 2
         col_center = W // 2
@@ -319,7 +319,7 @@ class TestDetectBeamCenter(chex.TestCase):
 class TestLoadTiffAsRheedImage(chex.TestCase):
     """Tests for load_tiff_as_rheed_image."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Create temporary directory for test files."""
         super().setUp()
         self._tmpdir = tempfile.TemporaryDirectory()
@@ -330,7 +330,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         self._tmpdir.cleanup()
         super().tearDown()
 
-    def test_returns_rheed_image(self):
+    def test_returns_rheed_image(self) -> None:
         """Returns a RHEEDImage instance."""
         data = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
@@ -342,7 +342,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         )
         self.assertIsInstance(img, RHEEDImage)
 
-    def test_image_shape(self):
+    def test_image_shape(self) -> None:
         """Image array has correct shape."""
         data = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
@@ -354,7 +354,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         )
         chex.assert_shape(img.img_array, (H, W))
 
-    def test_wavelength_correct(self):
+    def test_wavelength_correct(self) -> None:
         """Electron wavelength is physically reasonable for 20 keV."""
         data = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
@@ -368,7 +368,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
             img.electron_wavelength, 0.0859, atol=0.001
         )
 
-    def test_with_background(self):
+    def test_with_background(self) -> None:
         """Background subtraction is applied."""
         data = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
@@ -386,7 +386,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
             atol=1.0,
         )
 
-    def test_multipage_takes_first(self):
+    def test_multipage_takes_first(self) -> None:
         """Multi-page TIFF uses only the first frame."""
         data = np.stack(
             [
@@ -411,7 +411,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
             atol=1.0,
         )
 
-    def test_parameters_stored(self):
+    def test_parameters_stored(self) -> None:
         """Beam and detector parameters are stored correctly."""
         data = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
@@ -430,7 +430,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 class TestGradients(chex.TestCase):
     """Gradient tests for tiff functions."""
 
-    def test_grad_through_normalize(self):
+    def test_grad_through_normalize(self) -> None:
         """jax.grad flows through normalize_sequence."""
 
         def loss(scale):
@@ -441,7 +441,7 @@ class TestGradients(chex.TestCase):
         grad_val = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_val)
 
-    def test_grad_through_detect_beam_center(self):
+    def test_grad_through_detect_beam_center(self) -> None:
         """jax.grad flows through detect_beam_center."""
 
         def loss(peak_row):

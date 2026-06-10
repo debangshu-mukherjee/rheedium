@@ -24,7 +24,7 @@ from rheedium.types.crystal_types import create_crystal_structure
 class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
     """Test suite for compute_domain_extent function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures for domain extent calculations.
 
         Creates various atomic position configurations including single atom,
@@ -57,7 +57,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_single_atom_minimum_extent(self):
+    def test_single_atom_minimum_extent(self) -> None:
         """Test that single atom returns minimum extent (1.0 Å).
 
         A single atom has zero extent, but minimum enforcement should
@@ -74,7 +74,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_cube_extent(self):
+    def test_cube_extent(self) -> None:
         """Test extent calculation for cubic arrangement.
 
         Atoms at corners of 10×10×10 Å cube should give extent [10, 10, 10].
@@ -89,7 +89,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_slab_extent(self):
+    def test_slab_extent(self) -> None:
         """Test extent calculation for rectangular slab.
 
         Atoms in 20×15×5 Å slab should give corresponding extent.
@@ -109,7 +109,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         ("medium_padding", 5.0),
         ("large_padding", 10.0),
     )
-    def test_padding_applied_correctly(self, padding):
+    def test_padding_applied_correctly(self, padding) -> None:
         """Test that padding is added correctly (2×padding per dimension).
 
         Padding should be applied symmetrically on both sides.
@@ -123,7 +123,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(extent_with_pad, expected, rtol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_is_positive(self):
+    def test_output_is_positive(self) -> None:
         """Test that extent is always positive."""
         var_compute = self.variant(compute_domain_extent)
 
@@ -135,7 +135,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
     """Test suite for extent_to_rod_sigma function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures for rod sigma calculations.
 
         Creates domain extents ranging from small (10 Å) to large (1000 Å)
@@ -147,7 +147,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         self.large_extent = jnp.array([1000.0, 1000.0, 1000.0])
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_shape(self):
+    def test_output_shape(self) -> None:
         """Test that output has shape (2,) for x,y rod widths."""
         var_sigma = self.variant(extent_to_rod_sigma)
 
@@ -156,7 +156,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(sigma, (2,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_inverse_scaling(self):
+    def test_inverse_scaling(self) -> None:
         """Test that rod sigma scales inversely with domain size.
 
         σ_rod ∝ 1/L, so doubling L should halve σ.
@@ -171,7 +171,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ratio, jnp.array([10.0, 10.0]), rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_numerical_value_100A(self):
+    def test_numerical_value_100A(self) -> None:
         """Test numerical value for 100 Å domain.
 
         σ = 2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
@@ -186,7 +186,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_positive_output(self):
+    def test_positive_output(self) -> None:
         """Test that rod sigma is always positive."""
         var_sigma = self.variant(extent_to_rod_sigma)
 
@@ -195,7 +195,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(sigma > 0), True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_tiny_extent_no_nan(self):
+    def test_tiny_extent_no_nan(self) -> None:
         """Test that tiny extent doesn't produce NaN due to minimum enforcement."""
         var_sigma = self.variant(extent_to_rod_sigma)
 
@@ -208,7 +208,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
     """Test suite for compute_shell_sigma function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures for shell sigma calculations.
 
         Creates wavevector magnitudes for common RHEED voltages.
@@ -221,7 +221,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         self.k_30kv = jnp.array(89.0)  # approximate
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_is_scalar(self):
+    def test_output_is_scalar(self) -> None:
         """Test that output is a scalar."""
         var_shell = self.variant(compute_shell_sigma)
 
@@ -230,7 +230,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(sigma, ())
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_default_parameters(self):
+    def test_default_parameters(self) -> None:
         """Test shell sigma with default beam parameters.
 
         At 20 kV (k≈73), with ΔE/E=1e-4 and Δθ=1e-3:
@@ -244,7 +244,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(sigma, 0.073, atol=0.01)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_zero_divergence_energy_only(self):
+    def test_zero_divergence_energy_only(self) -> None:
         """Test shell sigma with only energy spread (zero divergence)."""
         var_shell = self.variant(compute_shell_sigma)
 
@@ -257,7 +257,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(sigma, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_scaling_with_k(self):
+    def test_scaling_with_k(self) -> None:
         """Test that shell sigma scales linearly with k."""
         var_shell = self.variant(compute_shell_sigma)
 
@@ -270,7 +270,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(actual_ratio, expected_ratio, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_positive_output(self):
+    def test_positive_output(self) -> None:
         """Test that shell sigma is always positive."""
         var_shell = self.variant(compute_shell_sigma)
 
@@ -282,7 +282,7 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     """Test suite for rod_ewald_overlap function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures for overlap calculations.
 
         Creates test G vectors, incident wavevector, and broadening parameters.
@@ -320,7 +320,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         self.shell_sigma = jnp.array(0.07)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_shape_single(self):
+    def test_output_shape_single(self) -> None:
         """Test output shape for single G vector."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -335,7 +335,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(overlap, (1,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_shape_batch(self):
+    def test_output_shape_batch(self) -> None:
         """Test output shape for batch of G vectors."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -350,7 +350,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(overlap, (3,))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_specular_reflection_high_overlap(self):
+    def test_specular_reflection_high_overlap(self) -> None:
         """Test that specular reflection (G=0) has high overlap.
 
         For G=0, k_out = k_in, so |k_out| = |k_in| exactly.
@@ -370,7 +370,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(overlap[0], 1.0, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_far_from_sphere_low_overlap(self):
+    def test_far_from_sphere_low_overlap(self) -> None:
         """Test that G vectors far from Ewald sphere have low overlap."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -386,7 +386,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(overlap[0] < 0.01, True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_overlap_bounded_zero_one(self):
+    def test_overlap_bounded_zero_one(self) -> None:
         """Test that overlap values are bounded between 0 and 1."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -402,7 +402,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(overlap <= 1), True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_larger_sigma_broader_overlap(self):
+    def test_larger_sigma_broader_overlap(self) -> None:
         """Test that larger σ gives broader (more uniform) overlap."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -425,7 +425,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(overlap_large[0] > overlap_small[0], True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_finite(self):
+    def test_output_finite(self) -> None:
         """Test that output contains no NaN or Inf."""
         var_overlap = self.variant(rod_ewald_overlap)
 
@@ -443,7 +443,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     """Test suite for finite_domain_intensities function."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures for intensity calculations.
 
         Creates a simple crystal structure and pre-computes EwaldData.
@@ -491,7 +491,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         self.large_domain = jnp.array([1000.0, 1000.0, 500.0])
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_shapes(self):
+    def test_output_shapes(self) -> None:
         """Test that output shapes match EwaldData.intensities."""
         var_intensities = self.variant(finite_domain_intensities)
 
@@ -506,7 +506,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(intensities, self.ewald.intensities.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_overlap_bounded(self):
+    def test_overlap_bounded(self) -> None:
         """Test that overlap factors are in [0, 1]."""
         var_intensities = self.variant(finite_domain_intensities)
 
@@ -521,7 +521,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(overlap <= 1), True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_modified_intensities_bounded(self):
+    def test_modified_intensities_bounded(self) -> None:
         """Test that modified intensities ≤ original intensities."""
         var_intensities = self.variant(finite_domain_intensities)
 
@@ -538,7 +538,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_large_domain_preserves_intensities(self):
+    def test_large_domain_preserves_intensities(self) -> None:
         """Test that large domain gives overlap ≈ 1 for allowed reflections.
 
         For a very large domain (1000 Å), the rod width is very small,
@@ -561,7 +561,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(max_overlap, 1.0, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_small_domain_broader_distribution(self):
+    def test_small_domain_broader_distribution(self) -> None:
         """Test that small domain gives more uniform overlap distribution.
 
         Smaller domains have broader rods, so more reflections contribute.
@@ -590,7 +590,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(active_small >= active_large, True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_output_finite(self):
+    def test_output_finite(self) -> None:
         """Test that output contains no NaN or Inf."""
         var_intensities = self.variant(finite_domain_intensities)
 
@@ -610,7 +610,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         ("theta_2deg", 2.0),
         ("theta_5deg", 5.0),
     )
-    def test_different_angles(self, theta):
+    def test_different_angles(self, theta) -> None:
         """Test that function works for various incidence angles."""
         var_intensities = self.variant(finite_domain_intensities)
 
@@ -629,14 +629,14 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
     """Physics validation tests for finite domain broadening."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up fixtures for physics validation."""
         super().setUp()
         # Reference values
         self.sqrt_2pi = jnp.sqrt(2.0 * jnp.pi)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_rod_sigma_formula(self):
+    def test_rod_sigma_formula(self) -> None:
         """Test that rod sigma formula is correct.
 
         σ_q = 2π / (L × √(2π))
@@ -653,7 +653,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(sigma[0], expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_shell_sigma_formula(self):
+    def test_shell_sigma_formula(self) -> None:
         """Test that shell sigma formula is correct.
 
         σ_shell = k × √[(ΔE/2E)² + Δθ²]
@@ -678,7 +678,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(sigma, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_gaussian_overlap_formula(self):
+    def test_gaussian_overlap_formula(self) -> None:
         """Test that overlap follows Gaussian formula.
 
         overlap = exp(-d²/(2σ_eff²))

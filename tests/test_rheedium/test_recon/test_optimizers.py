@@ -53,7 +53,9 @@ def _initial_params() -> dict[str, jnp.ndarray]:
 class TestGaussNewtonReconstruction(chex.TestCase):
     """Tests for Gauss-Newton-based reconstruction."""
 
-    def test_gauss_newton_reconstruction_recovers_linear_parameters(self):
+    def test_gauss_newton_reconstruction_recovers_linear_parameters(
+        self,
+    ) -> None:
         """Gauss-Newton should recover a linear image model in one step."""
         true_params = _true_params()
         target = _linear_forward_model(true_params)
@@ -82,7 +84,7 @@ class TestGaussNewtonReconstruction(chex.TestCase):
         chex.assert_tree_all_finite(result.objective_history)
         self.assertLessEqual(int(result.iterations), 2)
 
-    def test_gauss_newton_low_level_accepts_parameter_pytrees(self):
+    def test_gauss_newton_low_level_accepts_parameter_pytrees(self) -> None:
         """The low-level least-squares solver should work on dict pytrees."""
         true_params = _true_params()
         target = _linear_forward_model(true_params)
@@ -114,7 +116,7 @@ class TestGaussNewtonReconstruction(chex.TestCase):
 class TestAdaptiveGradientReconstruction(chex.TestCase):
     """Tests for Adam- and Adagrad-based reconstruction."""
 
-    def test_adam_reconstruction_reduces_loss(self):
+    def test_adam_reconstruction_reduces_loss(self) -> None:
         """Adam should substantially reduce the image-matching loss."""
         true_params = _true_params()
         target = _linear_forward_model(true_params)
@@ -149,7 +151,7 @@ class TestAdaptiveGradientReconstruction(chex.TestCase):
             atol=5e-3,
         )
 
-    def test_adagrad_reconstruction_reduces_loss(self):
+    def test_adagrad_reconstruction_reduces_loss(self) -> None:
         """Adagrad should substantially reduce the image-matching loss."""
         true_params = _true_params()
         target = _linear_forward_model(true_params)
@@ -188,7 +190,7 @@ class TestAdaptiveGradientReconstruction(chex.TestCase):
 class TestReconNamespace(chex.TestCase):
     """Tests for public recon exports."""
 
-    def test_namespace_exports_optimizer_entry_points(self):
+    def test_namespace_exports_optimizer_entry_points(self) -> None:
         """Optimizer APIs should be re-exported from rheedium.recon."""
         self.assertIs(
             recon.gauss_newton_reconstruction,

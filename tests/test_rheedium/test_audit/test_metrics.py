@@ -55,7 +55,7 @@ def _synthetic_three_peak_image(
 class TestReferenceMetadata(chex.TestCase):
     """Tests for the stored audit benchmark metadata bundle."""
 
-    def test_reference_metadata_complete(self):
+    def test_reference_metadata_complete(self) -> None:
         """Each stored reference case has the required metadata fields."""
         metadata_paths = sorted(_REFERENCE_DIR.glob("*_metadata.json"))
         assert len(metadata_paths) >= 2
@@ -78,7 +78,7 @@ class TestReferenceMetadata(chex.TestCase):
             assert np.all(np.isfinite(image))
             assert np.all(image >= 0.0)
 
-    def test_load_reference_cases_reads_images(self):
+    def test_load_reference_cases_reads_images(self) -> None:
         """The loader returns the shipped reference cases with images."""
         cases = load_reference_cases(_REFERENCE_DIR)
         assert len(cases) >= 2
@@ -90,7 +90,7 @@ class TestReferenceMetadata(chex.TestCase):
 class TestAuditMetrics(chex.TestCase):
     """Tests for pixel-space realism metrics."""
 
-    def test_metrics_translation_invariant(self):
+    def test_metrics_translation_invariant(self) -> None:
         """Spacing and width metrics ignore rigid image translations."""
         image = _synthetic_three_peak_image((18, 42, 66))
         shifted_image = _synthetic_three_peak_image((24, 48, 72))
@@ -119,7 +119,7 @@ class TestAuditMetrics(chex.TestCase):
             atol=1e-10,
         )
 
-    def test_metrics_report_zero_error_on_identical_patterns(self):
+    def test_metrics_report_zero_error_on_identical_patterns(self) -> None:
         """Identical detector images produce perfect agreement metrics."""
         image = _synthetic_three_peak_image((22, 48, 74))
         peak = peak_centroid(image)

@@ -76,7 +76,7 @@ def _make_test_slab():
 class TestSurfaceBuilderDirect(chex.TestCase):
     """Direct unit tests for branch-heavy geometry builders."""
 
-    def test_create_surface_slab_handles_aligned_surface_normal(self):
+    def test_create_surface_slab_handles_aligned_surface_normal(self) -> None:
         """(001) cuts should keep the in-plane cubic metric."""
         slab = create_surface_slab(
             _make_cubic_bulk(),
@@ -100,7 +100,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_create_surface_slab_rotates_non_aligned_surface_normal(
         self,
-    ):
+    ) -> None:
         """Non-(001) cuts should still yield a finite, bounded slab."""
         slab = create_surface_slab(
             _make_cubic_bulk(),
@@ -120,7 +120,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_apply_surface_reconstruction_moves_only_requested_surface_atoms(
         self,
-    ):
+    ) -> None:
         """Only the first n displaced surface atoms should be updated."""
         reconstructed = apply_surface_reconstruction(
             _make_test_slab(),
@@ -153,7 +153,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_apply_surface_reconstruction_shears_the_in_plane_cell(
         self,
-    ):
+    ) -> None:
         """Off-diagonal reconstruction matrices should shear the cell."""
         reconstructed = apply_surface_reconstruction(
             _make_test_slab(),
@@ -181,7 +181,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
     def test_add_adsorbate_layer_appends_weighted_cartesian_positions(
         self,
-    ):
+    ) -> None:
         """Adsorbates should be appended in both coordinate systems."""
         slab = _make_test_slab()
         decorated = add_adsorbate_layer(
@@ -223,30 +223,30 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
     """Tests for create_surface_slab (validated via fixtures)."""
 
-    def test_returns_four_columns(self):
+    def test_returns_four_columns(self) -> None:
         """Cart positions should have 4 columns [x,y,z,Z]."""
         d = _load("slab_001.npz")
         assert d["cart_positions"].shape[1] == 4
 
-    def test_slab_c_equals_thickness_plus_vacuum(self):
+    def test_slab_c_equals_thickness_plus_vacuum(self) -> None:
         """Cell c parameter should equal slab + vacuum thickness."""
         d = _load("slab_001.npz")
         c = float(d["cell_lengths"][2])
         chex.assert_trees_all_close(c, 25.0, atol=1e-6)
 
-    def test_slab_has_atoms(self):
+    def test_slab_has_atoms(self) -> None:
         """Slab should contain at least one atom."""
         d = _load("slab_001.npz")
         assert d["cart_positions"].shape[0] > 0
 
-    def test_atoms_within_slab_thickness(self):
+    def test_atoms_within_slab_thickness(self) -> None:
         """All atom z-coordinates should be within [0, thickness]."""
         d = _load("slab_001.npz")
         z = d["cart_positions"][:, 2]
         assert float(z.min()) >= -0.1
         assert float(z.max()) <= 10.1
 
-    def test_atomic_numbers_preserved(self):
+    def test_atomic_numbers_preserved(self) -> None:
         """Slab atoms should have same Z as bulk crystal."""
         bulk = _load("cubic_crystal.npz")
         slab = _load("slab_001.npz")
@@ -254,7 +254,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         slab_z = set(slab["cart_positions"][:, 3])
         assert slab_z.issubset(bulk_z)
 
-    def test_stoichiometry_preserved_mgo(self):
+    def test_stoichiometry_preserved_mgo(self) -> None:
         """MgO slab should have Mg:O ratio close to 1:1."""
         d = _load("mgo_slab.npz")
         z_nums = d["cart_positions"][:, 3]
@@ -265,7 +265,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         ratio = n_mg / (n_o + 1e-10)
         assert 0.5 < ratio < 2.0
 
-    def test_cell_angles_valid(self):
+    def test_cell_angles_valid(self) -> None:
         """All output cell angles should be in (0, 180)."""
         d = _load("slab_001.npz")
         for angle in d["cell_angles"]:
@@ -276,13 +276,13 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         ("110", "slab_110.npz"),
         ("111", "slab_111.npz"),
     )
-    def test_various_orientations(self, fname):
+    def test_various_orientations(self, fname) -> None:
         """Slabs for various Miller indices should have atoms."""
         d = _load(fname)
         assert d["cart_positions"].shape[0] > 0
         assert d["cart_positions"].shape[1] == 4
 
-    def test_thicker_slab_has_more_atoms(self):
+    def test_thicker_slab_has_more_atoms(self) -> None:
         """A thicker slab should contain more atoms."""
         thin = _load("thin_slab.npz")
         thick = _load("slab_001.npz")
@@ -291,7 +291,7 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
             >= (thin["cart_positions"].shape[0])
         )
 
-    def test_frac_and_cart_shapes_match(self):
+    def test_frac_and_cart_shapes_match(self) -> None:
         """Fractional and Cartesian arrays should match shape."""
         d = _load("slab_001.npz")
         assert d["frac_positions"].shape == d["cart_positions"].shape
@@ -300,12 +300,12 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
 class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
     """Tests for apply_surface_reconstruction (via fixtures)."""
 
-    def test_reconstruction_has_atoms(self):
+    def test_reconstruction_has_atoms(self) -> None:
         """Reconstructed slab should have atoms."""
         d = _load("recon_2x2.npz")
         assert d["cart_positions"].shape[0] > 0
 
-    def test_2x2_expands_cell(self):
+    def test_2x2_expands_cell(self) -> None:
         """2x2 reconstruction should roughly double a and b."""
         orig = _load("slab_001.npz")
         recon = _load("recon_2x2.npz")
@@ -320,7 +320,7 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
             atol=0.5,
         )
 
-    def test_atom_count_scales(self):
+    def test_atom_count_scales(self) -> None:
         """2x2 recon should have more atoms than 1x1."""
         orig = _load("slab_001.npz")
         recon = _load("recon_2x2.npz")
@@ -329,7 +329,7 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
             > (orig["cart_positions"].shape[0])
         )
 
-    def test_displacement_moves_atoms(self):
+    def test_displacement_moves_atoms(self) -> None:
         """Non-zero displacement should change positions."""
         no_disp = _load("recon_no_disp.npz")
         with_disp = _load("recon_with_disp.npz")
@@ -347,7 +347,7 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
 class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
     """Tests for add_adsorbate_layer (via fixtures)."""
 
-    def test_adsorbate_increases_atom_count(self):
+    def test_adsorbate_increases_atom_count(self) -> None:
         """Adding adsorbates should increase total atom count."""
         orig = _load("slab_001.npz")
         ads = _load("ads_full.npz")
@@ -355,7 +355,7 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
             orig["cart_positions"].shape[0] + 1
         )
 
-    def test_coverage_weights_atomic_number(self):
+    def test_coverage_weights_atomic_number(self) -> None:
         """Coverage 0.5 should halve the adsorbate Z value."""
         orig = _load("slab_001.npz")
         ads = _load("ads_half.npz")
@@ -363,14 +363,14 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         ads_z = float(ads["cart_positions"][n_orig, 3])
         chex.assert_trees_all_close(ads_z, 4.0, atol=1e-6)
 
-    def test_cell_parameters_unchanged(self):
+    def test_cell_parameters_unchanged(self) -> None:
         """Adsorbates should not change cell parameters."""
         orig = _load("slab_001.npz")
         ads = _load("ads_full.npz")
         np.testing.assert_allclose(ads["cell_lengths"], orig["cell_lengths"])
         np.testing.assert_allclose(ads["cell_angles"], orig["cell_angles"])
 
-    def test_multiple_adsorbates(self):
+    def test_multiple_adsorbates(self) -> None:
         """Should handle multiple adsorbate atoms."""
         orig = _load("slab_001.npz")
         ads = _load("ads_multi.npz")
@@ -378,7 +378,7 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
             orig["cart_positions"].shape[0] + 2
         )
 
-    def test_zero_coverage_zeroes_z(self):
+    def test_zero_coverage_zeroes_z(self) -> None:
         """Coverage 0.0 should produce zero effective Z."""
         orig = _load("slab_001.npz")
         ads = _load("ads_zero.npz")

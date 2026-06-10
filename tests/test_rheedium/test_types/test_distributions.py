@@ -19,7 +19,7 @@ from rheedium.types import (
 class TestOrientationDistributionFactories(chex.TestCase):
     """Tests for OrientationDistribution factory helpers."""
 
-    def test_create_discrete_orientation_defaults_equal_weights(self):
+    def test_create_discrete_orientation_defaults_equal_weights(self) -> None:
         """Discrete variants default to equal probability weights."""
         dist = create_discrete_orientation(jnp.array([33.7, -33.7]))
 
@@ -31,7 +31,7 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.0, atol=1e-12)
 
-    def test_create_mixed_orientation_clips_negative_weights(self):
+    def test_create_mixed_orientation_clips_negative_weights(self) -> None:
         """Factory weights are clipped to a valid probability simplex."""
         dist = create_mixed_orientation(
             angles_deg=jnp.array([0.0, 90.0, 180.0]),
@@ -46,7 +46,7 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.3, atol=1e-12)
 
-    def test_create_gaussian_orientation_builds_single_peak(self):
+    def test_create_gaussian_orientation_builds_single_peak(self) -> None:
         """Gaussian orientation uses one center peak plus mosaic width."""
         dist = create_gaussian_orientation(center_deg=12.5, fwhm_deg=0.8)
 
@@ -62,7 +62,7 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.8, atol=1e-12)
 
-    def test_orientation_distribution_is_pytree(self):
+    def test_orientation_distribution_is_pytree(self) -> None:
         """OrientationDistribution should flatten and unflatten cleanly."""
         dist = create_discrete_orientation(
             angles_deg=jnp.array([10.0, -10.0]),
@@ -95,7 +95,7 @@ class TestOrientationDistributionFactories(chex.TestCase):
 class TestOrientationDiscretization(chex.TestCase):
     """Tests for discretizing orientation probability distributions."""
 
-    def test_discretize_orientation_returns_normalized_weights(self):
+    def test_discretize_orientation_returns_normalized_weights(self) -> None:
         """Quadrature weights remain a proper probability distribution."""
         dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
@@ -109,7 +109,9 @@ class TestOrientationDiscretization(chex.TestCase):
         chex.assert_trees_all_close(jnp.sum(weights), 1.0, atol=1e-12)
         chex.assert_trees_all_equal(jnp.all(weights >= 0.0), True)
 
-    def test_discretize_orientation_static_returns_discrete_support(self):
+    def test_discretize_orientation_static_returns_discrete_support(
+        self,
+    ) -> None:
         """Static discretization avoids redundant quadrature for sharp peaks."""
         dist = create_discrete_orientation(
             angles_deg=jnp.array([15.0, -15.0]),
@@ -132,7 +134,9 @@ class TestOrientationDiscretization(chex.TestCase):
             atol=1e-12,
         )
 
-    def test_discretize_orientation_static_normalizes_manual_weights(self):
+    def test_discretize_orientation_static_normalizes_manual_weights(
+        self,
+    ) -> None:
         """Manual OrientationDistribution instances still behave probabilistically."""
         dist = OrientationDistribution(
             discrete_angles_deg=jnp.array([0.0, 90.0]),
@@ -152,7 +156,7 @@ class TestOrientationDiscretization(chex.TestCase):
 class TestOrientationIntegration(chex.TestCase):
     """Tests for orientation-driven incoherent pattern integration."""
 
-    def test_integrate_over_orientation_computes_incoherent_sum(self):
+    def test_integrate_over_orientation_computes_incoherent_sum(self) -> None:
         """The final pattern is the weighted intensity sum over variants."""
         dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
@@ -165,7 +169,7 @@ class TestOrientationIntegration(chex.TestCase):
         pattern = integrate_over_orientation(simulate_fn, dist, 5)
         chex.assert_trees_all_close(pattern, 75.0, atol=1e-6)
 
-    def test_grad_flows_through_orientation_angle(self):
+    def test_grad_flows_through_orientation_angle(self) -> None:
         """Orientation integration remains differentiable in angle space."""
 
         def loss(angle_deg):
@@ -182,7 +186,7 @@ class TestOrientationIntegration(chex.TestCase):
         chex.assert_tree_all_finite(grad_value)
         chex.assert_trees_all_close(grad_value, 16.0, atol=1e-6)
 
-    def test_jit_compiles_orientation_integration(self):
+    def test_jit_compiles_orientation_integration(self) -> None:
         """Orientation integration should compile under jax.jit."""
 
         @jax.jit

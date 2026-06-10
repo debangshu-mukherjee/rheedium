@@ -26,7 +26,7 @@ def _assert_well_formed(result, expected_name):
     assert isinstance(result.detail, str) and result.detail
 
 
-def test_form_factor_positivity_both_parameterizations():
+def test_form_factor_positivity_both_parameterizations() -> None:
     """Both Kirkland and Lobato form factors stay positive."""
     kirkland_result, lobato_result = check_form_factor_positivity()
     _assert_well_formed(kirkland_result, "form_factor_positivity_kirkland")
@@ -39,7 +39,7 @@ def test_form_factor_positivity_both_parameterizations():
     )
 
 
-def test_form_factor_monotonic_decrease_both_parameterizations():
+def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
     """Both Kirkland and Lobato form factors decrease monotonically."""
     kirkland_result, lobato_result = check_form_factor_monotonic_decrease()
     _assert_well_formed(kirkland_result, "form_factor_monotonic_kirkland")
@@ -52,7 +52,7 @@ def test_form_factor_monotonic_decrease_both_parameterizations():
     )
 
 
-def test_wavelength_relativistic_consistency():
+def test_wavelength_relativistic_consistency() -> None:
     """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
     result = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
@@ -61,7 +61,7 @@ def test_wavelength_relativistic_consistency():
     )
 
 
-def test_friedel_law_structure_factor():
+def test_friedel_law_structure_factor() -> None:
     """I(G) = I(-G) for a non-centrosymmetric three-atom basis."""
     result = check_friedel_law_structure_factor()
     _assert_well_formed(result, "friedel_law_structure_factor")
@@ -70,7 +70,7 @@ def test_friedel_law_structure_factor():
     )
 
 
-def test_elastic_closure_ewald_simulator():
+def test_elastic_closure_ewald_simulator() -> None:
     """ewald_simulator reflections lie exactly on the Ewald sphere."""
     result = check_elastic_closure_ewald()
     _assert_well_formed(result, "elastic_closure_ewald")
@@ -79,7 +79,7 @@ def test_elastic_closure_ewald_simulator():
     )
 
 
-def test_run_default_invariants_returns_full_suite():
+def test_run_default_invariants_returns_full_suite() -> None:
     """The default runner emits one well-formed result per check."""
     expected_names = {
         "form_factor_positivity_kirkland",
@@ -104,7 +104,7 @@ def test_run_default_invariants_returns_full_suite():
         assert r.detail
 
 
-def test_invariant_result_is_immutable():
+def test_invariant_result_is_immutable() -> None:
     """InvariantResult is a frozen dataclass and cannot be mutated."""
     result = check_friedel_law_structure_factor()
     with pytest.raises((AttributeError, TypeError)):
