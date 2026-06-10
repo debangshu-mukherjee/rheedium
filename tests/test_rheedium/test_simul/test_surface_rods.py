@@ -9,7 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jaxtyping import Array, Float
+from jax.test_util import check_grads
 
 from rheedium.simul.surface_rods import (
     calculate_ctr_intensity,
@@ -20,11 +20,12 @@ from rheedium.simul.surface_rods import (
     roughness_damping,
     surface_structure_factor,
 )
-from rheedium.types import create_crystal_structure
+from rheedium.tools.wrappers import jax_safe
+from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         """Set up test fixtures for surface rod calculations.
 
         Creates a simple cubic test crystal structure with Si atoms for
@@ -84,7 +85,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("medium_roughness", 1.0),
         ("large_roughness", 2.0),
     )
-    def test_roughness_damping_single(self, sigma: float) -> None:
+    def test_roughness_damping_single(self, sigma):
         """Test roughness damping for single q_z values.
 
         Tests the surface roughness damping factor exp(-q_z²σ²/2) for
@@ -112,7 +113,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_roughness_damping_batched(self) -> None:
+    def test_roughness_damping_batched(self):
         """Test roughness damping with batched q_z arrays.
 
         Verifies that the roughness damping function correctly handles
@@ -138,7 +139,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(damping_3d, q_z_3d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_zero_roughness_no_damping(self) -> None:
+    def test_zero_roughness_no_damping(self):
         """Test that zero roughness gives no damping.
 
         Validates that a perfectly smooth surface (σ=0) produces no
@@ -162,7 +163,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("large_corr", 100.0),
         ("very_large_corr", 500.0),
     )
-    def test_gaussian_rod_profile(self, correlation_length: float) -> None:
+    def test_gaussian_rod_profile(self, correlation_length):
         """Test Gaussian rod profile for different correlation lengths.
 
         Tests the Gaussian profile function exp(-q_perp²ξ²/2) that
@@ -176,9 +177,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_gaussian = self.variant(gaussian_rod_profile)
 
-        profile_values = var_gaussian(
-            self.q_perp_values, correlation_length
-        )
+        profile_values = var_gaussian(self.q_perp_values, correlation_length)
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -197,7 +196,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("large_corr", 100.0),
         ("very_large_corr", 500.0),
     )
-    def test_lorentzian_rod_profile(self, correlation_length: float) -> None:
+    def test_lorentzian_rod_profile(self, correlation_length):
         """Test Lorentzian rod profile for different correlation lengths.
 
         Tests the Lorentzian profile function 1/(1 + (q_perpξ)²) that
@@ -210,9 +209,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_lorentzian = self.variant(lorentzian_rod_profile)
 
-        profile_values = var_lorentzian(
-            self.q_perp_values, correlation_length
-        )
+        profile_values = var_lorentzian(self.q_perp_values, correlation_length)
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -228,7 +225,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("gaussian", "gaussian"),
         ("lorentzian", "lorentzian"),
     )
-    def test_rod_profile_function_selector(self, profile_type: str) -> None:
+    def test_rod_profile_function_selector(self, profile_type):
         """Test rod profile function selector without JIT.
 
         Tests the dynamic selection between Gaussian and Lorentzian rod
@@ -257,7 +254,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_rod_profile_width_scaling(self) -> None:
+    def test_rod_profile_width_scaling(self):
         """Test that rod width scales inversely with correlation length.
 
         Verifies the inverse relationship between real-space correlation
@@ -283,9 +280,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("high_temp_surface", 600.0, True),
         ("low_temp_bulk", 100.0, False),
     )
-    def test_surface_structure_factor(
-        self, temperature: float, is_surface: bool
-    ) -> None:
+    def test_surface_structure_factor(self, temperature, is_surface):
         """Test surface structure factor calculation.
 
         Tests the calculation of the complex structure factor F(q) =
@@ -312,6 +307,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
             jnp.int32
         )
+        # Convert scalar is_surface to per-atom mask
+        n_atoms = atomic_positions.shape[0]
+        is_surface_atom = jnp.full((n_atoms,), is_surface)
 
         for q_vec in q_vectors:
             f_struct = var_structure_factor(
@@ -319,7 +317,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
                 atomic_positions=atomic_positions,
                 atomic_numbers=atomic_numbers,
                 temperature=temperature,
-                is_surface=is_surface,
+                is_surface_atom=is_surface_atom,
             )
 
             chex.assert_shape(f_struct, ())
@@ -328,7 +326,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             chex.assert_trees_all_equal(jnp.abs(f_struct) >= 0, True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_structure_factor_symmetry(self) -> None:
+    def test_structure_factor_symmetry(self):
         """Test structure factor respects Friedel's law: F(-q) = F*(q).
 
         Validates Friedel's law (centrosymmetry in reciprocal space) which
@@ -345,6 +343,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
             jnp.int32
         )
+        # All bulk atoms (no surface enhancement)
+        n_atoms = atomic_positions.shape[0]
+        is_surface_atom = jnp.full((n_atoms,), False)
 
         q_vec = jnp.array([1.0, 0.5, 0.3])
         q_vec_neg = -q_vec
@@ -354,7 +355,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
             temperature=300.0,
-            is_surface=False,
+            is_surface_atom=is_surface_atom,
         )
 
         f_neg = var_structure_factor(
@@ -362,7 +363,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
             temperature=300.0,
-            is_surface=False,
+            is_surface_atom=is_surface_atom,
         )
 
         chex.assert_trees_all_close(f_neg, jnp.conj(f_pos), rtol=1e-8)
@@ -374,9 +375,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("diagonal_rod", [1, 1], 1.5),
         ("high_order", [2, 0], 2.0),
     )
-    def test_calculate_ctr_intensity(
-        self, hk_index: list, roughness: float
-    ) -> None:
+    def test_calculate_ctr_intensity(self, hk_index, roughness):
         """Test CTR intensity calculation for different rods.
 
         Tests crystal truncation rod intensity I(h,k,q_z) = |F(h,k,q_z)|²
@@ -415,7 +414,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_ctr_intensity_multiple_rods(self) -> None:
+    def test_ctr_intensity_multiple_rods(self):
         """Test CTR calculation for multiple rods simultaneously.
 
         Tests vectorized calculation of multiple crystal truncation rods
@@ -447,7 +446,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.mean(rod_differences)))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_roughness_effect_on_ctr(self) -> None:
+    def test_roughness_effect_on_ctr(self):
         """Test that roughness reduces CTR intensity at high q_z.
 
         Compares CTR intensities for smooth (σ=0.1 Å) vs rough (σ=2.0 Å)
@@ -494,7 +493,6 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_scalar_positive(float(relative_reduction))
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         ("narrow_range", (0.0, 1.0), 0.1),
         ("wide_range", (0.0, 5.0), 0.5),
@@ -502,9 +500,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     )
     def test_integrated_rod_intensity(
         self,
-        q_z_range: tuple,
-        detector_acceptance: float,
-    ) -> None:
+        q_z_range,
+        detector_acceptance,
+    ):
         """Test integrated CTR intensity over detector acceptance.
 
         Tests numerical integration of CTR intensity over a q_z range,
@@ -515,10 +513,12 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         angular resolution. Verifies that integrated intensity is a positive
         scalar value, essential for comparing with experimental
         measurements.
-        """
-        var_integrated = self.variant(integrated_rod_intensity)
 
-        integrated = var_integrated(
+        Note: This function has built-in JIT with static_argnames for
+        n_integration_points, so we call it directly instead of using
+        self.variant() to avoid double-JIT issues.
+        """
+        integrated = integrated_rod_intensity(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             q_z_range=jnp.array(q_z_range, dtype=jnp.float64),
             crystal=self.test_crystal,
@@ -534,7 +534,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(integrated))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_temperature_effect_on_ctr(self) -> None:
+    def test_temperature_effect_on_ctr(self):
         """Test that higher temperature reduces CTR intensity.
 
         Compares CTR intensities at low (100K) and high (600K) temperatures
@@ -570,7 +570,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(mean_cold - mean_hot))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_jax_transformations_ctr(self) -> None:
+    def test_jax_transformations_ctr(self):
         """Test JAX transformations on CTR calculations.
 
         Validates JAX functional transformations on CTR calculations:
@@ -583,9 +583,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
            that fit CTR data to extract surface parameters.
         """
         var_ctr = self.variant(calculate_ctr_intensity)
-        var_damping = self.variant(roughness_damping)
 
-        def ctr_for_roughness(sigma: float) -> Float[Array, "1 M"]:
+        def ctr_for_roughness(sigma):
             return var_ctr(
                 hk_indices=jnp.array([[1, 0]], dtype=jnp.int32),
                 q_z=self.q_z_values[:10],
@@ -600,7 +599,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         expected_shape = (len(self.roughness_values), 1, 10)
         chex.assert_shape(intensities_batch, expected_shape)
 
-        def loss_fn(sigma: float) -> float:
+        def loss_fn(sigma):
             intensities = var_ctr(
                 hk_indices=jnp.array([[0, 0]], dtype=jnp.int32),
                 q_z=jnp.array([2.0]),
@@ -618,7 +617,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(-grad_roughness))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_profile_comparison(self) -> None:
+    def test_profile_comparison(self):
         """Test that Gaussian and Lorentzian profiles differ appropriately.
 
         Compares Gaussian and Lorentzian rod profiles with the same
@@ -634,12 +633,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         correlation = 50.0
 
-        gaussian_profile = var_gaussian(
-            self.q_perp_values, correlation
-        )
-        lorentzian_profile = var_lorentzian(
-            self.q_perp_values, correlation
-        )
+        gaussian_profile = var_gaussian(self.q_perp_values, correlation)
+        lorentzian_profile = var_lorentzian(self.q_perp_values, correlation)
 
         chex.assert_trees_all_close(
             gaussian_profile[0], lorentzian_profile[0], rtol=1e-10
@@ -653,7 +648,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(tail_diff))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_physical_consistency(self) -> None:
+    def test_physical_consistency(self):
         """Test physical consistency of CTR calculations.
 
         Validates that CTR intensity calculation correctly implements the
@@ -684,6 +679,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         q_vec = jnp.array([0.0, 0.0, 1.0])
 
+        # Create per-atom surface mask (all True for this test)
+        n_atoms = self.test_crystal.cart_positions.shape[0]
+        is_surface_atom = jnp.ones(n_atoms, dtype=jnp.bool_)
         f_struct = var_structure(
             q_vector=q_vec,
             atomic_positions=self.test_crystal.cart_positions[:, :3],
@@ -691,7 +689,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
                 jnp.int32
             ),
             temperature=300.0,
-            is_surface=True,
+            is_surface_atom=is_surface_atom,
         )
 
         damping = var_damping(q_z=jnp.array(1.0), sigma_height=0.5)
@@ -699,6 +697,127 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         expected_intensity = jnp.abs(f_struct) ** 2 * damping
 
         chex.assert_tree_all_finite(expected_intensity)
+
+
+def _make_si_crystal():
+    """Create a 2-atom Si crystal for gradient tests."""
+    a_si = 5.431
+    frac_coords = jnp.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]])
+    cart_coords = frac_coords * a_si
+    atomic_numbers = jnp.full(2, 14.0)
+    frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
+    cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+    return create_crystal_structure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=jnp.array([a_si, a_si, a_si]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
+_SI_CRYSTAL = _make_si_crystal()
+
+
+class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
+    """Gradient existence and correctness for CTR intensity."""
+
+    def test_ctr_intensity_grad_roughness(self):
+        """CTR intensity gradient w.r.t. roughness is finite."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def loss(roughness):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=roughness,
+                    temperature=300.0,
+                )
+            )
+
+        g = jax.grad(loss)(jnp.float64(0.5))
+        chex.assert_tree_all_finite(g)
+        assert jnp.abs(g) > 1e-12
+
+    def test_ctr_intensity_grad_temperature(self):
+        """CTR intensity gradient w.r.t. temperature is finite."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def loss(temp):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=0.5,
+                    temperature=temp,
+                )
+            )
+
+        g = jax.grad(loss)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+
+    def test_ctr_intensity_grad_roughness_correct(self):
+        """CTR intensity grad w.r.t. roughness matches finite diff."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=roughness,
+                    temperature=300.0,
+                )
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(0.5),), order=1, atol=1e-3)
+
+    def test_ctr_intensity_grad_temperature_correct(self):
+        """CTR intensity grad w.r.t. temperature matches finite diff."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(temp):
+            return jnp.sum(
+                calculate_ctr_intensity(
+                    hk_indices=hk_indices,
+                    q_z=q_z,
+                    crystal=_SI_CRYSTAL,
+                    surface_roughness=0.5,
+                    temperature=temp,
+                )
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+
+class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap matches sequential evaluation for CTR intensity."""
+
+    def test_ctr_intensity_vmap_consistent(self):
+        """Batched CTR intensity matches sequential evaluation."""
+        hk_indices = jnp.array([[1, 0]])
+        q_z = jnp.linspace(0.5, 3.0, 5)
+
+        def f(roughness):
+            return calculate_ctr_intensity(
+                hk_indices=hk_indices,
+                q_z=q_z,
+                crystal=_SI_CRYSTAL,
+                surface_roughness=roughness,
+                temperature=300.0,
+            )
+
+        roughness_batch = jnp.array([0.1, 0.5, 1.0])
+        batched = jax.vmap(f)(roughness_batch)
+        sequential = jnp.stack([f(r) for r in roughness_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 
 if __name__ == "__main__":

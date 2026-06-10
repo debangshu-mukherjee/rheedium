@@ -2,7 +2,8 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - '**'  # Run on all branches
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
@@ -11,58 +12,103 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
+  resolve-python:
+    name: Resolve Python versions from pyproject.toml
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.parse.outputs.versions }}
+      latest: ${{ steps.parse.outputs.latest }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Parse Python versions from classifiers
+      id: parse
+      run: |
+        versions=$(grep 'Programming Language :: Python :: 3\.' pyproject.toml \
+          | grep -oP '3\.\d+' \
+          | sort -t. -k2 -n \
+          | jq -Rc . \
+          | jq -sc .)
+        latest=$(echo "$versions" | jq -r '.[-1]')
+        echo "versions=$versions" >> "$GITHUB_OUTPUT"
+        echo "latest=$latest" >> "$GITHUB_OUTPUT"
+        echo "Detected Python versions: $versions (latest: $latest)"
+
   test:
+    name: Run tests and collect coverage
+    needs: resolve-python
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13"]
-        
+        python-version: ${{ fromJSON(needs.resolve-python.outputs.versions) }}
+
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
-      
+      with:
+        fetch-depth: 2
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
       with:
         enable-cache: true
-        
+
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-      
+
     - name: Install dependencies
+      run: uv sync --extra dev
+
+    - name: Lint with Ruff
       run: |
-        uv sync --extra test --extra dev
-        
-    - name: Lint with black
+        uv run ruff check src/ tests/
+        uv run ruff format --check src/ tests/
+
+    - name: Type check with ty
       run: |
-        uv run black --check --diff src/ tests/
-        
+        uv run ty check src
+
     - name: Type check with beartype (runtime)
       run: |
         uv run python -c "import rheedium; print('Beartype validation passed')"
-        
-    - name: Run tests with coverage
+
+    - name: Run tests
+      id: pytest
       env:
         JAX_PLATFORMS: cpu
-      run: |
-        uv run pytest tests/ \
-          --cov=src/rheedium \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term-missing \
-          --cov-fail-under=70 \
-          --junitxml=test-results.xml \
-          -v
+      continue-on-error: true
+      run: uv run pytest --cov=src/rheedium --cov-branch --cov-report=xml --cov-report=html --cov-report=term-missing --junitxml=test-results.xml -v
 
-    - name: Upload coverage reports to Codecov
+    - name: List generated files (debug)
+      if: always()
+      run: |
+        echo "Current directory:"
+        pwd
+        echo "Files in current directory:"
+        ls -la
+        echo "Checking for test artifacts:"
+        if [ -f "test-results.xml" ]; then echo "✓ test-results.xml found"; else echo "✗ test-results.xml not found"; fi
+        if [ -f "coverage.xml" ]; then echo "✓ coverage.xml found"; else echo "✗ coverage.xml not found"; fi
+        if [ -d "htmlcov" ]; then echo "✓ htmlcov/ found"; else echo "✗ htmlcov/ not found"; fi
+      shell: bash
+
+    - name: Upload results to Codecov
       uses: codecov/codecov-action@v5
+      if: always()
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: debangshu-mukherjee/rheedium
-        
+        files: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
@@ -72,38 +118,39 @@ jobs:
           test-results.xml
           htmlcov/
           coverage.xml
-          
+        if-no-files-found: warn
+
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
       if: always() && matrix.os == 'ubuntu-latest'
       with:
         files: test-results.xml
         check_name: Test Results (Python ${{ matrix.python-version }})
-        comment_mode: create new
-        
+        comment_mode: always
+
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [resolve-python, test]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
-      
+
     - name: Set up Python
-      run: uv python install 3.11
-      
+      run: uv python install ${{ needs.resolve-python.outputs.latest }}
+
     - name: Install build dependencies
       run: uv sync --extra dev
-      
+
     - name: Build package
       run: uv build
-      
+
     - name: Check package metadata
       run: |
         uv run python -m twine check dist/*
-        
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:

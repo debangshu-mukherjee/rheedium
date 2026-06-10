@@ -10,12 +10,32 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["JAX_ENABLE_X64"] = "True"
 os.environ["BUILDING_DOCS"] = "1"
 
+
+# Make jaxtyped decorator a no-op during doc building to preserve docstrings
+# This MUST be done before any rheedium imports
+def _noop_decorator(*args, **kwargs):
+    """No-op decorator for documentation building."""
+    if len(args) == 1 and callable(args[0]) and not kwargs:
+        return args[0]
+    return lambda fn: fn
+
+
+import jaxtyping
+
+jaxtyping.jaxtyped = _noop_decorator
+
+
 # Add project paths
 project_root = os.path.abspath("../..")
 src_path = os.path.join(project_root, "src")
+venv_bin_path = os.path.join(project_root, ".venv", "bin")
 
 sys.path.insert(0, src_path)
 sys.path.insert(0, project_root)
+if os.path.isdir(venv_bin_path):
+    os.environ["PATH"] = os.pathsep.join(
+        [venv_bin_path, os.environ.get("PATH", "")]
+    )
 
 print(f"Added to sys.path: {src_path}")
 
@@ -46,11 +66,47 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "myst_parser",
+    "sphinx_marimo",
 ]
 
 source_suffix = {
     ".rst": None,
     ".md": None,
+}
+
+marimo_notebook_dir = "interactive_notebooks"
+marimo_default_height = "720px"
+marimo_default_width = "100%"
+marimo_click_to_load = True
+marimo_load_button_text = "Run Interactive Example"
+
+# MyST-Parser configuration for LaTeX math rendering
+myst_enable_extensions = [
+    "dollarmath",  # Enable $...$ and $$...$$ math delimiters
+    "amsmath",  # Enable LaTeX math environments like \begin{equation}
+    "colon_fence",  # Enable ::: and ```{directive} fenced directives
+]
+
+# Ensure MyST parses all dollar-delimited math correctly
+myst_dmath_double_inline = True
+
+# MathJax configuration to ensure math renders properly
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+mathjax3_config = {
+    "tex": {
+        "inlineMath": [["$", "$"], ["\\(", "\\)"]],
+        "displayMath": [["$$", "$$"], ["\\[", "\\]"]],
+        "processEscapes": True,
+        "processEnvironments": True,
+    },
+    "options": {
+        "ignoreHtmlClass": "tex2jax_ignore",
+        "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area|content",
+    },
+    "chtml": {
+        "scale": 1.0,
+        "minScale": 0.5,
+    },
 }
 
 templates_path = ["_templates"]
@@ -60,6 +116,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
 html_static_path = ["_static"]
+html_extra_path = ["_extra"]
 
 html_css_files = [
     "custom.css",
@@ -75,6 +132,21 @@ html_theme_options = {
         "color-brand-content": "#3399ff",
     },
     "sidebar_hide_name": False,
+    "source_repository": "https://github.com/debangshu-mukherjee/rheedium/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
+    "footer_icons": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/debangshu-mukherjee/rheedium/",
+            "html": """
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            """,
+            "class": "",
+        },
+    ],
 }
 
 # -- Extension configuration -------------------------------------------------
@@ -104,7 +176,12 @@ autodoc_mock_imports = [
     "matplotlib.colors",
     "matplotlib.axes",
     "matplotlib.figure",
+    "mpl_toolkits",
+    "mpl_toolkits.mplot3d",
     "gemmi",
+    "ase",
+    "pymatgen",
+    "pymatgen.core",
 ]
 
 # Autodoc settings
@@ -177,6 +254,7 @@ intersphinx_mapping = {
 
 # -- Custom setup ------------------------------------------------------------
 
+
 def skip_member(app, what, name, obj, skip, options):
     """
     Skip specific members in documentation.
@@ -196,6 +274,12 @@ def skip_member(app, what, name, obj, skip, options):
         return True
     if name.startswith("_") and not name.startswith("__"):
         return True
+
+    # Skip NamedTuple field descriptors to avoid duplicate object descriptions
+    # when both class attributes and module-level data entries are documented
+    if what == "data" and hasattr(obj, "_field_types"):
+        return True
+
     return skip
 
 

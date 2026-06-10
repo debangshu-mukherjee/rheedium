@@ -1,0 +1,5 @@
+# Keep provenance in git, but never track downloaded experimental payloads.
+*
+!.gitignore
+!PROVENANCE.md
+!download_reference_data.py

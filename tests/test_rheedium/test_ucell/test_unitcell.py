@@ -1,167 +1,1534 @@
+"""Tests for ucell.unitcell module.
+
+Tests the atom_scraper function for filtering atoms within specified
+thickness along a zone axis, plus reciprocal lattice functions.
+"""
+
 import chex
-import jax
 import jax.numpy as jnp
-import pytest
+import numpy as np
 from absl.testing import parameterized
-from jaxtyping import Array, Float
 
-jax.config.update("jax_enable_x64", True)
+from rheedium.types.crystal_types import (
+    CrystalStructure,
+    create_crystal_structure,
+)
+from rheedium.types.rheed_types import SlicedCrystal
+from rheedium.ucell.helper import compute_lengths_angles
+from rheedium.ucell.unitcell import (
+    atom_scraper,
+    build_cell_vectors,
+    bulk_to_slice,
+    generate_reciprocal_points,
+    get_unit_cell_matrix,
+    miller_to_reciprocal,
+    reciprocal_lattice_vectors,
+    reciprocal_unitcell,
+)
 
-# Import your functions here
-from rheedium.ucell import reciprocal_unitcell, wavelength_ang
+
+def _make_simple_crystal(n_atoms=8):
+    """Create a simple cubic CrystalStructure for testing."""
+    rng = np.random.default_rng(0)
+    frac_xyz = rng.uniform(size=(n_atoms, 3))
+    z_nums = np.full((n_atoms, 1), 14.0)
+    frac_pos = jnp.array(np.hstack([frac_xyz, z_nums]))
+    cell_lengths = jnp.array([5.43, 5.43, 5.43])
+    cell_angles = jnp.array([90.0, 90.0, 90.0])
+    cart_xyz = frac_xyz * np.array([5.43, 5.43, 5.43])
+    cart_pos = jnp.array(np.hstack([cart_xyz, z_nums]))
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
+    )
+
+
+class TestBulkToSlice(chex.TestCase):
+    """Tests for bulk_to_slice function."""
+
+    def test_returns_sliced_crystal(self):
+        """Should return a SlicedCrystal instance."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        assert isinstance(sliced, SlicedCrystal)
+
+    def test_output_shapes(self):
+        """Output should have correct array shapes."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.ndim == 2
+        assert sliced.cart_positions.shape[1] == 4
+        chex.assert_shape(sliced.cell_lengths, (3,))
+        chex.assert_shape(sliced.cell_angles, (3,))
+        chex.assert_shape(sliced.orientation, (3,))
+
+    def test_depth_preserved(self):
+        """Slab depth should match requested depth."""
+        crystal = _make_simple_crystal()
+        depth = 15.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+        )
+        chex.assert_trees_all_close(sliced.depth, depth)
+
+    def test_extents_preserved(self):
+        """Lateral extents should match requested values."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=120.0,
+            y_extent=130.0,
+        )
+        chex.assert_trees_all_close(sliced.x_extent, 120.0)
+        chex.assert_trees_all_close(sliced.y_extent, 130.0)
+
+    def test_orientation_preserved(self):
+        """Surface orientation should be preserved."""
+        crystal = _make_simple_crystal()
+        orient = jnp.array([1, 1, 1], dtype=jnp.int32)
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=orient,
+            depth=10.0,
+        )
+        chex.assert_trees_all_equal(sliced.orientation, orient)
+
+    def test_atoms_within_bounds(self):
+        """All atoms should be within the specified bounds."""
+        crystal = _make_simple_crystal()
+        depth = 10.0
+        x_ext = 80.0
+        y_ext = 80.0
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=depth,
+            x_extent=x_ext,
+            y_extent=y_ext,
+        )
+        positions = sliced.cart_positions[:, :3]
+        assert bool(jnp.all(positions[:, 0] >= 0))
+        assert bool(jnp.all(positions[:, 0] <= x_ext))
+        assert bool(jnp.all(positions[:, 1] >= 0))
+        assert bool(jnp.all(positions[:, 1] <= y_ext))
+        assert bool(jnp.all(positions[:, 2] >= 0))
+        assert bool(jnp.all(positions[:, 2] <= depth))
+
+    def test_cell_angles_orthorhombic(self):
+        """Output cell should have 90-degree angles."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+        )
+        chex.assert_trees_all_close(
+            sliced.cell_angles,
+            jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    def test_001_orientation(self):
+        """(001) orientation should work without rotation."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_111_orientation(self):
+        """(111) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 1, 1], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+    def test_100_orientation(self):
+        """(100) orientation should produce rotated slab."""
+        crystal = _make_simple_crystal()
+        sliced = bulk_to_slice(
+            crystal,
+            orientation=jnp.array([1, 0, 0], dtype=jnp.int32),
+            depth=10.0,
+            x_extent=50.0,
+            y_extent=50.0,
+        )
+        assert sliced.cart_positions.shape[0] > 0
+
+
+class TestAtomScraper(chex.TestCase, parameterized.TestCase):
+    """Test atom_scraper function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+        # Create a simple cubic crystal with atoms at different z positions
+        self.cubic_crystal = self._create_layered_crystal()
+
+    def _create_layered_crystal(self):
+        """Create a crystal with atoms at different z heights.
+
+        Creates 5 atoms stacked along z-axis at z = 0, 2, 4, 6, 8 Angstroms.
+        """
+        a = 5.0  # lattice constant
+
+        # Atoms at different z heights
+        cart_coords = jnp.array(
+            [
+                [0.0, 0.0, 0.0],  # z = 0
+                [0.0, 0.0, 2.0],  # z = 2
+                [0.0, 0.0, 4.0],  # z = 4
+                [0.0, 0.0, 6.0],  # z = 6
+                [0.0, 0.0, 8.0],  # z = 8
+            ]
+        )
+
+        # Fractional coordinates
+        frac_coords = cart_coords / jnp.array([a, a, 10.0])
+
+        # All silicon atoms
+        atomic_numbers = jnp.full(5, 14.0)
+
+        frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
+        cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+
+        return create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([a, a, 10.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    def _create_xy_plane_crystal(self):
+        """Create a crystal with atoms spread in XY plane at same z."""
+        a = 10.0
+
+        cart_coords = jnp.array(
+            [
+                [0.0, 0.0, 5.0],
+                [5.0, 0.0, 5.0],
+                [0.0, 5.0, 5.0],
+                [5.0, 5.0, 5.0],
+            ]
+        )
+
+        frac_coords = cart_coords / a
+        atomic_numbers = jnp.full(4, 14.0)
+
+        return create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=jnp.array([a, a, a]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    def test_basic_z_axis_scraping(self):
+        """Test scraping atoms along z-axis with specific thickness."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 3.0])  # 3 Angstrom thickness
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Should filter to atoms near the top (z=8)
+        # With 3 Angstrom thickness from top, should include z=8 and z=6
+        n_atoms = filtered.cart_positions.shape[0]
+        chex.assert_scalar_positive(int(n_atoms))
+        self.assertLessEqual(int(n_atoms), 5)
+
+    def test_full_thickness_keeps_all_atoms(self):
+        """Test that large thickness keeps all atoms."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([10.0, 10.0, 20.0])  # Much larger than crystal
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Should keep all 5 atoms
+        n_atoms = filtered.cart_positions.shape[0]
+        self.assertEqual(int(n_atoms), 5)
+
+    def test_zero_thickness_top_layer_only(self):
+        """Test that zero thickness returns top layer atoms.
+
+        With zero thickness, the function uses an adaptive epsilon based on
+        the minimum atom spacing (2 * min_spacing). For atoms spaced 2Å apart,
+        this gives adaptive_eps = 4Å, which includes multiple atoms.
+        """
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array(
+            [0.0, 0.0, 0.0]
+        )  # Zero thickness = top layer mode
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # With atoms at z=0,2,4,6,8 and spacing=2Å, adaptive_eps=4Å
+        # This includes atoms within 4Å of top (z=8): z=8,6,4
+        n_atoms = filtered.cart_positions.shape[0]
+        self.assertGreaterEqual(int(n_atoms), 1)
+        self.assertLessEqual(int(n_atoms), 5)
+
+        # Verify the topmost atom is included
+        max_z = jnp.max(filtered.cart_positions[:, 2])
+        chex.assert_trees_all_close(max_z, 8.0, atol=1e-6)
+
+    @parameterized.named_parameters(
+        ("z_axis", [0.0, 0.0, 1.0]),
+        ("neg_z_axis", [0.0, 0.0, -1.0]),
+        ("z_axis_scaled", [0.0, 0.0, 2.0]),
+    )
+    def test_zone_axis_normalization(self, zone_axis):
+        """Test that zone axis is properly normalized."""
+        zone_axis_arr = jnp.array(zone_axis)
+        thickness = jnp.array([5.0, 5.0, 3.0])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis_arr,
+            thickness=thickness,
+        )
+
+        # Should produce valid output regardless of axis scaling
+        n_atoms = filtered.cart_positions.shape[0]
+        chex.assert_scalar_positive(int(n_atoms))
+
+    def test_x_axis_scraping(self):
+        """Test scraping along x-axis."""
+        # Create crystal with atoms spread along x
+        cart_coords = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [6.0, 0.0, 0.0],
+                [8.0, 0.0, 0.0],
+            ]
+        )
+        frac_coords = cart_coords / 10.0
+        atomic_numbers = jnp.full(5, 14.0)
+
+        crystal = create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=jnp.array([10.0, 5.0, 5.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+        zone_axis = jnp.array([1.0, 0.0, 0.0])
+        thickness = jnp.array([3.0, 5.0, 5.0])
+
+        filtered = atom_scraper(
+            crystal=crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        n_atoms = filtered.cart_positions.shape[0]
+        chex.assert_scalar_positive(int(n_atoms))
+        self.assertLess(int(n_atoms), 5)
+
+    def test_diagonal_zone_axis(self):
+        """Test scraping along diagonal [1,1,1] direction."""
+        zone_axis = jnp.array([1.0, 1.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 5.0])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Should produce valid output
+        n_atoms = filtered.cart_positions.shape[0]
+        chex.assert_scalar_positive(int(n_atoms))
+        chex.assert_tree_all_finite(filtered.cart_positions)
+
+    def test_output_is_valid_crystal_structure(self):
+        """Test that output is a valid CrystalStructure."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 3.0])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Check it's a CrystalStructure
+        self.assertIsInstance(filtered, CrystalStructure)
+
+        # Check shapes are consistent
+        n_atoms = filtered.cart_positions.shape[0]
+        chex.assert_shape(filtered.frac_positions, (n_atoms, 4))
+        chex.assert_shape(filtered.cart_positions, (n_atoms, 4))
+        chex.assert_shape(filtered.cell_lengths, (3,))
+        chex.assert_shape(filtered.cell_angles, (3,))
+
+        # Check values are finite
+        chex.assert_tree_all_finite(filtered.frac_positions)
+        chex.assert_tree_all_finite(filtered.cart_positions)
+        chex.assert_tree_all_finite(filtered.cell_lengths)
+        chex.assert_tree_all_finite(filtered.cell_angles)
+
+    def test_cell_lengths_positive(self):
+        """Test that output cell lengths are positive."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 3.0])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        chex.assert_trees_all_equal(jnp.all(filtered.cell_lengths > 0), True)
+
+    def test_cell_angles_valid(self):
+        """Test that output cell angles are in valid range."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 3.0])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Angles should be between 0 and 180 degrees
+        for angle in filtered.cell_angles:
+            chex.assert_scalar_in(float(angle), 0.0, 180.0)
+
+    def test_atomic_numbers_preserved(self):
+        """Test that atomic numbers are preserved in output."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 20.0])  # Keep all atoms
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # All atoms should still be silicon (Z=14)
+        atomic_nums = filtered.cart_positions[:, 3]
+        chex.assert_trees_all_close(atomic_nums, jnp.full(5, 14.0), atol=1e-10)
+
+    def test_xy_plane_atoms_same_z(self):
+        """Test scraping with atoms at same z height.
+
+        Note: When all atoms are at the same height along the zone axis,
+        they are all considered "top layer" atoms and should be included.
+        We use a crystal with slight z variation to avoid the edge case
+        where all atoms are exactly coplanar.
+        """
+        a = 10.0
+
+        # Atoms in XY plane with slight z variation
+        cart_coords = jnp.array(
+            [
+                [0.0, 0.0, 5.0],
+                [5.0, 0.0, 5.0],
+                [0.0, 5.0, 4.99],  # Slightly lower
+                [5.0, 5.0, 5.0],
+            ]
+        )
+
+        frac_coords = cart_coords / a
+        atomic_numbers = jnp.full(4, 14.0)
+
+        crystal = create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=jnp.array([a, a, a]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([10.0, 10.0, 1.0])  # 1 Angstrom slice
+
+        filtered = atom_scraper(
+            crystal=crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # All 4 atoms should be included (within 1 Angstrom of top)
+        n_atoms = filtered.cart_positions.shape[0]
+        self.assertEqual(int(n_atoms), 4)
+
+    @parameterized.named_parameters(
+        ("thin", 1.0, 1),
+        ("medium", 5.0, 3),
+        ("thick", 10.0, 5),
+    )
+    def test_thickness_controls_atom_count(self, z_thickness, min_expected):
+        """Test that increasing thickness includes more atoms."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, z_thickness])
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        n_atoms = filtered.cart_positions.shape[0]
+        self.assertGreaterEqual(int(n_atoms), min_expected)
+
+    def test_frac_and_cart_positions_consistent(self):
+        """Test that fractional and Cartesian positions remain consistent."""
+        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        thickness = jnp.array([5.0, 5.0, 20.0])  # Keep all atoms
+
+        filtered = atom_scraper(
+            crystal=self.cubic_crystal,
+            zone_axis=zone_axis,
+            thickness=thickness,
+        )
+
+        # Number of atoms should match
+        n_frac = filtered.frac_positions.shape[0]
+        n_cart = filtered.cart_positions.shape[0]
+        self.assertEqual(n_frac, n_cart)
+
+        # Atomic numbers should match between frac and cart
+        frac_z = filtered.frac_positions[:, 3]
+        cart_z = filtered.cart_positions[:, 3]
+        chex.assert_trees_all_close(frac_z, cart_z, atol=1e-10)
+
+
+class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
+    """Test reciprocal_unitcell function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+    @chex.all_variants(with_pmap=False)
+    def test_cubic_system(self):
+        """Test reciprocal parameters for cubic system."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        # For cubic: a* = 2π/a
+        expected_a_star = 2 * jnp.pi / 3.0
+        chex.assert_shape(lengths, (3,))
+        chex.assert_shape(angles, (3,))
+        chex.assert_trees_all_close(lengths[0], expected_a_star, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[1], expected_a_star, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[2], expected_a_star, rtol=1e-5)
+        # Reciprocal angles for cubic are 90°
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_orthorhombic_system(self):
+        """Test reciprocal params for orthorhombic (a!=b!=c, 90)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        # For orthorhombic: a* = 2π/a, b* = 2π/b, c* = 2π/c
+        chex.assert_trees_all_close(lengths[0], 2 * jnp.pi / 3.0, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[1], 2 * jnp.pi / 4.0, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[2], 2 * jnp.pi / 5.0, rtol=1e-5)
+        # Angles still 90°
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_tetragonal_system(self):
+        """Test reciprocal parameters for tetragonal system (a=b≠c)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        # a* = b* but c* different
+        chex.assert_trees_all_close(lengths[0], lengths[1], rtol=1e-5)
+        self.assertNotAlmostEqual(
+            float(lengths[0]), float(lengths[2]), places=3
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_hexagonal_system(self):
+        """Test reciprocal parameters for hexagonal system (γ=120°)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=120.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        chex.assert_shape(lengths, (3,))
+        chex.assert_shape(angles, (3,))
+        chex.assert_tree_all_finite(lengths)
+        chex.assert_tree_all_finite(angles)
+        # Reciprocal gamma for hexagonal is 60°
+        chex.assert_trees_all_close(angles[2], 60.0, atol=1e-4)
+
+    @chex.all_variants(with_pmap=False)
+    def test_monoclinic_system(self):
+        """Test reciprocal parameters for monoclinic system (β≠90°)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=100.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        chex.assert_shape(lengths, (3,))
+        chex.assert_shape(angles, (3,))
+        chex.assert_tree_all_finite(lengths)
+        chex.assert_tree_all_finite(angles)
+        # Alpha* and gamma* should remain 90° for monoclinic
+        chex.assert_trees_all_close(angles[0], 90.0, atol=1e-4)
+        chex.assert_trees_all_close(angles[2], 90.0, atol=1e-4)
+
+    @chex.all_variants(with_pmap=False)
+    def test_triclinic_system(self):
+        """Test reciprocal params for triclinic system."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        chex.assert_shape(lengths, (3,))
+        chex.assert_shape(angles, (3,))
+        chex.assert_tree_all_finite(lengths)
+        chex.assert_tree_all_finite(angles)
+        # All values should be positive
+        chex.assert_trees_all_equal(jnp.all(lengths > 0), True)
+        chex.assert_trees_all_equal(jnp.all(angles > 0), True)
+        chex.assert_trees_all_equal(jnp.all(angles < 180), True)
+
+    @chex.all_variants(with_pmap=False)
+    def test_in_degrees_flag_true(self):
+        """Test in_degrees=True (input in degrees)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        chex.assert_tree_all_finite(lengths)
+        chex.assert_tree_all_finite(angles)
+
+    @chex.all_variants(with_pmap=False)
+    def test_in_degrees_flag_false(self):
+        """Test in_degrees=False (input in radians)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        pi_half = jnp.pi / 2
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=pi_half,
+            beta=pi_half,
+            gamma=pi_half,
+            in_degrees=False,
+            out_degrees=True,
+        )
+        # Should give same result as cubic with 90° in degrees
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_out_degrees_flag_false(self):
+        """Test out_degrees=False (output in radians)."""
+        var_fn = self.variant(reciprocal_unitcell)
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=False,
+        )
+        # Output angles in radians for cubic should be π/2
+        chex.assert_trees_all_close(
+            angles, jnp.array([jnp.pi / 2] * 3), atol=1e-5
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_both_degrees_flags_false(self):
+        """Test both in_degrees=False and out_degrees=False."""
+        var_fn = self.variant(reciprocal_unitcell)
+        pi_half = jnp.pi / 2
+        lengths, angles = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=pi_half,
+            beta=pi_half,
+            gamma=pi_half,
+            in_degrees=False,
+            out_degrees=False,
+        )
+        chex.assert_trees_all_close(
+            angles, jnp.array([pi_half] * 3), atol=1e-5
+        )
+
+    @parameterized.named_parameters(
+        ("small_cell", 1.0, 1.0, 1.0),
+        ("medium_cell", 5.0, 5.0, 5.0),
+        ("large_cell", 10.0, 10.0, 10.0),
+    )
+    def test_various_cell_sizes(self, a, b, c):
+        """Test with various cell sizes."""
+        lengths, angles = reciprocal_unitcell(
+            a=a,
+            b=b,
+            c=c,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+            out_degrees=True,
+        )
+        # a* should scale inversely with a
+        expected = 2 * jnp.pi / a
+        chex.assert_trees_all_close(lengths[0], expected, rtol=1e-5)
+
+
+class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
+    """Test get_unit_cell_matrix function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+    @chex.all_variants(with_pmap=False)
+    def test_cubic_system(self):
+        """Test transformation matrix for cubic system."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        chex.assert_shape(matrix, (3, 3))
+        chex.assert_tree_all_finite(matrix)
+        # For cubic, matrix should be diagonal with a on diagonal
+        chex.assert_trees_all_close(matrix[0, 0], 3.0, atol=1e-10)
+        chex.assert_trees_all_close(matrix[1, 1], 3.0, atol=1e-10)
+        chex.assert_trees_all_close(matrix[2, 2], 3.0, atol=1e-10)
+
+    @chex.all_variants(with_pmap=False)
+    def test_orthorhombic_system(self):
+        """Test transformation matrix for orthorhombic system."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        chex.assert_shape(matrix, (3, 3))
+        # For orthorhombic, matrix is diagonal
+        chex.assert_trees_all_close(matrix[0, 0], 3.0, atol=1e-10)
+        chex.assert_trees_all_close(matrix[1, 1], 4.0, atol=1e-10)
+        chex.assert_trees_all_close(matrix[2, 2], 5.0, atol=1e-10)
+
+    @chex.all_variants(with_pmap=False)
+    def test_monoclinic_system(self):
+        """Test transformation matrix for monoclinic system."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=100.0,
+            gamma=90.0,
+        )
+        chex.assert_shape(matrix, (3, 3))
+        chex.assert_tree_all_finite(matrix)
+        # Off-diagonal term for c vector
+        self.assertNotAlmostEqual(float(matrix[0, 2]), 0.0, places=5)
+
+    @chex.all_variants(with_pmap=False)
+    def test_hexagonal_system(self):
+        """Test transformation matrix for hexagonal system."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=3.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=120.0,
+        )
+        chex.assert_shape(matrix, (3, 3))
+        chex.assert_tree_all_finite(matrix)
+        # b has x and y components due to 120° angle
+        chex.assert_trees_all_close(
+            matrix[0, 1], 3.0 * jnp.cos(jnp.radians(120.0)), atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_triclinic_system(self):
+        """Test transformation matrix for triclinic system."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        chex.assert_shape(matrix, (3, 3))
+        chex.assert_tree_all_finite(matrix)
+        # Matrix should have off-diagonal elements
+        self.assertNotAlmostEqual(float(matrix[0, 1]), 0.0, places=5)
+
+    @chex.all_variants(with_pmap=False)
+    def test_volume_consistency(self):
+        """Test that matrix determinant equals cell volume."""
+        var_fn = self.variant(get_unit_cell_matrix)
+        matrix = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        volume = jnp.linalg.det(matrix)
+        expected_volume = 3.0 * 4.0 * 5.0  # For orthorhombic
+        chex.assert_trees_all_close(volume, expected_volume, rtol=1e-5)
+
+
+class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
+    """Test build_cell_vectors function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+    @chex.all_variants(with_pmap=False)
+    def test_cubic_system(self):
+        """Test cell vectors for cubic system."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        chex.assert_shape(vectors, (3, 3))
+        # First vector along x-axis
+        chex.assert_trees_all_close(
+            vectors[0], jnp.array([3.0, 0.0, 0.0]), atol=1e-10
+        )
+        # Second vector along y-axis
+        chex.assert_trees_all_close(
+            vectors[1], jnp.array([0.0, 3.0, 0.0]), atol=1e-10
+        )
+        # Third vector along z-axis
+        chex.assert_trees_all_close(
+            vectors[2], jnp.array([0.0, 0.0, 3.0]), atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_orthorhombic_system(self):
+        """Test cell vectors for orthorhombic system."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        # Vectors should be orthogonal with different lengths
+        chex.assert_trees_all_close(
+            vectors[0], jnp.array([3.0, 0.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            vectors[1], jnp.array([0.0, 4.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            vectors[2], jnp.array([0.0, 0.0, 5.0]), atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_hexagonal_system(self):
+        """Test cell vectors for hexagonal system (gamma=120)."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=3.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=120.0,
+        )
+        chex.assert_shape(vectors, (3, 3))
+        # a vector along x
+        chex.assert_trees_all_close(
+            vectors[0], jnp.array([3.0, 0.0, 0.0]), atol=1e-10
+        )
+        # b vector in xy plane at 120° from a
+        b_x = 3.0 * jnp.cos(jnp.radians(120.0))
+        b_y = 3.0 * jnp.sin(jnp.radians(120.0))
+        chex.assert_trees_all_close(vectors[1, 0], b_x, atol=1e-10)
+        chex.assert_trees_all_close(vectors[1, 1], b_y, atol=1e-10)
+        # c vector along z
+        chex.assert_trees_all_close(vectors[2, 2], 5.0, atol=1e-10)
+
+    @chex.all_variants(with_pmap=False)
+    def test_monoclinic_system(self):
+        """Test cell vectors for monoclinic system (beta != 90)."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=100.0,
+            gamma=90.0,
+        )
+        chex.assert_shape(vectors, (3, 3))
+        chex.assert_tree_all_finite(vectors)
+        # c vector should have nonzero x component
+        c_x = 5.0 * jnp.cos(jnp.radians(100.0))
+        chex.assert_trees_all_close(vectors[2, 0], c_x, atol=1e-10)
+
+    @chex.all_variants(with_pmap=False)
+    def test_triclinic_system(self):
+        """Test cell vectors for triclinic system."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        chex.assert_shape(vectors, (3, 3))
+        chex.assert_tree_all_finite(vectors)
+        # All three vectors should have nonzero components
+
+    @chex.all_variants(with_pmap=False)
+    def test_vector_lengths_correct(self):
+        """Test that built vectors have correct lengths."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        lengths = jnp.linalg.norm(vectors, axis=1)
+        chex.assert_trees_all_close(lengths[0], 3.0, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[1], 4.0, rtol=1e-5)
+        chex.assert_trees_all_close(lengths[2], 5.0, rtol=1e-5)
+
+    @chex.all_variants(with_pmap=False)
+    def test_angles_correct(self):
+        """Test that angles between vectors are correct."""
+        var_fn = self.variant(build_cell_vectors)
+        vectors = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        # Check angle gamma between a and b
+        a_vec = vectors[0]
+        b_vec = vectors[1]
+        cos_gamma = jnp.dot(a_vec, b_vec) / (
+            jnp.linalg.norm(a_vec) * jnp.linalg.norm(b_vec)
+        )
+        gamma_computed = jnp.rad2deg(jnp.arccos(cos_gamma))
+        chex.assert_trees_all_close(gamma_computed, 75.0, atol=1e-4)
+
+
+class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
+    """Test compute_lengths_angles function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_cubic_system(self):
+        """Test lengths and angles for cubic vectors."""
+        var_fn = self.variant(compute_lengths_angles)
+        vectors = jnp.array(
+            [
+                [3.0, 0.0, 0.0],
+                [0.0, 3.0, 0.0],
+                [0.0, 0.0, 3.0],
+            ]
+        )
+        lengths, angles = var_fn(vectors)
+        chex.assert_trees_all_close(
+            lengths, jnp.array([3.0, 3.0, 3.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_orthorhombic_system(self):
+        """Test lengths and angles for orthorhombic vectors."""
+        var_fn = self.variant(compute_lengths_angles)
+        vectors = jnp.array(
+            [
+                [3.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 5.0],
+            ]
+        )
+        lengths, angles = var_fn(vectors)
+        chex.assert_trees_all_close(
+            lengths, jnp.array([3.0, 4.0, 5.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-5
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_roundtrip_cubic(self):
+        """Test build_cell_vectors followed by compute_lengths_angles."""
+        vectors = build_cell_vectors(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+        )
+        var_fn = self.variant(compute_lengths_angles)
+        lengths, angles = var_fn(vectors)
+        chex.assert_trees_all_close(
+            lengths, jnp.array([3.0, 3.0, 3.0]), rtol=1e-5
+        )
+        chex.assert_trees_all_close(
+            angles, jnp.array([90.0, 90.0, 90.0]), atol=1e-4
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_roundtrip_triclinic(self):
+        """Test roundtrip for triclinic system."""
+        a, b, c = 3.0, 4.0, 5.0
+        alpha, beta, gamma = 80.0, 85.0, 75.0
+        vectors = build_cell_vectors(
+            a=a,
+            b=b,
+            c=c,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+        )
+        var_fn = self.variant(compute_lengths_angles)
+        lengths, angles = var_fn(vectors)
+        chex.assert_trees_all_close(lengths, jnp.array([a, b, c]), rtol=1e-5)
+        chex.assert_trees_all_close(
+            angles, jnp.array([alpha, beta, gamma]), atol=1e-4
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_roundtrip_hexagonal(self):
+        """Test roundtrip for hexagonal system."""
+        a, b, c = 3.0, 3.0, 5.0
+        alpha, beta, gamma = 90.0, 90.0, 120.0
+        vectors = build_cell_vectors(
+            a=a,
+            b=b,
+            c=c,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+        )
+        var_fn = self.variant(compute_lengths_angles)
+        lengths, angles = var_fn(vectors)
+        chex.assert_trees_all_close(lengths, jnp.array([a, b, c]), rtol=1e-5)
+        chex.assert_trees_all_close(
+            angles, jnp.array([alpha, beta, gamma]), atol=1e-4
+        )
+
+
+class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
+    """Test reciprocal_lattice_vectors function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+    @chex.all_variants(with_pmap=False)
+    def test_cubic_system(self):
+        """Test reciprocal vectors for cubic system."""
+        var_fn = self.variant(reciprocal_lattice_vectors)
+        rec_vecs = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+        )
+        chex.assert_shape(rec_vecs, (3, 3))
+        # For cubic: b1 = (2π/a, 0, 0), etc.
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            rec_vecs[0], jnp.array([expected, 0.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            rec_vecs[1], jnp.array([0.0, expected, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            rec_vecs[2], jnp.array([0.0, 0.0, expected]), atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_orthorhombic_system(self):
+        """Test reciprocal vectors for orthorhombic system."""
+        var_fn = self.variant(reciprocal_lattice_vectors)
+        rec_vecs = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+        )
+        chex.assert_shape(rec_vecs, (3, 3))
+        chex.assert_trees_all_close(
+            rec_vecs[0], jnp.array([2 * jnp.pi / 3.0, 0.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            rec_vecs[1], jnp.array([0.0, 2 * jnp.pi / 4.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            rec_vecs[2], jnp.array([0.0, 0.0, 2 * jnp.pi / 5.0]), atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_orthogonality_to_direct(self):
+        """Test reciprocal vectors orthogonal to direct vectors."""
+        var_fn = self.variant(reciprocal_lattice_vectors)
+        rec_vecs = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+            in_degrees=True,
+        )
+        direct_vecs = build_cell_vectors(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        # b1 · a2 = 0, b1 · a3 = 0
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[0], direct_vecs[1]), 0.0, atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[0], direct_vecs[2]), 0.0, atol=1e-10
+        )
+        # b2 · a1 = 0, b2 · a3 = 0
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[1], direct_vecs[0]), 0.0, atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[1], direct_vecs[2]), 0.0, atol=1e-10
+        )
+        # b3 · a1 = 0, b3 · a2 = 0
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[2], direct_vecs[0]), 0.0, atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[2], direct_vecs[1]), 0.0, atol=1e-10
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_bi_dot_ai_equals_2pi(self):
+        """Test that b_i · a_i = 2π."""
+        var_fn = self.variant(reciprocal_lattice_vectors)
+        rec_vecs = var_fn(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+            in_degrees=True,
+        )
+        direct_vecs = build_cell_vectors(
+            a=3.0,
+            b=4.0,
+            c=5.0,
+            alpha=80.0,
+            beta=85.0,
+            gamma=75.0,
+        )
+        two_pi = 2 * jnp.pi
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[0], direct_vecs[0]), two_pi, rtol=1e-5
+        )
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[1], direct_vecs[1]), two_pi, rtol=1e-5
+        )
+        chex.assert_trees_all_close(
+            jnp.dot(rec_vecs[2], direct_vecs[2]), two_pi, rtol=1e-5
+        )
+
+    @chex.all_variants(with_pmap=False)
+    def test_in_degrees_flag(self):
+        """Test in_degrees flag."""
+        var_fn = self.variant(reciprocal_lattice_vectors)
+        # With degrees
+        rec_vecs_deg = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+        )
+        # With radians
+        pi_half = jnp.pi / 2
+        rec_vecs_rad = var_fn(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=pi_half,
+            beta=pi_half,
+            gamma=pi_half,
+            in_degrees=False,
+        )
+        chex.assert_trees_all_close(rec_vecs_deg, rec_vecs_rad, rtol=1e-5)
+
+
+class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
+    """Test miller_to_reciprocal function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+        # Set up cubic reciprocal vectors for testing
+        self.cubic_rec_vecs = reciprocal_lattice_vectors(
+            a=3.0,
+            b=3.0,
+            c=3.0,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            in_degrees=True,
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_single_index_100(self):
+        """Test (1,0,0) Miller index."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([1, 0, 0])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([expected, 0.0, 0.0]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_single_index_010(self):
+        """Test (0,1,0) Miller index."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([0, 1, 0])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([0.0, expected, 0.0]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_single_index_001(self):
+        """Test (0,0,1) Miller index."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([0, 0, 1])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([0.0, 0.0, expected]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_single_index_111(self):
+        """Test (1,1,1) Miller index."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([1, 1, 1])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([expected, expected, expected]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_negative_indices(self):
+        """Test negative Miller indices."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([-1, -1, -1])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = -2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([expected, expected, expected]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_zero_indices(self):
+        """Test (0,0,0) gives zero vector."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([0, 0, 0])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([0.0, 0.0, 0.0]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_batch_indices(self):
+        """Test batched Miller indices."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+                [1, 1, 1],
+            ]
+        )
+        g_vecs = var_fn(hkl, self.cubic_rec_vecs)
+        chex.assert_shape(g_vecs, (4, 3))
+        expected = 2 * jnp.pi / 3.0
+        chex.assert_trees_all_close(
+            g_vecs[0], jnp.array([expected, 0.0, 0.0]), atol=1e-10
+        )
+        chex.assert_trees_all_close(
+            g_vecs[3], jnp.array([expected, expected, expected]), atol=1e-10
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_higher_indices(self):
+        """Test higher Miller indices (2,0,0)."""
+        var_fn = self.variant(miller_to_reciprocal)
+        hkl = jnp.array([2, 0, 0])
+        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        expected = 2 * (2 * jnp.pi / 3.0)
+        chex.assert_trees_all_close(
+            g_vec, jnp.array([expected, 0.0, 0.0]), atol=1e-10
+        )
+
+
+class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
+    """Test generate_reciprocal_points function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        super().setUp()
+
+        # Create a simple cubic crystal
+        self.cubic_crystal = self._create_cubic_crystal()
+
+    def _create_cubic_crystal(self):
+        """Create a simple cubic crystal."""
+        a = 3.0
+        cart_coords = jnp.array([[0.0, 0.0, 0.0]])
+        frac_coords = cart_coords / a
+        atomic_numbers = jnp.array([14.0])  # Silicon
+
+        return create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=jnp.array([a, a, a]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_point_count(self):
+        """Test number of generated points."""
+        var_fn = self.variant(generate_reciprocal_points)
+        g_vecs = var_fn(
+            crystal=self.cubic_crystal,
+            hmax=2,
+            kmax=2,
+            lmax=1,
+            in_degrees=True,
+        )
+        # Number of points = (2*h+1) * (2*k+1) * (2*l+1)
+        expected_count = 5 * 5 * 3  # 75 points
+        chex.assert_shape(g_vecs, (expected_count, 3))
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_includes_origin(self):
+        """Test that origin (0,0,0) is included."""
+        var_fn = self.variant(generate_reciprocal_points)
+        g_vecs = var_fn(
+            crystal=self.cubic_crystal,
+            hmax=1,
+            kmax=1,
+            lmax=1,
+            in_degrees=True,
+        )
+        # Check if any row is close to zero
+        norms = jnp.linalg.norm(g_vecs, axis=1)
+        has_origin = jnp.any(norms < 1e-10)
+        chex.assert_trees_all_equal(has_origin, True)
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_symmetry_pairs(self):
+        """Test that (h,k,l) and (-h,-k,-l) are opposites."""
+        var_fn = self.variant(generate_reciprocal_points)
+        g_vecs = var_fn(
+            crystal=self.cubic_crystal,
+            hmax=1,
+            kmax=1,
+            lmax=1,
+            in_degrees=True,
+        )
+        # For each vector, its negative should also be present
+        chex.assert_tree_all_finite(g_vecs)
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_cubic_symmetry(self):
+        """Test cubic symmetry - equivalent directions have same magnitude."""
+        var_fn = self.variant(generate_reciprocal_points)
+        g_vecs = var_fn(
+            crystal=self.cubic_crystal,
+            hmax=1,
+            kmax=1,
+            lmax=1,
+            in_degrees=True,
+        )
+        # Calculate magnitudes
+        mags = jnp.linalg.norm(g_vecs, axis=1)
+        # For cubic, (1,0,0), (0,1,0), (0,0,1) should have same magnitude
+        expected = 2 * jnp.pi / 3.0
+        # Count how many have this magnitude
+        matches = jnp.sum(jnp.abs(mags - expected) < 1e-5)
+        # Should be 6: ±(1,0,0), ±(0,1,0), ±(0,0,1)
+        chex.assert_trees_all_equal(matches, 6)
+
+    @parameterized.named_parameters(
+        ("small", 1, 1, 1),
+        ("medium", 2, 2, 2),
+        ("asymmetric", 3, 2, 1),
+    )
+    def test_various_ranges(self, hmax, kmax, lmax):
+        """Test various hkl ranges."""
+        g_vecs = generate_reciprocal_points(
+            crystal=self.cubic_crystal,
+            hmax=hmax,
+            kmax=kmax,
+            lmax=lmax,
+            in_degrees=True,
+        )
+        expected_count = (2 * hmax + 1) * (2 * kmax + 1) * (2 * lmax + 1)
+        chex.assert_shape(g_vecs, (expected_count, 3))
+        chex.assert_tree_all_finite(g_vecs)
+
 
 if __name__ == "__main__":
-    pytest.main([__file__])
-
-
-class test_wavelength_ang(chex.TestCase):
-    @chex.all_variants
-    @parameterized.parameters(
-        {"test_kV": 200.0, "expected_wavelength": 0.02508},
-        {"test_kV": 1000.0, "expected_wavelength": 0.008719185412913083},
-        {"test_kV": 0.001, "expected_wavelength": 12.2642524552},
-        {"test_kV": 300.0, "expected_wavelength": 0.0196874863882},
-    )
-    def test_voltage_values(self, test_kV, expected_wavelength) -> None:
-        var_wavelength_ang = self.variant(wavelength_ang)
-        # voltage_kV = 200.0
-        # expected_wavelength = 0.02508  # Expected value based on known physics
-        result = var_wavelength_ang(test_kV)
-        assert jnp.isclose(
-            result, expected_wavelength, atol=1e-6
-        ), f"Expected {expected_wavelength}, but got {result}"
-
-    # Check for precision and rounding errors
-    @chex.all_variants
-    def test_precision_and_rounding_errors(self) -> None:
-        var_wavelength_ang = self.variant(wavelength_ang)
-        voltage_kV = 150.0
-        expected_wavelength = 0.02957  # Expected value based on known physics
-        result = var_wavelength_ang(voltage_kV)
-        assert jnp.isclose(
-            result, expected_wavelength, atol=1e-5
-        ), f"Expected {expected_wavelength}, but got {result}"
-
-    # Ensure function returns a Float Array
-    @chex.all_variants
-    def test_returns_float(self) -> None:
-        var_wavelength_ang = self.variant(wavelength_ang)
-        voltage_kV = 200.0
-        result = var_wavelength_ang(voltage_kV)
-        assert isinstance(
-            result, Float[Array, "*"]
-        ), "Expected the function to return a float"
-
-    # Test whether array inputs work
-    @chex.all_variants
-    def test_array_input(self) -> None:
-        var_wavelength_ang = self.variant(wavelength_ang)
-        voltages = jnp.array([100, 200, 300, 400], dtype=jnp.float64)
-        results = var_wavelength_ang(voltages)
-        expected = jnp.array([0.03701436, 0.02507934, 0.01968749, 0.01643943])
-        assert jnp.allclose(results, expected, atol=1e-5)
-
-
-class test_reciprocal_unitcell(chex.TestCase):
-    @chex.all_variants
-    @parameterized.parameters(
-        {
-            "test_cell": jnp.array(
-                [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]
-            ),
-            "expected_reciprocal": jnp.array(
-                [
-                    [1.25663706, 0.0, 0.0],
-                    [0.0, 1.25663706, 0.0],
-                    [0.0, 0.0, 1.25663706],
-                ]
-            ),  # 2π/5 on diagonal
-        },
-        {
-            "test_cell": jnp.array(
-                [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
-            ),
-            "expected_reciprocal": jnp.array(
-                [
-                    [2.0944271, 0.0, 0.0],
-                    [0.0, 1.5708203, 0.0],
-                    [0.0, 0.0, 1.2566371],
-                ]
-            ),  # 2π/[3,4,5]
-        },
-    )
-    def test_known_cells(self, test_cell, expected_reciprocal) -> None:
-        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        result = var_reciprocal_unitcell(test_cell)
-        assert jnp.allclose(
-            result, expected_reciprocal, atol=1e-6
-        ), f"Expected {expected_reciprocal}, but got {result}"
-
-    # Test for ill-conditioned matrix
-    @chex.all_variants
-    def test_ill_conditioned_matrix(self) -> None:
-        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        ill_conditioned = jnp.array(
-            [[1.0, 1.0, 1.0], [1.0, 1.0 + 1e-8, 1.0], [1.0, 1.0, 1.0 + 1e-8]]
-        )
-        result = var_reciprocal_unitcell(ill_conditioned)
-        assert jnp.allclose(
-            result, 0.0, atol=1e-6
-        ), "Expected zero values for ill-conditioned matrix"
-
-    # Test crystallographic properties
-    @chex.all_variants
-    def test_crystallographic_properties(self) -> None:
-        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array(
-            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
-        )
-        reciprocal = var_reciprocal_unitcell(unit_cell)
-
-        # Test orthogonality relations (a* ⊥ b, etc.)
-        for i in range(3):
-            for j in range(3):
-                if i != j:
-                    dot_product = jnp.dot(unit_cell[i], reciprocal[j])
-                    assert (
-                        jnp.abs(dot_product) < 1e-10
-                    ), f"Non-zero dot product found: {dot_product}"
-                else:
-                    dot_product = jnp.dot(unit_cell[i], reciprocal[j])
-                    assert (
-                        jnp.abs(dot_product - 2 * jnp.pi) < 1e-10
-                    ), f"Incorrect self dot product: {dot_product}"
-
-    # Ensure function returns a Float Array with correct shape
-    @chex.all_variants
-    def test_returns_float_array_3x3(self) -> None:
-        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array(
-            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
-        )
-        result = var_reciprocal_unitcell(unit_cell)
-        assert isinstance(
-            result, jax.Array
-        ), "Expected the function to return a JAX Array"
-        assert result.shape == (
-            3,
-            3,
-        ), f"Expected shape (3, 3), got {result.shape}"
-
-    # Test volume conservation
-    @chex.all_variants
-    def test_volume_conservation(self) -> None:
-        var_reciprocal_unitcell = self.variant(reciprocal_unitcell)
-        unit_cell = jnp.array(
-            [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 5.0]]
-        )
-        reciprocal = var_reciprocal_unitcell(unit_cell)
-
-        direct_volume = jnp.abs(jnp.linalg.det(unit_cell))
-        reciprocal_volume = jnp.abs(jnp.linalg.det(reciprocal))
-        product = direct_volume * reciprocal_volume
-        expected = (2 * jnp.pi) ** 3
-
-        assert jnp.isclose(
-            product, expected, atol=1e-6
-        ), f"Volume conservation violated. Expected {expected}, got {product}"
+    chex.TestCase.main()

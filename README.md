@@ -1,4 +1,4 @@
-# Rheedium
+# Rheedium [(Documentation)](https://rheedium.readthedocs.io/en/latest/)
 
 [![PyPI Downloads](https://static.pepy.tech/badge/rheedium)](https://pepy.tech/projects/rheedium)
 [![License](https://img.shields.io/pypi/l/rheedium.svg)](https://github.com/debangshu-mukherjee/rheedium/blob/main/LICENSE)
@@ -8,267 +8,70 @@
 [![codecov](https://codecov.io/gh/debangshu-mukherjee/rheedium/branch/main/graph/badge.svg)](https://codecov.io/gh/debangshu-mukherjee/rheedium)
 [![Documentation Status](https://readthedocs.org/projects/rheedium/badge/?version=latest)](https://rheedium.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14757400.svg)](https://doi.org/10.5281/zenodo.14757400)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/badge/lint%20and%20format-ruff-D7FF64?logo=ruff&logoColor=1D1D1D)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 [![jax_badge](https://tinyurl.com/mucknrvu)](https://docs.jax.dev/)
-
-**High-Performance RHEED Pattern Simulation for Crystal Surface Analysis**
-
-*A JAX-accelerated Python package for realistic Reflection High-Energy Electron Diffraction (RHEED) pattern simulation using kinematic theory and atomic form factors.*
-
-[Documentation](https://rheedium.readthedocs.io/) • [Installation](#installation) • [Quick Start](#quick-start) • [Examples](#examples) • [Contributing](#contributing)
-
-</div>
+[![Lines of Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/.github/badges/loc.json)](https://github.com/debangshu-mukherjee/rheedium)
 
 ## Overview
 
-Rheedium is a modern computational framework for simulating RHEED patterns with scientific rigor and computational efficiency. Built on JAX for automatic differentiation and GPU acceleration, it provides researchers with tools to:
+Rheedium is a JAX based computational framework for simulating RHEED patterns with automatic differentiation capabilities and GPU acceleration.
 
-- **Simulate realistic RHEED patterns** using Ewald sphere construction and kinematic diffraction theory
-- **Analyze crystal surface structures** with atomic-resolution precision
-- **Handle complex reconstructions** including domains, supercells, and surface modifications
-- **Leverage high-performance computing** with JAX's JIT compilation and GPU support
-
-### Key Features
-
-- **JAX-Accelerated**: GPU-ready computations with automatic differentiation
-- **Physically Accurate**: Kirkland atomic potentials and kinematic scattering theory
-- **Comprehensive Analysis**: Support for CIF files, surface reconstructions, and domains
-- **Visualization Tools**: Phosphor screen colormap and interpolation for realistic display
-- **Research-Ready**: Designed for thin-film growth, MBE, and surface science studies
-
-## Installation
-
-### Prerequisites
-
-- Python 3.8 or higher
-- CUDA-compatible GPU (optional, for acceleration)
-
-### Install from PyPI
+To install **rheedium**
 
 ```bash
 pip install rheedium
 ```
 
-### Install for Development
+or clone it as:
 
 ```bash
-git clone https://github.com/your-username/rheedium.git
-cd rheedium
-pip install -e ".[dev]"
+git clone git@github.com:debangshu-mukherjee/rheedium.git
 ```
 
-### Dependencies
+### Guides
 
-- JAX (with GPU support if available)
-- NumPy
-- Matplotlib
-- SciPy
-- Pandas
-- Beartype (for runtime type checking)
+- [Guides Overview](https://rheedium.readthedocs.io/en/latest/guides/index.html) - Complete guide index
+- [Ewald-CTR Tutorial](https://rheedium.readthedocs.io/en/latest/guides/ewald-ctr-tutorial.html) - Complete walkthrough from Ewald sphere to CTR rods
+- [Kinematic Scattering](https://rheedium.readthedocs.io/en/latest/guides/kinematic-scattering.html) - Diffraction theory, structure factors, and intensity calculations
+- [Ewald Sphere](https://rheedium.readthedocs.io/en/latest/guides/ewald-sphere.html) - Geometric diffraction conditions in reciprocal space
+- [Form Factors](https://rheedium.readthedocs.io/en/latest/guides/form-factors.html) - Atomic scattering amplitudes and thermal (Debye-Waller) effects
+- [Surface Rods](https://rheedium.readthedocs.io/en/latest/guides/surface-rods.html) - Crystal truncation rods, roughness, and finite domain effects
+- [Layer Control](https://rheedium.readthedocs.io/en/latest/guides/layer-control.html) - Controlling which atomic layers contribute to patterns
+- [Arbitrary Directions](https://rheedium.readthedocs.io/en/latest/guides/arbitrary-directions.html) - Simulating RHEED from any azimuth or surface orientation
+- [Data Wrangling](https://rheedium.readthedocs.io/en/latest/guides/data-wrangling.html) - Parsing XYZ, CIF, and POSCAR files
+- [Unit Cell](https://rheedium.readthedocs.io/en/latest/guides/unit-cell.html) - Lattice vectors, reciprocal space, and surface slabs
+- [PyTree Architecture](https://rheedium.readthedocs.io/en/latest/guides/pytree-architecture.html) - JAX data structures for GPU acceleration
 
-## Quick Start
+### Tutorials
 
-### Basic RHEED Simulation
+See the [tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.html) for hands-on examples.
 
-```python
-import rheedium as rh
-import jax.numpy as jnp
+### API Reference
 
-# Load crystal structure from CIF file
-crystal = rh.inout.parse_cif("data/SrTiO3.cif")
+See the [full API documentation](https://rheedium.readthedocs.io/en/latest/api/index.html) on Read the Docs.
 
-# Simulate RHEED pattern
-pattern = rh.simul.simulate_rheed_pattern(
-    crystal=crystal,
-    voltage_kV=10.0,        # Beam energy
-    theta_deg=2.0,          # Grazing angle
-    detector_distance=1000.0 # Screen distance (mm)
-)
+## Development
 
-# Visualize results
-rh.plots.plot_rheed(pattern, interp_type="cubic")
-```
-
-### Working with Surface Reconstructions
-
-```python
-# Filter atoms within penetration depth
-filtered_crystal = rh.ucell.atom_scraper(
-    crystal=crystal,
-    zone_axis=jnp.array([0, 0, 1]),  # Surface normal
-    penetration_depth=5.0            # Angstroms
-)
-
-# Simulate pattern for surface layer
-surface_pattern = rh.simul.simulate_rheed_pattern(
-    crystal=filtered_crystal,
-    voltage_kV=15.0,
-    theta_deg=1.5
-)
-```
-
-### Advanced Analysis
-
-```python
-# Generate reciprocal lattice points
-reciprocal_points = rh.ucell.generate_reciprocal_points(
-    crystal=crystal,
-    hmax=5, kmax=5, lmax=2
-)
-
-# Calculate kinematic intensities
-intensities = rh.simul.compute_kinematic_intensities(
-    positions=crystal.cart_positions[:, :3],
-    G_allowed=reciprocal_points
-)
-```
-
-## Examples
-
-### 1. Single Crystal Analysis
-
-```python
-import rheedium as rh
-
-# Load SrTiO3 structure
-crystal = rh.inout.parse_cif("examples/SrTiO3.cif")
-
-# High-resolution simulation
-pattern = rh.simul.simulate_rheed_pattern(
-    crystal=crystal,
-    voltage_kV=30.0,
-    theta_deg=1.0,
-    hmax=6, kmax=6, lmax=2,
-    tolerance=0.01
-)
-
-# Create publication-quality plot
-rh.plots.plot_rheed(
-    pattern, 
-    grid_size=400,
-    interp_type="cubic",
-    cmap_name="phosphor"
-)
-```
-
-### 2. Surface Reconstruction Study
-
-```python
-# Analyze (√13×√13)-R33.7° reconstruction
-reconstructed_crystal = rh.ucell.parse_cif_and_scrape(
-    cif_path="data/SrTiO3.cif",
-    zone_axis=jnp.array([0, 0, 1]),
-    thickness_xyz=jnp.array([0, 0, 3.9])  # Single unit cell
-)
-
-# Compare patterns at different azimuths
-azimuths = [0, 15, 30, 45]
-patterns = []
-
-for azimuth in azimuths:
-    # Rotate crystal
-    rotation_matrix = rh.ucell.build_rotation_matrix(azimuth)
-    rotated_crystal = rh.ucell.rotate_crystal(reconstructed_crystal, rotation_matrix)
-    
-    # Simulate pattern
-    pattern = rh.simul.simulate_rheed_pattern(rotated_crystal, theta_deg=2.6)
-    patterns.append(pattern)
-```
-
-### 3. Domain Analysis
-
-```python
-# Multi-domain simulation
-domains = []
-for rotation_angle in [33.7, -33.7]:  # Twin domains
-    rotated_crystal = rh.ucell.rotate_crystal(crystal, rotation_angle)
-    domain_pattern = rh.simul.simulate_rheed_pattern(rotated_crystal)
-    domains.append(domain_pattern)
-
-# Combine domain contributions
-combined_pattern = rh.types.combine_rheed_patterns(domains)
-```
-
-## Supported File Formats
-
-- **CIF files**: Crystallographic Information Format with symmetry operations
-- **CSV data**: Kirkland atomic potential parameters
-- **Image formats**: PNG, TIFF, SVG for visualization output
-
-## Configuration
-
-### Performance Optimization
-
-```python
-import jax
-
-# Enable 64-bit precision
-jax.config.update("jax_enable_x64", True)
-
-# Use GPU if available
-jax.config.update("jax_platform_name", "gpu")
-
-# JIT compilation for speed
-@jax.jit
-def fast_simulation(crystal, voltage):
-    return rh.simul.simulate_rheed_pattern(crystal, voltage_kV=voltage)
-```
-
-### Custom Atomic Potentials
-
-```python
-# Use custom Kirkland parameters
-custom_potential = rh.simul.atomic_potential(
-    atom_no=38,  # Strontium
-    pixel_size=0.05,
-    sampling=32,
-    potential_extent=6.0,
-    datafile="custom_potentials.csv"
-)
-```
-
-## Applications
-
-Rheedium is designed for researchers working in:
-
-- **Molecular Beam Epitaxy (MBE)**: Real-time growth monitoring and optimization
-- **Pulsed Laser Deposition (PLD)**: Surface quality assessment and phase identification
-- **Surface Science**: Reconstruction analysis and domain characterization
-- **Materials Engineering**: Thin film quality control and defect analysis
-- **Method Development**: New RHEED analysis technique validation
-
-## Documentation
-
-Full documentation is available at [rheedium.readthedocs.io](https://rheedium.readthedocs.io/), including:
-
-- **API Reference**: Complete function and class documentation
-- **Tutorials**: Step-by-step guides for common workflows
-- **Theory Guide**: Mathematical background and implementation details
-- **Examples Gallery**: Real-world usage scenarios with code
-
-## Contributing
-
-We welcome contributions from the community! Please see our [Contributing Guide](https://github.com/debangshu-mukherjee/rheedium/blob/main/CONTRIBUTING.md) for details on:
-
-- Code style and standards
-- Testing requirements
-- Documentation guidelines
-- Pull request process
-
-### Development Setup
+Install the development environment with:
 
 ```bash
-git clone https://github.com/your-username/rheedium.git
-cd rheedium
-pip install -e ".[dev,test,docs]"
-pre-commit install
+uv sync --extra dev
 ```
 
-### Running Tests
+Run the static type checker with:
 
 ```bash
-pytest tests/
-pytest --cov=rheedium tests/  # With coverage
+uv run ty check src
+```
+
+Recommended local validation before pushing:
+
+```bash
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
+uv run ty check src
+uv run pytest -v
 ```
 
 ## License
@@ -280,12 +83,12 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 If you use Rheedium in your research, please cite:
 
 ```bibtex
-@software{rheedium2024,
+@software{rheedium_software,
   title={Rheedium: High-Performance RHEED Pattern Simulation},
   author={Mukherjee, Debangshu},
   year={2025},
   url={https://github.com/debangshu-mukherjee/rheedium},
-  version={2025.6.16},
+  version={2025.10.05},
   doi={10.5281/zenodo.14757400},
 }
 ```

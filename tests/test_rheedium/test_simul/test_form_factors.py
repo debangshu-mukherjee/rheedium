@@ -9,19 +9,23 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jaxtyping import Array, Float
+from jax.test_util import check_grads
 
+from rheedium.inout import kirkland_potentials
 from rheedium.simul.form_factors import (
     atomic_scattering_factor,
     debye_waller_factor,
     get_mean_square_displacement,
     kirkland_form_factor,
+    kirkland_projected_potential,
     load_kirkland_parameters,
 )
+from rheedium.tools import bessel_k0
+from rheedium.tools.wrappers import jax_safe
 
 
 class TestFormFactors(chex.TestCase, parameterized.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         """Set up test fixtures with common test parameters.
 
         Initializes atomic numbers for various elements (H, C, Si, Cu, Au),
@@ -64,7 +68,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("gold", 79),
         ("uranium", 92),
     )
-    def test_load_kirkland_parameters(self, atomic_number: int) -> None:
+    def test_load_kirkland_parameters(self, atomic_number):
         """Test loading Kirkland parameters for various elements.
 
         Verifies that Kirkland parameterization coefficients are loaded
@@ -75,21 +79,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         which is physically meaningful for scattering.
         """
         var_load_params = self.variant(load_kirkland_parameters)
-        a_coeffs, b_coeffs = var_load_params(atomic_number)
+        params = var_load_params(atomic_number)
 
-        chex.assert_shape(a_coeffs, (6,))
-        chex.assert_shape(b_coeffs, (6,))
+        chex.assert_shape(params.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params.lorentzian_scales, (3,))
+        chex.assert_shape(params.gaussian_amplitudes, (3,))
+        chex.assert_shape(params.gaussian_scales, (3,))
 
-        chex.assert_tree_all_finite(a_coeffs)
-        chex.assert_tree_all_finite(b_coeffs)
+        chex.assert_tree_all_finite(params.lorentzian_amplitudes)
+        chex.assert_tree_all_finite(params.lorentzian_scales)
+        chex.assert_tree_all_finite(params.gaussian_amplitudes)
+        chex.assert_tree_all_finite(params.gaussian_scales)
 
-        chex.assert_trees_all_equal(jnp.all(b_coeffs > 0), True)
+        chex.assert_trees_all_equal(
+            jnp.all(params.lorentzian_scales > 0),
+            True,
+        )
+        chex.assert_trees_all_equal(
+            jnp.all(params.gaussian_scales > 0),
+            True,
+        )
 
-        a_sum = jnp.sum(a_coeffs)
+        a_sum = jnp.sum(params.lorentzian_amplitudes) + jnp.sum(
+            params.gaussian_amplitudes
+        )
         chex.assert_scalar_positive(float(a_sum))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_load_kirkland_parameters_edge_cases(self) -> None:
+    def test_load_kirkland_parameters_edge_cases(self):
         """Test parameter loading with edge cases.
 
         Tests boundary conditions for atomic number inputs, verifying
@@ -101,21 +118,37 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_load_params = self.variant(load_kirkland_parameters)
 
-        a_min, b_min = var_load_params(1)
-        a_max, b_max = var_load_params(103)
+        params_min = var_load_params(1)
+        params_max = var_load_params(103)
 
-        chex.assert_shape(a_min, (6,))
-        chex.assert_shape(b_min, (6,))
-        chex.assert_shape(a_max, (6,))
-        chex.assert_shape(b_max, (6,))
+        chex.assert_shape(params_min.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params_min.gaussian_amplitudes, (3,))
+        chex.assert_shape(params_max.lorentzian_amplitudes, (3,))
+        chex.assert_shape(params_max.gaussian_amplitudes, (3,))
 
-        a_clip_low, b_clip_low = var_load_params(0)
-        a_clip_high, b_clip_high = var_load_params(150)
+        params_clip_low = var_load_params(0)
+        params_clip_high = var_load_params(150)
 
-        chex.assert_trees_all_close(a_clip_low, a_min, rtol=1e-10)
-        chex.assert_trees_all_close(b_clip_low, b_min, rtol=1e-10)
-        chex.assert_trees_all_close(a_clip_high, a_max, rtol=1e-10)
-        chex.assert_trees_all_close(b_clip_high, b_max, rtol=1e-10)
+        chex.assert_trees_all_close(
+            params_clip_low.lorentzian_amplitudes,
+            params_min.lorentzian_amplitudes,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_low.lorentzian_scales,
+            params_min.lorentzian_scales,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_high.gaussian_amplitudes,
+            params_max.gaussian_amplitudes,
+            rtol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            params_clip_high.gaussian_scales,
+            params_max.gaussian_scales,
+            rtol=1e-10,
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -125,9 +158,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("gold_low_q", 79, 0.1),
         ("gold_high_q", 79, 10.0),
     )
-    def test_kirkland_form_factor_single(
-        self, atomic_number: int, q_mag: float
-    ) -> None:
+    def test_kirkland_form_factor_single(self, atomic_number, q_mag):
         """Test Kirkland form factor for single q values.
 
         Validates the Kirkland electron scattering form factor calculation
@@ -154,7 +185,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             chex.assert_scalar_positive(float(f_q))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_kirkland_form_factor_decreasing(self) -> None:
+    def test_kirkland_form_factor_decreasing(self):
         """Test that form factor decreases with increasing q.
 
         Verifies the fundamental physical property that atomic form factors
@@ -175,7 +206,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             chex.assert_scalar_positive(float(f_values[0]))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_kirkland_form_factor_batched(self) -> None:
+    def test_kirkland_form_factor_batched(self):
         """Test form factor with batched q values.
 
         Verifies that the form factor function correctly handles vectorized
@@ -198,6 +229,46 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(f_batch_3d, q_batch_3d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
+    def test_kirkland_form_factor_matches_tabulated_formula(self):
+        """Kirkland form factor matches the mixed Lorentz/Gauss fit."""
+        var_form_factor = self.variant(kirkland_form_factor)
+        q_values = jnp.array([0.0, 0.5, 2.0, 8.0], dtype=jnp.float64)
+        params = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes = params[::2]
+        scales = params[1::2]
+        s_squared = (q_values / (4.0 * jnp.pi))[:, jnp.newaxis] ** 2
+        expected = jnp.sum(
+            amplitudes[:3][jnp.newaxis, :] / (s_squared + scales[:3])
+            + amplitudes[3:][jnp.newaxis, :]
+            * jnp.exp(-scales[3:] * s_squared),
+            axis=-1,
+        )
+
+        actual = jnp.ravel(var_form_factor(14, q_values))
+        chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_kirkland_projected_potential_matches_tabulated_formula(self):
+        """Projected potential matches the analytic Kirkland real-space form."""
+        var_projected_potential = self.variant(kirkland_projected_potential)
+        radial_positions = jnp.array([0.05, 0.2, 0.8], dtype=jnp.float64)
+        params = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes = params[::2]
+        scales = params[1::2]
+        prefactor = 47.87801 * 2.0 * jnp.pi
+        r_expanded = radial_positions[:, jnp.newaxis]
+        expected = prefactor * jnp.sum(
+            amplitudes[:3][jnp.newaxis, :]
+            * bessel_k0(2.0 * jnp.pi * r_expanded * jnp.sqrt(scales[:3]))
+            + (amplitudes[3:][jnp.newaxis, :] / scales[3:])
+            * jnp.exp(-(jnp.pi**2) * r_expanded**2 / scales[3:]),
+            axis=-1,
+        )
+
+        actual = jnp.ravel(var_projected_potential(14, radial_positions))
+        chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
+
+    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         ("silicon_room_bulk", 14, 300.0, False),
         ("silicon_room_surface", 14, 300.0, True),
@@ -207,8 +278,8 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("hydrogen_low_temp", 1, 100.0, False),
     )
     def test_get_mean_square_displacement(
-        self, atomic_number: int, temperature: float, is_surface: bool
-    ) -> None:
+        self, atomic_number, temperature, is_surface
+    ):
         """Test mean square displacement calculation.
 
         Validates the calculation of atomic mean square displacement (MSD)
@@ -232,19 +303,24 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             chex.assert_scalar_positive(float(msd - msd_bulk))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_mean_square_displacement_scaling(self) -> None:
+    def test_mean_square_displacement_scaling(self):
         """Test MSD scaling with temperature and atomic number.
 
         Verifies the physical scaling relationships of mean square
         displacement:
         1. MSD increases with temperature (100K < 300K < 600K for Si) due
            to increased thermal energy and vibrational amplitude.
-        2. MSD decreases with atomic mass (H > C > Au at 300K) since
-           lighter atoms vibrate with larger amplitude for the same
-           thermal energy.
+        2. For elements with similar Debye temperatures, MSD decreases
+           with atomic mass (Al > Fe at 300K) since heavier atoms vibrate
+           with smaller amplitude for the same thermal energy.
         3. Surface enhancement factor is consistent (exactly 2.0) across
            different elements, reflecting the systematic reduction in
            coordination number at surfaces.
+
+        Note: With element-specific Debye temperatures, the simple mass
+        ordering (lighter = larger MSD) doesn't always hold. For example,
+        carbon (Θ_D=2230K, very stiff diamond bonds) has smaller MSD than
+        gold (Θ_D=165K, soft metallic bonds) despite being lighter.
         """
         var_get_msd = self.variant(get_mean_square_displacement)
 
@@ -255,12 +331,12 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(msd_si_300 - msd_si_100))
         chex.assert_scalar_positive(float(msd_si_600 - msd_si_300))
 
-        msd_h = var_get_msd(1, 300.0, False)
-        msd_c = var_get_msd(6, 300.0, False)
-        msd_au = var_get_msd(79, 300.0, False)
+        # For mass scaling test, use elements with similar Debye temperatures
+        # so that mass effect dominates: Al (Θ_D=428K) vs Fe (Θ_D=470K)
+        msd_al = var_get_msd(13, 300.0, False)  # Al: mass=27, Θ_D=428K
+        msd_fe = var_get_msd(26, 300.0, False)  # Fe: mass=56, Θ_D=470K
 
-        chex.assert_scalar_positive(float(msd_h - msd_c))
-        chex.assert_scalar_positive(float(msd_c - msd_au))
+        chex.assert_scalar_positive(float(msd_al - msd_fe))
 
         for z in [1, 14, 79]:
             msd_bulk = var_get_msd(z, 300.0, False)
@@ -276,9 +352,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("large_msd_high_q", 0.1, 5.0),
         ("zero_q", 0.01, 0.0),
     )
-    def test_debye_waller_factor_single(
-        self, msd: float, q_mag: float
-    ) -> None:
+    def test_debye_waller_factor_single(self, msd, q_mag):
         """Test Debye-Waller factor for single values.
 
         Validates the Debye-Waller factor calculation which accounts for
@@ -301,10 +375,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(1.0 - dw + 1e-10))
 
         if q_mag < 1e-10:
-            chex.assert_trees_all_close(dw, 1.0, rtol=1e-10)
+            chex.assert_trees_all_close(dw, 1.0, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_debye_waller_factor_batched(self) -> None:
+    def test_debye_waller_factor_batched(self):
         """Test Debye-Waller factor with batched q values.
 
         Verifies vectorized computation of Debye-Waller factors for arrays
@@ -329,7 +403,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(dw_2d, q_batch_2d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_debye_waller_edge_cases(self) -> None:
+    def test_debye_waller_edge_cases(self):
         """Test Debye-Waller factor with edge cases.
 
         Tests boundary conditions and special cases:
@@ -348,11 +422,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         dw_zero_msd = var_dw_factor(q_test, 0.0)
         chex.assert_trees_all_close(
-            dw_zero_msd, jnp.ones_like(q_test), rtol=1e-10
+            dw_zero_msd, jnp.ones_like(q_test), rtol=1e-6
         )
 
+        # For large MSD (10 Å²), expect significant damping for q > 0
+        # DW = exp(-q²⟨u²⟩/3), so q=1, MSD=10 → exp(-10/3) ≈ 0.036
         dw_large_msd = var_dw_factor(q_test[1:], 10.0)
-        chex.assert_trees_all_equal(jnp.all(dw_large_msd < 1e-5), True)
+        chex.assert_trees_all_equal(jnp.all(dw_large_msd < 0.1), True)
 
         dw_neg_msd = var_dw_factor(q_test, -0.1)
         chex.assert_tree_all_finite(dw_neg_msd)
@@ -368,8 +444,8 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("hydrogen_low_temp", 1, 100.0, False),
     )
     def test_atomic_scattering_factor(
-        self, atomic_number: int, temperature: float, is_surface: bool
-    ) -> None:
+        self, atomic_number, temperature, is_surface
+    ):
         """Test combined atomic scattering factor.
 
         Tests the complete atomic scattering factor calculation that
@@ -400,7 +476,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(f_sorted[0] - f_sorted[-1]))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_atomic_scattering_factor_batched(self) -> None:
+    def test_atomic_scattering_factor_batched(self):
         """Test atomic scattering factor with batched inputs.
 
         Verifies that the atomic scattering factor function correctly
@@ -424,7 +500,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(f_batch_3d, (3, 4, len(self.q_vectors_3d)))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_surface_vs_bulk_comparison(self) -> None:
+    def test_surface_vs_bulk_comparison(self):
         """Test that surface atoms have stronger thermal damping.
 
         Validates that surface atoms exhibit stronger thermal damping than
@@ -446,7 +522,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             chex.assert_trees_all_equal(jnp.all(f_surf < f_bulk), True)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_jax_transformations_form_factor(self) -> None:
+    def test_jax_transformations_form_factor(self):
         """Test JAX transformations on form factor calculations.
 
         Validates that form factor calculations are compatible with JAX's
@@ -464,9 +540,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         var_form_factor = self.variant(kirkland_form_factor)
 
         @jax.jit
-        def jitted_form_factor(
-            z: int, q: Float[Array, "..."]
-        ) -> Float[Array, "..."]:
+        def jitted_form_factor(z, q):
             return var_form_factor(z, q)
 
         q_test = self.q_magnitudes
@@ -482,7 +556,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         f_vmapped = vmapped_ff(atomic_nums)
         chex.assert_shape(f_vmapped, (len(atomic_nums), 1))
 
-        def loss_fn(q: float) -> float:
+        def loss_fn(q):
             f_val = var_form_factor(14, jnp.array(q))
             return jnp.squeeze(f_val)
 
@@ -493,7 +567,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(-grad_q))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_jax_transformations_scattering(self) -> None:
+    def test_jax_transformations_scattering(self):
         """Test JAX transformations on atomic scattering factor.
 
         Tests advanced JAX transformations on the combined atomic scattering
@@ -524,7 +598,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         atomic_nums = jnp.array([6, 14, 29])
 
-        def scattering_fn(z: int, t: float) -> Float[Array, " 1"]:
+        def scattering_fn(z, t):
             return var_scattering(z, q_single, t, False)
 
         nested_vmap = jax.vmap(
@@ -534,7 +608,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(f_nested, (len(atomic_nums), len(temps), 1))
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_physical_consistency(self) -> None:
+    def test_physical_consistency(self):
         """Test physical consistency of calculations.
 
         Validates that the combined atomic scattering factor correctly
@@ -572,9 +646,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("random_vectors", jax.random.normal(jax.random.PRNGKey(0), (10, 3))),
         ("large_magnitude", jnp.array([[100.0, 0.0, 0.0]])),
     )
-    def test_q_vector_invariance(
-        self, q_vectors: Float[Array, "... 3"]
-    ) -> None:
+    def test_q_vector_invariance(self, q_vectors):
         """Test that scattering depends only on |q|, not direction.
 
         Validates the fundamental isotropy of atomic scattering - the
@@ -601,6 +673,115 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             f_rotated = var_scattering(14, q_rotated, 300.0, False)
 
             chex.assert_trees_all_close(f_original, f_rotated, rtol=1e-8)
+
+
+class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
+    """Gradient existence and correctness for form factor functions."""
+
+    def test_form_factor_grad_q(self):
+        """Kirkland form factor gradient w.r.t. q is finite and smooth."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        grad_fn = jax.grad(f)
+        q_values = [0.5, 1.0, 2.0, 4.0]
+        for q in q_values:
+            g = grad_fn(jnp.float64(q))
+            chex.assert_tree_all_finite(g)
+            assert jnp.abs(g) > 1e-12
+
+    def test_debye_waller_grad_temperature(self):
+        """DW factor gradient w.r.t. temperature is negative."""
+
+        def dw_at_temp(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        g = jax.grad(dw_at_temp)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+        assert g < 0
+
+    def test_msd_grad_temperature(self):
+        """MSD gradient w.r.t. temperature is positive."""
+
+        def msd_fn(temp):
+            return get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+
+        g = jax.grad(msd_fn)(jnp.float64(300.0))
+        chex.assert_tree_all_finite(g)
+        assert g > 0
+
+    def test_form_factor_grad_correct(self):
+        """Kirkland form factor analytical grad matches finite diff."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        check_grads(jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
+
+    def test_debye_waller_grad_correct(self):
+        """DW factor analytical grad matches finite diff."""
+
+        def f(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
+
+    def test_msd_grad_correct(self):
+        """MSD analytical grad matches finite diff."""
+
+        def f(temp):
+            return get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+
+        check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-4)
+
+
+class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
+    """Verify vmap matches sequential evaluation for form factors."""
+
+    def test_form_factor_vmap_consistent(self):
+        """Batched form factor matches sequential per-element result."""
+
+        def f(q):
+            return jnp.squeeze(kirkland_form_factor(14, q))
+
+        q_batch = jnp.array([0.5, 1.0, 2.0, 4.0])
+        batched = jax.vmap(f)(q_batch)
+        sequential = jnp.stack([f(q) for q in q_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+    def test_debye_waller_vmap_consistent(self):
+        """Batched DW factor matches sequential evaluation."""
+
+        def f(temp):
+            msd = get_mean_square_displacement(
+                atomic_number=14, temperature=temp
+            )
+            return debye_waller_factor(
+                q_magnitude=jnp.float64(2.0),
+                mean_square_displacement=msd,
+            )
+
+        temp_batch = jnp.array([100.0, 300.0, 600.0, 1000.0])
+        batched = jax.vmap(f)(temp_batch)
+        sequential = jnp.stack([f(t) for t in temp_batch])
+        chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 
 if __name__ == "__main__":

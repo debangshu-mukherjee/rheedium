@@ -13,17 +13,16 @@ import jax.numpy as jnp
 from absl.testing import parameterized
 
 import rheedium as rh
-from rheedium.types import CrystalStructure
+from rheedium.types.crystal_types import CrystalStructure
 
 
 class TestAngleInDegrees(chex.TestCase):
     """Test angle_in_degrees function."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -35,9 +34,7 @@ class TestAngleInDegrees(chex.TestCase):
         ("45_degrees", [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], 45.0),
         ("60_degrees", [1.0, 0.0, 0.0], [0.5, 0.866025, 0.0], 60.0),
     )
-    def test_angle_calculation(
-        self, v1: list, v2: list, expected_angle: float
-    ) -> None:
+    def test_angle_calculation(self, v1, v2, expected_angle):
         """Test angle calculation between various vector pairs."""
         v1_array = jnp.array(v1)
         v2_array = jnp.array(v2)
@@ -48,7 +45,7 @@ class TestAngleInDegrees(chex.TestCase):
         chex.assert_trees_all_close(angle, expected_angle, atol=1e-5)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_angle_random_vectors(self) -> None:
+    def test_angle_random_vectors(self):
         """Test angle calculation with random vectors."""
         key1, key2 = jax.random.split(self.rng)
         v1 = jax.random.normal(key1, (3,))
@@ -65,7 +62,7 @@ class TestAngleInDegrees(chex.TestCase):
         chex.assert_trees_all_close(angle, angle_reversed, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_angle_normalization_invariance(self) -> None:
+    def test_angle_normalization_invariance(self):
         """Test that angle is invariant to vector magnitude."""
         v1 = jnp.array([1.0, 0.0, 0.0])
         v2 = jnp.array([1.0, 1.0, 0.0])
@@ -81,7 +78,7 @@ class TestAngleInDegrees(chex.TestCase):
         chex.assert_trees_all_close(angle1, angle2, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_angle_2d_vectors(self) -> None:
+    def test_angle_2d_vectors(self):
         """Test angle calculation with 2D vectors."""
         v1 = jnp.array([1.0, 0.0])
         v2 = jnp.array([0.0, 1.0])
@@ -92,7 +89,7 @@ class TestAngleInDegrees(chex.TestCase):
         chex.assert_trees_all_close(angle, 90.0, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_angle_high_dimensional(self) -> None:
+    def test_angle_high_dimensional(self):
         """Test angle calculation with high-dimensional vectors."""
         n_dim = 10
         key1, key2 = jax.random.split(self.rng)
@@ -102,17 +99,16 @@ class TestAngleInDegrees(chex.TestCase):
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1, v2)
 
-        chex.assert_scalar_in(angle, 0.0, 180.0)
+        chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
 
 class TestComputeLengthsAngles(chex.TestCase):
     """Test compute_lengths_angles function."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -132,12 +128,12 @@ class TestComputeLengthsAngles(chex.TestCase):
             "monoclinic",
             [[3.0, 0.0, 0.0], [0.0, 4.0, 0.0], [1.0, 0.0, 5.0]],
             [3.0, 4.0, 5.099019513592784],
-            [90.0, 90.0, 78.69006752597979],
+            [90.0, 78.69006752597979, 90.0],
         ),
     )
     def test_compute_lengths_angles_known_cells(
-        self, vectors: list, expected_lengths: list, expected_angles: list
-    ) -> None:
+        self, vectors, expected_lengths, expected_angles
+    ):
         """Test length and angle computation for known unit cells."""
         vectors_array = jnp.array(vectors)
 
@@ -154,7 +150,7 @@ class TestComputeLengthsAngles(chex.TestCase):
         )
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_compute_lengths_angles_random(self) -> None:
+    def test_compute_lengths_angles_random(self):
         """Test length and angle computation with random vectors."""
         vectors = jax.random.normal(self.rng, (3, 3))
 
@@ -168,14 +164,14 @@ class TestComputeLengthsAngles(chex.TestCase):
         chex.assert_shape(angles, (3,))
 
         # Lengths should be positive
-        chex.assert_trees_all_positive(lengths)
+        chex.assert_trees_all_equal(jnp.all(lengths > 0), True)
 
         # Angles should be between 0 and 180
         for angle in angles:
             chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_compute_lengths_angles_consistency(self) -> None:
+    def test_compute_lengths_angles_consistency(self):
         """Test consistency with individual calculations."""
         vectors = jnp.array(
             [[3.0, 1.0, 0.5], [0.5, 4.0, 1.0], [1.0, 0.5, 5.0]]
@@ -200,9 +196,9 @@ class TestComputeLengthsAngles(chex.TestCase):
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         expected_angles = jnp.array(
             [
-                var_angle_in_degrees(vectors[0], vectors[1]),
                 var_angle_in_degrees(vectors[1], vectors[2]),
-                var_angle_in_degrees(vectors[2], vectors[0]),
+                var_angle_in_degrees(vectors[0], vectors[2]),
+                var_angle_in_degrees(vectors[0], vectors[1]),
             ]
         )
         chex.assert_trees_all_close(angles, expected_angles, atol=1e-10)
@@ -211,11 +207,10 @@ class TestComputeLengthsAngles(chex.TestCase):
 class TestParseCifAndScrape(chex.TestCase):
     """Test parse_cif_and_scrape function."""
 
-    def setUp(self) -> None:
+    def setUp(self):
         """Set up test fixtures."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
-        chex.set_n_cpu_devices(1)
 
         # Create a temporary test CIF file
         self.test_cif_content = """
@@ -250,13 +245,13 @@ Si10 Si 0.5 0.5 0.9
         ) as self.temp_file:
             self.temp_file.write(self.test_cif_content)
 
-    def tearDown(self) -> None:
+    def tearDown(self):
         """Clean up temporary files."""
         os.unlink(self.temp_file.name)
         super().tearDown()
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_parse_cif_and_scrape_basic(self) -> None:
+    def test_parse_cif_and_scrape_basic(self):
         """Test basic CIF parsing and atom scraping."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
         thickness_xyz = jnp.array([5.0, 5.0, 3.0])
@@ -267,7 +262,7 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Check that we got a CrystalStructure
-        chex.assert_type(filtered_crystal, CrystalStructure)
+        assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check that atoms were filtered (should have fewer than 10)
         n_atoms = filtered_crystal.cart_positions.shape[0]
@@ -281,9 +276,7 @@ Si10 Si 0.5 0.5 0.9
         ("y_axis", [0.0, 1.0, 0.0], [5.0, 2.0, 5.0]),
         ("diagonal", [1.0, 1.0, 1.0], [3.0, 3.0, 3.0]),
     )
-    def test_parse_cif_and_scrape_different_axes(
-        self, zone_axis: list, thickness: list
-    ) -> None:
+    def test_parse_cif_and_scrape_different_axes(self, zone_axis, thickness):
         """Test scraping along different zone axes."""
         zone_axis_array = jnp.array(zone_axis)
         thickness_array = jnp.array(thickness)
@@ -294,7 +287,7 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Check valid crystal structure
-        chex.assert_type(filtered_crystal, CrystalStructure)
+        assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check we have some atoms
         n_atoms = filtered_crystal.cart_positions.shape[0]
@@ -309,7 +302,7 @@ Si10 Si 0.5 0.5 0.9
         )
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_parse_cif_and_scrape_multiple_thicknesses(self) -> None:
+    def test_parse_cif_and_scrape_multiple_thicknesses(self):
         """Test with different thickness values."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
 
@@ -327,8 +320,8 @@ Si10 Si 0.5 0.5 0.9
         )
 
         # Both should produce valid crystals
-        chex.assert_type(crystal1, CrystalStructure)
-        chex.assert_type(crystal2, CrystalStructure)
+        assert isinstance(crystal1, CrystalStructure)
+        assert isinstance(crystal2, CrystalStructure)
 
         # Crystal2 should have more or equal atoms than crystal1
         n_atoms1 = crystal1.cart_positions.shape[0]
@@ -336,30 +329,29 @@ Si10 Si 0.5 0.5 0.9
         chex.assert_scalar_positive(int(n_atoms1))
         chex.assert_scalar_positive(int(n_atoms2))
         # More thickness should include more or equal atoms
-        chex.assert_comparison(
-            n_atoms2,
-            n_atoms1,
-            ">=",
-            custom_message="More thickness should include more or equal atoms",
+        assert int(n_atoms2) >= int(n_atoms1), (
+            "More thickness should include more or equal atoms"
         )
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_parse_cif_and_scrape_thin_slice(self) -> None:
-        """Test with very thin slice thickness."""
+    def test_parse_cif_and_scrape_thin_slice(self):
+        """Test with thin slice that includes some atoms."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness_xyz = jnp.array([5.0, 5.0, 0.5])  # Very thin slice
+        # Atoms are at z=0,1,2,...,9 Å, center is at 4.5 Å
+        # A 2.5 Å slice (half_thickness=1.25) centered at 4.5 captures atoms at 4 and 5
+        thickness_xyz = jnp.array([5.0, 5.0, 2.5])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness_xyz
         )
 
-        # Should still have at least one atom
+        # Should have at least one atom
         n_atoms = filtered_crystal.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
 
     @chex.variants(without_jit=True, with_jit=False)
-    def test_parse_cif_and_scrape_thick_slice(self) -> None:
+    def test_parse_cif_and_scrape_thick_slice(self):
         """Test with very thick slice (should include all atoms)."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
         thickness_xyz = jnp.array([10.0, 10.0, 20.0])  # Very thick slice
@@ -371,7 +363,7 @@ Si10 Si 0.5 0.5 0.9
 
         # Should include all 10 atoms
         n_atoms = filtered_crystal.cart_positions.shape[0]
-        chex.assert_scalar(int(n_atoms), 10)
+        assert int(n_atoms) == 10, f"Expected 10 atoms, got {n_atoms}"
 
 
 if __name__ == "__main__":

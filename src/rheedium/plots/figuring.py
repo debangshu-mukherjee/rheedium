@@ -8,10 +8,10 @@ commonly seen in experimental RHEED systems.
 
 Routine Listings
 ----------------
-create_phosphor_colormap : function
-    Create custom colormap simulating phosphor screen appearance
-plot_rheed : function
-    Plot RHEED pattern with interpolation and phosphor colormap
+:func:`create_phosphor_colormap`
+    Create custom colormap simulating phosphor screen appearance.
+:func:`plot_rheed`
+    Plot RHEED pattern with interpolation and phosphor colormap.
 
 Notes
 -----
@@ -19,19 +19,20 @@ Visualization functions use matplotlib for rendering and scipy for
 interpolation.
 """
 
-import jax
+import matplotlib.colors as mcolors
+import matplotlib.image as mimage
 import matplotlib.pyplot as plt
 import numpy as np
 from beartype import beartype
-from beartype.typing import Any, List, Optional, Tuple
+from beartype.typing import List, Optional, Tuple
 from jaxtyping import Float
+from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
+from numpy import ndarray as NDArray  # noqa: N812
 from scipy.interpolate import griddata
 
-import rheedium as rh
 from rheedium.types import RHEEDPattern, scalar_float
-
-jax.config.update("jax_enable_x64", True)
 
 
 @beartype
@@ -55,11 +56,19 @@ def create_phosphor_colormap(
 
     Notes
     -----
-    - Define color transition points and RGB values from black through dark
-      green, bright green, lighter green, to white bloom.
-    - Extract positions and RGB values from color definitions
-    - Create color channel definitions for red, green, and blue
-    - Create and return LinearSegmentedColormap with custom colors
+    1. **Define Color Anchors** --
+       Set transition points and RGB values from black
+       through dark green, bright green, lighter green,
+       to white bloom.
+    2. **Extract Channel Data** --
+       Separate positions and RGB values from color
+       definitions into individual channel lists.
+    3. **Build Segment Dict** --
+       Create color channel definitions for red, green,
+       and blue as required by LinearSegmentedColormap.
+    4. **Construct Colormap** --
+       Create and return LinearSegmentedColormap with
+       the custom color segment dictionary.
 
     Examples
     --------
@@ -106,103 +115,136 @@ def create_phosphor_colormap(
 @beartype
 def plot_rheed(
     rheed_pattern: RHEEDPattern,
-    grid_size: Optional[int] = 200,
-    interp_type: Optional[str] = "cubic",
+    grid_size: int = 200,
+    interp_type: str = "gaussian",
     cmap_name: Optional[str] = "phosphor",
+    spot_width: float = 0.08,
+    figsize: Tuple[float, float] = (8, 10),
+    x_extent: Optional[Tuple[float, float]] = None,
+    y_extent: Optional[Tuple[float, float]] = None,
 ) -> None:
-    """Interpolate the RHEED spots onto a uniform grid using various methods.
+    """Plot RHEED pattern with multiple rendering options.
 
-    Then display using the phosphor colormap.
+    Renders RHEED pattern to 2D image using interpolation or Gaussian
+    broadening, then displays with phosphor-screen colormap.
 
     Parameters
     ----------
     rheed_pattern : RHEEDPattern
-        Must have `detector_points` of shape (M, 2) and `intensities`
-        of shape (M,).
+        Pattern with detector_points (N, 2) and intensities (N,).
     grid_size : int, optional
-        Controls how many grid points in Y and Z directions. Default is 200.
+        Number of pixels along each axis. Default: 200
     interp_type : str, optional
-        Which interpolation approach to use. Default is "cubic". Options are:
-        - "cubic" => calls griddata(..., method="cubic")
-        - "linear" => calls griddata(..., method="linear")
-        - "nearest" => calls griddata(..., method="nearest")
+        Rendering method. Default: "gaussian"
+        - "gaussian": Sum of Gaussian spots (realistic, recommended)
+        - "cubic": Cubic interpolation
+        - "linear": Linear interpolation
+        - "nearest": Nearest neighbor
     cmap_name : str, optional
-        Name for your custom phosphor colormap. Default is 'phosphor'.
+        Colormap name. Default: "phosphor"
+    spot_width : float, optional
+        Gaussian spot width in mm (only for interp_type="gaussian").
+        Default: 0.08
+    figsize : Tuple[float, float], optional
+        Figure size. Default: (8, 10)
+    x_extent : Tuple[float, float], optional
+        X-axis range (min, max) in mm. Default: auto from data with padding
+    y_extent : Tuple[float, float], optional
+        Y-axis range (min, max) in mm. Default: auto from data with padding
 
     Notes
     -----
-    The algorithm proceeds as follows:
-
-    1. Extract coordinates and intensities from RHEED pattern
-    2. Convert JAX arrays to NumPy arrays
-    3. Validate interpolation method
-    4. Calculate coordinate ranges for grid and create uniform grid points
-    5. Interpolate intensities onto grid using griddata
-    6. Reshape result to 2D grid
-    7. Create phosphor colormap
-    8. Create figure and plot with colorbar, labels, and title
-    9. Show plot
-
-    Examples
-    --------
-    >>> from rheedium.plots.figuring import plot_rheed
-    >>> from rheedium.types.rheed_types import RHEEDPattern
-    >>> import jax.numpy as jnp
-    >>> # Create a simple RHEED pattern
-    >>> points = jnp.array([[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]])
-    >>> intensities = jnp.array([1.0, 0.5, 0.5, 0.5, 0.5])
-    >>> pattern = RHEEDPattern(points=points, intensities=intensities)
-    >>> # Plot the pattern
-    >>> plot_rheed(pattern, figsize=(6, 6))
-    >>> plt.show()
+    1. **Extract Coordinates** --
+       Convert detector points and intensities from the
+       RHEEDPattern to NumPy arrays.
+    2. **Determine Extent** --
+       Compute axis limits from data range with padding,
+       or use user-supplied x_extent and y_extent.
+    3. **Render Image** --
+       For Gaussian mode, sum 2D Gaussian spots centered
+       at each diffraction point. For interpolation modes,
+       use scipy griddata on the irregular point set.
+    4. **Apply Colormap** --
+       Select the phosphor colormap or a named matplotlib
+       colormap, then display with imshow and colorbar.
     """
-    coords: Float[np.ndarray, " mm 2"] = rheed_pattern.detector_points
-    y_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 0])
-    z_np: Float[np.ndarray, " mm"] = np.asarray(coords[:, 1])
-    i_np: Float[np.ndarray, " mm"] = np.asarray(rheed_pattern.intensities)
-    if interp_type in ("cubic", "linear", "nearest"):
-        method: str = interp_type
+    coords: Float[NDArray, "N 2"] = np.asarray(rheed_pattern.detector_points)
+    x_np: Float[NDArray, "N"] = coords[:, 0]
+    y_np: Float[NDArray, "N"] = coords[:, 1]
+    i_np: Float[NDArray, "N"] = np.asarray(rheed_pattern.intensities)
+
+    if x_extent is None:
+        x_min: float = float(x_np.min()) - 0.5
+        x_max: float = float(x_np.max()) + 0.5
+    else:
+        x_min, x_max = x_extent
+
+    if y_extent is None:
+        y_min: float = float(y_np.min()) - 0.5
+        y_max: float = float(y_np.max()) + 0.5
+    else:
+        y_min, y_max = y_extent
+
+    x_axis: Float[NDArray, "W"] = np.linspace(x_min, x_max, grid_size)
+    y_axis: Float[NDArray, "H"] = np.linspace(y_min, y_max, grid_size)
+
+    if interp_type == "gaussian":
+        xx: Float[NDArray, "H W"]
+        yy: Float[NDArray, "H W"]
+        xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
+        image: Float[NDArray, "H W"] = np.zeros((grid_size, grid_size))
+
+        for idx in range(len(i_np)):
+            x0: float = x_np[idx]
+            y0: float = y_np[idx]
+            i0: float = i_np[idx]
+            image += i0 * np.exp(
+                -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width**2)
+            )
+
+    elif interp_type in ("cubic", "linear", "nearest"):
+        points: Float[NDArray, "N 2"] = np.column_stack([x_np, y_np])
+        xx_g: Float[NDArray, "H W"]
+        yy_g: Float[NDArray, "H W"]
+        xx_g, yy_g = np.meshgrid(x_axis, y_axis, indexing="xy")
+        grid_points: Float[NDArray, "M 2"] = np.column_stack(
+            [xx_g.ravel(), yy_g.ravel()]
+        )
+        image_flat: Float[NDArray, "M"] = griddata(
+            points, i_np, grid_points, method=interp_type, fill_value=0.0
+        )
+        image = image_flat.reshape((grid_size, grid_size))
+
     else:
         raise ValueError(
-            f"interp_type must be one of: 'cubic', 'linear', or 'nearest'. "
+            f"interp_type must be 'gaussian', 'cubic', 'linear', or 'nearest'."
             f"Got: {interp_type}"
         )
-    y_min: float = float(y_np.min())
-    y_max: float = float(y_np.max())
-    z_min: float = float(z_np.min())
-    z_max: float = float(z_np.max())
-    y_lin: np.ndarray = np.linspace(y_min, y_max, grid_size)
-    z_lin: np.ndarray = np.linspace(z_min, z_max, grid_size)
-    yg: np.ndarray
-    zg: np.ndarray
-    yg, zg = np.meshgrid(y_lin, z_lin, indexing="xy")
-    grid_points: np.ndarray = np.column_stack([yg.ravel(), zg.ravel()])
-    interpolated: np.ndarray = griddata(
-        points=(y_np, z_np),
-        values=i_np,
-        xi=grid_points,
-        method=method,
-        fill_value=0.0,
-    )
-    intensity_grid: np.ndarray = interpolated.reshape((grid_size, grid_size))
-    phosphor_cmap: LinearSegmentedColormap = rh.inout.create_phosphor_colormap(
-        cmap_name
-    )
-    fig: plt.Figure
-    ax: plt.Axes
-    fig, ax = plt.subplots(figsize=(6, 6))
-    cax: Any = ax.imshow(
-        intensity_grid.T,
+
+    cmap: mcolors.Colormap
+    if cmap_name == "phosphor":
+        cmap = create_phosphor_colormap()
+    else:
+        cmap = plt.get_cmap(cmap_name)
+
+    fig: Figure
+    ax: Axes
+    fig, ax = plt.subplots(figsize=figsize)
+    im: mimage.AxesImage = ax.imshow(
+        image,
+        extent=[x_min, x_max, y_min, y_max],
         origin="lower",
-        cmap=phosphor_cmap,
-        extent=[y_min, y_max, z_min, z_max],
-        aspect="equal",
-        interpolation="bilinear",
+        cmap=cmap,
+        aspect="auto",
     )
-    cbar: Any = fig.colorbar(cax, ax=ax)
-    cbar.set_label("Interpolated Intensity (arb. units)")
-    ax.set_title(f"RHEED Pattern ({method} interpolation)")
-    ax.set_xlabel("Y (Å)")
-    ax.set_ylabel("Z (Å)")
-    plt.tight_layout()
+    ax.set_xlabel("x_d (mm)")
+    ax.set_ylabel("y_d (mm)")
+    ax.set_title(f"RHEED Pattern ({interp_type})")
+    plt.colorbar(im, ax=ax, label="Intensity (arb. units)")
     plt.show()
+
+
+__all__: list[str] = [
+    "create_phosphor_colormap",
+    "plot_rheed",
+]

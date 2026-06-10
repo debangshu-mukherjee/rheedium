@@ -14,9 +14,25 @@ notebooks/__pycache__/
 /tests/io/__pycache__/
 /envs/__pycache__/
 /data/
+/.claude/
+/.claude/ROADMAP.md
+/.claude/settings.local.json
+/.claude/RHEED_Physics.md
+/.claude/ROADMAP_multislice.md
+/.claude/XYZ_CIF_Unite.md
+/.claude/ROADMAP.md
+
+#Temp folder for image generation
+.tmp/
+.tmp/*.png
 *.py[cod]
 /.agents/
 /.agents/*.md
+/openspec/
+/openspec/*
+/openspec/.ipynb_checkpoints/
+/openspec/spec/*
+/openspec/changes/*
 
 # VS Code settings
 /.vscode
@@ -101,6 +117,7 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/source/_extra/
 
 # PyBuilder
 target/
@@ -118,6 +135,10 @@ target/
 /data/.ipynb_checkpoints/
 /data/*/.ipynb_checkpoints/
 /ens/.ipynb_checkpoints/
+
+# Marimo session state
+__marimo__/
+
 /.mypy_cache/
 /.pytest_cache
 .qodo
