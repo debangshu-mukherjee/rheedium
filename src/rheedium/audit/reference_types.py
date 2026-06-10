@@ -78,7 +78,7 @@ def _canonicalize_summary_float(value: float) -> float:
 class ReferenceMetadata:
     """Structured metadata for one audit reference image.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestReferenceMetadata`
+    :see: :class:`~.test_metrics.TestReferenceMetadata`
     """
 
     reference_id: str
@@ -242,7 +242,7 @@ class ReferenceMetadata:
 class ReferenceCase:
     """One loaded reference image and its metadata.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestReferenceMetadata`
+    :see: :class:`~.test_metrics.TestReferenceMetadata`
     """
 
     metadata: ReferenceMetadata
@@ -253,7 +253,7 @@ class ReferenceCase:
 class BenchmarkCaseResult:
     """Quantitative benchmark result for a single reference case.
 
-    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_benchmark_reference_case_matches_synthetic_fixture`
+    :see: :func:`~.test_benchmark_reference_case_matches_synthetic_fixture`
     """
 
     reference_id: str
@@ -305,7 +305,7 @@ class BenchmarkCaseResult:
 class BenchmarkSuiteResult:
     """Aggregate benchmark result across all reference cases.
 
-    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_benchmark_reference_suite_writes_json_summary`
+    :see: :func:`~.test_benchmark_reference_suite_writes_json_summary`
     """
 
     reference_count: int

@@ -70,7 +70,7 @@ class RHEEDPattern(NamedTuple):
     data including reciprocal lattice indices, outgoing wavevectors, detector
     coordinates, and intensity values for electron diffraction analysis.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestRHEEDPattern`
+    :see: :class:`~.test_rheed_types.TestRHEEDPattern`
 
     Attributes
     ----------
@@ -160,7 +160,7 @@ class RHEEDImage(NamedTuple):
     experimental parameters including beam geometry, detector calibration,
     and electron beam properties for quantitative RHEED analysis.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestRHEEDImage`
+    :see: :class:`~.test_rheed_types.TestRHEEDImage`
 
     Attributes
     ----------
@@ -259,7 +259,7 @@ def create_rheed_pattern(
 ) -> RHEEDPattern:
     """Create a RHEEDPattern instance with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestRHEEDPattern`
+    :see: :class:`~.test_rheed_types.TestRHEEDPattern`
 
     Parameters
     ----------
@@ -404,7 +404,7 @@ def create_rheed_image(
 ) -> RHEEDImage:
     """Create a RHEEDImage instance with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestRHEEDImage`
+    :see: :class:`~.test_rheed_types.TestRHEEDImage`
 
     Parameters
     ----------
@@ -570,7 +570,7 @@ class SlicedCrystal(NamedTuple):
     extended in x and y directions to cover a large area (>100 Å typically),
     with a specified depth perpendicular to the surface.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestSlicedCrystal`
+    :see: :class:`~.test_rheed_types.TestSlicedCrystal`
 
     Attributes
     ----------
@@ -698,7 +698,7 @@ def create_sliced_crystal(
 ) -> SlicedCrystal:
     """Create a SlicedCrystal instance with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestSlicedCrystal`
+    :see: :class:`~.test_rheed_types.TestSlicedCrystal`
 
     Parameters
     ----------
@@ -892,7 +892,7 @@ class SurfaceConfig(NamedTuple):
     This NamedTuple specifies how to identify which atoms are considered
     surface atoms for enhanced Debye-Waller factors in RHEED simulations.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestSurfaceConfig`
+    :see: :class:`~.test_rheed_types.TestSurfaceConfig`
 
     Attributes
     ----------
@@ -941,7 +941,7 @@ def identify_surface_atoms(
 ) -> Bool[Array, "N"]:
     """Identify surface atoms using the specified method.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestIdentifySurfaceAtoms`
+    :see: :class:`~.test_rheed_types.TestIdentifySurfaceAtoms`
 
     Parameters
     ----------
@@ -1072,7 +1072,7 @@ class DetectorGeometry(NamedTuple):
     accurate projection of diffracted beams. Supports flat, tilted, and
     curved detector screens.
 
-    :see: :class:`tests.test_rheedium.test_types.test_rheed_types.TestDetectorGeometry`
+    :see: :class:`~.test_rheed_types.TestDetectorGeometry`
 
     Attributes
     ----------

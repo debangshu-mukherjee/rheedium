@@ -68,7 +68,7 @@ def calculate_ctr_intensity(
     reciprocal lattice points (h,k). The intensity varies continuously
     along q_z due to the finite crystal thickness and surface termination.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -416,7 +416,7 @@ def roughness_damping(
     reduces the CTR intensity especially at large q_z values. Assumes
     Gaussian height distribution with RMS roughness σ_h.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -473,7 +473,7 @@ def gaussian_rod_profile(
     to the rod direction. The width in reciprocal space is inversely
     proportional to the real-space correlation length.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -521,7 +521,7 @@ def lorentzian_rod_profile(
     to the rod direction. This profile corresponds to exponentially decaying
     surface correlations.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -565,7 +565,7 @@ def rod_profile_function(
     length of surface features causes rods to have finite width in reciprocal
     space.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -616,7 +616,7 @@ def surface_structure_factor(
     atomic form factors and Debye-Waller factors. Surface atoms can be
     treated with enhanced thermal vibrations via per-atom masking.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------
@@ -712,7 +712,7 @@ def integrated_rod_intensity(
     angular acceptance by integrating the CTR intensity over a range
     of q_z values. This accounts for the finite detector pixel size.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_surface_rods.TestSurfaceRods`
+    :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
     Parameters
     ----------

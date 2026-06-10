@@ -49,7 +49,7 @@ def peak_centroid(
 ) -> Float[Array, "2"]:
     """Compute the centroid of the brightest region in an image.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -106,7 +106,7 @@ def specular_offset_px(
 ) -> scalar_float:
     """Measure displacement between two pixel-space anchor positions.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -132,7 +132,7 @@ def peak_centroid_error_px(
 ) -> scalar_float:
     """Compare bright-region centroids between two detector images.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -165,7 +165,7 @@ def normalized_cross_correlation(
 ) -> scalar_float:
     """Compute normalized cross-correlation between two detector images.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -201,7 +201,7 @@ def dominant_peak_positions(
 ) -> Float[Array, "N"]:
     """Extract dominant peak positions from a projected detector image.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -253,7 +253,7 @@ def rod_spacing_error_px(
 ) -> scalar_float:
     """Compare inter-peak spacing between two ordered peak sets.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -285,7 +285,7 @@ def extract_streak_profile(
 ) -> Float[Array, "P"]:
     """Extract a 1-D streak profile near a specified detector position.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------
@@ -331,7 +331,7 @@ def streak_fwhm_px(
 ) -> scalar_float:
     """Measure full width at half maximum of a 1-D intensity profile.
 
-    :see: :class:`tests.test_rheedium.test_audit.test_metrics.TestAuditMetrics`
+    :see: :class:`~.test_metrics.TestAuditMetrics`
 
     Parameters
     ----------

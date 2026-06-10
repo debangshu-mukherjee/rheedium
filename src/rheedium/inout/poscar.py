@@ -46,7 +46,7 @@ def _parse_poscar_header(
     universal scaling factor, lattice vectors, element species names,
     and atom counts per species.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscarHeader`
+    :see: :class:`~.test_poscar.TestParsePoscarHeader`
 
     Parameters
     ----------
@@ -152,7 +152,7 @@ def _parse_poscar_positions(
     Direct (fractional) and Cartesian coordinate modes. Selective
     dynamics flags (T/F) are parsed but not stored.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscarPositions`
+    :see: :class:`~.test_poscar.TestParsePoscarPositions`
 
     Parameters
     ----------
@@ -236,7 +236,7 @@ def parse_poscar(
     with species names and both Direct (fractional) and Cartesian coordinate
     modes.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_poscar.TestParsePoscar`
+    :see: :class:`~.test_poscar.TestParsePoscar`
 
     Parameters
     ----------

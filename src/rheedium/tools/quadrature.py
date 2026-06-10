@@ -14,7 +14,7 @@ def gauss_hermite_nodes_weights(
 ) -> Tuple[Float[Array, " N"], Float[Array, " N"]]:
     r"""Compute Gauss-Hermite quadrature nodes and weights.
 
-    :see: :class:`tests.test_rheedium.test_tools.test_quadrature.TestGaussHermiteNodesWeights`
+    :see: :class:`~.test_quadrature.TestGaussHermiteNodesWeights`
     """
     np_nodes: Float[NDArray, "N"]
     np_weights: Float[NDArray, "N"]

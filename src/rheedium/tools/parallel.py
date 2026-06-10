@@ -40,7 +40,7 @@ def shard_array(
     processing by creating a device mesh and applying
     appropriate partitioning based on the specified axes.
 
-    :see: :class:`tests.test_rheedium.test_tools.test_parallel.TestShardArray`
+    :see: :class:`~.test_parallel.TestShardArray`
 
     Parameters
     ----------

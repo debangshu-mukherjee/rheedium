@@ -124,7 +124,7 @@ def project_on_detector(
     division by zero), then multiplied by k_y and k_z to get horizontal
     and vertical detector coordinates.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestProjectOnDetector`
+    :see: :class:`~.test_simulator.TestProjectOnDetector`
 
     Parameters
     ----------
@@ -266,7 +266,7 @@ def find_kinematic_reflections(
     z-direction constraint. Returns fixed-size arrays for JIT compatibility,
     with -1 marking invalid entries.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestFindKinematicReflections`
+    :see: :class:`~.test_simulator.TestFindKinematicReflections`
 
     Parameters
     ----------
@@ -353,7 +353,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     lattice generation. CTR contributions are mixed according to the
     specified mode.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestComputeKinematicIntensitiesExtended`
+    :see: :class:`~.test_simulator.TestComputeKinematicIntensitiesExtended`
 
     Parameters
     ----------
@@ -657,7 +657,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     intersects the Ewald sphere, then compute the diffracted intensity at
     that point.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestEwaldSimulator`
+    :see: :class:`~.test_simulator.TestEwaldSimulator`
 
     Parameters
     ----------
@@ -1762,7 +1762,7 @@ def sliced_crystal_to_projected_potential_slices(
     units. The electron-specimen interaction constant is applied later
     when the transmission function is built during propagation.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestSlicedCrystalToProjectedPotentialSlices`
+    :see: :class:`~.test_simulator.TestSlicedCrystalToProjectedPotentialSlices`
 
     Parameters
     ----------
@@ -1914,7 +1914,7 @@ def multislice_propagate(
     propagation between slices. The initial wave is a tilted plane wave with
     phase k_in_x*x + k_in_y*y at z=0.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestMultislicePropagate`
+    :see: :class:`~.test_simulator.TestMultislicePropagate`
 
     Parameters
     ----------
@@ -2080,7 +2080,7 @@ def multislice_simulator(
     Only real solutions (positive k_out_z²) correspond to propagating waves;
     evanescent waves don't reach the detector.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestMultisliceSimulator`
+    :see: :class:`~.test_simulator.TestMultisliceSimulator`
 
     Parameters
     ----------

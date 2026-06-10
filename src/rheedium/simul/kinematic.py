@@ -53,7 +53,7 @@ def make_ewald_sphere(
 ) -> Tuple[Float[Array, "3"], scalar_float]:
     r"""Generate Ewald sphere geometry from scattering parameters.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_kinematic.TestMakeEwaldSphere`
+    :see: :class:`~.test_kinematic.TestMakeEwaldSphere`
 
     Parameters
     ----------
@@ -109,7 +109,7 @@ def simple_structure_factor(
 
         F(G) = \sum_j f_j \cdot \exp(i \cdot G \cdot r_j)
 
-    :see: :class:`tests.test_rheedium.test_simul.test_kinematic.TestKinematicStructureFactor`
+    :see: :class:`~.test_kinematic.TestKinematicStructureFactor`
 
     Parameters
     ----------
@@ -187,7 +187,7 @@ def kinematic_spot_simulator(
     lattice points intersect the Ewald sphere. Useful for bulk-like diffraction
     or when only spot positions matter.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_kinematic.TestKinematicSimulator`
+    :see: :class:`~.test_kinematic.TestKinematicSimulator`
 
     Parameters
     ----------

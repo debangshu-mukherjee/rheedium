@@ -91,7 +91,7 @@ class OrientationDistribution(NamedTuple):
 
         I(G) = \\sum_i w_i \\, |F(G, \\theta_i)|^2
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+    :see: :class:`~.test_distributions.TestOrientationDistributionFactories`
 
     Attributes
     ----------
@@ -320,7 +320,7 @@ def create_discrete_orientation(
 ) -> OrientationDistribution:
     """Create discrete orientation distribution for rotational variants.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+    :see: :class:`~.test_distributions.TestOrientationDistributionFactories`
 
     Parameters
     ----------
@@ -366,7 +366,7 @@ def create_gaussian_orientation(
 ) -> OrientationDistribution:
     """Create Gaussian mosaic spread orientation distribution.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+    :see: :class:`~.test_distributions.TestOrientationDistributionFactories`
 
     Parameters
     ----------
@@ -406,7 +406,7 @@ def create_mixed_orientation(
 ) -> OrientationDistribution:
     """Create mixed distribution with discrete variants and mosaic spread.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+    :see: :class:`~.test_distributions.TestOrientationDistributionFactories`
 
     Parameters
     ----------
@@ -454,7 +454,7 @@ def discretize_orientation(
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Convert OrientationDistribution to quadrature points and weights.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDiscretization`
+    :see: :class:`~.test_distributions.TestOrientationDiscretization`
 
     Description
     -----------
@@ -540,7 +540,7 @@ def discretize_orientation_static(
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Static-dispatch version for use outside JIT when efficiency matters.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDiscretization`
+    :see: :class:`~.test_distributions.TestOrientationDiscretization`
 
     Description
     -----------
@@ -584,7 +584,7 @@ def integrate_over_orientation(
 ) -> float_jax_image:
     r"""Compute incoherent intensity sum over orientation distribution.
 
-    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationIntegration`
+    :see: :class:`~.test_distributions.TestOrientationIntegration`
 
     Description
     -----------

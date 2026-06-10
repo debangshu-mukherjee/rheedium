@@ -95,7 +95,7 @@ def _extract_cell_params(
     Parses the CIF text to extract the six crystallographic unit cell
     parameters: three cell lengths and three cell angles.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestExtractCellParams`
+    :see: :class:`~.test_cif.TestExtractCellParams`
 
     Parameters
     ----------
@@ -157,7 +157,7 @@ def _parse_atom_positions(
     loop section of a CIF file. Handles various CIF formats with different
     column orderings.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestParseAtomPositions`
+    :see: :class:`~.test_cif.TestParseAtomPositions`
 
     Parameters
     ----------
@@ -239,7 +239,7 @@ def _extract_sym_op_from_line(
     Parses a line from the symmetry operations section of a CIF file to
     extract the symmetry operation string (e.g., "x,y,z" or "-x,-y,z+1/2").
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestExtractSymOpFromLine`
+    :see: :class:`~.test_cif.TestExtractSymOpFromLine`
 
     Parameters
     ----------
@@ -289,7 +289,7 @@ def _parse_symmetry_ops(lines: List[str]) -> List[str]:
     of a CIF file. Returns ["x,y,z"] (identity) if no symmetry operations
     are found.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestParseSymmetryOps`
+    :see: :class:`~.test_cif.TestParseSymmetryOps`
 
     Parameters
     ----------
@@ -350,7 +350,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     Reads a Crystallographic Information Format (CIF) file and converts it
     to a CrystalStructure object with symmetry expansion applied.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestParseCif`
+    :see: :class:`~.test_cif.TestParseCif`
 
     Parameters
     ----------
@@ -447,7 +447,7 @@ def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
     Converts a crystallographic symmetry operation string (e.g., "-x,y+1/2,z")
     into a function that transforms fractional coordinates.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestParseSymOp`
+    :see: :class:`~.test_cif.TestParseSymOp`
 
     Parameters
     ----------
@@ -565,7 +565,7 @@ def _deduplicate_positions(
     the specified tolerance of any previously kept position. Uses JAX's
     scan for efficient sequential processing.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestDeduplicatePositions`
+    :see: :class:`~.test_cif.TestDeduplicatePositions`
 
     Parameters
     ----------
@@ -640,7 +640,7 @@ def symmetry_expansion(
     Generates a complete unit cell from an asymmetric unit by applying
     crystallographic symmetry operations and removing duplicate atoms.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_cif.TestSymmetryExpansion`
+    :see: :class:`~.test_cif.TestSymmetryExpansion`
 
     Parameters
     ----------

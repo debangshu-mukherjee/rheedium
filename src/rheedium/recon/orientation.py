@@ -447,7 +447,7 @@ def orientation_loss(
     image and the incoherently averaged forward model implied by an
     :class:`OrientationDistribution`.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_orientation.TestOrientationLoss`
+    :see: :class:`~.test_orientation.TestOrientationLoss`
 
     Parameters
     ----------
@@ -557,7 +557,7 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
     with a specialized Adam update on ``(weight_logits, mosaic_param)``
     and a JIT-compiled :func:`jax.lax.scan` loop.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_orientation.TestOrientationFitting`
+    :see: :class:`~.test_orientation.TestOrientationFitting`
 
     Parameters
     ----------
@@ -904,7 +904,7 @@ def compute_fisher_information(
     fixed, and computes the Gaussian-noise Fisher information matrix for
     those logits.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_orientation.TestOrientationUncertainty`
+    :see: :class:`~.test_orientation.TestOrientationUncertainty`
 
     Parameters
     ----------
@@ -984,7 +984,7 @@ def estimate_weight_uncertainty(
     parameterization and then propagated to the physical weights with the
     Jacobian of the softmax map.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_orientation.TestOrientationUncertainty`
+    :see: :class:`~.test_orientation.TestOrientationUncertainty`
 
     Parameters
     ----------

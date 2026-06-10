@@ -52,7 +52,7 @@ class ElectronBeam(NamedTuple):
     RHEED guns have angular divergence 0.1--1 mrad, energy spread
     0.1--1 eV, and transverse coherence lengths 100--1000 Angstroms.
 
-    :see: :class:`tests.test_rheedium.test_types.test_beam_types.TestElectronBeam`
+    :see: :class:`~.test_beam_types.TestElectronBeam`
 
     Attributes
     ----------
@@ -162,7 +162,7 @@ def create_electron_beam(
 ) -> ElectronBeam:
     """Create an ElectronBeam instance with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_beam_types.TestElectronBeam`
+    :see: :class:`~.test_beam_types.TestElectronBeam`
 
     Parameters
     ----------

@@ -159,7 +159,7 @@ def load_kirkland_parameters(
     factors from the preloaded data. The Kirkland model uses three
     Lorentzian terms followed by three Gaussian terms.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -235,7 +235,7 @@ def kirkland_form_factor(
 
     where :math:`s = q / (4\pi)`.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -300,7 +300,7 @@ def kirkland_projected_potential(
     using Kirkland parameterization. This is the integral of the 3D atomic
     potential along the beam direction.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -389,7 +389,7 @@ def load_lobato_parameters(
     for electron scattering factors from the preloaded data. The model
     uses 5 terms of the form a_i (2 + b_i q^2) / (1 + b_i q^2)^2.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLoadLobatoPotentials`
+    :see: :class:`~.test_lobato.TestLoadLobatoPotentials`
 
     Parameters
     ----------
@@ -451,7 +451,7 @@ def lobato_form_factor(
     constraints including the correct high-q Bethe asymptotic
     :math:`f_e \propto q^{-2}`.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLobatoFormFactor`
+    :see: :class:`~.test_lobato.TestLobatoFormFactor`
 
     Parameters
     ----------
@@ -527,7 +527,7 @@ def lobato_projected_potential(
     of the 3D atomic potential along the beam direction, expressed
     analytically in terms of modified Bessel functions K_0 and K_1.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestLobatoProjectedPotential`
+    :see: :class:`~.test_lobato.TestLobatoProjectedPotential`
 
     Parameters
     ----------
@@ -624,7 +624,7 @@ def projected_potential(
     potential calculation via ``jax.lax.cond``. Both parameterizations
     share the same call signature and return shape.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_lobato.TestProjectedPotentialDispatch`
+    :see: :class:`~.test_lobato.TestProjectedPotentialDispatch`
 
     Parameters
     ----------
@@ -681,7 +681,7 @@ def get_mean_square_displacement(
     thermal displacement calculations. Falls back to a generic model for
     elements without tabulated Debye temperatures.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -793,7 +793,7 @@ def debye_waller_factor(
     Computes the Debye-Waller temperature factor that accounts for
     reduction in scattering intensity due to thermal atomic vibrations.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -850,7 +850,7 @@ def atomic_scattering_factor(
     q-dependent form factor with the Debye-Waller temperature factor.
     This gives the effective scattering amplitude including thermal effects.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+    :see: :class:`~.test_form_factors.TestFormFactors`
 
     Parameters
     ----------

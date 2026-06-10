@@ -60,7 +60,7 @@ class CrystalStructure(NamedTuple):
     parameters. It's designed for efficient crystal structure calculations and
     electron diffraction simulations.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestCrystalStructure`
+    :see: :class:`~.test_crystal_types.TestCrystalStructure`
 
     Attributes
     ----------
@@ -154,7 +154,7 @@ def create_crystal_structure(
 ) -> CrystalStructure:
     """Create a CrystalStructure PyTree with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestCrystalStructure`
+    :see: :class:`~.test_crystal_types.TestCrystalStructure`
 
     Parameters
     ----------
@@ -318,7 +318,7 @@ class EwaldData(NamedTuple):
     beam orientation angles. This enables efficient reuse when scanning beam
     azimuth or incidence angle.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestEwaldData`
+    :see: :class:`~.test_crystal_types.TestEwaldData`
 
     Attributes
     ----------
@@ -439,7 +439,7 @@ def create_ewald_data(
 ) -> EwaldData:
     r"""Create an EwaldData PyTree with validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestEwaldData`
+    :see: :class:`~.test_crystal_types.TestEwaldData`
 
     Parameters
     ----------
@@ -798,7 +798,7 @@ class PotentialSlices(NamedTuple):
     electron diffraction calculations. It contains 3D potential slices with
     associated calibration information for accurate physical modeling.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestPotentialSlices`
+    :see: :class:`~.test_crystal_types.TestPotentialSlices`
 
     Attributes
     ----------
@@ -882,7 +882,7 @@ def create_potential_slices(
 ) -> PotentialSlices:
     """Create a PotentialSlices PyTree with data validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestPotentialSlices`
+    :see: :class:`~.test_crystal_types.TestPotentialSlices`
 
     Parameters
     ----------
@@ -1047,7 +1047,7 @@ class XYZData(NamedTuple):
     JAX arrays while metadata is preserved as auxiliary data. All data is
     immutable for functional programming patterns.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestXYZData`
+    :see: :class:`~.test_crystal_types.TestXYZData`
 
     Examples
     --------
@@ -1166,7 +1166,7 @@ def create_xyz_data(
 ) -> XYZData:
     """Create a XYZData PyTree with runtime validation.
 
-    :see: :class:`tests.test_rheedium.test_types.test_crystal_types.TestXYZData`
+    :see: :class:`~.test_crystal_types.TestXYZData`
 
     Parameters
     ----------

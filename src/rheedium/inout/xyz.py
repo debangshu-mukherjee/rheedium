@@ -117,7 +117,7 @@ def atomic_symbol(symbol_string: str) -> scalar_int:
     and handles whitespace. Also handles ionic notation (e.g., "Bi3+", "O2-")
     by stripping charge information.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_xyz.TestAtomicSymbol`
+    :see: :class:`~.test_xyz.TestAtomicSymbol`
 
     Parameters
     ----------
@@ -224,7 +224,7 @@ def kirkland_potentials() -> Float[Array, "103 12"]:
     for elements 1-103. Data is loaded once at module import for optimal
     performance with no file I/O on subsequent calls.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_xyz.TestKirklandPotentials`
+    :see: :class:`~.test_xyz.TestKirklandPotentials`
 
     Returns
     -------
@@ -473,7 +473,7 @@ def _parse_xyz_metadata(line: str) -> Dict[str, object]:
     metadata including lattice vectors, stress tensor, energy, and
     property descriptors following the extended XYZ format specification.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_xyz.TestParseXyzMetadata`
+    :see: :class:`~.test_xyz.TestParseXyzMetadata`
 
     Parameters
     ----------
@@ -568,7 +568,7 @@ def _parse_atom_line(
     atom line. Handles both standard 4-column XYZ format and extended XYZ
     format with additional columns.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_xyz.TestParseAtomLine`
+    :see: :class:`~.test_xyz.TestParseAtomLine`
 
     Parameters
     ----------
@@ -617,7 +617,7 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
     structure. Supports both standard XYZ format and extended XYZ format
     with lattice vectors and other metadata.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_xyz.TestParseXyz`
+    :see: :class:`~.test_xyz.TestParseXyz`
 
     Parameters
     ----------

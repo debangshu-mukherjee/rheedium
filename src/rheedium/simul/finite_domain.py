@@ -134,7 +134,7 @@ def extent_to_rod_sigma(
     real-space domain size. Uses the Fourier uncertainty relation with
     a conversion factor that matches the FWHM of a sinc² profile.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_finite_domain.TestExtentToRodSigma`
+    :see: :class:`~.test_finite_domain.TestExtentToRodSigma`
 
     Parameters
     ----------
@@ -205,7 +205,7 @@ def compute_shell_sigma(
     Ewald "sphere" to have finite thickness, allowing partial intensity
     contribution from nearby reciprocal lattice points.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_finite_domain.TestComputeShellSigma`
+    :see: :class:`~.test_finite_domain.TestComputeShellSigma`
 
     Parameters
     ----------
@@ -292,7 +292,7 @@ def rod_ewald_overlap(
     modeled as Gaussians for analytic evaluation. This replaces the
     binary "on/off" Ewald sphere condition with a continuous overlap.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_finite_domain.TestRodEwaldOverlap`
+    :see: :class:`~.test_finite_domain.TestRodEwaldOverlap`
 
     Parameters
     ----------
@@ -396,7 +396,7 @@ def finite_domain_intensities(
     coherent domain size and beam parameters. The base intensities from
     EwaldData are weighted by the rod-Ewald overlap factors.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_finite_domain.TestFiniteDomainIntensities`
+    :see: :class:`~.test_finite_domain.TestFiniteDomainIntensities`
 
     Parameters
     ----------

@@ -92,7 +92,7 @@ def extract_frame_metadata(
 ) -> FrameMetadata:
     """Extract metadata from a single TIFF page.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_tiff.TestExtractFrameMetadata`
+    :see: :class:`~.test_tiff.TestExtractFrameMetadata`
 
     Parameters
     ----------
@@ -174,7 +174,7 @@ def load_tiff_sequence(
 ) -> Tuple[Float[Array, "T H W"], List[FrameMetadata]]:
     """Load ordered TIFF stack into a JAX float64 array.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_tiff.TestLoadTiffSequence`
+    :see: :class:`~.test_tiff.TestLoadTiffSequence`
 
     Extended Summary
     ----------------
@@ -353,7 +353,7 @@ def normalize_sequence(
 ) -> Float[Array, "T H W"]:
     """Background subtraction, flat-field correction, and normalization.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_tiff.TestNormalizeSequence`
+    :see: :class:`~.test_tiff.TestNormalizeSequence`
 
     Extended Summary
     ----------------
@@ -433,7 +433,7 @@ def detect_beam_center(
 ) -> Float[Array, " 2"]:
     """Locate the specular beam center in a RHEED image.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_tiff.TestDetectBeamCenter`
+    :see: :class:`~.test_tiff.TestDetectBeamCenter`
 
     Extended Summary
     ----------------
@@ -536,7 +536,7 @@ def load_tiff_as_rheed_image(
 ) -> RHEEDImage:
     r"""Load a single TIFF frame and return a RHEEDImage PyTree.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_tiff.TestLoadTiffAsRheedImage`
+    :see: :class:`~.test_tiff.TestLoadTiffAsRheedImage`
 
     Extended Summary
     ----------------

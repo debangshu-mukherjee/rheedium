@@ -60,7 +60,7 @@ def _get_species_list(root: ET.Element) -> List[str]:
     Parses the atominfo/array section of vasprun.xml to extract the
     element symbol for each atom in order.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestGetSpeciesList`
+    :see: :class:`~.test_vaspxml.TestGetSpeciesList`
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ def _extract_structure_block(
     Parses a <structure> element from vasprun.xml to extract the
     lattice vectors and fractional atomic positions.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestExtractStructureBlock`
+    :see: :class:`~.test_vaspxml.TestExtractStructureBlock`
 
     Parameters
     ----------
@@ -178,7 +178,7 @@ def _extract_forces(
 
     Parses the forces varray from a <calculation> element.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestExtractForces`
+    :see: :class:`~.test_vaspxml.TestExtractForces`
 
     Parameters
     ----------
@@ -219,7 +219,7 @@ def _extract_stress(
 
     Parses the stress varray from a <calculation> element.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestExtractStress`
+    :see: :class:`~.test_vaspxml.TestExtractStress`
 
     Parameters
     ----------
@@ -260,7 +260,7 @@ def _extract_energy(
     Parses the energy section from a <calculation> element, looking
     for the free energy (e_fr_energy).
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestExtractEnergy`
+    :see: :class:`~.test_vaspxml.TestExtractEnergy`
 
     Parameters
     ----------
@@ -298,7 +298,7 @@ def parse_vaspxml(  # noqa: PLR0912, PLR0915
     Reads a VASP vasprun.xml file and extracts a single structure,
     optionally including forces, energy, and stress metadata.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestParseVaspxml`
+    :see: :class:`~.test_vaspxml.TestParseVaspxml`
 
     Parameters
     ----------
@@ -456,7 +456,7 @@ def parse_vaspxml_trajectory(
     Reads a VASP vasprun.xml file and extracts all ionic steps as a
     trajectory, with optional forces, energy, and stress per step.
 
-    :see: :class:`tests.test_rheedium.test_inout.test_vaspxml.TestParseVaspxmlTrajectory`
+    :see: :class:`~.test_vaspxml.TestParseVaspxmlTrajectory`
 
     Parameters
     ----------

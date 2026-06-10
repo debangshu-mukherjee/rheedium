@@ -50,7 +50,7 @@ def build_transmission_function(
 ) -> Complex[Array, "H W"]:
     r"""Construct the transmission function for one multislice slice.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_multislice.TestBuildTransmissionFunction`
+    :see: :class:`~.test_multislice.TestBuildTransmissionFunction`
 
     Parameters
     ----------
@@ -105,7 +105,7 @@ def fresnel_propagator(
 ) -> Complex[Array, "H W"]:
     r"""Construct the reciprocal-space Fresnel free-space propagator.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_multislice.TestFresnelPropagator`
+    :see: :class:`~.test_multislice.TestFresnelPropagator`
 
     Parameters
     ----------
@@ -170,7 +170,7 @@ def multislice_one_step(
 ) -> Complex[Array, "H W"]:
     r"""Perform a single multislice propagation step.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_multislice.TestMultisliceOneStep`
+    :see: :class:`~.test_multislice.TestMultisliceOneStep`
 
     Parameters
     ----------

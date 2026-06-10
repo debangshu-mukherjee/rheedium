@@ -169,7 +169,7 @@ def gauss_newton_least_squares(
 ) -> ReconstructionResult:
     r"""Minimize a least-squares objective with Gauss-Newton iterations.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_optimizers.TestGaussNewtonReconstruction`
+    :see: :class:`~.test_optimizers.TestGaussNewtonReconstruction`
 
     Extended Summary
     ----------------
@@ -483,7 +483,7 @@ def gauss_newton_reconstruction(  # noqa: PLR0913
 ) -> ReconstructionResult:
     r"""Reconstruct parameters by least-squares image matching.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_optimizers.TestGaussNewtonReconstruction`
+    :see: :class:`~.test_optimizers.TestGaussNewtonReconstruction`
 
     Parameters
     ----------
@@ -563,7 +563,7 @@ def adam_reconstruction(  # noqa: PLR0913
 ) -> ReconstructionResult:
     r"""Reconstruct parameters by minimizing an image-matching loss.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_optimizers.TestAdaptiveGradientReconstruction`
+    :see: :class:`~.test_optimizers.TestAdaptiveGradientReconstruction`
 
     Parameters
     ----------
@@ -645,7 +645,7 @@ def adagrad_reconstruction(  # noqa: PLR0913
 ) -> ReconstructionResult:
     r"""Reconstruct parameters by minimizing an image-matching loss.
 
-    :see: :class:`tests.test_rheedium.test_recon.test_optimizers.TestAdaptiveGradientReconstruction`
+    :see: :class:`~.test_optimizers.TestAdaptiveGradientReconstruction`
 
     Parameters
     ----------

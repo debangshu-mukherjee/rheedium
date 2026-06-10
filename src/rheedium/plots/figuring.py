@@ -44,7 +44,7 @@ def create_phosphor_colormap(
     The colormap transitions from black through a bright phosphorescent green,
     with a slight white bloom at maximum intensity.
 
-    :see: :class:`tests.test_rheedium.test_plots.test_figuring.TestCreatePhosphorColormap`
+    :see: :class:`~.test_figuring.TestCreatePhosphorColormap`
 
     Parameters
     ----------
@@ -130,7 +130,7 @@ def plot_rheed(
     Renders RHEED pattern to 2D image using interpolation or Gaussian
     broadening, then displays with phosphor-screen colormap.
 
-    :see: :class:`tests.test_rheedium.test_plots.test_figuring.TestPlotRheed`
+    :see: :class:`~.test_figuring.TestPlotRheed`
 
     Parameters
     ----------

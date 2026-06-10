@@ -69,7 +69,7 @@ def _compute_structure_factor_single(
 
         F(G) = \sum_j f_j(|G|) \cdot \exp(-W_j) \cdot \exp(i \cdot G \cdot r_j)
 
-    :see: :class:`tests.test_rheedium.test_simul.test_ewald.TestComputeStructureFactorSingle`
+    :see: :class:`~.test_ewald.TestComputeStructureFactorSingle`
 
     Parameters
     ----------
@@ -147,7 +147,7 @@ def build_ewald_data(
     points, and pre-computed structure factors with atomic form factors and
     thermal damping.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_ewald.TestBuildEwaldData`
+    :see: :class:`~.test_ewald.TestBuildEwaldData`
 
     Parameters
     ----------
@@ -303,7 +303,7 @@ def ewald_allowed_reflections(
     2. **Finite domain mode**: Returns all reflections with continuous
        overlap-weighted intensities based on domain size and beam parameters.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_ewald.TestEwaldAllowedReflections`
+    :see: :class:`~.test_ewald.TestEwaldAllowedReflections`
 
     Parameters
     ----------

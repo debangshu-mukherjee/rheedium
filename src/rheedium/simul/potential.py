@@ -51,7 +51,7 @@ def crystal_projected_potential(
 ) -> Complex[Array, "H W"]:
     r"""Compute the complex projected potential for one slice.
 
-    :see: :class:`tests.test_rheedium.test_simul.test_multislice.TestCrystalProjectedPotential`
+    :see: :class:`~.test_multislice.TestCrystalProjectedPotential`
 
     Parameters
     ----------
