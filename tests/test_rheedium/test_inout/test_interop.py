@@ -295,15 +295,12 @@ class TestInteropImportErrors(chex.TestCase):
 
     def test_to_ase_import_error(self) -> None:
         """to_ase raises ImportError with helpful message."""
-        pass
 
     def test_from_pymatgen_import_error(self) -> None:
         """from_pymatgen raises ImportError with helpful message."""
-        pass
 
     def test_to_pymatgen_import_error(self) -> None:
         """to_pymatgen raises ImportError with helpful message."""
-        pass
 
 
 class TestCrossLibraryConversion(chex.TestCase):

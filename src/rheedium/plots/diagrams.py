@@ -113,6 +113,8 @@ def plot_wavelength_curve(
     0.978476e-6 * V)) and optionally compares with the non-relativistic
     approximation lambda = 12.2643 / sqrt(V).
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     voltage_range_kv : Tuple[float, float], optional
@@ -195,6 +197,8 @@ def plot_form_factors(
 
     Uses Kirkland parameterization for electron scattering.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     atomic_numbers : List[int]
@@ -267,6 +271,8 @@ def plot_debye_waller(
     """Plot Debye-Waller damping factor at different temperatures.
 
     Shows how thermal vibrations reduce scattering intensity at high q.
+
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
 
     Parameters
     ----------
@@ -344,6 +350,8 @@ def plot_ctr_profile(
     Shows the characteristic 1/sin^2(pi*l) modulation with Bragg peaks. A small
     epsilon is added to avoid division by zero at integer l values.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     l_range : Tuple[float, float], optional
@@ -410,6 +418,8 @@ def plot_roughness_damping(
 
     Shows how surface roughness attenuates CTR intensity at high q_z using the
     damping formula exp(-0.5 * q_z^2 * sigma^2).
+
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
 
     Parameters
     ----------
@@ -478,6 +488,8 @@ def plot_rod_broadening(
     Shows how finite domain size broadens reciprocal rods using Gaussian
     broadening with width proportional to 1/correlation_length.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     q_perp_range : Tuple[float, float], optional
@@ -545,6 +557,8 @@ def plot_ewald_sphere_2d(
     """Plot 2D cross-section of Ewald sphere construction.
 
     Shows the Ewald sphere, incident/diffracted beams, and reciprocal rods.
+
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
 
     Parameters
     ----------
@@ -665,6 +679,8 @@ def plot_ewald_sphere_3d(
 ) -> Axes3D:
     """Plot 3D visualization of Ewald sphere with reciprocal rods.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     voltage_kv : float, optional
@@ -776,6 +792,8 @@ def plot_unit_cell_3d(
 
     Builds lattice vectors with a along x-axis, b in xy-plane, and c in
     general direction based on the provided cell angles.
+
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
 
     Parameters
     ----------
@@ -940,6 +958,8 @@ def plot_crystal_structure_3d(
     Atoms are colored by element using CPK colors and sized proportionally
     to atomic number.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     positions : np.ndarray
@@ -1066,6 +1086,8 @@ def plot_grazing_incidence_geometry(
 
     Shows beam path, surface, and angle definitions for RHEED.
 
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
+
     Parameters
     ----------
     theta_deg : float, optional
@@ -1155,6 +1177,8 @@ def plot_structure_factor_phases(
     ax: Optional[Axes] = None,
 ) -> Axes:
     """Plot Argand diagram showing structure factor phase contributions.
+
+    :see: :class:`tests.test_rheedium.test_plots.test_diagrams.TestDiagramPlots`
 
     Parameters
     ----------

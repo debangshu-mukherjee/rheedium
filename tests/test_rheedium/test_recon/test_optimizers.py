@@ -8,7 +8,7 @@ evaluate.
 import chex
 import jax.numpy as jnp
 
-import rheedium.recon as recon
+from rheedium import recon
 from rheedium.recon import (
     ReconstructionResult,
     adagrad_reconstruction,

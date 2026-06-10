@@ -22,6 +22,7 @@ Submodules
    tools
    types
    ucell
+   tests
 
 :mod:`rheedium.inout`
     Data input/output operations for crystal structures and RHEED images.

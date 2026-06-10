@@ -98,6 +98,8 @@ def load_reference_cases(
 ) -> list[ReferenceCase]:
     """Load reference metadata and images from a benchmark directory.
 
+    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_load_reference_cases_returns_typed_cases`
+
     Parameters
     ----------
     reference_dir : Path, optional
@@ -204,6 +206,8 @@ def simulate_detector_image_from_metadata(
     repo_root: Path = _REPO_ROOT,
 ) -> Float[NDArray, "H W"]:
     """Regenerate a detector image from stored benchmark metadata.
+
+    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_simulate_detector_image_from_metadata_matches_shape`
 
     Parameters
     ----------
@@ -319,6 +323,8 @@ def benchmark_reference_case(
 ) -> BenchmarkCaseResult:
     """Compare one stored reference case to a regenerated simulation.
 
+    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_benchmark_reference_case_matches_synthetic_fixture`
+
     Parameters
     ----------
     reference_case : ReferenceCase
@@ -414,6 +420,8 @@ def benchmark_reference_suite(
     repo_root: Path = _REPO_ROOT,
 ) -> BenchmarkSuiteResult:
     """Run the full reference benchmark suite and aggregate the results.
+
+    :see: :func:`tests.test_rheedium.test_audit.test_reference_benchmark.test_benchmark_reference_suite_writes_json_summary`
 
     Parameters
     ----------

@@ -1937,7 +1937,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(grads)
 
     def test_jacrev(self) -> None:
-        """jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian."""
+        """Jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian."""
 
         def loss(params: Array) -> Array:
             return self._ewald_loss(

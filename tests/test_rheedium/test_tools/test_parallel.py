@@ -184,7 +184,7 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_elementwise(self) -> None:
-        """pmap should distribute elementwise ops across devices."""
+        """Pmap should distribute elementwise ops across devices."""
         fn = jax.pmap(lambda x: x**2)
         arr = jnp.arange(8.0).reshape(8, 1)
         result = fn(arr)
@@ -192,7 +192,7 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_reduction(self) -> None:
-        """pmap with inner sum should reduce per-device slices."""
+        """Pmap with inner sum should reduce per-device slices."""
         fn = jax.pmap(lambda x: jnp.sum(x))
         arr = jnp.ones((8, 4))
         result = fn(arr)
@@ -200,7 +200,7 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_preserves_dtype(self) -> None:
-        """pmap should preserve float64 dtype."""
+        """Pmap should preserve float64 dtype."""
         fn = jax.pmap(lambda x: x * 2.0)
         arr = jnp.ones((8, 2), dtype=jnp.float64)
         result = fn(arr)
@@ -208,7 +208,7 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, arr * 2.0)
 
     def test_pmap_trig_identity(self) -> None:
-        """pmap should handle sin^2 + cos^2 = 1 across devices."""
+        """Pmap should handle sin^2 + cos^2 = 1 across devices."""
         fn = jax.pmap(lambda x: jnp.sin(x) ** 2 + jnp.cos(x) ** 2)
         arr = jnp.linspace(0, 6.28, 8 * 4).reshape(8, 4)
         result = fn(arr)
@@ -216,7 +216,7 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected, atol=1e-6)
 
     def test_pmap_with_broadcast(self) -> None:
-        """pmap should handle scalar broadcast."""
+        """Pmap should handle scalar broadcast."""
         fn = jax.pmap(lambda x: x + 10.0)
         arr = jnp.arange(8.0).reshape(8, 1)
         result = fn(arr)

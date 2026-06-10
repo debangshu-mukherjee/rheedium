@@ -84,6 +84,8 @@ from rheedium.types import (
 class InvariantResult:
     """Structured outcome of a single physics invariant check.
 
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_invariant_result_is_immutable`
+
     Attributes
     ----------
     name : str
@@ -160,6 +162,8 @@ def check_form_factor_positivity(
     the validity range. This check is the cheapest possible smoke test
     against gross corruption of either form factor table.
 
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_form_factor_positivity_both_parameterizations`
+
     Parameters
     ----------
     atomic_numbers : sequence of int, optional
@@ -227,6 +231,8 @@ def check_form_factor_monotonic_decrease(
     progressively out of phase. Any local maximum away from the
     high-q tail is unphysical and signals a parameterization error
     (negative coefficient, swapped table row, or arithmetic bug).
+
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_form_factor_monotonic_decrease_both_parameterizations`
 
     Parameters
     ----------
@@ -379,6 +385,8 @@ def check_wavelength_relativistic_consistency(
     :func:`rheedium.tools.wavelength_ang`. A mismatch points to a wrong
     constant, a unit confusion, or a missing relativistic correction.
 
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_wavelength_relativistic_consistency`
+
     Parameters
     ----------
     voltages_kv : sequence of float, optional
@@ -452,6 +460,8 @@ def check_friedel_law_structure_factor(
 
     Uses an asymmetric two-atom basis to avoid trivially satisfying
     Friedel's law via centrosymmetry.
+
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_friedel_law_structure_factor`
 
     Parameters
     ----------
@@ -534,6 +544,8 @@ def check_elastic_closure_ewald(
     therefore at floating-point precision, not at simulator-filter
     precision. Constructs an in-memory cubic crystal so the test does
     not depend on any disk fixture.
+
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_elastic_closure_ewald_simulator`
 
     Parameters
     ----------
@@ -627,6 +639,8 @@ def run_default_invariants() -> list[InvariantResult]:
     be invoked from CI on every change. Tolerances use the per-check
     defaults; tighten by calling individual checks with explicit
     keyword arguments.
+
+    :see: :func:`tests.test_rheedium.test_audit.test_invariants.test_run_default_invariants_returns_full_suite`
 
     Returns
     -------

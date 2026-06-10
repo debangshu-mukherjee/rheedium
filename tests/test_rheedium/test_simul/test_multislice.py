@@ -134,7 +134,7 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-10)
 
     def test_zero_thickness_is_identity(self) -> None:
-        """dz = 0 gives P = 1 (no propagation)."""
+        """Dz = 0 gives P = 1 (no propagation)."""
         grid, cell, voltage, _ = _make_grid_params()
         p = fresnel_propagator(grid, cell, voltage, 0.0)
         chex.assert_trees_all_close(

@@ -522,6 +522,8 @@ def save_to_h5(
 ) -> None:
     """Save one or more named PyTrees to an HDF5 file.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_hdf5.TestHdf5RoundTrip`
+
     Parameters
     ----------
     path : Union[str, Path]
@@ -577,6 +579,8 @@ def load_from_h5(
     name: Optional[str] = None,
 ) -> Any:  # noqa: ANN401
     """Load one or more PyTrees from an HDF5 file.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_hdf5.TestHdf5RoundTrip`
 
     Parameters
     ----------

@@ -99,7 +99,7 @@ def _available_ram_gb() -> float:
                 if line.startswith("MemAvailable:"):
                     return int(line.split()[1]) / 1024**2
         return float(MEM_PER_WORKER_GB)
-    elif system == "Darwin":
+    if system == "Darwin":
         import subprocess  # noqa: PLC0415
 
         result: subprocess.CompletedProcess[str] = subprocess.run(
@@ -125,10 +125,10 @@ def _available_ram_gb() -> float:
             pages_free + pages_inactive + pages_purgeable
         ) * page_size
         return available_bytes / 1024**3
-    elif system == "Windows":
+    if system == "Windows":
         import ctypes  # noqa: PLC0415
 
-        class MEMORYSTATUSEX(ctypes.Structure):
+        class MEMORYSTATUSEX(ctypes.Structure):  # noqa: N801
             _fields_ = [
                 ("dwLength", ctypes.c_ulong),
                 ("dwMemoryLoad", ctypes.c_ulong),
@@ -178,7 +178,7 @@ def _worker_rss_gb() -> float:
                 if line.startswith("VmRSS:"):
                     return int(line.split()[1]) / 1024**2
         return 0.0
-    elif system == "Darwin":
+    if system == "Darwin":
         import subprocess  # noqa: PLC0415
 
         result: subprocess.CompletedProcess[str] = subprocess.run(
@@ -188,13 +188,13 @@ def _worker_rss_gb() -> float:
             check=True,
         )
         return int(result.stdout.strip()) / 1024**2
-    elif system == "Windows":
+    if system == "Windows":
         import ctypes  # noqa: PLC0415
         from ctypes import wintypes  # noqa: PLC0415
 
         process: int = ctypes.windll.kernel32.GetCurrentProcess()
 
-        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):  # noqa: N801
             _fields_ = [
                 ("cb", wintypes.DWORD),
                 ("PageFaultCount", wintypes.DWORD),

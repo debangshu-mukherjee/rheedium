@@ -76,7 +76,7 @@ class TestElectronBeam(chex.TestCase):
         chex.assert_trees_all_close(beam.energy_kev, 25.0)
 
     def test_electron_beam_vmap(self) -> None:
-        """vmap over energy should produce batched beams."""
+        """Vmap over energy should produce batched beams."""
 
         def make_beam(energy: Array) -> scalar_float:
             beam = create_electron_beam(energy_kev=energy)
@@ -257,7 +257,7 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(g, jnp.array([200.0, 100.0]))
 
     def test_jacrev_multi_param(self) -> None:
-        """jacrev over (energy, spread) produces correct Jacobian."""
+        """Jacrev over (energy, spread) produces correct Jacobian."""
 
         def loss(params: Array) -> scalar_float:
             beam = create_electron_beam(

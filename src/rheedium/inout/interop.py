@@ -46,6 +46,8 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
     Atoms object and creates a rheedium CrystalStructure suitable for
     RHEED simulation.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_interop.TestAseInterop`
+
     Parameters
     ----------
     atoms : ase.Atoms
@@ -141,6 +143,8 @@ def to_ase(crystal: CrystalStructure) -> Atoms:
     Creates an ASE Atoms object from a rheedium CrystalStructure,
     preserving cell parameters, positions, and atomic species.
 
+    :see: :class:`tests.test_rheedium.test_inout.test_interop.TestAseInterop`
+
     Parameters
     ----------
     crystal : CrystalStructure
@@ -209,6 +213,8 @@ def from_pymatgen(structure: Structure) -> CrystalStructure:
     Extracts lattice, positions, and species from a pymatgen Structure
     object and creates a rheedium CrystalStructure suitable for RHEED
     simulation.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_interop.TestPymatgenInterop`
 
     Parameters
     ----------
@@ -284,6 +290,8 @@ def to_pymatgen(crystal: CrystalStructure) -> Structure:
 
     Creates a pymatgen Structure object from a rheedium CrystalStructure,
     preserving lattice, positions, and atomic species.
+
+    :see: :class:`tests.test_rheedium.test_inout.test_interop.TestPymatgenInterop`
 
     Parameters
     ----------

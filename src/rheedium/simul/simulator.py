@@ -124,6 +124,8 @@ def project_on_detector(
     division by zero), then multiplied by k_y and k_z to get horizontal
     and vertical detector coordinates.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestProjectOnDetector`
+
     Parameters
     ----------
     k_out : Float[Array, "N 3"]
@@ -264,6 +266,8 @@ def find_kinematic_reflections(
     z-direction constraint. Returns fixed-size arrays for JIT compatibility,
     with -1 marking invalid entries.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestFindKinematicReflections`
+
     Parameters
     ----------
     k_in : Float[Array, "3"]
@@ -348,6 +352,8 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     G·r where G vectors already include the 2π factor from reciprocal
     lattice generation. CTR contributions are mixed according to the
     specified mode.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestComputeKinematicIntensitiesExtended`
 
     Parameters
     ----------
@@ -650,6 +656,8 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     (h,k) crystal truncation rod, solve for the l value where the rod
     intersects the Ewald sphere, then compute the diffracted intensity at
     that point.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestEwaldSimulator`
 
     Parameters
     ----------
@@ -1754,6 +1762,8 @@ def sliced_crystal_to_projected_potential_slices(
     units. The electron-specimen interaction constant is applied later
     when the transmission function is built during propagation.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestSlicedCrystalToProjectedPotentialSlices`
+
     Parameters
     ----------
     sliced_crystal : SlicedCrystal
@@ -1903,6 +1913,8 @@ def multislice_propagate(
     space is P(kx,ky) = exp(-iπλΔz(kx² + ky²)) which accounts for free-space
     propagation between slices. The initial wave is a tilted plane wave with
     phase k_in_x*x + k_in_y*y at z=0.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestMultislicePropagate`
 
     Parameters
     ----------
@@ -2067,6 +2079,8 @@ def multislice_simulator(
     The Ewald sphere constraint gives k_out_z² = k_mag² - k_out_x² - k_out_y².
     Only real solutions (positive k_out_z²) correspond to propagating waves;
     evanescent waves don't reach the detector.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_simulator.TestMultisliceSimulator`
 
     Parameters
     ----------

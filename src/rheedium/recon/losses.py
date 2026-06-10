@@ -32,6 +32,8 @@ def weighted_image_residual(
 ) -> Float[Array, "H W"]:
     r"""Build a weighted least-squares residual field.
 
+    :see: :class:`tests.test_rheedium.test_recon.test_losses.TestWeightedLosses`
+
     Extended Summary
     ----------------
     The returned residual is designed for Gauss-Newton and other
@@ -74,6 +76,8 @@ def weighted_mean_squared_error(
     weight_map: Optional[Float[Array, "H W"]] = None,
 ) -> scalar_float:
     r"""Compute a normalized weighted mean-squared error.
+
+    :see: :class:`tests.test_rheedium.test_recon.test_losses.TestWeightedLosses`
 
     Extended Summary
     ----------------

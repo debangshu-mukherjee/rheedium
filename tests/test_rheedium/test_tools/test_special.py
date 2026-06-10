@@ -82,7 +82,7 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(grad_vals, neg_k1_vals, rtol=1e-4)
 
     def test_vmap(self) -> None:
-        """vmap over batch dimension works correctly."""
+        """Vmap over batch dimension works correctly."""
         x = jnp.array([0.5, 1.0, 2.0, 5.0])
         vmapped = jax.vmap(lambda xi: bessel_k0(xi[None])[0])
         result = vmapped(x)

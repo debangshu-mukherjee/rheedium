@@ -8,7 +8,7 @@ RHEED simulator cost.
 import chex
 import jax.numpy as jnp
 
-import rheedium.recon as recon
+from rheedium import recon
 from rheedium.recon import (
     OrientationFitResult,
     compute_fisher_information,

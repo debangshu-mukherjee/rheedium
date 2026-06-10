@@ -159,6 +159,8 @@ def load_kirkland_parameters(
     factors from the preloaded data. The Kirkland model uses three
     Lorentzian terms followed by three Gaussian terms.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+
     Parameters
     ----------
     atomic_number : scalar_int
@@ -233,6 +235,8 @@ def kirkland_form_factor(
 
     where :math:`s = q / (4\pi)`.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+
     Parameters
     ----------
     atomic_number : scalar_int
@@ -295,6 +299,8 @@ def kirkland_projected_potential(
     Computes the 2D projected atomic potential for multislice calculations
     using Kirkland parameterization. This is the integral of the 3D atomic
     potential along the beam direction.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
 
     Parameters
     ----------
@@ -675,6 +681,8 @@ def get_mean_square_displacement(
     thermal displacement calculations. Falls back to a generic model for
     elements without tabulated Debye temperatures.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+
     Parameters
     ----------
     atomic_number : scalar_int
@@ -785,6 +793,8 @@ def debye_waller_factor(
     Computes the Debye-Waller temperature factor that accounts for
     reduction in scattering intensity due to thermal atomic vibrations.
 
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
+
     Parameters
     ----------
     q_magnitude : Float[Array, "..."]
@@ -839,6 +849,8 @@ def atomic_scattering_factor(
     Computes the total atomic scattering factor by combining the
     q-dependent form factor with the Debye-Waller temperature factor.
     This gives the effective scattering amplitude including thermal effects.
+
+    :see: :class:`tests.test_rheedium.test_simul.test_form_factors.TestFormFactors`
 
     Parameters
     ----------

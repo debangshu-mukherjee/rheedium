@@ -320,6 +320,8 @@ def create_discrete_orientation(
 ) -> OrientationDistribution:
     """Create discrete orientation distribution for rotational variants.
 
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+
     Parameters
     ----------
     angles_deg : Float[Array, "M"]
@@ -364,6 +366,8 @@ def create_gaussian_orientation(
 ) -> OrientationDistribution:
     """Create Gaussian mosaic spread orientation distribution.
 
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
+
     Parameters
     ----------
     center_deg : scalar_float, optional
@@ -401,6 +405,8 @@ def create_mixed_orientation(
     distribution_id: Optional[str] = None,
 ) -> OrientationDistribution:
     """Create mixed distribution with discrete variants and mosaic spread.
+
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDistributionFactories`
 
     Parameters
     ----------
@@ -447,6 +453,8 @@ def discretize_orientation(
     n_sigma_range: scalar_float = 3.0,
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Convert OrientationDistribution to quadrature points and weights.
+
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDiscretization`
 
     Description
     -----------
@@ -532,6 +540,8 @@ def discretize_orientation_static(
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Static-dispatch version for use outside JIT when efficiency matters.
 
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationDiscretization`
+
     Description
     -----------
     When the distribution type is known at Python level (not traced),
@@ -573,6 +583,8 @@ def integrate_over_orientation(
     n_mosaic_points: scalar_int = 7,
 ) -> float_jax_image:
     r"""Compute incoherent intensity sum over orientation distribution.
+
+    :see: :class:`tests.test_rheedium.test_types.test_distributions.TestOrientationIntegration`
 
     Description
     -----------

@@ -162,6 +162,8 @@ def create_electron_beam(
 ) -> ElectronBeam:
     """Create an ElectronBeam instance with data validation.
 
+    :see: :class:`tests.test_rheedium.test_types.test_beam_types.TestElectronBeam`
+
     Parameters
     ----------
     energy_kev : scalar_float
