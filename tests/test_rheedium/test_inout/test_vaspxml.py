@@ -467,7 +467,6 @@ class TestVaspxmlRoundtrip(chex.TestCase):
 
             crystal = parse_vaspxml(xml_file)
 
-            # cart = frac @ lattice
             lattice = jnp.diag(crystal.cell_lengths)
             expected_cart = crystal.frac_positions[:, :3] @ lattice
             chex.assert_trees_all_close(

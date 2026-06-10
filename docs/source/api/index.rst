@@ -15,6 +15,7 @@ Submodules
    :maxdepth: 1
    :hidden:
 
+   audit
    inout
    plots
    recon
@@ -23,6 +24,9 @@ Submodules
    types
    ucell
    tests
+
+:mod:`rheedium.audit`
+    Physics-invariant checks and reference-image benchmarking for validating simulations.
 
 :mod:`rheedium.inout`
     Data input/output operations for crystal structures and RHEED images.

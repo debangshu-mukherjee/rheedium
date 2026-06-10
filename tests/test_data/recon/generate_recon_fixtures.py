@@ -79,7 +79,7 @@ def _write_fixture(name: str, crystal: CrystalStructure) -> None:
 
 
 def _make_cubic_crystal(a: float = 4.0) -> CrystalStructure:
-    """Simple FCC-like cubic crystal."""
+    """Return a simple FCC-like cubic crystal."""
     frac_coords = np.array(
         [
             [0.0, 0.0, 0.0],

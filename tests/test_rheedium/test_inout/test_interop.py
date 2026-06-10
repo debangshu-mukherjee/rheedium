@@ -86,7 +86,6 @@ class TestAseInterop(chex.TestCase):
         assert isinstance(crystal, CrystalStructure)
         # Diamond Si has 2 atoms in primitive cell
         assert crystal.frac_positions.shape[0] == 2
-        # Si = 14
         assert jnp.all(crystal.frac_positions[:, 3] == 14.0)
 
     def test_from_ase_no_cell(self) -> None:

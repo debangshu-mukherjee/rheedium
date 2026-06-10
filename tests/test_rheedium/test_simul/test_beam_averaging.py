@@ -25,7 +25,7 @@ W = 32
 
 def _dummy_angle_sim(
     polar_rad: Array,
-    azimuth_rad: Array,
+    azimuth_rad: Array,  # noqa: ARG001
 ) -> Array:
     """Simulate pattern that broadens with polar angle."""
     y = jnp.linspace(-1.0, 1.0, H)
@@ -337,17 +337,17 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_jit_agrees(self) -> None:
         """JIT and non-JIT results agree to 1e-4."""
-        kwargs: dict[str, object] = dict(
-            simulate_fn=_dummy_joint_sim,
-            nominal_polar_angle_rad=jnp.float64(0.035),
-            nominal_azimuth_angle_rad=jnp.float64(0.0),
-            nominal_energy_kev=jnp.float64(20.0),
-            angular_divergence_mrad=jnp.float64(0.5),
-            energy_spread_ev=jnp.float64(0.5),
-            psf_sigma_pixels=jnp.float64(1.0),
-            n_angular_samples=5,
-            n_energy_samples=3,
-        )
+        kwargs: dict[str, object] = {
+            "simulate_fn": _dummy_joint_sim,
+            "nominal_polar_angle_rad": jnp.float64(0.035),
+            "nominal_azimuth_angle_rad": jnp.float64(0.0),
+            "nominal_energy_kev": jnp.float64(20.0),
+            "angular_divergence_mrad": jnp.float64(0.5),
+            "energy_spread_ev": jnp.float64(0.5),
+            "psf_sigma_pixels": jnp.float64(1.0),
+            "n_angular_samples": 5,
+            "n_energy_samples": 3,
+        }
         nojit = instrument_broadened_pattern(**kwargs)
         jitted = jax.jit(
             instrument_broadened_pattern,

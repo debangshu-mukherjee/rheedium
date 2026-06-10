@@ -35,7 +35,7 @@ def _linear_forward_model(
 
 
 def _true_params() -> dict[str, jnp.ndarray]:
-    """Reference parameters for reconstruction tests."""
+    """Return reference parameters for reconstruction tests."""
     return {
         "scale": jnp.float64(1.5),
         "offset": jnp.float64(-0.25),
@@ -43,7 +43,7 @@ def _true_params() -> dict[str, jnp.ndarray]:
 
 
 def _initial_params() -> dict[str, jnp.ndarray]:
-    """Initial guess for reconstruction tests."""
+    """Return the initial guess for reconstruction tests."""
     return {
         "scale": jnp.float64(0.0),
         "offset": jnp.float64(0.0),

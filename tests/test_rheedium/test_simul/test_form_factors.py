@@ -26,6 +26,8 @@ from rheedium.tools.wrappers import jax_safe
 
 
 class TestFormFactors(chex.TestCase, parameterized.TestCase):
+    """Tests for atomic form-factor calculations."""
+
     def setUp(self) -> None:
         """Set up test fixtures with common test parameters.
 
@@ -200,7 +202,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_form_factor = self.variant(kirkland_form_factor)
 
-        for name, z in self.test_atomic_numbers.items():
+        for _name, z in self.test_atomic_numbers.items():
             f_values = var_form_factor(z, self.q_magnitudes)
 
             differences = jnp.diff(f_values[1:])
@@ -254,7 +256,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_kirkland_projected_potential_matches_tabulated_formula(
         self,
     ) -> None:
-        """Projected potential matches the analytic Kirkland real-space form."""
+        """Check projected potential matches Kirkland real-space form."""
         var_projected_potential = self.variant(kirkland_projected_potential)
         radial_positions = jnp.array([0.05, 0.2, 0.8], dtype=jnp.float64)
         params = kirkland_potentials()[13]  # Si, zero-indexed

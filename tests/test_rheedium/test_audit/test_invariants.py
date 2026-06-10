@@ -22,8 +22,10 @@ def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
     assert isinstance(result.passed, bool)
     assert isinstance(result.residual, float)
     assert isinstance(result.tolerance, float)
-    assert isinstance(result.units, str) and result.units
-    assert isinstance(result.detail, str) and result.detail
+    assert isinstance(result.units, str)
+    assert result.units
+    assert isinstance(result.detail, str)
+    assert result.detail
 
 
 def test_form_factor_positivity_both_parameterizations() -> None:
@@ -32,7 +34,8 @@ def test_form_factor_positivity_both_parameterizations() -> None:
     _assert_well_formed(kirkland_result, "form_factor_positivity_kirkland")
     _assert_well_formed(lobato_result, "form_factor_positivity_lobato")
     assert kirkland_result.passed, (
-        f"Kirkland form factor went negative: residual={kirkland_result.residual}"
+        "Kirkland form factor went negative: "
+        f"residual={kirkland_result.residual}"
     )
     assert lobato_result.passed, (
         f"Lobato form factor went negative: residual={lobato_result.residual}"

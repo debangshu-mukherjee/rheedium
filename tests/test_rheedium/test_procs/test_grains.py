@@ -16,6 +16,7 @@ class TestGrainDistributionAverage(chex.TestCase):
     """Tests for grain_distribution_average."""
 
     def test_computes_weighted_intensity_average(self) -> None:
+        """Verify patterns are averaged weighted by grain fractions."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -32,6 +33,7 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 3.6, atol=1e-6)
 
     def test_clips_negative_grain_weights(self) -> None:
+        """Verify negative grain weights are clipped to zero."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -48,6 +50,7 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 3.0, atol=1e-6)
 
     def test_grad_flows_through_grain_fraction(self) -> None:
+        """Check gradients flow through the grain fraction weights."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -72,6 +75,7 @@ class TestGrainDistributionAverage(chex.TestCase):
         )
 
     def test_jit_compiles(self) -> None:
+        """Verify grain_distribution_average compiles under jit."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -87,6 +91,7 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 2.5, atol=1e-6)
 
     def test_vmap_supports_batched_fraction_vectors(self) -> None:
+        """Check the average maps over batched fraction vectors."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -117,6 +122,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
     """Tests for apply_misorientation_distribution."""
 
     def test_selects_patterns_near_distribution_center(self) -> None:
+        """Verify a narrow width selects the centered pattern."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -136,6 +142,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         chex.assert_trees_all_close(result, 4.0, atol=1e-3)
 
     def test_broad_width_recovers_nearly_uniform_average(self) -> None:
+        """Verify a broad width yields a near-uniform average."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -155,6 +162,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         chex.assert_trees_all_close(result, 14.0 / 3.0, atol=1e-4)
 
     def test_grad_flows_through_distribution_center(self) -> None:
+        """Check gradients flow through the distribution center."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -180,6 +188,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         assert float(grad_value) > 0.0
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_misorientation_distribution compiles under jit."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -203,6 +212,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         assert np.all(np.isfinite(np.asarray(result)))
 
     def test_vmap_supports_batched_distribution_centers(self) -> None:
+        """Check the average maps over batched distribution centers."""
         patterns = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,

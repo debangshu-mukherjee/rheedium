@@ -468,7 +468,6 @@ Direct
 
             crystal = parse_poscar(poscar_file)
 
-            # Cartesian = frac @ lattice
             expected_cart = crystal.frac_positions[:, :3] @ jnp.diag(
                 crystal.cell_lengths
             )

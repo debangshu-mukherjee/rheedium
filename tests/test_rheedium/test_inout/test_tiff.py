@@ -12,6 +12,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 import tifffile
 from jax import Array
 
@@ -124,20 +125,20 @@ class TestLoadTiffSequence(chex.TestCase):
 
     def test_file_not_found(self) -> None:
         """Raises FileNotFoundError for missing path."""
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             load_tiff_sequence("/nonexistent/path.tif")
 
     def test_empty_directory(self) -> None:
         """Raises ValueError for directory with no TIFFs."""
         empty_dir = self.tmp_path / "empty"
         empty_dir.mkdir()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="No TIFF files found"):
             load_tiff_sequence(empty_dir)
 
     def test_invalid_sort_by(self) -> None:
         """Raises ValueError for invalid sort_by."""
         _write_multipage_tiff(self.tmp_path / "stack.tif", 2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="sort_by must be"):
             load_tiff_sequence(self.tmp_path / "stack.tif", sort_by="invalid")
 
     def test_finite_values(self) -> None:

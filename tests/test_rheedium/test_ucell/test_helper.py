@@ -345,7 +345,8 @@ Si10 Si 0.5 0.5 0.9
         """Test with thin slice that includes some atoms."""
         zone_axis = jnp.array([0.0, 0.0, 1.0])
         # Atoms are at z=0,1,2,...,9 Å, center is at 4.5 Å
-        # A 2.5 Å slice (half_thickness=1.25) centered at 4.5 captures atoms at 4 and 5
+        # A 2.5 Å slice (half_thickness=1.25) centered at 4.5
+        # captures atoms at 4 and 5
         thickness_xyz = jnp.array([5.0, 5.0, 2.5])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)

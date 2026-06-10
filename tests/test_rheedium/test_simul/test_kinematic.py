@@ -109,7 +109,8 @@ class TestKinematicEwaldSphere(chex.TestCase):
         """Test that all k_out satisfy |k_out| ≈ |k_in|."""
         var_ewald = self.variant(kinematic_ewald_sphere)
 
-        # Setup: incident beam at grazing incidence (k_in_z < 0, going into surface)
+        # Setup: incident beam at grazing incidence
+        # (k_in_z < 0, going into surface)
         k_in = jnp.array([73.0, 0.0, -2.5])
         k_mag = jnp.linalg.norm(k_in)
 
@@ -160,7 +161,8 @@ class TestDetectorProjection(chex.TestCase):
     def test_detector_projection_roundtrip(self) -> None:
         """Test that ray-tracing projection gives reasonable coordinates.
 
-        The simplified projection uses: x_d = k_y * d / k_x, y_d = k_z * d / k_x
+        The simplified projection uses:
+        x_d = k_y * d / k_x, y_d = k_z * d / k_x
         """
         var_project = self.variant(project_on_detector)
 
@@ -317,8 +319,8 @@ class TestKinematicSimulator(chex.TestCase):
         # Detector coordinates should be finite
         assert jnp.all(jnp.isfinite(pattern.detector_points))
 
-        # For d=100mm and typical RHEED, spots should be within reasonable range
-        # (This is a sanity check, not a strict requirement)
+        # For d=100mm and typical RHEED, spots should be within
+        # reasonable range (a sanity check, not a strict requirement).
         max_coord = jnp.max(jnp.abs(pattern.detector_points))
         assert max_coord < 10000.0  # Not absurdly large
 
@@ -347,7 +349,8 @@ class TestMakeEwaldSphere(chex.TestCase):
         chex.assert_trees_all_close(center_mag, k_mag, rtol=1e-6)
 
         # Check direction for theta=2, phi=0
-        # k_in = [k cos(theta), 0, -k sin(theta)] (approx, check sign convention)
+        # k_in = [k cos(theta), 0, -k sin(theta)]
+        # (approx, check sign convention)
         # In kinematic.py: k_z = -k * sin(theta)
         # So center = -k_in = [-kx, -ky, -kz]
         # center_z = -(-k * sin(theta)) = k * sin(theta) > 0
@@ -509,7 +512,8 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
         # Verify we got the right number of atoms
         assert len(cls.sto_crystal.cart_positions) == 5, (
-            f"Expected 5 atoms (1 Sr + 1 Ti + 3 O), got {len(cls.sto_crystal.cart_positions)}"
+            "Expected 5 atoms (1 Sr + 1 Ti + 3 O), got "
+            f"{len(cls.sto_crystal.cart_positions)}"
         )
 
         # Get reciprocal lattice vectors
@@ -574,7 +578,8 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         """Test (1,1,0) reflection intensity.
 
         For (1,1,0):
-        - Sr at (0.5, 0.5, 0.5): phase = exp(i*2*pi*0.5) * exp(i*2*pi*0.5) = exp(i*2*pi) = 1
+        - Sr at (0.5, 0.5, 0.5): phase = exp(i*2*pi*0.5)
+          * exp(i*2*pi*0.5) = exp(i*2*pi) = 1
         - Ti at (0, 0, 0): phase = 1
         - O at (0, 0, 0.5): phase = 1
         - O at (0.5, 0, 0): phase = exp(i*pi) = -1

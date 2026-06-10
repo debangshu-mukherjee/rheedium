@@ -128,7 +128,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         should give constructive interference (phase = 2*pi), while
         G = (pi/d, 0, 0) gives destructive interference (phase = pi).
         """
-        # Constructive: G*d = 2*pi
+        # Constructive interference when G times d equals two pi.
         g_constructive = jnp.array([jnp.pi, 0.0, 0.0])
         sf_constr = _compute_structure_factor_single(
             g_vector=g_constructive,
@@ -137,7 +137,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             temperature=self.temperature,
         )
 
-        # Destructive: G*d = pi
+        # Destructive interference when G times d equals pi.
         g_destructive = jnp.array([jnp.pi / 2, 0.0, 0.0])
         sf_destr = _compute_structure_factor_single(
             g_vector=g_destructive,

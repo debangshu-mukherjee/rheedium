@@ -40,6 +40,7 @@ class TestApplyVacancyField(chex.TestCase):
     """Tests for apply_vacancy_field."""
 
     def test_applies_continuous_site_occupancies(self) -> None:
+        """Verify occupancies scale atomic numbers continuously."""
         crystal = _make_bulk_crystal()
         modified = apply_vacancy_field(crystal, jnp.array([1.0, 0.25]))
 
@@ -55,6 +56,7 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_clips_unphysical_occupancies(self) -> None:
+        """Verify occupancies are clipped to the physical range."""
         crystal = _make_bulk_crystal()
         modified = apply_vacancy_field(crystal, jnp.array([-1.0, 2.0]))
 
@@ -65,6 +67,7 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_grad_flows_through_occupancy(self) -> None:
+        """Check gradients flow through the occupancy parameter."""
         crystal = _make_bulk_crystal()
 
         def objective(occupancy: Array) -> Array:
@@ -79,6 +82,7 @@ class TestApplyVacancyField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 8.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_vacancy_field compiles under jit."""
         crystal = _make_bulk_crystal()
         compiled = jax.jit(
             lambda occupancies: apply_vacancy_field(
@@ -95,6 +99,7 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_occupancies(self) -> None:
+        """Check apply_vacancy_field maps over batched occupancies."""
         crystal = _make_bulk_crystal()
 
         def summed_intensity(occupancy: Array) -> Array:
@@ -117,6 +122,7 @@ class TestApplyInterstitialField(chex.TestCase):
     """Tests for apply_interstitial_field."""
 
     def test_appends_weighted_interstitial_sites(self) -> None:
+        """Verify occupancy-weighted interstitial sites are appended."""
         crystal = _make_bulk_crystal()
         modified = apply_interstitial_field(
             crystal,
@@ -138,6 +144,7 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_empty_interstitial_bank_leaves_crystal_unchanged(self) -> None:
+        """Verify an empty interstitial bank leaves the crystal as is."""
         crystal = _make_bulk_crystal()
         modified = apply_interstitial_field(
             crystal,
@@ -153,6 +160,7 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_grad_flows_through_interstitial_occupancy(self) -> None:
+        """Check gradients flow through interstitial occupancy."""
         crystal = _make_bulk_crystal()
 
         def objective(occupancy: Array) -> Array:
@@ -169,6 +177,7 @@ class TestApplyInterstitialField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 12.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_interstitial_field compiles under jit."""
         crystal = _make_bulk_crystal()
         compiled = jax.jit(
             lambda occupancy: apply_interstitial_field(
@@ -187,6 +196,7 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_occupancies(self) -> None:
+        """Check apply_interstitial_field maps over batched occupancies."""
         crystal = _make_bulk_crystal()
 
         def summed_intensity(occupancy: Array) -> Array:
@@ -211,6 +221,7 @@ class TestApplyAntisiteField(chex.TestCase):
     """Tests for apply_antisite_field."""
 
     def test_blends_host_and_substitute_species(self) -> None:
+        """Verify host and substitute species are blended by fraction."""
         crystal = _make_bulk_crystal()
         modified = apply_antisite_field(
             crystal,
@@ -225,6 +236,7 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_clips_mixing_fraction_to_physical_range(self) -> None:
+        """Verify the mixing fraction is clipped to a physical range."""
         crystal = _make_bulk_crystal()
         modified = apply_antisite_field(
             crystal,
@@ -239,6 +251,7 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_grad_flows_through_mixing_fraction(self) -> None:
+        """Check gradients flow through the mixing fraction."""
         crystal = _make_bulk_crystal()
 
         def objective(mixing_fraction: Array) -> Array:
@@ -254,6 +267,7 @@ class TestApplyAntisiteField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 12.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_antisite_field compiles under jit."""
         crystal = _make_bulk_crystal()
         compiled = jax.jit(
             lambda mixing_fraction: apply_antisite_field(
@@ -271,6 +285,7 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_mixing_fraction(self) -> None:
+        """Check apply_antisite_field maps over batched fractions."""
         crystal = _make_bulk_crystal()
 
         def summed_intensity(mixing_fraction: Array) -> Array:

@@ -171,7 +171,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ratio, jnp.array([10.0, 10.0]), rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    def test_numerical_value_100A(self) -> None:
+    def test_numerical_value_100A(self) -> None:  # noqa: N802
         """Test numerical value for 100 Å domain.
 
         σ = 2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
@@ -196,7 +196,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_tiny_extent_no_nan(self) -> None:
-        """Test that tiny extent doesn't produce NaN due to minimum enforcement."""
+        """Test that tiny extent gives no NaN via minimum enforcement."""
         var_sigma = self.variant(extent_to_rod_sigma)
 
         tiny_extent = jnp.array([0.1, 0.1, 0.1])

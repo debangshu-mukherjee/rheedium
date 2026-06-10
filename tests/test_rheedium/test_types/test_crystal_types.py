@@ -1,3 +1,5 @@
+"""Test suite for rheedium.types.crystal_types PyTrees."""
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -22,6 +24,7 @@ class TestCrystalStructure(chex.TestCase):
     """Comprehensive test suite for CrystalStructure PyTree."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -147,7 +150,7 @@ class TestCrystalStructure(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_crystal_structure_validation_errors(self) -> None:
-        """Test that invalid inputs are properly handled during JIT compilation."""
+        """Handle invalid inputs properly during JIT compilation."""
         n_atoms = 5
 
         def create_with_wrong_shape() -> CrystalStructure:
@@ -192,17 +195,17 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         g_magnitudes = jnp.linalg.norm(g_vectors, axis=-1)
         structure_factors = jnp.ones(n_points, dtype=jnp.complex128)
         intensities = jnp.ones(n_points, dtype=jnp.float64)
-        return dict(
-            wavelength_ang=wavelength_ang,
-            k_magnitude=k_magnitude,
-            sphere_radius=sphere_radius,
-            recip_vectors=recip_vectors,
-            hkl_grid=hkl_grid,
-            g_vectors=g_vectors,
-            g_magnitudes=g_magnitudes,
-            structure_factors=structure_factors,
-            intensities=intensities,
-        )
+        return {
+            "wavelength_ang": wavelength_ang,
+            "k_magnitude": k_magnitude,
+            "sphere_radius": sphere_radius,
+            "recip_vectors": recip_vectors,
+            "hkl_grid": hkl_grid,
+            "g_vectors": g_vectors,
+            "g_magnitudes": g_magnitudes,
+            "structure_factors": structure_factors,
+            "intensities": intensities,
+        }
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_ewald_data_valid(self) -> None:
@@ -320,7 +323,7 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that mismatched leading dimensions are caught."""
         kwargs = self._make_valid_ewald_kwargs(n_points=7)
         kwargs["intensities"] = jnp.ones(5, dtype=jnp.float64)
-        with pytest.raises(Exception):
+        with pytest.raises(TypeCheckError):
             jax.jit(create_ewald_data)(**kwargs)
 
     def test_ewald_data_negative_intensities(self) -> None:
@@ -347,6 +350,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
     """Comprehensive test suite for PotentialSlices PyTree."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -365,7 +369,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         )
 
         chex.assert_shape(potential.slices, (n_slices, height, width))
-        # Scalar fields are validated in the create_potential_slices function itself
+        # Scalar fields are validated inside create_potential_slices
         assert float(potential.slice_thickness) == slice_thickness
         assert float(potential.x_calibration) == x_calibration
         assert float(potential.y_calibration) == y_calibration
@@ -387,8 +391,8 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         reconstructed = tree_util.tree_unflatten(treedef, flat)
 
         chex.assert_trees_all_close(potential.slices, reconstructed.slices)
-        # Scalar fields become tracers in JIT, can't be directly compared
-        # The PyTree structure preservation is verified by successful reconstruction
+        # Scalar fields become tracers in JIT, can't be directly compared.
+        # PyTree structure preservation is verified by reconstruction.
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -437,7 +441,7 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_potential_slices_validation_errors(self) -> None:
-        """Test that invalid inputs are properly handled during JIT compilation."""
+        """Handle invalid PotentialSlices inputs during JIT compilation."""
 
         def create_with_wrong_shape() -> PotentialSlices:
             wrong_shape_slices = jnp.ones((10, 32))
@@ -465,14 +469,16 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
         # These will fail during JIT tracing due to conditional checks
         # The actual error depends on JAX's tracing behavior
-        create_with_negative_thickness()  # Will trace but fail at runtime if executed
-        create_with_negative_calibration()  # Will trace but fail at runtime if executed
+        # Both trace successfully but fail at runtime if executed.
+        create_with_negative_thickness()
+        create_with_negative_calibration()
 
 
 class TestXYZData(chex.TestCase, parameterized.TestCase):
     """Comprehensive test suite for XYZData PyTree."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -483,7 +489,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         positions = jax.random.normal(self.rng, (n_atoms, 3))
         atomic_numbers = jnp.array([6, 8] * 5)
 
-        # create_xyz_data is a foreign interface function, use variant without JIT
+        # create_xyz_data is a foreign interface; use variant without JIT
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
@@ -509,7 +515,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         ]
         comment = "Test XYZ structure"
 
-        # create_xyz_data is a foreign interface function, use variant without JIT
+        # create_xyz_data is a foreign interface; use variant without JIT
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(
             positions,
@@ -539,7 +545,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         lattice = jnp.eye(3)
         energy = -10.0
 
-        # create_xyz_data is a foreign interface function, use variant without JIT
+        # create_xyz_data is a foreign interface; use variant without JIT
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(
             positions, atomic_numbers, lattice=lattice, energy=energy
@@ -583,7 +589,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         if include_energy:
             kwargs["energy"] = jax.random.normal(self.rng, ())
 
-        # create_xyz_data is a foreign interface function, use variant without JIT
+        # create_xyz_data is a foreign interface; use variant without JIT
         var_create_xyz_data = self.variant(create_xyz_data)
         xyz_data = var_create_xyz_data(positions, atomic_numbers, **kwargs)
 
@@ -599,7 +605,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_xyz_data_jit_compilation(self) -> None:
         """Test JIT compilation of operations on XYZData."""
-        # Create XYZData outside JIT since create_xyz_data is a foreign interface
+        # Create XYZData outside JIT; create_xyz_data is a foreign interface
         n_atoms = 5
         positions = jnp.ones((n_atoms, 3))
         atomic_numbers = jnp.ones(n_atoms, dtype=jnp.int32) * 6
@@ -620,9 +626,9 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
     def test_xyz_data_validation_errors(self) -> None:
         """Test that invalid inputs raise appropriate errors."""
         # jaxtyping catches type errors for wrong position shape
+        wrong_shape_positions = jnp.ones((5, 4))
+        atomic_numbers = jnp.ones(5, dtype=jnp.int32)
         with pytest.raises(TypeCheckError):
-            wrong_shape_positions = jnp.ones((5, 4))
-            atomic_numbers = jnp.ones(5, dtype=jnp.int32)
             create_xyz_data(wrong_shape_positions, atomic_numbers)
 
     @chex.variants(without_jit=True, with_jit=False)
@@ -632,7 +638,7 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         positions = jnp.ones((n_atoms, 3))
         atomic_numbers = jnp.ones(n_atoms, dtype=jnp.int32)
 
-        # create_xyz_data is a foreign interface function, use variant without JIT
+        # create_xyz_data is a foreign interface; use variant without JIT
         make_fn = self.variant(create_xyz_data)
         xyz_data = make_fn(positions, atomic_numbers)
 
@@ -650,6 +656,7 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
     """Test PyTree operations across all crystal types."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 

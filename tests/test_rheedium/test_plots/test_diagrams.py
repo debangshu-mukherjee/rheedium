@@ -370,7 +370,7 @@ class TestDiagramViewingAngles:
         plt.close("all")
 
     @pytest.mark.parametrize(
-        "elev,azim",
+        ("elev", "azim"),
         [
             (0.0, 0.0),  # Front view
             (90.0, 0.0),  # Top view
@@ -387,7 +387,7 @@ class TestDiagramViewingAngles:
         assert isinstance(ax, Axes3D)
 
     @pytest.mark.parametrize(
-        "elev,azim",
+        ("elev", "azim"),
         [
             (0.0, 0.0),
             (45.0, 45.0),
@@ -402,7 +402,7 @@ class TestDiagramViewingAngles:
         assert isinstance(ax, Axes3D)
 
     @pytest.mark.parametrize(
-        "elev,azim",
+        ("elev", "azim"),
         [
             (0.0, 0.0),
             (30.0, 60.0),

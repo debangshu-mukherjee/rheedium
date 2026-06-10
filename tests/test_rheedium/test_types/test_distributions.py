@@ -112,7 +112,7 @@ class TestOrientationDiscretization(chex.TestCase):
     def test_discretize_orientation_static_returns_discrete_support(
         self,
     ) -> None:
-        """Static discretization avoids redundant quadrature for sharp peaks."""
+        """Avoid redundant quadrature for sharp discrete peaks."""
         dist = create_discrete_orientation(
             angles_deg=jnp.array([15.0, -15.0]),
             weights=jnp.array([0.6, 0.4]),
@@ -137,7 +137,7 @@ class TestOrientationDiscretization(chex.TestCase):
     def test_discretize_orientation_static_normalizes_manual_weights(
         self,
     ) -> None:
-        """Manual OrientationDistribution instances still behave probabilistically."""
+        """Normalize manual OrientationDistribution weights."""
         dist = OrientationDistribution(
             discrete_angles_deg=jnp.array([0.0, 90.0]),
             discrete_weights=jnp.array([0.0, 0.0]),

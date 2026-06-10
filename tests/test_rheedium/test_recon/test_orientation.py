@@ -36,7 +36,7 @@ def _synthetic_pattern(phi_deg: jnp.ndarray) -> jnp.ndarray:
 
 
 def _true_distribution() -> OrientationDistribution:
-    """Reference discrete orientation mixture for inverse tests."""
+    """Return reference discrete orientation mixture for inverse tests."""
     return create_discrete_orientation(
         angles_deg=jnp.array([0.0, 10.0, 20.0]),
         weights=jnp.array([0.15, 0.55, 0.30]),

@@ -18,7 +18,7 @@ def _load(name: str) -> dict[str, np.ndarray]:
     return dict(np.load(_DATA_DIR / name))
 
 
-class TestSi111_1x1(chex.TestCase):
+class TestSi111_1x1(chex.TestCase):  # noqa: N801
     """Tests for si111_1x1 library function."""
 
     def test_has_silicon_atoms(self) -> None:
@@ -47,7 +47,7 @@ class TestSi111_1x1(chex.TestCase):
         )
 
 
-class TestSi111_7x7(chex.TestCase):
+class TestSi111_7x7(chex.TestCase):  # noqa: N801
     """Tests for si111_7x7 library function."""
 
     def test_more_atoms_than_1x1(self) -> None:
@@ -69,7 +69,7 @@ class TestSi111_7x7(chex.TestCase):
         assert diff == 12
 
 
-class TestSi100_2x1(chex.TestCase):
+class TestSi100_2x1(chex.TestCase):  # noqa: N801
     """Tests for si100_2x1 library function."""
 
     def test_has_atoms(self) -> None:
@@ -83,7 +83,7 @@ class TestSi100_2x1(chex.TestCase):
         assert np.any(np.abs(d["cart_positions"][:, 3] - 14.0) < 0.5)
 
 
-class TestGaAs001_2x4(chex.TestCase):
+class TestGaAs001_2x4(chex.TestCase):  # noqa: N801
     """Tests for gaas001_2x4 library function."""
 
     def test_has_ga_and_as(self) -> None:
@@ -127,7 +127,7 @@ class TestMgO001BulkTerminated(chex.TestCase):
         )
 
 
-class TestSrTiO3_001_2x1(chex.TestCase):
+class TestSrTiO3_001_2x1(chex.TestCase):  # noqa: N801
     """Tests for srtio3_001_2x1 library function."""
 
     def test_has_sr_ti_o(self) -> None:

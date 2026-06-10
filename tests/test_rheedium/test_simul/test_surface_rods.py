@@ -27,6 +27,8 @@ from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
+    """Tests for surface crystal-truncation-rod calculations."""
+
     def setUp(self) -> None:
         """Set up test fixtures for surface rod calculations.
 

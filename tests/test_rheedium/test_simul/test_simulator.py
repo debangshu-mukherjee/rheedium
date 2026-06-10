@@ -98,14 +98,12 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
         cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
 
-        crystal = create_crystal_structure(
+        return create_crystal_structure(
             frac_positions=frac_positions,
             cart_positions=cart_positions,
             cell_lengths=jnp.array([a_si, a_si, a_si]),
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
-
-        return crystal
 
     @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
@@ -369,7 +367,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 class TestSlicedCrystalToProjectedPotentialSlices(
     chex.TestCase, parameterized.TestCase
 ):
-    """Test suite for converting sliced crystals to projected-potential slices."""
+    """Tests for converting sliced crystals to potential slices."""
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1096,13 +1094,12 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
         cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
 
-        crystal = create_crystal_structure(
+        return create_crystal_structure(
             frac_positions=frac_positions,
             cart_positions=cart_positions,
             cell_lengths=jnp.array([a_mgo, a_mgo, a_mgo]),
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
-        return crystal
 
     def test_basic_pattern_generation(self) -> None:
         """Test that ewald_simulator produces a valid RHEED pattern."""
@@ -1256,7 +1253,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         self.assertEqual(
             raw_points.shape,
             detector_points.shape,
-            "Raw and sparse Ewald geometry should emit the same number of hits",
+            "Raw and sparse Ewald geometry should emit the same "
+            "number of hits",
         )
         self.assertTrue(
             np.allclose(raw_points, detector_points, atol=1e-9, rtol=0.0),
@@ -1306,7 +1304,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         self.assertEqual(raw_points.shape, detector_points.shape)
         self.assertTrue(
             np.allclose(raw_points, detector_points, atol=2e-6, rtol=0.0),
-            "SrTiO3 sparse Ewald intersections should match direct rod geometry",
+            "SrTiO3 sparse Ewald intersections should match direct "
+            "rod geometry",
         )
 
     def test_elastic_scattering_constraint(self) -> None:
@@ -1744,21 +1743,21 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self,
     ) -> None:
         """Spot-render mode matches direct rasterization when unbroadened."""
-        kwargs = dict(
-            crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            hmax=0,
-            kmax=0,
-            detector_distance_mm=1000.0,
-            temperature=300.0,
-            surface_roughness=0.5,
-            image_shape_px=(16, 24),
-            pixel_size_mm=(6.0, 16.0),
-            beam_center_px=(12.0, 2.0),
-            spot_sigma_px=1.2,
-        )
+        kwargs = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 0.0,
+            "hmax": 0,
+            "kmax": 0,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (16, 24),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (12.0, 2.0),
+            "spot_sigma_px": 1.2,
+        }
         sparse_pattern = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
             k_out=jnp.array(
@@ -1797,7 +1796,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
-        """Default dense rendering elongates CTRs vertically on the detector."""
+        """Check dense rendering elongates CTRs vertically on detector."""
         image = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
             voltage_kv=20.0,
@@ -1832,7 +1831,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_with_orientation_distribution(
         self,
     ) -> None:
-        """Orientation-distribution orchestration yields a valid dense image."""
+        """Check orientation-distribution yields a valid dense image."""
         orientation_dist = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
             weights=jnp.array([0.4, 0.6]),
@@ -1871,16 +1870,16 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
 
     def _ewald_loss(self, **override: object) -> Array:
         """Compute sum of intensities from ewald_simulator."""
-        defaults = dict(
-            crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            hmax=2,
-            kmax=2,
-            temperature=300.0,
-            surface_roughness=0.5,
-        )
+        defaults = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 0.0,
+            "hmax": 2,
+            "kmax": 2,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+        }
         defaults.update(override)
         pattern = ewald_simulator(**defaults)
         return jnp.sum(pattern.intensities)

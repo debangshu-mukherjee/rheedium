@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from beartype.door import die_if_unbearable
+from beartype.roar import BeartypeDoorHintViolation
 
 from rheedium.types.custom_types import (
     float_jax_image,
@@ -24,7 +25,7 @@ def _accepts(value: object, hint: object) -> object:
 
 
 def _assert_rejected(value: object, hint: object) -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(BeartypeDoorHintViolation):
         die_if_unbearable(value, hint)
 
 
@@ -32,16 +33,20 @@ class TestScalarFloat:
     """Tests for the scalar_float type alias."""
 
     def test_accepts_python_float(self) -> None:
+        """Accept a Python float for scalar_float."""
         assert _accepts(3.14, scalar_float) == 3.14
 
     def test_accepts_jax_scalar(self) -> None:
+        """Accept a JAX float scalar for scalar_float."""
         result = _accepts(jnp.float64(2.5), scalar_float)
         assert float(result) == 2.5
 
     def test_rejects_string(self) -> None:
+        """Reject a string for scalar_float."""
         _assert_rejected("hello", scalar_float)
 
     def test_rejects_list(self) -> None:
+        """Reject a list for scalar_float."""
         _assert_rejected([1.0, 2.0], scalar_float)
 
 
@@ -49,13 +54,16 @@ class TestScalarInt:
     """Tests for the scalar_int type alias."""
 
     def test_accepts_python_int(self) -> None:
+        """Accept a Python int for scalar_int."""
         assert _accepts(42, scalar_int) == 42
 
     def test_accepts_jax_int_scalar(self) -> None:
+        """Accept a JAX int scalar for scalar_int."""
         result = _accepts(jnp.int32(7), scalar_int)
         assert int(result) == 7
 
     def test_rejects_string(self) -> None:
+        """Reject a string for scalar_int."""
         _assert_rejected("hello", scalar_int)
 
 
@@ -63,10 +71,12 @@ class TestScalarBool:
     """Tests for the scalar_bool type alias."""
 
     def test_accepts_python_bool(self) -> None:
+        """Accept Python bool values for scalar_bool."""
         assert _accepts(True, scalar_bool) is True
         assert _accepts(False, scalar_bool) is False
 
     def test_accepts_jax_bool_scalar(self) -> None:
+        """Accept a JAX bool scalar for scalar_bool."""
         result = _accepts(jnp.bool_(True), scalar_bool)
         assert bool(result) is True
 
@@ -75,16 +85,20 @@ class TestScalarNum:
     """Tests for the scalar_num type alias."""
 
     def test_accepts_python_int(self) -> None:
+        """Accept a Python int for scalar_num."""
         assert _accepts(5, scalar_num) == 5
 
     def test_accepts_python_float(self) -> None:
+        """Accept a Python float for scalar_num."""
         assert _accepts(3.14, scalar_num) == 3.14
 
     def test_accepts_jax_scalar(self) -> None:
+        """Accept a JAX float scalar for scalar_num."""
         result = _accepts(jnp.float64(1.5), scalar_num)
         assert float(result) == 1.5
 
     def test_rejects_string(self) -> None:
+        """Reject a string for scalar_num."""
         _assert_rejected("hello", scalar_num)
 
 
@@ -92,12 +106,15 @@ class TestNonJaxNumber:
     """Tests for the non_jax_number type alias."""
 
     def test_accepts_python_int(self) -> None:
+        """Accept a Python int for non_jax_number."""
         assert _accepts(10, non_jax_number) == 10
 
     def test_accepts_python_float(self) -> None:
+        """Accept a Python float for non_jax_number."""
         assert _accepts(2.5, non_jax_number) == 2.5
 
     def test_rejects_jax_array(self) -> None:
+        """Reject a JAX array for non_jax_number."""
         _assert_rejected(jnp.float64(1.0), non_jax_number)
 
 
@@ -105,20 +122,24 @@ class TestFloatJaxImage:
     """Tests for the float_jax_image type alias."""
 
     def test_accepts_2d_float_array(self) -> None:
+        """Accept a 2D float JAX array for float_jax_image."""
         img = jnp.ones((64, 128), dtype=jnp.float32)
         result = _accepts(img, float_jax_image)
         assert result.shape == (64, 128)
 
     def test_accepts_float64(self) -> None:
+        """Accept a float64 JAX array for float_jax_image."""
         img = jnp.zeros((32, 32), dtype=jnp.float64)
         result = _accepts(img, float_jax_image)
         assert result.shape == (32, 32)
 
     def test_rejects_int_array(self) -> None:
+        """Reject an int JAX array for float_jax_image."""
         img = jnp.ones((64, 64), dtype=jnp.int32)
         _assert_rejected(img, float_jax_image)
 
     def test_rejects_3d_array(self) -> None:
+        """Reject a 3D JAX array for float_jax_image."""
         img = jnp.ones((3, 64, 64), dtype=jnp.float32)
         _assert_rejected(img, float_jax_image)
 
@@ -127,15 +148,18 @@ class TestIntJaxImage:
     """Tests for the int_jax_image type alias."""
 
     def test_accepts_2d_int_array(self) -> None:
+        """Accept a 2D int JAX array for int_jax_image."""
         img = jnp.ones((64, 128), dtype=jnp.int32)
         result = _accepts(img, int_jax_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
+        """Reject a float JAX array for int_jax_image."""
         img = jnp.ones((64, 64), dtype=jnp.float32)
         _assert_rejected(img, int_jax_image)
 
     def test_rejects_1d_array(self) -> None:
+        """Reject a 1D JAX array for int_jax_image."""
         img = jnp.ones((64,), dtype=jnp.int32)
         _assert_rejected(img, int_jax_image)
 
@@ -144,15 +168,18 @@ class TestFloatNpImage:
     """Tests for the float_np_image type alias."""
 
     def test_accepts_2d_float_array(self) -> None:
+        """Accept a 2D float NumPy array for float_np_image."""
         img = np.ones((64, 128), dtype=np.float32)
         result = _accepts(img, float_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_int_array(self) -> None:
+        """Reject an int NumPy array for float_np_image."""
         img = np.ones((64, 64), dtype=np.int32)
         _assert_rejected(img, float_np_image)
 
     def test_rejects_3d_array(self) -> None:
+        """Reject a 3D NumPy array for float_np_image."""
         img = np.ones((3, 64, 64), dtype=np.float32)
         _assert_rejected(img, float_np_image)
 
@@ -161,15 +188,18 @@ class TestIntNpImage:
     """Tests for the int_np_image type alias."""
 
     def test_accepts_2d_int_array(self) -> None:
+        """Accept a 2D int NumPy array for int_np_image."""
         img = np.ones((64, 128), dtype=np.int32)
         result = _accepts(img, int_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
+        """Reject a float NumPy array for int_np_image."""
         img = np.ones((64, 64), dtype=np.float32)
         _assert_rejected(img, int_np_image)
 
     def test_rejects_1d_array(self) -> None:
+        """Reject a 1D NumPy array for int_np_image."""
         img = np.ones((64,), dtype=np.int32)
         _assert_rejected(img, int_np_image)
 

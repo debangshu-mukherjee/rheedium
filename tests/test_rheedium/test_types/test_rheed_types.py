@@ -1,3 +1,5 @@
+"""Test suite for rheedium.types.rheed_types PyTrees."""
+
 from typing import Any
 
 import chex
@@ -24,6 +26,7 @@ class TestRHEEDPattern(chex.TestCase):
     """Comprehensive test suite for RHEEDPattern PyTree."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -177,6 +180,7 @@ class TestRHEEDImage(chex.TestCase):
     """Comprehensive test suite for RHEEDImage PyTree."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -388,12 +392,12 @@ class TestRHEEDPatternValidation(chex.TestCase):
         rng = jax.random.PRNGKey(0)
         k_out = jax.random.normal(rng, (n, 3))
         k_out = k_out / jnp.linalg.norm(k_out, axis=1, keepdims=True)
-        return dict(
-            g_indices=jnp.arange(n, dtype=jnp.int32),
-            k_out=k_out,
-            detector_points=jax.random.normal(rng, (n, 2)) * 50,
-            intensities=jnp.ones(n),
-        )
+        return {
+            "g_indices": jnp.arange(n, dtype=jnp.int32),
+            "k_out": k_out,
+            "detector_points": jax.random.normal(rng, (n, 2)) * 50,
+            "intensities": jnp.ones(n),
+        }
 
     def test_negative_intensities(self) -> None:
         """Negative intensities should be caught by validation."""
@@ -432,7 +436,7 @@ class TestRHEEDPatternValidation(chex.TestCase):
         """Mismatched intensities length should be caught."""
         kw = self._make_valid_pattern_kwargs(n=5)
         kw["intensities"] = jnp.ones(3)
-        with pytest.raises(Exception):
+        with pytest.raises(TypeCheckError):
             jax.jit(create_rheed_pattern)(**kw)
 
     def test_dtypes_are_correct(self) -> None:
@@ -451,13 +455,13 @@ class TestRHEEDImageValidation(chex.TestCase):
     def _make_valid_image_kwargs(self) -> dict[str, object]:
         """Build valid keyword arguments for create_rheed_image."""
         rng = jax.random.PRNGKey(0)
-        return dict(
-            img_array=jax.random.uniform(rng, (64, 64)),
-            incoming_angle=2.0,
-            calibration=0.01,
-            electron_wavelength=0.037,
-            detector_distance=1000.0,
-        )
+        return {
+            "img_array": jax.random.uniform(rng, (64, 64)),
+            "incoming_angle": 2.0,
+            "calibration": 0.01,
+            "electron_wavelength": 0.037,
+            "detector_distance": 1000.0,
+        }
 
     def test_negative_image_values(self) -> None:
         """Negative pixel values should be caught."""
@@ -544,15 +548,15 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         cart_positions = jnp.concatenate(
             [positions_3d, atomic_numbers], axis=1
         )
-        return dict(
-            cart_positions=cart_positions,
-            cell_lengths=jnp.array([150.0, 150.0, 20.0]),
-            cell_angles=jnp.array([90.0, 90.0, 90.0]),
-            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
-            depth=20.0,
-            x_extent=150.0,
-            y_extent=150.0,
-        )
+        return {
+            "cart_positions": cart_positions,
+            "cell_lengths": jnp.array([150.0, 150.0, 20.0]),
+            "cell_angles": jnp.array([90.0, 90.0, 90.0]),
+            "orientation": jnp.array([0, 0, 1], dtype=jnp.int32),
+            "depth": 20.0,
+            "x_extent": 150.0,
+            "y_extent": 150.0,
+        }
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_sliced_crystal_valid(self) -> None:
@@ -701,6 +705,7 @@ class TestRHEEDIntegration(chex.TestCase):
     """Test integrated operations with RHEED data structures."""
 
     def setUp(self) -> None:
+        """Initialize the random key for each test."""
         super().setUp()
         self.rng = jax.random.PRNGKey(42)
 
@@ -844,8 +849,10 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
             method="layers", n_layers=1, layer_tolerance=0.5
         )
         mask = identify_surface_atoms(positions, config)
-        assert bool(mask[4]) and bool(mask[5])
-        assert not bool(mask[0]) and not bool(mask[1])
+        assert bool(mask[4])
+        assert bool(mask[5])
+        assert not bool(mask[0])
+        assert not bool(mask[1])
 
     def test_layers_method_two_layers(self) -> None:
         """Layers method with n_layers=2."""

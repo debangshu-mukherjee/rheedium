@@ -27,7 +27,7 @@ from rheedium.simul.potential import crystal_projected_potential
 
 
 def _make_grid_params() -> tuple[tuple[int, int], Array, float, float]:
-    """Standard test grid parameters."""
+    """Return standard test grid parameters."""
     grid = (16, 16)
     cell = jnp.array([8.0, 8.0])
     voltage = 20.0

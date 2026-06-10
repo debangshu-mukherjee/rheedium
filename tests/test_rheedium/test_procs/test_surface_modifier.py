@@ -143,6 +143,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
     """Tests for apply_surface_occupancy_field."""
 
     def test_scales_only_surface_region_atomic_numbers(self) -> None:
+        """Verify only surface-region atomic numbers are scaled."""
         slab = _make_test_slab()
         modified = apply_surface_occupancy_field(
             slab,
@@ -162,6 +163,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_clips_surface_occupancies(self) -> None:
+        """Verify surface occupancies are clipped to a physical range."""
         slab = _make_test_slab()
         modified = apply_surface_occupancy_field(
             slab,
@@ -176,6 +178,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_grad_flows_through_surface_occupancy(self) -> None:
+        """Check gradients flow through the surface occupancy."""
         slab = _make_test_slab()
 
         def objective(occupancy: Array) -> Array:
@@ -191,6 +194,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 14.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_surface_occupancy_field compiles under jit."""
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda occupancy: apply_surface_occupancy_field(
@@ -208,6 +212,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_surface_occupancies(self) -> None:
+        """Check the field maps over batched surface occupancies."""
         slab = _make_test_slab()
 
         def top_layer_weight(occupancy: Array) -> Array:
@@ -229,6 +234,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
     """Tests for apply_surface_displacement_field."""
 
     def test_applies_displacements_only_near_surface(self) -> None:
+        """Verify displacements are applied only near the surface."""
         slab = _make_test_slab()
         modified = apply_surface_displacement_field(
             slab,
@@ -260,6 +266,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_zero_displacement_field_is_identity(self) -> None:
+        """Verify a zero displacement field leaves the slab unchanged."""
         slab = _make_test_slab()
         modified = apply_surface_displacement_field(
             slab,
@@ -274,6 +281,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_grad_flows_through_surface_displacement(self) -> None:
+        """Check gradients flow through the surface displacement."""
         slab = _make_test_slab()
 
         def objective(delta_z: Array) -> Array:
@@ -293,6 +301,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 1.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_surface_displacement_field compiles under jit."""
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda scale: apply_surface_displacement_field(
@@ -316,6 +325,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_displacement_scales(self) -> None:
+        """Check the field maps over batched displacement scales."""
         slab = _make_test_slab()
 
         def top_atom_z(scale: Array) -> Array:
@@ -343,6 +353,7 @@ class TestApplyStepEdgeField(chex.TestCase):
     """Tests for apply_step_edge_field."""
 
     def test_modulates_surface_heights_with_periodic_steps(self) -> None:
+        """Verify surface heights are modulated by periodic steps."""
         slab = _make_test_slab()
         modified = apply_step_edge_field(
             slab,
@@ -358,6 +369,7 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_zero_step_height_is_identity(self) -> None:
+        """Verify a zero step height leaves the slab unchanged."""
         slab = _make_test_slab()
         modified = apply_step_edge_field(
             slab,
@@ -373,6 +385,7 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_grad_flows_through_step_height(self) -> None:
+        """Check gradients flow through the step height."""
         slab = _make_test_slab()
 
         def objective(step_height: Array) -> Array:
@@ -387,6 +400,7 @@ class TestApplyStepEdgeField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 0.5, atol=1e-3)
 
     def test_jit_compiles(self) -> None:
+        """Verify apply_step_edge_field compiles under jit."""
         slab = _make_test_slab()
         compiled = jax.jit(
             lambda step_height: apply_step_edge_field(
@@ -405,6 +419,7 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_step_heights(self) -> None:
+        """Check the step edge field maps over batched step heights."""
         slab = _make_test_slab()
 
         def top_atom_z(step_height: Array) -> Array:

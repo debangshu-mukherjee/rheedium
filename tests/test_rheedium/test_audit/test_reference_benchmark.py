@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -26,21 +27,38 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _REFERENCE_DIR = (
     _REPO_ROOT / "tests" / "test_data" / "reference_data" / "synthetic"
 )
-_REFERENCE_CASES = load_reference_cases(_REFERENCE_DIR)
-_REFERENCE_CASE = _REFERENCE_CASES[0]
-_SIMULATED_IMAGE = simulate_detector_image_from_metadata(
-    _REFERENCE_CASE.metadata,
-    repo_root=_REPO_ROOT,
-)
-_CASE_RESULT = benchmark_reference_case(_REFERENCE_CASE, repo_root=_REPO_ROOT)
-_TEMP_DIR = TemporaryDirectory()
-_SUMMARY_OUTPUT_PATH = Path(_TEMP_DIR.name) / "summary.json"
-_SUITE_SUMMARY = benchmark_reference_suite(
-    reference_dir=_REFERENCE_DIR,
-    output_path=_SUMMARY_OUTPUT_PATH,
-    repo_root=_REPO_ROOT,
-)
-_SUITE_PAYLOAD = json.loads(_SUMMARY_OUTPUT_PATH.read_text())
+
+if os.environ.get("BUILDING_DOCS"):
+    # Skip the heavy import-time simulation during documentation builds so
+    # autodoc can import this module (tests are not executed there). The
+    # placeholders below are only referenced inside test bodies, which do
+    # not run under Sphinx. See docs/source/api/tests.rst.
+    _REFERENCE_CASES = None
+    _REFERENCE_CASE = None
+    _SIMULATED_IMAGE = None
+    _CASE_RESULT = None
+    _TEMP_DIR = None
+    _SUMMARY_OUTPUT_PATH = None
+    _SUITE_SUMMARY = None
+    _SUITE_PAYLOAD = None
+else:
+    _REFERENCE_CASES = load_reference_cases(_REFERENCE_DIR)
+    _REFERENCE_CASE = _REFERENCE_CASES[0]
+    _SIMULATED_IMAGE = simulate_detector_image_from_metadata(
+        _REFERENCE_CASE.metadata,
+        repo_root=_REPO_ROOT,
+    )
+    _CASE_RESULT = benchmark_reference_case(
+        _REFERENCE_CASE, repo_root=_REPO_ROOT
+    )
+    _TEMP_DIR = TemporaryDirectory()
+    _SUMMARY_OUTPUT_PATH = Path(_TEMP_DIR.name) / "summary.json"
+    _SUITE_SUMMARY = benchmark_reference_suite(
+        reference_dir=_REFERENCE_DIR,
+        output_path=_SUMMARY_OUTPUT_PATH,
+        repo_root=_REPO_ROOT,
+    )
+    _SUITE_PAYLOAD = json.loads(_SUMMARY_OUTPUT_PATH.read_text())
 
 
 def test_load_reference_cases_returns_typed_cases() -> None:
