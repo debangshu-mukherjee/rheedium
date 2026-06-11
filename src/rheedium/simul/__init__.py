@@ -102,6 +102,20 @@ Routine Listings
     simulation.
 :func:`surface_structure_factor`
     Calculate structure factor for surface with q_z dependence.
+
+Notes
+-----
+JAX transformability is not uniform across this module. ``grad`` and
+``vmap`` are supported throughout (w.r.t. continuous parameters). ``jit``
+works directly for the fixed-shape numerical kernels; the string-mode
+functions (e.g. ``compute_kinematic_intensities_with_ctrs`` with
+``ctr_mixing_mode``) require the string to be a static argument
+(``jax.jit(..., static_argnames=...)`` or ``eqx.filter_jit``). The
+grid/reflection builders -- ``sliced_crystal_to_projected_potential_slices``
+and ``multislice_simulator`` -- size their output from the data
+(``int(jnp.ceil(...))`` grids, data-dependent reflection counts) and so are
+**not** ``jit``-compilable as written; run them eagerly or fix their sizes.
+See the "JAX Transformability" guide for the full support matrix.
 """
 
 from .beam_averaging import (

@@ -31,6 +31,7 @@ These guides are written for **physics researchers** working with RHEED who want
 | [Data Wrangling](data-wrangling.md) | Parsing XYZ, CIF, and POSCAR files; coordinate transformations |
 | [Unit Cell](unit-cell.md) | Lattice vector construction, reciprocal space, and surface slabs |
 | [PyTree Architecture](pytree-architecture.md) | JAX data structures enabling GPU acceleration and autodiff |
+| [JAX Transformability](jax-transformability.md) | Which of `grad`/`vmap`/`jit` are supported where, and the `jit` boundaries |
 
 ## Quick Start
 

@@ -20,6 +20,7 @@ Rheedium
    guides/data-wrangling
    guides/unit-cell
    guides/pytree-architecture
+   guides/jax-transformability
 
 .. toctree::
    :maxdepth: 2

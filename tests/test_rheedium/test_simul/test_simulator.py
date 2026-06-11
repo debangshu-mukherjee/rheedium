@@ -13,6 +13,7 @@ Tests the integration of:
 from unittest.mock import patch
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -896,7 +897,8 @@ class TestComputeKinematicIntensitiesExtended(
     def test_ctr_mode_none(self) -> None:
         """Test intensity calculation with no CTR contribution.
 
-        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        Note: jittable with ctr_mixing_mode as a static argument; see
+        the JAX Transformability guide and test_ctr_jit_static_mode.
         """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -916,7 +918,8 @@ class TestComputeKinematicIntensitiesExtended(
     def test_ctr_mode_coherent(self) -> None:
         """Test intensity calculation with coherent CTR mixing.
 
-        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        Note: jittable with ctr_mixing_mode as a static argument; see
+        the JAX Transformability guide and test_ctr_jit_static_mode.
         """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -936,7 +939,8 @@ class TestComputeKinematicIntensitiesExtended(
     def test_ctr_mode_incoherent(self) -> None:
         """Test intensity calculation with incoherent CTR mixing.
 
-        Note: JIT not supported due to string ctr_mixing_mode parameter.
+        Note: jittable with ctr_mixing_mode as a static argument; see
+        the JAX Transformability guide and test_ctr_jit_static_mode.
         """
         var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
 
@@ -951,6 +955,28 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_shape(intensities, (3,))
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
+
+    def test_ctr_jit_static_mode(self) -> None:
+        """Compile the CTR intensity function with the mode held static.
+
+        The only jit blocker is the string ``ctr_mixing_mode``; making it
+        static (here via ``eqx.filter_jit``, equivalently
+        ``jax.jit(..., static_argnames=("ctr_mixing_mode",))``) yields a
+        fully compiled function whose output matches the eager result.
+        See the JAX Transformability guide.
+        """
+        kwargs = {
+            "crystal": self.si_crystal,
+            "g_allowed": self.g_vectors,
+            "k_in": self.k_in,
+            "k_out": self.k_out,
+            "ctr_mixing_mode": "incoherent",
+        }
+        eager = compute_kinematic_intensities_with_ctrs(**kwargs)
+        compiled = eqx.filter_jit(compute_kinematic_intensities_with_ctrs)(
+            **kwargs
+        )
+        chex.assert_trees_all_close(eager, compiled, atol=1e-6)
 
     @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
