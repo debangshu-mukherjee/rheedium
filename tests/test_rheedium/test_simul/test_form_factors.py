@@ -563,7 +563,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             lambda z: var_form_factor(z, q_single), in_axes=0
         )
         f_vmapped = vmapped_ff(atomic_nums)
-        chex.assert_shape(f_vmapped, (len(atomic_nums), 1))
+        chex.assert_shape(f_vmapped, (len(atomic_nums),))
 
         def loss_fn(q: float) -> Array:
             f_val = var_form_factor(14, jnp.array(q))
