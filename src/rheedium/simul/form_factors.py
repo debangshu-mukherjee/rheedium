@@ -274,13 +274,13 @@ def kirkland_form_factor(
     q_over_4pi_squared: Float[Array, "... 1"] = jnp.square(q_over_4pi)[
         ..., jnp.newaxis
     ]
-    lorentzian_terms: Float[Array, "... 3"] = parameters.lorentzian_amplitudes[
-        jnp.newaxis, :
-    ] / (q_over_4pi_squared + parameters.lorentzian_scales[jnp.newaxis, :])
-    gaussian_terms: Float[Array, "... 3"] = parameters.gaussian_amplitudes[
-        jnp.newaxis, :
-    ] * jnp.exp(
-        -parameters.gaussian_scales[jnp.newaxis, :] * q_over_4pi_squared
+    lorentzian_terms: Float[Array, "... 3"] = (
+        parameters.lorentzian_amplitudes
+        / (q_over_4pi_squared + parameters.lorentzian_scales)
+    )
+    gaussian_terms: Float[Array, "... 3"] = (
+        parameters.gaussian_amplitudes
+        * jnp.exp(-parameters.gaussian_scales * q_over_4pi_squared)
     )
     form_factor: Float[Array, "..."] = jnp.sum(
         lorentzian_terms + gaussian_terms,

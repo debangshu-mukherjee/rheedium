@@ -1,5 +1,7 @@
 """Test suite for rheedium.types.custom_types type aliases."""
 
+from typing import Any
+
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -19,12 +21,12 @@ from rheedium.types.custom_types import (
 )
 
 
-def _accepts(value: object, hint: object) -> object:
+def _accepts(value: object, hint: Any) -> object:
     die_if_unbearable(value, hint)
     return value
 
 
-def _assert_rejected(value: object, hint: object) -> None:
+def _assert_rejected(value: object, hint: Any) -> None:
     with pytest.raises(BeartypeDoorHintViolation):
         die_if_unbearable(value, hint)
 

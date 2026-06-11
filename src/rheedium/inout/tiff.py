@@ -325,9 +325,7 @@ def _load_tiff_directory(
                 if frame.ndim == _MULTIPAGE_FRAME_NDIM:
                     frame = frame[0]
                 frames.append(frame)
-                metadata_list.append(
-                    extract_frame_metadata(tif.pages[0], idx)
-                )
+                metadata_list.append(extract_frame_metadata(tif.pages[0], idx))
         except PermissionError:
             raise
         except (tifffile.TiffFileError, OSError) as err:
