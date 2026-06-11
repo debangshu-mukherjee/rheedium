@@ -39,11 +39,11 @@ The inverse problem is most informative when:
 3. Regularization prevents overfitting to noise.
 """
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Callable, Final, NamedTuple, Optional, Tuple
-from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import (
@@ -159,8 +159,7 @@ _OrientationOptimizerResult = Tuple[
 ]
 
 
-@register_pytree_node_class
-class OrientationFitResult(NamedTuple):
+class OrientationFitResult(eqx.Module):
     """Results from orientation distribution fitting.
 
     Attributes
@@ -182,52 +181,9 @@ class OrientationFitResult(NamedTuple):
     fitted_distribution: OrientationDistribution
     final_loss: Float[Array, ""]
     loss_history: Float[Array, "N_steps"]
-    converged: bool
-    n_iterations: int
+    converged: bool = eqx.field(static=True)
+    n_iterations: int = eqx.field(static=True)
     residual_pattern: float_jax_image
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            OrientationDistribution,
-            Float[Array, ""],
-            Float[Array, "N_steps"],
-            float_jax_image,
-        ],
-        Tuple[bool, int],
-    ]:
-        """Flatten for JAX PyTree support."""
-        return (
-            (
-                self.fitted_distribution,
-                self.final_loss,
-                self.loss_history,
-                self.residual_pattern,
-            ),
-            (self.converged, self.n_iterations),
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: Tuple[bool, int],
-        children: Tuple[
-            OrientationDistribution,
-            Float[Array, ""],
-            Float[Array, "N_steps"],
-            float_jax_image,
-        ],
-    ) -> "OrientationFitResult":
-        """Unflatten from a JAX PyTree."""
-        return cls(
-            fitted_distribution=children[0],
-            final_loss=children[1],
-            loss_history=children[2],
-            converged=aux_data[0],
-            n_iterations=aux_data[1],
-            residual_pattern=children[3],
-        )
 
 
 @jaxtyped(typechecker=beartype)

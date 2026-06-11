@@ -46,11 +46,11 @@ JAX Validation Pattern:
    compilation errors
 """
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Final, NamedTuple, Tuple, Union
 from jax import lax
-from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import float_jax_image, scalar_float, scalar_num
@@ -62,8 +62,7 @@ _MAX_CELL_ANGLE: Final[int] = 180
 _SELF_DISTANCE_TOL: Final[float] = 0.1
 
 
-@register_pytree_node_class
-class RHEEDPattern(NamedTuple):
+class RHEEDPattern(eqx.Module):
     """JAX-compatible RHEED diffraction pattern data structure.
 
     This PyTree represents a RHEED diffraction pattern containing reflection
@@ -87,7 +86,8 @@ class RHEEDPattern(NamedTuple):
     intensities : Float[Array, "M"]
         Intensity values for each reflection. Shape (M,) with non-negative
         intensity values.
-    This class is registered as a PyTree node, making it compatible with JAX
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable and
     stored in JAX arrays for efficient RHEED pattern analysis.
 
@@ -114,46 +114,8 @@ class RHEEDPattern(NamedTuple):
     detector_points: Float[Array, "M 2"]
     intensities: Float[Array, "M"]
 
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Int[Array, "N"],
-            Float[Array, "M 3"],
-            Float[Array, "M 2"],
-            Float[Array, "M"],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.G_indices,
-                self.k_out,
-                self.detector_points,
-                self.intensities,
-            ),
-            None,
-        )
 
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Int[Array, "N"],
-            Float[Array, "M 3"],
-            Float[Array, "M 2"],
-            Float[Array, "M"],
-        ],
-    ) -> "RHEEDPattern":
-        """Unflatten the PyTree into a RHEEDPattern instance."""
-        del aux_data
-        return cls(*children)
-
-
-@register_pytree_node_class
-class RHEEDImage(NamedTuple):
+class RHEEDImage(eqx.Module):
     """JAX-compatible experimental RHEED image data structure.
 
     This PyTree represents an experimental RHEED image with associated
@@ -183,7 +145,8 @@ class RHEEDImage(NamedTuple):
 
     Notes
     -----
-    This class is registered as a PyTree node, making it compatible with JAX
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable for
     functional programming patterns and efficient image processing.
 
@@ -208,46 +171,6 @@ class RHEEDImage(NamedTuple):
     calibration: Union[Float[Array, "2"], scalar_float]
     electron_wavelength: scalar_float
     detector_distance: scalar_num
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            float_jax_image,
-            scalar_float,
-            Union[Float[Array, "2"], scalar_float],
-            scalar_float,
-            scalar_num,
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.img_array,
-                self.incoming_angle,
-                self.calibration,
-                self.electron_wavelength,
-                self.detector_distance,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            float_jax_image,
-            scalar_float,
-            Union[Float[Array, "2"], scalar_float],
-            scalar_float,
-            scalar_num,
-        ],
-    ) -> "RHEEDImage":
-        """Unflatten the PyTree into a RHEEDImage instance."""
-        del aux_data
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
@@ -560,8 +483,7 @@ def create_rheed_image(
     return validated_rheed_image
 
 
-@register_pytree_node_class
-class SlicedCrystal(NamedTuple):
+class SlicedCrystal(eqx.Module):
     """JAX-compatible surface-oriented crystal structure for RHEED simulation.
 
     This PyTree represents a crystal structure that has been sliced
@@ -599,7 +521,8 @@ class SlicedCrystal(NamedTuple):
 
     Notes
     -----
-    This class is registered as a PyTree node, making it compatible
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible
     with JAX transformations. The structure is designed specifically
     for RHEED simulations
     where:
@@ -638,52 +561,6 @@ class SlicedCrystal(NamedTuple):
     depth: scalar_float
     x_extent: scalar_float
     y_extent: scalar_float
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, "N 4"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Int[Array, "3"],
-            scalar_float,
-            scalar_float,
-            scalar_float,
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.cart_positions,
-                self.cell_lengths,
-                self.cell_angles,
-                self.orientation,
-                self.depth,
-                self.x_extent,
-                self.y_extent,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Float[Array, "N 4"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Int[Array, "3"],
-            scalar_float,
-            scalar_float,
-            scalar_float,
-        ],
-    ) -> "SlicedCrystal":
-        """Unflatten the PyTree into a SlicedCrystal instance."""
-        del aux_data
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)

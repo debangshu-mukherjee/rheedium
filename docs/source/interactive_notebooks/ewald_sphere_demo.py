@@ -24,7 +24,6 @@ def _(mo):
         relativistic wavelength convention used in ``rheedium.simul``.
         """
     )
-    return
 
 
 @app.cell
@@ -203,7 +202,6 @@ def _(
     )
 
     mo.vstack([summary, fig])
-    return
 
 
 if __name__ == "__main__":

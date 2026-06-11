@@ -3,7 +3,6 @@ import sys
 import tomllib
 from datetime import datetime
 
-from beartype.typing import Tuple
 from sphinx.application import Sphinx
 
 os.environ["JAX_PLATFORM_NAME"] = "cpu"

@@ -1,18 +1,35 @@
 repos:
   - repo: local
     hooks:
+      # ruff lint with autofix. If it fixes anything, pre-commit reports the
+      # files as modified and aborts the commit; re-stage and commit again.
       - id: ruff-check
-        name: ruff check (autofix and stage)
-        entry: bash -c 'ruff check --fix "$@" && git add "$@"' --
+        name: ruff check
+        entry: uv run --no-sync ruff check --fix
         language: system
         types: [python]
       - id: ruff-format
-        name: ruff format (autofix and stage)
-        entry: bash -c 'ruff format "$@" && git add "$@"' --
+        name: ruff format
+        entry: uv run --no-sync ruff format
         language: system
         types: [python]
       - id: ty-check
-        name: ty check
-        entry: uv run ty check src
+        name: ty check (src + tests)
+        entry: uv run --no-sync ty check
         language: system
         pass_filenames: false
+        types: [python]
+      # Informational strict type scan. Mirrors the `type-safety-scan` CI job:
+      # elevates the rules suppressed in [tool.ty.rules] to surface real bugs
+      # hiding among jaxtyping/beartype false positives. `stages: [manual]` keeps
+      # it OFF the commit path (too noisy: ~100 known false positives); invoke on
+      # demand with `pre-commit run --hook-stage manual strict-ty-scan`. The
+      # reviewable digest also runs automatically in the CI `type-safety-scan`
+      # job. `--exit-zero` keeps it non-blocking.
+      - id: strict-ty-scan
+        name: strict ty scan (informational, manual)
+        entry: uv run --no-sync ty check src --error=invalid-assignment --error=invalid-argument-type --error=no-matching-overload --error=missing-argument --error=unknown-argument --error=too-many-positional-arguments --exit-zero --output-format=concise
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [manual]

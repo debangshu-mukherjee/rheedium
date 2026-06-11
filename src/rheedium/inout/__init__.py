@@ -68,8 +68,9 @@ Notes
 All parsing functions return JAX-compatible data structures suitable for
 automatic differentiation and GPU acceleration.
 
-Optional dependencies (ASE, pymatgen) are imported lazily and will raise
-ImportError with installation instructions if not available.
+ASE and pymatgen are core dependencies and are always available, so the
+interoperability helpers (:func:`from_ase`, :func:`to_ase`,
+:func:`from_pymatgen`, :func:`to_pymatgen`) can be imported unconditionally.
 """
 
 from .cif import parse_cif, symmetry_expansion

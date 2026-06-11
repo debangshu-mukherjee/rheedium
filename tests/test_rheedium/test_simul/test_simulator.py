@@ -1530,7 +1530,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             weights=jnp.array([0.25, 0.75]),
         )
 
-        def fake_ewald_simulator(
+        def fake_ewald_simulator(  # noqa: PLR0913
             crystal: CrystalStructure,
             voltage_kv: float,
             theta_deg: float,
@@ -1540,6 +1540,9 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             detector_distance: float,
             temperature: float,
             surface_roughness: float,
+            ctr_regularization: float,
+            ctr_power: float,
+            roughness_power: float,
             surface_config: SurfaceConfig,
         ) -> RHEEDPattern:
             del (
@@ -1551,6 +1554,9 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
                 detector_distance,
                 temperature,
                 surface_roughness,
+                ctr_regularization,
+                ctr_power,
+                roughness_power,
                 surface_config,
             )
             phi = jnp.asarray(phi_deg, dtype=jnp.float64)

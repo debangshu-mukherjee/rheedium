@@ -7,6 +7,7 @@ Thank you for your interest in contributing to Rheedium! This guide will help yo
 ### Prerequisites
 
 - Python 3.11 or higher
+- [uv](https://docs.astral.sh/uv/) (package and environment manager)
 - Git
 - CUDA-compatible GPU (optional, for acceleration)
 
@@ -14,13 +15,13 @@ Thank you for your interest in contributing to Rheedium! This guide will help yo
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/dxm447/rheedium.git
+   git clone https://github.com/debangshu-mukherjee/rheedium.git
    cd rheedium
    ```
 
 2. **Install in development mode:**
    ```bash
-   pip install -e ".[dev,test,docs]"
+   uv sync --extra dev
    ```
 
 3. **Install pre-commit hooks:**
@@ -264,13 +265,16 @@ def test_wavelength_calculation():
 
 1. **Code Quality:**
    ```bash
-   # Format code
-   black src/ tests/
-   isort src/ tests/
-   
+   # Lint and format code
+   ruff check src/ tests/
+   ruff format src/ tests/
+
+   # Type check
+   ty check src
+
    # Run pre-commit
    pre-commit run --all-files
-   
+
    # Run tests
    pytest tests/
    ```

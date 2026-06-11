@@ -80,10 +80,8 @@ jobs:
         uv run python -c "import rheedium; print('Beartype validation passed')"
 
     - name: Run tests
-      id: pytest
       env:
         JAX_PLATFORMS: cpu
-      continue-on-error: true
       run: uv run pytest --cov=src/rheedium --cov-branch --cov-report=xml --cov-report=html --cov-report=term-missing --junitxml=test-results.xml -v
 
     - name: List generated files (debug)
@@ -156,3 +154,58 @@ jobs:
       with:
         name: dist
         path: dist/
+
+  type-safety-scan:
+    name: Strict type scan (informational)
+    needs: resolve-python
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install ${{ needs.resolve-python.outputs.latest }}
+
+    - name: Install dependencies
+      run: uv sync --extra dev
+
+    # Surfaces the type-checker rules that are suppressed project-wide because
+    # of jaxtyping/beartype false positives (see [tool.ty.rules] in
+    # pyproject.toml). This job NEVER blocks CI (`--exit-zero`); it exists so a
+    # new real bug in these categories is visible for review instead of being
+    # silently swallowed. Graduate a rule back to "error" in pyproject once its
+    # count reaches zero (as was done for unresolved-attribute).
+    - name: Strict ty scan (non-blocking)
+      shell: bash
+      run: |
+        uv run ty check src \
+          --error=invalid-assignment \
+          --error=invalid-argument-type \
+          --error=no-matching-overload \
+          --error=missing-argument \
+          --error=unknown-argument \
+          --error=too-many-positional-arguments \
+          --exit-zero --output-format=concise 1>scan.txt 2>/dev/null
+        count=$(grep -cE 'error\[' scan.txt || true)
+        {
+          echo "## Strict type-safety scan (informational)"
+          echo ""
+          echo "Rules suppressed project-wide for jaxtyping/beartype false"
+          echo "positives, surfaced here for review. **Does not block CI.**"
+          echo ""
+          echo "**Diagnostics in \`src/\`: ${count}**"
+          echo ""
+          echo "<details><summary>Show diagnostics</summary>"
+          echo ""
+          echo '```'
+          grep -E 'error\[' scan.txt || echo "(none)"
+          echo '```'
+          echo ""
+          echo "</details>"
+        } >> "$GITHUB_STEP_SUMMARY"
+        echo "Strict type scan: ${count} diagnostics in src/ (informational, non-blocking)."

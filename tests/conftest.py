@@ -64,7 +64,11 @@ import jax  # noqa: E402
 import pytest  # noqa: E402
 
 MEM_PER_WORKER_GB: Final[int] = 5
-MEM_LEAK_THRESHOLD_GB: Final[float] = 0.5
+# Runtime jaxtyping/beartype checking (the --jaxtyping-packages pytest hook)
+# retains type-check caches that jax.clear_caches() does not free, so the
+# heaviest integration tests legitimately retain ~0.5 GB after a run. Keep
+# the per-test growth limit above that floor to avoid false-positive leaks.
+MEM_LEAK_THRESHOLD_GB: Final[float] = 1.0
 AVAILABLE_MEM_FRACTION: Final[float] = 0.80
 
 

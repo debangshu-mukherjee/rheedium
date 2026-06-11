@@ -1843,7 +1843,9 @@ def sliced_crystal_to_projected_potential_slices(
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
     n_atoms: int = positions.shape[0]
 
-    def _calculate_slice_potential(slice_idx: int) -> Float[Array, "nx ny"]:
+    def _calculate_slice_potential(
+        slice_idx: Int[Array, ""],
+    ) -> Float[Array, "nx ny"]:
         """Calculate potential for a single slice."""
         z_start: Float[Array, ""] = slice_idx * slice_thickness
         z_end: Float[Array, ""] = (slice_idx + 1) * slice_thickness
@@ -1852,7 +1854,9 @@ def sliced_crystal_to_projected_potential_slices(
             z_positions >= z_start, z_positions < z_end
         )
 
-        def _atom_contribution(atom_idx: int) -> Float[Array, "nx ny"]:
+        def _atom_contribution(
+            atom_idx: Int[Array, ""],
+        ) -> Float[Array, "nx ny"]:
             """Calculate contribution from single atom to potential."""
             pos: Float[Array, "3"] = positions[atom_idx]
             z_number: Int[Array, ""] = atomic_numbers[atom_idx].astype(

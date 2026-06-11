@@ -54,9 +54,7 @@ SAVE_DIR = Path(__file__).parent
 def save_fig(name: str) -> None:
     """Save current figure as SVG and close it."""
     # Replace .png or .pdf extension with .svg if present
-    if name.endswith(".png"):
-        name = name[:-4] + ".svg"
-    elif name.endswith(".pdf"):
+    if name.endswith(".png") or name.endswith(".pdf"):
         name = name[:-4] + ".svg"
     plt.savefig(
         SAVE_DIR / name,
@@ -262,7 +260,7 @@ def generate_surface_rod_figures() -> None:
     # Panel 2: Truncated crystal
     ax2 = axes[1]
     for i in range(-2, 3):
-        for j in range(0, 3):  # Only above surface
+        for j in range(3):  # Only above surface
             ax2.scatter(i, j, c="blue", s=100)
     ax2.axhline(-0.3, color="brown", linewidth=3)
     ax2.fill_between([-3, 3], [-3, -3], [-0.3, -0.3], color="tan", alpha=0.3)
@@ -774,7 +772,7 @@ def generate_rheed_pattern_figures() -> None:
 
     from rheedium.inout.cif import parse_cif
     from rheedium.plots.figuring import create_phosphor_colormap
-    from rheedium.simul.simulator import ewald_simulator, kinematic_simulator
+    from rheedium.simul.simulator import ewald_simulator
     from rheedium.types.rheed_types import SurfaceConfig
 
     # Use test CIF files
@@ -791,14 +789,13 @@ def generate_rheed_pattern_figures() -> None:
     # 1. MgO kinematic RHEED pattern
     print("  Generating MgO RHEED pattern...")
     mgo_crystal = parse_cif(str(mgo_cif))
-    mgo_pattern = kinematic_simulator(
+    mgo_pattern = ewald_simulator(
         mgo_crystal,
         voltage_kv=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,
         kmax=5,
-        lmax=3,
         surface_roughness=0.3,
     )
 
@@ -815,14 +812,13 @@ def generate_rheed_pattern_figures() -> None:
     # 2. Structure factor comparison: MgO vs SrTiO3
     print("  Generating structure factor comparison...")
     srtio3_crystal = parse_cif(str(srtio3_cif))
-    srtio3_pattern = kinematic_simulator(
+    srtio3_pattern = ewald_simulator(
         srtio3_crystal,
         voltage_kv=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,
         kmax=5,
-        lmax=3,
         surface_roughness=0.3,
     )
 
@@ -858,16 +854,17 @@ def generate_rheed_pattern_figures() -> None:
     fractions = [0.1, 0.3, 0.5]
 
     for ax, frac in zip(axes, fractions):
-        pattern = kinematic_simulator(
+        pattern = ewald_simulator(
             srtio3_crystal,
             voltage_kv=15.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=5,
             kmax=5,
-            lmax=3,
-            surface_fraction=frac,
             surface_roughness=0.3,
+            surface_config=SurfaceConfig(
+                method="height", height_fraction=frac
+            ),
         )
         image, extent = _render_rheed_to_image(
             pattern, grid_size=300, spot_width=0.04

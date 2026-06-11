@@ -33,11 +33,11 @@ Integration uses Gauss-Hermite quadrature for continuous distributions
 and exact summation for discrete variants.
 """
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable, Final, NamedTuple, Optional, Tuple
-from jax.tree_util import register_pytree_node_class
+from beartype.typing import Callable, Final, Optional, Tuple
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
@@ -69,8 +69,7 @@ def _normalize_probability_weights(
     return normalized_weights
 
 
-@register_pytree_node_class
-class OrientationDistribution(NamedTuple):
+class OrientationDistribution(eqx.Module):
     r"""Probability distribution over domain azimuthal orientations.
 
     Extended Summary
@@ -145,43 +144,10 @@ class OrientationDistribution(NamedTuple):
     discrete_angles_deg: Float[Array, "M"]
     discrete_weights: Float[Array, "M"]
     mosaic_fwhm_deg: Float[Array, ""]
-    distribution_id: Optional[str] = None
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[Float[Array, "M"], Float[Array, "M"], Float[Array, ""]],
-        Optional[str],
-    ]:
-        """Flatten for JAX PyTree."""
-        return (
-            (
-                self.discrete_angles_deg,
-                self.discrete_weights,
-                self.mosaic_fwhm_deg,
-            ),
-            self.distribution_id,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: Optional[str],
-        children: Tuple[
-            Float[Array, "M"], Float[Array, "M"], Float[Array, ""]
-        ],
-    ) -> "OrientationDistribution":
-        """Unflatten from JAX PyTree."""
-        return cls(
-            discrete_angles_deg=children[0],
-            discrete_weights=children[1],
-            mosaic_fwhm_deg=children[2],
-            distribution_id=aux_data,
-        )
+    distribution_id: Optional[str] = eqx.field(static=True, default=None)
 
 
-@register_pytree_node_class
-class SizeDistribution(NamedTuple):
+class SizeDistribution(eqx.Module):
     """Probability distribution over coherent domain sizes.
 
     Extended Summary
@@ -215,53 +181,11 @@ class SizeDistribution(NamedTuple):
     For "delta" distribution, all domains have exactly mean_ang size.
     """
 
-    distribution_type: str
+    distribution_type: str = eqx.field(static=True)
     mean_ang: Float[Array, ""]
     sigma_ang: Float[Array, ""]
     min_size_ang: Float[Array, ""]
     max_size_ang: Float[Array, ""]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-        ],
-        str,
-    ]:
-        """Flatten for JAX PyTree."""
-        return (
-            (
-                self.mean_ang,
-                self.sigma_ang,
-                self.min_size_ang,
-                self.max_size_ang,
-            ),
-            self.distribution_type,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: str,
-        children: Tuple[
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-        ],
-    ) -> "SizeDistribution":
-        """Unflatten from JAX PyTree."""
-        return cls(
-            distribution_type=aux_data,
-            mean_ang=children[0],
-            sigma_ang=children[1],
-            min_size_ang=children[2],
-            max_size_ang=children[3],
-        )
 
 
 @jaxtyped(typechecker=beartype)

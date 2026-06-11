@@ -26,12 +26,12 @@ Routine Listings
     Image-matching reconstruction using Adagrad.
 """
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Any, Callable, NamedTuple, Optional, Tuple
+from beartype.typing import Any, Callable, Optional
 from jax.flatten_util import ravel_pytree
-from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import scalar_float
@@ -42,8 +42,7 @@ from .losses import (
 )
 
 
-@register_pytree_node_class
-class ReconstructionResult(NamedTuple):
+class ReconstructionResult(eqx.Module):
     """Container for reconstruction outputs and optimization traces.
 
     Attributes
@@ -69,49 +68,6 @@ class ReconstructionResult(NamedTuple):
     step_norm_history: Float[Array, "N"]
     iterations: Int[Array, ""]
     converged: Bool[Array, ""]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Any,
-            Float[Array, "N"],
-            Float[Array, "N"],
-            Float[Array, "N"],
-            Int[Array, ""],
-            Bool[Array, ""],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of leaves."""
-        return (
-            (
-                self.params,
-                self.objective_history,
-                self.gradient_norm_history,
-                self.step_norm_history,
-                self.iterations,
-                self.converged,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Any,
-            Float[Array, "N"],
-            Float[Array, "N"],
-            Float[Array, "N"],
-            Int[Array, ""],
-            Bool[Array, ""],
-        ],
-    ) -> "ReconstructionResult":
-        """Unflatten the PyTree into a result instance."""
-        del aux_data
-        return cls(*children)
 
 
 def _tree_l2_norm(tree: Any) -> scalar_float:

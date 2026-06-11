@@ -1,10 +1,12 @@
 """Tests for HDF5 PyTree serialization."""
 
+import dataclasses
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
 import chex
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -40,6 +42,15 @@ def _assert_round_trip_equal(actual: Any, expected: Any) -> None:
             _assert_round_trip_equal(
                 getattr(actual, field_name),
                 getattr(expected, field_name),
+            )
+        return
+
+    if isinstance(expected, eqx.Module):
+        assert type(actual) is type(expected)
+        for field in dataclasses.fields(expected):
+            _assert_round_trip_equal(
+                getattr(actual, field.name),
+                getattr(expected, field.name),
             )
         return
 

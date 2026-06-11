@@ -26,7 +26,7 @@ containers are also supported inside those objects.
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import h5py
@@ -77,7 +77,17 @@ class _PyTreeMeta:
     children_fields: tuple[str, ...]
     aux_encoder: Callable[[Any], Any]
     aux_decoder: Callable[[Any], Any]
-    uses_tree_methods: bool = True
+    aux_fields: tuple[str, ...] = ()
+
+
+def _field_names(cls: Any) -> tuple[str, ...]:  # noqa: ANN401
+    """Return the field names of a NamedTuple or eqx.Module class."""
+    namedtuple_fields: Optional[tuple[str, ...]] = getattr(
+        cls, "_fields", None
+    )
+    if namedtuple_fields is not None:
+        return namedtuple_fields
+    return tuple(field.name for field in fields(cls))
 
 
 def _encode_none(
@@ -92,17 +102,6 @@ def _decode_none(
 ) -> None:
     """Decode JSON ``null`` back to ``None`` auxiliary data."""
     return
-
-
-def _scalar_to_python(
-    value: Any,  # noqa: ANN401
-) -> Any:  # noqa: ANN401
-    """Convert a scalar array-like value to a plain Python scalar."""
-    scalar_array: NDArray = np.asarray(value)
-    if scalar_array.ndim != 0:
-        msg = "Only scalar auxiliary values can be JSON-encoded."
-        raise TypeError(msg)
-    return scalar_array.item()
 
 
 def _encode_json_value(  # noqa: PLR0911
@@ -172,24 +171,6 @@ def _decode_json_value(
     return value
 
 
-def _encode_scalar_tuple(
-    aux: tuple[Any, ...],  # noqa: ANN401
-) -> list[Any]:
-    """Encode a tuple of scalar auxiliary values for JSON storage."""
-    return [_scalar_to_python(item) for item in aux]
-
-
-def _decode_potential_slices_aux(
-    value: Any,  # noqa: ANN401
-) -> tuple[Any, Any, Any]:
-    """Decode PotentialSlices scalar auxiliary metadata."""
-    decoded: Any = _decode_json_value(value)
-    components: list[Any] = [
-        jnp.asarray(component, dtype=jnp.float64) for component in decoded
-    ]
-    return (components[0], components[1], components[2])
-
-
 def _encode_json_aux(
     aux: Any,  # noqa: ANN401
 ) -> Any:  # noqa: ANN401
@@ -207,27 +188,32 @@ def _decode_json_aux(
 _PYTREE_REGISTRY: dict[str, _PyTreeMeta] = {
     "ElectronBeam": _PyTreeMeta(
         cls=ElectronBeam,
-        children_fields=ElectronBeam._fields,
+        children_fields=_field_names(ElectronBeam),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "CrystalStructure": _PyTreeMeta(
         cls=CrystalStructure,
-        children_fields=CrystalStructure._fields,
+        children_fields=_field_names(CrystalStructure),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "EwaldData": _PyTreeMeta(
         cls=EwaldData,
-        children_fields=EwaldData._fields,
+        children_fields=_field_names(EwaldData),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "PotentialSlices": _PyTreeMeta(
         cls=PotentialSlices,
-        children_fields=("slices",),
-        aux_encoder=_encode_scalar_tuple,
-        aux_decoder=_decode_potential_slices_aux,
+        children_fields=(
+            "slices",
+            "slice_thickness",
+            "x_calibration",
+            "y_calibration",
+        ),
+        aux_encoder=_encode_none,
+        aux_decoder=_decode_none,
     ),
     "XYZData": _PyTreeMeta(
         cls=XYZData,
@@ -238,44 +224,43 @@ _PYTREE_REGISTRY: dict[str, _PyTreeMeta] = {
             "stress",
             "energy",
         ),
+        aux_fields=("properties", "comment"),
         aux_encoder=_encode_json_aux,
         aux_decoder=_decode_json_aux,
     ),
     "RHEEDPattern": _PyTreeMeta(
         cls=RHEEDPattern,
-        children_fields=RHEEDPattern._fields,
+        children_fields=_field_names(RHEEDPattern),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "RHEEDImage": _PyTreeMeta(
         cls=RHEEDImage,
-        children_fields=RHEEDImage._fields,
+        children_fields=_field_names(RHEEDImage),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "SlicedCrystal": _PyTreeMeta(
         cls=SlicedCrystal,
-        children_fields=SlicedCrystal._fields,
+        children_fields=_field_names(SlicedCrystal),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
     "SurfaceConfig": _PyTreeMeta(
         cls=SurfaceConfig,
-        children_fields=SurfaceConfig._fields,
+        children_fields=_field_names(SurfaceConfig),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
-        uses_tree_methods=False,
     ),
     "DetectorGeometry": _PyTreeMeta(
         cls=DetectorGeometry,
-        children_fields=DetectorGeometry._fields,
+        children_fields=_field_names(DetectorGeometry),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
-        uses_tree_methods=False,
     ),
     "ReconstructionResult": _PyTreeMeta(
         cls=ReconstructionResult,
-        children_fields=ReconstructionResult._fields,
+        children_fields=_field_names(ReconstructionResult),
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
@@ -289,13 +274,24 @@ def _flatten_pytree(
     pytree: Any,  # noqa: ANN401
     meta: _PyTreeMeta,
 ) -> tuple[tuple[Any, ...], Any]:  # noqa: ANN401
-    """Flatten a supported PyTree using its registered metadata."""
-    if meta.uses_tree_methods:
-        children: tuple[Any, ...]
-        aux_data: Any
-        children, aux_data = pytree.tree_flatten()
-        return tuple(children), aux_data
-    return tuple(pytree), None
+    """Flatten a supported PyTree by reading its registered fields.
+
+    Returns the dynamic child values (in ``children_fields`` order) and the
+    static auxiliary data (a ``{field: value}`` mapping for ``aux_fields``,
+    or ``None`` when the type has no static fields).
+    """
+    children: tuple[Any, ...] = tuple(
+        getattr(pytree, field_name) for field_name in meta.children_fields
+    )
+    aux_data: Any = (
+        {
+            field_name: getattr(pytree, field_name)
+            for field_name in meta.aux_fields
+        }
+        if meta.aux_fields
+        else None
+    )
+    return children, aux_data
 
 
 def _unflatten_pytree(
@@ -303,10 +299,13 @@ def _unflatten_pytree(
     aux_data: Any,  # noqa: ANN401
     children: tuple[Any, ...],  # noqa: ANN401
 ) -> Any:  # noqa: ANN401
-    """Reconstruct a supported PyTree from serialized children."""
-    if meta.uses_tree_methods:
-        return meta.cls.tree_unflatten(aux_data, children)
-    return meta.cls(*children)
+    """Reconstruct a supported PyTree from serialized children and aux."""
+    kwargs: dict[str, Any] = dict(
+        zip(meta.children_fields, children, strict=True)
+    )
+    if aux_data is not None:
+        kwargs.update(aux_data)
+    return meta.cls(**kwargs)
 
 
 @beartype

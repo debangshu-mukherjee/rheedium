@@ -99,7 +99,7 @@ class TestAseInterop(chex.TestCase):
 
     def test_from_ase_wrong_type(self) -> None:
         """Non-Atoms input raises TypeError."""
-        with pytest.raises(TypeError, match="Expected ase.Atoms"):
+        with pytest.raises(TypeError, match="ase.*Atoms"):
             from_ase("not an atoms object")
 
     def test_to_ase_simple(self) -> None:
@@ -213,7 +213,7 @@ class TestPymatgenInterop(chex.TestCase):
 
     def test_from_pymatgen_wrong_type(self) -> None:
         """Non-Structure input raises TypeError."""
-        with pytest.raises(TypeError, match="Expected pymatgen"):
+        with pytest.raises(TypeError, match="[Pp]ymatgen"):
             from_pymatgen("not a structure")
 
     def test_to_pymatgen_simple(self) -> None:

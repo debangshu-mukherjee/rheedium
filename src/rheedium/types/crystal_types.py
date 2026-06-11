@@ -37,22 +37,24 @@ Routine Listings
 
 Notes
 -----
-All data structures are immutable and support automatic differentiation
-through JAX's PyTree mechanism.
+All data structures are Equinox modules (``eqx.Module``): immutable JAX
+PyTrees that support automatic differentiation. Static, non-array metadata
+fields (e.g. ``XYZData.comment``) are declared with
+``eqx.field(static=True)`` so they are excluded from the differentiable
+leaves.
 """
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from beartype.typing import Dict, List, Optional, Tuple, Union
 from jax import lax
-from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Bool, Complex, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 
 
-@register_pytree_node_class
-class CrystalStructure(NamedTuple):
+class CrystalStructure(eqx.Module):
     """JAX-compatible Pytree with fractional and Cartesian coordinates.
 
     This PyTree represents a crystal structure containing atomic positions in
@@ -80,7 +82,8 @@ class CrystalStructure(NamedTuple):
         Unit cell angles [α, β, γ] in degrees, where α is the angle between
         b and c, β is the angle between a and c, and γ is the angle between
         a and b.
-    This class is registered as a PyTree node, making it compatible with JAX
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable and stored
     in JAX arrays for efficient computation.
 
@@ -107,45 +110,8 @@ class CrystalStructure(NamedTuple):
     cell_lengths: Num[Array, "3"]
     cell_angles: Num[Array, "3"]
 
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, "N 4"],
-            Num[Array, "N 4"],
-            Num[Array, "3"],
-            Num[Array, "3"],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.frac_positions,
-                self.cart_positions,
-                self.cell_lengths,
-                self.cell_angles,
-            ),
-            None,
-        )
 
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Float[Array, "N 4"],
-            Num[Array, "N 4"],
-            Num[Array, "3"],
-            Num[Array, "3"],
-        ],
-    ) -> "CrystalStructure":
-        """Unflatten the PyTree into a CrystalStructure instance."""
-        del aux_data
-        return cls(*children)
-
-
-@beartype
+@jaxtyped(typechecker=beartype)
 def create_crystal_structure(
     frac_positions: Num[Array, "... 4"],
     cart_positions: Num[Array, "... 4"],
@@ -309,8 +275,7 @@ def create_crystal_structure(
     return validated_crystal_structure
 
 
-@register_pytree_node_class
-class EwaldData(NamedTuple):
+class EwaldData(eqx.Module):
     r"""Angle-independent Ewald sphere data for RHEED simulation.
 
     This PyTree contains pre-computed reciprocal lattice geometry and structure
@@ -344,7 +309,8 @@ class EwaldData(NamedTuple):
 
     Notes
     -----
-    This class is registered as a PyTree node for JAX compatibility. The
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node for JAX compatibility. The
     structure factors include Kirkland atomic form factors and Debye-Waller
     thermal damping.
 
@@ -371,58 +337,6 @@ class EwaldData(NamedTuple):
     g_magnitudes: Float[Array, "N"]
     structure_factors: Complex[Array, "N"]
     intensities: Float[Array, "N"]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, "3 3"],
-            Int[Array, "N 3"],
-            Float[Array, "N 3"],
-            Float[Array, "N"],
-            Complex[Array, "N"],
-            Float[Array, "N"],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.wavelength_ang,
-                self.k_magnitude,
-                self.sphere_radius,
-                self.recip_vectors,
-                self.hkl_grid,
-                self.g_vectors,
-                self.g_magnitudes,
-                self.structure_factors,
-                self.intensities,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, ""],
-            Float[Array, "3 3"],
-            Int[Array, "N 3"],
-            Float[Array, "N 3"],
-            Float[Array, "N"],
-            Complex[Array, "N"],
-            Float[Array, "N"],
-        ],
-    ) -> "EwaldData":
-        """Unflatten the PyTree into an EwaldData instance."""
-        del aux_data
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
@@ -639,8 +553,7 @@ def create_ewald_data(
     return validated_ewald_data
 
 
-@register_pytree_node_class
-class KirklandParameters(NamedTuple):
+class KirklandParameters(eqx.Module):
     """Structured Kirkland coefficients for one element.
 
     This PyTree holds the three Lorentzian and three Gaussian
@@ -658,7 +571,8 @@ class KirklandParameters(NamedTuple):
     gaussian_scales : Float[Array, "3"]
         Gaussian scale coefficients (d_1, d_2, d_3).
 
-    This class is registered as a PyTree node, making it compatible
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible
     with JAX transformations like jit, grad, and vmap. All fields are
     JAX arrays and are stored as leaf nodes.
     """
@@ -667,43 +581,6 @@ class KirklandParameters(NamedTuple):
     lorentzian_scales: Float[Array, "3"]
     gaussian_amplitudes: Float[Array, "3"]
     gaussian_scales: Float[Array, "3"]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.lorentzian_amplitudes,
-                self.lorentzian_scales,
-                self.gaussian_amplitudes,
-                self.gaussian_scales,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-            Float[Array, "3"],
-        ],
-    ) -> "KirklandParameters":
-        """Unflatten the PyTree into a KirklandParameters instance."""
-        del aux_data
-        return cls(*children)
 
 
 @jaxtyped(typechecker=beartype)
@@ -790,8 +667,7 @@ def create_kirkland_parameters(
     return validated_kirkland_parameters
 
 
-@register_pytree_node_class
-class PotentialSlices(NamedTuple):
+class PotentialSlices(eqx.Module):
     """JAX-compatible multislice potential data for electron beam propagation.
 
     This PyTree represents discretized potential data used in multislice
@@ -816,7 +692,8 @@ class PotentialSlices(NamedTuple):
     y_calibration : scalar_float
         Real space calibration in the y-direction in Ångstroms per pixel.
         Converts pixel coordinates to physical distances.
-    This class is registered as a PyTree node, making it compatible with JAX
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. The calibration metadata is
     preserved as auxiliary data while slice data can be efficiently processed.
     All data is immutable for functional programming patterns.
@@ -840,37 +717,6 @@ class PotentialSlices(NamedTuple):
     slice_thickness: scalar_float
     x_calibration: scalar_float
     y_calibration: scalar_float
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[Float[Array, "n_slices height width"]],
-        Tuple[scalar_float, scalar_float, scalar_float],
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (self.slices,),
-            (self.slice_thickness, self.x_calibration, self.y_calibration),
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: Tuple[scalar_float, scalar_float, scalar_float],
-        children: Tuple[Float[Array, "n_slices height width"]],
-    ) -> "PotentialSlices":
-        """Unflatten the PyTree into a PotentialSlices instance."""
-        slice_thickness: scalar_float
-        x_calibration: scalar_float
-        y_calibration: scalar_float
-        slice_thickness, x_calibration, y_calibration = aux_data
-        slices: Float[Array, "n_slices height width"] = children[0]
-        return cls(
-            slices=slices,
-            slice_thickness=slice_thickness,
-            x_calibration=x_calibration,
-            y_calibration=y_calibration,
-        )
 
 
 @jaxtyped(typechecker=beartype)
@@ -1013,8 +859,7 @@ def create_potential_slices(
     return validated_potential_slices
 
 
-@register_pytree_node_class
-class XYZData(NamedTuple):
+class XYZData(eqx.Module):
     """JAX-compatible representation of parsed XYZ file data.
 
     This PyTree represents a complete XYZ file structure with atomic positions,
@@ -1042,7 +887,8 @@ class XYZData(NamedTuple):
         List of per-atom properties described in the metadata, otherwise None.
     comment : Optional[str]
         The raw comment line from the XYZ file header, otherwise None.
-    This class is registered as a PyTree node, making it compatible with JAX
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. Numerical data is stored as
     JAX arrays while metadata is preserved as auxiliary data. All data is
     immutable for functional programming patterns.
@@ -1075,83 +921,10 @@ class XYZData(NamedTuple):
     lattice: Optional[Float[Array, "3 3"]]
     stress: Optional[Float[Array, "3 3"]]
     energy: Optional[Float[Array, ""]]
-    properties: Optional[List[Dict[str, Union[str, int]]]]
-    comment: Optional[str]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, "N 3"],
-            Int[Array, "N"],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, ""]],
-        ],
-        Dict[
-            str,
-            Optional[Union[List[Dict[str, Union[str, int]]], str]],
-        ],
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        children: Tuple[
-            Float[Array, "N 3"],
-            Int[Array, "N"],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, ""]],
-        ] = (
-            self.positions,
-            self.atomic_numbers,
-            self.lattice,
-            self.stress,
-            self.energy,
-        )
-        aux_data: Dict[
-            str,
-            Optional[
-                Union[
-                    List[Dict[str, Union[str, int]]],
-                    str,
-                ]
-            ],
-        ] = {
-            "properties": self.properties,
-            "comment": self.comment,
-        }
-        return children, aux_data
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: Dict[
-            str,
-            Optional[Union[List[Dict[str, Union[str, int]]], str]],
-        ],
-        children: Tuple[
-            Float[Array, "N 3"],
-            Int[Array, "N"],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, "3 3"]],
-            Optional[Float[Array, ""]],
-        ],
-    ) -> "XYZData":
-        """Unflatten the PyTree into a XYZData instance."""
-        positions: Float[Array, "N 3"]
-        atomic_numbers: Int[Array, "N"]
-        lattice: Optional[Float[Array, "3 3"]]
-        stress: Optional[Float[Array, "3 3"]]
-        energy: Optional[Float[Array, ""]]
-        positions, atomic_numbers, lattice, stress, energy = children
-        return cls(
-            positions=positions,
-            atomic_numbers=atomic_numbers,
-            lattice=lattice,
-            stress=stress,
-            energy=energy,
-            properties=aux_data["properties"],
-            comment=aux_data["comment"],
-        )
+    properties: Optional[List[Dict[str, Union[str, int]]]] = eqx.field(
+        static=True
+    )
+    comment: Optional[str] = eqx.field(static=True)
 
 
 @jaxtyped(typechecker=beartype)

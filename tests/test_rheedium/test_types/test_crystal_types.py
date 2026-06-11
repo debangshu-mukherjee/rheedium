@@ -171,7 +171,7 @@ class TestCrystalStructure(chex.TestCase):
                 frac_positions, cart_positions, cell_lengths, cell_angles
             )
 
-        with pytest.raises(Exception, match=".*dimension.*"):
+        with pytest.raises(Exception, match="frac_positions|dimension"):
             create_with_wrong_shape()
 
         with pytest.raises(Exception, match=".*"):

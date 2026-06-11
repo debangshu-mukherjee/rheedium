@@ -17,9 +17,9 @@ Routine Listings
 Notes
 -----
 All fields are JAX-traceable scalars or arrays, enabling differentiation
-through beam parameters via ``jax.grad``. The class is registered as a
-PyTree node so it can be passed through ``jit``/``vmap``/``grad``
-boundaries.
+through beam parameters via ``jax.grad``. The class is an Equinox module
+(``eqx.Module``), so it is a registered JAX PyTree and can be passed
+through ``jit``/``vmap``/``grad`` boundaries.
 
 Coherence lengths are related to energy spread and divergence by:
 
@@ -30,11 +30,10 @@ where :math:`\lambda` is the de Broglie wavelength and
 :math:`\sigma_\theta` is the angular divergence.
 """
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import NamedTuple, Tuple
 from jax import lax
-from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, jaxtyped
 
 from .custom_types import scalar_float
@@ -43,8 +42,7 @@ _MIN_ENERGY_KEV: float = 5.0
 _MAX_ENERGY_KEV: float = 100.0
 
 
-@register_pytree_node_class
-class ElectronBeam(NamedTuple):
+class ElectronBeam(eqx.Module):
     """Complete specification of an electron beam for RHEED simulation.
 
     This PyTree captures all physical parameters of the electron source
@@ -82,8 +80,9 @@ class ElectronBeam(NamedTuple):
 
     Notes
     -----
-    This class is registered as a PyTree node, making it compatible with
-    JAX transformations like jit, grad, and vmap. All continuous
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX transformations like jit,
+    grad, and vmap. All continuous
     parameters (energy, spread, divergence, coherence lengths) are
     differentiable. The spot_size_um is also differentiable but rarely
     optimized in practice.
@@ -105,50 +104,9 @@ class ElectronBeam(NamedTuple):
     angular_divergence_mrad: scalar_float = 0.5
     coherence_length_transverse_angstrom: scalar_float = 500.0
     coherence_length_longitudinal_angstrom: scalar_float = 1000.0
-    spot_size_um: Float[Array, "2"] = jnp.array([100.0, 50.0])
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            Float[Array, "2"],
-        ],
-        None,
-    ]:
-        """Flatten the PyTree into a tuple of arrays."""
-        return (
-            (
-                self.energy_kev,
-                self.energy_spread_ev,
-                self.angular_divergence_mrad,
-                self.coherence_length_transverse_angstrom,
-                self.coherence_length_longitudinal_angstrom,
-                self.spot_size_um,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            scalar_float,
-            Float[Array, "2"],
-        ],
-    ) -> "ElectronBeam":
-        """Unflatten the PyTree into an ElectronBeam instance."""
-        del aux_data
-        return cls(*children)
+    spot_size_um: Float[Array, "2"] = eqx.field(
+        default_factory=lambda: jnp.array([100.0, 50.0])
+    )
 
 
 @jaxtyped(typechecker=beartype)
