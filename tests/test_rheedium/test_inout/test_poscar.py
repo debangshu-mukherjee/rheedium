@@ -363,6 +363,15 @@ Direct
         with pytest.raises(FileNotFoundError, match="not found"):
             parse_poscar("/nonexistent/path/POSCAR")
 
+    def test_non_utf8_file_raises_runtime_error(self) -> None:
+        """A present but non-UTF-8 POSCAR file raises RuntimeError."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            poscar_file = Path(tmp_dir) / "POSCAR"
+            poscar_file.write_bytes(b"\xff\xfe\x00\x01not valid utf-8")
+
+            with pytest.raises(RuntimeError, match="Failed to read POSCAR"):
+                parse_poscar(poscar_file)
+
     def test_too_few_lines(self) -> None:
         """File with too few lines raises ValueError."""
         poscar_content = """Short file

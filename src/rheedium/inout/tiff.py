@@ -265,12 +265,19 @@ def _load_multipage_tiff(
         Per-frame metadata.
     """
     metadata_list: List[FrameMetadata] = []
-    with tifffile.TiffFile(filepath) as tif:
-        np_stack: Float[NDArray, "T H W"] = tif.asarray()
-        if np_stack.ndim == _SINGLE_FRAME_NDIM:
-            np_stack = np_stack[np.newaxis, :, :]
-        for idx, page in enumerate(tif.pages):
-            metadata_list.append(extract_frame_metadata(page, idx))
+    try:
+        with tifffile.TiffFile(filepath) as tif:
+            np_stack: Float[NDArray, "T H W"] = tif.asarray()
+            if np_stack.ndim == _SINGLE_FRAME_NDIM:
+                np_stack = np_stack[np.newaxis, :, :]
+            for idx, page in enumerate(tif.pages):
+                metadata_list.append(extract_frame_metadata(page, idx))
+    except PermissionError:
+        raise
+    except (tifffile.TiffFileError, OSError) as err:
+        raise RuntimeError(
+            f"Failed to decode TIFF file {filepath}: {err}"
+        ) from err
 
     sequence: Float[Array, "T H W"] = jnp.asarray(np_stack, dtype=jnp.float64)
     return sequence, metadata_list
@@ -312,12 +319,21 @@ def _load_tiff_directory(
     metadata_list: List[FrameMetadata] = []
 
     for idx, fpath in enumerate(tiff_files):
-        with tifffile.TiffFile(fpath) as tif:
-            frame: Float[NDArray, "H W"] = tif.asarray()
-            if frame.ndim == _MULTIPAGE_FRAME_NDIM:
-                frame = frame[0]
-            frames.append(frame)
-            metadata_list.append(extract_frame_metadata(tif.pages[0], idx))
+        try:
+            with tifffile.TiffFile(fpath) as tif:
+                frame: Float[NDArray, "H W"] = tif.asarray()
+                if frame.ndim == _MULTIPAGE_FRAME_NDIM:
+                    frame = frame[0]
+                frames.append(frame)
+                metadata_list.append(
+                    extract_frame_metadata(tif.pages[0], idx)
+                )
+        except PermissionError:
+            raise
+        except (tifffile.TiffFileError, OSError) as err:
+            raise RuntimeError(
+                f"Failed to decode TIFF file {fpath}: {err}"
+            ) from err
 
     if sort_by == "timestamp":
         timestamps: List[float] = [m.timestamp_s for m in metadata_list]

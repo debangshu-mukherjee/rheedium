@@ -278,6 +278,15 @@ C 0.0 0.0 0.0
             with pytest.raises(ValueError, match="fewer than 2 lines"):
                 parse_xyz(xyz_file)
 
+    def test_non_utf8_file_raises_runtime_error(self) -> None:
+        """A present but non-UTF-8 XYZ file raises RuntimeError."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            xyz_file = Path(tmp_dir) / "binary.xyz"
+            xyz_file.write_bytes(b"\xff\xfe\x00\x01not valid utf-8")
+
+            with pytest.raises(RuntimeError, match="Failed to read XYZ"):
+                parse_xyz(xyz_file)
+
     def test_invalid_atom_count_raises(self) -> None:
         """Non-integer atom count should raise."""
         xyz_content = """abc

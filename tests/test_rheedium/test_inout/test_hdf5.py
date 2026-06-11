@@ -263,3 +263,18 @@ class TestHdf5RoundTrip(chex.TestCase):
             loaded = rh.inout.load_from_h5(path, name="reconstruction")
 
         _assert_round_trip_equal(loaded, payload["reconstruction"])
+
+    def test_missing_file_raises_file_not_found(self) -> None:
+        """A non-existent path raises FileNotFoundError."""
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "missing.h5"
+            with pytest.raises(FileNotFoundError):
+                rh.inout.load_from_h5(path)
+
+    def test_corrupt_file_raises_runtime_error(self) -> None:
+        """A present but non-HDF5 file raises RuntimeError."""
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "corrupt.h5"
+            path.write_bytes(b"this is not a valid HDF5 file")
+            with pytest.raises(RuntimeError, match="Failed to open HDF5"):
+                rh.inout.load_from_h5(path)

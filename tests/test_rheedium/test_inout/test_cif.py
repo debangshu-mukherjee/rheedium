@@ -408,6 +408,15 @@ _cell_angle_gamma 90
             with pytest.raises(ValueError, match="No atomic positions"):
                 parse_cif(cif_file)
 
+    def test_non_utf8_file_raises_runtime_error(self) -> None:
+        """A present but non-UTF-8 CIF file should raise RuntimeError."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cif_file = Path(tmp_dir) / "binary.cif"
+            cif_file.write_bytes(b"\xff\xfe\x00\x01not valid utf-8")
+
+            with pytest.raises(RuntimeError, match="Failed to read CIF"):
+                parse_cif(cif_file)
+
     def test_path_as_string(self) -> None:
         """String path should work."""
         cif_content = """

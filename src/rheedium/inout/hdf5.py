@@ -598,23 +598,37 @@ def load_from_h5(
 
     Raises
     ------
+    FileNotFoundError
+        If ``path`` does not exist.
     KeyError
         If ``name`` is given but is not present in the file.
     TypeError
         If the file contains an unsupported serialized node.
+    RuntimeError
+        If the file exists but cannot be opened as a valid HDF5 file
+        (e.g. it is truncated or corrupt).
     """
     file_path: Path = Path(path)
-    with h5py.File(file_path, "r") as handle:
-        if name is not None:
-            if name not in handle:
-                msg = f"Group '{name}' not found in {path}"
-                raise KeyError(msg)
-            return _read_value(handle[name])
+    if not file_path.exists():
+        raise FileNotFoundError(f"HDF5 file not found: {file_path}")
+    try:
+        with h5py.File(file_path, "r") as handle:
+            if name is not None:
+                if name not in handle:
+                    msg = f"Group '{name}' not found in {path}"
+                    raise KeyError(msg)
+                return _read_value(handle[name])
 
-        result: dict[str, Any] = {}
-        for group_name in handle:
-            result[group_name] = _read_value(handle[group_name])
-        return result
+            result: dict[str, Any] = {}
+            for group_name in handle:
+                result[group_name] = _read_value(handle[group_name])
+            return result
+    except PermissionError:
+        raise
+    except OSError as err:
+        raise RuntimeError(
+            f"Failed to open HDF5 file {file_path}: {err}"
+        ) from err
 
 
 __all__: list[str] = [

@@ -401,7 +401,12 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         raise FileNotFoundError(f"CIF file not found: {cif_path_obj}")
     if cif_path_obj.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path_obj}")
-    cif_text: str = cif_path_obj.read_text()
+    try:
+        cif_text: str = cif_path_obj.read_text()
+    except UnicodeDecodeError as err:
+        raise RuntimeError(
+            f"Failed to read CIF file as UTF-8 text: {cif_path_obj}: {err}"
+        ) from err
 
     a, b, c, alpha, beta, gamma = _extract_cell_params(cif_text)
     cell_lengths: Num[Array, "3"] = jnp.array([a, b, c], dtype=jnp.float64)
@@ -470,17 +475,17 @@ def _parse_sym_op(op_str: str) -> Callable[[Array], Array]:
     """
 
     def _op(pos: Array) -> Array:
-        replacements: Dict[str, float] = {
+        replacements: Dict[str, Array] = {
             "x": pos[0],
             "y": pos[1],
             "z": pos[2],
         }
         components: List[str] = op_str.lower().replace(" ", "").split(",")
 
-        def _eval_comp(comp: str) -> float:
+        def _eval_comp(comp: str) -> scalar_float:
             comp = comp.replace("-", "+-")
             terms: List[str] = comp.split("+")
-            total: float = 0.0
+            total: scalar_float = 0.0
             for term in terms:
                 if not term:
                     continue

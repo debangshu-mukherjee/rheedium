@@ -659,8 +659,13 @@ def parse_xyz(file_path: Union[str, Path]) -> XYZData:
     >>> xyz_data.atomic_numbers
     Array([6, 6, 8, ...], dtype=int32)
     """
-    with open(file_path, encoding="utf-8") as f:
-        lines: List[str] = f.readlines()
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            lines: List[str] = f.readlines()
+    except UnicodeDecodeError as err:
+        raise RuntimeError(
+            f"Failed to read XYZ file as UTF-8 text: {file_path}: {err}"
+        ) from err
     min_lines: int = 2
     if len(lines) < min_lines:
         raise ValueError("Invalid XYZ file: fewer than 2 lines.")

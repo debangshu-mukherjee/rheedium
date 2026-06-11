@@ -141,6 +141,13 @@ class TestLoadTiffSequence(chex.TestCase):
         with pytest.raises(ValueError, match="sort_by must be"):
             load_tiff_sequence(self.tmp_path / "stack.tif", sort_by="invalid")
 
+    def test_corrupt_file_raises_runtime_error(self) -> None:
+        """A present but undecodable TIFF file raises RuntimeError."""
+        corrupt = self.tmp_path / "corrupt.tif"
+        corrupt.write_bytes(b"not a real tiff payload")
+        with pytest.raises(RuntimeError, match="Failed to decode TIFF"):
+            load_tiff_sequence(corrupt)
+
     def test_finite_values(self) -> None:
         """No NaN or Inf in loaded data."""
         _write_multipage_tiff(self.tmp_path / "stack.tif", 3)

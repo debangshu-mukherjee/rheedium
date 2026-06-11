@@ -124,7 +124,7 @@ module-name = "rheedium"
 namespace = true
 
 [tool.pytest.ini_options]
-addopts = "-n auto"
+addopts = "-n auto --jaxtyping-packages=rheedium,beartype.beartype"
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"

@@ -311,8 +311,13 @@ def parse_poscar(
     if not path.exists():
         raise FileNotFoundError(f"POSCAR file not found: {path}")
 
-    with open(path, encoding="utf-8") as f:
-        lines: List[str] = f.readlines()
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines: List[str] = f.readlines()
+    except UnicodeDecodeError as err:
+        raise RuntimeError(
+            f"Failed to read POSCAR file as UTF-8 text: {path}: {err}"
+        ) from err
 
     lines: List[str] = [line.rstrip("\n") for line in lines]
 
