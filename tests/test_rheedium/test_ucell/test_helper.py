@@ -11,6 +11,7 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
+from jaxtyping import Array, Float, PRNGKeyArray
 
 import rheedium as rh
 from rheedium.types.crystal_types import CrystalStructure
@@ -22,7 +23,7 @@ class TestAngleInDegrees(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -38,8 +39,8 @@ class TestAngleInDegrees(chex.TestCase):
         self, v1: list[float], v2: list[float], expected_angle: float
     ) -> None:
         """Test angle calculation between various vector pairs."""
-        v1_array = jnp.array(v1)
-        v2_array = jnp.array(v2)
+        v1_array: Float[Array, "coords"] = jnp.array(v1)
+        v2_array: Float[Array, "coords"] = jnp.array(v2)
 
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1_array, v2_array)
@@ -49,9 +50,11 @@ class TestAngleInDegrees(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_random_vectors(self) -> None:
         """Test angle calculation with random vectors."""
+        key1: PRNGKeyArray
+        key2: PRNGKeyArray
         key1, key2 = jax.random.split(self.rng)
-        v1 = jax.random.normal(key1, (3,))
-        v2 = jax.random.normal(key2, (3,))
+        v1: Float[Array, "coords"] = jax.random.normal(key1, (3,))
+        v2: Float[Array, "coords"] = jax.random.normal(key2, (3,))
 
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1, v2)
@@ -66,8 +69,8 @@ class TestAngleInDegrees(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_normalization_invariance(self) -> None:
         """Test that angle is invariant to vector magnitude."""
-        v1 = jnp.array([1.0, 0.0, 0.0])
-        v2 = jnp.array([1.0, 1.0, 0.0])
+        v1: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
+        v2: Float[Array, "..."] = jnp.array([1.0, 1.0, 0.0])
 
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
 
@@ -82,8 +85,8 @@ class TestAngleInDegrees(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_2d_vectors(self) -> None:
         """Test angle calculation with 2D vectors."""
-        v1 = jnp.array([1.0, 0.0])
-        v2 = jnp.array([0.0, 1.0])
+        v1: Float[Array, "..."] = jnp.array([1.0, 0.0])
+        v2: Float[Array, "..."] = jnp.array([0.0, 1.0])
 
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1, v2)
@@ -94,9 +97,11 @@ class TestAngleInDegrees(chex.TestCase):
     def test_angle_high_dimensional(self) -> None:
         """Test angle calculation with high-dimensional vectors."""
         n_dim = 10
+        key1: PRNGKeyArray
+        key2: PRNGKeyArray
         key1, key2 = jax.random.split(self.rng)
-        v1 = jax.random.normal(key1, (n_dim,))
-        v2 = jax.random.normal(key2, (n_dim,))
+        v1: Float[Array, "coords"] = jax.random.normal(key1, (n_dim,))
+        v2: Float[Array, "coords"] = jax.random.normal(key2, (n_dim,))
 
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
         angle = var_angle_in_degrees(v1, v2)
@@ -110,7 +115,7 @@ class TestComputeLengthsAngles(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -140,7 +145,7 @@ class TestComputeLengthsAngles(chex.TestCase):
         expected_angles: list[float],
     ) -> None:
         """Test length and angle computation for known unit cells."""
-        vectors_array = jnp.array(vectors)
+        vectors_array: Float[Array, "vectors coords"] = jnp.array(vectors)
 
         var_compute_lengths_angles = self.variant(
             rh.ucell.compute_lengths_angles
@@ -157,7 +162,9 @@ class TestComputeLengthsAngles(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_compute_lengths_angles_random(self) -> None:
         """Test length and angle computation with random vectors."""
-        vectors = jax.random.normal(self.rng, (3, 3))
+        vectors: Float[Array, "vectors coords"] = jax.random.normal(
+            self.rng, (3, 3)
+        )
 
         var_compute_lengths_angles = self.variant(
             rh.ucell.compute_lengths_angles
@@ -178,7 +185,7 @@ class TestComputeLengthsAngles(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_compute_lengths_angles_consistency(self) -> None:
         """Test consistency with individual calculations."""
-        vectors = jnp.array(
+        vectors: Float[Array, "..."] = jnp.array(
             [[3.0, 1.0, 0.5], [0.5, 4.0, 1.0], [1.0, 0.5, 5.0]]
         )
 
@@ -188,7 +195,7 @@ class TestComputeLengthsAngles(chex.TestCase):
         lengths, angles = var_compute_lengths_angles(vectors)
 
         # Compute lengths manually
-        expected_lengths = jnp.array(
+        expected_lengths: Float[Array, "..."] = jnp.array(
             [
                 jnp.linalg.norm(vectors[0]),
                 jnp.linalg.norm(vectors[1]),
@@ -199,7 +206,7 @@ class TestComputeLengthsAngles(chex.TestCase):
 
         # Compute angles manually
         var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
-        expected_angles = jnp.array(
+        expected_angles: Float[Array, "..."] = jnp.array(
             [
                 var_angle_in_degrees(vectors[1], vectors[2]),
                 var_angle_in_degrees(vectors[0], vectors[2]),
@@ -258,8 +265,8 @@ Si10 Si 0.5 0.5 0.9
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_basic(self) -> None:
         """Test basic CIF parsing and atom scraping."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness_xyz = jnp.array([5.0, 5.0, 3.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness_xyz: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(
@@ -285,8 +292,8 @@ Si10 Si 0.5 0.5 0.9
         self, zone_axis: list[float], thickness: list[float]
     ) -> None:
         """Test scraping along different zone axes."""
-        zone_axis_array = jnp.array(zone_axis)
-        thickness_array = jnp.array(thickness)
+        zone_axis_array: Float[Array, "three"] = jnp.array(zone_axis)
+        thickness_array: Float[Array, "three"] = jnp.array(thickness)
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(
@@ -311,13 +318,13 @@ Si10 Si 0.5 0.5 0.9
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_multiple_thicknesses(self) -> None:
         """Test with different thickness values."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
 
         # Test with different thickness values
-        thickness1 = jnp.array([5.0, 5.0, 2.0])
-        thickness2 = jnp.array([5.0, 5.0, 4.0])
+        thickness1: Float[Array, "..."] = jnp.array([5.0, 5.0, 2.0])
+        thickness2: Float[Array, "..."] = jnp.array([5.0, 5.0, 4.0])
 
         crystal1 = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness1
@@ -343,11 +350,11 @@ Si10 Si 0.5 0.5 0.9
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thin_slice(self) -> None:
         """Test with thin slice that includes some atoms."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         # Atoms are at z=0,1,2,...,9 Å, center is at 4.5 Å
         # A 2.5 Å slice (half_thickness=1.25) centered at 4.5
         # captures atoms at 4 and 5
-        thickness_xyz = jnp.array([5.0, 5.0, 2.5])
+        thickness_xyz: Float[Array, "..."] = jnp.array([5.0, 5.0, 2.5])
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(
@@ -361,8 +368,10 @@ Si10 Si 0.5 0.5 0.9
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thick_slice(self) -> None:
         """Test with very thick slice (should include all atoms)."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness_xyz = jnp.array([10.0, 10.0, 20.0])  # Very thick slice
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness_xyz: Float[Array, "..."] = jnp.array(
+            [10.0, 10.0, 20.0]
+        )  # Very thick slice
 
         var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
         filtered_crystal = var_parse_cif_and_scrape(

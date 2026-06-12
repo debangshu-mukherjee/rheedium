@@ -4,13 +4,15 @@ This module provides comprehensive testing for atomic form factor calculations,
 Debye-Waller factors, and atomic scattering factors used in RHEED simulations.
 """
 
+from collections.abc import Callable
+
 import chex
 import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Bool, Float, Int, Integer
 
 from rheedium.inout import kirkland_potentials
 from rheedium.simul.form_factors import (
@@ -104,7 +106,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             True,
         )
 
-        a_sum = jnp.sum(params.lorentzian_amplitudes) + jnp.sum(
+        a_sum: scalar_float = jnp.sum(params.lorentzian_amplitudes) + jnp.sum(
             params.gaussian_amplitudes
         )
         chex.assert_scalar_positive(float(a_sum))
@@ -176,11 +178,11 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         scattering.
         """
         var_form_factor = self.variant(kirkland_form_factor)
-        q_array = jnp.array(q_mag)
+        q_array: scalar_float = jnp.array(q_mag)
 
         f_q = var_form_factor(atomic_number, q_array)
 
-        f_q = jnp.squeeze(f_q)
+        f_q: Float[Array, "..."] = jnp.squeeze(f_q)
 
         chex.assert_shape(f_q, ())
         chex.assert_tree_all_finite(f_q)
@@ -206,7 +208,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         for _name, z in self.test_atomic_numbers.items():
             f_values = var_form_factor(z, self.q_magnitudes)
 
-            differences = jnp.diff(f_values[1:])
+            differences: Float[Array, "..."] = jnp.diff(f_values[1:])
             chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
             chex.assert_scalar_positive(float(f_values[0]))
@@ -224,11 +226,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_form_factor = self.variant(kirkland_form_factor)
 
-        q_batch_2d = jnp.tile(self.q_magnitudes[:, jnp.newaxis], (1, 5))
+        q_batch_2d: Float[Array, "..."] = jnp.tile(
+            self.q_magnitudes[:, jnp.newaxis], (1, 5)
+        )
         f_batch_2d = var_form_factor(14, q_batch_2d)
         chex.assert_shape(f_batch_2d, q_batch_2d.shape)
 
-        q_batch_3d = jnp.tile(
+        q_batch_3d: Float[Array, "..."] = jnp.tile(
             self.q_magnitudes[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
         )
         f_batch_3d = var_form_factor(14, q_batch_3d)
@@ -238,19 +242,21 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_kirkland_form_factor_matches_tabulated_formula(self) -> None:
         """Kirkland form factor matches the mixed Lorentz/Gauss fit."""
         var_form_factor = self.variant(kirkland_form_factor)
-        q_values = jnp.array([0.0, 0.5, 2.0, 8.0], dtype=jnp.float64)
+        q_values: Float[Array, "..."] = jnp.array(
+            [0.0, 0.5, 2.0, 8.0], dtype=jnp.float64
+        )
         params = kirkland_potentials()[13]  # Si, zero-indexed
         amplitudes = params[::2]
         scales = params[1::2]
         s_squared = (q_values / (4.0 * jnp.pi))[:, jnp.newaxis] ** 2
-        expected = jnp.sum(
+        expected: scalar_float = jnp.sum(
             amplitudes[:3][jnp.newaxis, :] / (s_squared + scales[:3])
             + amplitudes[3:][jnp.newaxis, :]
             * jnp.exp(-scales[3:] * s_squared),
             axis=-1,
         )
 
-        actual = jnp.ravel(var_form_factor(14, q_values))
+        actual: Float[Array, "..."] = jnp.ravel(var_form_factor(14, q_values))
         chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -259,7 +265,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Check projected potential matches Kirkland real-space form."""
         var_projected_potential = self.variant(kirkland_projected_potential)
-        radial_positions = jnp.array([0.05, 0.2, 0.8], dtype=jnp.float64)
+        radial_positions: Float[Array, "..."] = jnp.array(
+            [0.05, 0.2, 0.8], dtype=jnp.float64
+        )
         params = kirkland_potentials()[13]  # Si, zero-indexed
         amplitudes = params[::2]
         scales = params[1::2]
@@ -273,7 +281,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             axis=-1,
         )
 
-        actual = jnp.ravel(var_projected_potential(14, radial_positions))
+        actual: Float[Array, "..."] = jnp.ravel(
+            var_projected_potential(14, radial_positions)
+        )
         chex.assert_trees_all_close(actual, expected, rtol=1e-10, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -375,7 +385,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_dw_factor = self.variant(debye_waller_factor)
 
-        q_array = jnp.array(q_mag)
+        q_array: scalar_float = jnp.array(q_mag)
         dw = var_dw_factor(q_array, msd)
 
         chex.assert_shape(dw, ())
@@ -405,7 +415,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         dw_1d = var_dw_factor(self.q_magnitudes, msd)
         chex.assert_shape(dw_1d, self.q_magnitudes.shape)
 
-        differences = jnp.diff(dw_1d)
+        differences: Float[Array, "..."] = jnp.diff(dw_1d)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
         q_batch_2d = self.batched_q
@@ -428,7 +438,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_dw_factor = self.variant(debye_waller_factor)
 
-        q_test = jnp.array([0.0, 1.0, 10.0])
+        q_test: Float[Array, "..."] = jnp.array([0.0, 1.0, 10.0])
 
         dw_zero_msd = var_dw_factor(q_test, 0.0)
         chex.assert_trees_all_close(
@@ -480,8 +490,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         chex.assert_scalar_positive(float(f_combined[0]))
 
-        q_mags = jnp.linalg.norm(self.q_vectors_3d, axis=-1)
-        sorted_indices = jnp.argsort(q_mags)
+        q_mags: Float[Array, "..."] = jnp.linalg.norm(
+            self.q_vectors_3d, axis=-1
+        )
+        sorted_indices: Integer[Array, "..."] = jnp.argsort(q_mags)
         f_sorted = f_combined[sorted_indices]
         chex.assert_scalar_positive(float(f_sorted[0] - f_sorted[-1]))
 
@@ -499,11 +511,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_scattering = self.variant(atomic_scattering_factor)
 
-        batch_2d = jnp.tile(self.q_vectors_3d[jnp.newaxis, :, :], (5, 1, 1))
+        batch_2d: Float[Array, "..."] = jnp.tile(
+            self.q_vectors_3d[jnp.newaxis, :, :], (5, 1, 1)
+        )
         f_batch_2d = var_scattering(14, batch_2d, 300.0, False)
         chex.assert_shape(f_batch_2d, (5, len(self.q_vectors_3d)))
 
-        batch_3d = jnp.tile(
+        batch_3d: Float[Array, "..."] = jnp.tile(
             self.q_vectors_3d[jnp.newaxis, jnp.newaxis, :, :], (3, 4, 1, 1)
         )
         f_batch_3d = var_scattering(14, batch_3d, 300.0, False)
@@ -523,7 +537,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_scattering = self.variant(atomic_scattering_factor)
 
-        q_test = jnp.array([[2.0, 0.0, 0.0], [4.0, 0.0, 0.0]])
+        q_test: Float[Array, "..."] = jnp.array(
+            [[2.0, 0.0, 0.0], [4.0, 0.0, 0.0]]
+        )
 
         for z in [6, 14, 29]:
             f_bulk = var_scattering(z, q_test, 300.0, False)
@@ -562,7 +578,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         atomic_nums: Int[Array, "5"] = jnp.array([1, 6, 14, 29, 79])
         q_single: Float[Array, ""] = jnp.array(1.0)
-        vmapped_ff = jax.vmap(
+        vmapped_ff: Callable[[Int[Array, "5"]], Float[Array, "5"]] = jax.vmap(
             lambda z: var_form_factor(z, q_single), in_axes=0
         )
         f_vmapped: Float[Array, "5"] = vmapped_ff(atomic_nums)
@@ -572,7 +588,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             f_val: Float[Array, ""] = var_form_factor(14, jnp.array(q))
             return jnp.squeeze(f_val)
 
-        grad_fn = jax.grad(loss_fn)
+        grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(loss_fn)
         grad_q: scalar_float = grad_fn(1.0)
         chex.assert_shape(grad_q, ())
         chex.assert_tree_all_finite(grad_q)
@@ -599,8 +615,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         temps: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
         q_single: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
 
-        vmapped_temp = jax.vmap(
-            lambda t: var_scattering(14, q_single, t, False), in_axes=0
+        vmapped_temp: Callable[[Float[Array, "3"]], Float[Array, "3 1"]] = (
+            jax.vmap(
+                lambda t: var_scattering(14, q_single, t, False), in_axes=0
+            )
         )
         f_temps: Float[Array, "3 1"] = vmapped_temp(temps)
         chex.assert_shape(f_temps, (3, 1))
@@ -615,8 +633,11 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ) -> Float[Array, "1"]:
             return var_scattering(z, q_single, t, False)
 
-        nested_vmap = jax.vmap(
-            jax.vmap(scattering_fn, in_axes=(None, 0)), in_axes=(0, None)
+        nested_vmap: Callable[
+            [Int[Array, "3"], Float[Array, "3"]], Float[Array, "3 3 1"]
+        ] = jax.vmap(
+            jax.vmap(scattering_fn, in_axes=(None, 0)),
+            in_axes=(0, None),
         )
         f_nested: Float[Array, "3 3 1"] = nested_vmap(atomic_nums, temps)
         chex.assert_shape(f_nested, (len(atomic_nums), len(temps), 1))
@@ -641,8 +662,8 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
         z = 14
         temp = 300.0
-        q_vec = jnp.array([[2.0, 0.0, 0.0]])
-        q_mag = jnp.linalg.norm(q_vec, axis=-1)
+        q_vec: Float[Array, "..."] = jnp.array([[2.0, 0.0, 0.0]])
+        q_mag: Float[Array, "..."] = jnp.linalg.norm(q_vec, axis=-1)
 
         f_kirk = var_form_factor(z, q_mag)
         msd = var_get_msd(z, temp, False)
@@ -679,11 +700,15 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         if q_vectors.ndim == 1:
             q_vectors = q_vectors[jnp.newaxis, :]
 
-        q_mags = jnp.linalg.norm(q_vectors, axis=-1, keepdims=True)
+        q_mags: Bool[Array, "..."] = jnp.linalg.norm(
+            q_vectors, axis=-1, keepdims=True
+        )
 
         if q_mags[0] > 1e-10:
             q_normalized = q_vectors / (q_mags + 1e-10)
-            q_rotated = jnp.roll(q_normalized, 1, axis=-1) * q_mags
+            q_rotated: Float[Array, "..."] = (
+                jnp.roll(q_normalized, 1, axis=-1) * q_mags
+            )
 
             f_original = var_scattering(14, q_vectors, 300.0, False)
             f_rotated = var_scattering(14, q_rotated, 300.0, False)
@@ -700,7 +725,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
         def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
-        grad_fn = jax.grad(f)
+        grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(f)
         q_values: list[float] = [0.5, 1.0, 2.0, 4.0]
         for q in q_values:
             g: scalar_float = grad_fn(jnp.float64(q))

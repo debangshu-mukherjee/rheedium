@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from beartype.door import die_if_unbearable
 from beartype.roar import BeartypeDoorHintViolation
+from jaxtyping import Array, Float, Integer
+from numpy.typing import NDArray
 
 from rheedium.types.custom_types import (
     float_jax_image,
@@ -125,24 +127,24 @@ class TestFloatJaxImage:
 
     def test_accepts_2d_float_array(self) -> None:
         """Accept a 2D float JAX array for float_jax_image."""
-        img = jnp.ones((64, 128), dtype=jnp.float32)
+        img: Float[Array, "..."] = jnp.ones((64, 128), dtype=jnp.float32)
         result = _accepts(img, float_jax_image)
         assert result.shape == (64, 128)
 
     def test_accepts_float64(self) -> None:
         """Accept a float64 JAX array for float_jax_image."""
-        img = jnp.zeros((32, 32), dtype=jnp.float64)
+        img: Float[Array, "..."] = jnp.zeros((32, 32), dtype=jnp.float64)
         result = _accepts(img, float_jax_image)
         assert result.shape == (32, 32)
 
     def test_rejects_int_array(self) -> None:
         """Reject an int JAX array for float_jax_image."""
-        img = jnp.ones((64, 64), dtype=jnp.int32)
+        img: Integer[Array, "..."] = jnp.ones((64, 64), dtype=jnp.int32)
         _assert_rejected(img, float_jax_image)
 
     def test_rejects_3d_array(self) -> None:
         """Reject a 3D JAX array for float_jax_image."""
-        img = jnp.ones((3, 64, 64), dtype=jnp.float32)
+        img: Float[Array, "..."] = jnp.ones((3, 64, 64), dtype=jnp.float32)
         _assert_rejected(img, float_jax_image)
 
 
@@ -151,18 +153,18 @@ class TestIntJaxImage:
 
     def test_accepts_2d_int_array(self) -> None:
         """Accept a 2D int JAX array for int_jax_image."""
-        img = jnp.ones((64, 128), dtype=jnp.int32)
+        img: Integer[Array, "..."] = jnp.ones((64, 128), dtype=jnp.int32)
         result = _accepts(img, int_jax_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
         """Reject a float JAX array for int_jax_image."""
-        img = jnp.ones((64, 64), dtype=jnp.float32)
+        img: Float[Array, "..."] = jnp.ones((64, 64), dtype=jnp.float32)
         _assert_rejected(img, int_jax_image)
 
     def test_rejects_1d_array(self) -> None:
         """Reject a 1D JAX array for int_jax_image."""
-        img = jnp.ones((64,), dtype=jnp.int32)
+        img: Integer[Array, "..."] = jnp.ones((64,), dtype=jnp.int32)
         _assert_rejected(img, int_jax_image)
 
 
@@ -171,18 +173,18 @@ class TestFloatNpImage:
 
     def test_accepts_2d_float_array(self) -> None:
         """Accept a 2D float NumPy array for float_np_image."""
-        img = np.ones((64, 128), dtype=np.float32)
+        img: Float[NDArray, "..."] = np.ones((64, 128), dtype=np.float32)
         result = _accepts(img, float_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_int_array(self) -> None:
         """Reject an int NumPy array for float_np_image."""
-        img = np.ones((64, 64), dtype=np.int32)
+        img: Integer[NDArray, "..."] = np.ones((64, 64), dtype=np.int32)
         _assert_rejected(img, float_np_image)
 
     def test_rejects_3d_array(self) -> None:
         """Reject a 3D NumPy array for float_np_image."""
-        img = np.ones((3, 64, 64), dtype=np.float32)
+        img: Float[NDArray, "..."] = np.ones((3, 64, 64), dtype=np.float32)
         _assert_rejected(img, float_np_image)
 
 
@@ -191,18 +193,18 @@ class TestIntNpImage:
 
     def test_accepts_2d_int_array(self) -> None:
         """Accept a 2D int NumPy array for int_np_image."""
-        img = np.ones((64, 128), dtype=np.int32)
+        img: Integer[NDArray, "..."] = np.ones((64, 128), dtype=np.int32)
         result = _accepts(img, int_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
         """Reject a float NumPy array for int_np_image."""
-        img = np.ones((64, 64), dtype=np.float32)
+        img: Float[NDArray, "..."] = np.ones((64, 64), dtype=np.float32)
         _assert_rejected(img, int_np_image)
 
     def test_rejects_1d_array(self) -> None:
         """Reject a 1D NumPy array for int_np_image."""
-        img = np.ones((64,), dtype=np.int32)
+        img: Integer[NDArray, "..."] = np.ones((64,), dtype=np.int32)
         _assert_rejected(img, int_np_image)
 
 

@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.inout.interop import from_ase, from_pymatgen, to_ase, to_pymatgen
 from rheedium.types.crystal_types import (
@@ -18,20 +19,20 @@ from rheedium.types.crystal_types import (
 
 def _make_simple_crystal() -> CrystalStructure:
     """Create a simple test crystal (MgO rock salt)."""
-    frac_positions = jnp.array(
+    frac_positions: Float[Array, "..."] = jnp.array(
         [
             [0.0, 0.0, 0.0, 12.0],  # Mg
             [0.5, 0.5, 0.5, 8.0],  # O
         ]
     )
-    cart_positions = jnp.array(
+    cart_positions: Float[Array, "..."] = jnp.array(
         [
             [0.0, 0.0, 0.0, 12.0],
             [2.105, 2.105, 2.105, 8.0],
         ]
     )
-    cell_lengths = jnp.array([4.21, 4.21, 4.21])
-    cell_angles = jnp.array([90.0, 90.0, 90.0])
+    cell_lengths: Float[Array, "..."] = jnp.array([4.21, 4.21, 4.21])
+    cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
     return create_crystal_structure(
         frac_positions=frac_positions,

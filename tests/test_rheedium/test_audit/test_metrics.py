@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxtyping import Array, Float
+from numpy.typing import NDArray
 
 from rheedium.audit.metrics import (
     dominant_peak_positions,
@@ -81,7 +82,9 @@ class TestReferenceMetadata(chex.TestCase):
             assert image_path.exists()
 
             with np.load(image_path) as data:
-                image = np.asarray(data["image"], dtype=np.float64)
+                image: Float[NDArray, "..."] = np.asarray(
+                    data["image"], dtype=np.float64
+                )
 
             assert list(image.shape) == metadata["image_shape_px"]
             assert np.all(np.isfinite(image))

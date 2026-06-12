@@ -7,6 +7,7 @@ import chex
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.inout.poscar import (
     _parse_poscar_header,
@@ -130,12 +131,14 @@ class TestParsePoscarPositions(chex.TestCase):
             "0.0 0.0 0.0",
             "0.5 0.5 0.5",
         ]
-        lattice = jnp.eye(3) * 4.0
+        lattice: Float[Array, "..."] = jnp.eye(3) * 4.0
         positions = _parse_poscar_positions(
             lines, start_idx=0, n_atoms=2, is_cartesian=False, lattice=lattice
         )
 
-        expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
+        expected: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+        )
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_cartesian_coordinates(self) -> None:
@@ -144,13 +147,15 @@ class TestParsePoscarPositions(chex.TestCase):
             "0.0 0.0 0.0",
             "2.0 2.0 2.0",
         ]
-        lattice = jnp.eye(3) * 4.0
+        lattice: Float[Array, "..."] = jnp.eye(3) * 4.0
         positions = _parse_poscar_positions(
             lines, start_idx=0, n_atoms=2, is_cartesian=True, lattice=lattice
         )
 
         # 2.0 / 4.0 = 0.5 in each direction
-        expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
+        expected: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+        )
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_selective_dynamics_ignored(self) -> None:
@@ -159,12 +164,14 @@ class TestParsePoscarPositions(chex.TestCase):
             "0.0 0.0 0.0 T T T",
             "0.5 0.5 0.5 F F F",
         ]
-        lattice = jnp.eye(3) * 4.0
+        lattice: Float[Array, "..."] = jnp.eye(3) * 4.0
         positions = _parse_poscar_positions(
             lines, start_idx=0, n_atoms=2, is_cartesian=False, lattice=lattice
         )
 
-        expected = jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
+        expected: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+        )
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_insufficient_atoms(self) -> None:
@@ -172,7 +179,7 @@ class TestParsePoscarPositions(chex.TestCase):
         lines = [
             "0.0 0.0 0.0",
         ]
-        lattice = jnp.eye(3) * 4.0
+        lattice: Float[Array, "..."] = jnp.eye(3) * 4.0
         with pytest.raises(ValueError, match="file ends"):
             _parse_poscar_positions(
                 lines,

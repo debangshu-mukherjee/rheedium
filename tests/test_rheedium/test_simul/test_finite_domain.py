@@ -9,6 +9,7 @@ existing Ewald infrastructure.
 import chex
 import jax.numpy as jnp
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.simul.ewald import build_ewald_data
 from rheedium.simul.finite_domain import (
@@ -19,6 +20,7 @@ from rheedium.simul.finite_domain import (
     rod_ewald_overlap,
 )
 from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.custom_types import scalar_float
 
 
 class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
@@ -195,7 +197,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         """Test that tiny extent gives no NaN via minimum enforcement."""
         var_sigma = self.variant(extent_to_rod_sigma)
 
-        tiny_extent = jnp.array([0.1, 0.1, 0.1])
+        tiny_extent: Float[Array, "..."] = jnp.array([0.1, 0.1, 0.1])
         sigma = var_sigma(tiny_extent)
 
         chex.assert_tree_all_finite(sigma)
@@ -287,7 +289,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         # Set up a simple scattering geometry
         # k_in pointing at grazing angle
         self.k_magnitude = jnp.array(73.0)  # ~20 kV
-        theta_rad = jnp.deg2rad(2.0)  # 2° grazing
+        theta_rad: scalar_float = jnp.deg2rad(2.0)  # 2° grazing
         self.k_in = self.k_magnitude * jnp.array(
             [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
         )
@@ -354,7 +356,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         """
         var_overlap = self.variant(rod_ewald_overlap)
 
-        g_specular = jnp.array([[0.0, 0.0, 0.0]])
+        g_specular: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         overlap = var_overlap(
             g_specular,
             self.k_in,
@@ -553,7 +555,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
         # Find the specular reflection (0,0,0) index
         # It should have the highest overlap (1.0)
-        max_overlap = jnp.max(overlap)
+        max_overlap: scalar_float = jnp.max(overlap)
         chex.assert_trees_all_close(max_overlap, 1.0, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -580,8 +582,8 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
         # Small domain should have more "active" reflections
         # Count reflections with overlap > 0.1
-        active_small = jnp.sum(overlap_small > 0.1)
-        active_large = jnp.sum(overlap_large > 0.1)
+        active_small: scalar_float = jnp.sum(overlap_small > 0.1)
+        active_large: scalar_float = jnp.sum(overlap_large > 0.1)
 
         chex.assert_trees_all_equal(active_small >= active_large, True)
 
@@ -662,7 +664,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         """
         var_shell = self.variant(compute_shell_sigma)
 
-        k = jnp.array(73.0)
+        k: scalar_float = jnp.array(73.0)
         dE_E = 1e-4
         dtheta = 1e-3
 
@@ -683,15 +685,17 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         var_overlap = self.variant(rod_ewald_overlap)
 
         # Set up geometry where we can calculate d analytically
-        k = jnp.array(73.0)
-        k_in = jnp.array([k, 0.0, 0.0])  # Along x
+        k: scalar_float = jnp.array(73.0)
+        k_in: Float[Array, "..."] = jnp.array([k, 0.0, 0.0])  # Along x
 
         # G that gives k_out with different magnitude
         delta_k = 0.1  # Deviation from elastic condition
-        g = jnp.array([[delta_k, 0.0, 0.0]])  # k_out = [k + delta, 0, 0]
+        g: Float[Array, "..."] = jnp.array(
+            [[delta_k, 0.0, 0.0]]
+        )  # k_out = [k + delta, 0, 0]
 
-        rod_sigma = jnp.array([0.05, 0.05])
-        shell_sigma = jnp.array(0.07)
+        rod_sigma: Float[Array, "..."] = jnp.array([0.05, 0.05])
+        shell_sigma: scalar_float = jnp.array(0.07)
 
         overlap = var_overlap(g, k_in, k, rod_sigma, shell_sigma)
 
@@ -701,6 +705,6 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         # d = ||k_out| - k| = delta
         d = delta_k
         sigma_eff_sq = 0.05**2 + 0.07**2  # Simplified: use mean rod sigma
-        expected = jnp.exp(-(d**2) / (2.0 * sigma_eff_sq))
+        expected: Float[Array, "..."] = jnp.exp(-(d**2) / (2.0 * sigma_eff_sq))
 
         chex.assert_trees_all_close(overlap[0], expected, rtol=1e-3)

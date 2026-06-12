@@ -11,11 +11,13 @@ import numpy as np
 import pytest
 from matplotlib.axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
+from numpy.typing import NDArray
 
 # Use non-interactive backend for testing
 matplotlib.use("Agg")
 
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Integer
 
 from rheedium.plots.diagrams import (
     plot_crystal_structure_3d,
@@ -217,13 +219,15 @@ class TestDiagramPlots:
 
     def test_plot_crystal_structure_3d_simple(self) -> None:
         """Test 3D crystal structure plot with simple structure."""
-        positions = np.array(
+        positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
                 [2.0, 2.0, 2.0],
             ]
         )
-        atomic_numbers = np.array([14, 14])  # Two silicon atoms
+        atomic_numbers: Integer[NDArray, "..."] = np.array(
+            [14, 14]
+        )  # Two silicon atoms
 
         ax = plot_crystal_structure_3d(
             positions=positions,
@@ -233,7 +237,7 @@ class TestDiagramPlots:
 
     def test_plot_crystal_structure_3d_with_cell(self) -> None:
         """Test 3D crystal structure with unit cell outline."""
-        positions = np.array(
+        positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
                 [2.0, 0.0, 0.0],
@@ -241,7 +245,9 @@ class TestDiagramPlots:
                 [0.0, 0.0, 2.0],
             ]
         )
-        atomic_numbers = np.array([38, 22, 8, 8])  # Sr, Ti, O, O
+        atomic_numbers: Integer[NDArray, "..."] = np.array(
+            [38, 22, 8, 8]
+        )  # Sr, Ti, O, O
 
         ax = plot_crystal_structure_3d(
             positions=positions,
@@ -253,7 +259,7 @@ class TestDiagramPlots:
 
     def test_plot_crystal_structure_3d_multiple_elements(self) -> None:
         """Test 3D crystal structure with multiple element types."""
-        positions = np.array(
+        positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
                 [1.0, 1.0, 1.0],
@@ -261,7 +267,9 @@ class TestDiagramPlots:
                 [3.0, 3.0, 3.0],
             ]
         )
-        atomic_numbers = np.array([6, 14, 29, 79])  # C, Si, Cu, Au
+        atomic_numbers: Integer[NDArray, "..."] = np.array(
+            [6, 14, 29, 79]
+        )  # C, Si, Cu, Au
 
         ax = plot_crystal_structure_3d(
             positions=positions,
@@ -352,8 +360,10 @@ class TestDiagramPlotsWithProvidedAxes:
         assert returned_ax2 is ax2
 
         ax3 = fig.add_subplot(133, projection="3d")
-        positions = np.array([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]])
-        atomic_numbers = np.array([14, 14])
+        positions: Float[NDArray, "..."] = np.array(
+            [[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]]
+        )
+        atomic_numbers: Integer[NDArray, "..."] = np.array([14, 14])
         returned_ax3 = plot_crystal_structure_3d(
             positions=positions,
             atomic_numbers=atomic_numbers,
@@ -413,8 +423,10 @@ class TestDiagramViewingAngles:
         self, elev: float, azim: float
     ) -> None:
         """Test crystal structure 3D with various viewing angles."""
-        positions = np.array([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]])
-        atomic_numbers = np.array([14, 14])
+        positions: Float[NDArray, "..."] = np.array(
+            [[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]]
+        )
+        atomic_numbers: Integer[NDArray, "..."] = np.array([14, 14])
         ax = plot_crystal_structure_3d(
             positions=positions,
             atomic_numbers=atomic_numbers,
@@ -426,15 +438,15 @@ class TestDiagramViewingAngles:
 
 def _make_crystal(n_atoms: int = 4) -> CrystalStructure:
     """Create a simple CrystalStructure for view_atoms tests."""
-    all_pos = np.array(
+    all_pos: Float[NDArray, "..."] = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
     )[:n_atoms]
-    z_nums = np.array([14, 8, 38, 22])[:n_atoms]
-    frac_pos = jnp.concatenate(
+    z_nums: Integer[NDArray, "..."] = np.array([14, 8, 38, 22])[:n_atoms]
+    frac_pos: Float[Array, "..."] = jnp.concatenate(
         [jnp.array(all_pos), jnp.array(z_nums[:, None], dtype=float)],
         axis=1,
     )
-    cart_pos = jnp.concatenate(
+    cart_pos: Float[Array, "..."] = jnp.concatenate(
         [jnp.array(all_pos) * 4.0, jnp.array(z_nums[:, None], dtype=float)],
         axis=1,
     )

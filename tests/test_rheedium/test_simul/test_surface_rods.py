@@ -4,13 +4,15 @@ This module provides comprehensive testing for CTR intensity calculations,
 roughness damping, and rod profile functions used in RHEED simulations.
 """
 
+from collections.abc import Callable
+
 import chex
 import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Bool, Float, Int, Integer
 
 from rheedium.simul.surface_rods import (
     calculate_ctr_intensity,
@@ -103,7 +105,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_damping = self.variant(roughness_damping)
 
-        q_z_test = jnp.array([0.0, 1.0, 2.0, 5.0])
+        q_z_test: Float[Array, "..."] = jnp.array([0.0, 1.0, 2.0, 5.0])
         damping_values = var_damping(q_z_test, sigma)
 
         chex.assert_shape(damping_values, q_z_test.shape)
@@ -114,7 +116,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(damping_values[0], 1.0, rtol=1e-10)
 
         if sigma > 1e-10:
-            differences = jnp.diff(damping_values)
+            differences: Float[Array, "..."] = jnp.diff(damping_values)
             chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -131,13 +133,15 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_damping = self.variant(roughness_damping)
 
-        q_z_2d = jnp.tile(self.q_z_values[:, jnp.newaxis], (1, 5))
+        q_z_2d: Float[Array, "..."] = jnp.tile(
+            self.q_z_values[:, jnp.newaxis], (1, 5)
+        )
         sigma_test = 1.0
 
         damping_2d = var_damping(q_z_2d, sigma_test)
         chex.assert_shape(damping_2d, q_z_2d.shape)
 
-        q_z_3d = jnp.tile(
+        q_z_3d: Float[Array, "..."] = jnp.tile(
             self.q_z_values[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
         )
         damping_3d = var_damping(q_z_3d, sigma_test)
@@ -155,10 +159,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_damping = self.variant(roughness_damping)
 
-        q_z_test = jnp.linspace(0.0, 10.0, 50)
+        q_z_test: Float[Array, "..."] = jnp.linspace(0.0, 10.0, 50)
         damping = var_damping(q_z_test, 0.0)
 
-        expected = jnp.ones_like(q_z_test)
+        expected: Float[Array, "..."] = jnp.ones_like(q_z_test)
         chex.assert_trees_all_close(damping, expected, rtol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -191,7 +195,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_close(profile_values[0], 1.0, rtol=1e-10)
 
-        differences = jnp.diff(profile_values)
+        differences: Float[Array, "..."] = jnp.diff(profile_values)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -223,7 +227,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_close(profile_values[0], 1.0, rtol=1e-10)
 
-        differences = jnp.diff(profile_values)
+        differences: Float[Array, "..."] = jnp.diff(profile_values)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     @parameterized.named_parameters(
@@ -271,7 +275,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         reciprocal-space broadening.
         """
         var_gaussian = self.variant(gaussian_rod_profile)
-        q_test = jnp.array(0.1)
+        q_test: scalar_float = jnp.array(0.1)
         profile_small_corr = var_gaussian(q_test, 10.0)
         profile_large_corr = var_gaussian(q_test, 100.0)
         chex.assert_scalar_positive(
@@ -301,7 +305,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_structure_factor = self.variant(surface_structure_factor)
 
-        q_vectors = jnp.array(
+        q_vectors: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
@@ -316,7 +320,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         )
         # Convert scalar is_surface to per-atom mask
         n_atoms = atomic_positions.shape[0]
-        is_surface_atom = jnp.full((n_atoms,), is_surface)
+        is_surface_atom: Bool[Array, "..."] = jnp.full((n_atoms,), is_surface)
 
         for q_vec in q_vectors:
             f_struct = var_structure_factor(
@@ -352,9 +356,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         )
         # All bulk atoms (no surface enhancement)
         n_atoms = atomic_positions.shape[0]
-        is_surface_atom = jnp.full((n_atoms,), False)
+        is_surface_atom: Bool[Array, "..."] = jnp.full((n_atoms,), False)
 
-        q_vec = jnp.array([1.0, 0.5, 0.3])
+        q_vec: Float[Array, "..."] = jnp.array([1.0, 0.5, 0.3])
         q_vec_neg = -q_vec
 
         f_pos = var_structure_factor(
@@ -397,7 +401,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_ctr = self.variant(calculate_ctr_intensity)
 
-        hk_array = jnp.array([hk_index], dtype=jnp.int32)
+        hk_array: Integer[Array, "..."] = jnp.array(
+            [hk_index], dtype=jnp.int32
+        )
 
         intensities = var_ctr(
             hk_indices=hk_array,
@@ -415,8 +421,12 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         if roughness > 0.1:
             n_points = len(self.q_z_values)
-            first_quarter_mean = jnp.mean(intensities[0, : n_points // 4])
-            last_quarter_mean = jnp.mean(intensities[0, -n_points // 4 :])
+            first_quarter_mean: scalar_float = jnp.mean(
+                intensities[0, : n_points // 4]
+            )
+            last_quarter_mean: scalar_float = jnp.mean(
+                intensities[0, -n_points // 4 :]
+            )
 
             chex.assert_scalar_positive(
                 float(first_quarter_mean - last_quarter_mean)
@@ -451,7 +461,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
         chex.assert_tree_all_finite(intensities)
 
-        rod_differences = jnp.std(intensities, axis=0)
+        rod_differences: scalar_float = jnp.std(intensities, axis=0)
         chex.assert_scalar_positive(float(jnp.mean(rod_differences)))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -471,7 +481,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_ctr = self.variant(calculate_ctr_intensity)
 
-        hk_test = jnp.array([[1, 0]], dtype=jnp.int32)
+        hk_test: Integer[Array, "..."] = jnp.array([[1, 0]], dtype=jnp.int32)
 
         intensities_smooth = var_ctr(
             hk_indices=hk_test,
@@ -497,7 +507,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             jnp.all(smooth_high_qz >= rough_high_qz), True
         )
 
-        relative_reduction = jnp.mean(
+        relative_reduction: scalar_float = jnp.mean(
             (smooth_high_qz - rough_high_qz) / (smooth_high_qz + 1e-10)
         )
         chex.assert_scalar_positive(float(relative_reduction))
@@ -556,7 +566,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_ctr = self.variant(calculate_ctr_intensity)
 
-        hk_test = jnp.array([[1, 1]], dtype=jnp.int32)
+        hk_test: Integer[Array, "..."] = jnp.array([[1, 1]], dtype=jnp.int32)
 
         intensities_cold = var_ctr(
             hk_indices=hk_test,
@@ -574,8 +584,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             temperature=600.0,
         )
 
-        mean_cold = jnp.mean(intensities_cold)
-        mean_hot = jnp.mean(intensities_hot)
+        mean_cold: scalar_float = jnp.mean(intensities_cold)
+        mean_hot: scalar_float = jnp.mean(intensities_hot)
         chex.assert_scalar_positive(float(mean_cold - mean_hot))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -602,7 +612,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
                 temperature=300.0,
             )
 
-        vmapped_ctr = jax.vmap(ctr_for_roughness)
+        vmapped_ctr: Callable[[Float[Array, "R"]], Float[Array, "R 1 10"]] = (
+            jax.vmap(ctr_for_roughness)
+        )
         intensities_batch: Float[Array, "R 1 10"] = vmapped_ctr(
             self.roughness_values
         )
@@ -624,7 +636,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             )
             return jnp.squeeze(intensities)
 
-        grad_fn = jax.grad(loss_fn)
+        grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(loss_fn)
         grad_roughness: scalar_float = grad_fn(1.0)
 
         chex.assert_shape(grad_roughness, ())
@@ -659,7 +671,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         gaussian_tail = gaussian_profile[tail_indices]
         lorentzian_tail = lorentzian_profile[tail_indices]
 
-        tail_diff = jnp.mean(lorentzian_tail - gaussian_tail)
+        tail_diff: scalar_float = jnp.mean(lorentzian_tail - gaussian_tail)
         chex.assert_scalar_positive(float(tail_diff))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -679,8 +691,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         var_damping = self.variant(roughness_damping)
         var_structure = self.variant(surface_structure_factor)
 
-        hk_test = jnp.array([[0, 0], [1, 0], [2, 0]], dtype=jnp.int32)
-        q_z_single = jnp.array([1.0])
+        hk_test: Integer[Array, "..."] = jnp.array(
+            [[0, 0], [1, 0], [2, 0]], dtype=jnp.int32
+        )
+        q_z_single: Float[Array, "..."] = jnp.array([1.0])
 
         intensities = var_ctr(
             hk_indices=hk_test,
@@ -692,11 +706,13 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-        q_vec = jnp.array([0.0, 0.0, 1.0])
+        q_vec: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
 
         # Create per-atom surface mask (all True for this test)
         n_atoms = self.test_crystal.cart_positions.shape[0]
-        is_surface_atom = jnp.ones(n_atoms, dtype=jnp.bool_)
+        is_surface_atom: Bool[Array, "..."] = jnp.ones(
+            n_atoms, dtype=jnp.bool_
+        )
         f_struct = var_structure(
             q_vector=q_vec,
             atomic_positions=self.test_crystal.cart_positions[:, :3],
@@ -709,7 +725,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         damping = var_damping(q_z=jnp.array(1.0), sigma_height=0.5)
 
-        expected_intensity = jnp.abs(f_struct) ** 2 * damping
+        expected_intensity: Float[Array, "..."] = (
+            jnp.abs(f_struct) ** 2 * damping
+        )
 
         chex.assert_tree_all_finite(expected_intensity)
 
@@ -717,11 +735,17 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 def _make_si_crystal() -> CrystalStructure:
     """Create a 2-atom Si crystal for gradient tests."""
     a_si = 5.431
-    frac_coords = jnp.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]])
+    frac_coords: Float[Array, "..."] = jnp.array(
+        [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
+    )
     cart_coords = frac_coords * a_si
-    atomic_numbers = jnp.full(2, 14.0)
-    frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
-    cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+    atomic_numbers: Float[Array, "..."] = jnp.full(2, 14.0)
+    frac_positions: Float[Array, "..."] = jnp.column_stack(
+        [frac_coords, atomic_numbers]
+    )
+    cart_positions: Float[Array, "..."] = jnp.column_stack(
+        [cart_coords, atomic_numbers]
+    )
     return create_crystal_structure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
@@ -830,8 +854,12 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
             )
 
         roughness_batch: Float[Array, "3"] = jnp.array([0.1, 0.5, 1.0])
-        batched = jax.vmap(f)(roughness_batch)
-        sequential = jnp.stack([f(r) for r in roughness_batch])
+        batched: Float[Array, "roughness one qz"] = jax.vmap(f)(
+            roughness_batch
+        )
+        sequential: Float[Array, "..."] = jnp.stack(
+            [f(r) for r in roughness_batch]
+        )
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 

@@ -7,6 +7,7 @@ RHEED simulator cost.
 
 import chex
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
@@ -21,11 +22,12 @@ from rheedium.types import (
     create_discrete_orientation,
     integrate_over_orientation,
 )
+from rheedium.types.custom_types import scalar_float
 
 
-def _synthetic_pattern(phi_deg: jnp.ndarray) -> jnp.ndarray:
+def _synthetic_pattern(phi_deg: scalar_float) -> Float[Array, "rows cols"]:
     """Map an orientation angle to a distinct positive detector image."""
-    x = jnp.asarray(phi_deg, dtype=jnp.float64) / 10.0
+    x: scalar_float = jnp.asarray(phi_deg, dtype=jnp.float64) / 10.0
     return jnp.array(
         [
             [1.0 + x, 0.5 + x**2, 0.25 + x**3],
@@ -49,14 +51,14 @@ class TestOrientationLoss(chex.TestCase):
 
     def test_orientation_loss_is_zero_for_matching_distribution(self) -> None:
         """The loss should vanish when the trial distribution matches data."""
-        distribution = _true_distribution()
-        observed = integrate_over_orientation(
+        distribution: OrientationDistribution = _true_distribution()
+        observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
             distribution,
             n_mosaic_points=1,
         )
 
-        loss = orientation_loss(
+        loss: scalar_float = orientation_loss(
             distribution=distribution,
             simulate_fn=_synthetic_pattern,
             observed_pattern=observed,
@@ -72,14 +74,14 @@ class TestOrientationFitting(chex.TestCase):
 
     def test_fit_orientation_weights_recovers_synthetic_weights(self) -> None:
         """The inverse fit should recover the synthetic mixture weights."""
-        true_distribution = _true_distribution()
-        observed = integrate_over_orientation(
+        true_distribution: OrientationDistribution = _true_distribution()
+        observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
             true_distribution,
             n_mosaic_points=1,
         )
 
-        result = fit_orientation_weights(
+        result: OrientationFitResult = fit_orientation_weights(
             observed_pattern=observed,
             simulate_fn=_synthetic_pattern,
             candidate_angles_deg=true_distribution.discrete_angles_deg,
@@ -111,12 +113,12 @@ class TestOrientationUncertainty(chex.TestCase):
 
     def test_fisher_information_tracks_discrete_weight_count(self) -> None:
         """Fisher shape should depend on discrete weights, not quadrature."""
-        distribution = create_discrete_orientation(
+        distribution: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 20.0]),
             weights=jnp.array([0.4, 0.6]),
         )
 
-        fisher = compute_fisher_information(
+        fisher: Float[Array, "weights weights"] = compute_fisher_information(
             simulate_fn=_synthetic_pattern,
             distribution=distribution,
             noise_variance=0.5,
@@ -133,13 +135,13 @@ class TestOrientationUncertainty(chex.TestCase):
         self,
     ) -> None:
         """Uncertainty output should match the fitted weight dimension."""
-        distribution = _true_distribution()
-        observed = integrate_over_orientation(
+        distribution: OrientationDistribution = _true_distribution()
+        observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
             distribution,
             n_mosaic_points=1,
         )
-        result = OrientationFitResult(
+        result: OrientationFitResult = OrientationFitResult(
             fitted_distribution=distribution,
             final_loss=jnp.array(0.0, dtype=jnp.float64),
             loss_history=jnp.array([0.0], dtype=jnp.float64),
@@ -148,7 +150,7 @@ class TestOrientationUncertainty(chex.TestCase):
             residual_pattern=jnp.zeros_like(observed),
         )
 
-        uncertainties = estimate_weight_uncertainty(
+        uncertainties: Float[Array, "weights"] = estimate_weight_uncertainty(
             result=result,
             simulate_fn=_synthetic_pattern,
             noise_variance=1.0,

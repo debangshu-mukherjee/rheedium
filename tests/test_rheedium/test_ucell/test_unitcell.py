@@ -8,11 +8,14 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+from jaxtyping import Array, Bool, Float, Integer
+from numpy.typing import NDArray
 
 from rheedium.types.crystal_types import (
     CrystalStructure,
     create_crystal_structure,
 )
+from rheedium.types.custom_types import scalar_float
 from rheedium.types.rheed_types import SlicedCrystal
 from rheedium.ucell.helper import compute_lengths_angles
 from rheedium.ucell.unitcell import (
@@ -29,14 +32,20 @@ from rheedium.ucell.unitcell import (
 
 def _make_simple_crystal(n_atoms: int = 8) -> CrystalStructure:
     """Create a simple cubic CrystalStructure for testing."""
-    rng = np.random.default_rng(0)
-    frac_xyz = rng.uniform(size=(n_atoms, 3))
-    z_nums = np.full((n_atoms, 1), 14.0)
-    frac_pos = jnp.array(np.hstack([frac_xyz, z_nums]))
-    cell_lengths = jnp.array([5.43, 5.43, 5.43])
-    cell_angles = jnp.array([90.0, 90.0, 90.0])
-    cart_xyz = frac_xyz * np.array([5.43, 5.43, 5.43])
-    cart_pos = jnp.array(np.hstack([cart_xyz, z_nums]))
+    rng: np.random.Generator = np.random.default_rng(0)
+    frac_xyz: Float[NDArray, "atoms xyz"] = rng.uniform(size=(n_atoms, 3))
+    z_nums: Float[NDArray, "atoms one"] = np.full((n_atoms, 1), 14.0)
+    frac_pos: Float[Array, "atoms xyzz"] = jnp.array(
+        np.hstack([frac_xyz, z_nums])
+    )
+    cell_lengths: Float[Array, "three"] = jnp.array([5.43, 5.43, 5.43])
+    cell_angles: Float[Array, "three"] = jnp.array([90.0, 90.0, 90.0])
+    cart_xyz: Float[NDArray, "atoms xyz"] = frac_xyz * np.array(
+        [5.43, 5.43, 5.43]
+    )
+    cart_pos: Float[Array, "atoms xyzz"] = jnp.array(
+        np.hstack([cart_xyz, z_nums])
+    )
     return create_crystal_structure(
         frac_positions=frac_pos,
         cart_positions=cart_pos,
@@ -101,7 +110,7 @@ class TestBulkToSlice(chex.TestCase):
     def test_orientation_preserved(self) -> None:
         """Surface orientation should be preserved."""
         crystal = _make_simple_crystal()
-        orient = jnp.array([1, 1, 1], dtype=jnp.int32)
+        orient: Integer[Array, "..."] = jnp.array([1, 1, 1], dtype=jnp.int32)
         sliced = bulk_to_slice(
             crystal,
             orientation=orient,
@@ -198,7 +207,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         a = 5.0  # lattice constant
 
         # Atoms at different z heights
-        cart_coords = jnp.array(
+        cart_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],  # z = 0
                 [0.0, 0.0, 2.0],  # z = 2
@@ -212,10 +221,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         frac_coords = cart_coords / jnp.array([a, a, 10.0])
 
         # All silicon atoms
-        atomic_numbers = jnp.full(5, 14.0)
+        atomic_numbers: Float[Array, "..."] = jnp.full(5, 14.0)
 
-        frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
-        cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+        frac_positions: Float[Array, "..."] = jnp.column_stack(
+            [frac_coords, atomic_numbers]
+        )
+        cart_positions: Float[Array, "..."] = jnp.column_stack(
+            [cart_coords, atomic_numbers]
+        )
 
         return create_crystal_structure(
             frac_positions=frac_positions,
@@ -228,7 +241,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         """Create a crystal with atoms spread in XY plane at same z."""
         a = 10.0
 
-        cart_coords = jnp.array(
+        cart_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 5.0],
                 [5.0, 0.0, 5.0],
@@ -238,7 +251,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
         frac_coords = cart_coords / a
-        atomic_numbers = jnp.full(4, 14.0)
+        atomic_numbers: Float[Array, "..."] = jnp.full(4, 14.0)
 
         return create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
@@ -249,8 +262,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_basic_z_axis_scraping(self) -> None:
         """Test scraping atoms along z-axis with specific thickness."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 3.0])  # 3 Angstrom thickness
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
+            [5.0, 5.0, 3.0]
+        )  # 3 Angstrom thickness
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -266,8 +281,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_full_thickness_keeps_all_atoms(self) -> None:
         """Test that large thickness keeps all atoms."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([10.0, 10.0, 20.0])  # Much larger than crystal
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
+            [10.0, 10.0, 20.0]
+        )  # Much larger than crystal
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -286,8 +303,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         the minimum atom spacing (2 * min_spacing). For atoms spaced 2Å apart,
         this gives adaptive_eps = 4Å, which includes multiple atoms.
         """
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array(
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
             [0.0, 0.0, 0.0]
         )  # Zero thickness = top layer mode
 
@@ -304,7 +321,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         self.assertLessEqual(int(n_atoms), 5)
 
         # Verify the topmost atom is included
-        max_z = jnp.max(filtered.cart_positions[:, 2])
+        max_z: scalar_float = jnp.max(filtered.cart_positions[:, 2])
         chex.assert_trees_all_close(max_z, 8.0, atol=1e-6)
 
     @parameterized.named_parameters(
@@ -314,8 +331,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
     )
     def test_zone_axis_normalization(self, zone_axis: list[float]) -> None:
         """Test that zone axis is properly normalized."""
-        zone_axis_arr = jnp.array(zone_axis)
-        thickness = jnp.array([5.0, 5.0, 3.0])
+        zone_axis_arr: Float[Array, "three"] = jnp.array(zone_axis)
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -330,7 +347,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
     def test_x_axis_scraping(self) -> None:
         """Test scraping along x-axis."""
         # Create crystal with atoms spread along x
-        cart_coords = jnp.array(
+        cart_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [2.0, 0.0, 0.0],
@@ -340,7 +357,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             ]
         )
         frac_coords = cart_coords / 10.0
-        atomic_numbers = jnp.full(5, 14.0)
+        atomic_numbers: Float[Array, "..."] = jnp.full(5, 14.0)
 
         crystal = create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
@@ -349,8 +366,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-        zone_axis = jnp.array([1.0, 0.0, 0.0])
-        thickness = jnp.array([3.0, 5.0, 5.0])
+        zone_axis: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
+        thickness: Float[Array, "..."] = jnp.array([3.0, 5.0, 5.0])
 
         filtered = atom_scraper(
             crystal=crystal,
@@ -364,8 +381,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_diagonal_zone_axis(self) -> None:
         """Test scraping along diagonal [1,1,1] direction."""
-        zone_axis = jnp.array([1.0, 1.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 5.0])
+        zone_axis: Float[Array, "..."] = jnp.array([1.0, 1.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 5.0])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -380,8 +397,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_output_is_valid_crystal_structure(self) -> None:
         """Test that output is a valid CrystalStructure."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 3.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -407,8 +424,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_cell_lengths_positive(self) -> None:
         """Test that output cell lengths are positive."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 3.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -420,8 +437,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_cell_angles_valid(self) -> None:
         """Test that output cell angles are in valid range."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 3.0])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -435,8 +452,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_atomic_numbers_preserved(self) -> None:
         """Test that atomic numbers are preserved in output."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 20.0])  # Keep all atoms
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
+            [5.0, 5.0, 20.0]
+        )  # Keep all atoms
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -459,7 +478,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         a = 10.0
 
         # Atoms in XY plane with slight z variation
-        cart_coords = jnp.array(
+        cart_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 5.0],
                 [5.0, 0.0, 5.0],
@@ -469,7 +488,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
         frac_coords = cart_coords / a
-        atomic_numbers = jnp.full(4, 14.0)
+        atomic_numbers: Float[Array, "..."] = jnp.full(4, 14.0)
 
         crystal = create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
@@ -478,8 +497,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
         )
 
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([10.0, 10.0, 1.0])  # 1 Angstrom slice
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
+            [10.0, 10.0, 1.0]
+        )  # 1 Angstrom slice
 
         filtered = atom_scraper(
             crystal=crystal,
@@ -500,8 +521,8 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         self, z_thickness: float, min_expected: int
     ) -> None:
         """Test that increasing thickness includes more atoms."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, z_thickness])
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, z_thickness])
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -514,8 +535,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def test_frac_and_cart_positions_consistent(self) -> None:
         """Test that fractional and Cartesian positions remain consistent."""
-        zone_axis = jnp.array([0.0, 0.0, 1.0])
-        thickness = jnp.array([5.0, 5.0, 20.0])  # Keep all atoms
+        zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
+        thickness: Float[Array, "..."] = jnp.array(
+            [5.0, 5.0, 20.0]
+        )  # Keep all atoms
 
         filtered = atom_scraper(
             crystal=self.cubic_crystal,
@@ -697,7 +720,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     def test_in_degrees_flag_false(self) -> None:
         """Test in_degrees=False (input in radians)."""
         var_fn = self.variant(reciprocal_unitcell)
-        pi_half = jnp.pi / 2
+        pi_half: Float[Array, "..."] = jnp.pi / 2
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -736,7 +759,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     def test_both_degrees_flags_false(self) -> None:
         """Test both in_degrees=False and out_degrees=False."""
         var_fn = self.variant(reciprocal_unitcell)
-        pi_half = jnp.pi / 2
+        pi_half: Float[Array, "..."] = jnp.pi / 2
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -882,7 +905,7 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
             beta=90.0,
             gamma=90.0,
         )
-        volume = jnp.linalg.det(matrix)
+        volume: scalar_float = jnp.linalg.det(matrix)
         expected_volume = 3.0 * 4.0 * 5.0  # For orthorhombic
         chex.assert_trees_all_close(volume, expected_volume, rtol=1e-5)
 
@@ -1014,7 +1037,7 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
             beta=85.0,
             gamma=75.0,
         )
-        lengths = jnp.linalg.norm(vectors, axis=1)
+        lengths: Float[Array, "..."] = jnp.linalg.norm(vectors, axis=1)
         chex.assert_trees_all_close(lengths[0], 3.0, rtol=1e-5)
         chex.assert_trees_all_close(lengths[1], 4.0, rtol=1e-5)
         chex.assert_trees_all_close(lengths[2], 5.0, rtol=1e-5)
@@ -1034,10 +1057,12 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         # Check angle gamma between a and b
         a_vec = vectors[0]
         b_vec = vectors[1]
-        cos_gamma = jnp.dot(a_vec, b_vec) / (
+        cos_gamma: Float[Array, "..."] = jnp.dot(a_vec, b_vec) / (
             jnp.linalg.norm(a_vec) * jnp.linalg.norm(b_vec)
         )
-        gamma_computed = jnp.rad2deg(jnp.arccos(cos_gamma))
+        gamma_computed: Float[Array, "..."] = jnp.rad2deg(
+            jnp.arccos(cos_gamma)
+        )
         chex.assert_trees_all_close(gamma_computed, 75.0, atol=1e-4)
 
 
@@ -1052,7 +1077,7 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     def test_cubic_system(self) -> None:
         """Test lengths and angles for cubic vectors."""
         var_fn = self.variant(compute_lengths_angles)
-        vectors = jnp.array(
+        vectors: Float[Array, "..."] = jnp.array(
             [
                 [3.0, 0.0, 0.0],
                 [0.0, 3.0, 0.0],
@@ -1071,7 +1096,7 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     def test_orthorhombic_system(self) -> None:
         """Test lengths and angles for orthorhombic vectors."""
         var_fn = self.variant(compute_lengths_angles)
-        vectors = jnp.array(
+        vectors: Float[Array, "..."] = jnp.array(
             [
                 [3.0, 0.0, 0.0],
                 [0.0, 4.0, 0.0],
@@ -1294,7 +1319,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             in_degrees=True,
         )
         # With radians
-        pi_half = jnp.pi / 2
+        pi_half: Float[Array, "..."] = jnp.pi / 2
         rec_vecs_rad = var_fn(
             a=3.0,
             b=3.0,
@@ -1329,7 +1354,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_single_index_100(self) -> None:
         """Test (1,0,0) Miller index."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([1, 0, 0])
+        hkl: Integer[Array, "..."] = jnp.array([1, 0, 0])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
@@ -1340,7 +1365,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_single_index_010(self) -> None:
         """Test (0,1,0) Miller index."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([0, 1, 0])
+        hkl: Integer[Array, "..."] = jnp.array([0, 1, 0])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
@@ -1351,7 +1376,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_single_index_001(self) -> None:
         """Test (0,0,1) Miller index."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([0, 0, 1])
+        hkl: Integer[Array, "..."] = jnp.array([0, 0, 1])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
@@ -1362,7 +1387,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_single_index_111(self) -> None:
         """Test (1,1,1) Miller index."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([1, 1, 1])
+        hkl: Integer[Array, "..."] = jnp.array([1, 1, 1])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
@@ -1373,7 +1398,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_negative_indices(self) -> None:
         """Test negative Miller indices."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([-1, -1, -1])
+        hkl: Integer[Array, "..."] = jnp.array([-1, -1, -1])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = -2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
@@ -1384,7 +1409,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_zero_indices(self) -> None:
         """Test (0,0,0) gives zero vector."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([0, 0, 0])
+        hkl: Integer[Array, "..."] = jnp.array([0, 0, 0])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         chex.assert_trees_all_close(
             g_vec, jnp.array([0.0, 0.0, 0.0]), atol=1e-10
@@ -1394,7 +1419,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_batch_indices(self) -> None:
         """Test batched Miller indices."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array(
+        hkl: Float[Array, "..."] = jnp.array(
             [
                 [1, 0, 0],
                 [0, 1, 0],
@@ -1416,7 +1441,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     def test_higher_indices(self) -> None:
         """Test higher Miller indices (2,0,0)."""
         var_fn = self.variant(miller_to_reciprocal)
-        hkl = jnp.array([2, 0, 0])
+        hkl: Integer[Array, "..."] = jnp.array([2, 0, 0])
         g_vec = var_fn(hkl, self.cubic_rec_vecs)
         expected = 2 * (2 * jnp.pi / 3.0)
         chex.assert_trees_all_close(
@@ -1437,9 +1462,9 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     def _create_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal."""
         a = 3.0
-        cart_coords = jnp.array([[0.0, 0.0, 0.0]])
+        cart_coords: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         frac_coords = cart_coords / a
-        atomic_numbers = jnp.array([14.0])  # Silicon
+        atomic_numbers: Float[Array, "..."] = jnp.array([14.0])  # Silicon
 
         return create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
@@ -1475,8 +1500,8 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
             in_degrees=True,
         )
         # Check if any row is close to zero
-        norms = jnp.linalg.norm(g_vecs, axis=1)
-        has_origin = jnp.any(norms < 1e-10)
+        norms: Float[Array, "..."] = jnp.linalg.norm(g_vecs, axis=1)
+        has_origin: Bool[Array, "..."] = jnp.any(norms < 1e-10)
         chex.assert_trees_all_equal(has_origin, True)
 
     @chex.variants(with_device=True, without_jit=True)
@@ -1505,11 +1530,11 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
             in_degrees=True,
         )
         # Calculate magnitudes
-        mags = jnp.linalg.norm(g_vecs, axis=1)
+        mags: Float[Array, "..."] = jnp.linalg.norm(g_vecs, axis=1)
         # For cubic, (1,0,0), (0,1,0), (0,0,1) should have same magnitude
         expected = 2 * jnp.pi / 3.0
         # Count how many have this magnitude
-        matches = jnp.sum(jnp.abs(mags - expected) < 1e-5)
+        matches: scalar_float = jnp.sum(jnp.abs(mags - expected) < 1e-5)
         # Should be 6: ±(1,0,0), ±(0,1,0), ±(0,0,1)
         chex.assert_trees_all_equal(matches, 6)
 

@@ -452,8 +452,8 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_single_domain_unchanged(self) -> None:
         """Single domain with f=1 should return pattern unchanged."""
-        pattern = jnp.ones((1, 8, 8)) * 5.0
-        fractions = jnp.array([1.0])
+        pattern: Float[Array, "..."] = jnp.ones((1, 8, 8)) * 5.0
+        fractions: Float[Array, "..."] = jnp.array([1.0])
         result = incoherent_domain_average(
             domain_patterns=pattern,
             domain_volume_fractions=fractions,
@@ -463,21 +463,21 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_two_equal_domains_average(self) -> None:
         """50/50 mix should be the average of two patterns."""
-        p1 = jnp.ones((8, 8)) * 2.0
-        p2 = jnp.ones((8, 8)) * 6.0
-        patterns = jnp.stack([p1, p2], axis=0)
-        fractions = jnp.array([0.5, 0.5])
+        p1: Float[Array, "..."] = jnp.ones((8, 8)) * 2.0
+        p2: Float[Array, "..."] = jnp.ones((8, 8)) * 6.0
+        patterns: Float[Array, "..."] = jnp.stack([p1, p2], axis=0)
+        fractions: Float[Array, "..."] = jnp.array([0.5, 0.5])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,
         )
-        expected = jnp.ones((8, 8)) * 4.0
+        expected: Float[Array, "..."] = jnp.ones((8, 8)) * 4.0
         chex.assert_trees_all_close(result, expected, atol=1e-6)
 
     def test_output_shape(self) -> None:
         """Output should be (H, W) regardless of number of domains."""
-        patterns = jnp.ones((3, 16, 32))
-        fractions = jnp.array([0.5, 0.3, 0.2])
+        patterns: Float[Array, "..."] = jnp.ones((3, 16, 32))
+        fractions: Float[Array, "..."] = jnp.array([0.5, 0.3, 0.2])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,
@@ -486,9 +486,11 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_output_nonnegative(self) -> None:
         """Result should be non-negative for non-negative inputs."""
-        rng = np.random.default_rng(42)
-        patterns = jnp.array(rng.uniform(0, 10, size=(4, 8, 8)))
-        fractions = jnp.array([0.25, 0.25, 0.25, 0.25])
+        rng: np.random.Generator = np.random.default_rng(42)
+        patterns: Float[Array, "domains height width"] = jnp.array(
+            rng.uniform(0, 10, size=(4, 8, 8))
+        )
+        fractions: Float[Array, "..."] = jnp.array([0.25, 0.25, 0.25, 0.25])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,
@@ -497,10 +499,10 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_weighted_sum_correct(self) -> None:
         """Weighted sum should equal manual calculation."""
-        p1 = jnp.ones((4, 4)) * 10.0
-        p2 = jnp.ones((4, 4)) * 20.0
-        patterns = jnp.stack([p1, p2], axis=0)
-        fractions = jnp.array([0.3, 0.7])
+        p1: Float[Array, "..."] = jnp.ones((4, 4)) * 10.0
+        p2: Float[Array, "..."] = jnp.ones((4, 4)) * 20.0
+        patterns: Float[Array, "..."] = jnp.stack([p1, p2], axis=0)
+        fractions: Float[Array, "..."] = jnp.array([0.3, 0.7])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,
@@ -514,9 +516,9 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_fractions_auto_normalized(self) -> None:
         """Non-unit fractions should be auto-normalized."""
-        p1 = jnp.ones((4, 4)) * 10.0
-        patterns = jnp.expand_dims(p1, axis=0)
-        fractions = jnp.array([2.0])
+        p1: Float[Array, "..."] = jnp.ones((4, 4)) * 10.0
+        patterns: Float[Array, "..."] = jnp.expand_dims(p1, axis=0)
+        fractions: Float[Array, "..."] = jnp.array([2.0])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,
@@ -525,9 +527,11 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
     def test_no_nan_or_inf(self) -> None:
         """Output should be finite."""
-        rng = np.random.default_rng(0)
-        patterns = jnp.array(rng.uniform(0, 100, size=(5, 8, 8)))
-        fractions = jnp.array([0.1, 0.2, 0.3, 0.15, 0.25])
+        rng: np.random.Generator = np.random.default_rng(0)
+        patterns: Float[Array, "domains height width"] = jnp.array(
+            rng.uniform(0, 100, size=(5, 8, 8))
+        )
+        fractions: Float[Array, "..."] = jnp.array([0.1, 0.2, 0.3, 0.15, 0.25])
         result = incoherent_domain_average(
             domain_patterns=patterns,
             domain_volume_fractions=fractions,

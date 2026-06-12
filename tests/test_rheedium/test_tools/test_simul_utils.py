@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
 from jax.test_util import check_grads
+from jaxtyping import Array, Float
 
 from rheedium.tools.simul_utils import (
     incident_wavevector,
@@ -28,10 +29,12 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         """Relativistic wavelength matches reference values."""
         var_wavelength = self.variant(wavelength_ang)
 
-        voltages_kv = jnp.array([10.0, 20.0, 30.0])
-        wavelengths = jax.vmap(var_wavelength)(voltages_kv)
+        voltages_kv: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0])
+        wavelengths: Float[Array, "voltages"] = jax.vmap(var_wavelength)(
+            voltages_kv
+        )
 
-        expected = jnp.array([0.1226, 0.0859, 0.0698])
+        expected: Float[Array, "..."] = jnp.array([0.1226, 0.0859, 0.0698])
 
         chex.assert_trees_all_close(wavelengths, expected, rtol=5e-3)
         chex.assert_tree_all_finite(wavelengths)
@@ -41,8 +44,8 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         """Higher voltage produces shorter wavelength."""
         var_wavelength = self.variant(wavelength_ang)
 
-        lam_10 = var_wavelength(jnp.float64(10.0))
-        lam_30 = var_wavelength(jnp.float64(30.0))
+        lam_10: scalar_float = var_wavelength(jnp.float64(10.0))
+        lam_30: scalar_float = var_wavelength(jnp.float64(30.0))
 
         assert float(lam_30) < float(lam_10)
 
@@ -51,20 +54,24 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         """Wavelength is always positive."""
         var_wavelength = self.variant(wavelength_ang)
 
-        voltages = jnp.array([5.0, 10.0, 20.0, 50.0, 100.0])
-        wavelengths = jax.vmap(var_wavelength)(voltages)
+        voltages: Float[Array, "..."] = jnp.array(
+            [5.0, 10.0, 20.0, 50.0, 100.0]
+        )
+        wavelengths: Float[Array, "voltages"] = jax.vmap(var_wavelength)(
+            voltages
+        )
 
         chex.assert_trees_all_equal(jnp.all(wavelengths > 0), True)
 
     def test_scalar_input(self) -> None:
         """Accepts scalar float input."""
-        lam = wavelength_ang(20.0)
+        lam: scalar_float = wavelength_ang(20.0)
         chex.assert_tree_all_finite(lam)
 
     def test_array_broadcast(self) -> None:
         """Handles batched array input."""
-        voltages = jnp.array([10.0, 20.0, 30.0])
-        wavelengths = wavelength_ang(voltages)
+        voltages: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0])
+        wavelengths: Float[Array, "voltages"] = wavelength_ang(voltages)
         chex.assert_shape(wavelengths, (3,))
         chex.assert_tree_all_finite(wavelengths)
 
@@ -77,7 +84,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """Returns a 3-component vector."""
         var_k = self.variant(incident_wavevector)
 
-        k_in = var_k(
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
             theta_deg=jnp.float64(2.0),
         )
@@ -89,14 +96,14 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """Wavevector magnitude equals 2*pi/lambda."""
         var_k = self.variant(incident_wavevector)
 
-        lam = 0.0859
-        k_in = var_k(
+        lam: float = 0.0859
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(lam),
             theta_deg=jnp.float64(2.0),
         )
 
-        k_mag = jnp.linalg.norm(k_in)
-        expected_mag = 2.0 * jnp.pi / lam
+        k_mag: scalar_float = jnp.linalg.norm(k_in)
+        expected_mag: scalar_float = 2.0 * jnp.pi / lam
 
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
 
@@ -105,7 +112,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """k_z is negative (beam enters from above the surface)."""
         var_k = self.variant(incident_wavevector)
 
-        k_in = var_k(
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
             theta_deg=jnp.float64(2.0),
         )
@@ -117,12 +124,12 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """Steeper grazing angle gives larger |k_z|."""
         var_k = self.variant(incident_wavevector)
 
-        lam = 0.0859
-        k_shallow = var_k(
+        lam: float = 0.0859
+        k_shallow: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(lam),
             theta_deg=jnp.float64(1.0),
         )
-        k_steep = var_k(
+        k_steep: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(lam),
             theta_deg=jnp.float64(5.0),
         )
@@ -134,7 +141,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """At phi=0, k_y should be zero (beam along x)."""
         var_k = self.variant(incident_wavevector)
 
-        k_in = var_k(
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
             theta_deg=jnp.float64(2.0),
             phi_deg=jnp.float64(0.0),
@@ -147,7 +154,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """At phi=90, k_x should be zero (beam along y)."""
         var_k = self.variant(incident_wavevector)
 
-        k_in = var_k(
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
             theta_deg=jnp.float64(2.0),
             phi_deg=jnp.float64(90.0),
@@ -166,15 +173,15 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         """Wavevector magnitude is independent of azimuthal angle."""
         var_k = self.variant(incident_wavevector)
 
-        lam = 0.0859
-        k_in = var_k(
+        lam: float = 0.0859
+        k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(lam),
             theta_deg=jnp.float64(2.0),
             phi_deg=jnp.float64(phi),
         )
 
-        k_mag = jnp.linalg.norm(k_in)
-        expected_mag = 2.0 * jnp.pi / lam
+        k_mag: scalar_float = jnp.linalg.norm(k_in)
+        expected_mag: scalar_float = 2.0 * jnp.pi / lam
 
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
 
@@ -187,11 +194,17 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         """Interaction constant matches reference values."""
         var_sigma = self.variant(interaction_constant)
 
-        voltages_kv = jnp.array([10.0, 20.0, 30.0, 100.0, 300.0])
-        wavelengths = jax.vmap(wavelength_ang)(voltages_kv)
-        sigmas = jax.vmap(var_sigma)(voltages_kv, wavelengths)
+        voltages_kv: Float[Array, "..."] = jnp.array(
+            [10.0, 20.0, 30.0, 100.0, 300.0]
+        )
+        wavelengths: Float[Array, "voltages"] = jax.vmap(wavelength_ang)(
+            voltages_kv
+        )
+        sigmas: Float[Array, "voltages"] = jax.vmap(var_sigma)(
+            voltages_kv, wavelengths
+        )
 
-        expected = jnp.array(
+        expected: Float[Array, "..."] = jnp.array(
             [
                 0.0025990366192425313,
                 0.0018640613383894631,
@@ -209,8 +222,8 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         """Interaction constant is always positive."""
         var_sigma = self.variant(interaction_constant)
 
-        lam = wavelength_ang(jnp.float64(20.0))
-        sigma = var_sigma(jnp.float64(20.0), lam)
+        lam: scalar_float = wavelength_ang(jnp.float64(20.0))
+        sigma: scalar_float = var_sigma(jnp.float64(20.0), lam)
 
         assert float(sigma) > 0
 
@@ -219,11 +232,11 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
         """Higher voltage gives smaller interaction constant."""
         var_sigma = self.variant(interaction_constant)
 
-        lam_10 = wavelength_ang(jnp.float64(10.0))
-        lam_30 = wavelength_ang(jnp.float64(30.0))
+        lam_10: scalar_float = wavelength_ang(jnp.float64(10.0))
+        lam_30: scalar_float = wavelength_ang(jnp.float64(30.0))
 
-        sigma_10 = var_sigma(jnp.float64(10.0), lam_10)
-        sigma_30 = var_sigma(jnp.float64(30.0), lam_30)
+        sigma_10: scalar_float = var_sigma(jnp.float64(10.0), lam_10)
+        sigma_30: scalar_float = var_sigma(jnp.float64(30.0), lam_30)
 
         assert float(sigma_10) > float(sigma_30)
 
@@ -245,7 +258,9 @@ class TestSimulUtilsVmapConsistency(chex.TestCase, parameterized.TestCase):
 
     def test_wavelength_vmap_consistent(self) -> None:
         """Batched wavelength matches sequential evaluation."""
-        voltages = jnp.array([10.0, 20.0, 30.0, 50.0])
-        batched = jax.vmap(wavelength_ang)(voltages)
-        sequential = jnp.stack([wavelength_ang(v) for v in voltages])
+        voltages: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0, 50.0])
+        batched: Float[Array, "voltages"] = jax.vmap(wavelength_ang)(voltages)
+        sequential: Float[Array, "..."] = jnp.stack(
+            [wavelength_ang(v) for v in voltages]
+        )
         chex.assert_trees_all_close(batched, sequential, atol=1e-8)

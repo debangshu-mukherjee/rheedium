@@ -14,7 +14,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 import tifffile
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, PRNGKeyArray
+from numpy.typing import NDArray
 
 from rheedium.inout.tiff import (
     FrameMetadata,
@@ -34,10 +35,12 @@ W = 48
 def _write_multipage_tiff(
     path: Path,
     n_frames: int = 5,
-) -> np.ndarray:
+) -> Float[NDArray, "frames height width"]:
     """Write a multi-page TIFF and return the data."""
-    rng = np.random.default_rng(42)
-    data = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(np.float32)
+    rng: np.random.Generator = np.random.default_rng(42)
+    data: Float[NDArray, "frames height width"] = rng.uniform(
+        10.0, 1000.0, size=(n_frames, H, W)
+    ).astype(np.float32)
     tifffile.imwrite(str(path), data, photometric="minisblack")
     return data
 
@@ -45,10 +48,12 @@ def _write_multipage_tiff(
 def _write_single_frame_tiffs(
     dirpath: Path,
     n_frames: int = 5,
-) -> np.ndarray:
+) -> Float[NDArray, "frames height width"]:
     """Write individual TIFF files to a directory and return data."""
-    rng = np.random.default_rng(42)
-    data = rng.uniform(10.0, 1000.0, size=(n_frames, H, W)).astype(np.float32)
+    rng: np.random.Generator = np.random.default_rng(42)
+    data: Float[NDArray, "frames height width"] = rng.uniform(
+        10.0, 1000.0, size=(n_frames, H, W)
+    ).astype(np.float32)
     dirpath.mkdir(parents=True, exist_ok=True)
     for i in range(n_frames):
         filename = f"frame_{i:04d}.tif"
@@ -118,7 +123,7 @@ class TestLoadTiffSequence(chex.TestCase):
 
     def test_single_frame_file(self) -> None:
         """Single-frame TIFF loads as (1, H, W)."""
-        data = np.ones((H, W), dtype=np.float32) * 42.0
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 42.0
         tifffile.imwrite(str(self.tmp_path / "single.tif"), data)
         seq, meta = load_tiff_sequence(self.tmp_path / "single.tif")
         chex.assert_shape(seq, (1, H, W))
@@ -172,7 +177,7 @@ class TestExtractFrameMetadata(chex.TestCase):
 
     def test_returns_named_tuple(self) -> None:
         """Returns a FrameMetadata instance."""
-        data = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         fpath = self.tmp_path / "meta.tif"
         tifffile.imwrite(str(fpath), data)
         with tifffile.TiffFile(str(fpath)) as tif:
@@ -182,7 +187,7 @@ class TestExtractFrameMetadata(chex.TestCase):
 
     def test_description_string(self) -> None:
         """Description is a string (possibly empty)."""
-        data = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         fpath = self.tmp_path / "desc.tif"
         tifffile.imwrite(str(fpath), data)
         with tifffile.TiffFile(str(fpath)) as tif:
@@ -195,15 +200,17 @@ class TestNormalizeSequence(chex.TestCase):
 
     def test_shape_preserved(self) -> None:
         """Output shape matches input shape."""
-        seq = jnp.ones((5, H, W)) * 500.0
+        seq: Float[Array, "..."] = jnp.ones((5, H, W)) * 500.0
         result = normalize_sequence(seq)
         chex.assert_shape(result, (5, H, W))
 
     def test_output_range(self) -> None:
         """Each frame is normalized to [0, 1]."""
-        rng = np.random.default_rng(99)
-        np_data = rng.uniform(10.0, 1000.0, size=(5, H, W))
-        seq = jnp.asarray(np_data, dtype=jnp.float64)
+        rng: np.random.Generator = np.random.default_rng(99)
+        np_data: Float[NDArray, "frames height width"] = rng.uniform(
+            10.0, 1000.0, size=(5, H, W)
+        )
+        seq: Float[Array, "..."] = jnp.asarray(np_data, dtype=jnp.float64)
         result = normalize_sequence(seq)
         for t in range(5):
             frame = result[t]
@@ -212,29 +219,33 @@ class TestNormalizeSequence(chex.TestCase):
 
     def test_with_background(self) -> None:
         """Background subtraction reduces values."""
-        seq = jnp.ones((3, H, W)) * 500.0
-        bg = jnp.ones((H, W)) * 200.0
+        seq: Float[Array, "..."] = jnp.ones((3, H, W)) * 500.0
+        bg: Float[Array, "..."] = jnp.ones((H, W)) * 200.0
         result = normalize_sequence(seq, background=bg)
         chex.assert_shape(result, (3, H, W))
         chex.assert_tree_all_finite(result)
 
     def test_with_flat_field(self) -> None:
         """Flat-field correction applied without errors."""
-        rng = np.random.default_rng(99)
-        np_data = rng.uniform(10.0, 1000.0, size=(3, H, W))
-        seq = jnp.asarray(np_data, dtype=jnp.float64)
-        flat = jnp.ones((H, W)) * 0.8
+        rng: np.random.Generator = np.random.default_rng(99)
+        np_data: Float[NDArray, "frames height width"] = rng.uniform(
+            10.0, 1000.0, size=(3, H, W)
+        )
+        seq: Float[Array, "..."] = jnp.asarray(np_data, dtype=jnp.float64)
+        flat: Float[Array, "..."] = jnp.ones((H, W)) * 0.8
         result = normalize_sequence(seq, flat_field=flat)
         chex.assert_shape(result, (3, H, W))
         chex.assert_tree_all_finite(result)
 
     def test_with_all_corrections(self) -> None:
         """Full correction pipeline works."""
-        rng = np.random.default_rng(99)
-        np_data = rng.uniform(100.0, 1000.0, size=(3, H, W))
-        seq = jnp.asarray(np_data, dtype=jnp.float64)
-        bg = jnp.ones((H, W)) * 50.0
-        flat = jnp.ones((H, W)) * 0.9
+        rng: np.random.Generator = np.random.default_rng(99)
+        np_data: Float[NDArray, "frames height width"] = rng.uniform(
+            100.0, 1000.0, size=(3, H, W)
+        )
+        seq: Float[Array, "..."] = jnp.asarray(np_data, dtype=jnp.float64)
+        bg: Float[Array, "..."] = jnp.ones((H, W)) * 50.0
+        flat: Float[Array, "..."] = jnp.ones((H, W)) * 0.9
         result = normalize_sequence(seq, background=bg, flat_field=flat)
         chex.assert_shape(result, (3, H, W))
         chex.assert_tree_all_finite(result)
@@ -243,14 +254,14 @@ class TestNormalizeSequence(chex.TestCase):
 
     def test_nonnegative(self) -> None:
         """Output is non-negative even when background exceeds signal."""
-        seq = jnp.ones((2, H, W)) * 10.0
-        bg = jnp.ones((H, W)) * 100.0
+        seq: Float[Array, "..."] = jnp.ones((2, H, W)) * 10.0
+        bg: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
         result = normalize_sequence(seq, background=bg)
         self.assertTrue(jnp.all(result >= 0.0))
 
     def test_uniform_frames(self) -> None:
         """Uniform frames normalize to zero (no range)."""
-        seq = jnp.ones((3, H, W)) * 42.0
+        seq: Float[Array, "..."] = jnp.ones((3, H, W)) * 42.0
         result = normalize_sequence(seq)
         chex.assert_trees_all_close(result, jnp.zeros((3, H, W)), atol=1e-6)
 
@@ -260,7 +271,7 @@ class TestDetectBeamCenter(chex.TestCase):
 
     def test_shape(self) -> None:
         """Output is a 2-element array."""
-        img = jnp.zeros((H, W))
+        img: Float[Array, "..."] = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1000.0)
         center = detect_beam_center(img)
         chex.assert_shape(center, (2,))
@@ -269,10 +280,10 @@ class TestDetectBeamCenter(chex.TestCase):
         """Detects a centered spot correctly."""
         row_center = H // 2
         col_center = W // 2
-        y = jnp.arange(H, dtype=jnp.float64)
-        x = jnp.arange(W, dtype=jnp.float64)
+        y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
+        x: Float[Array, "..."] = jnp.arange(W, dtype=jnp.float64)
         yy, xx = jnp.meshgrid(y, x, indexing="ij")
-        img = jnp.exp(
+        img: Float[Array, "..."] = jnp.exp(
             -((yy - row_center) ** 2 + (xx - col_center) ** 2) / (2.0 * 3.0**2)
         )
         center = detect_beam_center(img, jnp.float64(3.0))
@@ -286,10 +297,10 @@ class TestDetectBeamCenter(chex.TestCase):
         """Detects an off-center spot correctly."""
         row_center = H // 4
         col_center = 3 * W // 4
-        y = jnp.arange(H, dtype=jnp.float64)
-        x = jnp.arange(W, dtype=jnp.float64)
+        y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
+        x: Float[Array, "..."] = jnp.arange(W, dtype=jnp.float64)
         yy, xx = jnp.meshgrid(y, x, indexing="ij")
-        img = jnp.exp(
+        img: Float[Array, "..."] = jnp.exp(
             -((yy - row_center) ** 2 + (xx - col_center) ** 2) / (2.0 * 3.0**2)
         )
         center = detect_beam_center(img, jnp.float64(3.0))
@@ -301,7 +312,7 @@ class TestDetectBeamCenter(chex.TestCase):
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
-        img = jnp.ones((H, W)) * 50.0
+        img: Float[Array, "..."] = jnp.ones((H, W)) * 50.0
         center = detect_beam_center(img)
         chex.assert_tree_all_finite(center)
 
@@ -309,15 +320,19 @@ class TestDetectBeamCenter(chex.TestCase):
         """Detects spot in noisy image."""
         row_center = H // 2
         col_center = W // 2
-        y = jnp.arange(H, dtype=jnp.float64)
-        x = jnp.arange(W, dtype=jnp.float64)
+        y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
+        x: Float[Array, "..."] = jnp.arange(W, dtype=jnp.float64)
+        yy: Float[Array, "height width"]
+        xx: Float[Array, "height width"]
         yy, xx = jnp.meshgrid(y, x, indexing="ij")
-        signal = 1000.0 * jnp.exp(
+        signal: Float[Array, "height width"] = 1000.0 * jnp.exp(
             -((yy - row_center) ** 2 + (xx - col_center) ** 2) / (2.0 * 3.0**2)
         )
-        key = jax.random.PRNGKey(42)
-        noise = jax.random.normal(key, (H, W)) * 10.0
-        img = jnp.maximum(signal + noise, 0.0)
+        key: PRNGKeyArray = jax.random.PRNGKey(42)
+        noise: Float[Array, "height width"] = (
+            jax.random.normal(key, (H, W)) * 10.0
+        )
+        img: Float[Array, "..."] = jnp.maximum(signal + noise, 0.0)
         center = detect_beam_center(img, jnp.float64(5.0))
         chex.assert_trees_all_close(
             center,
@@ -342,7 +357,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_returns_rheed_image(self) -> None:
         """Returns a RHEEDImage instance."""
-        data = np.ones((H, W), dtype=np.float32) * 500.0
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -354,7 +369,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_image_shape(self) -> None:
         """Image array has correct shape."""
-        data = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -366,7 +381,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_wavelength_correct(self) -> None:
         """Electron wavelength is physically reasonable for 20 keV."""
-        data = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
@@ -380,9 +395,9 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_with_background(self) -> None:
         """Background subtraction is applied."""
-        data = np.ones((H, W), dtype=np.float32) * 500.0
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
-        bg = jnp.ones((H, W)) * 200.0
+        bg: Float[Array, "..."] = jnp.ones((H, W)) * 200.0
         img = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=2.0,
@@ -398,7 +413,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_multipage_takes_first(self) -> None:
         """Multi-page TIFF uses only the first frame."""
-        data = np.stack(
+        data: Float[NDArray, "..."] = np.stack(
             [
                 np.ones((H, W), dtype=np.float32) * 100.0,
                 np.ones((H, W), dtype=np.float32) * 999.0,
@@ -423,7 +438,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
 
     def test_parameters_stored(self) -> None:
         """Beam and detector parameters are stored correctly."""
-        data = np.ones((H, W), dtype=np.float32)
+        data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",

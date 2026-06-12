@@ -8,6 +8,7 @@ import chex
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.inout.xyz import (
     _parse_atom_line,
@@ -95,7 +96,7 @@ class TestParseXyzMetadata(chex.TestCase):
         metadata = _parse_xyz_metadata(line)
 
         assert "lattice" in metadata
-        expected = jnp.array(
+        expected: Float[Array, "..."] = jnp.array(
             [
                 [4.2, 0.0, 0.0],
                 [0.0, 4.2, 0.0],

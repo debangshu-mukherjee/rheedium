@@ -10,8 +10,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from matplotlib.colors import LinearSegmentedColormap
+from numpy.typing import NDArray
 
 matplotlib.use("Agg")
+
+from jaxtyping import Array, Float, Integer
 
 from rheedium.plots.figuring import create_phosphor_colormap, plot_rheed
 from rheedium.types import RHEEDPattern
@@ -20,14 +23,16 @@ from rheedium.types.rheed_types import create_rheed_pattern
 
 def _make_test_pattern(n: int = 20) -> RHEEDPattern:
     """Create a simple RHEEDPattern for testing."""
-    rng = np.random.default_rng(42)
-    g_indices = jnp.arange(n, dtype=jnp.int32)
-    k_out = jnp.array(rng.normal(size=(n, 3)))
+    rng: np.random.Generator = np.random.default_rng(42)
+    g_indices: Integer[Array, "reflections"] = jnp.arange(n, dtype=jnp.int32)
+    k_out: Float[Array, "reflections xyz"] = jnp.array(rng.normal(size=(n, 3)))
     k_out = k_out / jnp.linalg.norm(k_out, axis=1, keepdims=True)
-    detector_points = jnp.array(
+    detector_points: Float[Array, "reflections detector_xy"] = jnp.array(
         rng.normal(size=(n, 2)) * 50, dtype=jnp.float64
     )
-    intensities = jnp.array(rng.uniform(0, 100, size=(n,)), dtype=jnp.float64)
+    intensities: Float[Array, "reflections"] = jnp.array(
+        rng.uniform(0, 100, size=(n,)), dtype=jnp.float64
+    )
     return create_rheed_pattern(
         g_indices=g_indices,
         k_out=k_out,
@@ -80,7 +85,7 @@ class TestCreatePhosphorColormap:
     def test_monotonic_green_channel(self) -> None:
         """Green channel should increase monotonically."""
         cmap = create_phosphor_colormap()
-        values = np.linspace(0, 1, 50)
+        values: Float[NDArray, "..."] = np.linspace(0, 1, 50)
         greens = [cmap(v)[1] for v in values]
         for i in range(len(greens) - 1):
             assert greens[i + 1] >= greens[i] - 1e-6

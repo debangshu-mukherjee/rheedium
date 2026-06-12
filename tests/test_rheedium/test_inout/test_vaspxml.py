@@ -7,6 +7,7 @@ from pathlib import Path
 import chex
 import jax.numpy as jnp
 import pytest
+from jaxtyping import Array, Float
 
 from rheedium.inout.vaspxml import (
     _extract_energy,
@@ -219,7 +220,7 @@ class TestExtractStress(chex.TestCase):
         stress = _extract_stress(calculation)
 
         assert stress is not None
-        expected = jnp.array(
+        expected: Float[Array, "..."] = jnp.array(
             [
                 [1.0, 0.1, 0.2],
                 [0.1, 2.0, 0.3],
@@ -398,8 +399,8 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             lattice_2 = trajectory[2].lattice
             assert lattice_0 is not None
             assert lattice_2 is not None
-            cell_a_0 = jnp.linalg.norm(lattice_0[0])
-            cell_a_2 = jnp.linalg.norm(lattice_2[0])
+            cell_a_0: Float[Array, "..."] = jnp.linalg.norm(lattice_0[0])
+            cell_a_2: Float[Array, "..."] = jnp.linalg.norm(lattice_2[0])
 
             assert cell_a_0 > cell_a_2  # Cell shrinks
 
@@ -467,7 +468,7 @@ class TestVaspxmlRoundtrip(chex.TestCase):
 
             crystal = parse_vaspxml(xml_file)
 
-            lattice = jnp.diag(crystal.cell_lengths)
+            lattice: Float[Array, "..."] = jnp.diag(crystal.cell_lengths)
             expected_cart = crystal.frac_positions[:, :3] @ lattice
             chex.assert_trees_all_close(
                 crystal.cart_positions[:, :3],

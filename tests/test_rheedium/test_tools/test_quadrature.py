@@ -2,6 +2,7 @@
 
 import chex
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from rheedium.tools.quadrature import gauss_hermite_nodes_weights
 
@@ -24,7 +25,7 @@ class TestGaussHermiteNodesWeights(chex.TestCase):
     def test_nodes_symmetric(self) -> None:
         """Nodes are symmetric about zero."""
         nodes, _ = gauss_hermite_nodes_weights(7)
-        sorted_nodes = jnp.sort(nodes)
+        sorted_nodes: Float[Array, "..."] = jnp.sort(nodes)
         chex.assert_trees_all_close(
             sorted_nodes,
             -jnp.flip(sorted_nodes),

@@ -7,6 +7,7 @@ import chex
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.inout.cif import (
     _deduplicate_positions,
@@ -181,7 +182,7 @@ class TestParseSymOp(chex.TestCase):
     def test_identity(self) -> None:
         """Identity operation x,y,z."""
         op = _parse_sym_op("x,y,z")
-        pos = jnp.array([0.25, 0.5, 0.75])
+        pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result = op(pos)
 
         chex.assert_trees_all_close(result, pos, atol=1e-10)
@@ -189,7 +190,7 @@ class TestParseSymOp(chex.TestCase):
     def test_inversion(self) -> None:
         """Inversion operation -x,-y,-z."""
         op = _parse_sym_op("-x,-y,-z")
-        pos = jnp.array([0.25, 0.5, 0.75])
+        pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result = op(pos)
 
         chex.assert_trees_all_close(
@@ -199,7 +200,7 @@ class TestParseSymOp(chex.TestCase):
     def test_with_translation(self) -> None:
         """Operation with translation x+1/2,y,z."""
         op = _parse_sym_op("x+1/2,y,z")
-        pos = jnp.array([0.0, 0.0, 0.0])
+        pos: Float[Array, "..."] = jnp.array([0.0, 0.0, 0.0])
         result = op(pos)
 
         chex.assert_trees_all_close(
@@ -209,7 +210,7 @@ class TestParseSymOp(chex.TestCase):
     def test_cubic_symmetry(self) -> None:
         """Face-centered cubic symmetry operation."""
         op = _parse_sym_op("-y,x,z")
-        pos = jnp.array([0.25, 0.5, 0.75])
+        pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result = op(pos)
 
         chex.assert_trees_all_close(
@@ -222,7 +223,7 @@ class TestDeduplicatePositions(chex.TestCase):
 
     def test_removes_duplicates(self) -> None:
         """Duplicate positions within tolerance are removed."""
-        positions = jnp.array(
+        positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14.0],
                 [0.001, 0.001, 0.001, 14.0],
@@ -235,7 +236,7 @@ class TestDeduplicatePositions(chex.TestCase):
 
     def test_keeps_distinct_atoms(self) -> None:
         """Distinct positions are preserved."""
-        positions = jnp.array(
+        positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14.0],
                 [2.0, 2.0, 2.0, 8.0],
@@ -252,10 +253,14 @@ class TestSymmetryExpansion(chex.TestCase):
 
     def test_identity_expansion(self) -> None:
         """Identity operation should not change structure."""
-        frac_positions = jnp.array([[0.0, 0.0, 0.0, 14.0]])
-        cart_positions = jnp.array([[0.0, 0.0, 0.0, 14.0]])
-        cell_lengths = jnp.array([5.43, 5.43, 5.43])
-        cell_angles = jnp.array([90.0, 90.0, 90.0])
+        frac_positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0]]
+        )
+        cart_positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0]]
+        )
+        cell_lengths: Float[Array, "..."] = jnp.array([5.43, 5.43, 5.43])
+        cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
         crystal = create_crystal_structure(
             frac_positions=frac_positions,
@@ -270,10 +275,14 @@ class TestSymmetryExpansion(chex.TestCase):
 
     def test_inversion_expansion(self) -> None:
         """Inversion should double atoms not at origin."""
-        frac_positions = jnp.array([[0.25, 0.25, 0.25, 14.0]])
-        cart_positions = jnp.array([[1.36, 1.36, 1.36, 14.0]])
-        cell_lengths = jnp.array([5.43, 5.43, 5.43])
-        cell_angles = jnp.array([90.0, 90.0, 90.0])
+        frac_positions: Float[Array, "..."] = jnp.array(
+            [[0.25, 0.25, 0.25, 14.0]]
+        )
+        cart_positions: Float[Array, "..."] = jnp.array(
+            [[1.36, 1.36, 1.36, 14.0]]
+        )
+        cell_lengths: Float[Array, "..."] = jnp.array([5.43, 5.43, 5.43])
+        cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
         crystal = create_crystal_structure(
             frac_positions=frac_positions,
@@ -290,10 +299,14 @@ class TestSymmetryExpansion(chex.TestCase):
 
     def test_fcc_expansion(self) -> None:
         """FCC symmetry should generate 4 atoms from 1."""
-        frac_positions = jnp.array([[0.0, 0.0, 0.0, 29.0]])
-        cart_positions = jnp.array([[0.0, 0.0, 0.0, 29.0]])
-        cell_lengths = jnp.array([3.61, 3.61, 3.61])
-        cell_angles = jnp.array([90.0, 90.0, 90.0])
+        frac_positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0, 29.0]]
+        )
+        cart_positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0, 29.0]]
+        )
+        cell_lengths: Float[Array, "..."] = jnp.array([3.61, 3.61, 3.61])
+        cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
         crystal = create_crystal_structure(
             frac_positions=frac_positions,

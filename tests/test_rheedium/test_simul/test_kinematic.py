@@ -10,6 +10,7 @@ import chex
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
+from jaxtyping import Array, Float, Integer
 
 from rheedium.inout.cif import parse_cif
 from rheedium.simul.kinematic import (
@@ -30,6 +31,7 @@ from rheedium.tools import (
 )
 from rheedium.tools import wavelength_ang as kinematic_wavelength
 from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.custom_types import scalar_float
 from rheedium.ucell.unitcell import (
     miller_to_reciprocal,
     reciprocal_lattice_vectors,
@@ -72,7 +74,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
         k_in = var_k_in(wavelength, theta_deg)
 
         # Check magnitude
-        k_mag = jnp.linalg.norm(k_in)
+        k_mag: Float[Array, "..."] = jnp.linalg.norm(k_in)
         expected_mag = 2.0 * jnp.pi / wavelength
 
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
@@ -84,7 +86,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
         wavelength = 0.0859
         theta_deg = 2.0
-        theta_rad = jnp.deg2rad(theta_deg)
+        theta_rad: scalar_float = jnp.deg2rad(theta_deg)
 
         k_in = var_k_in(wavelength, theta_deg)
 
@@ -111,12 +113,12 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
         # Setup: incident beam at grazing incidence
         # (k_in_z < 0, going into surface)
-        k_in = jnp.array([73.0, 0.0, -2.5])
-        k_mag = jnp.linalg.norm(k_in)
+        k_in: Float[Array, "..."] = jnp.array([73.0, 0.0, -2.5])
+        k_mag: Float[Array, "..."] = jnp.linalg.norm(k_in)
 
         # Some test reciprocal vectors
         # For RHEED, we want upward scattering (k_out_z > 0)
-        G_vectors = jnp.array(
+        G_vectors: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 5.0],  # k_out_z = -2.5 + 5.0 = 2.5 > 0 (upward)
                 [0.0, 1.5, 5.1],  # k_out_z = -2.5 + 5.1 = 2.6 > 0 (upward)
@@ -133,7 +135,7 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
         # All valid k_out should satisfy elastic scattering
         valid_k_out = k_out[indices >= 0]
-        k_out_mags = jnp.linalg.norm(valid_k_out, axis=1)
+        k_out_mags: Float[Array, "..."] = jnp.linalg.norm(valid_k_out, axis=1)
         for k_mag_out in k_out_mags:
             assert jnp.abs(k_mag_out - k_mag) / k_mag < 0.1, (
                 "Elastic scattering"
@@ -171,7 +173,7 @@ class TestDetectorProjection(chex.TestCase):
         k0 = 2.0 * jnp.pi / wavelength
 
         # Scattered wavevector: forward + upward scattering
-        k_out = jnp.array([[k0 * 0.98, 0.5, k0 * 0.05]])
+        k_out: Float[Array, "..."] = jnp.array([[k0 * 0.98, 0.5, k0 * 0.05]])
         d = 100.0
 
         # Get detector coordinates
@@ -194,12 +196,12 @@ class TestDetectorProjection(chex.TestCase):
         var_project = self.variant(project_on_detector)
 
         theta_deg = 2.0
-        theta_rad = jnp.deg2rad(theta_deg)
+        theta_rad: scalar_float = jnp.deg2rad(theta_deg)
         wavelength = 0.0859
         k0 = 2.0 * jnp.pi / wavelength
 
         # Near-specular: same angle out, k_out_z positive, k_out_y = 0
-        k_out = jnp.array(
+        k_out: Float[Array, "..."] = jnp.array(
             [[k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)]]
         )
         d = 100.0
@@ -220,9 +222,9 @@ class TestKinematicStructureFactor(chex.TestCase):
         """Test structure factor for single atom at origin."""
         var_sf = self.variant(kinematic_structure_factor)
 
-        G = jnp.array([1.0, 0.0, 0.0])
-        positions = jnp.array([[0.0, 0.0, 0.0]])
-        atomic_nums = jnp.array([14])  # Silicon
+        G: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
+        positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_nums: Integer[Array, "..."] = jnp.array([14])  # Silicon
 
         intensity = var_sf(G, positions, atomic_nums)
 
@@ -237,14 +239,16 @@ class TestKinematicStructureFactor(chex.TestCase):
         var_sf = self.variant(kinematic_structure_factor)
 
         # Simple cubic with two atoms (like diamond basis)
-        G = jnp.array([2.0, 0.0, 0.0])  # (100) type reflection
-        positions = jnp.array(
+        G: Float[Array, "..."] = jnp.array(
+            [2.0, 0.0, 0.0]
+        )  # (100) type reflection
+        positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [0.5, 0.5, 0.5],  # Diamond basis
             ]
         )
-        atomic_nums = jnp.array([14, 14])
+        atomic_nums: Integer[Array, "..."] = jnp.array([14, 14])
 
         intensity = var_sf(G, positions, atomic_nums)
 
@@ -263,8 +267,10 @@ class TestKinematicSimulator(chex.TestCase):
 
         # Simple cubic Silicon crystal
         a_si = 5.43  # Silicon lattice constant
-        frac_pos = jnp.array([[0.0, 0.0, 0.0, 14.0]])  # One Si atom at origin
-        cart_pos = jnp.array(
+        frac_pos: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0]]
+        )  # One Si atom at origin
+        cart_pos: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0, 14.0]]
         )  # Cartesian same for origin
 
@@ -321,7 +327,7 @@ class TestKinematicSimulator(chex.TestCase):
 
         # For d=100mm and typical RHEED, spots should be within
         # reasonable range (a sanity check, not a strict requirement).
-        max_coord = jnp.max(jnp.abs(pattern.detector_points))
+        max_coord: scalar_float = jnp.max(jnp.abs(pattern.detector_points))
         assert max_coord < 10000.0  # Not absurdly large
 
 
@@ -345,7 +351,7 @@ class TestMakeEwaldSphere(chex.TestCase):
 
         # Center should be -k_in
         # k_in magnitude is k_mag
-        center_mag = jnp.linalg.norm(center)
+        center_mag: Float[Array, "..."] = jnp.linalg.norm(center)
         chex.assert_trees_all_close(center_mag, k_mag, rtol=1e-6)
 
         # Check direction for theta=2, phi=0
@@ -355,7 +361,7 @@ class TestMakeEwaldSphere(chex.TestCase):
         # So center = -k_in = [-kx, -ky, -kz]
         # center_z = -(-k * sin(theta)) = k * sin(theta) > 0
 
-        theta_rad = jnp.deg2rad(theta_deg)
+        theta_rad: scalar_float = jnp.deg2rad(theta_deg)
         expected_z = k_mag * jnp.sin(theta_rad)
         chex.assert_trees_all_close(center[2], expected_z, rtol=1e-6)
 
@@ -389,7 +395,7 @@ class TestMgOExtinctionRules(chex.TestCase):
         self, h: int, k: int, ell: int
     ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
-        hkl = jnp.array([[h, k, ell]])
+        hkl: Float[Array, "..."] = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.mgo_crystal.cart_positions[:, :3]
@@ -527,7 +533,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         self, h: int, k: int, ell: int
     ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
-        hkl = jnp.array([[h, k, ell]])
+        hkl: Float[Array, "..."] = jnp.array([[h, k, ell]])
         g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
 
         atom_positions = self.sto_crystal.cart_positions[:, :3]

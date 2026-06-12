@@ -6,11 +6,13 @@ used by reconstruction routines.
 
 import chex
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from rheedium.recon import (
     weighted_image_residual,
     weighted_mean_squared_error,
 )
+from rheedium.types.custom_types import scalar_float
 
 
 class TestWeightedLosses(chex.TestCase):
@@ -18,28 +20,40 @@ class TestWeightedLosses(chex.TestCase):
 
     def test_weighted_image_residual_scales_by_sqrt_weights(self) -> None:
         """Residual weights should enter as square roots."""
-        simulated = jnp.array([[3.0, 4.0], [5.0, 6.0]])
-        experimental = jnp.ones((2, 2))
-        weight_map = jnp.array([[1.0, 0.0], [4.0, 0.25]])
+        simulated: Float[Array, "rows cols"] = jnp.array(
+            [[3.0, 4.0], [5.0, 6.0]]
+        )
+        experimental: Float[Array, "rows cols"] = jnp.ones((2, 2))
+        weight_map: Float[Array, "rows cols"] = jnp.array(
+            [[1.0, 0.0], [4.0, 0.25]]
+        )
 
-        residual = weighted_image_residual(
+        residual: Float[Array, "rows cols"] = weighted_image_residual(
             simulated_image=simulated,
             experimental_image=experimental,
             weight_map=weight_map,
         )
 
-        expected = jnp.array([[2.0, 0.0], [8.0, 2.5]])
+        expected: Float[Array, "rows cols"] = jnp.array(
+            [[2.0, 0.0], [8.0, 2.5]]
+        )
         chex.assert_trees_all_close(residual, expected, atol=1e-12)
 
     def test_weighted_mean_squared_error_normalizes_by_weight_sum(
         self,
     ) -> None:
         """Weighted MSE should divide by the sum of retained weights."""
-        simulated = jnp.array([[2.0, 3.0], [4.0, 5.0]])
-        experimental = jnp.array([[1.0, 1.0], [1.0, 1.0]])
-        weight_map = jnp.array([[1.0, 1.0], [0.0, 0.0]])
+        simulated: Float[Array, "rows cols"] = jnp.array(
+            [[2.0, 3.0], [4.0, 5.0]]
+        )
+        experimental: Float[Array, "rows cols"] = jnp.array(
+            [[1.0, 1.0], [1.0, 1.0]]
+        )
+        weight_map: Float[Array, "rows cols"] = jnp.array(
+            [[1.0, 1.0], [0.0, 0.0]]
+        )
 
-        loss = weighted_mean_squared_error(
+        loss: scalar_float = weighted_mean_squared_error(
             simulated_image=simulated,
             experimental_image=experimental,
             weight_map=weight_map,

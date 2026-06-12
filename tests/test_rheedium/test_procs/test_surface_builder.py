@@ -12,6 +12,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+from jaxtyping import Array, Float
 
 from rheedium.procs.surface_builder import (
     add_adsorbate_layer,
@@ -32,14 +33,14 @@ def _load(name: str) -> dict[str, np.ndarray]:
 
 def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
     """Build a minimal cubic bulk crystal for direct slab tests."""
-    frac_positions = jnp.array(
+    frac_positions: Float[Array, "..."] = jnp.array(
         [
             [0.0, 0.0, 0.0, 14.0],
             [0.5, 0.5, 0.5, 14.0],
         ]
     )
     cell_vectors = build_cell_vectors(a, a, a, 90.0, 90.0, 90.0)
-    cart_positions = jnp.column_stack(
+    cart_positions: Float[Array, "..."] = jnp.column_stack(
         [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
     )
     return create_crystal_structure(
@@ -53,14 +54,14 @@ def _make_cubic_bulk(a: float = 2.0) -> CrystalStructure:
 def _make_test_slab() -> CrystalStructure:
     """Build a simple orthorhombic slab for direct reconstruction tests."""
     cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
-    cart_positions = jnp.array(
+    cart_positions: Float[Array, "..."] = jnp.array(
         [
             [0.2, 0.2, 0.5, 14.0],
             [0.4, 0.4, 4.2, 14.0],
             [1.2, 1.6, 5.0, 8.0],
         ]
     )
-    frac_positions = jnp.column_stack(
+    frac_positions: Float[Array, "..."] = jnp.column_stack(
         [
             cart_positions[:, :3] @ jnp.linalg.inv(cell_vectors).T,
             cart_positions[:, 3],

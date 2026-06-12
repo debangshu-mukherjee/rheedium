@@ -6,6 +6,7 @@ from pathlib import Path
 import chex
 import jax.numpy as jnp
 import pytest
+from jaxtyping import Array, Float, Integer
 
 from rheedium.inout.crystal import (
     _infer_lattice_from_positions,
@@ -21,17 +22,17 @@ class TestInferLatticeFromPositions(chex.TestCase):
 
     def test_single_atom(self) -> None:
         """Single atom should create minimum extent cell."""
-        positions = jnp.array([[0.0, 0.0, 0.0]])
+        positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         lattice = _infer_lattice_from_positions(positions, padding_ang=2.0)
 
         # Single atom: extent = 0, but minimum is 1.0
         # Final = max(0 + 2*2, 1.0) = 4.0
-        expected = jnp.diag(jnp.array([4.0, 4.0, 4.0]))
+        expected: Float[Array, "..."] = jnp.diag(jnp.array([4.0, 4.0, 4.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_atoms_with_extent(self) -> None:
         """Atoms spanning 0-10 A in each direction."""
-        positions = jnp.array(
+        positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [10.0, 0.0, 0.0],
@@ -42,12 +43,12 @@ class TestInferLatticeFromPositions(chex.TestCase):
         lattice = _infer_lattice_from_positions(positions, padding_ang=2.0)
 
         # Extent = 10, + 2*2 = 14 in each direction
-        expected = jnp.diag(jnp.array([14.0, 14.0, 14.0]))
+        expected: Float[Array, "..."] = jnp.diag(jnp.array([14.0, 14.0, 14.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_asymmetric_extent(self) -> None:
         """Atoms with different extents in each direction."""
-        positions = jnp.array(
+        positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [5.0, 10.0, 15.0],
@@ -56,16 +57,18 @@ class TestInferLatticeFromPositions(chex.TestCase):
         lattice = _infer_lattice_from_positions(positions, padding_ang=1.0)
 
         # Extents: x=5, y=10, z=15, + 2*1 = 7, 12, 17
-        expected = jnp.diag(jnp.array([7.0, 12.0, 17.0]))
+        expected: Float[Array, "..."] = jnp.diag(jnp.array([7.0, 12.0, 17.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_minimum_extent_enforced(self) -> None:
         """Minimum extent of 1 A should be enforced."""
-        positions = jnp.array([[5.0, 5.0, 5.0]])  # Single atom
+        positions: Float[Array, "..."] = jnp.array(
+            [[5.0, 5.0, 5.0]]
+        )  # Single atom
         lattice = _infer_lattice_from_positions(positions, padding_ang=0.0)
 
         # No padding, extent = 0, minimum = 1.0
-        expected = jnp.diag(jnp.array([1.0, 1.0, 1.0]))
+        expected: Float[Array, "..."] = jnp.diag(jnp.array([1.0, 1.0, 1.0]))
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
 
@@ -74,9 +77,11 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_with_explicit_lattice(self) -> None:
         """XYZData with explicit cell_vectors override."""
-        positions = jnp.array([[0.0, 0.0, 0.0], [2.1, 2.1, 2.1]])
-        atomic_numbers = jnp.array([12, 8])  # Mg, O
-        lattice = jnp.eye(3) * 4.2
+        positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [2.1, 2.1, 2.1]]
+        )
+        atomic_numbers: Integer[Array, "..."] = jnp.array([12, 8])  # Mg, O
+        lattice: Float[Array, "..."] = jnp.eye(3) * 4.2
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -109,10 +114,10 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_with_cell_vectors_override(self) -> None:
         """Test explicit cell_vectors parameter overrides xyz_data.lattice."""
-        positions = jnp.array([[0.0, 0.0, 0.0]])
-        atomic_numbers = jnp.array([14])  # Si
-        xyz_lattice = jnp.eye(3) * 5.43
-        override_lattice = jnp.eye(3) * 10.0
+        positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_numbers: Integer[Array, "..."] = jnp.array([14])  # Si
+        xyz_lattice: Float[Array, "..."] = jnp.eye(3) * 5.43
+        override_lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -132,12 +137,14 @@ class TestXyzToCrystal(chex.TestCase):
         a = 3.2
         c = 5.2
         # Hexagonal lattice vectors
-        lattice = jnp.array(
+        lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [-a / 2, a * jnp.sqrt(3) / 2, 0], [0, 0, c]]
         )
 
-        positions = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, c / 2]])
-        atomic_numbers = jnp.array([30, 8])  # Zn, O
+        positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [0.0, 0.0, c / 2]]
+        )
+        atomic_numbers: Integer[Array, "..."] = jnp.array([30, 8])  # Zn, O
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -155,10 +162,12 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_preserves_atomic_numbers(self) -> None:
         """Atomic numbers correctly transferred to 4th column."""
-        positions = jnp.array(
+        positions: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
         )
-        atomic_numbers = jnp.array([26, 8, 14])  # Fe, O, Si
+        atomic_numbers: Integer[Array, "..."] = jnp.array(
+            [26, 8, 14]
+        )  # Fe, O, Si
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -169,7 +178,7 @@ class TestXyzToCrystal(chex.TestCase):
         crystal = xyz_to_crystal(xyz_data)
 
         # Both frac and cart should have same atomic numbers
-        expected = jnp.array([26.0, 8.0, 14.0])
+        expected: Float[Array, "..."] = jnp.array([26.0, 8.0, 14.0])
         chex.assert_trees_all_close(
             crystal.frac_positions[:, 3], expected, atol=1e-10
         )
@@ -179,9 +188,11 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_cartesian_positions_preserved(self) -> None:
         """Cartesian positions should be preserved exactly."""
-        positions = jnp.array([[1.5, 2.5, 3.5], [4.0, 5.0, 6.0]])
-        atomic_numbers = jnp.array([6, 7])  # C, N
-        lattice = jnp.eye(3) * 10.0
+        positions: Float[Array, "..."] = jnp.array(
+            [[1.5, 2.5, 3.5], [4.0, 5.0, 6.0]]
+        )
+        atomic_numbers: Integer[Array, "..."] = jnp.array([6, 7])  # C, N
+        lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -197,9 +208,9 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_returns_crystal_structure(self) -> None:
         """Should return CrystalStructure instance."""
-        positions = jnp.array([[0.0, 0.0, 0.0]])
-        atomic_numbers = jnp.array([1])
-        lattice = jnp.eye(3) * 5.0
+        positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_numbers: Integer[Array, "..."] = jnp.array([1])
+        lattice: Float[Array, "..."] = jnp.eye(3) * 5.0
 
         xyz_data = create_xyz_data(
             positions=positions,
@@ -363,7 +374,9 @@ class TestCrystalRoundtrip(chex.TestCase):
     def test_orthorhombic_roundtrip(self) -> None:
         """Orthorhombic lattice survives roundtrip conversion."""
         a, b, c = 4.0, 5.0, 6.0
-        lattice = jnp.array([[a, 0, 0], [0, b, 0], [0, 0, c]])
+        lattice: Float[Array, "..."] = jnp.array(
+            [[a, 0, 0], [0, b, 0], [0, 0, c]]
+        )
 
         lengths, angles = lattice_to_cell_params(lattice)
 
@@ -377,9 +390,11 @@ class TestCrystalRoundtrip(chex.TestCase):
 
     def test_xyz_to_crystal_fractional_consistency(self) -> None:
         """Fractional coords times lattice should give Cartesian coords."""
-        positions = jnp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-        atomic_numbers = jnp.array([6, 7])
-        lattice = jnp.eye(3) * 10.0
+        positions: Float[Array, "..."] = jnp.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+        )
+        atomic_numbers: Integer[Array, "..."] = jnp.array([6, 7])
+        lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
         xyz_data = create_xyz_data(
             positions=positions,
