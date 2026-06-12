@@ -5,6 +5,7 @@ roughness damping, and rod profile functions used in RHEED simulations.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
@@ -47,7 +48,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         super().setUp()
 
-        self.simple_cubic_frac = jnp.array(
+        self.simple_cubic_frac: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14],
                 [0.5, 0.5, 0.0, 14],
@@ -56,7 +57,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        self.simple_cubic_cart = jnp.array(
+        self.simple_cubic_cart: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14],
                 [2.715, 2.715, 0.0, 14],
@@ -65,25 +66,31 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        self.cell_lengths = jnp.array([5.43, 5.43, 5.43])
-        self.cell_angles = jnp.array([90.0, 90.0, 90.0])
+        self.cell_lengths: Float[Array, "..."] = jnp.array([5.43, 5.43, 5.43])
+        self.cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
-        self.test_crystal = create_crystal_structure(
+        self.test_crystal: CrystalStructure = create_crystal_structure(
             frac_positions=self.simple_cubic_frac,
             cart_positions=self.simple_cubic_cart,
             cell_lengths=self.cell_lengths,
             cell_angles=self.cell_angles,
         )
 
-        self.q_z_values = jnp.linspace(0.0, 5.0, 20)
-        self.hk_indices = jnp.array(
+        self.q_z_values: Float[Array, "..."] = jnp.linspace(0.0, 5.0, 20)
+        self.hk_indices: Integer[Array, "..."] = jnp.array(
             [[0, 0], [1, 0], [1, 1], [2, 0]], dtype=jnp.int32
         )
-        self.roughness_values = jnp.array([0.0, 0.5, 1.0, 2.0])
-        self.temperatures = jnp.array([100.0, 300.0, 600.0])
+        self.roughness_values: Float[Array, "..."] = jnp.array(
+            [0.0, 0.5, 1.0, 2.0]
+        )
+        self.temperatures: Float[Array, "..."] = jnp.array(
+            [100.0, 300.0, 600.0]
+        )
 
-        self.correlation_lengths = jnp.array([10.0, 50.0, 100.0, 500.0])
-        self.q_perp_values = jnp.linspace(0.0, 0.5, 30)
+        self.correlation_lengths: Float[Array, "..."] = jnp.array(
+            [10.0, 50.0, 100.0, 500.0]
+        )
+        self.q_perp_values: Float[Array, "..."] = jnp.linspace(0.0, 0.5, 30)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -103,10 +110,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         of coherent scattering intensity due to random height variations
         at the crystal surface.
         """
-        var_damping = self.variant(roughness_damping)
+        var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
         q_z_test: Float[Array, "..."] = jnp.array([0.0, 1.0, 2.0, 5.0])
-        damping_values = var_damping(q_z_test, sigma)
+        damping_values: Any = var_damping(q_z_test, sigma)
 
         chex.assert_shape(damping_values, q_z_test.shape)
 
@@ -131,20 +138,20 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         positions are evaluated simultaneously in RHEED pattern
         simulations.
         """
-        var_damping = self.variant(roughness_damping)
+        var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
         q_z_2d: Float[Array, "..."] = jnp.tile(
             self.q_z_values[:, jnp.newaxis], (1, 5)
         )
-        sigma_test = 1.0
+        sigma_test: float = 1.0
 
-        damping_2d = var_damping(q_z_2d, sigma_test)
+        damping_2d: Any = var_damping(q_z_2d, sigma_test)
         chex.assert_shape(damping_2d, q_z_2d.shape)
 
         q_z_3d: Float[Array, "..."] = jnp.tile(
             self.q_z_values[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
         )
-        damping_3d = var_damping(q_z_3d, sigma_test)
+        damping_3d: Any = var_damping(q_z_3d, sigma_test)
         chex.assert_shape(damping_3d, q_z_3d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -157,10 +164,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         perfect coherent scattering along the crystal truncation rod
         without intensity reduction from surface disorder.
         """
-        var_damping = self.variant(roughness_damping)
+        var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
         q_z_test: Float[Array, "..."] = jnp.linspace(0.0, 10.0, 50)
-        damping = var_damping(q_z_test, 0.0)
+        damping: Any = var_damping(q_z_test, 0.0)
 
         expected: Float[Array, "..."] = jnp.ones_like(q_z_test)
         chex.assert_trees_all_close(damping, expected, rtol=1e-10)
@@ -184,9 +191,11 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         correlation lengths produce narrower rods in reciprocal space,
         reflecting better lateral ordering.
         """
-        var_gaussian = self.variant(gaussian_rod_profile)
+        var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
 
-        profile_values = var_gaussian(self.q_perp_values, correlation_length)
+        profile_values: Float[Array, "..."] = var_gaussian(
+            self.q_perp_values, correlation_length
+        )
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -216,9 +225,13 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         surfaces with longer-range disorder or step distributions following
         power-law decay.
         """
-        var_lorentzian = self.variant(lorentzian_rod_profile)
+        var_lorentzian: Callable[..., Any] = self.variant(
+            lorentzian_rod_profile
+        )
 
-        profile_values = var_lorentzian(self.q_perp_values, correlation_length)
+        profile_values: Float[Array, "..."] = var_lorentzian(
+            self.q_perp_values, correlation_length
+        )
 
         chex.assert_shape(profile_values, self.q_perp_values.shape)
 
@@ -245,9 +258,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         that both profile types produce valid, normalized results with
         correct monotonic behavior.
         """
-        correlation_length = 50.0
+        correlation_length: float = 50.0
 
-        profile_values = rod_profile_function(
+        profile_values: Float[Array, "..."] = rod_profile_function(
             self.q_perp_values, correlation_length, profile_type
         )
 
@@ -274,10 +287,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         the Fourier transform relationship between real-space disorder and
         reciprocal-space broadening.
         """
-        var_gaussian = self.variant(gaussian_rod_profile)
+        var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
         q_test: scalar_float = jnp.array(0.1)
-        profile_small_corr = var_gaussian(q_test, 10.0)
-        profile_large_corr = var_gaussian(q_test, 100.0)
+        profile_small_corr: Float[Array, "..."] = var_gaussian(q_test, 10.0)
+        profile_large_corr: Float[Array, "..."] = var_gaussian(q_test, 100.0)
         chex.assert_scalar_positive(
             float(profile_small_corr - profile_large_corr)
         )
@@ -303,7 +316,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         determines the intensity distribution in the RHEED pattern through
         |F(q)|².
         """
-        var_structure_factor = self.variant(surface_structure_factor)
+        var_structure_factor: Callable[..., Any] = self.variant(
+            surface_structure_factor
+        )
 
         q_vectors: Float[Array, "..."] = jnp.array(
             [
@@ -314,16 +329,19 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        atomic_positions = self.test_crystal.cart_positions[:, :3]
-        atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
-            jnp.int32
+        atomic_positions: Float[Array, "..."] = (
+            self.test_crystal.cart_positions[:, :3]
         )
+        atomic_numbers: Float[Array, "..."] = self.test_crystal.cart_positions[
+            :, 3
+        ].astype(jnp.int32)
         # Convert scalar is_surface to per-atom mask
-        n_atoms = atomic_positions.shape[0]
+        n_atoms: int = atomic_positions.shape[0]
         is_surface_atom: Bool[Array, "..."] = jnp.full((n_atoms,), is_surface)
 
+        q_vec: Float[Array, "..."]
         for q_vec in q_vectors:
-            f_struct = var_structure_factor(
+            f_struct: Any = var_structure_factor(
                 q_vector=q_vec,
                 atomic_positions=atomic_positions,
                 atomic_numbers=atomic_numbers,
@@ -348,20 +366,24 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         structure factor. This symmetry is crucial for understanding
         diffraction pattern symmetries.
         """
-        var_structure_factor = self.variant(surface_structure_factor)
-
-        atomic_positions = self.test_crystal.cart_positions[:, :3]
-        atomic_numbers = self.test_crystal.cart_positions[:, 3].astype(
-            jnp.int32
+        var_structure_factor: Callable[..., Any] = self.variant(
+            surface_structure_factor
         )
+
+        atomic_positions: Float[Array, "..."] = (
+            self.test_crystal.cart_positions[:, :3]
+        )
+        atomic_numbers: Float[Array, "..."] = self.test_crystal.cart_positions[
+            :, 3
+        ].astype(jnp.int32)
         # All bulk atoms (no surface enhancement)
-        n_atoms = atomic_positions.shape[0]
+        n_atoms: int = atomic_positions.shape[0]
         is_surface_atom: Bool[Array, "..."] = jnp.full((n_atoms,), False)
 
         q_vec: Float[Array, "..."] = jnp.array([1.0, 0.5, 0.3])
-        q_vec_neg = -q_vec
+        q_vec_neg: Any = -q_vec
 
-        f_pos = var_structure_factor(
+        f_pos: Any = var_structure_factor(
             q_vector=q_vec,
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
@@ -369,7 +391,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             is_surface_atom=is_surface_atom,
         )
 
-        f_neg = var_structure_factor(
+        f_neg: Any = var_structure_factor(
             q_vector=q_vec_neg,
             atomic_positions=atomic_positions,
             atomic_numbers=atomic_numbers,
@@ -399,13 +421,13 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         The CTR intensity profile along q_z contains information about
         surface structure, roughness, and relaxation.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
         hk_array: Integer[Array, "..."] = jnp.array(
             [hk_index], dtype=jnp.int32
         )
 
-        intensities = var_ctr(
+        intensities: Float[Array, "..."] = var_ctr(
             hk_indices=hk_array,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -420,7 +442,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities)
 
         if roughness > 0.1:
-            n_points = len(self.q_z_values)
+            n_points: Float[Array, "..."] = len(self.q_z_values)
             first_quarter_mean: scalar_float = jnp.mean(
                 intensities[0, : n_points // 4]
             )
@@ -445,9 +467,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         factors. This parallelization is crucial for efficient RHEED
         pattern calculation.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
-        intensities = var_ctr(
+        intensities: Float[Array, "..."] = var_ctr(
             hk_indices=self.hk_indices,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -455,7 +477,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
         )
 
-        expected_shape = (len(self.hk_indices), len(self.q_z_values))
+        expected_shape: tuple[Any, ...] = (
+            len(self.hk_indices),
+            len(self.q_z_values),
+        )
         chex.assert_shape(intensities, expected_shape)
 
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
@@ -479,11 +504,11 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         This damping effect allows roughness determination from CTR
         measurements.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
         hk_test: Integer[Array, "..."] = jnp.array([[1, 0]], dtype=jnp.int32)
 
-        intensities_smooth = var_ctr(
+        intensities_smooth: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -491,7 +516,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
         )
 
-        intensities_rough = var_ctr(
+        intensities_rough: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -499,9 +524,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
         )
 
-        n_half = len(self.q_z_values) // 2
-        smooth_high_qz = intensities_smooth[0, n_half:]
-        rough_high_qz = intensities_rough[0, n_half:]
+        n_half: int = len(self.q_z_values) // 2
+        smooth_high_qz: Any = intensities_smooth[0, n_half:]
+        rough_high_qz: Any = intensities_rough[0, n_half:]
 
         chex.assert_trees_all_equal(
             jnp.all(smooth_high_qz >= rough_high_qz), True
@@ -537,7 +562,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         n_integration_points, so we call it directly instead of using
         self.variant() to avoid double-JIT issues.
         """
-        integrated = integrated_rod_intensity(
+        integrated: Integer[Array, "..."] = integrated_rod_intensity(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             q_z_range=jnp.array(q_z_range, dtype=jnp.float64),
             crystal=self.test_crystal,
@@ -564,11 +589,11 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         B ∝ T. This temperature dependence is crucial for understanding
         RHEED patterns at different growth temperatures.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
         hk_test: Integer[Array, "..."] = jnp.array([[1, 1]], dtype=jnp.int32)
 
-        intensities_cold = var_ctr(
+        intensities_cold: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -576,7 +601,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             temperature=100.0,
         )
 
-        intensities_hot = var_ctr(
+        intensities_hot: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
             q_z=self.q_z_values,
             crystal=self.test_crystal,
@@ -601,7 +626,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
            intensity). This gradient is crucial for optimization algorithms
            that fit CTR data to extract surface parameters.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
         def ctr_for_roughness(sigma: scalar_float) -> Float[Array, "1 10"]:
             return var_ctr(
@@ -655,21 +680,27 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         important for distinguishing surface morphologies: Gaussian for
         random roughness, Lorentzian for step-terrace structures.
         """
-        var_gaussian = self.variant(gaussian_rod_profile)
-        var_lorentzian = self.variant(lorentzian_rod_profile)
+        var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
+        var_lorentzian: Callable[..., Any] = self.variant(
+            lorentzian_rod_profile
+        )
 
-        correlation = 50.0
+        correlation: float = 50.0
 
-        gaussian_profile = var_gaussian(self.q_perp_values, correlation)
-        lorentzian_profile = var_lorentzian(self.q_perp_values, correlation)
+        gaussian_profile: Float[Array, "..."] = var_gaussian(
+            self.q_perp_values, correlation
+        )
+        lorentzian_profile: Float[Array, "..."] = var_lorentzian(
+            self.q_perp_values, correlation
+        )
 
         chex.assert_trees_all_close(
             gaussian_profile[0], lorentzian_profile[0], rtol=1e-10
         )
 
-        tail_indices = self.q_perp_values > 0.3
-        gaussian_tail = gaussian_profile[tail_indices]
-        lorentzian_tail = lorentzian_profile[tail_indices]
+        tail_indices: Any = self.q_perp_values > 0.3
+        gaussian_tail: Any = gaussian_profile[tail_indices]
+        lorentzian_tail: Any = lorentzian_profile[tail_indices]
 
         tail_diff: scalar_float = jnp.mean(lorentzian_tail - gaussian_tail)
         chex.assert_scalar_positive(float(tail_diff))
@@ -687,16 +718,18 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         validates the theoretical foundation of CTR analysis for surface
         structure determination.
         """
-        var_ctr = self.variant(calculate_ctr_intensity)
-        var_damping = self.variant(roughness_damping)
-        var_structure = self.variant(surface_structure_factor)
+        var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
+        var_damping: Callable[..., Any] = self.variant(roughness_damping)
+        var_structure: Callable[..., Any] = self.variant(
+            surface_structure_factor
+        )
 
         hk_test: Integer[Array, "..."] = jnp.array(
             [[0, 0], [1, 0], [2, 0]], dtype=jnp.int32
         )
         q_z_single: Float[Array, "..."] = jnp.array([1.0])
 
-        intensities = var_ctr(
+        intensities: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
             q_z=q_z_single,
             crystal=self.test_crystal,
@@ -709,11 +742,11 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         q_vec: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
 
         # Create per-atom surface mask (all True for this test)
-        n_atoms = self.test_crystal.cart_positions.shape[0]
+        n_atoms: int = self.test_crystal.cart_positions.shape[0]
         is_surface_atom: Bool[Array, "..."] = jnp.ones(
             n_atoms, dtype=jnp.bool_
         )
-        f_struct = var_structure(
+        f_struct: Float[Array, "..."] = var_structure(
             q_vector=q_vec,
             atomic_positions=self.test_crystal.cart_positions[:, :3],
             atomic_numbers=self.test_crystal.cart_positions[:, 3].astype(
@@ -723,7 +756,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             is_surface_atom=is_surface_atom,
         )
 
-        damping = var_damping(q_z=jnp.array(1.0), sigma_height=0.5)
+        damping: Float[Array, "..."] = var_damping(
+            q_z=jnp.array(1.0), sigma_height=0.5
+        )
 
         expected_intensity: Float[Array, "..."] = (
             jnp.abs(f_struct) ** 2 * damping
@@ -734,11 +769,11 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
 def _make_si_crystal() -> CrystalStructure:
     """Create a 2-atom Si crystal for gradient tests."""
-    a_si = 5.431
+    a_si: float = 5.431
     frac_coords: Float[Array, "..."] = jnp.array(
         [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
     )
-    cart_coords = frac_coords * a_si
+    cart_coords: Float[Array, "..."] = frac_coords * a_si
     atomic_numbers: Float[Array, "..."] = jnp.full(2, 14.0)
     frac_positions: Float[Array, "..."] = jnp.column_stack(
         [frac_coords, atomic_numbers]

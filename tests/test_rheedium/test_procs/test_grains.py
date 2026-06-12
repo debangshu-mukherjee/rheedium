@@ -1,5 +1,8 @@
 """Test suite for procs/grains.py."""
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -84,7 +87,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             ],
             axis=0,
         )
-        compiled = jax.jit(
+        compiled: Callable[..., Any] = jax.jit(
             lambda fractions: grain_distribution_average(patterns, fractions)
         )
 
@@ -198,7 +201,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             ],
             axis=0,
         )
-        compiled = jax.jit(
+        compiled: Callable[..., Any] = jax.jit(
             lambda mean_angle: apply_misorientation_distribution(
                 patterns,
                 jnp.array([-1.0, 0.0, 1.0]),

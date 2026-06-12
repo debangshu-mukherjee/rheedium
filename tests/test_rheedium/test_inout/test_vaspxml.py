@@ -3,6 +3,7 @@
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -150,15 +151,15 @@ class TestGetSpeciesList(chex.TestCase):
 
     def test_simple_species(self) -> None:
         """Extract species from simple atominfo."""
-        root = ET.fromstring(SIMPLE_VASPXML)
-        species = _get_species_list(root)
+        root: Any = ET.fromstring(SIMPLE_VASPXML)
+        species: Any = _get_species_list(root)
 
         assert species == ["Mg", "O"]
 
     def test_missing_atominfo(self) -> None:
         """Missing atominfo raises ValueError."""
-        xml_content = """<modeling></modeling>"""
-        root = ET.fromstring(xml_content)
+        xml_content: str = """<modeling></modeling>"""
+        root: Any = ET.fromstring(xml_content)
 
         with pytest.raises(ValueError, match="atominfo"):
             _get_species_list(root)
@@ -169,8 +170,10 @@ class TestExtractStructureBlock(chex.TestCase):
 
     def test_extract_lattice_positions(self) -> None:
         """Extract lattice and positions from structure element."""
-        root = ET.fromstring(SIMPLE_VASPXML)
-        structure = root.find(".//structure[@name='initialpos']")
+        root: Any = ET.fromstring(SIMPLE_VASPXML)
+        structure: Any = root.find(".//structure[@name='initialpos']")
+        lattice: Any
+        positions: Float[Array, "..."]
         lattice, positions = _extract_structure_block(structure)
 
         chex.assert_trees_all_close(
@@ -190,9 +193,9 @@ class TestExtractForces(chex.TestCase):
 
     def test_extract_forces(self) -> None:
         """Extract forces from calculation element."""
-        root = ET.fromstring(SIMPLE_VASPXML)
-        calculation = root.find(".//calculation")
-        forces = _extract_forces(calculation)
+        root: Any = ET.fromstring(SIMPLE_VASPXML)
+        calculation: Any = root.find(".//calculation")
+        forces: Any = _extract_forces(calculation)
 
         assert forces is not None
         chex.assert_trees_all_close(
@@ -203,9 +206,9 @@ class TestExtractForces(chex.TestCase):
 
     def test_missing_forces(self) -> None:
         """Missing forces returns None."""
-        xml_content = """<calculation></calculation>"""
-        calculation = ET.fromstring(xml_content)
-        forces = _extract_forces(calculation)
+        xml_content: str = """<calculation></calculation>"""
+        calculation: Any = ET.fromstring(xml_content)
+        forces: Any = _extract_forces(calculation)
 
         assert forces is None
 
@@ -215,9 +218,9 @@ class TestExtractStress(chex.TestCase):
 
     def test_extract_stress(self) -> None:
         """Extract stress tensor from calculation element."""
-        root = ET.fromstring(SIMPLE_VASPXML)
-        calculation = root.find(".//calculation")
-        stress = _extract_stress(calculation)
+        root: Any = ET.fromstring(SIMPLE_VASPXML)
+        calculation: Any = root.find(".//calculation")
+        stress: Any = _extract_stress(calculation)
 
         assert stress is not None
         expected: Float[Array, "..."] = jnp.array(
@@ -231,9 +234,9 @@ class TestExtractStress(chex.TestCase):
 
     def test_missing_stress(self) -> None:
         """Missing stress returns None."""
-        xml_content = """<calculation></calculation>"""
-        calculation = ET.fromstring(xml_content)
-        stress = _extract_stress(calculation)
+        xml_content: str = """<calculation></calculation>"""
+        calculation: Any = ET.fromstring(xml_content)
+        stress: Any = _extract_stress(calculation)
 
         assert stress is None
 
@@ -243,18 +246,18 @@ class TestExtractEnergy(chex.TestCase):
 
     def test_extract_energy(self) -> None:
         """Extract energy from calculation element."""
-        root = ET.fromstring(SIMPLE_VASPXML)
-        calculation = root.find(".//calculation")
-        energy = _extract_energy(calculation)
+        root: Any = ET.fromstring(SIMPLE_VASPXML)
+        calculation: Any = root.find(".//calculation")
+        energy: Any = _extract_energy(calculation)
 
         assert energy is not None
         chex.assert_trees_all_close(energy, -12.34567890, atol=1e-6)
 
     def test_missing_energy(self) -> None:
         """Missing energy returns None."""
-        xml_content = """<calculation></calculation>"""
-        calculation = ET.fromstring(xml_content)
-        energy = _extract_energy(calculation)
+        xml_content: str = """<calculation></calculation>"""
+        calculation: Any = ET.fromstring(xml_content)
+        energy: Any = _extract_energy(calculation)
 
         assert energy is None
 
@@ -264,11 +267,12 @@ class TestParseVaspxml(chex.TestCase):
 
     def test_parse_crystal_structure(self) -> None:
         """Parse vasprun.xml to CrystalStructure."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(SIMPLE_VASPXML)
 
-            crystal = parse_vaspxml(xml_file)
+            crystal: CrystalStructure = parse_vaspxml(xml_file)
 
             assert isinstance(crystal, CrystalStructure)
             chex.assert_trees_all_close(
@@ -291,11 +295,12 @@ class TestParseVaspxml(chex.TestCase):
 
     def test_parse_with_forces(self) -> None:
         """Parse vasprun.xml to XYZData with forces."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(SIMPLE_VASPXML)
 
-            xyz_data = parse_vaspxml(xml_file, include_forces=True)
+            xyz_data: Any = parse_vaspxml(xml_file, include_forces=True)
 
             assert isinstance(xyz_data, XYZData)
             assert xyz_data.positions.shape == (2, 3)
@@ -308,26 +313,30 @@ class TestParseVaspxml(chex.TestCase):
 
     def test_parse_specific_step(self) -> None:
         """Parse specific ionic step."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
             # Parse step 0
-            xyz_0 = parse_vaspxml(xml_file, step=0, include_forces=True)
+            xyz_0: Any = parse_vaspxml(xml_file, step=0, include_forces=True)
             chex.assert_trees_all_close(xyz_0.energy, -10.0, atol=1e-6)
 
             # Parse step 1
-            xyz_1 = parse_vaspxml(xml_file, step=1, include_forces=True)
+            xyz_1: Any = parse_vaspxml(xml_file, step=1, include_forces=True)
             chex.assert_trees_all_close(xyz_1.energy, -11.0, atol=1e-6)
 
             # Parse last step (step=-1)
-            xyz_last = parse_vaspxml(xml_file, step=-1, include_forces=True)
+            xyz_last: Any = parse_vaspxml(
+                xml_file, step=-1, include_forces=True
+            )
             chex.assert_trees_all_close(xyz_last.energy, -12.0, atol=1e-6)
 
     def test_step_out_of_range(self) -> None:
         """Out of range step raises ValueError."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
             with pytest.raises(ValueError, match="out of range"):
@@ -340,8 +349,9 @@ class TestParseVaspxml(chex.TestCase):
 
     def test_invalid_xml(self) -> None:
         """Invalid XML raises ValueError."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text("not valid xml <<<<")
 
             with pytest.raises(ValueError, match="Invalid XML"):
@@ -349,11 +359,12 @@ class TestParseVaspxml(chex.TestCase):
 
     def test_string_path(self) -> None:
         """Accept string path as well as Path object."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(SIMPLE_VASPXML)
 
-            crystal = parse_vaspxml(str(xml_file))
+            crystal: CrystalStructure = parse_vaspxml(str(xml_file))
             assert isinstance(crystal, CrystalStructure)
 
 
@@ -362,24 +373,26 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
 
     def test_parse_trajectory(self) -> None:
         """Parse full trajectory from vasprun.xml."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
-            trajectory = parse_vaspxml_trajectory(xml_file)
+            trajectory: Any = parse_vaspxml_trajectory(xml_file)
 
             assert len(trajectory) == 3
             assert all(isinstance(xyz, XYZData) for xyz in trajectory)
 
     def test_trajectory_energies(self) -> None:
         """Energies are extracted for each step."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
-            trajectory = parse_vaspxml_trajectory(xml_file)
+            trajectory: Any = parse_vaspxml_trajectory(xml_file)
 
-            energies = [xyz.energy for xyz in trajectory]
+            energies: Any = [xyz.energy for xyz in trajectory]
             chex.assert_trees_all_close(
                 jnp.array(energies),
                 jnp.array([-10.0, -11.0, -12.0]),
@@ -388,15 +401,16 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
 
     def test_trajectory_lattice_changes(self) -> None:
         """Lattice can change during relaxation."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
-            trajectory = parse_vaspxml_trajectory(xml_file)
+            trajectory: Any = parse_vaspxml_trajectory(xml_file)
 
             # Cell shrinks during relaxation
-            lattice_0 = trajectory[0].lattice
-            lattice_2 = trajectory[2].lattice
+            lattice_0: Any = trajectory[0].lattice
+            lattice_2: Any = trajectory[2].lattice
             assert lattice_0 is not None
             assert lattice_2 is not None
             cell_a_0: Float[Array, "..."] = jnp.linalg.norm(lattice_0[0])
@@ -406,11 +420,12 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
 
     def test_trajectory_without_forces(self) -> None:
         """Trajectory without forces has None for metadata."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
-            trajectory = parse_vaspxml_trajectory(
+            trajectory: Any = parse_vaspxml_trajectory(
                 xml_file, include_forces=False
             )
 
@@ -424,7 +439,7 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
 
     def test_no_calculation_steps(self) -> None:
         """XML without calculation steps raises ValueError."""
-        xml_content = """<?xml version="1.0"?>
+        xml_content: str = """<?xml version="1.0"?>
 <modeling>
   <atominfo>
     <array name="atoms">
@@ -433,8 +448,9 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
   </atominfo>
 </modeling>
 """
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(xml_content)
 
             with pytest.raises(ValueError, match="no calculation steps"):
@@ -442,13 +458,15 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
 
     def test_atomic_numbers_preserved(self) -> None:
         """Atomic numbers are consistent across trajectory."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(TRAJECTORY_VASPXML)
 
-            trajectory = parse_vaspxml_trajectory(xml_file)
+            trajectory: Any = parse_vaspxml_trajectory(xml_file)
 
             # All steps should have same atomic numbers (Si=14)
+            xyz: Any
             for xyz in trajectory:
                 chex.assert_trees_all_close(
                     xyz.atomic_numbers,
@@ -462,14 +480,17 @@ class TestVaspxmlRoundtrip(chex.TestCase):
 
     def test_frac_cart_consistency(self) -> None:
         """Fractional and Cartesian positions should be consistent."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(SIMPLE_VASPXML)
 
-            crystal = parse_vaspxml(xml_file)
+            crystal: CrystalStructure = parse_vaspxml(xml_file)
 
             lattice: Float[Array, "..."] = jnp.diag(crystal.cell_lengths)
-            expected_cart = crystal.frac_positions[:, :3] @ lattice
+            expected_cart: Float[Array, "..."] = (
+                crystal.frac_positions[:, :3] @ lattice
+            )
             chex.assert_trees_all_close(
                 crystal.cart_positions[:, :3],
                 expected_cart,
@@ -478,16 +499,21 @@ class TestVaspxmlRoundtrip(chex.TestCase):
 
     def test_xyz_lattice_matches_crystal(self) -> None:
         """XYZData lattice should match CrystalStructure cell."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xml_file = Path(tmp_dir) / "vasprun.xml"
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
             xml_file.write_text(SIMPLE_VASPXML)
 
-            crystal = parse_vaspxml(xml_file, include_forces=False)
-            xyz_data = parse_vaspxml(xml_file, include_forces=True)
+            crystal: CrystalStructure = parse_vaspxml(
+                xml_file, include_forces=False
+            )
+            xyz_data: Any = parse_vaspxml(xml_file, include_forces=True)
 
             # Lattice from XYZData should give same cell lengths
             from rheedium.inout import lattice_to_cell_params
 
+            lengths: Float[Array, "..."]
+            angles: Float[Array, "..."]
             lengths, angles = lattice_to_cell_params(xyz_data.lattice)
 
             chex.assert_trees_all_close(

@@ -7,6 +7,7 @@ meaningful multi-device and ``pmap`` tests via ``chex.variants``.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
@@ -50,7 +51,7 @@ class TestShardArray(chex.TestCase):
         """Sharding along axis 1 should produce correct spec."""
         arr: Float[Array, "rows devices"] = jnp.ones((3, 8))
         result: Float[Array, "rows devices"] = shard_array(arr, shard_axes=1)
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] is None
         assert spec[1] == "devices"
 
@@ -58,7 +59,7 @@ class TestShardArray(chex.TestCase):
         """Sharding along axis 0 should produce correct spec."""
         arr: Float[Array, "devices cols"] = jnp.ones((8, 4))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=0)
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] == "devices"
         assert spec[1] is None
 
@@ -66,7 +67,7 @@ class TestShardArray(chex.TestCase):
         """Using -1 should skip sharding (all axes None)."""
         arr: Float[Array, "devices cols"] = jnp.ones((8, 8))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=-1)
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] is None
         assert spec[1] is None
 
@@ -76,13 +77,13 @@ class TestShardArray(chex.TestCase):
         result: Float[Array, "devices cols"] = shard_array(
             arr, shard_axes=[-1]
         )
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] is None
         assert spec[1] is None
 
     def test_explicit_devices(self) -> None:
         """Passing explicit devices should use them."""
-        devices = jax.devices()
+        devices: Any = jax.devices()
         arr: Float[Array, "devices"] = jnp.ones((8,))
         result: Float[Array, "devices"] = shard_array(
             arr, shard_axes=0, devices=devices
@@ -104,7 +105,7 @@ class TestShardArray(chex.TestCase):
             arr, shard_axes=0
         )
         chex.assert_shape(result, (8, 3, 2))
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] == "devices"
         assert spec[1] is None
         assert spec[2] is None
@@ -113,7 +114,7 @@ class TestShardArray(chex.TestCase):
         """An axis index >= ndim should be silently ignored."""
         arr: Float[Array, "devices coords"] = jnp.ones((8, 3))
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=5)
-        spec = result.sharding.spec
+        spec: Any = result.sharding.spec
         assert spec[0] is None
         assert spec[1] is None
         chex.assert_trees_all_close(result, arr)
@@ -157,12 +158,12 @@ class TestShardArrayMultiDevice(chex.TestCase):
         """Array sharded on axis 0 should span all 8 devices."""
         arr: Float[Array, "devices coords"] = jnp.arange(24.0).reshape(8, 3)
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=0)
-        device_set = result.sharding.device_set
+        device_set: Any = result.sharding.device_set
         assert len(device_set) == 8
 
     def test_subset_devices(self) -> None:
         """Sharding across a subset of devices should work."""
-        devices = jax.devices()[:4]
+        devices: Any = jax.devices()[:4]
         arr: Float[Array, "devices coords"] = jnp.arange(12.0).reshape(4, 3)
         result: Float[Array, "devices coords"] = shard_array(
             arr, shard_axes=0, devices=devices

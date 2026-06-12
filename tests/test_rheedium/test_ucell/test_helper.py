@@ -6,6 +6,8 @@ Tests the helper functions for unit cell calculations and transformations.
 
 import os
 import tempfile
+from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
@@ -15,6 +17,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 import rheedium as rh
 from rheedium.types.crystal_types import CrystalStructure
+from rheedium.types.custom_types import scalar_float
 
 
 class TestAngleInDegrees(chex.TestCase):
@@ -42,8 +45,10 @@ class TestAngleInDegrees(chex.TestCase):
         v1_array: Float[Array, "coords"] = jnp.array(v1)
         v2_array: Float[Array, "coords"] = jnp.array(v2)
 
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
-        angle = var_angle_in_degrees(v1_array, v2_array)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
+        angle: Any = var_angle_in_degrees(v1_array, v2_array)
 
         chex.assert_trees_all_close(angle, expected_angle, atol=1e-5)
 
@@ -56,14 +61,16 @@ class TestAngleInDegrees(chex.TestCase):
         v1: Float[Array, "coords"] = jax.random.normal(key1, (3,))
         v2: Float[Array, "coords"] = jax.random.normal(key2, (3,))
 
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
-        angle = var_angle_in_degrees(v1, v2)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
+        angle: Any = var_angle_in_degrees(v1, v2)
 
         # Angle should be between 0 and 180 degrees
         chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
         # Test symmetry: angle(v1, v2) == angle(v2, v1)
-        angle_reversed = var_angle_in_degrees(v2, v1)
+        angle_reversed: Any = var_angle_in_degrees(v2, v1)
         chex.assert_trees_all_close(angle, angle_reversed, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -72,13 +79,15 @@ class TestAngleInDegrees(chex.TestCase):
         v1: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
         v2: Float[Array, "..."] = jnp.array([1.0, 1.0, 0.0])
 
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
 
         # Original angle
-        angle1 = var_angle_in_degrees(v1, v2)
+        angle1: Any = var_angle_in_degrees(v1, v2)
 
         # Scale vectors
-        angle2 = var_angle_in_degrees(2.0 * v1, 3.0 * v2)
+        angle2: Any = var_angle_in_degrees(2.0 * v1, 3.0 * v2)
 
         chex.assert_trees_all_close(angle1, angle2, atol=1e-10)
 
@@ -88,23 +97,27 @@ class TestAngleInDegrees(chex.TestCase):
         v1: Float[Array, "..."] = jnp.array([1.0, 0.0])
         v2: Float[Array, "..."] = jnp.array([0.0, 1.0])
 
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
-        angle = var_angle_in_degrees(v1, v2)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
+        angle: Any = var_angle_in_degrees(v1, v2)
 
         chex.assert_trees_all_close(angle, 90.0, atol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_high_dimensional(self) -> None:
         """Test angle calculation with high-dimensional vectors."""
-        n_dim = 10
+        n_dim: int = 10
         key1: PRNGKeyArray
         key2: PRNGKeyArray
         key1, key2 = jax.random.split(self.rng)
         v1: Float[Array, "coords"] = jax.random.normal(key1, (n_dim,))
         v2: Float[Array, "coords"] = jax.random.normal(key2, (n_dim,))
 
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
-        angle = var_angle_in_degrees(v1, v2)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
+        angle: Any = var_angle_in_degrees(v1, v2)
 
         chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
@@ -147,9 +160,11 @@ class TestComputeLengthsAngles(chex.TestCase):
         """Test length and angle computation for known unit cells."""
         vectors_array: Float[Array, "vectors coords"] = jnp.array(vectors)
 
-        var_compute_lengths_angles = self.variant(
+        var_compute_lengths_angles: Callable[..., Any] = self.variant(
             rh.ucell.compute_lengths_angles
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_compute_lengths_angles(vectors_array)
 
         chex.assert_trees_all_close(
@@ -166,9 +181,11 @@ class TestComputeLengthsAngles(chex.TestCase):
             self.rng, (3, 3)
         )
 
-        var_compute_lengths_angles = self.variant(
+        var_compute_lengths_angles: Callable[..., Any] = self.variant(
             rh.ucell.compute_lengths_angles
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_compute_lengths_angles(vectors)
 
         # Check shapes
@@ -179,6 +196,7 @@ class TestComputeLengthsAngles(chex.TestCase):
         chex.assert_trees_all_equal(jnp.all(lengths > 0), True)
 
         # Angles should be between 0 and 180
+        angle: scalar_float
         for angle in angles:
             chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
@@ -189,9 +207,11 @@ class TestComputeLengthsAngles(chex.TestCase):
             [[3.0, 1.0, 0.5], [0.5, 4.0, 1.0], [1.0, 0.5, 5.0]]
         )
 
-        var_compute_lengths_angles = self.variant(
+        var_compute_lengths_angles: Callable[..., Any] = self.variant(
             rh.ucell.compute_lengths_angles
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_compute_lengths_angles(vectors)
 
         # Compute lengths manually
@@ -205,7 +225,9 @@ class TestComputeLengthsAngles(chex.TestCase):
         chex.assert_trees_all_close(lengths, expected_lengths, atol=1e-10)
 
         # Compute angles manually
-        var_angle_in_degrees = self.variant(rh.ucell.angle_in_degrees)
+        var_angle_in_degrees: Callable[..., Any] = self.variant(
+            rh.ucell.angle_in_degrees
+        )
         expected_angles: Float[Array, "..."] = jnp.array(
             [
                 var_angle_in_degrees(vectors[1], vectors[2]),
@@ -222,10 +244,10 @@ class TestParseCifAndScrape(chex.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
         # Create a temporary test CIF file
-        self.test_cif_content = """
+        self.test_cif_content: str = """
 data_test
 _cell_length_a 5.0
 _cell_length_b 5.0
@@ -268,8 +290,10 @@ Si10 Si 0.5 0.5 0.9
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness_xyz: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
-        var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
-        filtered_crystal = var_parse_cif_and_scrape(
+        var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
+            rh.ucell.parse_cif_and_scrape
+        )
+        filtered_crystal: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness_xyz
         )
 
@@ -277,7 +301,7 @@ Si10 Si 0.5 0.5 0.9
         assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check that atoms were filtered (should have fewer than 10)
-        n_atoms = filtered_crystal.cart_positions.shape[0]
+        n_atoms: int = filtered_crystal.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
         chex.assert_scalar_in(int(n_atoms), 1, 9)  # Between 1 and 9 atoms
 
@@ -295,8 +319,10 @@ Si10 Si 0.5 0.5 0.9
         zone_axis_array: Float[Array, "three"] = jnp.array(zone_axis)
         thickness_array: Float[Array, "three"] = jnp.array(thickness)
 
-        var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
-        filtered_crystal = var_parse_cif_and_scrape(
+        var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
+            rh.ucell.parse_cif_and_scrape
+        )
+        filtered_crystal: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis_array, thickness_array
         )
 
@@ -304,7 +330,7 @@ Si10 Si 0.5 0.5 0.9
         assert isinstance(filtered_crystal, CrystalStructure)
 
         # Check we have some atoms
-        n_atoms = filtered_crystal.cart_positions.shape[0]
+        n_atoms: int = filtered_crystal.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
 
         # Check cell parameters are preserved
@@ -320,16 +346,18 @@ Si10 Si 0.5 0.5 0.9
         """Test with different thickness values."""
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
 
-        var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
+        var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
+            rh.ucell.parse_cif_and_scrape
+        )
 
         # Test with different thickness values
         thickness1: Float[Array, "..."] = jnp.array([5.0, 5.0, 2.0])
         thickness2: Float[Array, "..."] = jnp.array([5.0, 5.0, 4.0])
 
-        crystal1 = var_parse_cif_and_scrape(
+        crystal1: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness1
         )
-        crystal2 = var_parse_cif_and_scrape(
+        crystal2: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness2
         )
 
@@ -338,8 +366,8 @@ Si10 Si 0.5 0.5 0.9
         assert isinstance(crystal2, CrystalStructure)
 
         # Crystal2 should have more or equal atoms than crystal1
-        n_atoms1 = crystal1.cart_positions.shape[0]
-        n_atoms2 = crystal2.cart_positions.shape[0]
+        n_atoms1: int = crystal1.cart_positions.shape[0]
+        n_atoms2: int = crystal2.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms1))
         chex.assert_scalar_positive(int(n_atoms2))
         # More thickness should include more or equal atoms
@@ -356,13 +384,15 @@ Si10 Si 0.5 0.5 0.9
         # captures atoms at 4 and 5
         thickness_xyz: Float[Array, "..."] = jnp.array([5.0, 5.0, 2.5])
 
-        var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
-        filtered_crystal = var_parse_cif_and_scrape(
+        var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
+            rh.ucell.parse_cif_and_scrape
+        )
+        filtered_crystal: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness_xyz
         )
 
         # Should have at least one atom
-        n_atoms = filtered_crystal.cart_positions.shape[0]
+        n_atoms: int = filtered_crystal.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
 
     @chex.variants(without_jit=True, with_jit=False)
@@ -373,13 +403,15 @@ Si10 Si 0.5 0.5 0.9
             [10.0, 10.0, 20.0]
         )  # Very thick slice
 
-        var_parse_cif_and_scrape = self.variant(rh.ucell.parse_cif_and_scrape)
-        filtered_crystal = var_parse_cif_and_scrape(
+        var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
+            rh.ucell.parse_cif_and_scrape
+        )
+        filtered_crystal: Any = var_parse_cif_and_scrape(
             self.temp_file.name, zone_axis, thickness_xyz
         )
 
         # Should include all 10 atoms
-        n_atoms = filtered_crystal.cart_positions.shape[0]
+        n_atoms: int = filtered_crystal.cart_positions.shape[0]
         assert int(n_atoms) == 10, f"Expected 10 atoms, got {n_atoms}"
 
 

@@ -1,13 +1,15 @@
 """Tests for shared special functions in rheedium.tools."""
 
 from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Integer
+from numpy.typing import NDArray
 from scipy.special import iv as scipy_iv
 from scipy.special import kv as scipy_kv
 
@@ -39,20 +41,20 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
     )
     def test_known_values(self, x_val: float, expected: float) -> None:
         """K_0 matches scipy.special.k0 at representative points."""
-        result = bessel_k0(jnp.array(x_val))
+        result: Float[Array, "..."] = bessel_k0(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
 
     def test_positive_output(self) -> None:
         """K_0(x) > 0 for all x > 0."""
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
-        result = bessel_k0(x)
+        result: Float[Array, "..."] = bessel_k0(x)
         chex.assert_tree_all_finite(result)
         assert jnp.all(result > 0)
 
     def test_monotone_decreasing(self) -> None:
         """K_0(x) is strictly decreasing for x > 0."""
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
-        result = bessel_k0(x)
+        result: Float[Array, "..."] = bessel_k0(x)
         diffs: Float[Array, "..."] = jnp.diff(result)
         assert jnp.all(diffs < 0)
 
@@ -66,8 +68,8 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
     def test_jit_matches_eager(self) -> None:
         """JIT-compiled output matches eager evaluation."""
         x: Float[Array, "..."] = jnp.array([0.5, 1.0, 2.0, 5.0])
-        eager = bessel_k0(x)
-        jitted = jax.jit(bessel_k0)(x)
+        eager: Any = bessel_k0(x)
+        jitted: Callable[..., Any] = jax.jit(bessel_k0)(x)
         chex.assert_trees_all_close(eager, jitted, rtol=1e-12)
 
     def test_gradient_finite(self) -> None:
@@ -113,20 +115,20 @@ class TestBesselK1(chex.TestCase, parameterized.TestCase):
     )
     def test_known_values(self, x_val: float, expected: float) -> None:
         """K_1 matches scipy.special.k1 at representative points."""
-        result = bessel_k1(jnp.array(x_val))
+        result: Float[Array, "..."] = bessel_k1(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
 
     def test_positive_output(self) -> None:
         """K_1(x) > 0 for all x > 0."""
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
-        result = bessel_k1(x)
+        result: Float[Array, "..."] = bessel_k1(x)
         chex.assert_tree_all_finite(result)
         assert jnp.all(result > 0)
 
     def test_monotone_decreasing(self) -> None:
         """K_1(x) is strictly decreasing for x > 0."""
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
-        result = bessel_k1(x)
+        result: Float[Array, "..."] = bessel_k1(x)
         diffs: Float[Array, "..."] = jnp.diff(result)
         assert jnp.all(diffs < 0)
 
@@ -159,16 +161,16 @@ class TestBesselBranchTransition(chex.TestCase):
         """K_0 is continuous across the x=2 branch point."""
         x_below: scalar_float = jnp.array(1.999)
         x_above: scalar_float = jnp.array(2.001)
-        k0_below = bessel_k0(x_below)
-        k0_above = bessel_k0(x_above)
+        k0_below: Any = bessel_k0(x_below)
+        k0_above: Any = bessel_k0(x_above)
         chex.assert_trees_all_close(k0_below, k0_above, rtol=5e-3)
 
     def test_k1_continuity_at_branch(self) -> None:
         """K_1 is continuous across the x=2 branch point."""
         x_below: scalar_float = jnp.array(1.999)
         x_above: scalar_float = jnp.array(2.001)
-        k1_below = bessel_k1(x_below)
-        k1_above = bessel_k1(x_above)
+        k1_below: Any = bessel_k1(x_below)
+        k1_above: Any = bessel_k1(x_above)
         chex.assert_trees_all_close(k1_below, k1_above, rtol=5e-3)
 
 
@@ -189,8 +191,8 @@ class TestBesselIvSeries(chex.TestCase):
     def test_iv_series_against_scipy(self, v: float, x: float) -> None:
         """I_v(x) series expansion matches scipy."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_iv_series(v, x_arr, x_arr.dtype)
-        expected = scipy_iv(v, x)
+        result: Float[Array, "..."] = _bessel_iv_series(v, x_arr, x_arr.dtype)
+        expected: Float[Array, "..."] = scipy_iv(v, x)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
 
     def test_iv_series_vectorized(self) -> None:
@@ -198,15 +200,21 @@ class TestBesselIvSeries(chex.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5, 2.0], dtype=jnp.float64
         )
-        result = _bessel_iv_series(1.0, x_arr, x_arr.dtype)
-        expected = scipy_iv(1.0, np.array([0.5, 1.0, 1.5, 2.0]))
+        result: Float[Array, "..."] = _bessel_iv_series(
+            1.0, x_arr, x_arr.dtype
+        )
+        expected: Float[NDArray, "..."] = scipy_iv(
+            1.0, np.array([0.5, 1.0, 1.5, 2.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-6)
 
     def test_iv_series_negative_order(self) -> None:
         """Negative orders work for the K_v path."""
         x_arr: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
-        result = _bessel_iv_series(-0.5, x_arr, x_arr.dtype)
-        expected = scipy_iv(-0.5, 1.0)
+        result: Float[Array, "..."] = _bessel_iv_series(
+            -0.5, x_arr, x_arr.dtype
+        )
+        expected: Float[Array, "..."] = scipy_iv(-0.5, 1.0)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-5)
 
     def test_iv_series_output_shape(self) -> None:
@@ -214,7 +222,9 @@ class TestBesselIvSeries(chex.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64
         )
-        result = _bessel_iv_series(0.0, x_arr, x_arr.dtype)
+        result: Float[Array, "..."] = _bessel_iv_series(
+            0.0, x_arr, x_arr.dtype
+        )
         chex.assert_shape(result, (2, 2))
 
 
@@ -230,7 +240,7 @@ class TestBesselK0Series(chex.TestCase):
     def test_k0_series_against_scipy(self, x: float, expected: float) -> None:
         """K_0(x) series expansion matches scipy."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_k0_series(x_arr, x_arr.dtype)
+        result: Float[Array, "..."] = _bessel_k0_series(x_arr, x_arr.dtype)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_k0_series_vectorized(self) -> None:
@@ -238,8 +248,10 @@ class TestBesselK0Series(chex.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5, 2.0], dtype=jnp.float64
         )
-        result = _bessel_k0_series(x_arr, x_arr.dtype)
-        expected = scipy_kv(0, np.array([0.5, 1.0, 1.5, 2.0]))
+        result: Float[Array, "..."] = _bessel_k0_series(x_arr, x_arr.dtype)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0, np.array([0.5, 1.0, 1.5, 2.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_k0_series_output_shape(self) -> None:
@@ -247,7 +259,7 @@ class TestBesselK0Series(chex.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64
         )
-        result = _bessel_k0_series(x_arr, x_arr.dtype)
+        result: Float[Array, "..."] = _bessel_k0_series(x_arr, x_arr.dtype)
         chex.assert_shape(result, (2, 2))
 
     def test_k0_series_positive_values(self) -> None:
@@ -255,7 +267,7 @@ class TestBesselK0Series(chex.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.1, 0.5, 1.0, 2.0], dtype=jnp.float64
         )
-        result = _bessel_k0_series(x_arr, x_arr.dtype)
+        result: Float[Array, "..."] = _bessel_k0_series(x_arr, x_arr.dtype)
         assert jnp.all(result > 0)
 
 
@@ -271,7 +283,7 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         k1: Float[Array, "..."] = jnp.array(
             [0.6019072301972346], dtype=jnp.float64
         )
-        result = _bessel_kn_recurrence(
+        result: Integer[Array, "..."] = _bessel_kn_recurrence(
             jnp.array(0, dtype=jnp.int32), x, k0, k1
         )
         chex.assert_trees_all_close(result, k0, atol=1e-10)
@@ -285,7 +297,7 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         k1: Float[Array, "..."] = jnp.array(
             [0.6019072301972346], dtype=jnp.float64
         )
-        result = _bessel_kn_recurrence(
+        result: Integer[Array, "..."] = _bessel_kn_recurrence(
             jnp.array(1, dtype=jnp.int32), x, k0, k1
         )
         chex.assert_trees_all_close(result, k1, atol=1e-10)
@@ -308,7 +320,7 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         k1: Float[Array, "..."] = jnp.array(
             [scipy_kv(1, x)], dtype=jnp.float64
         )
-        result = _bessel_kn_recurrence(
+        result: Integer[Array, "..."] = _bessel_kn_recurrence(
             jnp.array(n, dtype=jnp.int32), x_arr, k0, k1
         )
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
@@ -324,10 +336,12 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         k1: Float[Array, "..."] = jnp.array(
             scipy_kv(1, np.array([0.5, 1.0, 2.0])), dtype=jnp.float64
         )
-        result = _bessel_kn_recurrence(
+        result: Integer[Array, "..."] = _bessel_kn_recurrence(
             jnp.array(2, dtype=jnp.int32), x_arr, k0, k1
         )
-        expected = scipy_kv(2, np.array([0.5, 1.0, 2.0]))
+        expected: Float[NDArray, "..."] = scipy_kv(
+            2, np.array([0.5, 1.0, 2.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
 
@@ -345,7 +359,9 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Small-x non-integer branch matches scipy."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_kv_small_non_integer(v, x_arr, x_arr.dtype)
+        result: Float[Array, "..."] = _bessel_kv_small_non_integer(
+            v, x_arr, x_arr.dtype
+        )
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     def test_kv_small_non_integer_vectorized(self) -> None:
@@ -353,8 +369,12 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5], dtype=jnp.float64
         )
-        result = _bessel_kv_small_non_integer(0.25, x_arr, x_arr.dtype)
-        expected = scipy_kv(0.25, np.array([0.5, 1.0, 1.5]))
+        result: Float[Array, "..."] = _bessel_kv_small_non_integer(
+            0.25, x_arr, x_arr.dtype
+        )
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0.25, np.array([0.5, 1.0, 1.5])
+        )
         chex.assert_trees_all_close(result, expected, rtol=5e-2)
 
 
@@ -371,7 +391,7 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """K_0(x) is the most accurate small-x integer branch."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_kv_small_integer(
+        result: Float[Array, "..."] = _bessel_kv_small_integer(
             jnp.array(v, dtype=jnp.float64), x_arr, x_arr.dtype
         )
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
@@ -381,8 +401,9 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5], dtype=jnp.float64
         )
+        v_val: scalar_float
         for v_val in [0.0, 1.0, 2.0]:
-            result = _bessel_kv_small_integer(
+            result: Float[Array, "..."] = _bessel_kv_small_integer(
                 jnp.array(v_val, dtype=jnp.float64), x_arr, x_arr.dtype
             )
             assert jnp.all(result > 0)
@@ -402,7 +423,7 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
     def test_kv_large_x(self, v: float, x: float, expected: float) -> None:
         """Asymptotic branch matches scipy at large x."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_kv_large(v, x_arr)
+        result: Float[Array, "..."] = _bessel_kv_large(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_kv_large_vectorized(self) -> None:
@@ -410,8 +431,10 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [5.0, 10.0, 15.0], dtype=jnp.float64
         )
-        result = _bessel_kv_large(0.0, x_arr)
-        expected = scipy_kv(0.0, np.array([5.0, 10.0, 15.0]))
+        result: Float[Array, "..."] = _bessel_kv_large(0.0, x_arr)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0.0, np.array([5.0, 10.0, 15.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_kv_large_decays_exponentially(self) -> None:
@@ -419,7 +442,8 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [5.0, 10.0, 20.0, 50.0], dtype=jnp.float64
         )
-        result = _bessel_kv_large(0.0, x_arr)
+        result: Float[Array, "..."] = _bessel_kv_large(0.0, x_arr)
+        i: int
         for i in range(len(result) - 1):
             assert result[i] > result[i + 1]
 
@@ -436,7 +460,7 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
     def test_k_half_against_scipy(self, x: float, expected: float) -> None:
         """K_{1/2}(x) matches scipy."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = _bessel_k_half(x_arr)
+        result: Float[Array, "..."] = _bessel_k_half(x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-10)
 
     def test_k_half_formula(self) -> None:
@@ -444,7 +468,7 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0], dtype=jnp.float64
         )
-        result = _bessel_k_half(x_arr)
+        result: Float[Array, "..."] = _bessel_k_half(x_arr)
         expected: Float[Array, "..."] = jnp.sqrt(
             jnp.pi / (2.0 * x_arr)
         ) * jnp.exp(-x_arr)
@@ -455,7 +479,7 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [2.0, 5.0]], dtype=jnp.float64
         )
-        result = _bessel_k_half(x_arr)
+        result: Float[Array, "..."] = _bessel_k_half(x_arr)
         expected: Float[Array, "..."] = jnp.sqrt(
             jnp.pi / (2.0 * x_arr)
         ) * jnp.exp(-x_arr)
@@ -480,7 +504,7 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Integer-order K_v(x) matches scipy."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = self.variant(bessel_kv)(v, x_arr)
+        result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -495,7 +519,7 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Half-order special case works."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = self.variant(bessel_kv)(v, x_arr)
+        result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -512,7 +536,7 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Non-integer K_v(x) matches scipy within approximation tolerance."""
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
-        result = self.variant(bessel_kv)(v, x_arr)
+        result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -521,8 +545,10 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0], dtype=jnp.float64
         )
-        result = self.variant(bessel_kv)(0.0, x_arr)
-        expected = scipy_kv(0.0, np.array([0.5, 1.0, 2.0, 5.0]))
+        result: Callable[..., Any] = self.variant(bessel_kv)(0.0, x_arr)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0.0, np.array([0.5, 1.0, 2.0, 5.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -531,8 +557,10 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [[2.0, 3.0], [5.0, 10.0]], dtype=jnp.float64
         )
-        result = self.variant(bessel_kv)(0.0, x_arr)
-        expected = scipy_kv(0.0, np.array([[2.0, 3.0], [5.0, 10.0]]))
+        result: Callable[..., Any] = self.variant(bessel_kv)(0.0, x_arr)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0.0, np.array([[2.0, 3.0], [5.0, 10.0]])
+        )
         chex.assert_shape(result, (2, 2))
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
@@ -542,8 +570,9 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.1, 0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64
         )
+        v: scalar_float
         for v in [0.0, 0.5, 1.0, 2.0]:
-            result = self.variant(bessel_kv)(v, x_arr)
+            result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
             assert jnp.all(result > 0)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -552,8 +581,10 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64
         )
+        v: scalar_float
         for v in [0.0, 0.5, 1.0, 2.0]:
-            result = self.variant(bessel_kv)(v, x_arr)
+            result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
+            i: int
             for i in range(len(result) - 1):
                 assert result[i] > result[i + 1]
 
@@ -561,24 +592,31 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     def test_bessel_kv_order_relation(self) -> None:
         """K_0(x) < K_1(x) at small x."""
         x_arr: Float[Array, "..."] = jnp.array([0.5], dtype=jnp.float64)
-        k0 = self.variant(bessel_kv)(0.0, x_arr)[0]
-        k1 = self.variant(bessel_kv)(1.0, x_arr)[0]
+        k0: Callable[..., Any] = self.variant(bessel_kv)(0.0, x_arr)[0]
+        k1: Callable[..., Any] = self.variant(bessel_kv)(1.0, x_arr)[0]
         assert k0 < k1
 
     def test_bessel_kv_jit_compilation(self) -> None:
         """bessel_kv can be JIT compiled."""
         x_arr: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
-        result = jax.jit(bessel_kv, static_argnums=(0,))(0.0, x_arr)
-        expected = scipy_kv(0, 1.0)
+        result: Callable[..., Any] = jax.jit(bessel_kv, static_argnums=(0,))(
+            0.0, x_arr
+        )
+        expected: Float[Array, "..."] = scipy_kv(0, 1.0)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     def test_bessel_kv_jit_works(self) -> None:
         """JIT works across representative orders."""
         x_arr: Float[Array, "..."] = jnp.array([5.0, 10.0], dtype=jnp.float64)
-        jit_bessel = jax.jit(bessel_kv, static_argnums=(0,))
+        jit_bessel: Callable[..., Any] = jax.jit(
+            bessel_kv, static_argnums=(0,)
+        )
+        v: scalar_float
         for v in [0.0, 0.5, 1.0]:
-            result = jit_bessel(v, x_arr)
-            expected = scipy_kv(v, np.array([5.0, 10.0]))
+            result: Float[Array, "..."] = jit_bessel(v, x_arr)
+            expected: Float[NDArray, "..."] = scipy_kv(
+                v, np.array([5.0, 10.0])
+            )
             chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
 
@@ -590,8 +628,10 @@ class TestBesselKvEdgeCases(chex.TestCase):
         x_near_boundary: Float[Array, "..."] = jnp.array(
             [1.9, 2.0, 2.1], dtype=jnp.float64
         )
-        result = bessel_kv(0.0, x_near_boundary)
-        expected = scipy_kv(0, np.array([1.9, 2.0, 2.1]))
+        result: Float[Array, "..."] = bessel_kv(0.0, x_near_boundary)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0, np.array([1.9, 2.0, 2.1])
+        )
         chex.assert_trees_all_close(result, expected, rtol=5e-3)
 
     def test_bessel_kv_large_x(self) -> None:
@@ -599,14 +639,19 @@ class TestBesselKvEdgeCases(chex.TestCase):
         x_large: Float[Array, "..."] = jnp.array(
             [10.0, 20.0, 50.0], dtype=jnp.float64
         )
-        result = bessel_kv(0.0, x_large)
-        expected = scipy_kv(0, np.array([10.0, 20.0, 50.0]))
+        result: Float[Array, "..."] = bessel_kv(0.0, x_large)
+        expected: Float[NDArray, "..."] = scipy_kv(
+            0, np.array([10.0, 20.0, 50.0])
+        )
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     def test_bessel_kv_higher_integer_order(self) -> None:
         """Higher integer orders work in the large-x regime."""
         x_arr: Float[Array, "..."] = jnp.array([5.0, 10.0], dtype=jnp.float64)
+        n: int
         for n in [3, 4, 5]:
-            result = bessel_kv(float(n), x_arr)
-            expected = scipy_kv(n, np.array([5.0, 10.0]))
+            result: Float[Array, "..."] = bessel_kv(float(n), x_arr)
+            expected: Float[NDArray, "..."] = scipy_kv(
+                n, np.array([5.0, 10.0])
+            )
             chex.assert_trees_all_close(result, expected, rtol=1e-2)

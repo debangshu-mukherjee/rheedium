@@ -6,6 +6,7 @@ RHEED simulations.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
@@ -115,6 +116,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         )
 
         sf_magnitudes: list[Float[Array, ""]] = []
+        g: Any
         for g in g_vectors:
             sf: Complex[Array, ""] = _compute_structure_factor_single(
                 g_vector=g,
@@ -625,6 +627,9 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
     )
     def test_different_phi_angles(self, phi_deg: float) -> None:
         """Test reflection finding at different azimuthal angles."""
+        indices: Any
+        k_out: Float[Array, "..."]
+        intensities: Float[Array, "..."]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=2.0,
@@ -742,6 +747,8 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         )
 
         # For valid indices, check k_out = k_in + G
+        i: int
+        idx: int
         for i, idx in enumerate(indices):
             if idx >= 0:
                 g_vec: Float[Array, "3"] = self.ewald.g_vectors[idx]

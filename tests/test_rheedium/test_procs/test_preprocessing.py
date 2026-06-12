@@ -6,6 +6,8 @@ normalization, and the full pipeline. Includes gradient tests to
 ensure jax.grad flows through all operations.
 """
 
+from typing import Any
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -30,7 +32,7 @@ class TestSoftThresholdMask(chex.TestCase):
     def test_shape_preserved(self) -> None:
         """Output shape matches distance field shape."""
         dist: Float[Array, "..."] = jnp.linspace(0.0, 1.0, H * W).reshape(H, W)
-        mask = soft_threshold_mask(dist, jnp.float64(0.5))
+        mask: Bool[Array, "..."] = soft_threshold_mask(dist, jnp.float64(0.5))
         chex.assert_shape(mask, (H, W))
 
     def test_values_in_unit_interval(self) -> None:
@@ -38,35 +40,43 @@ class TestSoftThresholdMask(chex.TestCase):
         dist: Float[Array, "..."] = jnp.linspace(-1.0, 2.0, H * W).reshape(
             H, W
         )
-        mask = soft_threshold_mask(dist, jnp.float64(0.5), jnp.float64(10.0))
+        mask: Bool[Array, "..."] = soft_threshold_mask(
+            dist, jnp.float64(0.5), jnp.float64(10.0)
+        )
         self.assertTrue(jnp.all(mask > 0.0))
         self.assertTrue(jnp.all(mask < 1.0))
 
     def test_above_threshold_near_one(self) -> None:
         """Pixels well above threshold have mask near 1."""
         dist: Float[Array, "..."] = jnp.ones((H, W)) * 10.0
-        mask = soft_threshold_mask(dist, jnp.float64(0.5), jnp.float64(10.0))
+        mask: Bool[Array, "..."] = soft_threshold_mask(
+            dist, jnp.float64(0.5), jnp.float64(10.0)
+        )
         self.assertTrue(jnp.all(mask > 0.99))
 
     def test_below_threshold_near_zero(self) -> None:
         """Pixels well below threshold have mask near 0."""
         dist: Float[Array, "..."] = jnp.ones((H, W)) * (-10.0)
-        mask = soft_threshold_mask(dist, jnp.float64(0.5), jnp.float64(10.0))
+        mask: Bool[Array, "..."] = soft_threshold_mask(
+            dist, jnp.float64(0.5), jnp.float64(10.0)
+        )
         self.assertTrue(jnp.all(mask < 0.01))
 
     def test_at_threshold_is_half(self) -> None:
         """At the threshold, mask equals 0.5."""
         dist: Float[Array, "..."] = jnp.ones((H, W)) * 0.5
-        mask = soft_threshold_mask(dist, jnp.float64(0.5), jnp.float64(10.0))
+        mask: Bool[Array, "..."] = soft_threshold_mask(
+            dist, jnp.float64(0.5), jnp.float64(10.0)
+        )
         chex.assert_trees_all_close(mask, jnp.full((H, W), 0.5), atol=1e-12)
 
     def test_higher_sharpness_steeper(self) -> None:
         """Higher sharpness produces steeper transition."""
         dist: Float[Array, "..."] = jnp.linspace(0.0, 1.0, H * W).reshape(H, W)
-        mask_soft = soft_threshold_mask(
+        mask_soft: Float[Array, "..."] = soft_threshold_mask(
             dist, jnp.float64(0.5), jnp.float64(1.0)
         )
-        mask_sharp = soft_threshold_mask(
+        mask_sharp: Float[Array, "..."] = soft_threshold_mask(
             dist, jnp.float64(0.5), jnp.float64(100.0)
         )
         range_soft: scalar_float = jnp.max(mask_soft) - jnp.min(mask_soft)
@@ -81,14 +91,14 @@ class TestSubtractBackground(chex.TestCase):
         """Background is correctly subtracted."""
         img: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 30.0
-        result = subtract_background(img, bg)
+        result: Float[Array, "..."] = subtract_background(img, bg)
         chex.assert_trees_all_close(result, jnp.full((H, W), 70.0), atol=1e-12)
 
     def test_nonnegative_clipping(self) -> None:
         """Result is clipped to non-negative when background exceeds image."""
         img: Float[Array, "..."] = jnp.ones((H, W)) * 10.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 50.0
-        result = subtract_background(img, bg)
+        result: Float[Array, "..."] = subtract_background(img, bg)
         self.assertTrue(jnp.all(result >= 0.0))
         chex.assert_trees_all_close(result, jnp.zeros((H, W)), atol=1e-12)
 
@@ -96,7 +106,7 @@ class TestSubtractBackground(chex.TestCase):
         """Output shape matches input shape."""
         img: Float[Array, "..."] = jnp.ones((H, W))
         bg: Float[Array, "..."] = jnp.zeros((H, W))
-        result = subtract_background(img, bg)
+        result: Float[Array, "..."] = subtract_background(img, bg)
         chex.assert_shape(result, (H, W))
 
 
@@ -106,21 +116,21 @@ class TestLogIntensityTransform(chex.TestCase):
     def test_zero_input_is_zero(self) -> None:
         """log(1 + 0/eps) = 0 for zero input."""
         img: Float[Array, "..."] = jnp.zeros((H, W))
-        result = log_intensity_transform(img)
+        result: Float[Array, "..."] = log_intensity_transform(img)
         chex.assert_trees_all_close(result, jnp.zeros((H, W)), atol=1e-12)
 
     def test_monotonically_increasing(self) -> None:
         """Transform preserves ordering of pixel intensities."""
         vals: Float[Array, "..."] = jnp.array([0.0, 1.0, 100.0, 10000.0])
-        img = vals.reshape(2, 2)
-        result = log_intensity_transform(img)
-        flat = result.ravel()
+        img: Any = vals.reshape(2, 2)
+        result: Float[Array, "..."] = log_intensity_transform(img)
+        flat: Any = result.ravel()
         self.assertTrue(jnp.all(jnp.diff(flat) > 0.0))
 
     def test_compresses_dynamic_range(self) -> None:
         """Output range is smaller than input range."""
         img: Float[Array, "..."] = jnp.linspace(1.0, 1e6, H * W).reshape(H, W)
-        result = log_intensity_transform(img)
+        result: Float[Array, "..."] = log_intensity_transform(img)
         input_range: scalar_float = jnp.max(img) - jnp.min(img)
         output_range: scalar_float = jnp.max(result) - jnp.min(result)
         self.assertTrue(output_range < input_range)
@@ -128,13 +138,13 @@ class TestLogIntensityTransform(chex.TestCase):
     def test_shape_preserved(self) -> None:
         """Output shape matches input shape."""
         img: Float[Array, "..."] = jnp.ones((H, W))
-        result = log_intensity_transform(img)
+        result: Float[Array, "..."] = log_intensity_transform(img)
         chex.assert_shape(result, (H, W))
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
         img: Float[Array, "..."] = jnp.ones((H, W)) * 1e8
-        result = log_intensity_transform(img)
+        result: Float[Array, "..."] = log_intensity_transform(img)
         chex.assert_tree_all_finite(result)
 
 
@@ -146,20 +156,20 @@ class TestNormalizeImage(chex.TestCase):
         img: Float[Array, "..."] = jnp.linspace(5.0, 500.0, H * W).reshape(
             H, W
         )
-        result = normalize_image(img)
+        result: Float[Array, "..."] = normalize_image(img)
         chex.assert_trees_all_close(jnp.min(result), 0.0, atol=1e-12)
         chex.assert_trees_all_close(jnp.max(result), 1.0, atol=1e-12)
 
     def test_uniform_image(self) -> None:
         """Uniform image normalizes to zero (no range)."""
         img: Float[Array, "..."] = jnp.ones((H, W)) * 42.0
-        result = normalize_image(img)
+        result: Float[Array, "..."] = normalize_image(img)
         chex.assert_trees_all_close(result, jnp.zeros((H, W)), atol=1e-6)
 
     def test_shape_preserved(self) -> None:
         """Output shape matches input shape."""
         img: Float[Array, "..."] = jnp.ones((H, W))
-        result = normalize_image(img)
+        result: Float[Array, "..."] = normalize_image(img)
         chex.assert_shape(result, (H, W))
 
     def test_finite_values(self) -> None:
@@ -167,7 +177,7 @@ class TestNormalizeImage(chex.TestCase):
         img: Float[Array, "..."] = jnp.linspace(0.0, 100.0, H * W).reshape(
             H, W
         )
-        result = normalize_image(img)
+        result: Float[Array, "..."] = normalize_image(img)
         chex.assert_tree_all_finite(result)
 
 
@@ -177,7 +187,7 @@ class TestPreprocessExperimental(chex.TestCase):
     def test_minimal_call(self) -> None:
         """Pipeline works with only raw_image (no optional args)."""
         raw: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
-        result = preprocess_experimental(raw)
+        result: Float[Array, "..."] = preprocess_experimental(raw)
         chex.assert_shape(result, (H, W))
         chex.assert_tree_all_finite(result)
 
@@ -185,7 +195,9 @@ class TestPreprocessExperimental(chex.TestCase):
         """Pipeline works with background subtraction."""
         raw: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 30.0
-        result = preprocess_experimental(raw, background=bg)
+        result: Float[Array, "..."] = preprocess_experimental(
+            raw, background=bg
+        )
         chex.assert_shape(result, (H, W))
         chex.assert_tree_all_finite(result)
 
@@ -195,14 +207,18 @@ class TestPreprocessExperimental(chex.TestCase):
             H, W
         )
         mask: Bool[Array, "..."] = jnp.ones((H, W)) * 0.8
-        result = preprocess_experimental(raw, beam_shadow_mask=mask)
+        result: Float[Array, "..."] = preprocess_experimental(
+            raw, beam_shadow_mask=mask
+        )
         chex.assert_shape(result, (H, W))
         chex.assert_tree_all_finite(result)
 
     def test_with_log_scale(self) -> None:
         """Pipeline works with log scale enabled."""
         raw: Float[Array, "..."] = jnp.linspace(1.0, 1e6, H * W).reshape(H, W)
-        result = preprocess_experimental(raw, log_scale=True)
+        result: Float[Array, "..."] = preprocess_experimental(
+            raw, log_scale=True
+        )
         chex.assert_shape(result, (H, W))
         chex.assert_tree_all_finite(result)
 
@@ -211,7 +227,7 @@ class TestPreprocessExperimental(chex.TestCase):
         raw: Float[Array, "..."] = jnp.linspace(10.0, 1e4, H * W).reshape(H, W)
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 5.0
         mask: Bool[Array, "..."] = jnp.ones((H, W)) * 0.9
-        result = preprocess_experimental(
+        result: Float[Array, "..."] = preprocess_experimental(
             raw,
             background=bg,
             beam_shadow_mask=mask,
@@ -228,7 +244,7 @@ class TestPreprocessExperimental(chex.TestCase):
         raw: Float[Array, "..."] = jnp.linspace(0.0, 1000.0, H * W).reshape(
             H, W
         )
-        result = preprocess_experimental(raw)
+        result: Float[Array, "..."] = preprocess_experimental(raw)
         chex.assert_trees_all_close(jnp.min(result), 0.0, atol=1e-12)
         chex.assert_trees_all_close(jnp.max(result), 1.0, atol=1e-12)
 
@@ -236,7 +252,9 @@ class TestPreprocessExperimental(chex.TestCase):
         """All output pixels are non-negative."""
         raw: Float[Array, "..."] = jnp.ones((H, W)) * 50.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
-        result = preprocess_experimental(raw, background=bg)
+        result: Float[Array, "..."] = preprocess_experimental(
+            raw, background=bg
+        )
         self.assertTrue(jnp.all(result >= 0.0))
 
 

@@ -4,6 +4,9 @@ Tests the atom_scraper function for filtering atoms within specified
 thickness along a zone axis, plus reciprocal lattice functions.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax.numpy as jnp
 import numpy as np
@@ -59,8 +62,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_returns_sliced_crystal(self) -> None:
         """Should return a SlicedCrystal instance."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=10.0,
@@ -69,8 +72,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_output_shapes(self) -> None:
         """Output should have correct array shapes."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=10.0,
@@ -85,9 +88,9 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_depth_preserved(self) -> None:
         """Slab depth should match requested depth."""
-        crystal = _make_simple_crystal()
-        depth = 15.0
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        depth: float = 15.0
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=depth,
@@ -96,8 +99,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_extents_preserved(self) -> None:
         """Lateral extents should match requested values."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=10.0,
@@ -109,9 +112,9 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_orientation_preserved(self) -> None:
         """Surface orientation should be preserved."""
-        crystal = _make_simple_crystal()
+        crystal: CrystalStructure = _make_simple_crystal()
         orient: Integer[Array, "..."] = jnp.array([1, 1, 1], dtype=jnp.int32)
-        sliced = bulk_to_slice(
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=orient,
             depth=10.0,
@@ -120,18 +123,18 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_atoms_within_bounds(self) -> None:
         """All atoms should be within the specified bounds."""
-        crystal = _make_simple_crystal()
-        depth = 10.0
-        x_ext = 80.0
-        y_ext = 80.0
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        depth: float = 10.0
+        x_ext: float = 80.0
+        y_ext: float = 80.0
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=depth,
             x_extent=x_ext,
             y_extent=y_ext,
         )
-        positions = sliced.cart_positions[:, :3]
+        positions: Float[Array, "..."] = sliced.cart_positions[:, :3]
         assert bool(jnp.all(positions[:, 0] >= 0))
         assert bool(jnp.all(positions[:, 0] <= x_ext))
         assert bool(jnp.all(positions[:, 1] >= 0))
@@ -141,8 +144,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_cell_angles_orthorhombic(self) -> None:
         """Output cell should have 90-degree angles."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=10.0,
@@ -154,8 +157,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_001_orientation(self) -> None:
         """(001) orientation should work without rotation."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
             depth=10.0,
@@ -166,8 +169,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_111_orientation(self) -> None:
         """(111) orientation should produce rotated slab."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([1, 1, 1], dtype=jnp.int32),
             depth=10.0,
@@ -178,8 +181,8 @@ class TestBulkToSlice(chex.TestCase):
 
     def test_100_orientation(self) -> None:
         """(100) orientation should produce rotated slab."""
-        crystal = _make_simple_crystal()
-        sliced = bulk_to_slice(
+        crystal: CrystalStructure = _make_simple_crystal()
+        sliced: SlicedCrystal = bulk_to_slice(
             crystal,
             orientation=jnp.array([1, 0, 0], dtype=jnp.int32),
             depth=10.0,
@@ -197,14 +200,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         super().setUp()
 
         # Create a simple cubic crystal with atoms at different z positions
-        self.cubic_crystal = self._create_layered_crystal()
+        self.cubic_crystal: Any = self._create_layered_crystal()
 
     def _create_layered_crystal(self) -> CrystalStructure:
         """Create a crystal with atoms at different z heights.
 
         Creates 5 atoms stacked along z-axis at z = 0, 2, 4, 6, 8 Angstroms.
         """
-        a = 5.0  # lattice constant
+        a: float = 5.0  # lattice constant
 
         # Atoms at different z heights
         cart_coords: Float[Array, "..."] = jnp.array(
@@ -218,7 +221,9 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
         # Fractional coordinates
-        frac_coords = cart_coords / jnp.array([a, a, 10.0])
+        frac_coords: Float[Array, "..."] = cart_coords / jnp.array(
+            [a, a, 10.0]
+        )
 
         # All silicon atoms
         atomic_numbers: Float[Array, "..."] = jnp.full(5, 14.0)
@@ -239,7 +244,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
     def _create_xy_plane_crystal(self) -> CrystalStructure:
         """Create a crystal with atoms spread in XY plane at same z."""
-        a = 10.0
+        a: float = 10.0
 
         cart_coords: Float[Array, "..."] = jnp.array(
             [
@@ -250,7 +255,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        frac_coords = cart_coords / a
+        frac_coords: Float[Array, "..."] = cart_coords / a
         atomic_numbers: Float[Array, "..."] = jnp.full(4, 14.0)
 
         return create_crystal_structure(
@@ -267,7 +272,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [5.0, 5.0, 3.0]
         )  # 3 Angstrom thickness
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
@@ -275,7 +280,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
         # Should filter to atoms near the top (z=8)
         # With 3 Angstrom thickness from top, should include z=8 and z=6
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
         self.assertLessEqual(int(n_atoms), 5)
 
@@ -286,14 +291,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [10.0, 10.0, 20.0]
         )  # Much larger than crystal
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # Should keep all 5 atoms
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         self.assertEqual(int(n_atoms), 5)
 
     def test_zero_thickness_top_layer_only(self) -> None:
@@ -308,7 +313,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [0.0, 0.0, 0.0]
         )  # Zero thickness = top layer mode
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
@@ -316,7 +321,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
         # With atoms at z=0,2,4,6,8 and spacing=2Å, adaptive_eps=4Å
         # This includes atoms within 4Å of top (z=8): z=8,6,4
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         self.assertGreaterEqual(int(n_atoms), 1)
         self.assertLessEqual(int(n_atoms), 5)
 
@@ -334,14 +339,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis_arr: Float[Array, "three"] = jnp.array(zone_axis)
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis_arr,
             thickness=thickness,
         )
 
         # Should produce valid output regardless of axis scaling
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
 
     def test_x_axis_scraping(self) -> None:
@@ -356,10 +361,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
                 [8.0, 0.0, 0.0],
             ]
         )
-        frac_coords = cart_coords / 10.0
+        frac_coords: Float[Array, "..."] = cart_coords / 10.0
         atomic_numbers: Float[Array, "..."] = jnp.full(5, 14.0)
 
-        crystal = create_crystal_structure(
+        crystal: CrystalStructure = create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
             cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
             cell_lengths=jnp.array([10.0, 5.0, 5.0]),
@@ -369,13 +374,13 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
         thickness: Float[Array, "..."] = jnp.array([3.0, 5.0, 5.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
         self.assertLess(int(n_atoms), 5)
 
@@ -384,14 +389,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([1.0, 1.0, 1.0])
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 5.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # Should produce valid output
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
         chex.assert_tree_all_finite(filtered.cart_positions)
 
@@ -400,7 +405,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
@@ -410,7 +415,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         self.assertIsInstance(filtered, CrystalStructure)
 
         # Check shapes are consistent
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_shape(filtered.frac_positions, (n_atoms, 4))
         chex.assert_shape(filtered.cart_positions, (n_atoms, 4))
         chex.assert_shape(filtered.cell_lengths, (3,))
@@ -427,7 +432,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
@@ -440,13 +445,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # Angles should be between 0 and 180 degrees
+        angle: scalar_float
         for angle in filtered.cell_angles:
             chex.assert_scalar_in(float(angle), 0.0, 180.0)
 
@@ -457,14 +463,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [5.0, 5.0, 20.0]
         )  # Keep all atoms
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # All atoms should still be silicon (Z=14)
-        atomic_nums = filtered.cart_positions[:, 3]
+        atomic_nums: Any = filtered.cart_positions[:, 3]
         chex.assert_trees_all_close(atomic_nums, jnp.full(5, 14.0), atol=1e-10)
 
     def test_xy_plane_atoms_same_z(self) -> None:
@@ -475,7 +481,7 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         We use a crystal with slight z variation to avoid the edge case
         where all atoms are exactly coplanar.
         """
-        a = 10.0
+        a: float = 10.0
 
         # Atoms in XY plane with slight z variation
         cart_coords: Float[Array, "..."] = jnp.array(
@@ -487,10 +493,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        frac_coords = cart_coords / a
+        frac_coords: Float[Array, "..."] = cart_coords / a
         atomic_numbers: Float[Array, "..."] = jnp.full(4, 14.0)
 
-        crystal = create_crystal_structure(
+        crystal: CrystalStructure = create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
             cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
             cell_lengths=jnp.array([a, a, a]),
@@ -502,14 +508,14 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [10.0, 10.0, 1.0]
         )  # 1 Angstrom slice
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # All 4 atoms should be included (within 1 Angstrom of top)
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         self.assertEqual(int(n_atoms), 4)
 
     @parameterized.named_parameters(
@@ -524,13 +530,13 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, z_thickness])
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
-        n_atoms = filtered.cart_positions.shape[0]
+        n_atoms: int = filtered.cart_positions.shape[0]
         self.assertGreaterEqual(int(n_atoms), min_expected)
 
     def test_frac_and_cart_positions_consistent(self) -> None:
@@ -540,20 +546,20 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
             [5.0, 5.0, 20.0]
         )  # Keep all atoms
 
-        filtered = atom_scraper(
+        filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
             thickness=thickness,
         )
 
         # Number of atoms should match
-        n_frac = filtered.frac_positions.shape[0]
-        n_cart = filtered.cart_positions.shape[0]
+        n_frac: int = filtered.frac_positions.shape[0]
+        n_cart: int = filtered.cart_positions.shape[0]
         self.assertEqual(n_frac, n_cart)
 
         # Atomic numbers should match between frac and cart
-        frac_z = filtered.frac_positions[:, 3]
-        cart_z = filtered.cart_positions[:, 3]
+        frac_z: Any = filtered.frac_positions[:, 3]
+        cart_z: Any = filtered.cart_positions[:, 3]
         chex.assert_trees_all_close(frac_z, cart_z, atol=1e-10)
 
 
@@ -567,7 +573,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test reciprocal parameters for cubic system."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -579,7 +587,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             out_degrees=True,
         )
         # For cubic: a* = 2π/a
-        expected_a_star = 2 * jnp.pi / 3.0
+        expected_a_star: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_shape(lengths, (3,))
         chex.assert_shape(angles, (3,))
         chex.assert_trees_all_close(lengths[0], expected_a_star, rtol=1e-5)
@@ -593,7 +601,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test reciprocal params for orthorhombic (a!=b!=c, 90)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=4.0,
@@ -616,7 +626,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_tetragonal_system(self) -> None:
         """Test reciprocal parameters for tetragonal system (a=b≠c)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -636,7 +648,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test reciprocal parameters for hexagonal system (γ=120°)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -657,7 +671,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test reciprocal parameters for monoclinic system (β≠90°)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=4.0,
@@ -679,7 +695,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test reciprocal params for triclinic system."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=4.0,
@@ -702,7 +720,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag_true(self) -> None:
         """Test in_degrees=True (input in degrees)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -719,8 +739,10 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag_false(self) -> None:
         """Test in_degrees=False (input in radians)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
         pi_half: Float[Array, "..."] = jnp.pi / 2
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -739,7 +761,9 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_out_degrees_flag_false(self) -> None:
         """Test out_degrees=False (output in radians)."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -758,8 +782,10 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_both_degrees_flags_false(self) -> None:
         """Test both in_degrees=False and out_degrees=False."""
-        var_fn = self.variant(reciprocal_unitcell)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_unitcell)
         pi_half: Float[Array, "..."] = jnp.pi / 2
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(
             a=3.0,
             b=3.0,
@@ -781,6 +807,8 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
     )
     def test_various_cell_sizes(self, a: float, b: float, c: float) -> None:
         """Test with various cell sizes."""
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = reciprocal_unitcell(
             a=a,
             b=b,
@@ -792,7 +820,7 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
             out_degrees=True,
         )
         # a* should scale inversely with a
-        expected = 2 * jnp.pi / a
+        expected: scalar_float = 2 * jnp.pi / a
         chex.assert_trees_all_close(lengths[0], expected, rtol=1e-5)
 
 
@@ -806,8 +834,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test transformation matrix for cubic system."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -825,8 +853,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test transformation matrix for orthorhombic system."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -843,8 +871,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test transformation matrix for monoclinic system."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -860,8 +888,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test transformation matrix for hexagonal system."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=3.0,
             c=5.0,
@@ -879,8 +907,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test transformation matrix for triclinic system."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -896,8 +924,8 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_volume_consistency(self) -> None:
         """Test that matrix determinant equals cell volume."""
-        var_fn = self.variant(get_unit_cell_matrix)
-        matrix = var_fn(
+        var_fn: Callable[..., Any] = self.variant(get_unit_cell_matrix)
+        matrix: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -906,7 +934,9 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
             gamma=90.0,
         )
         volume: scalar_float = jnp.linalg.det(matrix)
-        expected_volume = 3.0 * 4.0 * 5.0  # For orthorhombic
+        expected_volume: Float[Array, "..."] = (
+            3.0 * 4.0 * 5.0
+        )  # For orthorhombic
         chex.assert_trees_all_close(volume, expected_volume, rtol=1e-5)
 
 
@@ -920,8 +950,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test cell vectors for cubic system."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -946,8 +976,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test cell vectors for orthorhombic system."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -969,8 +999,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_hexagonal_system(self) -> None:
         """Test cell vectors for hexagonal system (gamma=120)."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=3.0,
             c=5.0,
@@ -984,8 +1014,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
             vectors[0], jnp.array([3.0, 0.0, 0.0]), atol=1e-10
         )
         # b vector in xy plane at 120° from a
-        b_x = 3.0 * jnp.cos(jnp.radians(120.0))
-        b_y = 3.0 * jnp.sin(jnp.radians(120.0))
+        b_x: Float[Array, "..."] = 3.0 * jnp.cos(jnp.radians(120.0))
+        b_y: Float[Array, "..."] = 3.0 * jnp.sin(jnp.radians(120.0))
         chex.assert_trees_all_close(vectors[1, 0], b_x, atol=1e-10)
         chex.assert_trees_all_close(vectors[1, 1], b_y, atol=1e-10)
         # c vector along z
@@ -994,8 +1024,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_monoclinic_system(self) -> None:
         """Test cell vectors for monoclinic system (beta != 90)."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1006,14 +1036,14 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(vectors, (3, 3))
         chex.assert_tree_all_finite(vectors)
         # c vector should have nonzero x component
-        c_x = 5.0 * jnp.cos(jnp.radians(100.0))
+        c_x: Float[Array, "..."] = 5.0 * jnp.cos(jnp.radians(100.0))
         chex.assert_trees_all_close(vectors[2, 0], c_x, atol=1e-10)
 
     @chex.all_variants(with_pmap=False)
     def test_triclinic_system(self) -> None:
         """Test cell vectors for triclinic system."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1028,8 +1058,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_vector_lengths_correct(self) -> None:
         """Test that built vectors have correct lengths."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1045,8 +1075,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_angles_correct(self) -> None:
         """Test that angles between vectors are correct."""
-        var_fn = self.variant(build_cell_vectors)
-        vectors = var_fn(
+        var_fn: Callable[..., Any] = self.variant(build_cell_vectors)
+        vectors: Float[Array, "..."] = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1055,8 +1085,8 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
             gamma=75.0,
         )
         # Check angle gamma between a and b
-        a_vec = vectors[0]
-        b_vec = vectors[1]
+        a_vec: Any = vectors[0]
+        b_vec: Any = vectors[1]
         cos_gamma: Float[Array, "..."] = jnp.dot(a_vec, b_vec) / (
             jnp.linalg.norm(a_vec) * jnp.linalg.norm(b_vec)
         )
@@ -1076,7 +1106,7 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_cubic_system(self) -> None:
         """Test lengths and angles for cubic vectors."""
-        var_fn = self.variant(compute_lengths_angles)
+        var_fn: Callable[..., Any] = self.variant(compute_lengths_angles)
         vectors: Float[Array, "..."] = jnp.array(
             [
                 [3.0, 0.0, 0.0],
@@ -1084,6 +1114,8 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
                 [0.0, 0.0, 3.0],
             ]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(vectors)
         chex.assert_trees_all_close(
             lengths, jnp.array([3.0, 3.0, 3.0]), atol=1e-10
@@ -1095,7 +1127,7 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_orthorhombic_system(self) -> None:
         """Test lengths and angles for orthorhombic vectors."""
-        var_fn = self.variant(compute_lengths_angles)
+        var_fn: Callable[..., Any] = self.variant(compute_lengths_angles)
         vectors: Float[Array, "..."] = jnp.array(
             [
                 [3.0, 0.0, 0.0],
@@ -1103,6 +1135,8 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
                 [0.0, 0.0, 5.0],
             ]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(vectors)
         chex.assert_trees_all_close(
             lengths, jnp.array([3.0, 4.0, 5.0]), atol=1e-10
@@ -1114,7 +1148,7 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_roundtrip_cubic(self) -> None:
         """Test build_cell_vectors followed by compute_lengths_angles."""
-        vectors = build_cell_vectors(
+        vectors: Float[Array, "..."] = build_cell_vectors(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -1122,7 +1156,9 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
             beta=90.0,
             gamma=90.0,
         )
-        var_fn = self.variant(compute_lengths_angles)
+        var_fn: Callable[..., Any] = self.variant(compute_lengths_angles)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(vectors)
         chex.assert_trees_all_close(
             lengths, jnp.array([3.0, 3.0, 3.0]), rtol=1e-5
@@ -1134,9 +1170,15 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_roundtrip_triclinic(self) -> None:
         """Test roundtrip for triclinic system."""
+        a: tuple[Any, ...]
+        b: tuple[Any, ...]
+        c: tuple[Any, ...]
         a, b, c = 3.0, 4.0, 5.0
+        alpha: tuple[Any, ...]
+        beta: tuple[Any, ...]
+        gamma: tuple[Any, ...]
         alpha, beta, gamma = 80.0, 85.0, 75.0
-        vectors = build_cell_vectors(
+        vectors: Float[Array, "..."] = build_cell_vectors(
             a=a,
             b=b,
             c=c,
@@ -1144,7 +1186,9 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
             beta=beta,
             gamma=gamma,
         )
-        var_fn = self.variant(compute_lengths_angles)
+        var_fn: Callable[..., Any] = self.variant(compute_lengths_angles)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(vectors)
         chex.assert_trees_all_close(lengths, jnp.array([a, b, c]), rtol=1e-5)
         chex.assert_trees_all_close(
@@ -1154,9 +1198,15 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_roundtrip_hexagonal(self) -> None:
         """Test roundtrip for hexagonal system."""
+        a: tuple[Any, ...]
+        b: tuple[Any, ...]
+        c: tuple[Any, ...]
         a, b, c = 3.0, 3.0, 5.0
+        alpha: tuple[Any, ...]
+        beta: tuple[Any, ...]
+        gamma: tuple[Any, ...]
         alpha, beta, gamma = 90.0, 90.0, 120.0
-        vectors = build_cell_vectors(
+        vectors: Float[Array, "..."] = build_cell_vectors(
             a=a,
             b=b,
             c=c,
@@ -1164,7 +1214,9 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
             beta=beta,
             gamma=gamma,
         )
-        var_fn = self.variant(compute_lengths_angles)
+        var_fn: Callable[..., Any] = self.variant(compute_lengths_angles)
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = var_fn(vectors)
         chex.assert_trees_all_close(lengths, jnp.array([a, b, c]), rtol=1e-5)
         chex.assert_trees_all_close(
@@ -1182,8 +1234,8 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         """Test reciprocal vectors for cubic system."""
-        var_fn = self.variant(reciprocal_lattice_vectors)
-        rec_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(reciprocal_lattice_vectors)
+        rec_vecs: Any = var_fn(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -1194,7 +1246,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_shape(rec_vecs, (3, 3))
         # For cubic: b1 = (2π/a, 0, 0), etc.
-        expected = 2 * jnp.pi / 3.0
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             rec_vecs[0], jnp.array([expected, 0.0, 0.0]), atol=1e-10
         )
@@ -1208,8 +1260,8 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_orthorhombic_system(self) -> None:
         """Test reciprocal vectors for orthorhombic system."""
-        var_fn = self.variant(reciprocal_lattice_vectors)
-        rec_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(reciprocal_lattice_vectors)
+        rec_vecs: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1232,8 +1284,8 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_orthogonality_to_direct(self) -> None:
         """Test reciprocal vectors orthogonal to direct vectors."""
-        var_fn = self.variant(reciprocal_lattice_vectors)
-        rec_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(reciprocal_lattice_vectors)
+        rec_vecs: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1242,7 +1294,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             gamma=75.0,
             in_degrees=True,
         )
-        direct_vecs = build_cell_vectors(
+        direct_vecs: Any = build_cell_vectors(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1275,8 +1327,8 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_bi_dot_ai_equals_2pi(self) -> None:
         """Test that b_i · a_i = 2π."""
-        var_fn = self.variant(reciprocal_lattice_vectors)
-        rec_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(reciprocal_lattice_vectors)
+        rec_vecs: Any = var_fn(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1285,7 +1337,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             gamma=75.0,
             in_degrees=True,
         )
-        direct_vecs = build_cell_vectors(
+        direct_vecs: Any = build_cell_vectors(
             a=3.0,
             b=4.0,
             c=5.0,
@@ -1293,7 +1345,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
             beta=85.0,
             gamma=75.0,
         )
-        two_pi = 2 * jnp.pi
+        two_pi: scalar_float = 2 * jnp.pi
         chex.assert_trees_all_close(
             jnp.dot(rec_vecs[0], direct_vecs[0]), two_pi, rtol=1e-5
         )
@@ -1307,9 +1359,9 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(with_pmap=False)
     def test_in_degrees_flag(self) -> None:
         """Test in_degrees flag."""
-        var_fn = self.variant(reciprocal_lattice_vectors)
+        var_fn: Callable[..., Any] = self.variant(reciprocal_lattice_vectors)
         # With degrees
-        rec_vecs_deg = var_fn(
+        rec_vecs_deg: Any = var_fn(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -1320,7 +1372,7 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
         )
         # With radians
         pi_half: Float[Array, "..."] = jnp.pi / 2
-        rec_vecs_rad = var_fn(
+        rec_vecs_rad: Any = var_fn(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -1340,7 +1392,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
         super().setUp()
 
         # Set up cubic reciprocal vectors for testing
-        self.cubic_rec_vecs = reciprocal_lattice_vectors(
+        self.cubic_rec_vecs: Any = reciprocal_lattice_vectors(
             a=3.0,
             b=3.0,
             c=3.0,
@@ -1353,10 +1405,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_single_index_100(self) -> None:
         """Test (1,0,0) Miller index."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([1, 0, 0])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = 2 * jnp.pi / 3.0
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vec, jnp.array([expected, 0.0, 0.0]), atol=1e-10
         )
@@ -1364,10 +1416,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_single_index_010(self) -> None:
         """Test (0,1,0) Miller index."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([0, 1, 0])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = 2 * jnp.pi / 3.0
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vec, jnp.array([0.0, expected, 0.0]), atol=1e-10
         )
@@ -1375,10 +1427,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_single_index_001(self) -> None:
         """Test (0,0,1) Miller index."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([0, 0, 1])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = 2 * jnp.pi / 3.0
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vec, jnp.array([0.0, 0.0, expected]), atol=1e-10
         )
@@ -1386,10 +1438,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_single_index_111(self) -> None:
         """Test (1,1,1) Miller index."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([1, 1, 1])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = 2 * jnp.pi / 3.0
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vec, jnp.array([expected, expected, expected]), atol=1e-10
         )
@@ -1397,10 +1449,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_negative_indices(self) -> None:
         """Test negative Miller indices."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([-1, -1, -1])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = -2 * jnp.pi / 3.0
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = -2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vec, jnp.array([expected, expected, expected]), atol=1e-10
         )
@@ -1408,9 +1460,9 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_zero_indices(self) -> None:
         """Test (0,0,0) gives zero vector."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([0, 0, 0])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
         chex.assert_trees_all_close(
             g_vec, jnp.array([0.0, 0.0, 0.0]), atol=1e-10
         )
@@ -1418,7 +1470,7 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_batch_indices(self) -> None:
         """Test batched Miller indices."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Float[Array, "..."] = jnp.array(
             [
                 [1, 0, 0],
@@ -1427,9 +1479,9 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
                 [1, 1, 1],
             ]
         )
-        g_vecs = var_fn(hkl, self.cubic_rec_vecs)
+        g_vecs: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
         chex.assert_shape(g_vecs, (4, 3))
-        expected = 2 * jnp.pi / 3.0
+        expected: scalar_float = 2 * jnp.pi / 3.0
         chex.assert_trees_all_close(
             g_vecs[0], jnp.array([expected, 0.0, 0.0]), atol=1e-10
         )
@@ -1440,10 +1492,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_higher_indices(self) -> None:
         """Test higher Miller indices (2,0,0)."""
-        var_fn = self.variant(miller_to_reciprocal)
+        var_fn: Callable[..., Any] = self.variant(miller_to_reciprocal)
         hkl: Integer[Array, "..."] = jnp.array([2, 0, 0])
-        g_vec = var_fn(hkl, self.cubic_rec_vecs)
-        expected = 2 * (2 * jnp.pi / 3.0)
+        g_vec: Float[Array, "..."] = var_fn(hkl, self.cubic_rec_vecs)
+        expected: scalar_float = 2 * (2 * jnp.pi / 3.0)
         chex.assert_trees_all_close(
             g_vec, jnp.array([expected, 0.0, 0.0]), atol=1e-10
         )
@@ -1457,13 +1509,13 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
         super().setUp()
 
         # Create a simple cubic crystal
-        self.cubic_crystal = self._create_cubic_crystal()
+        self.cubic_crystal: Any = self._create_cubic_crystal()
 
     def _create_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal."""
-        a = 3.0
+        a: float = 3.0
         cart_coords: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
-        frac_coords = cart_coords / a
+        frac_coords: Float[Array, "..."] = cart_coords / a
         atomic_numbers: Float[Array, "..."] = jnp.array([14.0])  # Silicon
 
         return create_crystal_structure(
@@ -1476,8 +1528,8 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_device=True, without_jit=True)
     def test_point_count(self) -> None:
         """Test number of generated points."""
-        var_fn = self.variant(generate_reciprocal_points)
-        g_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(generate_reciprocal_points)
+        g_vecs: Float[Array, "..."] = var_fn(
             crystal=self.cubic_crystal,
             hmax=2,
             kmax=2,
@@ -1485,14 +1537,14 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
             in_degrees=True,
         )
         # Number of points = (2*h+1) * (2*k+1) * (2*l+1)
-        expected_count = 5 * 5 * 3  # 75 points
+        expected_count: Float[Array, "..."] = 5 * 5 * 3  # 75 points
         chex.assert_shape(g_vecs, (expected_count, 3))
 
     @chex.variants(with_device=True, without_jit=True)
     def test_includes_origin(self) -> None:
         """Test that origin (0,0,0) is included."""
-        var_fn = self.variant(generate_reciprocal_points)
-        g_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(generate_reciprocal_points)
+        g_vecs: Float[Array, "..."] = var_fn(
             crystal=self.cubic_crystal,
             hmax=1,
             kmax=1,
@@ -1507,8 +1559,8 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_device=True, without_jit=True)
     def test_symmetry_pairs(self) -> None:
         """Test that (h,k,l) and (-h,-k,-l) are opposites."""
-        var_fn = self.variant(generate_reciprocal_points)
-        g_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(generate_reciprocal_points)
+        g_vecs: Float[Array, "..."] = var_fn(
             crystal=self.cubic_crystal,
             hmax=1,
             kmax=1,
@@ -1521,8 +1573,8 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_device=True, without_jit=True)
     def test_cubic_symmetry(self) -> None:
         """Test cubic symmetry - equivalent directions have same magnitude."""
-        var_fn = self.variant(generate_reciprocal_points)
-        g_vecs = var_fn(
+        var_fn: Callable[..., Any] = self.variant(generate_reciprocal_points)
+        g_vecs: Float[Array, "..."] = var_fn(
             crystal=self.cubic_crystal,
             hmax=1,
             kmax=1,
@@ -1532,7 +1584,7 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
         # Calculate magnitudes
         mags: Float[Array, "..."] = jnp.linalg.norm(g_vecs, axis=1)
         # For cubic, (1,0,0), (0,1,0), (0,0,1) should have same magnitude
-        expected = 2 * jnp.pi / 3.0
+        expected: scalar_float = 2 * jnp.pi / 3.0
         # Count how many have this magnitude
         matches: scalar_float = jnp.sum(jnp.abs(mags - expected) < 1e-5)
         # Should be 6: ±(1,0,0), ±(0,1,0), ±(0,0,1)
@@ -1545,14 +1597,16 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
     )
     def test_various_ranges(self, hmax: int, kmax: int, lmax: int) -> None:
         """Test various hkl ranges."""
-        g_vecs = generate_reciprocal_points(
+        g_vecs: Float[Array, "..."] = generate_reciprocal_points(
             crystal=self.cubic_crystal,
             hmax=hmax,
             kmax=kmax,
             lmax=lmax,
             in_degrees=True,
         )
-        expected_count = (2 * hmax + 1) * (2 * kmax + 1) * (2 * lmax + 1)
+        expected_count: Float[Array, "..."] = (
+            (2 * hmax + 1) * (2 * kmax + 1) * (2 * lmax + 1)
+        )
         chex.assert_shape(g_vecs, (expected_count, 3))
         chex.assert_tree_all_finite(g_vecs)
 

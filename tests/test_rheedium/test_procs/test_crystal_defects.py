@@ -1,5 +1,8 @@
 """Test suite for procs/crystal_defects.py."""
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -91,7 +94,7 @@ class TestApplyVacancyField(chex.TestCase):
     def test_jit_compiles(self) -> None:
         """Verify apply_vacancy_field compiles under jit."""
         crystal: CrystalStructure = _make_bulk_crystal()
-        compiled = jax.jit(
+        compiled: Callable[..., Any] = jax.jit(
             lambda occupancies: apply_vacancy_field(
                 crystal,
                 occupancies,
@@ -188,7 +191,7 @@ class TestApplyInterstitialField(chex.TestCase):
     def test_jit_compiles(self) -> None:
         """Verify apply_interstitial_field compiles under jit."""
         crystal: CrystalStructure = _make_bulk_crystal()
-        compiled = jax.jit(
+        compiled: Callable[..., Any] = jax.jit(
             lambda occupancy: apply_interstitial_field(
                 crystal,
                 jnp.array([[0.25, 0.5, 0.75]]),
@@ -280,7 +283,7 @@ class TestApplyAntisiteField(chex.TestCase):
     def test_jit_compiles(self) -> None:
         """Verify apply_antisite_field compiles under jit."""
         crystal: CrystalStructure = _make_bulk_crystal()
-        compiled = jax.jit(
+        compiled: Callable[..., Any] = jax.jit(
             lambda mixing_fraction: apply_antisite_field(
                 crystal,
                 jnp.array([0.0, mixing_fraction]),

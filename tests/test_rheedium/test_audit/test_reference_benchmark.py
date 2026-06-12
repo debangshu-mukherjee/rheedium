@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import numpy as np
 import pytest
@@ -65,6 +66,7 @@ def test_load_reference_cases_returns_typed_cases() -> None:
     """Reference cases load as typed metadata-plus-image objects."""
     assert _REFERENCE_CASES is not None
     assert len(_REFERENCE_CASES) >= 2
+    case: Any
     for case in _REFERENCE_CASES:
         assert isinstance(case, ReferenceCase)
         assert isinstance(case.metadata, ReferenceMetadata)

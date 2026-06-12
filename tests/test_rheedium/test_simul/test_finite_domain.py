@@ -6,6 +6,9 @@ calculations, shell thickness, overlap integrals, and integration with
 existing Ewald infrastructure.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax.numpy as jnp
 from absl.testing import parameterized
@@ -19,7 +22,10 @@ from rheedium.simul.finite_domain import (
     finite_domain_intensities,
     rod_ewald_overlap,
 )
-from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.crystal_types import (
+    CrystalStructure,
+    create_crystal_structure,
+)
 from rheedium.types.custom_types import scalar_float
 
 
@@ -34,10 +40,10 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         """
         super().setUp()
         # Single atom at origin
-        self.single_atom = jnp.array([[0.0, 0.0, 0.0]])
+        self.single_atom: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
 
         # Cube of atoms 10×10×10 Å
-        self.cube_positions = jnp.array(
+        self.cube_positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [10.0, 0.0, 0.0],
@@ -48,7 +54,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         )
 
         # Rectangular slab 20×15×5 Å
-        self.slab_positions = jnp.array(
+        self.slab_positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [20.0, 0.0, 0.0],
@@ -65,9 +71,11 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         A single atom has zero extent, but minimum enforcement should
         return [1.0, 1.0, 1.0] to avoid numerical issues.
         """
-        var_compute = self.variant(compute_domain_extent)
+        var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
-        extent = var_compute(self.single_atom, padding_ang=0.0)
+        extent: Float[Array, "..."] = var_compute(
+            self.single_atom, padding_ang=0.0
+        )
 
         chex.assert_shape(extent, (3,))
         # Single atom has zero extent, but minimum is enforced
@@ -81,9 +89,11 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
         Atoms at corners of 10×10×10 Å cube should give extent [10, 10, 10].
         """
-        var_compute = self.variant(compute_domain_extent)
+        var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
-        extent = var_compute(self.cube_positions, padding_ang=0.0)
+        extent: Float[Array, "..."] = var_compute(
+            self.cube_positions, padding_ang=0.0
+        )
 
         chex.assert_shape(extent, (3,))
         chex.assert_trees_all_close(
@@ -96,9 +106,11 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
         Atoms in 20×15×5 Å slab should give corresponding extent.
         """
-        var_compute = self.variant(compute_domain_extent)
+        var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
-        extent = var_compute(self.slab_positions, padding_ang=0.0)
+        extent: Float[Array, "..."] = var_compute(
+            self.slab_positions, padding_ang=0.0
+        )
 
         chex.assert_shape(extent, (3,))
         chex.assert_trees_all_close(
@@ -116,17 +128,23 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
         Padding should be applied symmetrically on both sides.
         """
-        var_compute = self.variant(compute_domain_extent)
-        extent_no_pad = var_compute(self.cube_positions, padding_ang=0.0)
-        extent_with_pad = var_compute(self.cube_positions, padding_ang=padding)
-        expected = extent_no_pad + 2.0 * padding
+        var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
+        extent_no_pad: Float[Array, "..."] = var_compute(
+            self.cube_positions, padding_ang=0.0
+        )
+        extent_with_pad: Float[Array, "..."] = var_compute(
+            self.cube_positions, padding_ang=padding
+        )
+        expected: Float[Array, "..."] = extent_no_pad + 2.0 * padding
         chex.assert_trees_all_close(extent_with_pad, expected, rtol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_is_positive(self) -> None:
         """Test that extent is always positive."""
-        var_compute = self.variant(compute_domain_extent)
-        extent = var_compute(self.single_atom, padding_ang=0.0)
+        var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
+        extent: Float[Array, "..."] = var_compute(
+            self.single_atom, padding_ang=0.0
+        )
         chex.assert_trees_all_equal(jnp.all(extent > 0), True)
 
 
@@ -140,16 +158,20 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         to test the inverse scaling relationship.
         """
         super().setUp()
-        self.small_extent = jnp.array([10.0, 10.0, 10.0])
-        self.medium_extent = jnp.array([100.0, 100.0, 100.0])
-        self.large_extent = jnp.array([1000.0, 1000.0, 1000.0])
+        self.small_extent: Float[Array, "..."] = jnp.array([10.0, 10.0, 10.0])
+        self.medium_extent: Float[Array, "..."] = jnp.array(
+            [100.0, 100.0, 100.0]
+        )
+        self.large_extent: Float[Array, "..."] = jnp.array(
+            [1000.0, 1000.0, 1000.0]
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape(self) -> None:
         """Test that output has shape (2,) for x,y rod widths."""
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
-        sigma = var_sigma(self.medium_extent)
+        sigma: Float[Array, "..."] = var_sigma(self.medium_extent)
 
         chex.assert_shape(sigma, (2,))
 
@@ -159,13 +181,17 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
         σ_rod ∝ 1/L, so doubling L should halve σ.
         """
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
-        sigma_10 = var_sigma(jnp.array([10.0, 10.0, 10.0]))
-        sigma_100 = var_sigma(jnp.array([100.0, 100.0, 100.0]))
+        sigma_10: Float[Array, "..."] = var_sigma(
+            jnp.array([10.0, 10.0, 10.0])
+        )
+        sigma_100: Float[Array, "..."] = var_sigma(
+            jnp.array([100.0, 100.0, 100.0])
+        )
 
         # sigma_10 should be 10× larger than sigma_100
-        ratio = sigma_10 / sigma_100
+        ratio: Any = sigma_10 / sigma_100
         chex.assert_trees_all_close(ratio, jnp.array([10.0, 10.0]), rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -174,11 +200,13 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
         σ = 2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
         """
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
-        sigma = var_sigma(self.medium_extent)
+        sigma: Float[Array, "..."] = var_sigma(self.medium_extent)
 
-        expected = 2.0 * jnp.pi / (100.0 * jnp.sqrt(2.0 * jnp.pi))
+        expected: scalar_float = (
+            2.0 * jnp.pi / (100.0 * jnp.sqrt(2.0 * jnp.pi))
+        )
         chex.assert_trees_all_close(
             sigma, jnp.array([expected, expected]), rtol=1e-6
         )
@@ -186,19 +214,19 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_positive_output(self) -> None:
         """Test that rod sigma is always positive."""
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
-        sigma = var_sigma(self.small_extent)
+        sigma: Float[Array, "..."] = var_sigma(self.small_extent)
 
         chex.assert_trees_all_equal(jnp.all(sigma > 0), True)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_tiny_extent_no_nan(self) -> None:
         """Test that tiny extent gives no NaN via minimum enforcement."""
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
         tiny_extent: Float[Array, "..."] = jnp.array([0.1, 0.1, 0.1])
-        sigma = var_sigma(tiny_extent)
+        sigma: Float[Array, "..."] = var_sigma(tiny_extent)
 
         chex.assert_tree_all_finite(sigma)
 
@@ -214,16 +242,16 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         super().setUp()
         # k = 2π/λ for various voltages
         # λ ≈ 0.086 Å at 20 kV → k ≈ 73 Å⁻¹
-        self.k_15kv = jnp.array(63.0)  # approximate
-        self.k_20kv = jnp.array(73.0)  # approximate
-        self.k_30kv = jnp.array(89.0)  # approximate
+        self.k_15kv: Float[Array, "..."] = jnp.array(63.0)  # approximate
+        self.k_20kv: Float[Array, "..."] = jnp.array(73.0)  # approximate
+        self.k_30kv: Float[Array, "..."] = jnp.array(89.0)  # approximate
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_is_scalar(self) -> None:
         """Test that output is a scalar."""
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
-        sigma = var_shell(self.k_20kv)
+        sigma: Float[Array, "..."] = var_shell(self.k_20kv)
 
         chex.assert_shape(sigma, ())
 
@@ -234,9 +262,9 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         At 20 kV (k≈73), with ΔE/E=1e-4 and Δθ=1e-3:
         σ_shell = 73 × √[(5e-5)² + (1e-3)²] ≈ 73 × 1e-3 ≈ 0.073 Å⁻¹
         """
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
-        sigma = var_shell(self.k_20kv)
+        sigma: Float[Array, "..."] = var_shell(self.k_20kv)
 
         # Divergence dominates: σ ≈ k × Δθ = 73 × 0.001 = 0.073
         chex.assert_trees_all_close(sigma, 0.073, atol=0.01)
@@ -244,35 +272,35 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_zero_divergence_energy_only(self) -> None:
         """Test shell sigma with only energy spread (zero divergence)."""
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
-        sigma = var_shell(
+        sigma: Float[Array, "..."] = var_shell(
             self.k_20kv, energy_spread_frac=1e-4, beam_divergence_rad=0.0
         )
 
         # σ = k × (ΔE/2E) = 73 × 5e-5 = 0.00365
-        expected = 73.0 * (1e-4 / 2.0)
+        expected: Float[Array, "..."] = 73.0 * (1e-4 / 2.0)
         chex.assert_trees_all_close(sigma, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_scaling_with_k(self) -> None:
         """Test that shell sigma scales linearly with k."""
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
-        sigma_15 = var_shell(self.k_15kv)
-        sigma_30 = var_shell(self.k_30kv)
+        sigma_15: Float[Array, "..."] = var_shell(self.k_15kv)
+        sigma_30: Float[Array, "..."] = var_shell(self.k_30kv)
 
         # σ ∝ k, so ratio should equal k ratio
-        expected_ratio = float(self.k_30kv / self.k_15kv)
-        actual_ratio = float(sigma_30 / sigma_15)
+        expected_ratio: Float[Array, "..."] = float(self.k_30kv / self.k_15kv)
+        actual_ratio: Any = float(sigma_30 / sigma_15)
         chex.assert_trees_all_close(actual_ratio, expected_ratio, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_positive_output(self) -> None:
         """Test that shell sigma is always positive."""
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
-        sigma = var_shell(self.k_20kv)
+        sigma: Float[Array, "..."] = var_shell(self.k_20kv)
 
         chex.assert_scalar_positive(float(sigma))
 
@@ -288,23 +316,25 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         super().setUp()
         # Set up a simple scattering geometry
         # k_in pointing at grazing angle
-        self.k_magnitude = jnp.array(73.0)  # ~20 kV
+        self.k_magnitude: Float[Array, "..."] = jnp.array(73.0)  # ~20 kV
         theta_rad: scalar_float = jnp.deg2rad(2.0)  # 2° grazing
-        self.k_in = self.k_magnitude * jnp.array(
+        self.k_in: Float[Array, "..."] = self.k_magnitude * jnp.array(
             [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
         )
 
         # G vector that satisfies Ewald condition (roughly)
         # k_out = k_in + G should have |k_out| ≈ |k_in|
-        self.g_on_sphere = jnp.array(
+        self.g_on_sphere: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 2.0 * self.k_magnitude * jnp.sin(theta_rad)]]
         )
 
         # G vector far from Ewald sphere
-        self.g_off_sphere = jnp.array([[10.0, 10.0, 10.0]])
+        self.g_off_sphere: Float[Array, "..."] = jnp.array(
+            [[10.0, 10.0, 10.0]]
+        )
 
         # Multiple G vectors for batch testing
-        self.g_batch = jnp.array(
+        self.g_batch: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],  # Specular
                 [1.0, 0.0, 0.0],  # Off sphere
@@ -313,16 +343,20 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         )
 
         # Broadening parameters
-        self.rod_sigma_large = jnp.array([0.5, 0.5])  # Large broadening
-        self.rod_sigma_small = jnp.array([0.01, 0.01])  # Small broadening
-        self.shell_sigma = jnp.array(0.07)
+        self.rod_sigma_large: Float[Array, "..."] = jnp.array(
+            [0.5, 0.5]
+        )  # Large broadening
+        self.rod_sigma_small: Float[Array, "..."] = jnp.array(
+            [0.01, 0.01]
+        )  # Small broadening
+        self.shell_sigma: Float[Array, "..."] = jnp.array(0.07)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape_single(self) -> None:
         """Test output shape for single G vector."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             self.g_on_sphere,
             self.k_in,
             self.k_magnitude,
@@ -335,9 +369,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape_batch(self) -> None:
         """Test output shape for batch of G vectors."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             self.g_batch,
             self.k_in,
             self.k_magnitude,
@@ -354,10 +388,10 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         For G=0, k_out = k_in, so |k_out| = |k_in| exactly.
         Overlap should be 1.0.
         """
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         g_specular: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             g_specular,
             self.k_in,
             self.k_magnitude,
@@ -370,9 +404,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_far_from_sphere_low_overlap(self) -> None:
         """Test that G vectors far from Ewald sphere have low overlap."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             self.g_off_sphere,
             self.k_in,
             self.k_magnitude,
@@ -386,9 +420,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_overlap_bounded_zero_one(self) -> None:
         """Test that overlap values are bounded between 0 and 1."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             self.g_batch,
             self.k_in,
             self.k_magnitude,
@@ -402,16 +436,16 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_larger_sigma_broader_overlap(self) -> None:
         """Test that larger σ gives broader (more uniform) overlap."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap_small = var_overlap(
+        overlap_small: Any = var_overlap(
             self.g_off_sphere,
             self.k_in,
             self.k_magnitude,
             self.rod_sigma_small,
             self.shell_sigma,
         )
-        overlap_large = var_overlap(
+        overlap_large: Any = var_overlap(
             self.g_off_sphere,
             self.k_in,
             self.k_magnitude,
@@ -425,9 +459,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_finite(self) -> None:
         """Test that output contains no NaN or Inf."""
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
-        overlap = var_overlap(
+        overlap: Any = var_overlap(
             self.g_batch,
             self.k_in,
             self.k_magnitude,
@@ -448,11 +482,11 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         """
         super().setUp()
         # Simple cubic crystal (MgO-like)
-        self.cell_lengths = jnp.array([4.21, 4.21, 4.21])
-        self.cell_angles = jnp.array([90.0, 90.0, 90.0])
+        self.cell_lengths: Float[Array, "..."] = jnp.array([4.21, 4.21, 4.21])
+        self.cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
 
         # Atoms: Mg at (0,0,0), O at (0.5,0.5,0.5)
-        self.frac_positions = jnp.array(
+        self.frac_positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 12.0],  # Mg
                 [0.5, 0.5, 0.5, 8.0],  # O
@@ -460,14 +494,14 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         )
 
         # Cartesian positions
-        self.cart_positions = jnp.array(
+        self.cart_positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 12.0],
                 [2.105, 2.105, 2.105, 8.0],
             ]
         )
 
-        self.crystal = create_crystal_structure(
+        self.crystal: CrystalStructure = create_crystal_structure(
             frac_positions=self.frac_positions,
             cart_positions=self.cart_positions,
             cell_lengths=self.cell_lengths,
@@ -475,7 +509,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         )
 
         # Build EwaldData
-        self.ewald = build_ewald_data(
+        self.ewald: Any = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=15.0,
             hmax=2,
@@ -485,14 +519,20 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         )
 
         # Domain extents
-        self.small_domain = jnp.array([20.0, 20.0, 10.0])
-        self.large_domain = jnp.array([1000.0, 1000.0, 500.0])
+        self.small_domain: Float[Array, "..."] = jnp.array([20.0, 20.0, 10.0])
+        self.large_domain: Float[Array, "..."] = jnp.array(
+            [1000.0, 1000.0, 500.0]
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shapes(self) -> None:
         """Test that output shapes match EwaldData.intensities."""
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap: Any
+        intensities: Float[Array, "..."]
         overlap, intensities = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -506,8 +546,11 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_overlap_bounded(self) -> None:
         """Test that overlap factors are in [0, 1]."""
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap: Any
         overlap, _ = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -521,8 +564,11 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_modified_intensities_bounded(self) -> None:
         """Test that modified intensities ≤ original intensities."""
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        modified: Any
         _, modified = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -544,8 +590,11 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         significant overlap. The specular (0,0,0) should always have
         overlap = 1.0.
         """
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap: Any
         overlap, _ = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -565,14 +614,18 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         Smaller domains have broader rods, so more reflections contribute.
         The overlap distribution should be "flatter" than for large domains.
         """
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap_small: Any
         overlap_small, _ = var_intensities(
             self.ewald,
             theta_deg=2.0,
             phi_deg=0.0,
             domain_extent_ang=self.small_domain,
         )
+        overlap_large: Any
         overlap_large, _ = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -590,8 +643,12 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_finite(self) -> None:
         """Test that output contains no NaN or Inf."""
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap: Any
+        intensities: Float[Array, "..."]
         overlap, intensities = var_intensities(
             self.ewald,
             theta_deg=2.0,
@@ -610,8 +667,12 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     )
     def test_different_angles(self, theta: float) -> None:
         """Test that function works for various incidence angles."""
-        var_intensities = self.variant(finite_domain_intensities)
+        var_intensities: Callable[..., Any] = self.variant(
+            finite_domain_intensities
+        )
 
+        overlap: Any
+        intensities: Float[Array, "..."]
         overlap, intensities = var_intensities(
             self.ewald,
             theta_deg=theta,
@@ -631,7 +692,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         """Set up fixtures for physics validation."""
         super().setUp()
         # Reference values
-        self.sqrt_2pi = jnp.sqrt(2.0 * jnp.pi)
+        self.sqrt_2pi: scalar_float = jnp.sqrt(2.0 * jnp.pi)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rod_sigma_formula(self) -> None:
@@ -642,12 +703,12 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         For L = 100 Å:
         σ_q = 2π / (100 × 2.5066) = 6.283 / 250.66 ≈ 0.0251 Å⁻¹
         """
-        var_sigma = self.variant(extent_to_rod_sigma)
+        var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
-        L = 100.0
-        sigma = var_sigma(jnp.array([L, L, L]))
+        L: float = 100.0
+        sigma: Float[Array, "..."] = var_sigma(jnp.array([L, L, L]))
 
-        expected = 2.0 * jnp.pi / (L * self.sqrt_2pi)
+        expected: scalar_float = 2.0 * jnp.pi / (L * self.sqrt_2pi)
         chex.assert_trees_all_close(sigma[0], expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -662,17 +723,17 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
                = 73 × √[1.0025e-6]
                ≈ 73 × 1.001e-3 ≈ 0.073 Å⁻¹
         """
-        var_shell = self.variant(compute_shell_sigma)
+        var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
         k: scalar_float = jnp.array(73.0)
-        dE_E = 1e-4
-        dtheta = 1e-3
+        dE_E: float = 1e-4
+        dtheta: float = 1e-3
 
-        sigma = var_shell(
+        sigma: Float[Array, "..."] = var_shell(
             k, energy_spread_frac=dE_E, beam_divergence_rad=dtheta
         )
 
-        expected = k * jnp.sqrt((dE_E / 2.0) ** 2 + dtheta**2)
+        expected: scalar_float = k * jnp.sqrt((dE_E / 2.0) ** 2 + dtheta**2)
         chex.assert_trees_all_close(sigma, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -682,14 +743,14 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         overlap = exp(-d²/(2σ_eff²))
         where σ_eff² = σ_rod² + σ_shell²
         """
-        var_overlap = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         # Set up geometry where we can calculate d analytically
         k: scalar_float = jnp.array(73.0)
         k_in: Float[Array, "..."] = jnp.array([k, 0.0, 0.0])  # Along x
 
         # G that gives k_out with different magnitude
-        delta_k = 0.1  # Deviation from elastic condition
+        delta_k: float = 0.1  # Deviation from elastic condition
         g: Float[Array, "..."] = jnp.array(
             [[delta_k, 0.0, 0.0]]
         )  # k_out = [k + delta, 0, 0]
@@ -697,14 +758,16 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         rod_sigma: Float[Array, "..."] = jnp.array([0.05, 0.05])
         shell_sigma: scalar_float = jnp.array(0.07)
 
-        overlap = var_overlap(g, k_in, k, rod_sigma, shell_sigma)
+        overlap: Any = var_overlap(g, k_in, k, rod_sigma, shell_sigma)
 
         # Calculate expected value
         # k_out = k_in + g = [k + delta, 0, 0]
         # |k_out| = k + delta
         # d = ||k_out| - k| = delta
-        d = delta_k
-        sigma_eff_sq = 0.05**2 + 0.07**2  # Simplified: use mean rod sigma
+        d: Any = delta_k
+        sigma_eff_sq: Float[Array, "..."] = (
+            0.05**2 + 0.07**2
+        )  # Simplified: use mean rod sigma
         expected: Float[Array, "..."] = jnp.exp(-(d**2) / (2.0 * sigma_eff_sq))
 
         chex.assert_trees_all_close(overlap[0], expected, rtol=1e-3)

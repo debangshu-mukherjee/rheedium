@@ -4,7 +4,9 @@ This module tests the kinematic RHEED implementation that follows
 the algorithm from arXiv:2207.06642.
 """
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -30,8 +32,12 @@ from rheedium.tools import (
     incident_wavevector as kinematic_incident_wavevector,
 )
 from rheedium.tools import wavelength_ang as kinematic_wavelength
-from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.crystal_types import (
+    CrystalStructure,
+    create_crystal_structure,
+)
 from rheedium.types.custom_types import scalar_float
+from rheedium.types.rheed_types import RHEEDPattern
 from rheedium.ucell.unitcell import (
     miller_to_reciprocal,
     reciprocal_lattice_vectors,
@@ -51,9 +57,9 @@ class TestKinematicWavelength(chex.TestCase):
         self, voltage_kv: float, expected_lambda: float
     ) -> None:
         """Test wavelength calculation matches expected values."""
-        var_wavelength = self.variant(kinematic_wavelength)
+        var_wavelength: Callable[..., Any] = self.variant(kinematic_wavelength)
 
-        wavelength = var_wavelength(voltage_kv)
+        wavelength: float = var_wavelength(voltage_kv)
 
         # Check within 0.5% of expected
         chex.assert_scalar_positive(float(wavelength))
@@ -66,37 +72,43 @@ class TestKinematicIncidentWavevector(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_magnitude(self) -> None:
         """Test |k_in| = 2π/λ."""
-        var_k_in = self.variant(kinematic_incident_wavevector)
+        var_k_in: Callable[..., Any] = self.variant(
+            kinematic_incident_wavevector
+        )
 
-        wavelength = 0.0859  # 20 keV
-        theta_deg = 2.0
+        wavelength: float = 0.0859  # 20 keV
+        theta_deg: float = 2.0
 
-        k_in = var_k_in(wavelength, theta_deg)
+        k_in: Any = var_k_in(wavelength, theta_deg)
 
         # Check magnitude
         k_mag: Float[Array, "..."] = jnp.linalg.norm(k_in)
-        expected_mag = 2.0 * jnp.pi / wavelength
+        expected_mag: scalar_float = 2.0 * jnp.pi / wavelength
 
         chex.assert_trees_all_close(k_mag, expected_mag, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_components(self) -> None:
         """Test k_in = k·[cos(θ), 0, -sin(θ)] (beam going into surface)."""
-        var_k_in = self.variant(kinematic_incident_wavevector)
+        var_k_in: Callable[..., Any] = self.variant(
+            kinematic_incident_wavevector
+        )
 
-        wavelength = 0.0859
-        theta_deg = 2.0
+        wavelength: float = 0.0859
+        theta_deg: float = 2.0
         theta_rad: scalar_float = jnp.deg2rad(theta_deg)
 
-        k_in = var_k_in(wavelength, theta_deg)
+        k_in: Any = var_k_in(wavelength, theta_deg)
 
-        k_mag = 2.0 * jnp.pi / wavelength
+        k_mag: scalar_float = 2.0 * jnp.pi / wavelength
 
         # Expected components: beam goes at grazing angle θ into surface
         # z is up (surface normal), so beam has negative z component
-        expected_x = k_mag * jnp.cos(theta_rad)
-        expected_y = 0.0
-        expected_z = -k_mag * jnp.sin(theta_rad)  # Negative: beam going down
+        expected_x: Float[Array, "..."] = k_mag * jnp.cos(theta_rad)
+        expected_y: float = 0.0
+        expected_z: Float[Array, "..."] = -k_mag * jnp.sin(
+            theta_rad
+        )  # Negative: beam going down
 
         chex.assert_trees_all_close(k_in[0], expected_x, rtol=1e-6)
         chex.assert_trees_all_close(k_in[1], expected_y, atol=1e-10)
@@ -109,7 +121,7 @@ class TestKinematicEwaldSphere(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_elastic_scattering(self) -> None:
         """Test that all k_out satisfy |k_out| ≈ |k_in|."""
-        var_ewald = self.variant(kinematic_ewald_sphere)
+        var_ewald: Callable[..., Any] = self.variant(kinematic_ewald_sphere)
 
         # Setup: incident beam at grazing incidence
         # (k_in_z < 0, going into surface)
@@ -127,15 +139,18 @@ class TestKinematicEwaldSphere(chex.TestCase):
         )
 
         # z_sign=1.0 selects upward scattering (k_out_z > 0)
+        indices: Any
+        k_out: Float[Array, "..."]
         indices, k_out = var_ewald(k_in, G_vectors, z_sign=1.0, tolerance=0.1)
 
         # Check that we got some valid results
-        n_valid = int(jnp.sum(indices >= 0))
+        n_valid: scalar_float = int(jnp.sum(indices >= 0))
         assert n_valid > 0, "Should find some valid reflections"
 
         # All valid k_out should satisfy elastic scattering
-        valid_k_out = k_out[indices >= 0]
+        valid_k_out: Float[Array, "..."] = k_out[indices >= 0]
         k_out_mags: Float[Array, "..."] = jnp.linalg.norm(valid_k_out, axis=1)
+        k_mag_out: scalar_float
         for k_mag_out in k_out_mags:
             assert jnp.abs(k_mag_out - k_mag) / k_mag < 0.1, (
                 "Elastic scattering"
@@ -166,23 +181,25 @@ class TestDetectorProjection(chex.TestCase):
         The simplified projection uses:
         x_d = k_y * d / k_x, y_d = k_z * d / k_x
         """
-        var_project = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(project_on_detector)
 
         # Setup: typical RHEED parameters
-        wavelength = 0.0859  # ~20 keV electrons
-        k0 = 2.0 * jnp.pi / wavelength
+        wavelength: float = 0.0859  # ~20 keV electrons
+        k0: scalar_float = 2.0 * jnp.pi / wavelength
 
         # Scattered wavevector: forward + upward scattering
         k_out: Float[Array, "..."] = jnp.array([[k0 * 0.98, 0.5, k0 * 0.05]])
-        d = 100.0
+        d: float = 100.0
 
         # Get detector coordinates
-        coords = var_project(k_out, d)
+        coords: Float[Array, "..."] = var_project(k_out, d)
+        x_d: tuple[Any, ...]
+        y_d: tuple[Any, ...]
         x_d, y_d = coords[0, 0], coords[0, 1]
 
         # Verify ray-tracing geometry: x_d = k_y * d / k_x
-        expected_x = k_out[0, 1] * d / k_out[0, 0]
-        expected_y = k_out[0, 2] * d / k_out[0, 0]
+        expected_x: Float[Array, "..."] = k_out[0, 1] * d / k_out[0, 0]
+        expected_y: Float[Array, "..."] = k_out[0, 2] * d / k_out[0, 0]
 
         chex.assert_trees_all_close(x_d, expected_x, rtol=1e-4)
         chex.assert_trees_all_close(y_d, expected_y, rtol=1e-4)
@@ -193,20 +210,20 @@ class TestDetectorProjection(chex.TestCase):
 
         Specular: k_out_z ≈ |k_in_z| but positive (upward).
         """
-        var_project = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(project_on_detector)
 
-        theta_deg = 2.0
+        theta_deg: float = 2.0
         theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-        wavelength = 0.0859
-        k0 = 2.0 * jnp.pi / wavelength
+        wavelength: float = 0.0859
+        k0: scalar_float = 2.0 * jnp.pi / wavelength
 
         # Near-specular: same angle out, k_out_z positive, k_out_y = 0
         k_out: Float[Array, "..."] = jnp.array(
             [[k0 * jnp.cos(theta_rad), 0.0, k0 * jnp.sin(theta_rad)]]
         )
-        d = 100.0
+        d: float = 100.0
 
-        coords = var_project(k_out, d)
+        coords: Float[Array, "..."] = var_project(k_out, d)
 
         # Specular should be close to x_d = 0 (no horizontal deflection)
         chex.assert_trees_all_close(coords[0, 0], 0.0, atol=0.1)
@@ -220,23 +237,23 @@ class TestKinematicStructureFactor(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_single_atom(self) -> None:
         """Test structure factor for single atom at origin."""
-        var_sf = self.variant(kinematic_structure_factor)
+        var_sf: Callable[..., Any] = self.variant(kinematic_structure_factor)
 
         G: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
         positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         atomic_nums: Integer[Array, "..."] = jnp.array([14])  # Silicon
 
-        intensity = var_sf(G, positions, atomic_nums)
+        intensity: Any = var_sf(G, positions, atomic_nums)
 
         # For single atom at origin: F = Z·exp(i·0) = Z
         # I = |F|² = Z²
-        expected = 14.0**2
+        expected: Float[Array, "..."] = 14.0**2
         chex.assert_trees_all_close(intensity, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_systematic_absence(self) -> None:
         """Test that (100) is forbidden for diamond structure."""
-        var_sf = self.variant(kinematic_structure_factor)
+        var_sf: Callable[..., Any] = self.variant(kinematic_structure_factor)
 
         # Simple cubic with two atoms (like diamond basis)
         G: Float[Array, "..."] = jnp.array(
@@ -250,7 +267,7 @@ class TestKinematicStructureFactor(chex.TestCase):
         )
         atomic_nums: Integer[Array, "..."] = jnp.array([14, 14])
 
-        intensity = var_sf(G, positions, atomic_nums)
+        intensity: Any = var_sf(G, positions, atomic_nums)
 
         # This should have very low intensity (systematic absence)
         # F = f·[exp(0) + exp(iπ)] = f·[1 - 1] = 0 for certain G
@@ -266,7 +283,7 @@ class TestKinematicSimulator(chex.TestCase):
         super().setUp()
 
         # Simple cubic Silicon crystal
-        a_si = 5.43  # Silicon lattice constant
+        a_si: float = 5.43  # Silicon lattice constant
         frac_pos: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0, 14.0]]
         )  # One Si atom at origin
@@ -274,7 +291,7 @@ class TestKinematicSimulator(chex.TestCase):
             [[0.0, 0.0, 0.0, 14.0]]
         )  # Cartesian same for origin
 
-        self.crystal = create_crystal_structure(
+        self.crystal: CrystalStructure = create_crystal_structure(
             frac_positions=frac_pos,
             cart_positions=cart_pos,
             cell_lengths=jnp.array([a_si, a_si, a_si]),
@@ -285,7 +302,7 @@ class TestKinematicSimulator(chex.TestCase):
         """Test that simulator runs without errors."""
         # Note: lmax=5 needed to get upward scattering at θ=2° grazing angle
         # because G_z must exceed |k_in_z| ≈ k0*sin(2°) ≈ 2.5 1/Å
-        pattern = kinematic_spot_simulator(
+        pattern: RHEEDPattern = kinematic_spot_simulator(
             crystal=self.crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -302,7 +319,7 @@ class TestKinematicSimulator(chex.TestCase):
         assert hasattr(pattern, "intensities")
 
         # Check that we found some reflections
-        n_reflections = len(pattern.intensities)
+        n_reflections: int = len(pattern.intensities)
         assert n_reflections > 0, (
             "Should find reflections at grazing incidence"
         )
@@ -312,7 +329,7 @@ class TestKinematicSimulator(chex.TestCase):
 
     def test_kinematic_spot_simulator_detector_coords(self) -> None:
         """Test detector coordinates are reasonable."""
-        pattern = kinematic_spot_simulator(
+        pattern: RHEEDPattern = kinematic_spot_simulator(
             crystal=self.crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -337,13 +354,15 @@ class TestMakeEwaldSphere(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_geometry(self) -> None:
         """Test center and radius calculation."""
-        var_make_sphere = self.variant(make_ewald_sphere)
+        var_make_sphere: Callable[..., Any] = self.variant(make_ewald_sphere)
 
         # Setup
-        k_mag = 10.0  # 1/Å
-        theta_deg = 2.0
-        phi_deg = 0.0
+        k_mag: float = 10.0  # 1/Å
+        theta_deg: float = 2.0
+        phi_deg: float = 0.0
 
+        center: Float[Array, "..."]
+        radius: Any
         center, radius = var_make_sphere(k_mag, theta_deg, phi_deg)
 
         # Radius should be exactly k_mag
@@ -362,7 +381,7 @@ class TestMakeEwaldSphere(chex.TestCase):
         # center_z = -(-k * sin(theta)) = k * sin(theta) > 0
 
         theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-        expected_z = k_mag * jnp.sin(theta_rad)
+        expected_z: Float[Array, "..."] = k_mag * jnp.sin(theta_rad)
         chex.assert_trees_all_close(center[2], expected_z, rtol=1e-6)
 
 
@@ -380,8 +399,8 @@ class TestMgOExtinctionRules(chex.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Load MgO crystal structure from CIF file."""
-        test_data_dir = Path(__file__).parent.parent.parent / "test_data"
-        cif_path = test_data_dir / "MgO.cif"
+        test_data_dir: Path = Path(__file__).parent.parent.parent / "test_data"
+        cif_path: Path = test_data_dir / "MgO.cif"
         cls.mgo_crystal = parse_cif(cif_path)
 
         # Get reciprocal lattice vectors for MgO
@@ -396,14 +415,18 @@ class TestMgOExtinctionRules(chex.TestCase):
     ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
         hkl: Float[Array, "..."] = jnp.array([[h, k, ell]])
-        g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
+        g_vector: Float[Array, "..."] = miller_to_reciprocal(
+            hkl, self.recip_vectors
+        )[0]
 
-        atom_positions = self.mgo_crystal.cart_positions[:, :3]
-        atomic_numbers = self.mgo_crystal.cart_positions[:, 3].astype(
-            jnp.int32
-        )
+        atom_positions: Float[Array, "..."] = self.mgo_crystal.cart_positions[
+            :, :3
+        ]
+        atomic_numbers: Float[Array, "..."] = self.mgo_crystal.cart_positions[
+            :, 3
+        ].astype(jnp.int32)
 
-        intensity = kinematic_structure_factor(
+        intensity: Any = kinematic_structure_factor(
             g_vector, atom_positions, atomic_numbers
         )
         return float(intensity)
@@ -415,20 +438,23 @@ class TestMgOExtinctionRules(chex.TestCase):
         Examples: (1,1,1), (2,0,0), (2,2,0), (2,2,2)
         """
         # All odd indices - should be allowed
-        all_odd_cases = [
+        all_odd_cases: list[Any] = [
             (1, 1, 1),
             (1, 1, 3),
             (3, 1, 1),
         ]
+        h: int
+        k: int
+        ell: int
         for h, k, ell in all_odd_cases:
-            intensity = self._get_structure_factor_intensity(h, k, ell)
+            intensity: Any = self._get_structure_factor_intensity(h, k, ell)
             assert intensity > 1.0, (
                 f"FCC allowed reflection ({h},{k},{ell}) should have non-zero "
                 f"intensity, got {intensity}"
             )
 
         # All even indices - should be allowed
-        all_even_cases = [
+        all_even_cases: list[Any] = [
             (2, 0, 0),
             (2, 2, 0),
             (2, 2, 2),
@@ -450,7 +476,7 @@ class TestMgOExtinctionRules(chex.TestCase):
         This is the CRITICAL test - if (1,0,0) shows non-zero intensity,
         the structure factor calculation is fundamentally wrong.
         """
-        forbidden_cases = [
+        forbidden_cases: list[Any] = [
             (1, 0, 0),  # Paper explicitly shows this is missing
             (0, 1, 0),
             (0, 0, 1),
@@ -468,10 +494,13 @@ class TestMgOExtinctionRules(chex.TestCase):
             (3, 2, 1),
         ]
 
-        tolerance = 1e-6  # Numerical tolerance for "zero"
+        tolerance: float = 1e-6  # Numerical tolerance for "zero"
 
+        h: int
+        k: int
+        ell: int
         for h, k, ell in forbidden_cases:
-            intensity = self._get_structure_factor_intensity(h, k, ell)
+            intensity: Any = self._get_structure_factor_intensity(h, k, ell)
             assert intensity < tolerance, (
                 f"FCC forbidden reflection ({h},{k},{ell}) should have zero "
                 f"intensity, got {intensity}. "
@@ -487,10 +516,10 @@ class TestMgOExtinctionRules(chex.TestCase):
         F = 4*12 + 4*8 = 48 + 32 = 80
         I = |F|² = 6400
         """
-        intensity = self._get_structure_factor_intensity(0, 0, 0)
+        intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
         # 8 atoms total: 4 Mg (Z=12) + 4 O (Z=8)
-        expected_f = 4 * 12 + 4 * 8  # = 80
-        expected_intensity = expected_f**2  # = 6400
+        expected_f: Float[Array, "..."] = 4 * 12 + 4 * 8  # = 80
+        expected_intensity: Float[Array, "..."] = expected_f**2  # = 6400
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -512,8 +541,8 @@ class TestSrTiO3StructureFactor(chex.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Load SrTiO3 crystal structure from CIF file."""
-        test_data_dir = Path(__file__).parent.parent.parent / "test_data"
-        cif_path = test_data_dir / "SrTiO3.cif"
+        test_data_dir: Path = Path(__file__).parent.parent.parent / "test_data"
+        cif_path: Path = test_data_dir / "SrTiO3.cif"
         cls.sto_crystal = parse_cif(cif_path)
 
         # Verify we got the right number of atoms
@@ -534,14 +563,18 @@ class TestSrTiO3StructureFactor(chex.TestCase):
     ) -> float:
         """Calculate structure factor intensity for given Miller indices."""
         hkl: Float[Array, "..."] = jnp.array([[h, k, ell]])
-        g_vector = miller_to_reciprocal(hkl, self.recip_vectors)[0]
+        g_vector: Float[Array, "..."] = miller_to_reciprocal(
+            hkl, self.recip_vectors
+        )[0]
 
-        atom_positions = self.sto_crystal.cart_positions[:, :3]
-        atomic_numbers = self.sto_crystal.cart_positions[:, 3].astype(
-            jnp.int32
-        )
+        atom_positions: Float[Array, "..."] = self.sto_crystal.cart_positions[
+            :, :3
+        ]
+        atomic_numbers: Float[Array, "..."] = self.sto_crystal.cart_positions[
+            :, 3
+        ].astype(jnp.int32)
 
-        intensity = kinematic_structure_factor(
+        intensity: Any = kinematic_structure_factor(
             g_vector, atom_positions, atomic_numbers
         )
         return float(intensity)
@@ -554,9 +587,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         F = Z_Sr + Z_Ti + 3*Z_O = 38 + 22 + 3*8 = 84
         I = |F|² = 7056
         """
-        intensity = self._get_structure_factor_intensity(0, 0, 0)
-        expected_f = 38 + 22 + 3 * 8  # = 84
-        expected_intensity = expected_f**2  # = 7056
+        intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
+        expected_f: Float[Array, "..."] = 38 + 22 + 3 * 8  # = 84
+        expected_intensity: Float[Array, "..."] = expected_f**2  # = 7056
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -573,10 +606,10 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         F = -38 + 22 + 8 - 8 + 8 = -8
         I = 64
         """
-        intensity = self._get_structure_factor_intensity(1, 0, 0)
+        intensity: Any = self._get_structure_factor_intensity(1, 0, 0)
         # F = -Z_Sr + Z_Ti + Z_O - Z_O + Z_O = -38 + 22 + 8 - 8 + 8 = -8
-        expected_f = -38 + 22 + 8 - 8 + 8  # = -8
-        expected_intensity = expected_f**2  # = 64
+        expected_f: Float[Array, "..."] = -38 + 22 + 8 - 8 + 8  # = -8
+        expected_intensity: Float[Array, "..."] = expected_f**2  # = 64
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -594,9 +627,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         F = 38 + 22 + 8 - 8 - 8 = 52
         I = 2704
         """
-        intensity = self._get_structure_factor_intensity(1, 1, 0)
-        expected_f = 38 + 22 + 8 - 8 - 8  # = 52
-        expected_intensity = expected_f**2  # = 2704
+        intensity: Any = self._get_structure_factor_intensity(1, 1, 0)
+        expected_f: Float[Array, "..."] = 38 + 22 + 8 - 8 - 8  # = 52
+        expected_intensity: Float[Array, "..."] = expected_f**2  # = 2704
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -613,9 +646,9 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         F = -38 + 22 - 8 - 8 - 8 = -40
         I = 1600
         """
-        intensity = self._get_structure_factor_intensity(1, 1, 1)
-        expected_f = -38 + 22 - 8 - 8 - 8  # = -40
-        expected_intensity = expected_f**2  # = 1600
+        intensity: Any = self._get_structure_factor_intensity(1, 1, 1)
+        expected_f: Float[Array, "..."] = -38 + 22 - 8 - 8 - 8  # = -40
+        expected_intensity: Float[Array, "..."] = expected_f**2  # = 1600
 
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
@@ -626,7 +659,7 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         All reflections should have some intensity (though values vary
         based on the atomic basis phases).
         """
-        test_cases = [
+        test_cases: list[Any] = [
             (1, 0, 0),
             (1, 1, 0),
             (1, 1, 1),
@@ -638,8 +671,11 @@ class TestSrTiO3StructureFactor(chex.TestCase):
             (3, 0, 0),
         ]
 
+        h: int
+        k: int
+        ell: int
         for h, k, ell in test_cases:
-            intensity = self._get_structure_factor_intensity(h, k, ell)
+            intensity: Any = self._get_structure_factor_intensity(h, k, ell)
             assert intensity > 0.1, (
                 f"Perovskite reflection ({h},{k},{ell}) should have non-zero "
                 f"intensity, got {intensity}"

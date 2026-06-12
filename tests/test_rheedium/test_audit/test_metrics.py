@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -53,6 +54,7 @@ def _synthetic_three_peak_image(
         (image_height, image_width)
     )
 
+    x0_px: int
     for x0_px in peak_positions_px:
         image = image + jnp.exp(
             -((x_grid - float(x0_px)) ** 2 + (y_grid - 42.0) ** 2)
@@ -67,20 +69,22 @@ class TestReferenceMetadata(chex.TestCase):
 
     def test_reference_metadata_complete(self) -> None:
         """Each stored reference case has the required metadata fields."""
-        metadata_paths = sorted(_REFERENCE_DIR.glob("*_metadata.json"))
+        metadata_paths: Any = sorted(_REFERENCE_DIR.glob("*_metadata.json"))
         assert len(metadata_paths) >= 2
 
+        metadata_path: Any
         for metadata_path in metadata_paths:
-            metadata = json.loads(metadata_path.read_text())
-            missing_keys = [
+            metadata: Any = json.loads(metadata_path.read_text())
+            missing_keys: Any = [
                 key
                 for key in REQUIRED_REFERENCE_METADATA_KEYS
                 if key not in metadata
             ]
             assert missing_keys == []
-            image_path = _REFERENCE_DIR / metadata["image_path"]
+            image_path: Path = _REFERENCE_DIR / metadata["image_path"]
             assert image_path.exists()
 
+            data: Any
             with np.load(image_path) as data:
                 image: Float[NDArray, "..."] = np.asarray(
                     data["image"], dtype=np.float64
@@ -92,8 +96,9 @@ class TestReferenceMetadata(chex.TestCase):
 
     def test_load_reference_cases_reads_images(self) -> None:
         """The loader returns the shipped reference cases with images."""
-        cases = load_reference_cases(_REFERENCE_DIR)
+        cases: Any = load_reference_cases(_REFERENCE_DIR)
         assert len(cases) >= 2
+        case: Any
         for case in cases:
             assert isinstance(case, ReferenceCase)
             assert tuple(case.image.shape) == case.metadata.image_shape_px
@@ -104,21 +109,25 @@ class TestAuditMetrics(chex.TestCase):
 
     def test_metrics_translation_invariant(self) -> None:
         """Spacing and width metrics ignore rigid image translations."""
-        image = _synthetic_three_peak_image((18, 42, 66))
-        shifted_image = _synthetic_three_peak_image((24, 48, 72))
-        peak_positions = dominant_peak_positions(
+        image: Float[Array, "..."] = _synthetic_three_peak_image((18, 42, 66))
+        shifted_image: Float[Array, "..."] = _synthetic_three_peak_image(
+            (24, 48, 72)
+        )
+        peak_positions: Float[Array, "..."] = dominant_peak_positions(
             image, axis="horizontal", n_peaks=3, min_separation_px=6
         )
-        shifted_peak_positions = dominant_peak_positions(
+        shifted_peak_positions: Float[Array, "..."] = dominant_peak_positions(
             shifted_image,
             axis="horizontal",
             n_peaks=3,
             min_separation_px=6,
         )
-        peak = peak_centroid(image)
-        shifted_peak = peak_centroid(shifted_image)
-        profile = extract_streak_profile(image, peak)
-        shifted_profile = extract_streak_profile(shifted_image, shifted_peak)
+        peak: Any = peak_centroid(image)
+        shifted_peak: Any = peak_centroid(shifted_image)
+        profile: Float[Array, "..."] = extract_streak_profile(image, peak)
+        shifted_profile: Float[Array, "..."] = extract_streak_profile(
+            shifted_image, shifted_peak
+        )
 
         chex.assert_trees_all_close(
             rod_spacing_error_px(peak_positions, shifted_peak_positions),
@@ -133,12 +142,12 @@ class TestAuditMetrics(chex.TestCase):
 
     def test_metrics_report_zero_error_on_identical_patterns(self) -> None:
         """Identical detector images produce perfect agreement metrics."""
-        image = _synthetic_three_peak_image((22, 48, 74))
-        peak = peak_centroid(image)
-        peak_positions = dominant_peak_positions(
+        image: Float[Array, "..."] = _synthetic_three_peak_image((22, 48, 74))
+        peak: Any = peak_centroid(image)
+        peak_positions: Float[Array, "..."] = dominant_peak_positions(
             image, axis="horizontal", n_peaks=3, min_separation_px=6
         )
-        profile = extract_streak_profile(image, peak)
+        profile: Float[Array, "..."] = extract_streak_profile(image, peak)
 
         assert normalized_cross_correlation(image, image) == pytest.approx(
             1.0, abs=1e-12

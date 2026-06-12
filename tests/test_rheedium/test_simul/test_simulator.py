@@ -11,6 +11,7 @@ Tests the integration of:
 """
 
 from collections.abc import Callable
+from typing import Any
 from unittest.mock import patch
 
 import chex
@@ -21,7 +22,7 @@ import numpy as np
 import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
-from jaxtyping import Array, Complex, Float, Integer
+from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
 from rheedium.simul.simulator import (
@@ -65,10 +66,10 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
         # Create simple Si(111) structure for testing
-        self.si_crystal = self._create_si111_crystal()
+        self.si_crystal: CrystalStructure = self._create_si111_crystal()
 
     def _create_si111_crystal(self) -> CrystalStructure:
         """Create a simple Si(111) crystal structure.
@@ -78,7 +79,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         crystal : CrystalStructure
             Silicon crystal with (111) orientation
         """
-        a_si = 5.431  # Si lattice constant in Angstroms
+        a_si: float = 5.431  # Si lattice constant in Angstroms
 
         # Si diamond structure fractional positions
         frac_coords: Float[Array, "..."] = jnp.array(
@@ -95,7 +96,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         )
 
         # Convert to Cartesian coordinates
-        cart_coords = frac_coords * a_si
+        cart_coords: Float[Array, "..."] = frac_coords * a_si
 
         # Add atomic numbers (Si = 14)
         atomic_numbers: Float[Array, "..."] = jnp.full(8, 14.0)
@@ -127,7 +128,9 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         surface_fraction: float,
     ) -> None:
         """Test intensity calculation with CTR contributions."""
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
         # Set up simple test case
         # 20 keV, 2 degrees
@@ -139,9 +142,9 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
                 [1.0, 1.0, 0.0],
             ]
         )
-        k_out = k_in + g_vectors
+        k_out: Float[Array, "..."] = k_in + g_vectors
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
@@ -164,14 +167,16 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_surface_enhancement_effect(self) -> None:
         """Test that surface atoms have enhanced thermal motion."""
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
         k_in: Float[Array, "..."] = jnp.array([73.0, 0.0, -2.5])
         g_vectors: Float[Array, "..."] = jnp.array([[1.0, 0.0, 0.0]])
-        k_out = k_in + g_vectors
+        k_out: Float[Array, "..."] = k_in + g_vectors
 
         # Compare with and without surface effects
-        intensities_bulk = var_compute(
+        intensities_bulk: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
@@ -181,7 +186,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             surface_fraction=0.0,  # No surface atoms
         )
 
-        intensities_surface = var_compute(
+        intensities_surface: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
             k_in=k_in,
@@ -208,7 +213,7 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_basic_projection(self) -> None:
         """Test basic projection onto detector plane."""
-        var_project = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(project_on_detector)
 
         k_out: Float[Array, "..."] = jnp.array(
             [
@@ -217,9 +222,9 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
                 [1.0, 0.0, 0.5],
             ]
         )
-        detector_distance = 100.0
+        detector_distance: float = 100.0
 
-        coords = var_project(k_out, detector_distance)
+        coords: Float[Array, "..."] = var_project(k_out, detector_distance)
 
         chex.assert_shape(coords, (3, 2))
         chex.assert_tree_all_finite(coords)
@@ -236,15 +241,15 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     )
     def test_detector_distance_scaling(self, distance: float) -> None:
         """Test that coordinates scale linearly with detector distance."""
-        var_project = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(project_on_detector)
 
         k_out: Float[Array, "..."] = jnp.array([[1.0, 0.5, 0.3]])
-        coords = var_project(k_out, distance)
+        coords: Float[Array, "..."] = var_project(k_out, distance)
 
         chex.assert_shape(coords, (1, 2))
         # Verify linear scaling
-        expected_h = 0.5 * distance / 1.0
-        expected_v = 0.3 * distance / 1.0
+        expected_h: Float[Array, "..."] = 0.5 * distance / 1.0
+        expected_v: Float[Array, "..."] = 0.3 * distance / 1.0
         chex.assert_trees_all_close(
             coords[0], jnp.array([expected_h, expected_v]), rtol=1e-5
         )
@@ -252,11 +257,12 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Test output has correct shape for various inputs."""
-        var_project = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(project_on_detector)
 
+        n: int
         for n in [1, 5, 10, 50]:
             k_out: Float[Array, "..."] = jnp.ones((n, 3))
-            coords = var_project(k_out, 100.0)
+            coords: Float[Array, "..."] = var_project(k_out, 100.0)
             chex.assert_shape(coords, (n, 2))
 
 
@@ -266,12 +272,12 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.k_mag = 73.0  # Typical |k| for 20 keV electrons
+        self.k_mag: float = 73.0  # Typical |k| for 20 keV electrons
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_elastic_scattering_constraint(self) -> None:
         """Test that output wavevectors satisfy |k_out| ≈ |k_in|."""
-        var_find = self.variant(find_kinematic_reflections)
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
         gs: Float[Array, "..."] = jnp.array(
@@ -284,6 +290,8 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
             ]
         )
 
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(k_in, gs, z_sign=-1.0, tolerance=0.5)
 
         # Check shapes
@@ -298,7 +306,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     )
     def test_tolerance_variation(self, tolerance: float) -> None:
         """Test that tighter tolerances allow fewer reflections."""
-        var_find = self.variant(find_kinematic_reflections)
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
         # Small G vectors that barely satisfy elastic condition
@@ -316,6 +324,8 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
             ]
         )
 
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(
             k_in, gs, z_sign=-1.0, tolerance=tolerance
         )
@@ -325,7 +335,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_positive(self) -> None:
         """Test filtering with positive z_sign (forward scattering)."""
-        var_find = self.variant(find_kinematic_reflections)
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, 2.5])
         gs: Float[Array, "..."] = jnp.array(
@@ -336,6 +346,8 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
             ]
         )
 
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(k_in, gs, z_sign=1.0, tolerance=0.5)
 
         chex.assert_shape(allowed_indices, (3,))
@@ -343,7 +355,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_negative(self) -> None:
         """Test filtering with negative z_sign (back scattering - RHEED)."""
-        var_find = self.variant(find_kinematic_reflections)
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
         gs: Float[Array, "..."] = jnp.array(
@@ -354,6 +366,8 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
             ]
         )
 
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(k_in, gs, z_sign=-1.0, tolerance=0.5)
 
         chex.assert_shape(allowed_indices, (3,))
@@ -361,11 +375,13 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_empty_g_vectors(self) -> None:
         """Test handling of single G vector."""
-        var_find = self.variant(find_kinematic_reflections)
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
         gs: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
 
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(k_in, gs, tolerance=0.5)
 
         chex.assert_shape(allowed_indices, (1,))
@@ -380,7 +396,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.si_sliced = self._create_simple_sliced_crystal()
+        self.si_sliced: Any = self._create_simple_sliced_crystal()
 
     def _create_simple_sliced_crystal(self) -> SlicedCrystal:
         """Create a simple sliced crystal for testing."""
@@ -408,11 +424,11 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(
+        var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
 
-        potential = var_convert(
+        potential: Any = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=0.5,
@@ -421,7 +437,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         # Check slices array exists
         chex.assert_tree_all_finite(potential.slices)
         # Should have nz slices based on depth/slice_thickness
-        nz_expected = int(jnp.ceil(5.0 / 2.0))
+        nz_expected: Float[Array, "..."] = int(jnp.ceil(5.0 / 2.0))
         self.assertEqual(potential.slices.shape[0], nz_expected)
 
     @chex.variants(with_device=True, without_jit=True)
@@ -435,11 +451,11 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(
+        var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
 
-        potential = var_convert(
+        potential: Any = var_convert(
             self.si_sliced,
             slice_thickness=thickness,
             pixel_size=0.5,
@@ -447,7 +463,7 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         chex.assert_tree_all_finite(potential.slices)
         # Number of slices should be ceil(depth / thickness)
-        expected_nz = int(jnp.ceil(5.0 / thickness))
+        expected_nz: Float[Array, "..."] = int(jnp.ceil(5.0 / thickness))
         self.assertEqual(potential.slices.shape[0], expected_nz)
 
     @chex.variants(with_device=True, without_jit=True)
@@ -461,11 +477,11 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(
+        var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
 
-        potential = var_convert(
+        potential: Any = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=pixel_size,
@@ -473,8 +489,8 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         chex.assert_tree_all_finite(potential.slices)
         # Grid should scale with pixel size
-        expected_nx = int(jnp.ceil(15.0 / pixel_size))
-        expected_ny = int(jnp.ceil(15.0 / pixel_size))
+        expected_nx: Float[Array, "..."] = int(jnp.ceil(15.0 / pixel_size))
+        expected_ny: Float[Array, "..."] = int(jnp.ceil(15.0 / pixel_size))
         self.assertEqual(potential.slices.shape[1], expected_nx)
         self.assertEqual(potential.slices.shape[2], expected_ny)
 
@@ -485,11 +501,11 @@ class TestSlicedCrystalToProjectedPotentialSlices(
     )
     def test_parameterization_variation(self, parameterization: str) -> None:
         """Projected-potential slices are finite for both models."""
-        var_convert = self.variant(
+        var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
 
-        potential = var_convert(
+        potential: Any = var_convert(
             self.si_sliced,
             slice_thickness=2.0,
             pixel_size=0.5,
@@ -504,14 +520,14 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
         Note: JIT compilation not supported due to dynamic grid dimensions.
         """
-        var_convert = self.variant(
+        var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
 
-        pixel_size = 0.3
-        slice_thickness = 1.5
+        pixel_size: float = 0.3
+        slice_thickness: float = 1.5
 
-        potential = var_convert(
+        potential: Any = var_convert(
             self.si_sliced,
             slice_thickness=slice_thickness,
             pixel_size=pixel_size,
@@ -534,11 +550,14 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.simple_potential = self._create_simple_potential()
+        self.simple_potential: Any = self._create_simple_potential()
 
     def _create_simple_potential(self) -> PotentialSlices:
         """Create a simple potential for testing."""
         # Small grid for fast tests
+        nx: tuple[Any, ...]
+        ny: tuple[Any, ...]
+        nz: tuple[Any, ...]
         nx, ny, nz = 32, 32, 3
         slices: Float[Array, "..."] = jnp.zeros((nz, nx, ny))
         # Add a small potential at center of first slice
@@ -554,9 +573,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Test that exit wave has same shape as input grid."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -568,15 +587,15 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_exit_wave_nonzero(self) -> None:
         """Test that exit wave has non-zero amplitude."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
         )
 
-        total_intensity = float(jnp.sum(jnp.abs(exit_wave) ** 2))
+        total_intensity: scalar_float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
 
     @chex.all_variants(without_device=False, with_pmap=False)
@@ -587,9 +606,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     )
     def test_voltage_variation(self, voltage: float) -> None:
         """Test propagation at different voltages."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=voltage,
             theta_deg=2.0,
@@ -597,7 +616,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
         # Higher voltage = shorter wavelength = different phase evolution
-        total_intensity = float(jnp.sum(jnp.abs(exit_wave) ** 2))
+        total_intensity: scalar_float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
 
     @chex.all_variants(without_device=False, with_pmap=False)
@@ -608,9 +627,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     )
     def test_grazing_angle_variation(self, theta: float) -> None:
         """Test propagation at different grazing angles."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=theta,
@@ -626,9 +645,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     )
     def test_azimuthal_angle_variation(self, phi: float) -> None:
         """Test propagation at different azimuthal angles."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -645,9 +664,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     )
     def test_inner_potential_variation(self, v0: float) -> None:
         """Test effect of inner potential on propagation."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -664,9 +683,9 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     )
     def test_bandwidth_limit_variation(self, limit: float) -> None:
         """Test different bandwidth limiting values."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -678,18 +697,18 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_zero_potential_propagation(self) -> None:
         """Test propagation through zero potential (free space)."""
-        var_propagate = self.variant(multislice_propagate)
+        var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         # Zero potential
         zero_slices: Float[Array, "..."] = jnp.zeros((3, 32, 32))
-        zero_potential = create_potential_slices(
+        zero_potential: Any = create_potential_slices(
             slices=zero_slices,
             slice_thickness=2.0,
             x_calibration=0.5,
             y_calibration=0.5,
         )
 
-        exit_wave = var_propagate(
+        exit_wave: Any = var_propagate(
             zero_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -697,7 +716,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(exit_wave)
         # Should still have intensity (plane wave propagates)
-        total_intensity = float(jnp.sum(jnp.abs(exit_wave) ** 2))
+        total_intensity: scalar_float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
 
 
@@ -707,10 +726,13 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.simple_potential = self._create_test_potential()
+        self.simple_potential: Any = self._create_test_potential()
 
     def _create_test_potential(self) -> PotentialSlices:
         """Create potential slices for testing."""
+        nx: tuple[Any, ...]
+        ny: tuple[Any, ...]
+        nz: tuple[Any, ...]
         nx, ny, nz = 32, 32, 3
         slices: Float[Array, "..."] = jnp.zeros((nz, nx, ny))
         # Add some structure
@@ -731,9 +753,9 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -749,15 +771,15 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
         )
 
-        n = pattern.G_indices.shape[0]
+        n: Any = pattern.G_indices.shape[0]
         chex.assert_shape(pattern.k_out, (n, 3))
         chex.assert_shape(pattern.detector_points, (n, 2))
         chex.assert_shape(pattern.intensities, (n,))
@@ -773,9 +795,9 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -795,9 +817,9 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=voltage,
             theta_deg=2.0,
@@ -816,9 +838,9 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=theta,
@@ -832,26 +854,26 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         Note: JIT not supported due to dynamic array sizes.
         """
-        var_simulate = self.variant(multislice_simulator)
+        var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
-        pattern = var_simulate(
+        pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             voltage_kv=20.0,
             theta_deg=2.0,
         )
 
         # k_out should have approximately same magnitude as k_in
-        voltage_kv = 20.0
-        lam_ang = float(wavelength_ang(voltage_kv))
-        k_mag_expected = 2.0 * jnp.pi / lam_ang
+        voltage_kv: float = 20.0
+        lam_ang: Any = float(wavelength_ang(voltage_kv))
+        k_mag_expected: scalar_float = 2.0 * jnp.pi / lam_ang
 
         k_out_mags: Float[Array, "..."] = jnp.linalg.norm(
             pattern.k_out, axis=1
         )
 
         # Filter non-zero k_out (valid reflections)
-        valid_mask = k_out_mags > 0
-        valid_k_out_mags = k_out_mags[valid_mask]
+        valid_mask: Bool[Array, "..."] = k_out_mags > 0
+        valid_k_out_mags: Float[Array, "..."] = k_out_mags[valid_mask]
 
         if valid_k_out_mags.shape[0] > 0:
             # All valid k_out should be close to k_in magnitude
@@ -870,27 +892,27 @@ class TestComputeKinematicIntensitiesExtended(
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.si_crystal = self._create_si_crystal()
-        self.k_in = jnp.array([73.0, 0.0, -2.5])
-        self.g_vectors = jnp.array(
+        self.si_crystal: CrystalStructure = self._create_si_crystal()
+        self.k_in: Float[Array, "..."] = jnp.array([73.0, 0.0, -2.5])
+        self.g_vectors: Float[Array, "..."] = jnp.array(
             [
                 [1.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
                 [1.0, 1.0, 0.0],
             ]
         )
-        self.k_out = self.k_in + self.g_vectors
+        self.k_out: Float[Array, "..."] = self.k_in + self.g_vectors
 
     def _create_si_crystal(self) -> CrystalStructure:
         """Create simple Si crystal for testing."""
-        a_si = 5.431
+        a_si: float = 5.431
         frac_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [0.25, 0.25, 0.25],
             ]
         )
-        cart_coords = frac_coords * a_si
+        cart_coords: Float[Array, "..."] = frac_coords * a_si
         atomic_numbers: Float[Array, "..."] = jnp.full(2, 14.0)
         frac_positions: Float[Array, "..."] = jnp.column_stack(
             [frac_coords, atomic_numbers]
@@ -913,9 +935,11 @@ class TestComputeKinematicIntensitiesExtended(
         Note: jittable with ctr_mixing_mode as a static argument; see
         the JAX Transformability guide and test_ctr_jit_static_mode.
         """
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -934,9 +958,11 @@ class TestComputeKinematicIntensitiesExtended(
         Note: jittable with ctr_mixing_mode as a static argument; see
         the JAX Transformability guide and test_ctr_jit_static_mode.
         """
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -955,9 +981,11 @@ class TestComputeKinematicIntensitiesExtended(
         Note: jittable with ctr_mixing_mode as a static argument; see
         the JAX Transformability guide and test_ctr_jit_static_mode.
         """
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -978,17 +1006,17 @@ class TestComputeKinematicIntensitiesExtended(
         fully compiled function whose output matches the eager result.
         See the JAX Transformability guide.
         """
-        kwargs = {
+        kwargs: Any = {
             "crystal": self.si_crystal,
             "g_allowed": self.g_vectors,
             "k_in": self.k_in,
             "k_out": self.k_out,
             "ctr_mixing_mode": "incoherent",
         }
-        eager = compute_kinematic_intensities_with_ctrs(**kwargs)
-        compiled = eqx.filter_jit(compute_kinematic_intensities_with_ctrs)(
-            **kwargs
-        )
+        eager: Any = compute_kinematic_intensities_with_ctrs(**kwargs)
+        compiled: Any = eqx.filter_jit(
+            compute_kinematic_intensities_with_ctrs
+        )(**kwargs)
         chex.assert_trees_all_close(eager, compiled, atol=1e-6)
 
     @chex.all_variants(without_device=False, with_pmap=False)
@@ -999,9 +1027,11 @@ class TestComputeKinematicIntensitiesExtended(
     )
     def test_ctr_weight_variation(self, weight: float) -> None:
         """Test effect of CTR weight on intensities."""
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -1017,11 +1047,13 @@ class TestComputeKinematicIntensitiesExtended(
 
         Note: JIT not supported due to SurfaceConfig with string method.
         """
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        config = SurfaceConfig(method="height", height_fraction=0.3)
+        config: Any = SurfaceConfig(method="height", height_fraction=0.3)
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -1037,11 +1069,13 @@ class TestComputeKinematicIntensitiesExtended(
 
         Note: JIT not supported due to SurfaceConfig with string method.
         """
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        config = SurfaceConfig(method="layers", n_layers=1)
+        config: Any = SurfaceConfig(method="layers", n_layers=1)
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -1059,9 +1093,11 @@ class TestComputeKinematicIntensitiesExtended(
     )
     def test_hk_tolerance_variation(self, tolerance: float) -> None:
         """Test effect of h,k tolerance for CTR application."""
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
-        intensities = var_compute(
+        intensities: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -1074,7 +1110,9 @@ class TestComputeKinematicIntensitiesExtended(
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_gating_uses_explicit_hkl(self) -> None:
         """Explicit hkl should enable CTR when |G| misses tolerance."""
-        var_compute = self.variant(compute_kinematic_intensities_with_ctrs)
+        var_compute: Callable[..., Any] = self.variant(
+            compute_kinematic_intensities_with_ctrs
+        )
 
         hkls: Float[Array, "..."] = jnp.array(
             [
@@ -1086,14 +1124,14 @@ class TestComputeKinematicIntensitiesExtended(
         )
 
         # Tight tolerance makes derived indices miss near-integer check
-        intens_no_hkl = var_compute(
+        intens_no_hkl: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
             k_out=self.k_out,
             hk_tolerance=0.01,
         )
-        intens_with_hkl = var_compute(
+        intens_with_hkl: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
@@ -1102,8 +1140,8 @@ class TestComputeKinematicIntensitiesExtended(
             hk_tolerance=0.01,
         )
 
-        total_no = float(jnp.sum(intens_no_hkl))
-        total_with = float(jnp.sum(intens_with_hkl))
+        total_no: scalar_float = float(jnp.sum(intens_no_hkl))
+        total_with: scalar_float = float(jnp.sum(intens_with_hkl))
 
         self.assertGreater(total_with, total_no)
 
@@ -1114,11 +1152,11 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
-        self.mgo_crystal = self._create_mgo_crystal()
+        self.mgo_crystal: Any = self._create_mgo_crystal()
 
     def _create_mgo_crystal(self) -> CrystalStructure:
         """Create a simple MgO rock-salt structure for testing."""
-        a_mgo = 4.212
+        a_mgo: float = 4.212
 
         frac_coords: Float[Array, "..."] = jnp.array(
             [
@@ -1127,7 +1165,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        cart_coords = frac_coords * a_mgo
+        cart_coords: Float[Array, "..."] = frac_coords * a_mgo
 
         atomic_numbers: Float[Array, "..."] = jnp.array([12.0, 8.0])
         frac_positions: Float[Array, "..."] = jnp.column_stack(
@@ -1146,7 +1184,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_basic_pattern_generation(self) -> None:
         """Test that ewald_simulator produces a valid RHEED pattern."""
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1155,7 +1193,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         n_valid: scalar_float = jnp.sum(valid_mask)
         self.assertGreater(
             int(n_valid), 0, "Should have at least one valid reflection"
@@ -1166,7 +1204,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "All intensities should be non-negative",
         )
 
-        valid_detector = pattern.detector_points[valid_mask]
+        valid_detector: Any = pattern.detector_points[valid_mask]
         self.assertTrue(
             jnp.all(jnp.isfinite(valid_detector)),
             "Valid detector points should be finite",
@@ -1174,7 +1212,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_upward_scattering_only(self) -> None:
         """Only upward-scattered reflections are returned (k_out_z > 0)."""
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1182,8 +1220,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=5,
         )
 
-        valid_mask = pattern.G_indices >= 0
-        k_out_valid = pattern.k_out[valid_mask]
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
+        k_out_valid: Float[Array, "..."] = pattern.k_out[valid_mask]
 
         self.assertTrue(
             jnp.all(k_out_valid[:, 2] > 0),
@@ -1199,13 +1237,16 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         hmax: int,
         kmax: int,
         detector_distance: float,
-    ) -> np.ndarray:
+    ) -> Float[NDArray, "points detector_xy"]:
         """Construct detector intersections directly from both rod branches."""
-        lam_ang = float(wavelength_ang(voltage_kv))
+        lam_ang: Any = float(wavelength_ang(voltage_kv))
         k_in: Float[NDArray, "..."] = np.asarray(
             incident_wavevector(lam_ang, theta_deg, phi_deg),
             dtype=np.float64,
         )
+        recip_a: Float[NDArray, "..."]
+        recip_b: Float[NDArray, "..."]
+        recip_c: Float[NDArray, "..."]
         recip_a, recip_b, recip_c = np.asarray(
             reciprocal_lattice_vectors(
                 *crystal.cell_lengths,
@@ -1214,27 +1255,32 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             ),
             dtype=np.float64,
         )
-        k_mag_sq = float(np.dot(k_in, k_in))
+        k_mag_sq: Any = float(np.dot(k_in, k_in))
         rows: list[tuple[float, float]] = []
+        h: int
         for h in range(-hmax, hmax + 1):
+            k: int
             for k in range(-kmax, kmax + 1):
-                g_hk = h * recip_a + k * recip_b
-                p_vec = k_in + g_hk
-                a_coef = float(np.dot(recip_c, recip_c))
-                b_coef = float(2.0 * np.dot(p_vec, recip_c))
-                c_coef = float(np.dot(p_vec, p_vec) - k_mag_sq)
-                discriminant = b_coef * b_coef - 4.0 * a_coef * c_coef
+                g_hk: Any = h * recip_a + k * recip_b
+                p_vec: Any = k_in + g_hk
+                a_coef: Any = float(np.dot(recip_c, recip_c))
+                b_coef: Any = float(2.0 * np.dot(p_vec, recip_c))
+                c_coef: Any = float(np.dot(p_vec, p_vec) - k_mag_sq)
+                discriminant: Any = b_coef * b_coef - 4.0 * a_coef * c_coef
                 if discriminant < 0.0:
                     continue
-                sqrt_disc = discriminant**0.5
+                sqrt_disc: Any = discriminant**0.5
+                l_val: int
                 for l_val in (
                     (-b_coef + sqrt_disc) / (2.0 * a_coef),
                     (-b_coef - sqrt_disc) / (2.0 * a_coef),
                 ):
-                    k_out = p_vec + l_val * recip_c
+                    k_out: Float[Array, "..."] = p_vec + l_val * recip_c
                     if k_out[0] <= 0.0 or k_out[2] <= 0.0:
                         continue
-                    scale = detector_distance / max(float(k_out[0]), 1e-12)
+                    scale: float = detector_distance / max(
+                        float(k_out[0]), 1e-12
+                    )
                     rows.append(
                         (float(k_out[1] * scale), float(k_out[2] * scale))
                     )
@@ -1249,7 +1295,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     @staticmethod
     def _create_sto_crystal() -> CrystalStructure:
         """Create a simple cubic SrTiO3 unit cell for Ewald tests."""
-        a_sto = 3.905
+        a_sto: float = 3.905
         frac_coords: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
@@ -1259,7 +1305,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
                 [0.0, 0.5, 0.5],
             ]
         )
-        cart_coords = frac_coords * a_sto
+        cart_coords: Float[Array, "..."] = frac_coords * a_sto
         atomic_numbers: Float[Array, "..."] = jnp.array(
             [38.0, 22.0, 8.0, 8.0, 8.0]
         )
@@ -1273,10 +1319,10 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     @parameterized.parameters(1.5, 2.5, 4.0)
     def test_matches_raw_dual_branch_geometry(self, theta_deg: float) -> None:
         """Sparse Ewald output matches direct two-branch rod geometry."""
-        detector_distance = 900.0
-        hmax = 8
-        kmax = 8
-        raw_points = self._raw_ctr_detector_points(
+        detector_distance: float = 900.0
+        hmax: int = 8
+        kmax: int = 8
+        raw_points: Float[Array, "..."] = self._raw_ctr_detector_points(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=theta_deg,
@@ -1285,7 +1331,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=kmax,
             detector_distance=detector_distance,
         )
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=theta_deg,
@@ -1294,7 +1340,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=kmax,
             detector_distance=detector_distance,
         )
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         detector_points: Float[NDArray, "..."] = np.asarray(
             pattern.detector_points[valid_mask]
         )
@@ -1319,11 +1365,11 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         self, theta_deg: float
     ) -> None:
         """SrTiO3 sparse Ewald output matches the raw detector geometry."""
-        sto_crystal = self._create_sto_crystal()
-        detector_distance = 900.0
-        hmax = 14
-        kmax = 14
-        raw_points = self._raw_ctr_detector_points(
+        sto_crystal: Any = self._create_sto_crystal()
+        detector_distance: float = 900.0
+        hmax: int = 14
+        kmax: int = 14
+        raw_points: Float[Array, "..."] = self._raw_ctr_detector_points(
             crystal=sto_crystal,
             voltage_kv=18.0,
             theta_deg=theta_deg,
@@ -1332,7 +1378,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=kmax,
             detector_distance=detector_distance,
         )
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=sto_crystal,
             voltage_kv=18.0,
             theta_deg=theta_deg,
@@ -1343,7 +1389,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             temperature=300.0,
             surface_roughness=0.55,
         )
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         detector_points: Float[NDArray, "..."] = np.asarray(
             pattern.detector_points[valid_mask]
         )
@@ -1371,7 +1417,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_elastic_scattering_constraint(self) -> None:
         """Test that |k_out| = |k_in| (elastic scattering)."""
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1379,11 +1425,11 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_mask = pattern.G_indices >= 0
-        k_out_valid = pattern.k_out[valid_mask]
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
+        k_out_valid: Float[Array, "..."] = pattern.k_out[valid_mask]
 
-        wl = wavelength_ang(20.0)
-        k_mag_expected = 2.0 * jnp.pi / wl
+        wl: Any = wavelength_ang(20.0)
+        k_mag_expected: scalar_float = 2.0 * jnp.pi / wl
 
         k_out_mags: Float[Array, "..."] = jnp.linalg.norm(k_out_valid, axis=1)
         relative_error: Float[Array, "..."] = (
@@ -1397,7 +1443,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_azimuthal_rotation_changes_pattern(self) -> None:
         """Changing phi_deg rotates the pattern."""
-        pattern_0 = ewald_simulator(
+        pattern_0: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1406,7 +1452,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        pattern_45 = ewald_simulator(
+        pattern_45: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1424,7 +1470,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_temperature_affects_intensity(self) -> None:
         """Higher temperature reduces intensity (Debye-Waller)."""
-        pattern_low_T = ewald_simulator(
+        pattern_low_T: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1433,7 +1479,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        pattern_high_T = ewald_simulator(
+        pattern_high_T: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1442,8 +1488,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_low = pattern_low_T.G_indices >= 0
-        valid_high = pattern_high_T.G_indices >= 0
+        valid_low: Any = pattern_low_T.G_indices >= 0
+        valid_high: Any = pattern_high_T.G_indices >= 0
 
         self.assertGreater(
             int(jnp.sum(valid_low)),
@@ -1458,7 +1504,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_roughness_affects_intensity(self) -> None:
         """Surface roughness affects CTR intensity."""
-        pattern_smooth = ewald_simulator(
+        pattern_smooth: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1467,7 +1513,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        pattern_rough = ewald_simulator(
+        pattern_rough: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1476,8 +1522,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_smooth = pattern_smooth.G_indices >= 0
-        valid_rough = pattern_rough.G_indices >= 0
+        valid_smooth: Any = pattern_smooth.G_indices >= 0
+        valid_rough: Any = pattern_rough.G_indices >= 0
 
         self.assertGreater(
             int(jnp.sum(valid_smooth)),
@@ -1492,7 +1538,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_voltage_affects_wavevector(self) -> None:
         """Different voltages give different k magnitudes."""
-        pattern_10kv = ewald_simulator(
+        pattern_10kv: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=10.0,
             theta_deg=2.0,
@@ -1500,7 +1546,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        pattern_30kv = ewald_simulator(
+        pattern_30kv: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=30.0,
             theta_deg=2.0,
@@ -1508,8 +1554,8 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_10 = pattern_10kv.G_indices >= 0
-        valid_30 = pattern_30kv.G_indices >= 0
+        valid_10: Any = pattern_10kv.G_indices >= 0
+        valid_30: Any = pattern_30kv.G_indices >= 0
 
         if jnp.any(valid_10) and jnp.any(valid_30):
             k_mag_10: Float[Array, "..."] = jnp.linalg.norm(
@@ -1527,7 +1573,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_jax_jit_compatible(self) -> None:
         """ewald_simulator works under JAX JIT compilation."""
-        pattern = jax.jit(
+        pattern: Callable[..., Any] = jax.jit(
             ewald_simulator,
             static_argnames=("hmax", "kmax"),
         )(
@@ -1538,7 +1584,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=2,
         )
 
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         self.assertGreater(
             int(jnp.sum(valid_mask)),
             0,
@@ -1547,9 +1593,9 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_surface_config_parameter(self) -> None:
         """surface_config parameter works correctly."""
-        config = SurfaceConfig(method="height", height_fraction=0.5)
+        config: Any = SurfaceConfig(method="height", height_fraction=0.5)
 
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1558,7 +1604,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         self.assertGreater(
             int(jnp.sum(valid_mask)),
             0,
@@ -1573,7 +1619,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     )
     def test_various_grazing_angles(self, theta_deg: float) -> None:
         """Various grazing angles produce valid patterns."""
-        pattern = ewald_simulator(
+        pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             voltage_kv=20.0,
             theta_deg=theta_deg,
@@ -1581,7 +1627,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             kmax=3,
         )
 
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         self.assertGreaterEqual(
             int(jnp.sum(valid_mask)),
             0,
@@ -1592,7 +1638,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         self,
     ) -> None:
         """Orientation wrapper matches explicit per-angle pattern union."""
-        orientation_dist = create_discrete_orientation(
+        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 45.0]),
             weights=jnp.array([0.25, 0.75]),
         )
@@ -1650,7 +1696,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             "rheedium.simul.simulator.ewald_simulator",
             side_effect=fake_ewald_simulator,
         ):
-            averaged = ewald_simulator_with_orientation_distribution(
+            averaged: Any = ewald_simulator_with_orientation_distribution(
                 crystal=_SI_CRYSTAL_2ATOM,
                 orientation_distribution=orientation_dist,
                 voltage_kv=20.0,
@@ -1701,12 +1747,12 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     def test_orientation_distribution_wrapper_jits(self) -> None:
         """Orientation-distribution wrapper should compile under jax.jit."""
-        orientation_dist = create_discrete_orientation(
+        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 30.0]),
             weights=jnp.array([0.4, 0.6]),
         )
 
-        pattern = jax.jit(
+        pattern: Callable[..., Any] = jax.jit(
             ewald_simulator_with_orientation_distribution,
             static_argnames=("hmax", "kmax", "n_mosaic_points"),
         )(
@@ -1719,7 +1765,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             n_mosaic_points=1,
         )
 
-        valid_mask = pattern.G_indices >= 0
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         self.assertGreater(
             int(jnp.sum(valid_mask)),
             0,
@@ -1733,11 +1779,11 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
 def _make_si_crystal_2atom() -> CrystalStructure:
     """Create a 2-atom Si crystal for fast gradient tests."""
-    a_si = 5.431
+    a_si: float = 5.431
     frac_coords: Float[Array, "..."] = jnp.array(
         [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
     )
-    cart_coords = frac_coords * a_si
+    cart_coords: Float[Array, "..."] = frac_coords * a_si
     atomic_numbers: Float[Array, "..."] = jnp.full(2, 14.0)
     frac_positions: Float[Array, "..."] = jnp.column_stack(
         [frac_coords, atomic_numbers]
@@ -1761,7 +1807,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
     def test_render_pattern_to_image_shape_and_normalization(self) -> None:
         """Rasterized detector image has requested shape and unit maximum."""
-        pattern = RHEEDPattern(
+        pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
             k_out=jnp.array(
                 [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]], dtype=jnp.float64
@@ -1772,7 +1818,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             intensities=jnp.array([1.0, 0.5], dtype=jnp.float64),
         )
 
-        image = render_pattern_to_image(
+        image: Float[Array, "..."] = render_pattern_to_image(
             pattern=pattern,
             image_shape_px=(32, 40),
             pixel_size_mm=(1.0, 2.0),
@@ -1787,7 +1833,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
     def test_detector_extent_mm_matches_calibration(self) -> None:
         """Display extent converts beam centre and pixel pitch correctly."""
-        extent = detector_extent_mm(
+        extent: Float[Array, "..."] = detector_extent_mm(
             image_shape_px=(100, 200),
             pixel_size_mm=(1.5, 3.0),
             beam_center_px=(80.0, 5.0),
@@ -1799,7 +1845,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         image: Float[Array, "..."] = jnp.array(
             [[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64
         )
-        compressed = log_compress_image(image, gain=20.0)
+        compressed: Any = log_compress_image(image, gain=20.0)
         chex.assert_shape(compressed, (2, 2))
         chex.assert_tree_all_finite(compressed)
         self.assertTrue(jnp.all(compressed >= 0.0))
@@ -1812,7 +1858,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         image: Float[Array, "..."] = jnp.array(
             [[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64
         )
-        compressed = log_compress_image(
+        compressed: Any = log_compress_image(
             image,
             gain=20.0,
             dynamic_range_floor=0.5,
@@ -1828,7 +1874,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self,
     ) -> None:
         """Spot-render mode matches direct rasterization when unbroadened."""
-        kwargs = {
+        kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "voltage_kv": 20.0,
             "theta_deg": 2.0,
@@ -1843,7 +1889,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "beam_center_px": (12.0, 2.0),
             "spot_sigma_px": 1.2,
         }
-        sparse_pattern = RHEEDPattern(
+        sparse_pattern: Integer[Array, "..."] = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
             k_out=jnp.array(
                 [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]], dtype=jnp.float64
@@ -1853,7 +1899,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             ),
             intensities=jnp.array([1.0, 0.4], dtype=jnp.float64),
         )
-        direct_image = render_pattern_to_image(
+        direct_image: Float[Array, "..."] = render_pattern_to_image(
             pattern=sparse_pattern,
             image_shape_px=kwargs["image_shape_px"],
             pixel_size_mm=kwargs["pixel_size_mm"],
@@ -1864,7 +1910,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "rheedium.simul.simulator.ewald_simulator",
             return_value=sparse_pattern,
         ):
-            orchestrated_image = simulate_detector_image(
+            orchestrated_image: Float[Array, "..."] = simulate_detector_image(
                 **kwargs,
                 angular_divergence_mrad=0.0,
                 energy_spread_ev=0.0,
@@ -1882,7 +1928,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
         """Check dense rendering elongates CTRs vertically on detector."""
-        image = simulate_detector_image(
+        image: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
             voltage_kv=20.0,
             theta_deg=2.0,
@@ -1903,6 +1949,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             n_energy_samples=1,
         )
 
+        peak_row: Float[Array, "..."]
+        peak_col: Float[Array, "..."]
         peak_row, peak_col = jnp.unravel_index(jnp.argmax(image), image.shape)
         vertical_support: scalar_float = jnp.sum(image[:, peak_col] > 0.25)
         horizontal_support: scalar_float = jnp.sum(image[peak_row, :] > 0.25)
@@ -1917,11 +1965,11 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self,
     ) -> None:
         """Check orientation-distribution yields a valid dense image."""
-        orientation_dist = create_discrete_orientation(
+        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
             weights=jnp.array([0.4, 0.6]),
         )
-        image = simulate_detector_image(
+        image: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
             orientation_distribution=orientation_dist,
             voltage_kv=20.0,
@@ -1955,7 +2003,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
 
     def _ewald_loss(self, **override: object) -> scalar_float:
         """Compute sum of intensities from ewald_simulator."""
-        defaults = {
+        defaults: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "voltage_kv": 20.0,
             "theta_deg": 2.0,
@@ -1966,7 +2014,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
             "surface_roughness": 0.5,
         }
         defaults.update(override)
-        pattern = ewald_simulator(**defaults)
+        pattern: Float[Array, "..."] = ewald_simulator(**defaults)
         return jnp.sum(pattern.intensities)
 
     def test_grad_temperature(self) -> None:
@@ -2043,7 +2091,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         """Ewald simulator grad w.r.t. temperature matches finite diff."""
 
         def f(temp: scalar_float) -> scalar_float:
-            pattern = ewald_simulator(
+            pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
                 theta_deg=2.0,
@@ -2061,7 +2109,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         """Ewald simulator grad w.r.t. roughness matches finite diff."""
 
         def f(roughness: scalar_float) -> scalar_float:
-            pattern = ewald_simulator(
+            pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
                 theta_deg=2.0,
@@ -2084,7 +2132,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         cart_positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
         )
-        sliced = create_sliced_crystal(
+        sliced: SlicedCrystal = create_sliced_crystal(
             cart_positions=cart_positions,
             cell_lengths=jnp.array([15.0, 15.0, 5.0]),
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
@@ -2095,7 +2143,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         )
 
         def loss(voltage: scalar_float) -> scalar_float:
-            potential = sliced_crystal_to_projected_potential_slices(
+            potential: Any = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
@@ -2115,7 +2163,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         cart_positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
         )
-        sliced = create_sliced_crystal(
+        sliced: SlicedCrystal = create_sliced_crystal(
             cart_positions=cart_positions,
             cell_lengths=jnp.array([15.0, 15.0, 5.0]),
             cell_angles=jnp.array([90.0, 90.0, 90.0]),
@@ -2126,7 +2174,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         )
 
         def f(voltage: scalar_float) -> scalar_float:
-            potential = sliced_crystal_to_projected_potential_slices(
+            potential: Any = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
@@ -2148,7 +2196,7 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
         """Batched ewald_simulator over temps matches sequential."""
 
         def f(temp: scalar_float) -> scalar_float:
-            pattern = ewald_simulator(
+            pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
                 theta_deg=2.0,

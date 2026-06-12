@@ -13,10 +13,12 @@ class TestLatticeToCellParams(chex.TestCase):
 
     def test_cubic_lattice(self) -> None:
         """Cubic: a=b=c, alpha=beta=gamma=90 deg."""
-        a = 4.0
+        a: float = 4.0
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [0, a, 0], [0, 0, a]]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(lengths, jnp.array([a, a, a]), atol=1e-10)
@@ -29,6 +31,8 @@ class TestLatticeToCellParams(chex.TestCase):
         lattice: Float[Array, "..."] = jnp.array(
             [[3.0, 0, 0], [0, 4.0, 0], [0, 0, 5.0]]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(
@@ -40,11 +44,13 @@ class TestLatticeToCellParams(chex.TestCase):
 
     def test_hexagonal_lattice(self) -> None:
         """Hexagonal: a=b != c, alpha=beta=90 deg, gamma=120 deg."""
-        a = 3.0
-        c = 5.0
+        a: float = 3.0
+        c: float = 5.0
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [-a / 2, a * jnp.sqrt(3) / 2, 0], [0, 0, c]]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(lengths, jnp.array([a, a, c]), atol=1e-10)
@@ -57,6 +63,8 @@ class TestLatticeToCellParams(chex.TestCase):
         lattice: Float[Array, "..."] = jnp.array(
             [[5.0, 0.0, 0.0], [1.0, 4.0, 0.0], [0.5, 0.5, 6.0]]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(lengths[0], 5.0, atol=1e-10)
@@ -71,11 +79,13 @@ class TestLatticeToCellParams(chex.TestCase):
 
     def test_tetragonal_lattice(self) -> None:
         """Tetragonal: a=b != c, alpha=beta=gamma=90 deg."""
-        a = 4.0
-        c = 6.0
+        a: float = 4.0
+        c: float = 6.0
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [0, a, 0], [0, 0, c]]
         )
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(lengths, jnp.array([a, a, c]), atol=1e-10)
@@ -91,6 +101,8 @@ class TestLatticeToCellParams(chex.TestCase):
     def test_various_cell_sizes(self, a: float) -> None:
         """Test with various cell sizes."""
         lattice: Float[Array, "..."] = jnp.eye(3) * a
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         chex.assert_trees_all_close(lengths, jnp.array([a, a, a]), atol=1e-10)

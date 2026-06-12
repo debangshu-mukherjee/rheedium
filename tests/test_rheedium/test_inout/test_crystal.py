@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -23,7 +24,9 @@ class TestInferLatticeFromPositions(chex.TestCase):
     def test_single_atom(self) -> None:
         """Single atom should create minimum extent cell."""
         positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
-        lattice = _infer_lattice_from_positions(positions, padding_ang=2.0)
+        lattice: Any = _infer_lattice_from_positions(
+            positions, padding_ang=2.0
+        )
 
         # Single atom: extent = 0, but minimum is 1.0
         # Final = max(0 + 2*2, 1.0) = 4.0
@@ -40,7 +43,9 @@ class TestInferLatticeFromPositions(chex.TestCase):
                 [0.0, 0.0, 10.0],
             ]
         )
-        lattice = _infer_lattice_from_positions(positions, padding_ang=2.0)
+        lattice: Any = _infer_lattice_from_positions(
+            positions, padding_ang=2.0
+        )
 
         # Extent = 10, + 2*2 = 14 in each direction
         expected: Float[Array, "..."] = jnp.diag(jnp.array([14.0, 14.0, 14.0]))
@@ -54,7 +59,9 @@ class TestInferLatticeFromPositions(chex.TestCase):
                 [5.0, 10.0, 15.0],
             ]
         )
-        lattice = _infer_lattice_from_positions(positions, padding_ang=1.0)
+        lattice: Any = _infer_lattice_from_positions(
+            positions, padding_ang=1.0
+        )
 
         # Extents: x=5, y=10, z=15, + 2*1 = 7, 12, 17
         expected: Float[Array, "..."] = jnp.diag(jnp.array([7.0, 12.0, 17.0]))
@@ -65,7 +72,9 @@ class TestInferLatticeFromPositions(chex.TestCase):
         positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 5.0]]
         )  # Single atom
-        lattice = _infer_lattice_from_positions(positions, padding_ang=0.0)
+        lattice: Any = _infer_lattice_from_positions(
+            positions, padding_ang=0.0
+        )
 
         # No padding, extent = 0, minimum = 1.0
         expected: Float[Array, "..."] = jnp.diag(jnp.array([1.0, 1.0, 1.0]))
@@ -83,13 +92,13 @@ class TestXyzToCrystal(chex.TestCase):
         atomic_numbers: Integer[Array, "..."] = jnp.array([12, 8])  # Mg, O
         lattice: Float[Array, "..."] = jnp.eye(3) * 4.2
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         # Check structure
         assert crystal.cart_positions.shape == (2, 4)
@@ -107,7 +116,7 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
         # Check fractional coordinates
-        expected_frac = positions / 4.2
+        expected_frac: Float[Array, "..."] = positions / 4.2
         chex.assert_trees_all_close(
             crystal.frac_positions[:, :3], expected_frac, atol=1e-10
         )
@@ -119,13 +128,15 @@ class TestXyzToCrystal(chex.TestCase):
         xyz_lattice: Float[Array, "..."] = jnp.eye(3) * 5.43
         override_lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=xyz_lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data, cell_vectors=override_lattice)
+        crystal: CrystalStructure = xyz_to_crystal(
+            xyz_data, cell_vectors=override_lattice
+        )
 
         # Should use override, not xyz_data.lattice
         chex.assert_trees_all_close(
@@ -134,8 +145,8 @@ class TestXyzToCrystal(chex.TestCase):
 
     def test_non_orthorhombic_lattice(self) -> None:
         """XYZ with non-orthorhombic (hexagonal) lattice."""
-        a = 3.2
-        c = 5.2
+        a: float = 3.2
+        c: float = 5.2
         # Hexagonal lattice vectors
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [-a / 2, a * jnp.sqrt(3) / 2, 0], [0, 0, c]]
@@ -146,13 +157,13 @@ class TestXyzToCrystal(chex.TestCase):
         )
         atomic_numbers: Integer[Array, "..."] = jnp.array([30, 8])  # Zn, O
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         # Check hexagonal angles
         chex.assert_trees_all_close(crystal.cell_angles[2], 120.0, atol=1e-5)
@@ -169,13 +180,13 @@ class TestXyzToCrystal(chex.TestCase):
             [26, 8, 14]
         )  # Fe, O, Si
 
-        xyz_data = create_xyz_data(
+        xyz_data: Float[Array, "..."] = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=jnp.eye(3) * 5.0,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         # Both frac and cart should have same atomic numbers
         expected: Float[Array, "..."] = jnp.array([26.0, 8.0, 14.0])
@@ -194,13 +205,13 @@ class TestXyzToCrystal(chex.TestCase):
         atomic_numbers: Integer[Array, "..."] = jnp.array([6, 7])  # C, N
         lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         chex.assert_trees_all_close(
             crystal.cart_positions[:, :3], positions, atol=1e-10
@@ -212,13 +223,13 @@ class TestXyzToCrystal(chex.TestCase):
         atomic_numbers: Integer[Array, "..."] = jnp.array([1])
         lattice: Float[Array, "..."] = jnp.eye(3) * 5.0
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         assert isinstance(crystal, CrystalStructure)
 
@@ -228,7 +239,7 @@ class TestParseCrystal(chex.TestCase):
 
     def test_parse_cif(self) -> None:
         """Parse CIF file via parse_crystal."""
-        cif_content = """
+        cif_content: str = """
 data_MgO
 _cell_length_a 4.212
 _cell_length_b 4.212
@@ -244,11 +255,12 @@ _atom_site_fract_z
 Mg 0.0 0.0 0.0
 O  0.5 0.5 0.5
 """
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cif_file = Path(tmp_dir) / "test.cif"
+            cif_file: Path = Path(tmp_dir) / "test.cif"
             cif_file.write_text(cif_content)
 
-            crystal = parse_crystal(cif_file)
+            crystal: CrystalStructure = parse_crystal(cif_file)
 
             assert isinstance(crystal, CrystalStructure)
             chex.assert_trees_all_close(
@@ -259,16 +271,17 @@ O  0.5 0.5 0.5
 
     def test_parse_xyz(self) -> None:
         """Parse XYZ file via parse_crystal."""
-        xyz_content = """2
+        xyz_content: str = """2
 Lattice="4.2 0.0 0.0 0.0 4.2 0.0 0.0 0.0 4.2"
 Mg 0.0 0.0 0.0
 O  2.1 2.1 2.1
 """
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            xyz_file = Path(tmp_dir) / "test.xyz"
+            xyz_file: Path = Path(tmp_dir) / "test.xyz"
             xyz_file.write_text(xyz_content)
 
-            crystal = parse_crystal(xyz_file)
+            crystal: CrystalStructure = parse_crystal(xyz_file)
 
             assert isinstance(crystal, CrystalStructure)
             assert crystal.cart_positions.shape[0] == 2
@@ -280,8 +293,9 @@ O  2.1 2.1 2.1
 
     def test_unsupported_format(self) -> None:
         """Raise ValueError for unsupported format."""
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            bad_file = Path(tmp_dir) / "test.pdb"
+            bad_file: Path = Path(tmp_dir) / "test.pdb"
             bad_file.write_text("dummy content")
 
             with pytest.raises(ValueError, match="Unsupported file format"):
@@ -295,7 +309,7 @@ O  2.1 2.1 2.1
     def test_cif_xyz_equivalence(self) -> None:
         """Same structure from CIF and XYZ should give similar results."""
         # Simple cubic MgO
-        cif_content = """
+        cif_content: str = """
 data_MgO
 _cell_length_a 4.212
 _cell_length_b 4.212
@@ -312,20 +326,21 @@ Mg 0.0 0.0 0.0
 O  0.5 0.5 0.5
 """
 
-        xyz_content = """2
+        xyz_content: str = """2
 Lattice="4.212 0.0 0.0 0.0 4.212 0.0 0.0 0.0 4.212"
 Mg 0.0 0.0 0.0
 O  2.106 2.106 2.106
 """
 
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cif_file = Path(tmp_dir) / "mgo.cif"
-            xyz_file = Path(tmp_dir) / "mgo.xyz"
+            cif_file: Path = Path(tmp_dir) / "mgo.cif"
+            xyz_file: Path = Path(tmp_dir) / "mgo.xyz"
             cif_file.write_text(cif_content)
             xyz_file.write_text(xyz_content)
 
-            crystal_cif = parse_crystal(cif_file)
-            crystal_xyz = parse_crystal(xyz_file)
+            crystal_cif: Any = parse_crystal(cif_file)
+            crystal_xyz: Any = parse_crystal(xyz_file)
 
             # Cell parameters should match
             chex.assert_trees_all_close(
@@ -343,7 +358,7 @@ O  2.106 2.106 2.106
 
     def test_path_as_string(self) -> None:
         """Test that string paths work."""
-        cif_content = """
+        cif_content: str = """
 data_test
 _cell_length_a 5.0
 _cell_length_b 5.0
@@ -358,12 +373,13 @@ _atom_site_fract_y
 _atom_site_fract_z
 Si 0.0 0.0 0.0
 """
+        tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cif_file = Path(tmp_dir) / "test.cif"
+            cif_file: Path = Path(tmp_dir) / "test.cif"
             cif_file.write_text(cif_content)
 
             # Pass as string, not Path
-            crystal = parse_crystal(str(cif_file))
+            crystal: CrystalStructure = parse_crystal(str(cif_file))
 
             assert isinstance(crystal, CrystalStructure)
 
@@ -373,11 +389,16 @@ class TestCrystalRoundtrip(chex.TestCase):
 
     def test_orthorhombic_roundtrip(self) -> None:
         """Orthorhombic lattice survives roundtrip conversion."""
+        a: tuple[Any, ...]
+        b: tuple[Any, ...]
+        c: tuple[Any, ...]
         a, b, c = 4.0, 5.0, 6.0
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [0, b, 0], [0, 0, c]]
         )
 
+        lengths: Float[Array, "..."]
+        angles: Float[Array, "..."]
         lengths, angles = lattice_to_cell_params(lattice)
 
         # Lengths should match
@@ -396,16 +417,16 @@ class TestCrystalRoundtrip(chex.TestCase):
         atomic_numbers: Integer[Array, "..."] = jnp.array([6, 7])
         lattice: Float[Array, "..."] = jnp.eye(3) * 10.0
 
-        xyz_data = create_xyz_data(
+        xyz_data: Any = create_xyz_data(
             positions=positions,
             atomic_numbers=atomic_numbers,
             lattice=lattice,
         )
 
-        crystal = xyz_to_crystal(xyz_data)
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
 
         # frac @ lattice should give cart
-        reconstructed_cart = crystal.frac_positions[:, :3] @ lattice
+        reconstructed_cart: Any = crystal.frac_positions[:, :3] @ lattice
         chex.assert_trees_all_close(
             reconstructed_cart, crystal.cart_positions[:, :3], atol=1e-10
         )

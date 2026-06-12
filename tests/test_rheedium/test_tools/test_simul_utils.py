@@ -5,6 +5,9 @@ interaction_constant — the shared physical computations used
 across multiple simulation modules.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -27,7 +30,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_voltages(self) -> None:
         """Relativistic wavelength matches reference values."""
-        var_wavelength = self.variant(wavelength_ang)
+        var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         voltages_kv: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0])
         wavelengths: Float[Array, "voltages"] = jax.vmap(var_wavelength)(
@@ -42,7 +45,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_higher_voltage_shorter_wavelength(self) -> None:
         """Higher voltage produces shorter wavelength."""
-        var_wavelength = self.variant(wavelength_ang)
+        var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         lam_10: scalar_float = var_wavelength(jnp.float64(10.0))
         lam_30: scalar_float = var_wavelength(jnp.float64(30.0))
@@ -52,7 +55,7 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_positive_output(self) -> None:
         """Wavelength is always positive."""
-        var_wavelength = self.variant(wavelength_ang)
+        var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         voltages: Float[Array, "..."] = jnp.array(
             [5.0, 10.0, 20.0, 50.0, 100.0]
@@ -82,7 +85,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Returns a 3-component vector."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
@@ -94,7 +97,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_magnitude_equals_2pi_over_lambda(self) -> None:
         """Wavevector magnitude equals 2*pi/lambda."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
         k_in: Float[Array, "three"] = var_k(
@@ -110,7 +113,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_negative_z_component(self) -> None:
         """k_z is negative (beam enters from above the surface)."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
@@ -122,7 +125,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_grazing_angle_controls_z(self) -> None:
         """Steeper grazing angle gives larger |k_z|."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
         k_shallow: Float[Array, "three"] = var_k(
@@ -139,7 +142,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_phi_zero_no_y_component(self) -> None:
         """At phi=0, k_y should be zero (beam along x)."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
@@ -152,7 +155,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_phi_90_no_x_component(self) -> None:
         """At phi=90, k_x should be zero (beam along y)."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
             lam_ang=jnp.float64(0.0859),
@@ -171,7 +174,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
     )
     def test_magnitude_invariant_under_phi(self, phi: float) -> None:
         """Wavevector magnitude is independent of azimuthal angle."""
-        var_k = self.variant(incident_wavevector)
+        var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
         k_in: Float[Array, "three"] = var_k(
@@ -192,7 +195,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_values(self) -> None:
         """Interaction constant matches reference values."""
-        var_sigma = self.variant(interaction_constant)
+        var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         voltages_kv: Float[Array, "..."] = jnp.array(
             [10.0, 20.0, 30.0, 100.0, 300.0]
@@ -220,7 +223,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_positive_output(self) -> None:
         """Interaction constant is always positive."""
-        var_sigma = self.variant(interaction_constant)
+        var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         lam: scalar_float = wavelength_ang(jnp.float64(20.0))
         sigma: scalar_float = var_sigma(jnp.float64(20.0), lam)
@@ -230,7 +233,7 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_decreases_with_voltage(self) -> None:
         """Higher voltage gives smaller interaction constant."""
-        var_sigma = self.variant(interaction_constant)
+        var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         lam_10: scalar_float = wavelength_ang(jnp.float64(10.0))
         lam_30: scalar_float = wavelength_ang(jnp.float64(30.0))

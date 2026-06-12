@@ -5,8 +5,11 @@ small linear forward model so convergence is deterministic and cheap to
 evaluate.
 """
 
+from typing import Any
+
 import chex
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
@@ -17,14 +20,15 @@ from rheedium.recon import (
     gauss_newton_reconstruction,
     weighted_mean_squared_error,
 )
+from rheedium.types.custom_types import scalar_float
 
 
 def _linear_forward_model(
-    params: dict[str, jnp.ndarray],
-) -> jnp.ndarray:
+    params: dict[str, scalar_float],
+) -> Float[Array, "rows cols"]:
     """Map a simple two-parameter pytree to a 2-D detector image."""
-    scale = params["scale"]
-    offset = params["offset"]
+    scale: float = params["scale"]
+    offset: float = params["offset"]
     return jnp.array(
         [
             [2.0 * scale + offset, scale - offset],
@@ -34,7 +38,7 @@ def _linear_forward_model(
     )
 
 
-def _true_params() -> dict[str, jnp.ndarray]:
+def _true_params() -> dict[str, scalar_float]:
     """Return reference parameters for reconstruction tests."""
     return {
         "scale": jnp.float64(1.5),
@@ -42,7 +46,7 @@ def _true_params() -> dict[str, jnp.ndarray]:
     }
 
 
-def _initial_params() -> dict[str, jnp.ndarray]:
+def _initial_params() -> dict[str, scalar_float]:
     """Return the initial guess for reconstruction tests."""
     return {
         "scale": jnp.float64(0.0),
@@ -57,10 +61,10 @@ class TestGaussNewtonReconstruction(chex.TestCase):
         self,
     ) -> None:
         """Gauss-Newton should recover a linear image model in one step."""
-        true_params = _true_params()
-        target = _linear_forward_model(true_params)
+        true_params: dict[str, scalar_float] = _true_params()
+        target: Float[Array, "rows cols"] = _linear_forward_model(true_params)
 
-        result = gauss_newton_reconstruction(
+        result: ReconstructionResult = gauss_newton_reconstruction(
             initial_params=_initial_params(),
             forward_model=_linear_forward_model,
             experimental_image=target,
@@ -86,13 +90,15 @@ class TestGaussNewtonReconstruction(chex.TestCase):
 
     def test_gauss_newton_low_level_accepts_parameter_pytrees(self) -> None:
         """The low-level least-squares solver should work on dict pytrees."""
-        true_params = _true_params()
-        target = _linear_forward_model(true_params)
+        true_params: dict[str, scalar_float] = _true_params()
+        target: Float[Array, "rows cols"] = _linear_forward_model(true_params)
 
-        def residual_fn(params: dict[str, jnp.ndarray]) -> jnp.ndarray:
+        def residual_fn(
+            params: dict[str, scalar_float],
+        ) -> Float[Array, "rows cols"]:
             return _linear_forward_model(params) - target
 
-        result = gauss_newton_least_squares(
+        result: ReconstructionResult = gauss_newton_least_squares(
             initial_params=_initial_params(),
             residual_fn=residual_fn,
             damping=jnp.float64(1e-12),
@@ -118,16 +124,16 @@ class TestAdaptiveGradientReconstruction(chex.TestCase):
 
     def test_adam_reconstruction_reduces_loss(self) -> None:
         """Adam should substantially reduce the image-matching loss."""
-        true_params = _true_params()
-        target = _linear_forward_model(true_params)
-        initial_loss = float(
+        true_params: Any = _true_params()
+        target: Any = _linear_forward_model(true_params)
+        initial_loss: Any = float(
             weighted_mean_squared_error(
                 _linear_forward_model(_initial_params()),
                 target,
             )
         )
 
-        result = adam_reconstruction(
+        result: Float[Array, "..."] = adam_reconstruction(
             initial_params=_initial_params(),
             forward_model=_linear_forward_model,
             experimental_image=target,
@@ -153,16 +159,16 @@ class TestAdaptiveGradientReconstruction(chex.TestCase):
 
     def test_adagrad_reconstruction_reduces_loss(self) -> None:
         """Adagrad should substantially reduce the image-matching loss."""
-        true_params = _true_params()
-        target = _linear_forward_model(true_params)
-        initial_loss = float(
+        true_params: Any = _true_params()
+        target: Any = _linear_forward_model(true_params)
+        initial_loss: Any = float(
             weighted_mean_squared_error(
                 _linear_forward_model(_initial_params()),
                 target,
             )
         )
 
-        result = adagrad_reconstruction(
+        result: Float[Array, "..."] = adagrad_reconstruction(
             initial_params=_initial_params(),
             forward_model=_linear_forward_model,
             experimental_image=target,

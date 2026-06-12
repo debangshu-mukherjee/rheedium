@@ -1,5 +1,6 @@
 """Test suite for rheedium.types.rheed_types PyTrees."""
 
+from collections.abc import Callable
 from typing import Any
 
 import chex
@@ -24,6 +25,7 @@ from rheedium.types.rheed_types import (
     DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
+    SlicedCrystal,
     SurfaceConfig,
     create_rheed_image,
     create_rheed_pattern,
@@ -43,7 +45,7 @@ class TestRHEEDPattern(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_rheed_pattern_valid(self) -> None:
         """Test creation of valid RHEEDPattern instances."""
-        n_reflections = 10
+        n_reflections: int = 10
         g_indices: Integer[Array, "..."] = jnp.arange(
             n_reflections, dtype=jnp.int32
         )
@@ -58,8 +60,10 @@ class TestRHEEDPattern(chex.TestCase):
             self.rng, (n_reflections,), minval=0, maxval=1000
         )
 
-        var_create_rheed_pattern = self.variant(create_rheed_pattern)
-        pattern = var_create_rheed_pattern(
+        var_create_rheed_pattern: Callable[..., Any] = self.variant(
+            create_rheed_pattern
+        )
+        pattern: RHEEDPattern = var_create_rheed_pattern(
             g_indices, k_out, detector_points, intensities
         )
 
@@ -71,7 +75,7 @@ class TestRHEEDPattern(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_pattern_pytree(self) -> None:
         """Test PyTree registration and operations."""
-        n_reflections = 5
+        n_reflections: int = 5
         g_indices: Integer[Array, "..."] = jnp.array(
             [0, 1, 2, 3, 4], dtype=jnp.int32
         )
@@ -81,13 +85,17 @@ class TestRHEEDPattern(chex.TestCase):
         )
         intensities: Float[Array, "..."] = jnp.ones(n_reflections) * 100
 
-        var_create_rheed_pattern = self.variant(create_rheed_pattern)
-        pattern = var_create_rheed_pattern(
+        var_create_rheed_pattern: Callable[..., Any] = self.variant(
+            create_rheed_pattern
+        )
+        pattern: RHEEDPattern = var_create_rheed_pattern(
             g_indices, k_out, detector_points, intensities
         )
 
+        flat: Any
+        treedef: Any
         flat, treedef = tree_util.tree_flatten(pattern)
-        reconstructed = tree_util.tree_unflatten(treedef, flat)
+        reconstructed: Any = tree_util.tree_unflatten(treedef, flat)
 
         chex.assert_trees_all_close(pattern, reconstructed)
 
@@ -116,8 +124,10 @@ class TestRHEEDPattern(chex.TestCase):
             self.rng, (n_reflections,), minval=0, maxval=max_intensity
         )
 
-        var_create_rheed_pattern = self.variant(create_rheed_pattern)
-        pattern = var_create_rheed_pattern(
+        var_create_rheed_pattern: Callable[..., Any] = self.variant(
+            create_rheed_pattern
+        )
+        pattern: RHEEDPattern = var_create_rheed_pattern(
             g_indices, k_out, detector_points, intensities
         )
 
@@ -145,7 +155,9 @@ class TestRHEEDPattern(chex.TestCase):
             )
             return jnp.sum(pattern.intensities) + jnp.sum(pattern.k_out)
 
-        var_create_and_process = self.variant(create_and_process)
+        var_create_and_process: Callable[..., Any] = self.variant(
+            create_and_process
+        )
 
         n_reflections: int = 5
         g_indices: Int[Array, "N"] = jnp.arange(n_reflections, dtype=jnp.int32)
@@ -153,7 +165,7 @@ class TestRHEEDPattern(chex.TestCase):
         detector_points: Float[Array, "N 2"] = jnp.ones((n_reflections, 2))
         intensities: Float[Array, "N"] = jnp.ones(n_reflections)
 
-        result = var_create_and_process(
+        result: Float[Array, "..."] = var_create_and_process(
             g_indices, k_out, detector_points, intensities
         )
         expected: scalar_float = jnp.sum(intensities) + jnp.sum(k_out)
@@ -161,7 +173,7 @@ class TestRHEEDPattern(chex.TestCase):
 
     def test_rheed_pattern_validation_errors(self) -> None:
         """Test invalid inputs are handled during JIT compilation."""
-        n_reflections = 5
+        n_reflections: int = 5
 
         # Test wrong k_out shape - jaxtyping catches this
         g_indices: Integer[Array, "..."] = jnp.arange(
@@ -180,8 +192,8 @@ class TestRHEEDPattern(chex.TestCase):
     @chex.variants(without_jit=True, with_jit=False)
     def test_rheed_pattern_vmap(self) -> None:
         """Test vmap operations over batches of RHEED patterns."""
-        batch_size = 4
-        n_reflections = 5
+        batch_size: int = 4
+        n_reflections: int = 5
 
         g_indices_batch: Float[Array, "..."] = jnp.tile(
             jnp.arange(n_reflections, dtype=jnp.int32), (batch_size, 1)
@@ -196,8 +208,10 @@ class TestRHEEDPattern(chex.TestCase):
             (batch_size, n_reflections)
         )
 
-        vmapped_create = self.variant(jax.vmap(create_rheed_pattern))
-        patterns = vmapped_create(
+        vmapped_create: Callable[..., Any] = self.variant(
+            jax.vmap(create_rheed_pattern)
+        )
+        patterns: Float[Array, "..."] = vmapped_create(
             g_indices_batch,
             k_out_batch,
             detector_points_batch,
@@ -223,17 +237,21 @@ class TestRHEEDImage(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_rheed_image_valid(self) -> None:
         """Test creation of valid RHEEDImage instances."""
+        height: tuple[Any, ...]
+        width: tuple[Any, ...]
         height, width = 256, 512
         img_array: Float[Array, "height width"] = jax.random.uniform(
             self.rng, (height, width), minval=0, maxval=1000
         )
-        incoming_angle = 2.0
-        calibration = 0.01
-        electron_wavelength = 0.037
-        detector_distance = 1000.0
+        incoming_angle: float = 2.0
+        calibration: float = 0.01
+        electron_wavelength: float = 0.037
+        detector_distance: float = 1000.0
 
-        var_create_rheed_image = self.variant(create_rheed_image)
-        image = var_create_rheed_image(
+        var_create_rheed_image: Callable[..., Any] = self.variant(
+            create_rheed_image
+        )
+        image: RHEEDImage = var_create_rheed_image(
             img_array,
             incoming_angle,
             calibration,
@@ -253,13 +271,15 @@ class TestRHEEDImage(chex.TestCase):
     def test_rheed_image_pytree(self) -> None:
         """Test PyTree registration and operations."""
         img_array: Float[Array, "..."] = jnp.ones((128, 256))
-        incoming_angle = 1.5
+        incoming_angle: float = 1.5
         calibration: Float[Array, "..."] = jnp.array([0.01, 0.015])
-        electron_wavelength = 0.04
-        detector_distance = 800.0
+        electron_wavelength: float = 0.04
+        detector_distance: float = 800.0
 
-        var_create_rheed_image = self.variant(create_rheed_image)
-        image = var_create_rheed_image(
+        var_create_rheed_image: Callable[..., Any] = self.variant(
+            create_rheed_image
+        )
+        image: RHEEDImage = var_create_rheed_image(
             img_array,
             incoming_angle,
             calibration,
@@ -267,8 +287,10 @@ class TestRHEEDImage(chex.TestCase):
             detector_distance,
         )
 
+        flat: Any
+        treedef: Any
         flat, treedef = tree_util.tree_flatten(image)
-        reconstructed = tree_util.tree_unflatten(treedef, flat)
+        reconstructed: Any = tree_util.tree_unflatten(treedef, flat)
 
         chex.assert_trees_all_close(image.img_array, reconstructed.img_array)
         chex.assert_trees_all_equal(
@@ -298,16 +320,18 @@ class TestRHEEDImage(chex.TestCase):
         img_array: Float[Array, "height width"] = jax.random.uniform(
             self.rng, (height, width), minval=0, maxval=1000
         )
-        calibration = 0.01
-        detector_distance = 1000.0
+        calibration: float = 0.01
+        detector_distance: float = 1000.0
 
-        var_create_rheed_image = self.variant(create_rheed_image)
-        image = var_create_rheed_image(
+        var_create_rheed_image: Callable[..., Any] = self.variant(
+            create_rheed_image
+        )
+        image: RHEEDImage = var_create_rheed_image(
             img_array, angle, calibration, wavelength, detector_distance
         )
 
         chex.assert_shape(image.img_array, (height, width))
-        max_angle = 90
+        max_angle: int = 90
         chex.assert_trees_all_equal(
             (image.incoming_angle >= 0) & (image.incoming_angle <= max_angle),
             True,
@@ -322,13 +346,15 @@ class TestRHEEDImage(chex.TestCase):
     def test_rheed_image_calibration_types(self) -> None:
         """Test RHEEDImage with scalar and array calibration."""
         img_array: Float[Array, "..."] = jnp.ones((128, 128))
-        incoming_angle = 2.0
-        electron_wavelength = 0.037
-        detector_distance = 1000.0
+        incoming_angle: float = 2.0
+        electron_wavelength: float = 0.037
+        detector_distance: float = 1000.0
 
-        scalar_calibration = 0.01
-        var_create_rheed_image = self.variant(create_rheed_image)
-        image_scalar = var_create_rheed_image(
+        scalar_calibration: float = 0.01
+        var_create_rheed_image: Callable[..., Any] = self.variant(
+            create_rheed_image
+        )
+        image_scalar: RHEEDImage = var_create_rheed_image(
             img_array,
             incoming_angle,
             scalar_calibration,
@@ -342,7 +368,7 @@ class TestRHEEDImage(chex.TestCase):
         )
 
         array_calibration: Float[Array, "..."] = jnp.array([0.01, 0.015])
-        image_array = var_create_rheed_image(
+        image_array: RHEEDImage = var_create_rheed_image(
             img_array,
             incoming_angle,
             array_calibration,
@@ -367,7 +393,9 @@ class TestRHEEDImage(chex.TestCase):
             )
             return jnp.sum(image.img_array) * image.incoming_angle
 
-        var_create_and_process = self.variant(create_and_process)
+        var_create_and_process: Callable[..., Any] = self.variant(
+            create_and_process
+        )
 
         img_array: Float[Array, "64 64"] = jnp.ones((64, 64))
         angle: float = 2.0
@@ -375,7 +403,7 @@ class TestRHEEDImage(chex.TestCase):
         wavelength: float = 0.037
         distance: float = 1000.0
 
-        result = var_create_and_process(
+        result: Float[Array, "..."] = var_create_and_process(
             img_array, angle, calibration, wavelength, distance
         )
         expected: Num[Array, ""] = jnp.sum(img_array) * angle
@@ -394,13 +422,15 @@ class TestRHEEDImage(chex.TestCase):
     def test_rheed_image_tree_map(self) -> None:
         """Test that RHEEDImage works correctly with tree_map operations."""
         img_array: Float[Array, "..."] = jnp.ones((128, 256))
-        incoming_angle = 2.0
-        calibration = 0.01
-        electron_wavelength = 0.037
-        detector_distance = 1000.0
+        incoming_angle: float = 2.0
+        calibration: float = 0.01
+        electron_wavelength: float = 0.037
+        detector_distance: float = 1000.0
 
-        var_create_rheed_image = self.variant(create_rheed_image)
-        image = var_create_rheed_image(
+        var_create_rheed_image: Callable[..., Any] = self.variant(
+            create_rheed_image
+        )
+        image: RHEEDImage = var_create_rheed_image(
             img_array,
             incoming_angle,
             calibration,
@@ -413,7 +443,9 @@ class TestRHEEDImage(chex.TestCase):
                 return x * 2.0
             return x
 
-        scaled_image = tree_util.tree_map(scale_intensities, image)
+        scaled_image: Float[Array, "..."] = tree_util.tree_map(
+            scale_intensities, image
+        )
         chex.assert_trees_all_close(scaled_image.img_array, img_array * 2.0)
         chex.assert_trees_all_equal(
             scaled_image.incoming_angle, incoming_angle
@@ -439,31 +471,31 @@ class TestRHEEDPatternValidation(chex.TestCase):
 
     def test_negative_intensities(self) -> None:
         """Negative intensities should be caught by validation."""
-        kw = self._make_valid_pattern_kwargs()
+        kw: Any = self._make_valid_pattern_kwargs()
         kw["intensities"] = -jnp.ones(5)
         jax.jit(create_rheed_pattern)(**kw)
 
     def test_zero_k_out_vectors(self) -> None:
         """Zero-length k_out vectors should be caught."""
-        kw = self._make_valid_pattern_kwargs()
+        kw: Any = self._make_valid_pattern_kwargs()
         kw["k_out"] = jnp.zeros((5, 3))
         jax.jit(create_rheed_pattern)(**kw)
 
     def test_nan_detector_points(self) -> None:
         """NaN in detector_points should be caught."""
-        kw = self._make_valid_pattern_kwargs()
+        kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.nan)
         jax.jit(create_rheed_pattern)(**kw)
 
     def test_inf_detector_points(self) -> None:
         """Inf in detector_points should be caught."""
-        kw = self._make_valid_pattern_kwargs()
+        kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.inf)
         jax.jit(create_rheed_pattern)(**kw)
 
     def test_mismatched_g_indices_length(self) -> None:
         """Mismatched g_indices length is a runtime lax.cond check."""
-        kw = self._make_valid_pattern_kwargs(n=5)
+        kw: Any = self._make_valid_pattern_kwargs(n=5)
         kw["g_indices"] = jnp.arange(3, dtype=jnp.int32)
         # g_indices uses dimension "N" while k_out uses "M",
         # so jaxtyping allows different lengths. The lax.cond
@@ -472,15 +504,15 @@ class TestRHEEDPatternValidation(chex.TestCase):
 
     def test_mismatched_intensities_length(self) -> None:
         """Mismatched intensities length should be caught."""
-        kw = self._make_valid_pattern_kwargs(n=5)
+        kw: Any = self._make_valid_pattern_kwargs(n=5)
         kw["intensities"] = jnp.ones(3)
         with pytest.raises(TypeCheckError):
             jax.jit(create_rheed_pattern)(**kw)
 
     def test_dtypes_are_correct(self) -> None:
         """Factory should cast to correct dtypes."""
-        kw = self._make_valid_pattern_kwargs()
-        pattern = create_rheed_pattern(**kw)
+        kw: Any = self._make_valid_pattern_kwargs()
+        pattern: RHEEDPattern = create_rheed_pattern(**kw)
         assert pattern.G_indices.dtype == jnp.int32
         assert pattern.k_out.dtype == jnp.float64
         assert pattern.detector_points.dtype == jnp.float64
@@ -503,56 +535,56 @@ class TestRHEEDImageValidation(chex.TestCase):
 
     def test_negative_image_values(self) -> None:
         """Negative pixel values should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = -jnp.ones((64, 64))
         jax.jit(create_rheed_image)(**kw)
 
     def test_nan_in_image(self) -> None:
         """NaN in image should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = kw["img_array"].at[0, 0].set(jnp.nan)
         jax.jit(create_rheed_image)(**kw)
 
     def test_angle_too_large(self) -> None:
         """Incoming angle > 90 degrees should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 100.0
         jax.jit(create_rheed_image)(**kw)
 
     def test_negative_angle(self) -> None:
         """Negative incoming angle should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = -1.0
         jax.jit(create_rheed_image)(**kw)
 
     def test_negative_wavelength(self) -> None:
         """Negative electron wavelength should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["electron_wavelength"] = -0.01
         jax.jit(create_rheed_image)(**kw)
 
     def test_negative_distance(self) -> None:
         """Negative detector distance should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["detector_distance"] = -100.0
         jax.jit(create_rheed_image)(**kw)
 
     def test_negative_calibration(self) -> None:
         """Negative calibration should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = -0.01
         jax.jit(create_rheed_image)(**kw)
 
     def test_array_calibration_negative(self) -> None:
         """Negative array calibration should be caught."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = jnp.array([-0.01, 0.01])
         jax.jit(create_rheed_image)(**kw)
 
     def test_dtypes_are_correct(self) -> None:
         """Factory should cast to correct dtypes."""
-        kw = self._make_valid_image_kwargs()
-        image = create_rheed_image(**kw)
+        kw: Any = self._make_valid_image_kwargs()
+        image: RHEEDImage = create_rheed_image(**kw)
         assert image.img_array.dtype == jnp.float64
         assert image.incoming_angle.dtype == jnp.float64
         assert image.electron_wavelength.dtype == jnp.float64
@@ -560,16 +592,16 @@ class TestRHEEDImageValidation(chex.TestCase):
 
     def test_boundary_angle_zero(self) -> None:
         """Incoming angle of exactly 0 should be valid."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 0.0
-        image = create_rheed_image(**kw)
+        image: RHEEDImage = create_rheed_image(**kw)
         chex.assert_trees_all_close(image.incoming_angle, 0.0)
 
     def test_boundary_angle_ninety(self) -> None:
         """Incoming angle of exactly 90 should be valid."""
-        kw = self._make_valid_image_kwargs()
+        kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 90.0
-        image = create_rheed_image(**kw)
+        image: RHEEDImage = create_rheed_image(**kw)
         chex.assert_trees_all_close(image.incoming_angle, 90.0)
 
 
@@ -599,10 +631,10 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_sliced_crystal_valid(self) -> None:
         """Test creation of valid SlicedCrystal instances."""
-        n_atoms = 10
-        kw = self._make_valid_sliced_kwargs(n_atoms)
-        create_fn = self.variant(create_sliced_crystal)
-        sliced = create_fn(**kw)
+        n_atoms: int = 10
+        kw: Any = self._make_valid_sliced_kwargs(n_atoms)
+        create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
+        sliced: SlicedCrystal = create_fn(**kw)
 
         chex.assert_shape(sliced.cart_positions, (n_atoms, 4))
         chex.assert_shape(sliced.cell_lengths, (3,))
@@ -612,21 +644,23 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_pytree(self) -> None:
         """Test PyTree flatten/unflatten round-trip."""
-        kw = self._make_valid_sliced_kwargs()
-        create_fn = self.variant(create_sliced_crystal)
-        sliced = create_fn(**kw)
+        kw: Any = self._make_valid_sliced_kwargs()
+        create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
+        sliced: SlicedCrystal = create_fn(**kw)
 
+        flat: Any
+        treedef: Any
         flat, treedef = tree_util.tree_flatten(sliced)
-        reconstructed = tree_util.tree_unflatten(treedef, flat)
+        reconstructed: Any = tree_util.tree_unflatten(treedef, flat)
 
         chex.assert_trees_all_close(sliced, reconstructed)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_values_preserved(self) -> None:
         """Test that array values are faithfully preserved."""
-        kw = self._make_valid_sliced_kwargs()
-        create_fn = self.variant(create_sliced_crystal)
-        sliced = create_fn(**kw)
+        kw: Any = self._make_valid_sliced_kwargs()
+        create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
+        sliced: SlicedCrystal = create_fn(**kw)
 
         chex.assert_trees_all_close(
             sliced.cart_positions, kw["cart_positions"]
@@ -642,9 +676,9 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
     )
     def test_sliced_crystal_various_sizes(self, n_atoms: int) -> None:
         """Test SlicedCrystal with various atom counts."""
-        kw = self._make_valid_sliced_kwargs(n_atoms)
-        create_fn = self.variant(create_sliced_crystal)
-        sliced = create_fn(**kw)
+        kw: Any = self._make_valid_sliced_kwargs(n_atoms)
+        create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
+        sliced: SlicedCrystal = create_fn(**kw)
 
         chex.assert_shape(sliced.cart_positions, (n_atoms, 4))
 
@@ -653,12 +687,12 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         """Test JIT compilation of SlicedCrystal operations."""
 
         def create_and_process(**kwargs: object) -> Num[Array, ""]:
-            sliced = create_sliced_crystal(**kwargs)
+            sliced: SlicedCrystal = create_sliced_crystal(**kwargs)
             return jnp.sum(sliced.cart_positions[:, :3]) + sliced.depth
 
-        jitted_fn = self.variant(create_and_process)
-        kw = self._make_valid_sliced_kwargs()
-        result = jitted_fn(**kw)
+        jitted_fn: Callable[..., Any] = self.variant(create_and_process)
+        kw: Any = self._make_valid_sliced_kwargs()
+        result: Float[Array, "..."] = jitted_fn(**kw)
         expected: scalar_float = (
             jnp.sum(kw["cart_positions"][:, :3]) + kw["depth"]
         )
@@ -666,8 +700,8 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     def test_sliced_crystal_dtypes(self) -> None:
         """Factory should cast to correct dtypes."""
-        kw = self._make_valid_sliced_kwargs()
-        sliced = create_sliced_crystal(**kw)
+        kw: Any = self._make_valid_sliced_kwargs()
+        sliced: SlicedCrystal = create_sliced_crystal(**kw)
         assert sliced.cart_positions.dtype == jnp.float64
         assert sliced.cell_lengths.dtype == jnp.float64
         assert sliced.cell_angles.dtype == jnp.float64
@@ -678,49 +712,49 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     def test_negative_depth(self) -> None:
         """Negative depth should be caught by validation."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["depth"] = -5.0
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_negative_x_extent(self) -> None:
         """Negative x_extent should be caught by validation."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["x_extent"] = -100.0
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_negative_y_extent(self) -> None:
         """Negative y_extent should be caught by validation."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["y_extent"] = -100.0
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_negative_cell_lengths(self) -> None:
         """Negative cell lengths should be caught."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_lengths"] = jnp.array([-1.0, 5.0, 5.0])
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_invalid_cell_angles(self) -> None:
         """Cell angles outside (0, 180) should be caught."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_angles"] = jnp.array([0.0, 90.0, 90.0])
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_nan_in_positions(self) -> None:
         """NaN in positions should be caught."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 0].set(jnp.nan)
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_invalid_atomic_number_zero(self) -> None:
         """Atomic number of 0 should be caught."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(0.0)
         jax.jit(create_sliced_crystal)(**kw)
 
     def test_invalid_atomic_number_too_large(self) -> None:
         """Atomic number > 118 should be caught."""
-        kw = self._make_valid_sliced_kwargs()
+        kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(200.0)
         jax.jit(create_sliced_crystal)(**kw)
 
@@ -729,15 +763,17 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         """Test that gradients flow through SlicedCrystal."""
 
         def loss_fn(positions: Float[Array, "N 4"]) -> Num[Array, ""]:
-            kw = self._make_valid_sliced_kwargs()
+            kw: Any = self._make_valid_sliced_kwargs()
             kw["cart_positions"] = positions
-            sliced = create_sliced_crystal(**kw)
+            sliced: SlicedCrystal = create_sliced_crystal(**kw)
             return jnp.sum(sliced.cart_positions[:, :3] ** 2)
 
-        var_grad_fn = self.variant(jax.grad(loss_fn))
+        var_grad_fn: Callable[..., Any] = self.variant(jax.grad(loss_fn))
         kw = self._make_valid_sliced_kwargs()
-        grads = var_grad_fn(kw["cart_positions"])
-        expected_grads = 2 * kw["cart_positions"].at[:, 3].set(0.0)
+        grads: Any = var_grad_fn(kw["cart_positions"])
+        expected_grads: Float[Array, "..."] = 2 * kw["cart_positions"].at[
+            :, 3
+        ].set(0.0)
         chex.assert_trees_all_close(grads, expected_grads)
 
 
@@ -752,15 +788,15 @@ class TestRHEEDIntegration(chex.TestCase):
     @chex.variants(without_jit=True, with_jit=False)
     def test_combined_rheed_structures(self) -> None:
         """Test combining RHEEDPattern and RHEEDImage in a single structure."""
-        n_reflections = 10
-        pattern = create_rheed_pattern(
+        n_reflections: int = 10
+        pattern: RHEEDPattern = create_rheed_pattern(
             jnp.arange(n_reflections, dtype=jnp.int32),
             jnp.ones((n_reflections, 3)),
             jnp.ones((n_reflections, 2)),
             jnp.ones(n_reflections),
         )
 
-        image = create_rheed_image(
+        image: RHEEDImage = create_rheed_image(
             jnp.ones((128, 256)), 2.0, 0.01, 0.037, 1000.0
         )
 
@@ -768,12 +804,18 @@ class TestRHEEDIntegration(chex.TestCase):
         def process_combined(
             p: RHEEDPattern, i: RHEEDImage
         ) -> tuple[dict[str, RHEEDPattern | RHEEDImage], Any]:
-            combined = {"pattern": p, "image": i}
+            combined: Any = {"pattern": p, "image": i}
+            flat: Any
+            treedef: Any
+            flat: Any
+            treedef: Any
             flat, treedef = tree_util.tree_flatten(combined)
-            reconstructed = tree_util.tree_unflatten(treedef, flat)
+            reconstructed: Any = tree_util.tree_unflatten(treedef, flat)
             return (combined, reconstructed)
 
-        var_process_combined = self.variant(process_combined)
+        var_process_combined: Callable[..., Any] = self.variant(
+            process_combined
+        )
         combined, reconstructed = var_process_combined(pattern, image)
 
         chex.assert_trees_all_close(
@@ -796,7 +838,7 @@ class TestRHEEDIntegration(chex.TestCase):
             )
             return jnp.sum(pattern.intensities**2)
 
-        var_grad_fn = self.variant(jax.grad(loss_fn))
+        var_grad_fn: Callable[..., Any] = self.variant(jax.grad(loss_fn))
         intensities: Float[Array, "3"] = jnp.array([1.0, 2.0, 3.0])
         grads: Float[Array, "3"] = var_grad_fn(intensities)
 
@@ -813,7 +855,7 @@ class TestRHEEDIntegration(chex.TestCase):
             )
             return jnp.sum(image.img_array**2)
 
-        var_grad_fn = self.variant(jax.grad(loss_fn))
+        var_grad_fn: Callable[..., Any] = self.variant(jax.grad(loss_fn))
         img_array: Float[Array, "32 32"] = jnp.ones((32, 32))
         grads: Float[Array, "32 32"] = var_grad_fn(img_array)
 
@@ -830,7 +872,7 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
             [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3], [0, 0, 4]],
             dtype=jnp.float64,
         )
-        mask = identify_surface_atoms(positions)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions)
         assert mask.shape == (5,)
         assert bool(mask[4])
         assert not bool(mask[0])
@@ -840,9 +882,9 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(10)], dtype=jnp.float64
         )
-        config = SurfaceConfig(method="height", height_fraction=0.5)
-        mask = identify_surface_atoms(positions, config)
-        n_surface = int(jnp.sum(mask))
+        config: Any = SurfaceConfig(method="height", height_fraction=0.5)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
+        n_surface: scalar_float = int(jnp.sum(mask))
         assert n_surface == 5
 
     def test_height_method_all_surface(self) -> None:
@@ -850,8 +892,8 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(5)], dtype=jnp.float64
         )
-        config = SurfaceConfig(method="height", height_fraction=1.0)
-        mask = identify_surface_atoms(positions, config)
+        config: Any = SurfaceConfig(method="height", height_fraction=1.0)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
         assert bool(jnp.all(mask))
 
     def test_coordination_method(self) -> None:
@@ -867,12 +909,12 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
             ],
             dtype=jnp.float64,
         )
-        config = SurfaceConfig(
+        config: Any = SurfaceConfig(
             method="coordination",
             coordination_cutoff=2.0,
             coordination_threshold=3,
         )
-        mask = identify_surface_atoms(positions, config)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
         assert mask.shape == (6,)
         assert bool(mask[5])
 
@@ -889,10 +931,10 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
             ],
             dtype=jnp.float64,
         )
-        config = SurfaceConfig(
+        config: Any = SurfaceConfig(
             method="layers", n_layers=1, layer_tolerance=0.5
         )
-        mask = identify_surface_atoms(positions, config)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
         assert bool(mask[4])
         assert bool(mask[5])
         assert not bool(mask[0])
@@ -904,11 +946,11 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
             [[0, 0, z] for z in [0.0, 0.0, 2.0, 2.0, 4.0, 4.0]],
             dtype=jnp.float64,
         )
-        config = SurfaceConfig(
+        config: Any = SurfaceConfig(
             method="layers", n_layers=2, layer_tolerance=0.5
         )
-        mask = identify_surface_atoms(positions, config)
-        n_surface = int(jnp.sum(mask))
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
+        n_surface: scalar_float = int(jnp.sum(mask))
         assert n_surface == 4
 
     def test_explicit_method(self) -> None:
@@ -917,8 +959,8 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         explicit: Bool[Array, "..."] = jnp.array(
             [True, False, True, False, True]
         )
-        config = SurfaceConfig(method="explicit", explicit_mask=explicit)
-        mask = identify_surface_atoms(positions, config)
+        config: Any = SurfaceConfig(method="explicit", explicit_mask=explicit)
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
         chex.assert_trees_all_equal(mask, explicit)
 
     def test_explicit_method_no_mask_fallback(self) -> None:
@@ -926,16 +968,17 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(5)], dtype=jnp.float64
         )
-        config = SurfaceConfig(method="explicit")
-        mask = identify_surface_atoms(positions, config)
+        config: Any = SurfaceConfig(method="explicit")
+        mask: Bool[Array, "..."] = identify_surface_atoms(positions, config)
         assert mask.shape == (5,)
         assert bool(mask[4])
 
     def test_output_shape_matches_input(self) -> None:
         """Output mask has same length as input positions."""
+        n: int
         for n in [1, 10, 100]:
             positions: Float[Array, "..."] = jnp.zeros((n, 3))
-            mask = identify_surface_atoms(positions)
+            mask: Bool[Array, "..."] = identify_surface_atoms(positions)
             assert mask.shape == (n,)
 
 
@@ -944,7 +987,7 @@ class TestSurfaceConfig(chex.TestCase):
 
     def test_default_values(self) -> None:
         """Default config should use height method at 30%."""
-        config = SurfaceConfig()
+        config: Any = SurfaceConfig()
         assert config.method == "height"
         assert config.height_fraction == 0.3
         assert config.coordination_cutoff == 3.0
@@ -955,7 +998,7 @@ class TestSurfaceConfig(chex.TestCase):
 
     def test_custom_values(self) -> None:
         """Custom config should preserve all values."""
-        config = SurfaceConfig(
+        config: Any = SurfaceConfig(
             method="coordination",
             coordination_cutoff=4.0,
             coordination_threshold=6,
@@ -966,7 +1009,7 @@ class TestSurfaceConfig(chex.TestCase):
 
     def test_immutable(self) -> None:
         """SurfaceConfig should be immutable (NamedTuple)."""
-        config = SurfaceConfig()
+        config: Any = SurfaceConfig()
         with pytest.raises(AttributeError):
             config.method = "layers"
 
@@ -976,7 +1019,7 @@ class TestDetectorGeometry(chex.TestCase):
 
     def test_default_values(self) -> None:
         """Default geometry should have standard RHEED values."""
-        geom = DetectorGeometry()
+        geom: Any = DetectorGeometry()
         assert geom.distance == 100.0
         assert geom.tilt_angle == 0.0
         assert geom.curvature_radius == float("inf")
@@ -986,7 +1029,7 @@ class TestDetectorGeometry(chex.TestCase):
 
     def test_custom_values(self) -> None:
         """Custom geometry should preserve values."""
-        geom = DetectorGeometry(
+        geom: Any = DetectorGeometry(
             distance=200.0,
             tilt_angle=5.0,
             curvature_radius=500.0,
@@ -1003,18 +1046,18 @@ class TestDetectorGeometry(chex.TestCase):
 
     def test_psf_sigma_zero_disables(self) -> None:
         """Zero PSF sigma should be valid (disables convolution)."""
-        geom = DetectorGeometry(psf_sigma_pixels=0.0)
+        geom: Any = DetectorGeometry(psf_sigma_pixels=0.0)
         assert geom.psf_sigma_pixels == 0.0
 
     def test_immutable(self) -> None:
         """DetectorGeometry should be immutable (NamedTuple)."""
-        geom = DetectorGeometry()
+        geom: Any = DetectorGeometry()
         with pytest.raises(AttributeError):
             geom.distance = 200.0
 
     def test_infinite_curvature_is_flat(self) -> None:
         """Default curvature should indicate a flat detector."""
-        geom = DetectorGeometry()
+        geom: Any = DetectorGeometry()
         assert jnp.isinf(geom.curvature_radius)
 
 

@@ -5,6 +5,7 @@ Debye-Waller factors, and atomic scattering factors used in RHEED simulations.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import chex
 import jax
@@ -41,16 +42,20 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         capabilities.
         """
         super().setUp()
-        self.test_atomic_numbers = {
+        self.test_atomic_numbers: Any = {
             "H": 1,
             "C": 6,
             "Si": 14,
             "Cu": 29,
             "Au": 79,
         }
-        self.q_magnitudes = jnp.array([0.0, 0.5, 1.0, 2.0, 4.0, 8.0])
-        self.temperatures = jnp.array([100.0, 300.0, 600.0])
-        self.q_vectors_3d = jnp.array(
+        self.q_magnitudes: Float[Array, "..."] = jnp.array(
+            [0.0, 0.5, 1.0, 2.0, 4.0, 8.0]
+        )
+        self.temperatures: Float[Array, "..."] = jnp.array(
+            [100.0, 300.0, 600.0]
+        )
+        self.q_vectors_3d: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
@@ -60,8 +65,8 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
                 [1.0, 1.0, 1.0],
             ]
         )
-        self.batch_size = 10
-        self.batched_q = jnp.tile(
+        self.batch_size: int = 10
+        self.batched_q: Float[Array, "..."] = jnp.tile(
             self.q_magnitudes[:, jnp.newaxis], (1, self.batch_size)
         )
 
@@ -84,8 +89,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         positive. Also validates that the sum of a coefficients is positive,
         which is physically meaningful for scattering.
         """
-        var_load_params = self.variant(load_kirkland_parameters)
-        params = var_load_params(atomic_number)
+        var_load_params: Callable[..., Any] = self.variant(
+            load_kirkland_parameters
+        )
+        params: Any = var_load_params(atomic_number)
 
         chex.assert_shape(params.lorentzian_amplitudes, (3,))
         chex.assert_shape(params.lorentzian_scales, (3,))
@@ -122,18 +129,20 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         and values above 103 are clipped to 103, ensuring the function
         handles invalid inputs gracefully.
         """
-        var_load_params = self.variant(load_kirkland_parameters)
+        var_load_params: Callable[..., Any] = self.variant(
+            load_kirkland_parameters
+        )
 
-        params_min = var_load_params(1)
-        params_max = var_load_params(103)
+        params_min: Any = var_load_params(1)
+        params_max: Any = var_load_params(103)
 
         chex.assert_shape(params_min.lorentzian_amplitudes, (3,))
         chex.assert_shape(params_min.gaussian_amplitudes, (3,))
         chex.assert_shape(params_max.lorentzian_amplitudes, (3,))
         chex.assert_shape(params_max.gaussian_amplitudes, (3,))
 
-        params_clip_low = var_load_params(0)
-        params_clip_high = var_load_params(150)
+        params_clip_low: Any = var_load_params(0)
+        params_clip_high: Any = var_load_params(150)
 
         chex.assert_trees_all_close(
             params_clip_low.lorentzian_amplitudes,
@@ -177,10 +186,12 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         factor at q=0 does not equal the atomic number Z, unlike X-ray
         scattering.
         """
-        var_form_factor = self.variant(kirkland_form_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
         q_array: scalar_float = jnp.array(q_mag)
 
-        f_q = var_form_factor(atomic_number, q_array)
+        f_q: Any = var_form_factor(atomic_number, q_array)
 
         f_q: Float[Array, "..."] = jnp.squeeze(f_q)
 
@@ -203,10 +214,14 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         electron density distribution - higher q probes smaller length
         scales where less electron density contributes to scattering.
         """
-        var_form_factor = self.variant(kirkland_form_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
 
+        _name: Any
+        z: int
         for _name, z in self.test_atomic_numbers.items():
-            f_values = var_form_factor(z, self.q_magnitudes)
+            f_values: Any = var_form_factor(z, self.q_magnitudes)
 
             differences: Float[Array, "..."] = jnp.diff(f_values[1:])
             chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
@@ -224,31 +239,37 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         This is critical for efficient computation in RHEED simulations where
         many q points are evaluated simultaneously.
         """
-        var_form_factor = self.variant(kirkland_form_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
 
         q_batch_2d: Float[Array, "..."] = jnp.tile(
             self.q_magnitudes[:, jnp.newaxis], (1, 5)
         )
-        f_batch_2d = var_form_factor(14, q_batch_2d)
+        f_batch_2d: Any = var_form_factor(14, q_batch_2d)
         chex.assert_shape(f_batch_2d, q_batch_2d.shape)
 
         q_batch_3d: Float[Array, "..."] = jnp.tile(
             self.q_magnitudes[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
         )
-        f_batch_3d = var_form_factor(14, q_batch_3d)
+        f_batch_3d: Any = var_form_factor(14, q_batch_3d)
         chex.assert_shape(f_batch_3d, q_batch_3d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_kirkland_form_factor_matches_tabulated_formula(self) -> None:
         """Kirkland form factor matches the mixed Lorentz/Gauss fit."""
-        var_form_factor = self.variant(kirkland_form_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
         q_values: Float[Array, "..."] = jnp.array(
             [0.0, 0.5, 2.0, 8.0], dtype=jnp.float64
         )
-        params = kirkland_potentials()[13]  # Si, zero-indexed
-        amplitudes = params[::2]
-        scales = params[1::2]
-        s_squared = (q_values / (4.0 * jnp.pi))[:, jnp.newaxis] ** 2
+        params: Any = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes: Any = params[::2]
+        scales: Any = params[1::2]
+        s_squared: scalar_float = (q_values / (4.0 * jnp.pi))[
+            :, jnp.newaxis
+        ] ** 2
         expected: scalar_float = jnp.sum(
             amplitudes[:3][jnp.newaxis, :] / (s_squared + scales[:3])
             + amplitudes[3:][jnp.newaxis, :]
@@ -264,16 +285,18 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         self,
     ) -> None:
         """Check projected potential matches Kirkland real-space form."""
-        var_projected_potential = self.variant(kirkland_projected_potential)
+        var_projected_potential: Callable[..., Any] = self.variant(
+            kirkland_projected_potential
+        )
         radial_positions: Float[Array, "..."] = jnp.array(
             [0.05, 0.2, 0.8], dtype=jnp.float64
         )
-        params = kirkland_potentials()[13]  # Si, zero-indexed
-        amplitudes = params[::2]
-        scales = params[1::2]
-        prefactor = 47.87801 * 2.0 * jnp.pi
-        r_expanded = radial_positions[:, jnp.newaxis]
-        expected = prefactor * jnp.sum(
+        params: Any = kirkland_potentials()[13]  # Si, zero-indexed
+        amplitudes: Any = params[::2]
+        scales: Any = params[1::2]
+        prefactor: scalar_float = 47.87801 * 2.0 * jnp.pi
+        r_expanded: Float[Array, "..."] = radial_positions[:, jnp.newaxis]
+        expected: Float[Array, "..."] = prefactor * jnp.sum(
             amplitudes[:3][jnp.newaxis, :]
             * bessel_k0(2.0 * jnp.pi * r_expanded * jnp.sqrt(scales[:3]))
             + (amplitudes[3:][jnp.newaxis, :] / scales[3:])
@@ -308,16 +331,18 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         coordination, reflecting their greater vibrational amplitude from
         fewer constraining bonds.
         """
-        var_get_msd = self.variant(get_mean_square_displacement)
+        var_get_msd: Callable[..., Any] = self.variant(
+            get_mean_square_displacement
+        )
 
-        msd = var_get_msd(atomic_number, temperature, is_surface)
+        msd: Any = var_get_msd(atomic_number, temperature, is_surface)
 
         chex.assert_shape(msd, ())
         chex.assert_tree_all_finite(msd)
         chex.assert_scalar_positive(float(msd))
 
         if is_surface:
-            msd_bulk = var_get_msd(atomic_number, temperature, False)
+            msd_bulk: Any = var_get_msd(atomic_number, temperature, False)
             chex.assert_scalar_positive(float(msd - msd_bulk))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -340,26 +365,29 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         carbon (Θ_D=2230K, very stiff diamond bonds) has smaller MSD than
         gold (Θ_D=165K, soft metallic bonds) despite being lighter.
         """
-        var_get_msd = self.variant(get_mean_square_displacement)
+        var_get_msd: Callable[..., Any] = self.variant(
+            get_mean_square_displacement
+        )
 
-        msd_si_100 = var_get_msd(14, 100.0, False)
-        msd_si_300 = var_get_msd(14, 300.0, False)
-        msd_si_600 = var_get_msd(14, 600.0, False)
+        msd_si_100: Any = var_get_msd(14, 100.0, False)
+        msd_si_300: Any = var_get_msd(14, 300.0, False)
+        msd_si_600: Any = var_get_msd(14, 600.0, False)
 
         chex.assert_scalar_positive(float(msd_si_300 - msd_si_100))
         chex.assert_scalar_positive(float(msd_si_600 - msd_si_300))
 
         # For mass scaling test, use elements with similar Debye temperatures
         # so that mass effect dominates: Al (Θ_D=428K) vs Fe (Θ_D=470K)
-        msd_al = var_get_msd(13, 300.0, False)  # Al: mass=27, Θ_D=428K
-        msd_fe = var_get_msd(26, 300.0, False)  # Fe: mass=56, Θ_D=470K
+        msd_al: Any = var_get_msd(13, 300.0, False)  # Al: mass=27, Θ_D=428K
+        msd_fe: Any = var_get_msd(26, 300.0, False)  # Fe: mass=56, Θ_D=470K
 
         chex.assert_scalar_positive(float(msd_al - msd_fe))
 
+        z: int
         for z in [1, 14, 79]:
-            msd_bulk = var_get_msd(z, 300.0, False)
-            msd_surf = var_get_msd(z, 300.0, True)
-            ratio = msd_surf / msd_bulk
+            msd_bulk: Any = var_get_msd(z, 300.0, False)
+            msd_surf: Any = var_get_msd(z, 300.0, True)
+            ratio: Any = msd_surf / msd_bulk
             chex.assert_trees_all_close(ratio, 2.0, rtol=1e-10)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -383,10 +411,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         vibrations. At q=0, the factor equals 1 (no damping) since there's
         no momentum transfer.
         """
-        var_dw_factor = self.variant(debye_waller_factor)
+        var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
         q_array: scalar_float = jnp.array(q_mag)
-        dw = var_dw_factor(q_array, msd)
+        dw: Any = var_dw_factor(q_array, msd)
 
         chex.assert_shape(dw, ())
         chex.assert_tree_all_finite(dw)
@@ -408,18 +436,18 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         thermal damping at higher momentum transfers where atomic positions
         are more precisely probed.
         """
-        var_dw_factor = self.variant(debye_waller_factor)
+        var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
-        msd = 0.01
+        msd: float = 0.01
 
-        dw_1d = var_dw_factor(self.q_magnitudes, msd)
+        dw_1d: Any = var_dw_factor(self.q_magnitudes, msd)
         chex.assert_shape(dw_1d, self.q_magnitudes.shape)
 
         differences: Float[Array, "..."] = jnp.diff(dw_1d)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
-        q_batch_2d = self.batched_q
-        dw_2d = var_dw_factor(q_batch_2d, msd)
+        q_batch_2d: Any = self.batched_q
+        dw_2d: Any = var_dw_factor(q_batch_2d, msd)
         chex.assert_shape(dw_2d, q_batch_2d.shape)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -436,21 +464,21 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
            by clipping to a small positive value, preventing numerical
            errors.
         """
-        var_dw_factor = self.variant(debye_waller_factor)
+        var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
         q_test: Float[Array, "..."] = jnp.array([0.0, 1.0, 10.0])
 
-        dw_zero_msd = var_dw_factor(q_test, 0.0)
+        dw_zero_msd: Any = var_dw_factor(q_test, 0.0)
         chex.assert_trees_all_close(
             dw_zero_msd, jnp.ones_like(q_test), rtol=1e-6
         )
 
         # For large MSD (10 Å²), expect significant damping for q > 0
         # DW = exp(-q²⟨u²⟩/3), so q=1, MSD=10 → exp(-10/3) ≈ 0.036
-        dw_large_msd = var_dw_factor(q_test[1:], 10.0)
+        dw_large_msd: Any = var_dw_factor(q_test[1:], 10.0)
         chex.assert_trees_all_equal(jnp.all(dw_large_msd < 0.1), True)
 
-        dw_neg_msd = var_dw_factor(q_test, -0.1)
+        dw_neg_msd: Any = var_dw_factor(q_test, -0.1)
         chex.assert_tree_all_finite(dw_neg_msd)
         chex.assert_trees_all_close(
             dw_neg_msd, jnp.ones_like(q_test), rtol=0.1
@@ -477,9 +505,11 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         The 3D q-vectors test that the calculation depends only on |q|,
         not direction.
         """
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
-        f_combined = var_scattering(
+        f_combined: Any = var_scattering(
             atomic_number, self.q_vectors_3d, temperature, is_surface
         )
 
@@ -494,7 +524,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
             self.q_vectors_3d, axis=-1
         )
         sorted_indices: Integer[Array, "..."] = jnp.argsort(q_mags)
-        f_sorted = f_combined[sorted_indices]
+        f_sorted: Any = f_combined[sorted_indices]
         chex.assert_scalar_positive(float(f_sorted[0] - f_sorted[-1]))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -509,18 +539,20 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         calculations where multiple detector positions or time steps are
         computed simultaneously.
         """
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
         batch_2d: Float[Array, "..."] = jnp.tile(
             self.q_vectors_3d[jnp.newaxis, :, :], (5, 1, 1)
         )
-        f_batch_2d = var_scattering(14, batch_2d, 300.0, False)
+        f_batch_2d: Any = var_scattering(14, batch_2d, 300.0, False)
         chex.assert_shape(f_batch_2d, (5, len(self.q_vectors_3d)))
 
         batch_3d: Float[Array, "..."] = jnp.tile(
             self.q_vectors_3d[jnp.newaxis, jnp.newaxis, :, :], (3, 4, 1, 1)
         )
-        f_batch_3d = var_scattering(14, batch_3d, 300.0, False)
+        f_batch_3d: Any = var_scattering(14, batch_3d, 300.0, False)
         chex.assert_shape(f_batch_3d, (3, 4, len(self.q_vectors_3d)))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -535,15 +567,18 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         for q > 0. This effect is crucial for accurate RHEED simulations
         of surface structures.
         """
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
         q_test: Float[Array, "..."] = jnp.array(
             [[2.0, 0.0, 0.0], [4.0, 0.0, 0.0]]
         )
 
+        z: int
         for z in [6, 14, 29]:
-            f_bulk = var_scattering(z, q_test, 300.0, False)
-            f_surf = var_scattering(z, q_test, 300.0, True)
+            f_bulk: Any = var_scattering(z, q_test, 300.0, False)
+            f_surf: Any = var_scattering(z, q_test, 300.0, True)
 
             chex.assert_trees_all_equal(jnp.all(f_surf < f_bulk), True)
 
@@ -563,7 +598,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
            with q), which is essential for optimization and fitting
            procedures.
         """
-        var_form_factor = self.variant(kirkland_form_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
 
         @jax.jit
         def jitted_form_factor(
@@ -610,7 +647,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
            JAX transformations for complex parameter sweeps in RHEED
            simulations.
         """
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
         temps: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
         q_single: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
@@ -655,22 +694,28 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         consistency and correct implementation of the thermal damping
         model in electron scattering.
         """
-        var_form_factor = self.variant(kirkland_form_factor)
-        var_dw_factor = self.variant(debye_waller_factor)
-        var_get_msd = self.variant(get_mean_square_displacement)
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_form_factor: Callable[..., Any] = self.variant(
+            kirkland_form_factor
+        )
+        var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
+        var_get_msd: Callable[..., Any] = self.variant(
+            get_mean_square_displacement
+        )
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
-        z = 14
-        temp = 300.0
+        z: int = 14
+        temp: float = 300.0
         q_vec: Float[Array, "..."] = jnp.array([[2.0, 0.0, 0.0]])
         q_mag: Float[Array, "..."] = jnp.linalg.norm(q_vec, axis=-1)
 
-        f_kirk = var_form_factor(z, q_mag)
-        msd = var_get_msd(z, temp, False)
-        dw = var_dw_factor(q_mag, msd)
-        f_product = f_kirk * dw
+        f_kirk: Any = var_form_factor(z, q_mag)
+        msd: Any = var_get_msd(z, temp, False)
+        dw: Any = var_dw_factor(q_mag, msd)
+        f_product: Any = f_kirk * dw
 
-        f_combined = var_scattering(z, q_vec, temp, False)
+        f_combined: Any = var_scattering(z, q_vec, temp, False)
 
         chex.assert_trees_all_close(f_combined, f_product, rtol=1e-10)
 
@@ -695,7 +740,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         This isotropy arises from the spherical symmetry of atomic electron
         density distributions.
         """
-        var_scattering = self.variant(atomic_scattering_factor)
+        var_scattering: Callable[..., Any] = self.variant(
+            atomic_scattering_factor
+        )
 
         if q_vectors.ndim == 1:
             q_vectors = q_vectors[jnp.newaxis, :]
@@ -705,13 +752,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         )
 
         if q_mags[0] > 1e-10:
-            q_normalized = q_vectors / (q_mags + 1e-10)
+            q_normalized: Any = q_vectors / (q_mags + 1e-10)
             q_rotated: Float[Array, "..."] = (
                 jnp.roll(q_normalized, 1, axis=-1) * q_mags
             )
 
-            f_original = var_scattering(14, q_vectors, 300.0, False)
-            f_rotated = var_scattering(14, q_rotated, 300.0, False)
+            f_original: Any = var_scattering(14, q_vectors, 300.0, False)
+            f_rotated: Any = var_scattering(14, q_rotated, 300.0, False)
 
             chex.assert_trees_all_close(f_original, f_rotated, rtol=1e-8)
 
@@ -727,6 +774,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
 
         grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(f)
         q_values: list[float] = [0.5, 1.0, 2.0, 4.0]
+        q: scalar_float
         for q in q_values:
             g: scalar_float = grad_fn(jnp.float64(q))
             chex.assert_tree_all_finite(g)

@@ -271,6 +271,7 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         for _ in range(5):
             psi = multislice_one_step(psi, t, p)
             norms.append(float(jnp.sum(jnp.abs(psi) ** 2)))
+        i: int
         for i in range(len(norms) - 1):
             assert norms[i + 1] <= norms[i] + 1e-6
 

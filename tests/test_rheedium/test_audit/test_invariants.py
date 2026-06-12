@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
+from jaxtyping import Array, Float
 
 from rheedium.audit.invariants import (
     InvariantResult,
@@ -30,6 +33,8 @@ def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
 
 def test_form_factor_positivity_both_parameterizations() -> None:
     """Both Kirkland and Lobato form factors stay positive."""
+    kirkland_result: Float[Array, "..."]
+    lobato_result: Float[Array, "..."]
     kirkland_result, lobato_result = check_form_factor_positivity()
     _assert_well_formed(kirkland_result, "form_factor_positivity_kirkland")
     _assert_well_formed(lobato_result, "form_factor_positivity_lobato")
@@ -44,6 +49,8 @@ def test_form_factor_positivity_both_parameterizations() -> None:
 
 def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
     """Both Kirkland and Lobato form factors decrease monotonically."""
+    kirkland_result: Float[Array, "..."]
+    lobato_result: Float[Array, "..."]
     kirkland_result, lobato_result = check_form_factor_monotonic_decrease()
     _assert_well_formed(kirkland_result, "form_factor_monotonic_kirkland")
     _assert_well_formed(lobato_result, "form_factor_monotonic_lobato")
@@ -57,7 +64,7 @@ def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
 
 def test_wavelength_relativistic_consistency() -> None:
     """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
-    result = check_wavelength_relativistic_consistency()
+    result: Float[Array, "..."] = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
     assert result.passed, (
         f"Wavelength mismatch vs CODATA: residual={result.residual}"
@@ -66,7 +73,7 @@ def test_wavelength_relativistic_consistency() -> None:
 
 def test_friedel_law_structure_factor() -> None:
     """I(G) = I(-G) for a non-centrosymmetric three-atom basis."""
-    result = check_friedel_law_structure_factor()
+    result: Float[Array, "..."] = check_friedel_law_structure_factor()
     _assert_well_formed(result, "friedel_law_structure_factor")
     assert result.passed, (
         f"Friedel symmetry violated: residual={result.residual}"
@@ -75,7 +82,7 @@ def test_friedel_law_structure_factor() -> None:
 
 def test_elastic_closure_ewald_simulator() -> None:
     """ewald_simulator reflections lie exactly on the Ewald sphere."""
-    result = check_elastic_closure_ewald()
+    result: Float[Array, "..."] = check_elastic_closure_ewald()
     _assert_well_formed(result, "elastic_closure_ewald")
     assert result.passed, (
         f"Elastic closure violated: residual={result.residual}"
@@ -84,7 +91,7 @@ def test_elastic_closure_ewald_simulator() -> None:
 
 def test_run_default_invariants_returns_full_suite() -> None:
     """The default runner emits one well-formed result per check."""
-    expected_names = {
+    expected_names: Float[Array, "..."] = {
         "form_factor_positivity_kirkland",
         "form_factor_positivity_lobato",
         "form_factor_monotonic_kirkland",
@@ -93,11 +100,12 @@ def test_run_default_invariants_returns_full_suite() -> None:
         "friedel_law_structure_factor",
         "elastic_closure_ewald",
     }
-    results = run_default_invariants()
+    results: Float[Array, "..."] = run_default_invariants()
     assert isinstance(results, list)
     assert len(results) == len(expected_names)
-    seen_names = {r.name for r in results}
+    seen_names: Any = {r.name for r in results}
     assert seen_names == expected_names
+    r: Any
     for r in results:
         assert isinstance(r, InvariantResult)
         assert isinstance(r.passed, bool)
@@ -109,6 +117,6 @@ def test_run_default_invariants_returns_full_suite() -> None:
 
 def test_invariant_result_is_immutable() -> None:
     """InvariantResult is a frozen dataclass and cannot be mutated."""
-    result = check_friedel_law_structure_factor()
+    result: Float[Array, "..."] = check_friedel_law_structure_factor()
     with pytest.raises((AttributeError, TypeError)):
         result.passed = not result.passed
