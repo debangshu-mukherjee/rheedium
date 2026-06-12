@@ -235,12 +235,12 @@ def get_unit_cell_matrix(
     ...     beta=90.0,
     ...     gamma=90.0,
     ... )
-    >>> print(f"Transformation matrix:\n{matrix}")
+    >>> f"Transformation matrix:\n{matrix}"
     >>>
     >>> # Transform a direct space vector to reciprocal space
     >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
     >>> recip_vec = direct_vec @ matrix
-    >>> print(f"Reciprocal vector: {recip_vec}")
+    >>> f"Reciprocal vector: {recip_vec}"
 
     See Also
     --------
@@ -329,11 +329,11 @@ def build_cell_vectors(
     ...     beta=90.0,
     ...     gamma=90.0,
     ... )
-    >>> print(f"Cell vectors:\n{vectors}")
+    >>> f"Cell vectors:\n{vectors}"
     >>>
     >>> # Calculate cell volume
     >>> volume = jnp.linalg.det(vectors)
-    >>> print(f"Cell volume: {volume}")
+    >>> f"Cell volume: {volume}"
 
     See Also
     --------
@@ -409,8 +409,8 @@ def compute_lengths_angles(
     >>>
     >>> # Compute lengths and angles
     >>> lengths, angles = compute_lengths_angles(vectors)
-    >>> print(f"Cell lengths: {lengths}")
-    >>> print(f"Cell angles: {angles}")
+    >>> f"Cell lengths: {lengths}"
+    >>> f"Cell angles: {angles}"
 
     See Also
     --------
@@ -500,8 +500,8 @@ def generate_reciprocal_points(
     ...     kmax=2,
     ...     lmax=1,
     ... )
-    >>> print(f"Number of G vectors: {len(G_vectors)}")
-    >>> print(f"First few G vectors:\n{G_vectors[:5]}")
+    >>> f"Number of G vectors: {len(G_vectors)}"
+    >>> f"First few G vectors:\n{G_vectors[:5]}"
 
     See Also
     --------
@@ -607,8 +607,8 @@ def atom_scraper(
     ...     zone_axis=jnp.array([1.0, 1.0, 1.0]),
     ...     thickness=jnp.array([12.0, 12.0, 12.0]),
     ... )
-    >>> print(f"Original atoms: {len(crystal.frac_positions)}")
-    >>> print(f"Filtered atoms: {len(filtered.frac_positions)}")
+    >>> f"Original atoms: {len(crystal.frac_positions)}"
+    >>> f"Filtered atoms: {len(filtered.frac_positions)}"
 
     See Also
     --------

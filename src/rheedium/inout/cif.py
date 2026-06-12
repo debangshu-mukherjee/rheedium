@@ -402,7 +402,7 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     if cif_path_obj.suffix.lower() != ".cif":
         raise ValueError(f"File must have .cif extension: {cif_path_obj}")
     try:
-        cif_text: str = cif_path_obj.read_text()
+        cif_text: str = cif_path_obj.read_text(encoding="utf-8")
     except UnicodeDecodeError as err:
         raise RuntimeError(
             f"Failed to read CIF file as UTF-8 text: {cif_path_obj}: {err}"

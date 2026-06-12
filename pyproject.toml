@@ -34,7 +34,7 @@ dependencies = [
     "numpy>=2.2.1",
     "scipy>=1.14.1",
     "matplotlib>=3.10.0",
-    "jax>=0.9.2 ; sys_platform == 'win64'",
+    "jax>=0.9.2 ; sys_platform == 'win32'",
     "jax>=0.9.2 ; sys_platform == 'darwin'",
     "jax>=0.9.2 ; sys_platform == 'linux'",
     "ase>=3.26.0",

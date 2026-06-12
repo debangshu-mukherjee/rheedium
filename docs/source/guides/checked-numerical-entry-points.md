@@ -40,10 +40,10 @@ hot path clean and avoids threading error state through every caller.
 Use the checked function when you want JAX-functional numerical error checking:
 
 ```python
-import jax
+import equinox as eqx
 from rheedium.simul import checked_ewald_simulator
 
-err, pattern = jax.jit(checked_ewald_simulator)(
+err, pattern = eqx.filter_jit(checked_ewald_simulator)(
     crystal=crystal,
     voltage_kv=20.0,
     theta_deg=2.0,
@@ -151,9 +151,10 @@ Use the checked version when:
 Example:
 
 ```python
+import equinox as eqx
 from rheedium.simul import checked_multislice_propagate
 
-err, exit_wave = jax.jit(checked_multislice_propagate)(
+err, exit_wave = eqx.filter_jit(checked_multislice_propagate)(
     potential_slices,
     20.0,
     2.0,
@@ -164,9 +165,10 @@ err.throw()
 For reconstruction losses:
 
 ```python
+import equinox as eqx
 from rheedium.recon import checked_weighted_mean_squared_error
 
-err, loss = jax.jit(checked_weighted_mean_squared_error)(
+err, loss = eqx.filter_jit(checked_weighted_mean_squared_error)(
     simulated_image,
     experimental_image,
     weight_map,
@@ -193,7 +195,7 @@ values should fail before they enter the simulation pipeline.
 Checked numerical entry points are for failures produced during computation:
 
 ```python
-err, pattern = jax.jit(checked_ewald_simulator)(...)
+err, pattern = eqx.filter_jit(checked_ewald_simulator)(...)
 err.throw()
 ```
 

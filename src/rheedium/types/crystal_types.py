@@ -248,7 +248,7 @@ class EwaldData(eqx.Module):
     ...     kmax=3,
     ...     lmax=2,
     ... )
-    >>> print(f"Sphere radius: {ewald.sphere_radius:.2f} 1/Å")
+    >>> f"Sphere radius: {ewald.sphere_radius:.2f} 1/Å"
     """
 
     wavelength_ang: Float[Array, ""]
@@ -678,6 +678,14 @@ class XYZData(eqx.Module):
     optional lattice information, and metadata. It's designed for geometry
     parsing, simulation preparation, and machine learning data processing.
 
+    This class is an Equinox module (``eqx.Module``) registered as a JAX
+    PyTree node, making it compatible with JAX transformations like jit,
+    grad, and vmap. Numerical data is stored as JAX arrays while metadata is
+    preserved as auxiliary data. All data is immutable for functional
+    programming patterns.
+
+    :see: :class:`~.test_crystal_types.TestXYZData`
+
     Attributes
     ----------
     positions : Float[Array, "N 3"]
@@ -699,13 +707,6 @@ class XYZData(eqx.Module):
         List of per-atom properties described in the metadata, otherwise None.
     comment : Optional[str]
         The raw comment line from the XYZ file header, otherwise None.
-    This class is an Equinox module (``eqx.Module``) registered as a JAX
-    PyTree node, making it compatible with JAX
-    transformations like jit, grad, and vmap. Numerical data is stored as
-    JAX arrays while metadata is preserved as auxiliary data. All data is
-    immutable for functional programming patterns.
-
-    :see: :class:`~.test_crystal_types.TestXYZData`
 
     Examples
     --------

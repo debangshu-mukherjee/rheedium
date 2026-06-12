@@ -94,7 +94,7 @@ def wavelength_ang(
     >>> import rheedium as rh
     >>> import jax.numpy as jnp
     >>> lam = rh.tools.wavelength_ang(jnp.asarray(20.0))  # 20 keV
-    >>> print(f"λ = {lam:.4f} Å")
+    >>> f"λ = {lam:.4f} Å"
     λ = 0.0859 Å
     """
     # Convert kV to V

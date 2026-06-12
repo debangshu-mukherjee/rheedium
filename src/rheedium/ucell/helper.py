@@ -62,7 +62,7 @@ def angle_in_degrees(
     >>> v1 = jnp.array([1.0, 0.0, 0.0])
     >>> v2 = jnp.array([0.0, 1.0, 0.0])
     >>> angle = rh.ucell.angle_in_degrees(v1, v2)
-    >>> print(angle)
+    >>> angle
     90.0
     """
 
@@ -121,9 +121,9 @@ def compute_lengths_angles(
     ...     ]
     ... )
     >>> lengths, angles = rh.ucell.compute_lengths_angles(vectors)
-    >>> print(lengths)
+    >>> lengths
     [5.0 5.0 5.0]
-    >>> print(angles)
+    >>> angles
     [90.0 90.0 90.0]
     """
     lengths: Float[Array, "3"] = jnp.array(

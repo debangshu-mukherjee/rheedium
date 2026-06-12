@@ -452,8 +452,7 @@ def gauss_newton_reconstruction(  # noqa: PLR0913
         Target detector image.
     weight_map : Float[Array, "H W"], optional
         Non-negative per-pixel weights for least-squares fitting.
-    postprocess_fn : Callable[[Float[Array, "H W"]], \
-            Float[Array, "H W"]], optional
+    postprocess_fn : Callable[..., Float[Array, "H W"]], optional
         Optional transform applied to each simulated image before it is
         compared against ``experimental_image``.
     damping : scalar_float, optional
@@ -532,8 +531,7 @@ def adam_reconstruction(  # noqa: PLR0913
         Target detector image.
     weight_map : Float[Array, "H W"], optional
         Optional non-negative per-pixel weights.
-    postprocess_fn : Callable[[Float[Array, "H W"]], \
-            Float[Array, "H W"]], optional
+    postprocess_fn : Callable[..., Float[Array, "H W"]], optional
         Optional transform applied to each simulated image before loss
         evaluation.
     learning_rate : scalar_float, optional
@@ -614,8 +612,7 @@ def adagrad_reconstruction(  # noqa: PLR0913
         Target detector image.
     weight_map : Float[Array, "H W"], optional
         Optional non-negative per-pixel weights.
-    postprocess_fn : Callable[[Float[Array, "H W"]], \
-            Float[Array, "H W"]], optional
+    postprocess_fn : Callable[..., Float[Array, "H W"]], optional
         Optional transform applied to each simulated image before loss
         evaluation.
     learning_rate : scalar_float, optional

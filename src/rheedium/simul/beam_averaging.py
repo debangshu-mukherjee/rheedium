@@ -74,8 +74,7 @@ def angular_divergence_average(
 
     Parameters
     ----------
-    simulate_fn : Callable[[scalar_float, scalar_float], \
-            Float[Array, "H W"]]
+    simulate_fn : Callable[..., Float[Array, "H W"]]
         Function mapping ``(polar_angle_rad, azimuth_angle_rad)`` to a
         2-D intensity pattern. Must be vmappable.
     nominal_polar_angle_rad : scalar_float
@@ -114,8 +113,11 @@ def angular_divergence_average(
     >>> def dummy_sim(polar, azimuth):
     ...     return jnp.ones((64, 64)) * polar
     >>> avg = rh.simul.angular_divergence_average(
-    ...     dummy_sim, jnp.float64(0.035), jnp.float64(0.0),
-    ...     jnp.float64(0.5), n_quadrature_points=5,
+    ...     dummy_sim,
+    ...     jnp.float64(0.035),
+    ...     jnp.float64(0.0),
+    ...     jnp.float64(0.5),
+    ...     n_quadrature_points=5,
     ... )
     >>> avg.shape
     (64, 64)
@@ -436,8 +438,7 @@ def instrument_broadened_pattern(
 
     Parameters
     ----------
-    simulate_fn : Callable[[scalar_float, scalar_float, scalar_float], \
-            Float[Array, "H W"]]
+    simulate_fn : Callable[..., Float[Array, "H W"]]
         Function mapping
         ``(polar_angle_rad, azimuth_angle_rad, energy_kev)`` to an
         intensity pattern. Must be vmappable over both angle and energy
@@ -491,9 +492,12 @@ def instrument_broadened_pattern(
     ...     return jnp.ones((64, 64)) * (polar + energy_kev)
     >>> pattern = rh.simul.instrument_broadened_pattern(
     ...     joint_sim,
-    ...     jnp.float64(0.035), jnp.float64(0.0),
-    ...     jnp.float64(20.0), jnp.float64(0.5),
-    ...     jnp.float64(0.5), jnp.float64(1.0),
+    ...     jnp.float64(0.035),
+    ...     jnp.float64(0.0),
+    ...     jnp.float64(20.0),
+    ...     jnp.float64(0.5),
+    ...     jnp.float64(0.5),
+    ...     jnp.float64(1.0),
     ... )
     >>> pattern.shape
     (64, 64)

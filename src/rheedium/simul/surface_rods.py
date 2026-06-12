@@ -40,8 +40,7 @@ CTR calculations follow the kinematic approximation with proper surface
 physics.
 """
 
-from functools import partial
-
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
@@ -694,7 +693,7 @@ def surface_structure_factor(
     return structure_factor
 
 
-@partial(jax.jit, static_argnames=["n_integration_points"])
+@eqx.filter_jit
 @jaxtyped(typechecker=beartype)
 def integrated_rod_intensity(
     hk_index: Int[Array, "2"],

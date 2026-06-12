@@ -1951,17 +1951,19 @@ def multislice_propagate(
 
     Notes
     -----
-    The transmission function is:
-        T(x,y) = exp(iσV(x,y))
-    where σ = 2πme/(h²k) is the interaction constant.
+    The transmission function is
+    :math:`T(x,y) = \exp(i \sigma V(x,y))`, where
+    :math:`\sigma = 2 \pi m e / (h^2 k)` is the interaction constant.
 
-    The Fresnel propagator in reciprocal space is:
-        P(kx,ky,Δz) = exp(-iπλΔz(kx² + ky²))
+    The Fresnel propagator in reciprocal space is
+    :math:`P(k_x, k_y, \Delta z) = \exp(-i \pi \lambda \Delta z
+    (k_x^2 + k_y^2))`.
 
     For RHEED geometry with grazing incidence, we:
-    1. Start with a tilted plane wave
-    2. Propagate through slices perpendicular to surface normal
-    3. Account for the projection of k_in onto the surface
+
+    1. Start with a tilted plane wave.
+    2. Propagate through slices perpendicular to the surface normal.
+    3. Account for the projection of ``k_in`` onto the surface.
 
     1. **Initialise wave** --
        Tilted plane wave from :math:`k_{in,x}` and
@@ -1987,9 +1989,9 @@ def multislice_propagate(
 
     References
     ----------
-    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron
-       Microscopy, 2nd ed.
-    .. [2] Cowley & Moodie (1957). Acta Cryst. 10, 609-619.
+    - Kirkland, E. J. (2010). Advanced Computing in Electron Microscopy,
+      2nd ed.
+    - Cowley & Moodie (1957). Acta Cryst. 10, 609-619.
     """
     v_slices: Float[Array, " nz nx ny"] = potential_slices.slices
     dz: scalar_float = potential_slices.slice_thickness
@@ -2072,16 +2074,21 @@ def multislice_simulator(
 ) -> RHEEDPattern:
     r"""Simulate a RHEED pattern from potential slices with multislice.
 
-    This function implements the complete multislice RHEED simulation pipeline:
-    1. Propagate electron wave through crystal (multislice_propagate)
-    2. Fourier transform exit wave to get reciprocal space amplitude
-    3. Apply Ewald sphere constraint for elastic scattering where
-       |k_out| = |k_in| = 2π/λ
-    4. Project diffracted beams onto detector using angle approximation
-       θ_x ≈ k_x/k_z, θ_y ≈ k_y/k_z
-    5. Calculate intensity as |amplitude|²
+    This function implements the complete multislice RHEED simulation
+    pipeline:
 
-    The Ewald sphere constraint gives k_out_z² = k_mag² - k_out_x² - k_out_y².
+    1. Propagate the electron wave through the crystal
+       (:func:`multislice_propagate`).
+    2. Fourier transform the exit wave to get the reciprocal-space amplitude.
+    3. Apply the Ewald-sphere constraint for elastic scattering, where
+       :math:`|k_{out}| = |k_{in}| = 2\pi / \lambda`.
+    4. Project diffracted beams onto the detector using the angle
+       approximation :math:`\theta_x \approx k_x / k_z`,
+       :math:`\theta_y \approx k_y / k_z`.
+    5. Calculate the intensity as :math:`|\text{amplitude}|^2`.
+
+    The Ewald-sphere constraint gives
+    :math:`k_{out,z}^2 = k^2 - k_{out,x}^2 - k_{out,y}^2`.
     Only real solutions (positive k_out_z²) correspond to propagating waves;
     evanescent waves don't reach the detector.
 
@@ -2152,10 +2159,9 @@ def multislice_simulator(
 
     References
     ----------
-    .. [1] Kirkland, E. J. (2010). Advanced Computing in Electron
-       Microscopy, 2nd ed.
-    .. [2] Ichimiya & Cohen (2004). Reflection High-Energy Electron
-       Diffraction
+    - Kirkland, E. J. (2010). Advanced Computing in Electron Microscopy,
+      2nd ed.
+    - Ichimiya & Cohen (2004). Reflection High-Energy Electron Diffraction.
     """
     exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
         potential_slices=potential_slices,
@@ -2246,7 +2252,8 @@ def multislice_simulator(
 # Contract (see jax.experimental.checkify): a checked call returns the pair
 # ``(err, out)``, not just ``out``. Always surface failures with the error's
 # ``throw`` method (or inspect it via ``get``); ignoring the error silently
-# disables every check. Recommended order: apply jax.jit outside the wrapper.
+# disables every check. Recommended order: apply eqx.filter_jit outside the
+# wrapper at public boundaries.
 #
 # Enabled error sets: nan_checks (NaN/Inf from any op) and div_checks
 # (division or remainder by zero). Both are automatic; no code changes needed.

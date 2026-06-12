@@ -39,6 +39,8 @@ The inverse problem is most informative when:
 3. Regularization prevents overfitting to noise.
 """
 
+import logging
+
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -61,6 +63,7 @@ _FISHER_REGULARIZATION: Final[float] = 1e-6
 _ADAM_BETA1: Final[float] = 0.9
 _ADAM_BETA2: Final[float] = 0.999
 _ADAM_EPSILON: Final[float] = 1e-8
+_LOGGER: logging.Logger = logging.getLogger("rheedium")
 
 
 class _OrientationWeightParameters(NamedTuple):
@@ -798,7 +801,7 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
         completed_steps,
         final_loss,
         converged_flag,
-    ) = jax.jit(_run_optimizer)(initial_params)
+    ) = eqx.filter_jit(_run_optimizer)(initial_params)
     completed_steps_int: int = int(completed_steps)
     loss_history: Float[Array, "N_steps"] = full_loss_history[
         :completed_steps_int
@@ -825,11 +828,11 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
             f"{float(weight):.3f}"
             for weight in fitted_distribution.discrete_weights
         ]
-        print(
-            "Orientation fit:",
-            f"loss={float(final_loss):.6f}",
-            f"weights={fitted_weights}",
-            f"mosaic_fwhm_deg={float(fitted_distribution.mosaic_fwhm_deg):.4f}",
+        _LOGGER.info(
+            "Orientation fit: loss=%.6f weights=%s mosaic_fwhm_deg=%.4f",
+            float(final_loss),
+            fitted_weights,
+            float(fitted_distribution.mosaic_fwhm_deg),
         )
 
     return OrientationFitResult(

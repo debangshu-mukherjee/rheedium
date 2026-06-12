@@ -153,7 +153,7 @@ def simple_structure_factor(
     >>> positions = jnp.array([[0, 0, 0], [0.5, 0.5, 0.5]])  # Two atoms
     >>> atomic_nums = jnp.array([14, 14])  # Silicon
     >>> I = simple_structure_factor(G, positions, atomic_nums)
-    >>> print(f"I(100) = {I:.2f}")
+    >>> f"I(100) = {I:.2f}"
 
     See Also
     --------
@@ -245,7 +245,7 @@ def kinematic_spot_simulator(
     ...     kmax=3,
     ...     lmax=5,
     ... )
-    >>> print(f"Found {len(pattern.intensities)} spots")
+    >>> f"Found {len(pattern.intensities)} spots"
 
     See Also
     --------

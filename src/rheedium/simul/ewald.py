@@ -207,9 +207,9 @@ def build_ewald_data(
     ...     lmax=2,
     ...     temperature=300.0,
     ... )
-    >>> print(f"λ = {float(ewald.wavelength_ang):.4f} Å")
-    >>> print(f"k_mag = {float(ewald.k_magnitude):.2f} 1/Å")
-    >>> print(f"N_G = {ewald.g_vectors.shape[0]}")
+    >>> f"λ = {float(ewald.wavelength_ang):.4f} Å"
+    >>> f"k_mag = {float(ewald.k_magnitude):.2f} 1/Å"
+    >>> f"N_G = {ewald.g_vectors.shape[0]}"
 
     See Also
     --------

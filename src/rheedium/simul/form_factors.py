@@ -896,7 +896,7 @@ def atomic_scattering_factor(
     ...     temperature=300.0,
     ...     is_surface=False,
     ... )
-    >>> print(f"Si scattering factor at q=1.0: {f_si:.3f}")
+    >>> f"Si scattering factor at q=1.0: {f_si:.3f}"
 
     See Also
     --------

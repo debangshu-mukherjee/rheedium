@@ -32,6 +32,9 @@ venv_bin_path = os.path.join(project_root, ".venv", "bin")
 
 sys.path.insert(0, src_path)
 sys.path.insert(0, project_root)
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ext")
+)
 if os.path.isdir(venv_bin_path):
     os.environ["PATH"] = os.pathsep.join(
         [venv_bin_path, os.environ.get("PATH", "")]
@@ -67,6 +70,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "myst_parser",
     "sphinx_marimo",
+    "test_links",
 ]
 
 source_suffix = {
@@ -161,7 +165,7 @@ napoleon_include_special_with_doc = True
 napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_notes = True
 napoleon_use_admonition_for_references = True
-napoleon_use_ivar = False
+napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
