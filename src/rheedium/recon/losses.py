@@ -19,6 +19,7 @@ Routine Listings
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Optional
+from jax.experimental import checkify
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.types import scalar_float
@@ -117,7 +118,26 @@ def weighted_mean_squared_error(
     return jnp.sum(clipped_weight_map * squared_error) / normalization
 
 
+# --------------------------------------------------------------------------
+# Opt-in runtime-checked loss variants
+# --------------------------------------------------------------------------
+# These wrappers mirror the simulator checked entry points: they keep the raw
+# losses as the differentiable default and provide checkify-instrumented
+# variants for debugging or CI numerical validation.
+_CHECKIFY_ERRORS = checkify.nan_checks | checkify.div_checks
+checked_weighted_image_residual = checkify.checkify(
+    weighted_image_residual,
+    errors=_CHECKIFY_ERRORS,
+)
+checked_weighted_mean_squared_error = checkify.checkify(
+    weighted_mean_squared_error,
+    errors=_CHECKIFY_ERRORS,
+)
+
+
 __all__: list[str] = [
+    "checked_weighted_image_residual",
+    "checked_weighted_mean_squared_error",
     "weighted_image_residual",
     "weighted_mean_squared_error",
 ]

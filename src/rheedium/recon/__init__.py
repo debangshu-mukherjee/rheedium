@@ -16,6 +16,10 @@ Routine Listings
     Build a weighted least-squares residual field between two images.
 :func:`weighted_mean_squared_error`
     Compute a normalized weighted mean-squared error.
+:func:`checked_weighted_image_residual`
+    Checkify-instrumented weighted residual for numerical validation.
+:func:`checked_weighted_mean_squared_error`
+    Checkify-instrumented weighted MSE for numerical validation.
 :class:`OrientationFitResult`
     Result container for orientation-distribution fitting.
 :func:`orientation_loss`
@@ -42,6 +46,8 @@ Routine Listings
 """
 
 from .losses import (
+    checked_weighted_image_residual,
+    checked_weighted_mean_squared_error,
     weighted_image_residual,
     weighted_mean_squared_error,
 )
@@ -69,6 +75,8 @@ __all__: list[str] = [
     "adagrad_reconstruction",
     "adam_optimize",
     "adam_reconstruction",
+    "checked_weighted_image_residual",
+    "checked_weighted_mean_squared_error",
     "compute_fisher_information",
     "estimate_weight_uncertainty",
     "fit_orientation_weights",

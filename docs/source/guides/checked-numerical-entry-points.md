@@ -1,10 +1,11 @@
 # Checked vs Standard Numerical Entry Points
 
-Rheedium exposes two styles of simulation entry point for selected numerical
+Rheedium exposes two styles of numerical entry point for selected
 workflows:
 
 - **standard functions**, such as `ewald_simulator`
-- **checked functions**, such as `checked_ewald_simulator`
+- **checked functions**, such as `checked_ewald_simulator` or
+  `checked_weighted_mean_squared_error`
 
 They compute the same numerical result on valid inputs, but they have different
 error-reporting contracts.
@@ -30,9 +31,9 @@ The standard function returns the simulation output directly:
 RHEEDPattern
 ```
 
-This is the preferred form for production simulations, optimization loops, and
-performance-sensitive code. It keeps the hot path clean and avoids threading
-error state through every caller.
+This is the preferred form for production simulations, reconstruction
+objectives, optimization loops, and performance-sensitive code. It keeps the
+hot path clean and avoids threading error state through every caller.
 
 ## Checked Functions
 
@@ -100,7 +101,7 @@ This makes the mechanism compatible with JAX transformations such as `jax.jit`.
 
 ## Available Checked Entry Points
 
-The checked variants are exported from `rheedium.simul`:
+The checked simulator variants are exported from `rheedium.simul`:
 
 | Standard | Checked |
 |----------|---------|
@@ -109,12 +110,20 @@ The checked variants are exported from `rheedium.simul`:
 | `multislice_propagate` | `checked_multislice_propagate` |
 | `multislice_simulator` | `checked_multislice_simulator` |
 
+The checked reconstruction-loss variants are exported from `rheedium.recon`:
+
+| Standard | Checked |
+|----------|---------|
+| `weighted_image_residual` | `checked_weighted_image_residual` |
+| `weighted_mean_squared_error` | `checked_weighted_mean_squared_error` |
+
 ## When To Use The Standard Version
 
 Use the standard version when:
 
 - you are running normal simulations
 - you are inside a tight optimization loop
+- you are evaluating reconstruction losses in a gradient calculation
 - you already validated inputs at constructor boundaries
 - you want the simplest return type
 - you want the same direct API used throughout most examples
@@ -148,6 +157,19 @@ err, exit_wave = jax.jit(checked_multislice_propagate)(
     potential_slices,
     20.0,
     2.0,
+)
+err.throw()
+```
+
+For reconstruction losses:
+
+```python
+from rheedium.recon import checked_weighted_mean_squared_error
+
+err, loss = jax.jit(checked_weighted_mean_squared_error)(
+    simulated_image,
+    experimental_image,
+    weight_map,
 )
 err.throw()
 ```
@@ -192,8 +214,9 @@ with `err.throw()`.
 However, a checked function returns an `(err, out)` **tuple**, so it is **not**
 drop-in differentiable: `jax.grad(checked_ewald_simulator)` will not work the
 way `jax.grad` over a loss built on the standard `ewald_simulator` does.
-Differentiate the standard simulators; reach for the checked variants in
-validation and debugging runs, not inside a gradient computation.
+Differentiate the standard simulators and standard losses; reach for the
+checked variants in validation and debugging runs, not inside a gradient
+computation.
 
 ## Practical Rule
 
@@ -203,6 +226,7 @@ Use this rule of thumb:
 |-----------|-----|
 | routine simulation | standard function |
 | optimization or reconstruction hot path | standard function |
+| differentiating a reconstruction loss | standard function |
 | debugging NaNs | checked function |
 | CI numerical stability test | checked function |
 | validating a new simulation workflow | checked function |
