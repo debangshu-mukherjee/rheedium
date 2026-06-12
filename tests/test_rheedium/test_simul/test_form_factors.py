@@ -9,8 +9,8 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jax import Array
 from jax.test_util import check_grads
+from jaxtyping import Array, Float, Int
 
 from rheedium.inout import kirkland_potentials
 from rheedium.simul.form_factors import (
@@ -23,6 +23,7 @@ from rheedium.simul.form_factors import (
 )
 from rheedium.tools import bessel_k0
 from rheedium.tools.wrappers import jax_safe
+from rheedium.types.custom_types import scalar_float
 
 
 class TestFormFactors(chex.TestCase, parameterized.TestCase):
@@ -549,28 +550,30 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         var_form_factor = self.variant(kirkland_form_factor)
 
         @jax.jit
-        def jitted_form_factor(z: int, q: Array) -> Array:
+        def jitted_form_factor(
+            z: int, q: Float[Array, "N"]
+        ) -> Float[Array, "N"]:
             return var_form_factor(z, q)
 
-        q_test = self.q_magnitudes
-        f_normal = var_form_factor(14, q_test)
-        f_jitted = jitted_form_factor(14, q_test)
+        q_test: Float[Array, "N"] = self.q_magnitudes
+        f_normal: Float[Array, "N"] = var_form_factor(14, q_test)
+        f_jitted: Float[Array, "N"] = jitted_form_factor(14, q_test)
         chex.assert_trees_all_close(f_normal, f_jitted, rtol=1e-10)
 
-        atomic_nums = jnp.array([1, 6, 14, 29, 79])
-        q_single = jnp.array(1.0)
+        atomic_nums: Int[Array, "5"] = jnp.array([1, 6, 14, 29, 79])
+        q_single: Float[Array, ""] = jnp.array(1.0)
         vmapped_ff = jax.vmap(
             lambda z: var_form_factor(z, q_single), in_axes=0
         )
-        f_vmapped = vmapped_ff(atomic_nums)
+        f_vmapped: Float[Array, "5"] = vmapped_ff(atomic_nums)
         chex.assert_shape(f_vmapped, (len(atomic_nums),))
 
-        def loss_fn(q: float) -> Array:
-            f_val = var_form_factor(14, jnp.array(q))
+        def loss_fn(q: float) -> scalar_float:
+            f_val: Float[Array, ""] = var_form_factor(14, jnp.array(q))
             return jnp.squeeze(f_val)
 
         grad_fn = jax.grad(loss_fn)
-        grad_q = grad_fn(1.0)
+        grad_q: scalar_float = grad_fn(1.0)
         chex.assert_shape(grad_q, ())
         chex.assert_tree_all_finite(grad_q)
         chex.assert_scalar_positive(float(-grad_q))
@@ -593,27 +596,29 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """
         var_scattering = self.variant(atomic_scattering_factor)
 
-        temps = jnp.array([100.0, 300.0, 600.0])
-        q_single = jnp.array([[1.0, 0.0, 0.0]])
+        temps: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
+        q_single: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
 
         vmapped_temp = jax.vmap(
             lambda t: var_scattering(14, q_single, t, False), in_axes=0
         )
-        f_temps = vmapped_temp(temps)
+        f_temps: Float[Array, "3 1"] = vmapped_temp(temps)
         chex.assert_shape(f_temps, (3, 1))
 
-        diff = jnp.squeeze(f_temps[0]) - jnp.squeeze(f_temps[-1])
+        diff: scalar_float = jnp.squeeze(f_temps[0]) - jnp.squeeze(f_temps[-1])
         chex.assert_scalar_positive(float(diff))
 
-        atomic_nums = jnp.array([6, 14, 29])
+        atomic_nums: Int[Array, "3"] = jnp.array([6, 14, 29])
 
-        def scattering_fn(z: Array, t: Array) -> Array:
+        def scattering_fn(
+            z: Int[Array, ""], t: scalar_float
+        ) -> Float[Array, "1"]:
             return var_scattering(z, q_single, t, False)
 
         nested_vmap = jax.vmap(
             jax.vmap(scattering_fn, in_axes=(None, 0)), in_axes=(0, None)
         )
-        f_nested = nested_vmap(atomic_nums, temps)
+        f_nested: Float[Array, "3 3 1"] = nested_vmap(atomic_nums, temps)
         chex.assert_shape(f_nested, (len(atomic_nums), len(temps), 1))
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -655,7 +660,9 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("random_vectors", jax.random.normal(jax.random.PRNGKey(0), (10, 3))),
         ("large_magnitude", jnp.array([[100.0, 0.0, 0.0]])),
     )
-    def test_q_vector_invariance(self, q_vectors: Array) -> None:
+    def test_q_vector_invariance(
+        self, q_vectors: Float[Array, "... 3"]
+    ) -> None:
         """Test that scattering depends only on |q|, not direction.
 
         Validates the fundamental isotropy of atomic scattering - the
@@ -690,21 +697,21 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_form_factor_grad_q(self) -> None:
         """Kirkland form factor gradient w.r.t. q is finite and smooth."""
 
-        def f(q: Array) -> Array:
+        def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
         grad_fn = jax.grad(f)
-        q_values = [0.5, 1.0, 2.0, 4.0]
+        q_values: list[float] = [0.5, 1.0, 2.0, 4.0]
         for q in q_values:
-            g = grad_fn(jnp.float64(q))
+            g: scalar_float = grad_fn(jnp.float64(q))
             chex.assert_tree_all_finite(g)
             assert jnp.abs(g) > 1e-12
 
     def test_debye_waller_grad_temperature(self) -> None:
         """DW factor gradient w.r.t. temperature is negative."""
 
-        def dw_at_temp(temp: Array) -> Array:
-            msd = get_mean_square_displacement(
+        def dw_at_temp(temp: scalar_float) -> scalar_float:
+            msd: scalar_float = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
             return debye_waller_factor(
@@ -712,26 +719,26 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
                 mean_square_displacement=msd,
             )
 
-        g = jax.grad(dw_at_temp)(jnp.float64(300.0))
+        g: scalar_float = jax.grad(dw_at_temp)(jnp.float64(300.0))
         chex.assert_tree_all_finite(g)
         assert g < 0
 
     def test_msd_grad_temperature(self) -> None:
         """MSD gradient w.r.t. temperature is positive."""
 
-        def msd_fn(temp: Array) -> Array:
+        def msd_fn(temp: scalar_float) -> scalar_float:
             return get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
 
-        g = jax.grad(msd_fn)(jnp.float64(300.0))
+        g: scalar_float = jax.grad(msd_fn)(jnp.float64(300.0))
         chex.assert_tree_all_finite(g)
         assert g > 0
 
     def test_form_factor_grad_correct(self) -> None:
         """Kirkland form factor analytical grad matches finite diff."""
 
-        def f(q: Array) -> Array:
+        def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
         check_grads(jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
@@ -739,8 +746,8 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_debye_waller_grad_correct(self) -> None:
         """DW factor analytical grad matches finite diff."""
 
-        def f(temp: Array) -> Array:
-            msd = get_mean_square_displacement(
+        def f(temp: scalar_float) -> scalar_float:
+            msd: scalar_float = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
             return debye_waller_factor(
@@ -753,7 +760,7 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     def test_msd_grad_correct(self) -> None:
         """MSD analytical grad matches finite diff."""
 
-        def f(temp: Array) -> Array:
+        def f(temp: scalar_float) -> scalar_float:
             return get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
@@ -767,19 +774,19 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
     def test_form_factor_vmap_consistent(self) -> None:
         """Batched form factor matches sequential per-element result."""
 
-        def f(q: Array) -> Array:
+        def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
 
-        q_batch = jnp.array([0.5, 1.0, 2.0, 4.0])
-        batched = jax.vmap(f)(q_batch)
-        sequential = jnp.stack([f(q) for q in q_batch])
+        q_batch: Float[Array, "4"] = jnp.array([0.5, 1.0, 2.0, 4.0])
+        batched: Float[Array, "4"] = jax.vmap(f)(q_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(q) for q in q_batch])
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
     def test_debye_waller_vmap_consistent(self) -> None:
         """Batched DW factor matches sequential evaluation."""
 
-        def f(temp: Array) -> Array:
-            msd = get_mean_square_displacement(
+        def f(temp: scalar_float) -> scalar_float:
+            msd: scalar_float = get_mean_square_displacement(
                 atomic_number=14, temperature=temp
             )
             return debye_waller_factor(
@@ -787,9 +794,11 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
                 mean_square_displacement=msd,
             )
 
-        temp_batch = jnp.array([100.0, 300.0, 600.0, 1000.0])
-        batched = jax.vmap(f)(temp_batch)
-        sequential = jnp.stack([f(t) for t in temp_batch])
+        temp_batch: Float[Array, "4"] = jnp.array(
+            [100.0, 300.0, 600.0, 1000.0]
+        )
+        batched: Float[Array, "4"] = jax.vmap(f)(temp_batch)
+        sequential: Float[Array, "4"] = jnp.stack([f(t) for t in temp_batch])
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
 

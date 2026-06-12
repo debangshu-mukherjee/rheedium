@@ -4,12 +4,13 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import Array
+from jaxtyping import Array, Float
 
 from rheedium.procs.grains import (
     apply_misorientation_distribution,
     grain_distribution_average,
 )
+from rheedium.types.custom_types import scalar_float
 
 
 class TestGrainDistributionAverage(chex.TestCase):
@@ -17,7 +18,7 @@ class TestGrainDistributionAverage(chex.TestCase):
 
     def test_computes_weighted_intensity_average(self) -> None:
         """Verify patterns are averaged weighted by grain fractions."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 3.0,
@@ -25,7 +26,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             ],
             axis=0,
         )
-        result = grain_distribution_average(
+        result: Float[Array, "2 2"] = grain_distribution_average(
             patterns,
             jnp.array([0.2, 0.3, 0.5]),
         )
@@ -34,7 +35,7 @@ class TestGrainDistributionAverage(chex.TestCase):
 
     def test_clips_negative_grain_weights(self) -> None:
         """Verify negative grain weights are clipped to zero."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 3.0,
@@ -42,7 +43,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             ],
             axis=0,
         )
-        result = grain_distribution_average(
+        result: Float[Array, "2 2"] = grain_distribution_average(
             patterns,
             jnp.array([1.0, -2.0, 1.0]),
         )
@@ -51,7 +52,7 @@ class TestGrainDistributionAverage(chex.TestCase):
 
     def test_grad_flows_through_grain_fraction(self) -> None:
         """Check gradients flow through the grain fraction weights."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 3.0,
@@ -59,7 +60,7 @@ class TestGrainDistributionAverage(chex.TestCase):
             axis=0,
         )
 
-        def objective(weight: Array) -> Array:
+        def objective(weight: scalar_float) -> scalar_float:
             return jnp.sum(
                 grain_distribution_average(
                     patterns,
@@ -67,7 +68,7 @@ class TestGrainDistributionAverage(chex.TestCase):
                 )
             )
 
-        grad_value = jax.grad(objective)(0.5)
+        grad_value: scalar_float = jax.grad(objective)(0.5)
         chex.assert_trees_all_close(
             float(grad_value),
             -8.0 / 2.25,
@@ -76,7 +77,7 @@ class TestGrainDistributionAverage(chex.TestCase):
 
     def test_jit_compiles(self) -> None:
         """Verify grain_distribution_average compiles under jit."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 3.0,
@@ -87,12 +88,12 @@ class TestGrainDistributionAverage(chex.TestCase):
             lambda fractions: grain_distribution_average(patterns, fractions)
         )
 
-        result = compiled(jnp.array([1.0, 3.0]))
+        result: Float[Array, "2 2"] = compiled(jnp.array([1.0, 3.0]))
         chex.assert_trees_all_close(result, 2.5, atol=1e-6)
 
     def test_vmap_supports_batched_fraction_vectors(self) -> None:
         """Check the average maps over batched fraction vectors."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 3.0,
@@ -100,17 +101,17 @@ class TestGrainDistributionAverage(chex.TestCase):
             axis=0,
         )
 
-        def first_pixel(fractions: Array) -> Array:
+        def first_pixel(fractions: Float[Array, "2"]) -> scalar_float:
             return grain_distribution_average(patterns, fractions)[0, 0]
 
-        batch = jnp.array(
+        batch: Float[Array, "3 2"] = jnp.array(
             [
                 [1.0, 0.0],
                 [1.0, 1.0],
                 [0.0, 1.0],
             ]
         )
-        result = jax.vmap(first_pixel)(batch)
+        result: Float[Array, "3"] = jax.vmap(first_pixel)(batch)
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([1.0, 2.0, 3.0]),
@@ -123,7 +124,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
 
     def test_selects_patterns_near_distribution_center(self) -> None:
         """Verify a narrow width selects the centered pattern."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 4.0,
@@ -131,7 +132,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             ],
             axis=0,
         )
-        result = apply_misorientation_distribution(
+        result: Float[Array, "2 2"] = apply_misorientation_distribution(
             patterns,
             jnp.array([-1.0, 0.0, 1.0]),
             jnp.ones((3,)),
@@ -143,7 +144,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
 
     def test_broad_width_recovers_nearly_uniform_average(self) -> None:
         """Verify a broad width yields a near-uniform average."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 4.0,
@@ -151,7 +152,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             ],
             axis=0,
         )
-        result = apply_misorientation_distribution(
+        result: Float[Array, "2 2"] = apply_misorientation_distribution(
             patterns,
             jnp.array([-1.0, 0.0, 1.0]),
             jnp.ones((3,)),
@@ -163,7 +164,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
 
     def test_grad_flows_through_distribution_center(self) -> None:
         """Check gradients flow through the distribution center."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 4.0,
@@ -172,7 +173,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             axis=0,
         )
 
-        def objective(mean_angle: Array) -> Array:
+        def objective(mean_angle: scalar_float) -> scalar_float:
             return jnp.sum(
                 apply_misorientation_distribution(
                     patterns,
@@ -183,13 +184,13 @@ class TestApplyMisorientationDistribution(chex.TestCase):
                 )
             )
 
-        grad_value = jax.grad(objective)(0.0)
+        grad_value: scalar_float = jax.grad(objective)(0.0)
         assert np.isfinite(float(grad_value))
         assert float(grad_value) > 0.0
 
     def test_jit_compiles(self) -> None:
         """Verify apply_misorientation_distribution compiles under jit."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 4.0,
@@ -207,13 +208,13 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             )
         )
 
-        result = compiled(0.0)
+        result: Float[Array, "2 2"] = compiled(0.0)
         assert result.shape == (2, 2)
         assert np.all(np.isfinite(np.asarray(result)))
 
     def test_vmap_supports_batched_distribution_centers(self) -> None:
         """Check the average maps over batched distribution centers."""
-        patterns = jnp.stack(
+        patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
                 jnp.ones((2, 2)) * 4.0,
@@ -222,7 +223,7 @@ class TestApplyMisorientationDistribution(chex.TestCase):
             axis=0,
         )
 
-        def first_pixel(mean_angle: Array) -> Array:
+        def first_pixel(mean_angle: scalar_float) -> scalar_float:
             return apply_misorientation_distribution(
                 patterns,
                 jnp.array([-1.0, 0.0, 1.0]),
@@ -231,7 +232,9 @@ class TestApplyMisorientationDistribution(chex.TestCase):
                 0.05,
             )[0, 0]
 
-        result = jax.vmap(first_pixel)(jnp.array([-1.0, 0.0, 1.0]))
+        result: Float[Array, "3"] = jax.vmap(first_pixel)(
+            jnp.array([-1.0, 0.0, 1.0])
+        )
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([1.0, 4.0, 9.0]),

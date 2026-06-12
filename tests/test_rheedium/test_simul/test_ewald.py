@@ -5,20 +5,23 @@ structure factor calculations, and allowed reflection finding used in
 RHEED simulations.
 """
 
+from collections.abc import Callable
+
 import chex
 import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jax import Array
+from jaxtyping import Array, Bool, Complex, Float, Int
 
 from rheedium.simul.ewald import (
     _compute_structure_factor_single,
     build_ewald_data,
     ewald_allowed_reflections,
 )
-from rheedium.types import CrystalStructure
+from rheedium.types import CrystalStructure, EwaldData
 from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.custom_types import scalar_float
 
 
 class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
@@ -29,22 +32,24 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         super().setUp()
 
         # Simple cubic structure with one atom at origin
-        self.single_atom_positions = jnp.array([[0.0, 0.0, 0.0]])
-        self.single_atom_numbers = jnp.array([14])  # Silicon
+        self.single_atom_positions: Float[Array, "1 3"] = jnp.array(
+            [[0.0, 0.0, 0.0]]
+        )
+        self.single_atom_numbers: Int[Array, "1"] = jnp.array([14])
 
         # Two-atom structure for phase testing
-        self.two_atom_positions = jnp.array(
+        self.two_atom_positions: Float[Array, "2 3"] = jnp.array(
             [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]  # 2 Angstrom separation
         )
-        self.two_atom_numbers = jnp.array([14, 14])
+        self.two_atom_numbers: Int[Array, "2"] = jnp.array([14, 14])
 
         # Multi-element structure
-        self.multi_element_positions = jnp.array(
+        self.multi_element_positions: Float[Array, "2 3"] = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
         )
-        self.multi_element_numbers = jnp.array([14, 8])  # Si and O
+        self.multi_element_numbers: Int[Array, "2"] = jnp.array([14, 8])
 
-        self.temperature = 300.0
+        self.temperature: float = 300.0
 
     def test_single_atom_at_origin_g_zero(self) -> None:
         """Test structure factor for single atom at origin with G=0.
@@ -52,9 +57,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         For a single atom at the origin, the phase factor exp(i*G*r) = 1
         when G=0, so F(0) equals the atomic form factor times DW factor.
         """
-        g_vector = jnp.array([0.0, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([0.0, 0.0, 0.0])
 
-        sf = _compute_structure_factor_single(
+        sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
@@ -73,13 +78,15 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("g_z", jnp.array([0.0, 0.0, 1.0])),
         ("g_diagonal", jnp.array([1.0, 1.0, 1.0])),
     )
-    def test_single_atom_at_origin_nonzero_g(self, g_vector: Array) -> None:
+    def test_single_atom_at_origin_nonzero_g(
+        self, g_vector: Float[Array, "3"]
+    ) -> None:
         """Test structure factor for single atom at origin with nonzero G.
 
         For atom at origin, phase factor is always 1 regardless of G,
         so the structure factor is just f(|G|) * DW(|G|).
         """
-        sf = _compute_structure_factor_single(
+        sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
@@ -98,7 +105,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         Due to the form factor and Debye-Waller factor both decreasing
         with |G|, the structure factor magnitude should decrease.
         """
-        g_vectors = jnp.array(
+        g_vectors: Float[Array, "4 3"] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
@@ -107,9 +114,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        sf_magnitudes = []
+        sf_magnitudes: list[Float[Array, ""]] = []
         for g in g_vectors:
-            sf = _compute_structure_factor_single(
+            sf: Complex[Array, ""] = _compute_structure_factor_single(
                 g_vector=g,
                 atom_positions=self.single_atom_positions,
                 atomic_numbers=self.single_atom_numbers,
@@ -117,8 +124,8 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             )
             sf_magnitudes.append(jnp.abs(sf))
 
-        sf_magnitudes = jnp.array(sf_magnitudes)
-        differences = jnp.diff(sf_magnitudes)
+        sf_magnitudes_array: Float[Array, "4"] = jnp.array(sf_magnitudes)
+        differences: Float[Array, "3"] = jnp.diff(sf_magnitudes_array)
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     def test_two_atom_interference(self) -> None:
@@ -129,8 +136,8 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         G = (pi/d, 0, 0) gives destructive interference (phase = pi).
         """
         # Constructive interference when G times d equals two pi.
-        g_constructive = jnp.array([jnp.pi, 0.0, 0.0])
-        sf_constr = _compute_structure_factor_single(
+        g_constructive: Float[Array, "3"] = jnp.array([jnp.pi, 0.0, 0.0])
+        sf_constr: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_constructive,
             atom_positions=self.two_atom_positions,
             atomic_numbers=self.two_atom_numbers,
@@ -138,8 +145,8 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         )
 
         # Destructive interference when G times d equals pi.
-        g_destructive = jnp.array([jnp.pi / 2, 0.0, 0.0])
-        sf_destr = _compute_structure_factor_single(
+        g_destructive: Float[Array, "3"] = jnp.array([jnp.pi / 2, 0.0, 0.0])
+        sf_destr: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_destructive,
             atom_positions=self.two_atom_positions,
             atomic_numbers=self.two_atom_numbers,
@@ -156,9 +163,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
         Different atomic numbers should contribute different form factors.
         """
-        g_vector = jnp.array([1.0, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([1.0, 0.0, 0.0])
 
-        sf = _compute_structure_factor_single(
+        sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.multi_element_positions,
             atomic_numbers=self.multi_element_numbers,
@@ -179,9 +186,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
         Higher temperature increases Debye-Waller damping, reducing |F(G)|.
         """
-        g_vector = jnp.array([2.0, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
-        sf = _compute_structure_factor_single(
+        sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
@@ -193,15 +200,15 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
     def test_temperature_ordering(self) -> None:
         """Test that higher temperature gives lower |F(G)| for G != 0."""
-        g_vector = jnp.array([2.0, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
-        sf_low = _compute_structure_factor_single(
+        sf_low: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
             temperature=100.0,
         )
-        sf_high = _compute_structure_factor_single(
+        sf_high: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
@@ -217,13 +224,13 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         For an atom at position r, the phase contribution is exp(i*G*r).
         """
         # Single atom at (1, 0, 0)
-        atom_pos = jnp.array([[1.0, 0.0, 0.0]])
-        atom_nums = jnp.array([14])
+        atom_pos: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
+        atom_nums: Int[Array, "1"] = jnp.array([14])
 
         # G = (pi, 0, 0) should give phase = exp(i*pi) = -1
-        g_vector = jnp.array([jnp.pi, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([jnp.pi, 0.0, 0.0])
 
-        sf = _compute_structure_factor_single(
+        sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
             atom_positions=atom_pos,
             atomic_numbers=atom_nums,
@@ -236,11 +243,13 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     def test_jit_compatibility(self) -> None:
         """Test that _compute_structure_factor_single works with JIT."""
-        var_compute_sf = self.variant(_compute_structure_factor_single)
+        var_compute_sf: Callable[..., Complex[Array, ""]] = self.variant(
+            _compute_structure_factor_single
+        )
 
-        g_vector = jnp.array([1.0, 0.0, 0.0])
+        g_vector: Float[Array, "3"] = jnp.array([1.0, 0.0, 0.0])
 
-        sf = var_compute_sf(
+        sf: Complex[Array, ""] = var_compute_sf(
             g_vector=g_vector,
             atom_positions=self.single_atom_positions,
             atomic_numbers=self.single_atom_numbers,
@@ -252,7 +261,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
     def test_vmap_over_g_vectors(self) -> None:
         """Test vmapping _compute_structure_factor_single over G vectors."""
-        g_vectors = jnp.array(
+        g_vectors: Float[Array, "5 3"] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
@@ -262,16 +271,18 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        vmapped_sf = jax.vmap(
-            lambda g: _compute_structure_factor_single(
-                g_vector=g,
-                atom_positions=self.single_atom_positions,
-                atomic_numbers=self.single_atom_numbers,
-                temperature=self.temperature,
+        vmapped_sf: Callable[[Float[Array, "5 3"]], Complex[Array, "5"]] = (
+            jax.vmap(
+                lambda g: _compute_structure_factor_single(
+                    g_vector=g,
+                    atom_positions=self.single_atom_positions,
+                    atomic_numbers=self.single_atom_numbers,
+                    temperature=self.temperature,
+                )
             )
         )
 
-        sfs = vmapped_sf(g_vectors)
+        sfs: Complex[Array, "5"] = vmapped_sf(g_vectors)
 
         chex.assert_shape(sfs, (5,))
         chex.assert_tree_all_finite(sfs)
@@ -279,9 +290,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     def test_gradient_flow(self) -> None:
         """Test that gradients flow through structure factor calculation."""
 
-        def loss_fn(temperature: Array) -> Array:
-            g_vector = jnp.array([1.0, 0.0, 0.0])
-            sf = _compute_structure_factor_single(
+        def loss_fn(temperature: scalar_float) -> scalar_float:
+            g_vector: Float[Array, "3"] = jnp.array([1.0, 0.0, 0.0])
+            sf: Complex[Array, ""] = _compute_structure_factor_single(
                 g_vector=g_vector,
                 atom_positions=self.single_atom_positions,
                 atomic_numbers=self.single_atom_numbers,
@@ -289,8 +300,8 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
             )
             return jnp.abs(sf)
 
-        grad_fn = jax.grad(loss_fn)
-        gradient = grad_fn(300.0)
+        grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(loss_fn)
+        gradient: scalar_float = grad_fn(300.0)
 
         chex.assert_tree_all_finite(gradient)
         # Gradient should be negative (higher temp -> lower |F|)
@@ -303,18 +314,22 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures with a simple crystal structure."""
         super().setUp()
-        self.crystal = self._create_simple_cubic_crystal()
+        self.crystal: CrystalStructure = self._create_simple_cubic_crystal()
 
     def _create_simple_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal for testing."""
-        a = 4.0  # lattice constant in Angstroms
+        a: float = 4.0
 
-        frac_coords = jnp.array([[0.0, 0.0, 0.0]])
-        cart_coords = frac_coords * a
-        atomic_numbers = jnp.array([14.0])
+        frac_coords: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        cart_coords: Float[Array, "1 3"] = frac_coords * a
+        atomic_numbers: Float[Array, "1"] = jnp.array([14.0])
 
-        frac_positions = jnp.column_stack([frac_coords, atomic_numbers])
-        cart_positions = jnp.column_stack([cart_coords, atomic_numbers])
+        frac_positions: Float[Array, "1 4"] = jnp.column_stack(
+            [frac_coords, atomic_numbers]
+        )
+        cart_positions: Float[Array, "1 4"] = jnp.column_stack(
+            [cart_coords, atomic_numbers]
+        )
 
         return create_crystal_structure(
             frac_positions=frac_positions,
@@ -325,7 +340,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_basic_ewald_data_creation(self) -> None:
         """Test basic EwaldData creation with minimal parameters."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -346,14 +361,14 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_wavelength_calculation(self) -> None:
         """Test that wavelength is correctly computed from voltage."""
-        ewald_10kv = build_ewald_data(
+        ewald_10kv: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=10.0,
             hmax=1,
             kmax=1,
             lmax=1,
         )
-        ewald_20kv = build_ewald_data(
+        ewald_20kv: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=1,
@@ -372,7 +387,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_k_magnitude_relation(self) -> None:
         """Test that k_magnitude = 2*pi / wavelength."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=1,
@@ -380,12 +395,12 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             lmax=1,
         )
 
-        expected_k = 2.0 * jnp.pi / ewald.wavelength_ang
+        expected_k: scalar_float = 2.0 * jnp.pi / ewald.wavelength_ang
         chex.assert_trees_all_close(ewald.k_magnitude, expected_k, rtol=1e-10)
 
     def test_sphere_radius_equals_k_magnitude(self) -> None:
         """Test that Ewald sphere radius equals k magnitude."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=1,
@@ -406,7 +421,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         self, hmax: int, kmax: int, lmax: int, expected_n: int
     ) -> None:
         """Test that the correct number of G vectors are generated."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=hmax,
@@ -422,7 +437,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_intensities_are_squared_magnitudes(self) -> None:
         """Test that intensities = |structure_factors|^2."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -430,14 +445,16 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             lmax=1,
         )
 
-        expected_intensities = jnp.abs(ewald.structure_factors) ** 2
+        expected_intensities: Float[Array, "N"] = (
+            jnp.abs(ewald.structure_factors) ** 2
+        )
         chex.assert_trees_all_close(
             ewald.intensities, expected_intensities, rtol=1e-10
         )
 
     def test_intensities_nonnegative(self) -> None:
         """Test that all intensities are non-negative."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -449,7 +466,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_g_magnitudes_nonnegative(self) -> None:
         """Test that all G magnitudes are non-negative."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -461,7 +478,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
     def test_g_magnitude_consistency(self) -> None:
         """Test that g_magnitudes matches norm of g_vectors."""
-        ewald = build_ewald_data(
+        ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -469,14 +486,16 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             lmax=1,
         )
 
-        computed_mags = jnp.linalg.norm(ewald.g_vectors, axis=-1)
+        computed_mags: Float[Array, "N"] = jnp.linalg.norm(
+            ewald.g_vectors, axis=-1
+        )
         chex.assert_trees_all_close(
             ewald.g_magnitudes, computed_mags, rtol=1e-10
         )
 
     def test_temperature_affects_intensities(self) -> None:
         """Test that temperature affects structure factors/intensities."""
-        ewald_low_t = build_ewald_data(
+        ewald_low_t: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -484,7 +503,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
             lmax=1,
             temperature=100.0,
         )
-        ewald_high_t = build_ewald_data(
+        ewald_high_t: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=2,
@@ -494,8 +513,8 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
         # Higher temperature should reduce total intensity (more DW damping)
-        total_low = jnp.sum(ewald_low_t.intensities)
-        total_high = jnp.sum(ewald_high_t.intensities)
+        total_low: scalar_float = jnp.sum(ewald_low_t.intensities)
+        total_high: scalar_float = jnp.sum(ewald_high_t.intensities)
 
         chex.assert_scalar_positive(float(total_low - total_high))
 
@@ -506,8 +525,8 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures with pre-computed EwaldData."""
         super().setUp()
-        self.crystal = self._create_simple_cubic_crystal()
-        self.ewald = build_ewald_data(
+        self.crystal: CrystalStructure = self._create_simple_cubic_crystal()
+        self.ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             voltage_kv=20.0,
             hmax=3,
@@ -518,10 +537,10 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
     def _create_simple_cubic_crystal(self) -> CrystalStructure:
         """Create a simple cubic crystal for testing."""
-        a = 4.0
-        frac_coords = jnp.array([[0.0, 0.0, 0.0]])
-        cart_coords = frac_coords * a
-        atomic_numbers = jnp.array([14.0])
+        a: float = 4.0
+        frac_coords: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        cart_coords: Float[Array, "1 3"] = frac_coords * a
+        atomic_numbers: Float[Array, "1"] = jnp.array([14.0])
 
         return create_crystal_structure(
             frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
@@ -532,6 +551,9 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
     def test_basic_reflection_finding(self) -> None:
         """Test basic reflection finding with default parameters."""
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=2.0,
@@ -539,12 +561,15 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         )
 
         # Check output shapes are consistent
-        n = indices.shape[0]
+        n: int = indices.shape[0]
         chex.assert_shape(k_out, (n, 3))
         chex.assert_shape(intensities, (n,))
 
     def test_upward_scattering_only(self) -> None:
         """Test that only upward scattering reflections are returned."""
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=2.0,
@@ -552,14 +577,20 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         )
 
         # Valid reflections should have k_out_z > 0
-        valid_mask = indices >= 0
-        valid_k_out = k_out[valid_mask]
+        valid_mask: Bool[Array, "N"] = indices >= 0
+        valid_k_out: Float[Array, "M 3"] = k_out[valid_mask]
 
         if valid_k_out.shape[0] > 0:
             chex.assert_trees_all_equal(jnp.all(valid_k_out[:, 2] > 0), True)
 
     def test_intensities_nonnegative(self) -> None:
         """Test that all returned intensities are non-negative."""
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=2.0,
@@ -575,6 +606,9 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
     )
     def test_different_theta_angles(self, theta_deg: float) -> None:
         """Test reflection finding at different incidence angles."""
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=theta_deg,
@@ -602,29 +636,42 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
     def test_tolerance_effect(self) -> None:
         """Test that larger tolerance allows more reflections."""
-        _, _, intensities_tight = ewald_allowed_reflections(
-            ewald=self.ewald,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            tolerance=0.01,
+        indices_tight: Int[Array, "N"]
+        k_out_tight: Float[Array, "N 3"]
+        intensities_tight: Float[Array, "N"]
+        indices_tight, k_out_tight, intensities_tight = (
+            ewald_allowed_reflections(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                tolerance=0.01,
+            )
         )
-        _, _, intensities_loose = ewald_allowed_reflections(
-            ewald=self.ewald,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            tolerance=0.1,
+        indices_loose: Int[Array, "N"]
+        k_out_loose: Float[Array, "N 3"]
+        intensities_loose: Float[Array, "N"]
+        indices_loose, k_out_loose, intensities_loose = (
+            ewald_allowed_reflections(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                tolerance=0.1,
+            )
         )
 
         # More allowed reflections with larger tolerance
-        n_tight = jnp.sum(intensities_tight > 0)
-        n_loose = jnp.sum(intensities_loose > 0)
+        n_tight: scalar_float = jnp.sum(intensities_tight > 0)
+        n_loose: scalar_float = jnp.sum(intensities_loose > 0)
 
         self.assertGreaterEqual(int(n_loose), int(n_tight))
 
     def test_finite_domain_mode(self) -> None:
         """Test finite domain mode with domain_extent_ang parameter."""
-        domain = jnp.array([100.0, 100.0, 50.0])
+        domain: Float[Array, "3"] = jnp.array([100.0, 100.0, 50.0])
 
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
         indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=2.0,
@@ -638,19 +685,29 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
     def test_finite_domain_overlap_weighting(self) -> None:
         """Test that finite domain mode applies overlap weighting."""
-        domain = jnp.array([50.0, 50.0, 25.0])
+        domain: Float[Array, "3"] = jnp.array([50.0, 50.0, 25.0])
 
-        _, _, intensities_binary = ewald_allowed_reflections(
-            ewald=self.ewald,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            tolerance=0.05,
+        indices_binary: Int[Array, "N"]
+        k_out_binary: Float[Array, "N 3"]
+        intensities_binary: Float[Array, "N"]
+        indices_binary, k_out_binary, intensities_binary = (
+            ewald_allowed_reflections(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                tolerance=0.05,
+            )
         )
-        _, _, intensities_finite = ewald_allowed_reflections(
-            ewald=self.ewald,
-            theta_deg=2.0,
-            phi_deg=0.0,
-            domain_extent_ang=domain,
+        indices_finite: Int[Array, "N"]
+        k_out_finite: Float[Array, "N 3"]
+        intensities_finite: Float[Array, "N"]
+        indices_finite, k_out_finite, intensities_finite = (
+            ewald_allowed_reflections(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                domain_extent_ang=domain,
+            )
         )
 
         # Finite domain should produce different intensity distribution
@@ -660,14 +717,14 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
     def test_k_out_is_k_in_plus_g(self) -> None:
         """Test that k_out = k_in + G for allowed reflections."""
-        theta_deg = 2.0
-        phi_deg = 0.0
+        theta_deg: float = 2.0
+        phi_deg: float = 0.0
 
-        theta_rad = jnp.deg2rad(theta_deg)
-        phi_rad = jnp.deg2rad(phi_deg)
-        k_mag = self.ewald.k_magnitude
+        theta_rad: scalar_float = jnp.deg2rad(theta_deg)
+        phi_rad: scalar_float = jnp.deg2rad(phi_deg)
+        k_mag: scalar_float = self.ewald.k_magnitude
 
-        k_in = k_mag * jnp.array(
+        k_in: Float[Array, "3"] = k_mag * jnp.array(
             [
                 jnp.cos(theta_rad) * jnp.cos(phi_rad),
                 jnp.cos(theta_rad) * jnp.sin(phi_rad),
@@ -675,7 +732,10 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
             ]
         )
 
-        indices, k_out, _ = ewald_allowed_reflections(
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
+        indices, k_out, intensities = ewald_allowed_reflections(
             ewald=self.ewald,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
@@ -684,8 +744,8 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         # For valid indices, check k_out = k_in + G
         for i, idx in enumerate(indices):
             if idx >= 0:
-                g_vec = self.ewald.g_vectors[idx]
-                expected_k_out = k_in + g_vec
+                g_vec: Float[Array, "3"] = self.ewald.g_vectors[idx]
+                expected_k_out: Float[Array, "3"] = k_in + g_vec
                 chex.assert_trees_all_close(
                     k_out[i], expected_k_out, rtol=1e-10
                 )

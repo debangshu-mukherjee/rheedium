@@ -7,8 +7,8 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jax import Array, tree_util
-from jaxtyping import TypeCheckError
+from jax import tree_util
+from jaxtyping import Array, Float, Int, Num, PRNGKeyArray, TypeCheckError
 
 from rheedium.types.rheed_types import (
     DetectorGeometry,
@@ -28,7 +28,7 @@ class TestRHEEDPattern(chex.TestCase):
     def setUp(self) -> None:
         """Initialize the random key for each test."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_rheed_pattern_valid(self) -> None:
@@ -109,23 +109,23 @@ class TestRHEEDPattern(chex.TestCase):
         """Test JIT compilation of RHEEDPattern operations."""
 
         def create_and_process(
-            g_indices: Array,
-            k_out: Array,
-            detector_points: Array,
-            intensities: Array,
-        ) -> Array:
-            pattern = create_rheed_pattern(
+            g_indices: Int[Array, "N"],
+            k_out: Float[Array, "N 3"],
+            detector_points: Float[Array, "N 2"],
+            intensities: Float[Array, "N"],
+        ) -> Num[Array, ""]:
+            pattern: RHEEDPattern = create_rheed_pattern(
                 g_indices, k_out, detector_points, intensities
             )
             return jnp.sum(pattern.intensities) + jnp.sum(pattern.k_out)
 
         var_create_and_process = self.variant(create_and_process)
 
-        n_reflections = 5
-        g_indices = jnp.arange(n_reflections, dtype=jnp.int32)
-        k_out = jnp.ones((n_reflections, 3))
-        detector_points = jnp.ones((n_reflections, 2))
-        intensities = jnp.ones(n_reflections)
+        n_reflections: int = 5
+        g_indices: Int[Array, "N"] = jnp.arange(n_reflections, dtype=jnp.int32)
+        k_out: Float[Array, "N 3"] = jnp.ones((n_reflections, 3))
+        detector_points: Float[Array, "N 2"] = jnp.ones((n_reflections, 2))
+        intensities: Float[Array, "N"] = jnp.ones(n_reflections)
 
         result = var_create_and_process(
             g_indices, k_out, detector_points, intensities
@@ -320,29 +320,29 @@ class TestRHEEDImage(chex.TestCase):
         """Test JIT compilation of RHEEDImage operations."""
 
         def create_and_process(
-            img_array: Array,
+            img_array: Float[Array, "H W"],
             angle: float,
             calibration: float,
             wavelength: float,
             distance: float,
-        ) -> Array:
-            image = create_rheed_image(
+        ) -> Num[Array, ""]:
+            image: RHEEDImage = create_rheed_image(
                 img_array, angle, calibration, wavelength, distance
             )
             return jnp.sum(image.img_array) * image.incoming_angle
 
         var_create_and_process = self.variant(create_and_process)
 
-        img_array = jnp.ones((64, 64))
-        angle = 2.0
-        calibration = 0.01
-        wavelength = 0.037
-        distance = 1000.0
+        img_array: Float[Array, "64 64"] = jnp.ones((64, 64))
+        angle: float = 2.0
+        calibration: float = 0.01
+        wavelength: float = 0.037
+        distance: float = 1000.0
 
         result = var_create_and_process(
             img_array, angle, calibration, wavelength, distance
         )
-        expected = jnp.sum(img_array) * angle
+        expected: Num[Array, ""] = jnp.sum(img_array) * angle
         chex.assert_trees_all_close(result, expected)
 
     def test_rheed_image_validation_errors(self) -> None:
@@ -372,7 +372,7 @@ class TestRHEEDImage(chex.TestCase):
             detector_distance,
         )
 
-        def scale_intensities(x: Array) -> Array:
+        def scale_intensities(x: Num[Array, "..."]) -> Num[Array, "..."]:
             if isinstance(x, jnp.ndarray) and x.shape == img_array.shape:
                 return x * 2.0
             return x
@@ -387,10 +387,12 @@ class TestRHEEDImage(chex.TestCase):
 class TestRHEEDPatternValidation(chex.TestCase):
     """Test validation logic in create_rheed_pattern."""
 
-    def _make_valid_pattern_kwargs(self, n: int = 5) -> dict[str, Array]:
+    def _make_valid_pattern_kwargs(
+        self, n: int = 5
+    ) -> dict[str, Num[Array, "..."]]:
         """Build valid keyword arguments for create_rheed_pattern."""
-        rng = jax.random.PRNGKey(0)
-        k_out = jax.random.normal(rng, (n, 3))
+        rng: PRNGKeyArray = jax.random.PRNGKey(0)
+        k_out: Float[Array, "N 3"] = jax.random.normal(rng, (n, 3))
         k_out = k_out / jnp.linalg.norm(k_out, axis=1, keepdims=True)
         return {
             "g_indices": jnp.arange(n, dtype=jnp.int32),
@@ -614,7 +616,7 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
     def test_sliced_crystal_jit_compilation(self) -> None:
         """Test JIT compilation of SlicedCrystal operations."""
 
-        def create_and_process(**kwargs: object) -> Array:
+        def create_and_process(**kwargs: object) -> Num[Array, ""]:
             sliced = create_sliced_crystal(**kwargs)
             return jnp.sum(sliced.cart_positions[:, :3]) + sliced.depth
 
@@ -688,7 +690,7 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
     def test_sliced_crystal_gradient_flow(self) -> None:
         """Test that gradients flow through SlicedCrystal."""
 
-        def loss_fn(positions: Array) -> Array:
+        def loss_fn(positions: Float[Array, "N 4"]) -> Num[Array, ""]:
             kw = self._make_valid_sliced_kwargs()
             kw["cart_positions"] = positions
             sliced = create_sliced_crystal(**kw)
@@ -707,7 +709,7 @@ class TestRHEEDIntegration(chex.TestCase):
     def setUp(self) -> None:
         """Initialize the random key for each test."""
         super().setUp()
-        self.rng = jax.random.PRNGKey(42)
+        self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_combined_rheed_structures(self) -> None:
@@ -747,8 +749,8 @@ class TestRHEEDIntegration(chex.TestCase):
     def test_gradient_flow_rheed_pattern(self) -> None:
         """Test that gradients flow through RHEEDPattern correctly."""
 
-        def loss_fn(intensities: Array) -> Array:
-            pattern = create_rheed_pattern(
+        def loss_fn(intensities: Float[Array, "3"]) -> Num[Array, ""]:
+            pattern: RHEEDPattern = create_rheed_pattern(
                 jnp.array([0, 1, 2], dtype=jnp.int32),
                 jnp.ones((3, 3)),
                 jnp.ones((3, 2)),
@@ -757,25 +759,27 @@ class TestRHEEDIntegration(chex.TestCase):
             return jnp.sum(pattern.intensities**2)
 
         var_grad_fn = self.variant(jax.grad(loss_fn))
-        intensities = jnp.array([1.0, 2.0, 3.0])
-        grads = var_grad_fn(intensities)
+        intensities: Float[Array, "3"] = jnp.array([1.0, 2.0, 3.0])
+        grads: Float[Array, "3"] = var_grad_fn(intensities)
 
-        expected_grads = 2 * intensities
+        expected_grads: Float[Array, "3"] = 2 * intensities
         chex.assert_trees_all_close(grads, expected_grads)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_gradient_flow_rheed_image(self) -> None:
         """Test that gradients flow through RHEEDImage correctly."""
 
-        def loss_fn(img_array: Array) -> Array:
-            image = create_rheed_image(img_array, 2.0, 0.01, 0.037, 1000.0)
+        def loss_fn(img_array: Float[Array, "H W"]) -> Num[Array, ""]:
+            image: RHEEDImage = create_rheed_image(
+                img_array, 2.0, 0.01, 0.037, 1000.0
+            )
             return jnp.sum(image.img_array**2)
 
         var_grad_fn = self.variant(jax.grad(loss_fn))
-        img_array = jnp.ones((32, 32))
-        grads = var_grad_fn(img_array)
+        img_array: Float[Array, "32 32"] = jnp.ones((32, 32))
+        grads: Float[Array, "32 32"] = var_grad_fn(img_array)
 
-        expected_grads = 2 * img_array
+        expected_grads: Float[Array, "32 32"] = 2 * img_array
         chex.assert_trees_all_close(grads, expected_grads)
 
 

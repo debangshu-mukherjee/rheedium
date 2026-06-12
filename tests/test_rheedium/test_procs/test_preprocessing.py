@@ -9,7 +9,7 @@ ensure jax.grad flows through all operations.
 import chex
 import jax
 import jax.numpy as jnp
-from jax import Array
+from jaxtyping import Array, Float
 
 from rheedium.procs.preprocessing import (
     log_intensity_transform,
@@ -18,9 +18,10 @@ from rheedium.procs.preprocessing import (
     soft_threshold_mask,
     subtract_background,
 )
+from rheedium.types.custom_types import scalar_float
 
-H = 32
-W = 32
+H: int = 32
+W: int = 32
 
 
 class TestSoftThresholdMask(chex.TestCase):
@@ -235,58 +236,66 @@ class TestPreprocessingGradients(chex.TestCase):
     def test_grad_through_soft_mask(self) -> None:
         """jax.grad flows through soft_threshold_mask."""
 
-        def loss(threshold: Array) -> Array:
-            dist = jnp.linspace(0.0, 1.0, H * W).reshape(H, W)
-            mask = soft_threshold_mask(dist, threshold, jnp.float64(10.0))
+        def loss(threshold: scalar_float) -> scalar_float:
+            dist: Float[Array, "H W"] = jnp.linspace(0.0, 1.0, H * W).reshape(
+                H, W
+            )
+            mask: Float[Array, "H W"] = soft_threshold_mask(
+                dist, threshold, jnp.float64(10.0)
+            )
             return jnp.sum(mask)
 
-        grad_val = jax.grad(loss)(jnp.float64(0.5))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
         self.assertTrue(jnp.abs(grad_val) > 1e-10)
 
     def test_grad_through_background_subtraction(self) -> None:
         """jax.grad flows through subtract_background."""
 
-        def loss(bg_level: Array) -> Array:
-            img = jnp.ones((H, W)) * 100.0
-            bg = jnp.ones((H, W)) * bg_level
-            result = subtract_background(img, bg)
+        def loss(bg_level: scalar_float) -> scalar_float:
+            img: Float[Array, "H W"] = jnp.ones((H, W)) * 100.0
+            bg: Float[Array, "H W"] = jnp.ones((H, W)) * bg_level
+            result: Float[Array, "H W"] = subtract_background(img, bg)
             return jnp.sum(result)
 
-        grad_val = jax.grad(loss)(jnp.float64(30.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(30.0))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_log_transform(self) -> None:
         """jax.grad flows through log_intensity_transform."""
 
-        def loss(epsilon: Array) -> Array:
-            img = jnp.ones((H, W)) * 100.0
-            result = log_intensity_transform(img, epsilon)
+        def loss(epsilon: scalar_float) -> scalar_float:
+            img: Float[Array, "H W"] = jnp.ones((H, W)) * 100.0
+            result: Float[Array, "H W"] = log_intensity_transform(img, epsilon)
             return jnp.sum(result)
 
-        grad_val = jax.grad(loss)(jnp.float64(1e-4))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(1e-4))
         chex.assert_tree_all_finite(grad_val)
         self.assertTrue(jnp.abs(grad_val) > 1e-10)
 
     def test_grad_through_normalize(self) -> None:
         """jax.grad flows through normalize_image."""
 
-        def loss(scale: Array) -> Array:
-            img = jnp.linspace(0.0, 1.0, H * W).reshape(H, W) * scale
-            result = normalize_image(img)
+        def loss(scale: scalar_float) -> scalar_float:
+            img: Float[Array, "H W"] = (
+                jnp.linspace(0.0, 1.0, H * W).reshape(H, W) * scale
+            )
+            result: Float[Array, "H W"] = normalize_image(img)
             return jnp.sum(result)
 
-        grad_val = jax.grad(loss)(jnp.float64(100.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(100.0))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_full_preprocess(self) -> None:
         """jax.grad flows through preprocess_experimental without NaN."""
 
-        def loss(bg_level: Array) -> Array:
-            raw = jnp.linspace(10.0, 500.0, H * W).reshape(H, W)
-            bg = jnp.ones((H, W)) * bg_level
-            mask = jnp.ones((H, W)) * 0.9
-            result = preprocess_experimental(
+        def loss(bg_level: scalar_float) -> scalar_float:
+            raw: Float[Array, "H W"] = jnp.linspace(
+                10.0, 500.0, H * W
+            ).reshape(H, W)
+            bg: Float[Array, "H W"] = jnp.ones((H, W)) * bg_level
+            mask: Float[Array, "H W"] = jnp.ones((H, W)) * 0.9
+            result: Float[Array, "H W"] = preprocess_experimental(
                 raw,
                 background=bg,
                 beam_shadow_mask=mask,
@@ -294,5 +303,5 @@ class TestPreprocessingGradients(chex.TestCase):
             )
             return jnp.sum(result)
 
-        grad_val = jax.grad(loss)(jnp.float64(5.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(5.0))
         chex.assert_tree_all_finite(grad_val)

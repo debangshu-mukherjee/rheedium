@@ -14,7 +14,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 import tifffile
-from jax import Array
+from jaxtyping import Array, Float
 
 from rheedium.inout.tiff import (
     FrameMetadata,
@@ -24,6 +24,7 @@ from rheedium.inout.tiff import (
     load_tiff_sequence,
     normalize_sequence,
 )
+from rheedium.types.custom_types import scalar_float
 from rheedium.types.rheed_types import RHEEDImage
 
 H = 32
@@ -442,26 +443,32 @@ class TestGradients(chex.TestCase):
     def test_grad_through_normalize(self) -> None:
         """jax.grad flows through normalize_sequence."""
 
-        def loss(scale: Array) -> Array:
-            seq = jnp.linspace(1.0, 100.0, 3 * H * W).reshape(3, H, W) * scale
-            result = normalize_sequence(seq)
+        def loss(scale: scalar_float) -> scalar_float:
+            seq: Float[Array, "3 H W"] = (
+                jnp.linspace(1.0, 100.0, 3 * H * W).reshape(3, H, W) * scale
+            )
+            result: Float[Array, "3 H W"] = normalize_sequence(seq)
             return jnp.sum(result)
 
-        grad_val = jax.grad(loss)(jnp.float64(1.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_detect_beam_center(self) -> None:
         """jax.grad flows through detect_beam_center."""
 
-        def loss(peak_row: Array) -> Array:
-            y = jnp.arange(H, dtype=jnp.float64)
-            x = jnp.arange(W, dtype=jnp.float64)
+        def loss(peak_row: scalar_float) -> scalar_float:
+            y: Float[Array, "H"] = jnp.arange(H, dtype=jnp.float64)
+            x: Float[Array, "W"] = jnp.arange(W, dtype=jnp.float64)
+            yy: Float[Array, "H W"]
+            xx: Float[Array, "H W"]
             yy, xx = jnp.meshgrid(y, x, indexing="ij")
-            img = jnp.exp(
+            img: Float[Array, "H W"] = jnp.exp(
                 -((yy - peak_row) ** 2 + (xx - W / 2.0) ** 2) / (2.0 * 3.0**2)
             )
-            center = detect_beam_center(img, jnp.float64(3.0))
+            center: Float[Array, "2"] = detect_beam_center(
+                img, jnp.float64(3.0)
+            )
             return jnp.sum(center)
 
-        grad_val = jax.grad(loss)(jnp.float64(H / 2.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(H / 2.0))
         chex.assert_tree_all_finite(grad_val)

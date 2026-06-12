@@ -9,7 +9,6 @@ import chex
 import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
-from jax import Array
 from jax.test_util import check_grads
 
 from rheedium.tools.simul_utils import (
@@ -18,6 +17,7 @@ from rheedium.tools.simul_utils import (
     wavelength_ang,
 )
 from rheedium.tools.wrappers import jax_safe
+from rheedium.types.custom_types import scalar_float
 
 
 class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
@@ -234,7 +234,7 @@ class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
     def test_wavelength_grad_correct(self) -> None:
         """Relativistic wavelength grad matches finite diff to 2nd order."""
 
-        def f(voltage: Array) -> Array:
+        def f(voltage: scalar_float) -> scalar_float:
             return wavelength_ang(voltage)
 
         check_grads(jax_safe(f), (jnp.float64(20.0),), order=2, atol=1e-4)

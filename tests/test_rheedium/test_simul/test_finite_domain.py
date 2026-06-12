@@ -115,10 +115,8 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         Padding should be applied symmetrically on both sides.
         """
         var_compute = self.variant(compute_domain_extent)
-
         extent_no_pad = var_compute(self.cube_positions, padding_ang=0.0)
         extent_with_pad = var_compute(self.cube_positions, padding_ang=padding)
-
         expected = extent_no_pad + 2.0 * padding
         chex.assert_trees_all_close(extent_with_pad, expected, rtol=1e-10)
 
@@ -126,9 +124,7 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
     def test_output_is_positive(self) -> None:
         """Test that extent is always positive."""
         var_compute = self.variant(compute_domain_extent)
-
         extent = var_compute(self.single_atom, padding_ang=0.0)
-
         chex.assert_trees_all_equal(jnp.all(extent > 0), True)
 
 

@@ -19,8 +19,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from absl.testing import parameterized
-from jax import Array
 from jax.test_util import check_grads
+from jaxtyping import Array, Complex, Float
 
 from rheedium.simul.simulator import (
     compute_kinematic_intensities_with_ctrs,
@@ -47,6 +47,7 @@ from rheedium.types.crystal_types import (
     create_crystal_structure,
     create_potential_slices,
 )
+from rheedium.types.custom_types import scalar_float
 from rheedium.types.distributions import create_discrete_orientation
 from rheedium.types.rheed_types import (
     RHEEDPattern,
@@ -1900,7 +1901,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
     """Gradient existence and correctness for the ewald_simulator."""
 
-    def _ewald_loss(self, **override: object) -> Array:
+    def _ewald_loss(self, **override: object) -> scalar_float:
         """Compute sum of intensities from ewald_simulator."""
         defaults = {
             "crystal": _SI_CRYSTAL_2ATOM,
@@ -1919,73 +1920,73 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
     def test_grad_temperature(self) -> None:
         """Gradient w.r.t. temperature is finite and non-zero."""
 
-        def loss(temp: Array) -> Array:
+        def loss(temp: scalar_float) -> scalar_float:
             return self._ewald_loss(temperature=temp)
 
-        g = jax.grad(loss)(jnp.float64(300.0))
+        g: scalar_float = jax.grad(loss)(jnp.float64(300.0))
         chex.assert_tree_all_finite(g)
         assert jnp.abs(g) > 1e-12
 
     def test_grad_roughness(self) -> None:
         """Gradient w.r.t. surface roughness is finite and non-zero."""
 
-        def loss(roughness: Array) -> Array:
+        def loss(roughness: scalar_float) -> scalar_float:
             return self._ewald_loss(surface_roughness=roughness)
 
-        g = jax.grad(loss)(jnp.float64(0.5))
+        g: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(g)
         assert jnp.abs(g) > 1e-12
 
     def test_grad_polar_angle(self) -> None:
         """Gradient w.r.t. incidence angle is finite."""
 
-        def loss(theta: Array) -> Array:
+        def loss(theta: scalar_float) -> scalar_float:
             return self._ewald_loss(theta_deg=theta)
 
-        g = jax.grad(loss)(jnp.float64(2.0))
+        g: scalar_float = jax.grad(loss)(jnp.float64(2.0))
         chex.assert_tree_all_finite(g)
 
     def test_grad_voltage(self) -> None:
         """Gradient w.r.t. beam voltage is finite."""
 
-        def loss(voltage: Array) -> Array:
+        def loss(voltage: scalar_float) -> scalar_float:
             return self._ewald_loss(voltage_kv=voltage)
 
-        g = jax.grad(loss)(jnp.float64(20.0))
+        g: scalar_float = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
 
     def test_vmap_grad(self) -> None:
         """vmap(grad(loss)) over temperatures produces correct shape."""
 
-        def loss(temp: Array) -> Array:
+        def loss(temp: scalar_float) -> scalar_float:
             return self._ewald_loss(temperature=temp)
 
         grad_fn = jax.grad(loss)
         batch_grad = jax.vmap(grad_fn)
-        temps = jnp.array([100.0, 300.0, 600.0])
-        grads = batch_grad(temps)
+        temps: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
+        grads: Float[Array, "3"] = batch_grad(temps)
         chex.assert_shape(grads, (3,))
         chex.assert_tree_all_finite(grads)
 
     def test_jacrev(self) -> None:
         """Jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian."""
 
-        def loss(params: Array) -> Array:
+        def loss(params: Float[Array, "2"]) -> scalar_float:
             return self._ewald_loss(
                 temperature=params[0],
                 surface_roughness=params[1],
             )
 
         jac_fn = jax.jacrev(loss)
-        params = jnp.array([300.0, 0.5])
-        jac = jac_fn(params)
+        params: Float[Array, "2"] = jnp.array([300.0, 0.5])
+        jac: Float[Array, "2"] = jac_fn(params)
         chex.assert_shape(jac, (2,))
         chex.assert_tree_all_finite(jac)
 
     def test_ewald_simulator_grad_temperature_correct(self) -> None:
         """Ewald simulator grad w.r.t. temperature matches finite diff."""
 
-        def f(temp: Array) -> Array:
+        def f(temp: scalar_float) -> scalar_float:
             pattern = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
@@ -2003,7 +2004,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
     def test_ewald_simulator_grad_roughness_correct(self) -> None:
         """Ewald simulator grad w.r.t. roughness matches finite diff."""
 
-        def f(roughness: Array) -> Array:
+        def f(roughness: scalar_float) -> scalar_float:
             pattern = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
@@ -2037,20 +2038,20 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             y_extent=15.0,
         )
 
-        def loss(voltage: Array) -> Array:
+        def loss(voltage: scalar_float) -> scalar_float:
             potential = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
             )
-            psi_exit = multislice_propagate(
+            psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
                 voltage_kv=voltage,
                 theta_deg=2.0,
             )
             return jnp.sum(jnp.abs(psi_exit) ** 2)
 
-        g = jax.grad(loss)(jnp.float64(20.0))
+        g: scalar_float = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
 
     def test_multislice_grad_voltage_correct(self) -> None:
@@ -2068,13 +2069,13 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             y_extent=15.0,
         )
 
-        def f(voltage: Array) -> Array:
+        def f(voltage: scalar_float) -> scalar_float:
             potential = sliced_crystal_to_projected_potential_slices(
                 sliced,
                 slice_thickness=2.0,
                 pixel_size=0.5,
             )
-            psi_exit = multislice_propagate(
+            psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
                 voltage_kv=voltage,
                 theta_deg=2.0,
@@ -2090,7 +2091,7 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
     def test_ewald_simulator_vmap_temperature_consistent(self) -> None:
         """Batched ewald_simulator over temps matches sequential."""
 
-        def f(temp: Array) -> Array:
+        def f(temp: scalar_float) -> scalar_float:
             pattern = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
@@ -2103,9 +2104,9 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
             )
             return jnp.sum(pattern.intensities)
 
-        temp_batch = jnp.array([100.0, 300.0, 600.0])
-        batched = jax.vmap(f)(temp_batch)
-        sequential = jnp.stack([f(t) for t in temp_batch])
+        temp_batch: Float[Array, "3"] = jnp.array([100.0, 300.0, 600.0])
+        batched: Float[Array, "3"] = jax.vmap(f)(temp_batch)
+        sequential: Float[Array, "3"] = jnp.stack([f(t) for t in temp_batch])
         chex.assert_trees_all_close(batched, sequential, atol=1e-4)
 
 

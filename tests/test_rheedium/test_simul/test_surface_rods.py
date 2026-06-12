@@ -9,8 +9,8 @@ import jax
 import jax.numpy as jnp
 import pytest
 from absl.testing import parameterized
-from jax import Array
 from jax.test_util import check_grads
+from jaxtyping import Array, Float, Int
 
 from rheedium.simul.surface_rods import (
     calculate_ctr_intensity,
@@ -24,6 +24,7 @@ from rheedium.simul.surface_rods import (
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.custom_types import scalar_float
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
@@ -592,7 +593,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         """
         var_ctr = self.variant(calculate_ctr_intensity)
 
-        def ctr_for_roughness(sigma: Array) -> Array:
+        def ctr_for_roughness(sigma: scalar_float) -> Float[Array, "1 10"]:
             return var_ctr(
                 hk_indices=jnp.array([[1, 0]], dtype=jnp.int32),
                 q_z=self.q_z_values[:10],
@@ -602,13 +603,19 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             )
 
         vmapped_ctr = jax.vmap(ctr_for_roughness)
-        intensities_batch = vmapped_ctr(self.roughness_values)
+        intensities_batch: Float[Array, "R 1 10"] = vmapped_ctr(
+            self.roughness_values
+        )
 
-        expected_shape = (len(self.roughness_values), 1, 10)
+        expected_shape: tuple[int, int, int] = (
+            len(self.roughness_values),
+            1,
+            10,
+        )
         chex.assert_shape(intensities_batch, expected_shape)
 
-        def loss_fn(sigma: float) -> Array:
-            intensities = var_ctr(
+        def loss_fn(sigma: float) -> scalar_float:
+            intensities: Float[Array, "1 1"] = var_ctr(
                 hk_indices=jnp.array([[0, 0]], dtype=jnp.int32),
                 q_z=jnp.array([2.0]),
                 crystal=self.test_crystal,
@@ -618,7 +625,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             return jnp.squeeze(intensities)
 
         grad_fn = jax.grad(loss_fn)
-        grad_roughness = grad_fn(1.0)
+        grad_roughness: scalar_float = grad_fn(1.0)
 
         chex.assert_shape(grad_roughness, ())
         chex.assert_tree_all_finite(grad_roughness)
@@ -731,10 +738,10 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
 
     def test_ctr_intensity_grad_roughness(self) -> None:
         """CTR intensity gradient w.r.t. roughness is finite."""
-        hk_indices = jnp.array([[1, 0]])
-        q_z = jnp.linspace(0.5, 3.0, 5)
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
-        def loss(roughness: Array) -> Array:
+        def loss(roughness: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -745,16 +752,16 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
                 )
             )
 
-        g = jax.grad(loss)(jnp.float64(0.5))
+        g: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(g)
         assert jnp.abs(g) > 1e-12
 
     def test_ctr_intensity_grad_temperature(self) -> None:
         """CTR intensity gradient w.r.t. temperature is finite."""
-        hk_indices = jnp.array([[1, 0]])
-        q_z = jnp.linspace(0.5, 3.0, 5)
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
-        def loss(temp: Array) -> Array:
+        def loss(temp: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -765,15 +772,15 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
                 )
             )
 
-        g = jax.grad(loss)(jnp.float64(300.0))
+        g: scalar_float = jax.grad(loss)(jnp.float64(300.0))
         chex.assert_tree_all_finite(g)
 
     def test_ctr_intensity_grad_roughness_correct(self) -> None:
         """CTR intensity grad w.r.t. roughness matches finite diff."""
-        hk_indices = jnp.array([[1, 0]])
-        q_z = jnp.linspace(0.5, 3.0, 5)
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
-        def f(roughness: Array) -> Array:
+        def f(roughness: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -788,10 +795,10 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
 
     def test_ctr_intensity_grad_temperature_correct(self) -> None:
         """CTR intensity grad w.r.t. temperature matches finite diff."""
-        hk_indices = jnp.array([[1, 0]])
-        q_z = jnp.linspace(0.5, 3.0, 5)
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
-        def f(temp: Array) -> Array:
+        def f(temp: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
@@ -810,10 +817,10 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
 
     def test_ctr_intensity_vmap_consistent(self) -> None:
         """Batched CTR intensity matches sequential evaluation."""
-        hk_indices = jnp.array([[1, 0]])
-        q_z = jnp.linspace(0.5, 3.0, 5)
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
+        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
-        def f(roughness: Array) -> Array:
+        def f(roughness: scalar_float) -> Float[Array, "1 5"]:
             return calculate_ctr_intensity(
                 hk_indices=hk_indices,
                 q_z=q_z,
@@ -822,7 +829,7 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
                 temperature=300.0,
             )
 
-        roughness_batch = jnp.array([0.1, 0.5, 1.0])
+        roughness_batch: Float[Array, "3"] = jnp.array([0.1, 0.5, 1.0])
         batched = jax.vmap(f)(roughness_batch)
         sequential = jnp.stack([f(r) for r in roughness_batch])
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)

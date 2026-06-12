@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-from jax import Array
+from jaxtyping import Array, Float
 
 from rheedium.procs.surface_modifier import (
     apply_step_edge_field,
@@ -19,20 +19,23 @@ from rheedium.procs.surface_modifier import (
 )
 from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
+from rheedium.types.custom_types import scalar_float
 from rheedium.ucell.unitcell import build_cell_vectors
 
 
 def _make_test_slab() -> CrystalStructure:
     """Build a small orthorhombic slab with two surface atoms."""
-    cell_vectors = build_cell_vectors(2.0, 2.0, 6.0, 90.0, 90.0, 90.0)
-    cart_positions = jnp.array(
+    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        2.0, 2.0, 6.0, 90.0, 90.0, 90.0
+    )
+    cart_positions: Float[Array, "3 4"] = jnp.array(
         [
             [0.2, 0.2, 0.5, 14.0],
             [0.5, 0.4, 4.8, 14.0],
             [1.5, 1.6, 4.8, 8.0],
         ]
     )
-    frac_positions = jnp.column_stack(
+    frac_positions: Float[Array, "3 4"] = jnp.column_stack(
         [
             cart_positions[:, :3] @ jnp.linalg.inv(cell_vectors).T,
             cart_positions[:, 3],
@@ -51,8 +54,8 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_output_shape_matches_input(self) -> None:
         """Output should have same shape as q_z input."""
-        q_z = jnp.linspace(0.0, 10.0, 100)
-        result = vicinal_surface_step_splitting(
+        q_z: Float[Array, "100"] = jnp.linspace(0.0, 10.0, 100)
+        result: Float[Array, "100"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
@@ -62,8 +65,8 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_output_nonnegative(self) -> None:
         """All intensity values should be >= 0."""
-        q_z = jnp.linspace(0.0, 10.0, 200)
-        result = vicinal_surface_step_splitting(
+        q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
+        result: Float[Array, "200"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
@@ -73,8 +76,8 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_output_bounded_by_one(self) -> None:
         """Normalized intensity should not exceed 1."""
-        q_z = jnp.linspace(0.0, 10.0, 200)
-        result = vicinal_surface_step_splitting(
+        q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
+        result: Float[Array, "200"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
@@ -84,10 +87,10 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_antiphase_condition_dip(self) -> None:
         """At q_z * d = pi, intensity should show a minimum."""
-        step_height = 2.0
-        q_at_pi = jnp.pi / step_height
-        q_z = jnp.array([0.0, q_at_pi])
-        result = vicinal_surface_step_splitting(
+        step_height: float = 2.0
+        q_at_pi: scalar_float = jnp.pi / step_height
+        q_z: Float[Array, "2"] = jnp.array([0.0, q_at_pi])
+        result: Float[Array, "2"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=step_height,
             terrace_width_angstrom=50.0,
@@ -97,10 +100,10 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_in_phase_condition_peak(self) -> None:
         """At q_z * d = 2*pi, intensity should be at maximum."""
-        step_height = 2.0
-        q_at_2pi = 2.0 * jnp.pi / step_height
-        q_z = jnp.array([q_at_2pi])
-        result = vicinal_surface_step_splitting(
+        step_height: float = 2.0
+        q_at_2pi: scalar_float = 2.0 * jnp.pi / step_height
+        q_z: Float[Array, "1"] = jnp.array([q_at_2pi])
+        result: Float[Array, "1"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=step_height,
             terrace_width_angstrom=50.0,
@@ -110,27 +113,27 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
     def test_wider_terraces_sharper_peaks(self) -> None:
         """Wider terraces should produce sharper (narrower) peaks."""
-        q_z = jnp.linspace(0.0, 10.0, 1000)
-        narrow = vicinal_surface_step_splitting(
+        q_z: Float[Array, "1000"] = jnp.linspace(0.0, 10.0, 1000)
+        narrow: Float[Array, "1000"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=20.0,
             q_z=q_z,
         )
-        wide = vicinal_surface_step_splitting(
+        wide: Float[Array, "1000"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=100.0,
             q_z=q_z,
         )
-        narrow_mean = float(jnp.mean(narrow))
-        wide_mean = float(jnp.mean(wide))
+        narrow_mean: float = float(jnp.mean(narrow))
+        wide_mean: float = float(jnp.mean(wide))
         assert wide_mean < narrow_mean
 
     def test_no_nan_or_inf(self) -> None:
         """Output should be finite everywhere."""
-        q_z = jnp.linspace(0.0, 20.0, 500)
-        result = vicinal_surface_step_splitting(
+        q_z: Float[Array, "500"] = jnp.linspace(0.0, 20.0, 500)
+        result: Float[Array, "500"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([0, 0], dtype=jnp.int32),
             step_height_angstrom=3.0,
             terrace_width_angstrom=30.0,
@@ -144,8 +147,8 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
     def test_scales_only_surface_region_atomic_numbers(self) -> None:
         """Verify only surface-region atomic numbers are scaled."""
-        slab = _make_test_slab()
-        modified = apply_surface_occupancy_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_surface_occupancy_field(
             slab,
             0.8,
             jnp.array([0.1, 0.5, 0.25]),
@@ -164,8 +167,8 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
     def test_clips_surface_occupancies(self) -> None:
         """Verify surface occupancies are clipped to a physical range."""
-        slab = _make_test_slab()
-        modified = apply_surface_occupancy_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_surface_occupancy_field(
             slab,
             0.8,
             jnp.array([0.1, 2.0, -1.0]),
@@ -179,9 +182,9 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
     def test_grad_flows_through_surface_occupancy(self) -> None:
         """Check gradients flow through the surface occupancy."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def objective(occupancy: Array) -> Array:
+        def objective(occupancy: scalar_float) -> scalar_float:
             return jnp.sum(
                 apply_surface_occupancy_field(
                     slab,
@@ -190,12 +193,12 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
                 ).cart_positions[:, 3]
             )
 
-        grad_value = jax.grad(objective)(0.5)
+        grad_value: scalar_float = jax.grad(objective)(0.5)
         chex.assert_trees_all_close(float(grad_value), 14.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
         """Verify apply_surface_occupancy_field compiles under jit."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
         compiled = jax.jit(
             lambda occupancy: apply_surface_occupancy_field(
                 slab,
@@ -204,7 +207,7 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
             ).cart_positions[:, 3]
         )
 
-        result = compiled(0.5)
+        result: Float[Array, "3"] = compiled(0.5)
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([14.0, 7.0, 8.0]),
@@ -213,16 +216,18 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
     def test_vmap_supports_batched_surface_occupancies(self) -> None:
         """Check the field maps over batched surface occupancies."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def top_layer_weight(occupancy: Array) -> Array:
+        def top_layer_weight(occupancy: scalar_float) -> scalar_float:
             return apply_surface_occupancy_field(
                 slab,
                 0.8,
                 jnp.array([1.0, occupancy, 1.0]),
             ).cart_positions[1, 3]
 
-        result = jax.vmap(top_layer_weight)(jnp.array([0.0, 0.5, 1.0]))
+        result: Float[Array, "3"] = jax.vmap(top_layer_weight)(
+            jnp.array([0.0, 0.5, 1.0])
+        )
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([0.0, 7.0, 14.0]),
@@ -235,8 +240,8 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 
     def test_applies_displacements_only_near_surface(self) -> None:
         """Verify displacements are applied only near the surface."""
-        slab = _make_test_slab()
-        modified = apply_surface_displacement_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_surface_displacement_field(
             slab,
             0.8,
             jnp.array(
@@ -267,8 +272,8 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 
     def test_zero_displacement_field_is_identity(self) -> None:
         """Verify a zero displacement field leaves the slab unchanged."""
-        slab = _make_test_slab()
-        modified = apply_surface_displacement_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_surface_displacement_field(
             slab,
             0.8,
             jnp.zeros((3, 3)),
@@ -282,9 +287,9 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 
     def test_grad_flows_through_surface_displacement(self) -> None:
         """Check gradients flow through the surface displacement."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def objective(delta_z: Array) -> Array:
+        def objective(delta_z: scalar_float) -> scalar_float:
             return apply_surface_displacement_field(
                 slab,
                 0.8,
@@ -297,12 +302,12 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
                 ),
             ).cart_positions[1, 2]
 
-        grad_value = jax.grad(objective)(0.3)
+        grad_value: scalar_float = jax.grad(objective)(0.3)
         chex.assert_trees_all_close(float(grad_value), 1.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
         """Verify apply_surface_displacement_field compiles under jit."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
         compiled = jax.jit(
             lambda scale: apply_surface_displacement_field(
                 slab,
@@ -317,7 +322,7 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
             ).cart_positions[1, :3]
         )
 
-        result = compiled(1.0)
+        result: Float[Array, "3"] = compiled(1.0)
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([0.6, 0.2, 5.1]),
@@ -326,9 +331,9 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 
     def test_vmap_supports_batched_displacement_scales(self) -> None:
         """Check the field maps over batched displacement scales."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def top_atom_z(scale: Array) -> Array:
+        def top_atom_z(scale: scalar_float) -> scalar_float:
             return apply_surface_displacement_field(
                 slab,
                 0.8,
@@ -341,7 +346,9 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
                 ),
             ).cart_positions[1, 2]
 
-        result = jax.vmap(top_atom_z)(jnp.array([0.0, 0.5, 1.0]))
+        result: Float[Array, "3"] = jax.vmap(top_atom_z)(
+            jnp.array([0.0, 0.5, 1.0])
+        )
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([4.8, 4.95, 5.1]),
@@ -354,8 +361,8 @@ class TestApplyStepEdgeField(chex.TestCase):
 
     def test_modulates_surface_heights_with_periodic_steps(self) -> None:
         """Verify surface heights are modulated by periodic steps."""
-        slab = _make_test_slab()
-        modified = apply_step_edge_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_step_edge_field(
             slab,
             1.0,
             2.0,
@@ -370,8 +377,8 @@ class TestApplyStepEdgeField(chex.TestCase):
 
     def test_zero_step_height_is_identity(self) -> None:
         """Verify a zero step height leaves the slab unchanged."""
-        slab = _make_test_slab()
-        modified = apply_step_edge_field(
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_step_edge_field(
             slab,
             0.0,
             2.0,
@@ -386,9 +393,9 @@ class TestApplyStepEdgeField(chex.TestCase):
 
     def test_grad_flows_through_step_height(self) -> None:
         """Check gradients flow through the step height."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def objective(step_height: Array) -> Array:
+        def objective(step_height: scalar_float) -> scalar_float:
             return apply_step_edge_field(
                 slab,
                 step_height,
@@ -396,12 +403,12 @@ class TestApplyStepEdgeField(chex.TestCase):
                 0.8,
             ).cart_positions[1, 2]
 
-        grad_value = jax.grad(objective)(1.0)
+        grad_value: scalar_float = jax.grad(objective)(1.0)
         chex.assert_trees_all_close(float(grad_value), 0.5, atol=1e-3)
 
     def test_jit_compiles(self) -> None:
         """Verify apply_step_edge_field compiles under jit."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
         compiled = jax.jit(
             lambda step_height: apply_step_edge_field(
                 slab,
@@ -411,7 +418,7 @@ class TestApplyStepEdgeField(chex.TestCase):
             ).cart_positions[:, 2]
         )
 
-        result = compiled(1.0)
+        result: Float[Array, "3"] = compiled(1.0)
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([0.5, 5.3, 4.3]),
@@ -420,9 +427,9 @@ class TestApplyStepEdgeField(chex.TestCase):
 
     def test_vmap_supports_batched_step_heights(self) -> None:
         """Check the step edge field maps over batched step heights."""
-        slab = _make_test_slab()
+        slab: CrystalStructure = _make_test_slab()
 
-        def top_atom_z(step_height: Array) -> Array:
+        def top_atom_z(step_height: scalar_float) -> scalar_float:
             return apply_step_edge_field(
                 slab,
                 step_height,
@@ -430,7 +437,9 @@ class TestApplyStepEdgeField(chex.TestCase):
                 0.8,
             ).cart_positions[1, 2]
 
-        result = jax.vmap(top_atom_z)(jnp.array([0.0, 0.5, 1.0]))
+        result: Float[Array, "3"] = jax.vmap(top_atom_z)(
+            jnp.array([0.0, 0.5, 1.0])
+        )
         np.testing.assert_allclose(
             np.asarray(result),
             np.array([4.8, 5.05, 5.3]),

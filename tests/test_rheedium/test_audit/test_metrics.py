@@ -9,7 +9,7 @@ import chex
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax import Array
+from jaxtyping import Array, Float
 
 from rheedium.audit.metrics import (
     dominant_peak_positions,
@@ -35,14 +35,22 @@ _REFERENCE_DIR = (
 
 def _synthetic_three_peak_image(
     peak_positions_px: tuple[int, ...],
-) -> Array:
+) -> Float[Array, "image_height image_width"]:
     """Create a simple three-peak detector image for metric tests."""
-    image_height = 80
-    image_width = 96
-    x_axis = jnp.arange(image_width, dtype=jnp.float64)
-    y_axis = jnp.arange(image_height, dtype=jnp.float64)
+    image_height: int = 80
+    image_width: int = 96
+    x_axis: Float[Array, "image_width"] = jnp.arange(
+        image_width, dtype=jnp.float64
+    )
+    y_axis: Float[Array, "image_height"] = jnp.arange(
+        image_height, dtype=jnp.float64
+    )
+    x_grid: Float[Array, "image_height image_width"]
+    y_grid: Float[Array, "image_height image_width"]
     x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
-    image = jnp.zeros((image_height, image_width))
+    image: Float[Array, "image_height image_width"] = jnp.zeros(
+        (image_height, image_width)
+    )
 
     for x0_px in peak_positions_px:
         image = image + jnp.exp(

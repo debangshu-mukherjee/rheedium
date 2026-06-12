@@ -6,10 +6,13 @@ instrument-broadened pipeline. Includes gradient tests to ensure
 end-to-end differentiability through all beam averaging operations.
 """
 
+from collections.abc import Callable
+from typing import TypedDict
+
 import chex
 import jax
 import jax.numpy as jnp
-from jax import Array
+from jaxtyping import Array, Complex, Float
 
 from rheedium.simul.beam_averaging import (
     angular_divergence_average,
@@ -18,39 +21,60 @@ from rheedium.simul.beam_averaging import (
     energy_spread_average,
     instrument_broadened_pattern,
 )
+from rheedium.types.custom_types import scalar_float
 
-H = 32
-W = 32
+H: int = 32
+W: int = 32
+
+
+class InstrumentBroadenedPatternKwargs(TypedDict):
+    """Keyword arguments for instrument_broadened_pattern."""
+
+    simulate_fn: Callable[
+        [scalar_float, scalar_float, scalar_float], Float[Array, "H W"]
+    ]
+    nominal_polar_angle_rad: scalar_float
+    nominal_azimuth_angle_rad: scalar_float
+    nominal_energy_kev: scalar_float
+    angular_divergence_mrad: scalar_float
+    energy_spread_ev: scalar_float
+    psf_sigma_pixels: scalar_float
+    n_angular_samples: int
+    n_energy_samples: int
 
 
 def _dummy_angle_sim(
-    polar_rad: Array,
-    azimuth_rad: Array,  # noqa: ARG001
-) -> Array:
+    polar_rad: scalar_float,
+    azimuth_rad: scalar_float,  # noqa: ARG001
+) -> Float[Array, "H W"]:
     """Simulate pattern that broadens with polar angle."""
-    y = jnp.linspace(-1.0, 1.0, H)
-    x = jnp.linspace(-1.0, 1.0, W)
+    y: Float[Array, "H"] = jnp.linspace(-1.0, 1.0, H)
+    x: Float[Array, "W"] = jnp.linspace(-1.0, 1.0, W)
+    yy: Float[Array, "H W"]
+    xx: Float[Array, "H W"]
     yy, xx = jnp.meshgrid(y, x, indexing="ij")
-    sigma = 0.1 + polar_rad * 10.0
+    sigma: scalar_float = 0.1 + polar_rad * 10.0
     return jnp.exp(-(xx**2 + yy**2) / (2.0 * sigma**2))
 
 
 def _dummy_energy_sim(
-    energy_kev: Array,
-) -> Array:
+    energy_kev: scalar_float,
+) -> Float[Array, "H W"]:
     """Simulate pattern that shifts peak with energy."""
-    y = jnp.linspace(-1.0, 1.0, H)
-    x = jnp.linspace(-1.0, 1.0, W)
+    y: Float[Array, "H"] = jnp.linspace(-1.0, 1.0, H)
+    x: Float[Array, "W"] = jnp.linspace(-1.0, 1.0, W)
+    yy: Float[Array, "H W"]
+    xx: Float[Array, "H W"]
     yy, xx = jnp.meshgrid(y, x, indexing="ij")
-    shift = (energy_kev - 20.0) * 0.01
+    shift: scalar_float = (energy_kev - 20.0) * 0.01
     return jnp.exp(-((xx - shift) ** 2 + yy**2) / 0.02)
 
 
 def _dummy_joint_sim(
-    polar_rad: Array,
-    azimuth_rad: Array,
-    energy_kev: Array,
-) -> Array:
+    polar_rad: scalar_float,
+    azimuth_rad: scalar_float,
+    energy_kev: scalar_float,
+) -> Float[Array, "H W"]:
     """Simulate a pattern with coupled angular and energy dependence."""
     return _dummy_angle_sim(polar_rad, azimuth_rad) * _dummy_energy_sim(
         energy_kev
@@ -62,7 +86,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
 
     def test_shape_preserved(self) -> None:
         """Output shape matches single-pattern shape."""
-        avg = angular_divergence_average(
+        avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -73,7 +97,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
 
     def test_nonnegative(self) -> None:
         """All pixels in the averaged pattern are non-negative."""
-        avg = angular_divergence_average(
+        avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -84,26 +108,30 @@ class TestAngularDivergenceAverage(chex.TestCase):
 
     def test_broader_than_single(self) -> None:
         """Averaged pattern is broader than single-angle pattern."""
-        single = _dummy_angle_sim(jnp.float64(0.035), jnp.float64(0.0))
-        avg = angular_divergence_average(
+        single: Float[Array, "H W"] = _dummy_angle_sim(
+            jnp.float64(0.035), jnp.float64(0.0)
+        )
+        avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
             angular_divergence_mrad=jnp.float64(1.0),
             n_quadrature_points=7,
         )
-        single_row = single[H // 2, :]
-        avg_row = avg[H // 2, :]
-        single_half_max = jnp.max(single_row) / 2.0
-        avg_half_max = jnp.max(avg_row) / 2.0
-        single_fwhm = int(jnp.sum(single_row > single_half_max))
-        avg_fwhm = int(jnp.sum(avg_row > avg_half_max))
+        single_row: Float[Array, "W"] = single[H // 2, :]
+        avg_row: Float[Array, "W"] = avg[H // 2, :]
+        single_half_max: scalar_float = jnp.max(single_row) / 2.0
+        avg_half_max: scalar_float = jnp.max(avg_row) / 2.0
+        single_fwhm: int = int(jnp.sum(single_row > single_half_max))
+        avg_fwhm: int = int(jnp.sum(avg_row > avg_half_max))
         self.assertGreaterEqual(avg_fwhm, single_fwhm)
 
     def test_zero_divergence_matches_single(self) -> None:
         """Zero divergence reproduces the single-angle pattern."""
-        single = _dummy_angle_sim(jnp.float64(0.035), jnp.float64(0.0))
-        avg = angular_divergence_average(
+        single: Float[Array, "H W"] = _dummy_angle_sim(
+            jnp.float64(0.035), jnp.float64(0.0)
+        )
+        avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -114,7 +142,7 @@ class TestAngularDivergenceAverage(chex.TestCase):
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
-        avg = angular_divergence_average(
+        avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -128,7 +156,7 @@ class TestEnergySpreadAverage(chex.TestCase):
 
     def test_shape_preserved(self) -> None:
         """Output shape matches single-energy pattern shape."""
-        avg = energy_spread_average(
+        avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
             energy_spread_ev=jnp.float64(0.5),
@@ -138,7 +166,7 @@ class TestEnergySpreadAverage(chex.TestCase):
 
     def test_nonnegative(self) -> None:
         """All pixels in the averaged pattern are non-negative."""
-        avg = energy_spread_average(
+        avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
             energy_spread_ev=jnp.float64(0.5),
@@ -147,15 +175,17 @@ class TestEnergySpreadAverage(chex.TestCase):
 
     def test_shifts_streaks(self) -> None:
         """Different energies produce slightly different patterns."""
-        pattern_low = _dummy_energy_sim(jnp.float64(19.5))
-        pattern_high = _dummy_energy_sim(jnp.float64(20.5))
-        diff = jnp.max(jnp.abs(pattern_low - pattern_high))
+        pattern_low: Float[Array, "H W"] = _dummy_energy_sim(jnp.float64(19.5))
+        pattern_high: Float[Array, "H W"] = _dummy_energy_sim(
+            jnp.float64(20.5)
+        )
+        diff: scalar_float = jnp.max(jnp.abs(pattern_low - pattern_high))
         self.assertTrue(diff > 1e-6)
 
     def test_zero_spread_matches_single(self) -> None:
         """Zero energy spread reproduces the single-energy pattern."""
-        single = _dummy_energy_sim(jnp.float64(20.0))
-        avg = energy_spread_average(
+        single: Float[Array, "H W"] = _dummy_energy_sim(jnp.float64(20.0))
+        avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
             energy_spread_ev=jnp.float64(0.0),
@@ -165,7 +195,7 @@ class TestEnergySpreadAverage(chex.TestCase):
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
-        avg = energy_spread_average(
+        avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
             energy_spread_ev=jnp.float64(0.5),
@@ -178,18 +208,18 @@ class TestCoherenceEnvelope(chex.TestCase):
 
     def test_damps_high_q(self) -> None:
         """High-q amplitude is reduced more than low-q."""
-        amp = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par_low = jnp.full((H, W), 0.01)
-        q_par_high = jnp.full((H, W), 1.0)
-        q_z = jnp.zeros((H, W))
-        damped_low = coherence_envelope(
+        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
+        q_par_low: Float[Array, "H W"] = jnp.full((H, W), 0.01)
+        q_par_high: Float[Array, "H W"] = jnp.full((H, W), 1.0)
+        q_z: Float[Array, "H W"] = jnp.zeros((H, W))
+        damped_low: Complex[Array, "H W"] = coherence_envelope(
             amp,
             jnp.float64(500.0),
             jnp.float64(1000.0),
             q_par_low,
             q_z,
         )
-        damped_high = coherence_envelope(
+        damped_high: Complex[Array, "H W"] = coherence_envelope(
             amp,
             jnp.float64(500.0),
             jnp.float64(1000.0),
@@ -200,47 +230,49 @@ class TestCoherenceEnvelope(chex.TestCase):
 
     def test_zero_q_unchanged(self) -> None:
         """At q=0 the envelope is unity (no damping)."""
-        amp = jnp.ones((H, W), dtype=jnp.complex128) * (2.0 + 1.0j)
-        q_par = jnp.zeros((H, W))
-        q_z = jnp.zeros((H, W))
-        damped = coherence_envelope(
+        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128) * (
+            2.0 + 1.0j
+        )
+        q_par: Float[Array, "H W"] = jnp.zeros((H, W))
+        q_z: Float[Array, "H W"] = jnp.zeros((H, W))
+        damped: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z
         )
         chex.assert_trees_all_close(damped, amp, atol=1e-14)
 
     def test_shape_preserved(self) -> None:
         """Output shape matches input amplitude shape."""
-        amp = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par = jnp.ones((H, W)) * 0.1
-        q_z = jnp.ones((H, W)) * 0.05
-        damped = coherence_envelope(
+        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
+        q_par: Float[Array, "H W"] = jnp.ones((H, W)) * 0.1
+        q_z: Float[Array, "H W"] = jnp.ones((H, W)) * 0.05
+        damped: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z
         )
         chex.assert_shape(damped, (H, W))
 
     def test_longitudinal_damping(self) -> None:
         """Longitudinal coherence damps along q_z."""
-        amp = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par = jnp.zeros((H, W))
-        q_z_low = jnp.full((H, W), 0.001)
-        q_z_high = jnp.full((H, W), 0.1)
-        damped_low = coherence_envelope(
+        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
+        q_par: Float[Array, "H W"] = jnp.zeros((H, W))
+        q_z_low: Float[Array, "H W"] = jnp.full((H, W), 0.001)
+        q_z_high: Float[Array, "H W"] = jnp.full((H, W), 0.1)
+        damped_low: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z_low
         )
-        damped_high = coherence_envelope(
+        damped_high: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z_high
         )
         self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
 
     def test_longer_coherence_damps_less(self) -> None:
         """Longer coherence lengths preserve more high-q amplitude."""
-        amp = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par = jnp.full((H, W), 0.2)
-        q_z = jnp.full((H, W), 0.1)
-        damped_short = coherence_envelope(
+        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
+        q_par: Float[Array, "H W"] = jnp.full((H, W), 0.2)
+        q_z: Float[Array, "H W"] = jnp.full((H, W), 0.1)
+        damped_short: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(10.0), jnp.float64(20.0), q_par, q_z
         )
-        damped_long = coherence_envelope(
+        damped_long: Complex[Array, "H W"] = coherence_envelope(
             amp, jnp.float64(1000.0), jnp.float64(2000.0), q_par, q_z
         )
         self.assertTrue(
@@ -253,43 +285,57 @@ class TestDetectorPsfConvolve(chex.TestCase):
 
     def test_shape_preserved(self) -> None:
         """Output shape equals input shape."""
-        img = jnp.ones((H, W))
-        blurred = detector_psf_convolve(img, jnp.float64(1.0))
+        img: Float[Array, "H W"] = jnp.ones((H, W))
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(1.0)
+        )
         chex.assert_shape(blurred, (H, W))
 
     def test_zero_sigma_unchanged(self) -> None:
         """Zero PSF sigma leaves image unchanged."""
-        img = jnp.eye(H, W)
-        blurred = detector_psf_convolve(img, jnp.float64(0.0))
+        img: Float[Array, "H W"] = jnp.eye(H, W)
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(0.0)
+        )
         chex.assert_trees_all_close(blurred, img, atol=1e-12)
 
     def test_energy_conserved(self) -> None:
         """Total intensity is preserved to within 1%."""
-        img = jnp.eye(H, W) * 100.0
-        blurred = detector_psf_convolve(img, jnp.float64(1.5))
-        original_sum = jnp.sum(img)
-        blurred_sum = jnp.sum(blurred)
-        relative_error = jnp.abs(blurred_sum - original_sum) / original_sum
+        img: Float[Array, "H W"] = jnp.eye(H, W) * 100.0
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(1.5)
+        )
+        original_sum: scalar_float = jnp.sum(img)
+        blurred_sum: scalar_float = jnp.sum(blurred)
+        relative_error: scalar_float = (
+            jnp.abs(blurred_sum - original_sum) / original_sum
+        )
         self.assertTrue(relative_error < 0.01)
 
     def test_nonnegative(self) -> None:
         """Output is non-negative."""
-        img = jnp.ones((H, W))
-        blurred = detector_psf_convolve(img, jnp.float64(2.0))
+        img: Float[Array, "H W"] = jnp.ones((H, W))
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(2.0)
+        )
         self.assertTrue(jnp.all(blurred >= 0.0))
 
     def test_blurs_delta(self) -> None:
         """PSF spreads a delta function into a wider peak."""
-        img = jnp.zeros((H, W))
+        img: Float[Array, "H W"] = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1.0)
-        blurred = detector_psf_convolve(img, jnp.float64(2.0))
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(2.0)
+        )
         self.assertTrue(blurred[H // 2, W // 2] < 1.0)
         self.assertTrue(blurred[H // 2 + 1, W // 2] > 0.0)
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in output."""
-        img = jnp.ones((H, W)) * 50.0
-        blurred = detector_psf_convolve(img, jnp.float64(1.0))
+        img: Float[Array, "H W"] = jnp.ones((H, W)) * 50.0
+        blurred: Float[Array, "H W"] = detector_psf_convolve(
+            img, jnp.float64(1.0)
+        )
         chex.assert_tree_all_finite(blurred)
 
 
@@ -298,7 +344,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_shape_preserved(self) -> None:
         """Output shape matches pattern shape."""
-        pattern = instrument_broadened_pattern(
+        pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -311,7 +357,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_finite_values(self) -> None:
         """No NaN or Inf in final output."""
-        pattern = instrument_broadened_pattern(
+        pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -324,7 +370,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_nonnegative(self) -> None:
         """All pixels in the final pattern are non-negative."""
-        pattern = instrument_broadened_pattern(
+        pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
             nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -337,7 +383,7 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
 
     def test_jit_agrees(self) -> None:
         """JIT and non-JIT results agree to 1e-4."""
-        kwargs: dict[str, object] = {
+        kwargs: InstrumentBroadenedPatternKwargs = {
             "simulate_fn": _dummy_joint_sim,
             "nominal_polar_angle_rad": jnp.float64(0.035),
             "nominal_azimuth_angle_rad": jnp.float64(0.0),
@@ -348,8 +394,8 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
             "n_angular_samples": 5,
             "n_energy_samples": 3,
         }
-        nojit = instrument_broadened_pattern(**kwargs)
-        jitted = jax.jit(
+        nojit: Float[Array, "H W"] = instrument_broadened_pattern(**kwargs)
+        jitted: Float[Array, "H W"] = jax.jit(
             instrument_broadened_pattern,
             static_argnames=(
                 "simulate_fn",
@@ -366,8 +412,8 @@ class TestGradients(chex.TestCase):
     def test_grad_through_angular_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. divergence is finite."""
 
-        def loss(divergence: Array) -> Array:
-            pattern = angular_divergence_average(
+        def loss(divergence: scalar_float) -> scalar_float:
+            pattern: Float[Array, "H W"] = angular_divergence_average(
                 simulate_fn=_dummy_angle_sim,
                 nominal_polar_angle_rad=jnp.float64(0.035),
                 nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -376,14 +422,14 @@ class TestGradients(chex.TestCase):
             )
             return jnp.sum(pattern)
 
-        grad_val = jax.grad(loss)(jnp.float64(0.5))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_energy_average(self) -> None:
         """jax.grad of sum(averaged_pattern) w.r.t. spread is finite."""
 
-        def loss(spread: Array) -> Array:
-            pattern = energy_spread_average(
+        def loss(spread: scalar_float) -> scalar_float:
+            pattern: Float[Array, "H W"] = energy_spread_average(
                 simulate_fn=_dummy_energy_sim,
                 nominal_energy_kev=jnp.float64(20.0),
                 energy_spread_ev=spread,
@@ -391,33 +437,33 @@ class TestGradients(chex.TestCase):
             )
             return jnp.sum(pattern)
 
-        grad_val = jax.grad(loss)(jnp.float64(0.5))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_psf_convolve(self) -> None:
         """jax.grad of sum(convolved) w.r.t. psf_sigma is finite."""
 
-        def loss(sigma: Array) -> Array:
-            img = jnp.ones((H, W))
-            blurred = detector_psf_convolve(img, sigma)
+        def loss(sigma: scalar_float) -> scalar_float:
+            img: Float[Array, "H W"] = jnp.ones((H, W))
+            blurred: Float[Array, "H W"] = detector_psf_convolve(img, sigma)
             return jnp.sum(blurred)
 
-        grad_val = jax.grad(loss)(jnp.float64(1.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_coherence_envelope(self) -> None:
         """jax.grad of sum(|damped|^2) w.r.t. coherence length is finite."""
 
-        def loss(l_t: Array) -> Array:
-            amp = jnp.ones((H, W), dtype=jnp.complex128)
-            q_par = jnp.ones((H, W)) * 0.005
-            q_z = jnp.ones((H, W)) * 0.002
-            damped = coherence_envelope(
+        def loss(l_t: scalar_float) -> scalar_float:
+            amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
+            q_par: Float[Array, "H W"] = jnp.ones((H, W)) * 0.005
+            q_z: Float[Array, "H W"] = jnp.ones((H, W)) * 0.002
+            damped: Complex[Array, "H W"] = coherence_envelope(
                 amp, l_t, jnp.float64(100.0), q_par, q_z
             )
             return jnp.sum(jnp.abs(damped) ** 2)
 
-        grad_val = jax.grad(loss)(jnp.float64(50.0))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(50.0))
         chex.assert_tree_all_finite(grad_val)
         self.assertTrue(
             jnp.abs(grad_val) > 1e-20,
@@ -427,8 +473,8 @@ class TestGradients(chex.TestCase):
     def test_grad_through_full_pipeline(self) -> None:
         """jax.grad flows through the full instrument pipeline."""
 
-        def loss(divergence: Array) -> Array:
-            pattern = instrument_broadened_pattern(
+        def loss(divergence: scalar_float) -> scalar_float:
+            pattern: Float[Array, "H W"] = instrument_broadened_pattern(
                 simulate_fn=_dummy_joint_sim,
                 nominal_polar_angle_rad=jnp.float64(0.035),
                 nominal_azimuth_angle_rad=jnp.float64(0.0),
@@ -441,7 +487,7 @@ class TestGradients(chex.TestCase):
             )
             return jnp.sum(pattern)
 
-        grad_val = jax.grad(loss)(jnp.float64(0.5))
+        grad_val: scalar_float = jax.grad(loss)(jnp.float64(0.5))
         chex.assert_tree_all_finite(grad_val)
         self.assertTrue(
             jnp.abs(grad_val) > 1e-20,
