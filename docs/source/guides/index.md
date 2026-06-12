@@ -32,6 +32,7 @@ These guides are written for **physics researchers** working with RHEED who want
 | [Unit Cell](unit-cell.md) | Lattice vector construction, reciprocal space, and surface slabs |
 | [PyTree Architecture](pytree-architecture.md) | JAX data structures enabling GPU acceleration and autodiff |
 | [JAX Transformability](jax-transformability.md) | Which of `grad`/`vmap`/`jit` are supported where, and the `jit` boundaries |
+| [Checked Numerical Entry Points](checked-numerical-entry-points.md) | Standard vs `checkify`-checked simulator APIs, and when to use each |
 
 ## Quick Start
 

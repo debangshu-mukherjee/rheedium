@@ -23,7 +23,6 @@ Submodules
    tools
    types
    ucell
-   tests
 
 :mod:`rheedium.audit`
     Physics-invariant checks and reference-image benchmarking for validating simulations.

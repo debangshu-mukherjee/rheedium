@@ -582,10 +582,10 @@ def plot_ewald_sphere_2d(
     -----
     1. **Compute Wavevector** --
        Convert voltage to relativistic wavelength, then
-       derive |k| = 2*pi/lambda.
+       derive the wavevector magnitude, k = 2*pi/lambda.
     2. **Draw Ewald Sphere** --
        Trace an arc centered at the back of the incident
-       wavevector with radius |k|.
+       wavevector with radius k.
     3. **Draw Reciprocal Rods** --
        Place vertical lines at integer multiples of the
        reciprocal lattice spacing g = 2*pi/a.
@@ -710,8 +710,8 @@ def plot_ewald_sphere_3d(
     Notes
     -----
     1. **Build Sphere Surface** --
-       Compute a partial spherical mesh of radius |k|,
-       offset by the incident wavevector direction.
+        Compute a partial spherical mesh of radius k,
+        offset by the incident wavevector direction.
     2. **Place Reciprocal Rod Grid** --
        Draw vertical line segments at each (h, k)
        reciprocal lattice point on the surface plane.

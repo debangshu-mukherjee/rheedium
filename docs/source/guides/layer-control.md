@@ -418,7 +418,7 @@ Comparison of surface atom selection methods. Height-based selection (left) uses
 
 ## Key Source Files
 
-- [`types/rheed_types.py`](../../src/rheedium/types/rheed_types.py) - `SurfaceConfig` and `identify_surface_atoms`
-- [`ucell/unitcell.py`](../../src/rheedium/ucell/unitcell.py) - `atom_scraper`
-- [`types/crystal_types.py`](../../src/rheedium/types/crystal_types.py) - `bulk_to_slice`
-- [`simul/simulator.py`](../../src/rheedium/simul/simulator.py) - `kinematic_simulator` with surface options
+- [`types/rheed_types.py`](../../../src/rheedium/types/rheed_types.py) - `SurfaceConfig` and `identify_surface_atoms`
+- [`ucell/unitcell.py`](../../../src/rheedium/ucell/unitcell.py) - `atom_scraper`
+- [`types/crystal_types.py`](../../../src/rheedium/types/crystal_types.py) - `bulk_to_slice`
+- [`simul/simulator.py`](../../../src/rheedium/simul/simulator.py) - `kinematic_simulator` with surface options

@@ -2235,9 +2235,32 @@ def multislice_simulator(
     return pattern
 
 
-_CHECKIFY_ERRORS = (
-    checkify.nan_checks | checkify.div_checks | checkify.user_checks
-)
+# --------------------------------------------------------------------------
+# Opt-in runtime-checked simulator variants
+# --------------------------------------------------------------------------
+# Each ``checked_*`` below wraps a simulator with ``checkify.checkify``: a
+# functional, JIT-compatible transform that runs the same computation while
+# watching for floating-point faults, so a bad run fails loudly instead of
+# silently propagating NaN/Inf.
+#
+# Contract (see jax.experimental.checkify): a checked call returns the pair
+# ``(err, out)``, not just ``out``. Always surface failures with the error's
+# ``throw`` method (or inspect it via ``get``); ignoring the error silently
+# disables every check. Recommended order: apply jax.jit outside the wrapper.
+#
+# Enabled error sets: nan_checks (NaN/Inf from any op) and div_checks
+# (division or remainder by zero). Both are automatic; no code changes needed.
+#
+# user_checks is intentionally NOT enabled. A checkify check placed inside a
+# shared simulator raises a "not functionalized" error under plain jax.jit or
+# jax.grad, which would break the raw, differentiable call path that does not
+# go through checkify. Re-enable user_checks only alongside checks that live
+# in code reached solely via these wrappers.
+#
+# Differentiability: these variants return ``(err, out)`` and so are not
+# drop-in differentiable. Differentiate the raw simulators (ewald_simulator
+# etc.); use the checked variants for validation or debugging runs.
+_CHECKIFY_ERRORS = checkify.nan_checks | checkify.div_checks
 checked_ewald_simulator = checkify.checkify(
     ewald_simulator,
     errors=_CHECKIFY_ERRORS,

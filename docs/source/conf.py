@@ -70,8 +70,8 @@ extensions = [
 ]
 
 source_suffix = {
-    ".rst": None,
-    ".md": None,
+    ".rst": "restructuredtext",
+    ".md": "markdown",
 }
 
 marimo_notebook_dir = "interactive_notebooks"
@@ -86,6 +86,7 @@ myst_enable_extensions = [
     "amsmath",  # Enable LaTeX math environments like \begin{equation}
     "colon_fence",  # Enable ::: and ```{directive} fenced directives
 ]
+suppress_warnings = ["myst.mathjax"]
 
 # Ensure MyST parses all dollar-delimited math correctly
 myst_dmath_double_inline = True
@@ -116,7 +117,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
 html_static_path = ["_static"]
-html_extra_path = ["_extra"]
+html_extra_path = ["_extra"] if os.path.isdir("_extra") else []
 
 html_css_files = [
     "custom.css",

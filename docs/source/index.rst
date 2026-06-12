@@ -21,6 +21,7 @@ Rheedium
    guides/unit-cell
    guides/pytree-architecture
    guides/jax-transformability
+   guides/checked-numerical-entry-points
 
 .. toctree::
    :maxdepth: 2
