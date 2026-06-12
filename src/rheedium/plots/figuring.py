@@ -29,7 +29,7 @@ from jaxtyping import Float
 from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 from scipy.interpolate import griddata
 
 from rheedium.types import RHEEDPattern, scalar_float

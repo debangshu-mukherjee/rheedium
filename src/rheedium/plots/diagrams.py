@@ -60,7 +60,7 @@ from jaxtyping import Bool, Float, Int
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 from rheedium.simul import (
     debye_waller_factor,

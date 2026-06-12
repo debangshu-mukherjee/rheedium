@@ -35,7 +35,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import Any, Callable, Optional, Union
 from jaxtyping import Shaped
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 from ..recon import ReconstructionResult
 from ..types import (

@@ -35,7 +35,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jaxtyping import Float, Int
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 SRC_ROOT: Path = REPO_ROOT / "src"

@@ -40,7 +40,7 @@ import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
 from jaxtyping import Float
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 from rheedium.inout import parse_cif
 from rheedium.simul import (

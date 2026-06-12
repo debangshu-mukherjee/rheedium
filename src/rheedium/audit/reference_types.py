@@ -28,7 +28,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from jaxtyping import Float
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 REQUIRED_REFERENCE_METADATA_KEYS: tuple[str, ...] = (
     "reference_id",

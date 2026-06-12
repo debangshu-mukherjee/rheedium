@@ -51,7 +51,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import Dict, List, Optional, Tuple, Union
 from jaxtyping import Array, Float, Int, jaxtyped
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 from rheedium.types import XYZData, create_xyz_data, scalar_int
 

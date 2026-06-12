@@ -27,7 +27,7 @@ import numpy as np
 from ase import Atoms
 from beartype import beartype
 from jaxtyping import Array, Float, Int, jaxtyped
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 from pymatgen.core import Lattice, Structure
 
 from rheedium.types import CrystalStructure, XYZData, create_xyz_data

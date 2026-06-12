@@ -39,7 +39,7 @@ and compatibility with JAX transformations.
 
 from beartype.typing import TypeAlias, Union
 from jaxtyping import Array, Bool, Float, Integer, Num
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 scalar_float: TypeAlias = Union[float, Float[Array, " "]]
 scalar_int: TypeAlias = Union[int, Integer[Array, " "]]

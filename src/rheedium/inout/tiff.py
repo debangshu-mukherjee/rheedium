@@ -41,7 +41,7 @@ import tifffile
 from beartype import beartype
 from beartype.typing import List, NamedTuple, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,

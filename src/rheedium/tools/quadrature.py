@@ -5,7 +5,7 @@ import numpy as np
 from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Float, jaxtyped
-from numpy import ndarray as NDArray  # noqa: N812
+from numpy.typing import NDArray
 
 
 @jaxtyped(typechecker=beartype)
