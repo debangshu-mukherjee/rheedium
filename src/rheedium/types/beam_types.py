@@ -33,7 +33,6 @@ where :math:`\lambda` is the de Broglie wavelength and
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from jax import lax
 from jaxtyping import Array, Float, jaxtyped
 
 from .custom_types import scalar_float
@@ -188,63 +187,53 @@ def create_electron_beam(
 
         def _check_energy() -> scalar_float:
             """Check energy_kev is in [5, 100]."""
-            valid: scalar_float = jnp.logical_and(
-                energy_kev >= _MIN_ENERGY_KEV,
-                energy_kev <= _MAX_ENERGY_KEV,
-            )
-            return lax.cond(
-                valid,
-                lambda: energy_kev,
-                lambda: jnp.full_like(energy_kev, jnp.nan),
+            return eqx.error_if(
+                energy_kev,
+                jnp.logical_or(
+                    energy_kev < _MIN_ENERGY_KEV,
+                    energy_kev > _MAX_ENERGY_KEV,
+                ),
+                "energy_kev must be in [5, 100] keV",
             )
 
         def _check_energy_spread() -> scalar_float:
             """Check energy_spread_ev >= 0."""
-            valid: scalar_float = energy_spread_ev >= 0.0
-            return lax.cond(
-                valid,
-                lambda: energy_spread_ev,
-                lambda: jnp.full_like(energy_spread_ev, jnp.nan),
+            return eqx.error_if(
+                energy_spread_ev,
+                energy_spread_ev < 0.0,
+                "energy_spread_ev must be non-negative",
             )
 
         def _check_divergence() -> scalar_float:
             """Check angular_divergence_mrad >= 0."""
-            valid: scalar_float = angular_divergence_mrad >= 0.0
-            return lax.cond(
-                valid,
-                lambda: angular_divergence_mrad,
-                lambda: jnp.full_like(angular_divergence_mrad, jnp.nan),
+            return eqx.error_if(
+                angular_divergence_mrad,
+                angular_divergence_mrad < 0.0,
+                "angular_divergence_mrad must be non-negative",
             )
 
         def _check_transverse_coherence() -> scalar_float:
             """Check transverse coherence length > 0."""
-            valid: scalar_float = coherence_length_transverse_angstrom > 0.0
-            return lax.cond(
-                valid,
-                lambda: coherence_length_transverse_angstrom,
-                lambda: jnp.full_like(
-                    coherence_length_transverse_angstrom, jnp.nan
-                ),
+            return eqx.error_if(
+                coherence_length_transverse_angstrom,
+                coherence_length_transverse_angstrom <= 0.0,
+                "coherence_length_transverse_angstrom must be positive",
             )
 
         def _check_longitudinal_coherence() -> scalar_float:
             """Check longitudinal coherence length > 0."""
-            valid: scalar_float = coherence_length_longitudinal_angstrom > 0.0
-            return lax.cond(
-                valid,
-                lambda: coherence_length_longitudinal_angstrom,
-                lambda: jnp.full_like(
-                    coherence_length_longitudinal_angstrom, jnp.nan
-                ),
+            return eqx.error_if(
+                coherence_length_longitudinal_angstrom,
+                coherence_length_longitudinal_angstrom <= 0.0,
+                "coherence_length_longitudinal_angstrom must be positive",
             )
 
         def _check_spot_size() -> Float[Array, "2"]:
             """Check spot_size_um components are positive."""
-            valid: scalar_float = jnp.all(spot_size_um > 0.0)
-            return lax.cond(
-                valid,
-                lambda: spot_size_um,
-                lambda: jnp.full_like(spot_size_um, jnp.nan),
+            return eqx.error_if(
+                spot_size_um,
+                jnp.any(spot_size_um <= 0.0),
+                "spot_size_um components must be positive",
             )
 
         validated_energy: scalar_float = _check_energy()

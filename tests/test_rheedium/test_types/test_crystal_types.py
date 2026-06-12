@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -31,6 +32,20 @@ from rheedium.types.crystal_types import (
     create_potential_slices,
     create_xyz_data,
 )
+
+
+def assert_rejects(
+    fn: Callable[..., object],
+    *args: object,
+    match: str | None = None,
+    **kwargs: object,
+) -> None:
+    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
+    with pytest.raises(Exception, match=match):
+        fn(*args, **kwargs)
+
+    with pytest.raises(Exception, match=match):
+        eqx.filter_jit(lambda: fn(*args, **kwargs))()
 
 
 class EwaldKwargs(TypedDict):
@@ -93,7 +108,10 @@ class TestCrystalStructure(chex.TestCase):
         """Test PyTree registration and operations."""
         n_atoms: int = 5
         frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
-        cart_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4)) * 2.0
+        cart_positions: Float[Array, "N 4"] = jnp.concatenate(
+            [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
+            axis=1,
+        )
         cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
         cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
 
@@ -206,7 +224,10 @@ class TestCrystalStructure(chex.TestCase):
 
         n_atoms: int = 5
         frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
-        cart_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4)) * 2.0
+        cart_positions: Float[Array, "N 4"] = jnp.concatenate(
+            [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
+            axis=1,
+        )
         cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
         cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
 
@@ -245,6 +266,58 @@ class TestCrystalStructure(chex.TestCase):
 
         with pytest.raises(Exception, match=".*"):
             create_with_mismatched_positions()
+
+    def test_crystal_structure_atomic_number_mismatch_rejected(self) -> None:
+        """Mismatched atomic numbers should be rejected."""
+        frac_positions: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 6.0], [0.5, 0.5, 0.5, 8.0]]
+        )
+        cart_positions: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 6.0], [1.0, 1.0, 1.0, 14.0]]
+        )
+        cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+
+        assert_rejects(
+            create_crystal_structure,
+            frac_positions,
+            cart_positions,
+            cell_lengths,
+            cell_angles,
+            match="atomic numbers must match",
+        )
+
+    def test_crystal_structure_negative_cell_lengths_rejected(self) -> None:
+        """Negative cell lengths should be rejected."""
+        frac_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
+        cart_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
+        cell_lengths: Float[Array, "3"] = jnp.array([-3.0, 4.0, 5.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+
+        assert_rejects(
+            create_crystal_structure,
+            frac_positions,
+            cart_positions,
+            cell_lengths,
+            cell_angles,
+            match="cell_lengths must be positive",
+        )
+
+    def test_crystal_structure_invalid_cell_angles_rejected(self) -> None:
+        """Cell angles outside (0, 180) should be rejected."""
+        frac_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
+        cart_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
+        cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 180.0, 90.0])
+
+        assert_rejects(
+            create_crystal_structure,
+            frac_positions,
+            cart_positions,
+            cell_lengths,
+            cell_angles,
+            match="cell_angles must be between 0 and 180 degrees",
+        )
 
 
 class TestEwaldData(chex.TestCase, parameterized.TestCase):
@@ -384,19 +457,31 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that negative wavelength is caught by validation."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(-0.1)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="wavelength_ang must be positive",
+            **kwargs,
+        )
 
     def test_ewald_data_negative_k_magnitude(self) -> None:
         """Test that negative k_magnitude is caught by validation."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["k_magnitude"] = jnp.array(-1.0)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="k_magnitude must be positive",
+            **kwargs,
+        )
 
     def test_ewald_data_negative_sphere_radius(self) -> None:
         """Test that negative sphere_radius is caught by validation."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["sphere_radius"] = jnp.array(-1.0)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="sphere_radius must be positive",
+            **kwargs,
+        )
 
     def test_ewald_data_mismatched_n(self) -> None:
         """Test that mismatched leading dimensions are caught."""
@@ -409,20 +494,32 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that negative intensities are caught by validation."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["intensities"] = -jnp.ones(7, dtype=jnp.float64)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="intensities must be non-negative",
+            **kwargs,
+        )
 
     def test_ewald_data_nan_in_g_vectors(self) -> None:
         """Test that NaN values in g_vectors are caught."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         g: Float[Array, "N 3"] = kwargs["g_vectors"]
         kwargs["g_vectors"] = g.at[0, 0].set(jnp.nan)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="g_vectors contain non-finite values",
+            **kwargs,
+        )
 
     def test_ewald_data_inf_in_wavelength(self) -> None:
         """Test that Inf values are caught by finiteness check."""
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(jnp.inf)
-        jax.jit(create_ewald_data)(**kwargs)
+        assert_rejects(
+            create_ewald_data,
+            match="wavelength_ang must be finite",
+            **kwargs,
+        )
 
 
 class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
@@ -553,29 +650,26 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
                 wrong_shape_slices, 1.0, 0.1, 0.1
             )
 
-        def create_with_negative_thickness() -> PotentialSlices:
-            slices: Float[Array, "10 32 32"] = jnp.ones((10, 32, 32))
-            negative_thickness: float = -1.0
-            return jax.jit(create_potential_slices)(
-                slices, negative_thickness, 0.1, 0.1
-            )
-
-        def create_with_negative_calibration() -> PotentialSlices:
-            slices: Float[Array, "10 32 32"] = jnp.ones((10, 32, 32))
-            negative_calibration: float = -0.1
-            return jax.jit(create_potential_slices)(
-                slices, 1.0, negative_calibration, 0.1
-            )
-
         # jaxtyping catches type errors before internal validation
         with pytest.raises(TypeCheckError):
             create_with_wrong_shape()
 
-        # These will fail during JIT tracing due to conditional checks
-        # The actual error depends on JAX's tracing behavior
-        # Both trace successfully but fail at runtime if executed.
-        create_with_negative_thickness()
-        create_with_negative_calibration()
+        assert_rejects(
+            create_potential_slices,
+            jnp.ones((10, 32, 32)),
+            -1.0,
+            0.1,
+            0.1,
+            match="slice_thickness must be positive",
+        )
+        assert_rejects(
+            create_potential_slices,
+            jnp.ones((10, 32, 32)),
+            1.0,
+            -0.1,
+            0.1,
+            match="x_calibration must be positive",
+        )
 
 
 class TestXYZData(chex.TestCase, parameterized.TestCase):
@@ -758,6 +852,41 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         with pytest.raises(TypeCheckError):
             create_xyz_data(wrong_shape_positions, atomic_numbers)
 
+    def test_xyz_data_nonfinite_positions_rejected(self) -> None:
+        """Non-finite positions should be rejected."""
+        positions: Float[Array, "2 3"] = jnp.ones((2, 3)).at[0, 0].set(jnp.nan)
+        atomic_numbers: Int[Array, "2"] = jnp.array([6, 8], dtype=jnp.int32)
+        assert_rejects(
+            create_xyz_data,
+            positions,
+            atomic_numbers,
+            match="positions contain non-finite values",
+        )
+
+    def test_xyz_data_negative_atomic_numbers_rejected(self) -> None:
+        """Negative atomic numbers should be rejected."""
+        positions: Float[Array, "2 3"] = jnp.ones((2, 3))
+        atomic_numbers: Int[Array, "2"] = jnp.array([6, -1], dtype=jnp.int32)
+        assert_rejects(
+            create_xyz_data,
+            positions,
+            atomic_numbers,
+            match="atomic_numbers must be non-negative",
+        )
+
+    def test_xyz_data_nonfinite_lattice_rejected(self) -> None:
+        """Non-finite lattice values should be rejected."""
+        positions: Float[Array, "2 3"] = jnp.ones((2, 3))
+        atomic_numbers: Int[Array, "2"] = jnp.array([6, 8], dtype=jnp.int32)
+        lattice: Float[Array, "3 3"] = jnp.eye(3).at[0, 0].set(jnp.inf)
+        assert_rejects(
+            create_xyz_data,
+            positions,
+            atomic_numbers,
+            lattice=lattice,
+            match="lattice contains non-finite values",
+        )
+
     @chex.variants(without_jit=True, with_jit=False)
     def test_xyz_data_tree_map(self) -> None:
         """Test that XYZData works correctly with tree_map operations."""
@@ -792,7 +921,10 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         n_atoms: int = 5
         crystal: CrystalStructure = create_crystal_structure(
             jnp.ones((n_atoms, 4)),
-            jnp.ones((n_atoms, 4)) * 2.0,
+            jnp.concatenate(
+                [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
+                axis=1,
+            ),
             jnp.array([3.0, 4.0, 5.0]),
             jnp.array([90.0, 90.0, 90.0]),
         )
@@ -839,8 +971,12 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         frac_positions_batch: Float[Array, "batch N 4"] = jnp.ones(
             (batch_size, n_atoms, 4)
         )
-        cart_positions_batch: Float[Array, "batch N 4"] = (
-            jnp.ones((batch_size, n_atoms, 4)) * 2.0
+        cart_positions_batch: Float[Array, "batch N 4"] = jnp.concatenate(
+            [
+                jnp.ones((batch_size, n_atoms, 3)) * 2.0,
+                jnp.ones((batch_size, n_atoms, 1)),
+            ],
+            axis=2,
         )
         cell_lengths_batch: Float[Array, "batch 3"] = (
             jnp.ones((batch_size, 3)) * 5.0

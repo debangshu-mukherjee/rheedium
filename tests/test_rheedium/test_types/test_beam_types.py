@@ -3,13 +3,29 @@
 from collections.abc import Callable
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
+import pytest
 from jax import tree_util
 from jaxtyping import Array, Float
 
 from rheedium.types import scalar_float
 from rheedium.types.beam_types import ElectronBeam, create_electron_beam
+
+
+def assert_rejects(
+    fn: Callable[..., object],
+    *args: object,
+    match: str | None = None,
+    **kwargs: object,
+) -> None:
+    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
+    with pytest.raises(Exception, match=match):
+        fn(*args, **kwargs)
+
+    with pytest.raises(Exception, match=match):
+        eqx.filter_jit(lambda: fn(*args, **kwargs))()
 
 
 class TestElectronBeam(chex.TestCase):
@@ -116,14 +132,20 @@ class TestElectronBeamValidation(chex.TestCase):
     """Validation tests for create_electron_beam."""
 
     def test_energy_too_low(self) -> None:
-        """Energy below 5 keV should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(energy_kev=1.0)
-        assert jnp.isnan(beam.energy_kev)
+        """Energy below 5 keV should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="energy_kev must be in",
+            energy_kev=1.0,
+        )
 
     def test_energy_too_high(self) -> None:
-        """Energy above 100 keV should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(energy_kev=200.0)
-        assert jnp.isnan(beam.energy_kev)
+        """Energy above 100 keV should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="energy_kev must be in",
+            energy_kev=200.0,
+        )
 
     def test_energy_boundary_low(self) -> None:
         """Energy at exactly 5 keV should be valid."""
@@ -136,9 +158,12 @@ class TestElectronBeamValidation(chex.TestCase):
         chex.assert_trees_all_close(beam.energy_kev, 100.0)
 
     def test_negative_energy_spread(self) -> None:
-        """Negative energy spread should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(energy_spread_ev=-0.1)
-        assert jnp.isnan(beam.energy_spread_ev)
+        """Negative energy spread should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="energy_spread_ev must be non-negative",
+            energy_spread_ev=-0.1,
+        )
 
     def test_zero_energy_spread(self) -> None:
         """Zero energy spread should be valid (ideal source)."""
@@ -146,9 +171,12 @@ class TestElectronBeamValidation(chex.TestCase):
         chex.assert_trees_all_close(beam.energy_spread_ev, 0.0)
 
     def test_negative_divergence(self) -> None:
-        """Negative angular divergence should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(angular_divergence_mrad=-0.1)
-        assert jnp.isnan(beam.angular_divergence_mrad)
+        """Negative angular divergence should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="angular_divergence_mrad must be non-negative",
+            angular_divergence_mrad=-0.1,
+        )
 
     def test_zero_divergence(self) -> None:
         """Zero divergence should be valid (perfect collimation)."""
@@ -156,54 +184,61 @@ class TestElectronBeamValidation(chex.TestCase):
         chex.assert_trees_all_close(beam.angular_divergence_mrad, 0.0)
 
     def test_negative_transverse_coherence(self) -> None:
-        """Negative transverse coherence length should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            coherence_length_transverse_angstrom=-10.0
+        """Negative transverse coherence length should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="coherence_length_transverse_angstrom must be positive",
+            coherence_length_transverse_angstrom=-10.0,
         )
-        assert jnp.isnan(beam.coherence_length_transverse_angstrom)
 
     def test_zero_transverse_coherence(self) -> None:
-        """Zero transverse coherence length should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            coherence_length_transverse_angstrom=0.0
+        """Zero transverse coherence length should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="coherence_length_transverse_angstrom must be positive",
+            coherence_length_transverse_angstrom=0.0,
         )
-        assert jnp.isnan(beam.coherence_length_transverse_angstrom)
 
     def test_negative_longitudinal_coherence(self) -> None:
-        """Negative longitudinal coherence length should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            coherence_length_longitudinal_angstrom=-10.0
+        """Negative longitudinal coherence length should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="coherence_length_longitudinal_angstrom must be positive",
+            coherence_length_longitudinal_angstrom=-10.0,
         )
-        assert jnp.isnan(beam.coherence_length_longitudinal_angstrom)
 
     def test_zero_longitudinal_coherence(self) -> None:
-        """Zero longitudinal coherence length should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            coherence_length_longitudinal_angstrom=0.0
+        """Zero longitudinal coherence length should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="coherence_length_longitudinal_angstrom must be positive",
+            coherence_length_longitudinal_angstrom=0.0,
         )
-        assert jnp.isnan(beam.coherence_length_longitudinal_angstrom)
 
     def test_negative_spot_size(self) -> None:
-        """Negative spot size should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            spot_size_um=jnp.array([-100.0, 50.0])
+        """Negative spot size should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="spot_size_um components must be positive",
+            spot_size_um=jnp.array([-100.0, 50.0]),
         )
-        assert jnp.any(jnp.isnan(beam.spot_size_um))
 
     def test_zero_spot_size(self) -> None:
-        """Zero spot size should produce NaN."""
-        beam: ElectronBeam = create_electron_beam(
-            spot_size_um=jnp.array([0.0, 50.0])
+        """Zero spot size should be rejected."""
+        assert_rejects(
+            create_electron_beam,
+            match="spot_size_um components must be positive",
+            spot_size_um=jnp.array([0.0, 50.0]),
         )
-        assert jnp.any(jnp.isnan(beam.spot_size_um))
 
     def test_valid_fields_unaffected_by_invalid(self) -> None:
-        """Invalid energy should not corrupt other fields."""
-        beam: ElectronBeam = create_electron_beam(
-            energy_kev=1.0, energy_spread_ev=0.3
+        """Invalid energy should reject instead of corrupting fields."""
+        assert_rejects(
+            create_electron_beam,
+            match="energy_kev must be in",
+            energy_kev=1.0,
+            energy_spread_ev=0.3,
         )
-        assert jnp.isnan(beam.energy_kev)
-        chex.assert_trees_all_close(beam.energy_spread_ev, 0.3)
 
 
 class TestElectronBeamGradients(chex.TestCase):
@@ -219,6 +254,23 @@ class TestElectronBeamGradients(chex.TestCase):
         g: scalar_float = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
         chex.assert_trees_all_close(g, 40.0)
+
+    def test_filter_jit_grad_matches_eager_grad(self) -> None:
+        """Jitted gradients should match eager gradients on valid input."""
+
+        def loss(params: Float[Array, "2"]) -> scalar_float:
+            beam: ElectronBeam = create_electron_beam(
+                energy_kev=params[0],
+                energy_spread_ev=params[1],
+            )
+            return beam.energy_kev**2 + beam.energy_spread_ev**2
+
+        params: Float[Array, "2"] = jnp.array([20.0, 0.5])
+        eager_grad: Float[Array, "2"] = jax.grad(loss)(params)
+        jitted_grad: Float[Array, "2"] = eqx.filter_jit(jax.grad(loss))(params)
+
+        chex.assert_tree_all_finite(jitted_grad)
+        chex.assert_trees_all_close(jitted_grad, eager_grad)
 
     def test_grad_energy_spread(self) -> None:
         """Gradient should flow through energy_spread_ev."""

@@ -1,21 +1,41 @@
 """Tests for orientation-distribution probability types and integration."""
 
+from collections.abc import Callable
+
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
+import pytest
 from jax import tree_util
 from jaxtyping import Array, Float
 
 from rheedium.types import (
     OrientationDistribution,
+    SizeDistribution,
     create_discrete_orientation,
     create_gaussian_orientation,
+    create_lognormal_size,
     create_mixed_orientation,
     discretize_orientation,
     discretize_orientation_static,
     integrate_over_orientation,
 )
 from rheedium.types.custom_types import scalar_float
+
+
+def assert_rejects(
+    fn: Callable[..., object],
+    *args: object,
+    match: str | None = None,
+    **kwargs: object,
+) -> None:
+    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
+    with pytest.raises(Exception, match=match):
+        fn(*args, **kwargs)
+
+    with pytest.raises(Exception, match=match):
+        eqx.filter_jit(lambda: fn(*args, **kwargs))()
 
 
 class TestOrientationDistributionFactories(chex.TestCase):
@@ -35,17 +55,27 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.0, atol=1e-12)
 
-    def test_create_mixed_orientation_clips_negative_weights(self) -> None:
-        """Factory weights are clipped to a valid probability simplex."""
-        dist: OrientationDistribution = create_mixed_orientation(
+    def test_create_mixed_orientation_rejects_negative_weights(self) -> None:
+        """Factory weights must be valid probabilities."""
+        assert_rejects(
+            create_mixed_orientation,
+            match="weights must be non-negative",
             angles_deg=jnp.array([0.0, 90.0, 180.0]),
             weights=jnp.array([1.0, -2.0, 1.0]),
             mosaic_fwhm_deg=0.3,
         )
 
+    def test_create_mixed_orientation_normalizes_weights(self) -> None:
+        """Factory weights are normalized when valid."""
+        dist: OrientationDistribution = create_mixed_orientation(
+            angles_deg=jnp.array([0.0, 90.0, 180.0]),
+            weights=jnp.array([1.0, 2.0, 1.0]),
+            mosaic_fwhm_deg=0.3,
+        )
+
         chex.assert_trees_all_close(
             dist.discrete_weights,
-            jnp.array([0.5, 0.0, 0.5]),
+            jnp.array([0.25, 0.5, 0.25]),
             atol=1e-12,
         )
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.3, atol=1e-12)
@@ -98,6 +128,75 @@ class TestOrientationDistributionFactories(chex.TestCase):
             atol=1e-12,
         )
         assert reconstructed.distribution_id == "twins"
+
+    def test_create_discrete_orientation_rejects_nan_angle(self) -> None:
+        """Factory angles must be finite."""
+        assert_rejects(
+            create_discrete_orientation,
+            jnp.array([0.0, jnp.nan]),
+            match="angles_deg must be finite",
+        )
+
+    def test_create_gaussian_orientation_rejects_negative_fwhm(self) -> None:
+        """Mosaic FWHM must be non-negative."""
+        assert_rejects(
+            create_gaussian_orientation,
+            fwhm_deg=-0.1,
+            match="mosaic_fwhm_deg must be non-negative",
+        )
+
+    def test_create_mixed_orientation_rejects_zero_weight_sum(self) -> None:
+        """Factory weights must have positive total probability."""
+        assert_rejects(
+            create_mixed_orientation,
+            angles_deg=jnp.array([0.0, 90.0]),
+            weights=jnp.array([0.0, 0.0]),
+            match="weights must have positive total probability",
+        )
+
+
+class TestSizeDistributionFactories(chex.TestCase):
+    """Tests for size-distribution factory helpers."""
+
+    def test_create_lognormal_size_valid(self) -> None:
+        """Valid lognormal size parameters should be preserved."""
+        dist: SizeDistribution = create_lognormal_size(
+            mean_ang=100.0,
+            sigma_ang=30.0,
+            min_size_ang=10.0,
+            max_size_ang=500.0,
+        )
+
+        assert isinstance(dist, SizeDistribution)
+        chex.assert_trees_all_close(dist.mean_ang, 100.0)
+        chex.assert_trees_all_close(dist.sigma_ang, 30.0)
+        chex.assert_trees_all_close(dist.min_size_ang, 10.0)
+        chex.assert_trees_all_close(dist.max_size_ang, 500.0)
+
+    def test_create_lognormal_size_rejects_negative_mean(self) -> None:
+        """Mean domain size must be positive."""
+        assert_rejects(
+            create_lognormal_size,
+            mean_ang=-1.0,
+            match="mean_ang must be positive",
+        )
+
+    def test_create_lognormal_size_rejects_negative_sigma(self) -> None:
+        """Size spread must be non-negative."""
+        assert_rejects(
+            create_lognormal_size,
+            sigma_ang=-1.0,
+            match="sigma_ang must be non-negative",
+        )
+
+    def test_create_lognormal_size_rejects_invalid_bounds(self) -> None:
+        """Maximum size must exceed minimum size."""
+        assert_rejects(
+            create_lognormal_size,
+            min_size_ang=100.0,
+            max_size_ang=10.0,
+            match="max_size_ang must be greater than min_size_ang",
+        )
 
 
 class TestOrientationDiscretization(chex.TestCase):

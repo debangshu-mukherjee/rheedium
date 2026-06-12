@@ -36,21 +36,15 @@ Routine Listings
 
 Notes
 -----
-JAX Validation Pattern:
-
-1. Use `jax.lax.cond` for validation instead of Python `if` statements
-2. Validation happens at JIT compilation time, not runtime
-3. Validation functions don't return modified data, they ensure original data
-    is valid.
-4. Use `lax.stop_gradient(lax.cond(False, ...))` in false branches to cause
-   compilation errors
+Validation keeps static shape/rank checks as Python ``if`` statements and uses
+``eqx.error_if`` for runtime value checks. This rejects invalid values under
+JIT while preserving identity-like gradient flow on valid inputs.
 """
 
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Final, NamedTuple, Tuple, Union
-from jax import lax
+from beartype.typing import Final, NamedTuple, Union
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import float_jax_image, scalar_float, scalar_num
@@ -224,93 +218,46 @@ def create_rheed_pattern(
         """Validate and create a RHEEDPattern instance."""
         mm: int = k_out.shape[0]
 
-        def _check_k_out_shape() -> Float[Array, "mm 3"]:
-            """Check the shape of the k_out array."""
-            return lax.cond(
-                k_out.shape == (mm, 3),
-                lambda: k_out,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: k_out, lambda: k_out)
-                ),
-            )
+        if k_out.shape != (mm, 3):
+            raise ValueError("k_out must have shape (M, 3)")
+        if detector_points.shape != (mm, 2):
+            raise ValueError("detector_points must have shape (M, 2)")
+        if intensities.shape != (mm,):
+            raise ValueError("intensities must have shape (M,)")
+        if g_indices.shape[0] != mm:
+            raise ValueError("g_indices length must match reflections")
 
-        def _check_detector_shape() -> Float[Array, "mm 2"]:
-            """Check the shape of the detector_points array."""
-            return lax.cond(
-                detector_points.shape == (mm, 2),
-                lambda: detector_points,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: detector_points, lambda: detector_points
-                    )
-                ),
-            )
-
-        def _check_intensities_shape() -> Float[Array, "mm"]:
-            """Check the shape of the intensities array."""
-            return lax.cond(
-                intensities.shape == (mm,),
-                lambda: intensities,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: intensities, lambda: intensities)
-                ),
-            )
-
-        def _check_g_indices_length() -> Int[Array, "nn"]:
-            """Check the length of the g_indices array."""
-            return lax.cond(
-                g_indices.shape[0] == mm,
-                lambda: g_indices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: g_indices, lambda: g_indices)
-                ),
-            )
-
-        def _check_intensities_positive() -> Float[Array, "mm"]:
-            """Check the intensities are positive."""
-            return lax.cond(
-                jnp.all(intensities >= 0),
-                lambda: intensities,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: intensities, lambda: intensities)
-                ),
-            )
-
-        def _check_k_out_nonzero() -> Float[Array, "mm 3"]:
-            """Check the k_out vectors are non-zero."""
-            return lax.cond(
-                jnp.all(jnp.linalg.norm(k_out, axis=1) > 0),
-                lambda: k_out,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: k_out, lambda: k_out)
-                ),
-            )
-
-        def _check_detector_finite() -> Float[Array, "mm 2"]:
-            """Check the detector points are finite."""
-            return lax.cond(
-                jnp.all(jnp.isfinite(detector_points)),
-                lambda: detector_points,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: detector_points, lambda: detector_points
-                    )
-                ),
-            )
-
-        _check_k_out_shape()
-        _check_detector_shape()
-        _check_intensities_shape()
-        _check_g_indices_length()
-        _check_intensities_positive()
-        _check_k_out_nonzero()
-        _check_detector_finite()
+        checked_k_out: Float[Array, "mm 3"] = eqx.error_if(
+            k_out,
+            jnp.any(~jnp.isfinite(k_out)),
+            "k_out contains non-finite values",
+        )
+        checked_k_out = eqx.error_if(
+            checked_k_out,
+            jnp.any(jnp.linalg.norm(checked_k_out, axis=1) <= 0),
+            "k_out vectors must be non-zero",
+        )
+        checked_detector_points: Float[Array, "mm 2"] = eqx.error_if(
+            detector_points,
+            jnp.any(~jnp.isfinite(detector_points)),
+            "detector_points contain non-finite values",
+        )
+        checked_intensities: Float[Array, "mm"] = eqx.error_if(
+            intensities,
+            jnp.any(intensities < 0),
+            "intensities must be non-negative",
+        )
+        checked_intensities = eqx.error_if(
+            checked_intensities,
+            jnp.any(~jnp.isfinite(checked_intensities)),
+            "intensities contain non-finite values",
+        )
 
         return RHEEDPattern(
             G_indices=g_indices,
-            k_out=k_out,
-            detector_points=detector_points,
-            intensities=intensities,
+            k_out=checked_k_out,
+            detector_points=checked_detector_points,
+            intensities=checked_intensities,
         )
 
     validated_rheed_pattern: RHEEDPattern = _validate_and_create()
@@ -373,110 +320,56 @@ def create_rheed_image(
     detector_distance: Float[Array, ""] = jnp.asarray(
         detector_distance, dtype=jnp.float64
     )
-    max_angle: Int[Array, ""] = jnp.asarray(90, dtype=jnp.int32)
     image_dimensions: int = 2
 
     def _validate_and_create() -> RHEEDImage:
         """Validate and create a RHEEDImage instance."""
+        if img_array.ndim != image_dimensions:
+            raise ValueError("img_array must be 2D")
+        if calibration.ndim > 1:
+            raise ValueError("calibration must be scalar or shape (2,)")
+        if calibration.ndim == 1 and calibration.shape != (2,):
+            raise ValueError("calibration must be scalar or shape (2,)")
 
-        def _check_2d() -> float_jax_image:
-            """Check the image array is 2D."""
-            return lax.cond(
-                img_array.ndim == image_dimensions,
-                lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
+        checked_img_array: float_jax_image = eqx.error_if(
+            img_array,
+            jnp.any(~jnp.isfinite(img_array)),
+            "img_array contains non-finite values",
+        )
+        checked_img_array = eqx.error_if(
+            checked_img_array,
+            jnp.any(checked_img_array < 0),
+            "img_array must be non-negative",
+        )
+        checked_incoming_angle: Float[Array, ""] = eqx.error_if(
+            incoming_angle,
+            jnp.logical_or(incoming_angle < 0, incoming_angle > 90),
+            "incoming_angle must be between 0 and 90 degrees",
+        )
+        checked_electron_wavelength: Float[Array, ""] = eqx.error_if(
+            electron_wavelength,
+            electron_wavelength <= 0,
+            "electron_wavelength must be positive",
+        )
+        checked_detector_distance: Float[Array, ""] = eqx.error_if(
+            detector_distance,
+            detector_distance <= 0,
+            "detector_distance must be positive",
+        )
+        checked_calibration: Union[Float[Array, "2"], Float[Array, ""]] = (
+            eqx.error_if(
+                calibration,
+                jnp.any(calibration <= 0),
+                "calibration must be positive",
             )
-
-        def _check_finite() -> float_jax_image:
-            """Check the image array is finite."""
-            return lax.cond(
-                jnp.all(jnp.isfinite(img_array)),
-                lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
-            )
-
-        def _check_nonnegative() -> float_jax_image:
-            """Check the image array is non-negative."""
-            return lax.cond(
-                jnp.all(img_array >= 0),
-                lambda: img_array,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: img_array, lambda: img_array)
-                ),
-            )
-
-        def _check_angle() -> Float[Array, ""]:
-            """Check the incoming angle is between 0 and 90 degrees."""
-            return lax.cond(
-                jnp.logical_and(
-                    incoming_angle >= 0, incoming_angle <= max_angle
-                ),
-                lambda: incoming_angle,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: incoming_angle, lambda: incoming_angle
-                    )
-                ),
-            )
-
-        def _check_wavelength() -> Float[Array, ""]:
-            """Check the electron wavelength is positive."""
-            return lax.cond(
-                electron_wavelength > 0,
-                lambda: electron_wavelength,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: electron_wavelength,
-                        lambda: electron_wavelength,
-                    )
-                ),
-            )
-
-        def _check_distance() -> Float[Array, ""]:
-            """Check the detector distance is positive."""
-            return lax.cond(
-                detector_distance > 0,
-                lambda: detector_distance,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: detector_distance,
-                        lambda: detector_distance,
-                    )
-                ),
-            )
-
-        def _check_calibration() -> Union[Float[Array, "2"], Float[Array, ""]]:
-            """Check the calibration is positive."""
-            # jnp.all ensures scalar predicate regardless
-            # of calibration shape; both branches traced
-            return lax.cond(
-                jnp.all(calibration > 0),
-                lambda: calibration,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: calibration, lambda: calibration)
-                ),
-            )
-
-        _check_2d()
-        _check_finite()
-        _check_nonnegative()
-        _check_angle()
-        _check_wavelength()
-        _check_distance()
-        _check_calibration()
+        )
 
         return RHEEDImage(
-            img_array=img_array,
-            incoming_angle=incoming_angle,
-            calibration=calibration,
-            electron_wavelength=electron_wavelength,
-            detector_distance=detector_distance,
+            img_array=checked_img_array,
+            incoming_angle=checked_incoming_angle,
+            calibration=checked_calibration,
+            electron_wavelength=checked_electron_wavelength,
+            detector_distance=checked_detector_distance,
         )
 
     validated_rheed_image: RHEEDImage = _validate_and_create()
@@ -626,137 +519,66 @@ def create_sliced_crystal(
 
     def _validate_and_create() -> SlicedCrystal:
         """Validate and create a SlicedCrystal instance."""
+        n_atoms: int = cart_positions.shape[0]
 
-        def _check_positions_shape() -> Float[Array, "N 4"]:
-            """Check cart_positions has shape (N, 4)."""
-            n_atoms: int = cart_positions.shape[0]
-            return lax.cond(
-                jnp.logical_and(
-                    cart_positions.ndim == _NDIM_POSITIONS,
-                    jnp.logical_and(
-                        cart_positions.shape[1] == _NCOLS_CART,
-                        n_atoms > 0,
-                    ),
-                ),
-                lambda: cart_positions,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: cart_positions, lambda: cart_positions
-                    )
-                ),
-            )
+        if cart_positions.ndim != _NDIM_POSITIONS:
+            raise ValueError("cart_positions must have shape (N, 4)")
+        if cart_positions.shape[1] != _NCOLS_CART:
+            raise ValueError("cart_positions must have shape (N, 4)")
+        if n_atoms <= 0:
+            raise ValueError("cart_positions must contain at least one atom")
+        if cell_lengths.shape != (3,):
+            raise ValueError("cell_lengths must have shape (3,)")
+        if cell_angles.shape != (3,):
+            raise ValueError("cell_angles must have shape (3,)")
+        if orientation.shape != (3,):
+            raise ValueError("orientation must have shape (3,)")
 
-        def _check_positions_finite() -> Float[Array, "N 4"]:
-            """Check all positions are finite."""
-            return lax.cond(
-                jnp.all(jnp.isfinite(cart_positions)),
-                lambda: cart_positions,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: cart_positions, lambda: cart_positions
-                    )
-                ),
-            )
-
-        def _check_atomic_numbers() -> Float[Array, "N 4"]:
-            """Check atomic numbers are in valid range [1, 118]."""
-            atomic_nums: Float[Array, "N"] = cart_positions[:, 3]
-            return lax.cond(
-                jnp.logical_and(
-                    jnp.all(atomic_nums >= 1),
-                    jnp.all(atomic_nums <= _MAX_ATOMIC_NUMBER),
-                ),
-                lambda: cart_positions,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: cart_positions, lambda: cart_positions
-                    )
-                ),
-            )
-
-        def _check_cell_lengths() -> Float[Array, "3"]:
-            """Check cell_lengths shape and positivity."""
-            return lax.cond(
-                jnp.logical_and(
-                    cell_lengths.shape == (3,), jnp.all(cell_lengths > 0)
-                ),
-                lambda: cell_lengths,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_lengths, lambda: cell_lengths)
-                ),
-            )
-
-        def _check_cell_angles() -> Float[Array, "3"]:
-            """Check cell_angles shape and validity."""
-            return lax.cond(
-                jnp.logical_and(
-                    cell_angles.shape == (3,),
-                    jnp.logical_and(
-                        jnp.all(cell_angles > 0),
-                        jnp.all(cell_angles < _MAX_CELL_ANGLE),
-                    ),
-                ),
-                lambda: cell_angles,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_angles, lambda: cell_angles)
-                ),
-            )
-
-        def _check_orientation() -> Int[Array, "3"]:
-            """Check orientation shape."""
-            return lax.cond(
-                orientation.shape == (3,),
-                lambda: orientation,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: orientation, lambda: orientation)
-                ),
-            )
-
-        def _check_depth() -> Float[Array, ""]:
-            """Check depth is positive."""
-            return lax.cond(
-                depth > 0,
-                lambda: depth,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: depth, lambda: depth)
-                ),
-            )
-
-        def _check_extents() -> Tuple[Float[Array, ""], Float[Array, ""]]:
-            """Check x_extent and y_extent are positive."""
-            x_valid: Float[Array, ""] = lax.cond(
-                x_extent > 0,
-                lambda: x_extent,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: x_extent, lambda: x_extent)
-                ),
-            )
-            y_valid: Float[Array, ""] = lax.cond(
-                y_extent > 0,
-                lambda: y_extent,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: y_extent, lambda: y_extent)
-                ),
-            )
-            return x_valid, y_valid
-
-        _check_positions_shape()
-        _check_positions_finite()
-        _check_atomic_numbers()
-        _check_cell_lengths()
-        _check_cell_angles()
-        _check_orientation()
-        _check_depth()
-        _check_extents()
+        checked_cart_positions: Float[Array, "N 4"] = eqx.error_if(
+            cart_positions,
+            jnp.any(~jnp.isfinite(cart_positions)),
+            "cart_positions contain non-finite values",
+        )
+        atomic_nums: Float[Array, "N"] = checked_cart_positions[:, 3]
+        checked_cart_positions = eqx.error_if(
+            checked_cart_positions,
+            jnp.any((atomic_nums < 1) | (atomic_nums > _MAX_ATOMIC_NUMBER)),
+            "atomic numbers must be in [1, 118]",
+        )
+        checked_cell_lengths: Float[Array, "3"] = eqx.error_if(
+            cell_lengths,
+            jnp.any(cell_lengths <= 0),
+            "cell_lengths must be positive",
+        )
+        checked_cell_angles: Float[Array, "3"] = eqx.error_if(
+            cell_angles,
+            jnp.any((cell_angles <= 0) | (cell_angles >= _MAX_CELL_ANGLE)),
+            "cell_angles must be between 0 and 180 degrees",
+        )
+        checked_depth: Float[Array, ""] = eqx.error_if(
+            depth,
+            depth <= 0,
+            "depth must be positive",
+        )
+        checked_x_extent: Float[Array, ""] = eqx.error_if(
+            x_extent,
+            x_extent <= 0,
+            "x_extent must be positive",
+        )
+        checked_y_extent: Float[Array, ""] = eqx.error_if(
+            y_extent,
+            y_extent <= 0,
+            "y_extent must be positive",
+        )
 
         return SlicedCrystal(
-            cart_positions=cart_positions,
-            cell_lengths=cell_lengths,
-            cell_angles=cell_angles,
+            cart_positions=checked_cart_positions,
+            cell_lengths=checked_cell_lengths,
+            cell_angles=checked_cell_angles,
             orientation=orientation,
-            depth=depth,
-            x_extent=x_extent,
-            y_extent=y_extent,
+            depth=checked_depth,
+            x_extent=checked_x_extent,
+            y_extent=checked_y_extent,
         )
 
     validated_sliced_crystal: SlicedCrystal = _validate_and_create()

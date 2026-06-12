@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import pytest
@@ -32,6 +33,20 @@ from rheedium.types.rheed_types import (
     create_sliced_crystal,
     identify_surface_atoms,
 )
+
+
+def assert_rejects(
+    fn: Callable[..., object],
+    *args: object,
+    match: str | None = None,
+    **kwargs: object,
+) -> None:
+    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
+    with pytest.raises(Exception, match=match):
+        fn(*args, **kwargs)
+
+    with pytest.raises(Exception, match=match):
+        eqx.filter_jit(lambda: fn(*args, **kwargs))()
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -473,34 +488,51 @@ class TestRHEEDPatternValidation(chex.TestCase):
         """Negative intensities should be caught by validation."""
         kw: Any = self._make_valid_pattern_kwargs()
         kw["intensities"] = -jnp.ones(5)
-        jax.jit(create_rheed_pattern)(**kw)
+        assert_rejects(
+            create_rheed_pattern,
+            match="intensities must be non-negative",
+            **kw,
+        )
 
     def test_zero_k_out_vectors(self) -> None:
         """Zero-length k_out vectors should be caught."""
         kw: Any = self._make_valid_pattern_kwargs()
         kw["k_out"] = jnp.zeros((5, 3))
-        jax.jit(create_rheed_pattern)(**kw)
+        assert_rejects(
+            create_rheed_pattern,
+            match="k_out vectors must be non-zero",
+            **kw,
+        )
 
     def test_nan_detector_points(self) -> None:
         """NaN in detector_points should be caught."""
         kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.nan)
-        jax.jit(create_rheed_pattern)(**kw)
+        assert_rejects(
+            create_rheed_pattern,
+            match="detector_points contain non-finite values",
+            **kw,
+        )
 
     def test_inf_detector_points(self) -> None:
         """Inf in detector_points should be caught."""
         kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.inf)
-        jax.jit(create_rheed_pattern)(**kw)
+        assert_rejects(
+            create_rheed_pattern,
+            match="detector_points contain non-finite values",
+            **kw,
+        )
 
     def test_mismatched_g_indices_length(self) -> None:
-        """Mismatched g_indices length is a runtime lax.cond check."""
+        """Mismatched g_indices length should be caught."""
         kw: Any = self._make_valid_pattern_kwargs(n=5)
         kw["g_indices"] = jnp.arange(3, dtype=jnp.int32)
-        # g_indices uses dimension "N" while k_out uses "M",
-        # so jaxtyping allows different lengths. The lax.cond
-        # validation still traces successfully under JIT.
-        jax.jit(create_rheed_pattern)(**kw)
+        assert_rejects(
+            create_rheed_pattern,
+            match="g_indices length must match reflections",
+            **kw,
+        )
 
     def test_mismatched_intensities_length(self) -> None:
         """Mismatched intensities length should be caught."""
@@ -537,49 +569,81 @@ class TestRHEEDImageValidation(chex.TestCase):
         """Negative pixel values should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = -jnp.ones((64, 64))
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="img_array must be non-negative",
+            **kw,
+        )
 
     def test_nan_in_image(self) -> None:
         """NaN in image should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = kw["img_array"].at[0, 0].set(jnp.nan)
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="img_array contains non-finite values",
+            **kw,
+        )
 
     def test_angle_too_large(self) -> None:
         """Incoming angle > 90 degrees should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 100.0
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="incoming_angle must be between 0 and 90 degrees",
+            **kw,
+        )
 
     def test_negative_angle(self) -> None:
         """Negative incoming angle should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = -1.0
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="incoming_angle must be between 0 and 90 degrees",
+            **kw,
+        )
 
     def test_negative_wavelength(self) -> None:
         """Negative electron wavelength should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["electron_wavelength"] = -0.01
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="electron_wavelength must be positive",
+            **kw,
+        )
 
     def test_negative_distance(self) -> None:
         """Negative detector distance should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["detector_distance"] = -100.0
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="detector_distance must be positive",
+            **kw,
+        )
 
     def test_negative_calibration(self) -> None:
         """Negative calibration should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = -0.01
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="calibration must be positive",
+            **kw,
+        )
 
     def test_array_calibration_negative(self) -> None:
         """Negative array calibration should be caught."""
         kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = jnp.array([-0.01, 0.01])
-        jax.jit(create_rheed_image)(**kw)
+        assert_rejects(
+            create_rheed_image,
+            match="calibration must be positive",
+            **kw,
+        )
 
     def test_dtypes_are_correct(self) -> None:
         """Factory should cast to correct dtypes."""
@@ -714,49 +778,81 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         """Negative depth should be caught by validation."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["depth"] = -5.0
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="depth must be positive",
+            **kw,
+        )
 
     def test_negative_x_extent(self) -> None:
         """Negative x_extent should be caught by validation."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["x_extent"] = -100.0
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="x_extent must be positive",
+            **kw,
+        )
 
     def test_negative_y_extent(self) -> None:
         """Negative y_extent should be caught by validation."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["y_extent"] = -100.0
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="y_extent must be positive",
+            **kw,
+        )
 
     def test_negative_cell_lengths(self) -> None:
         """Negative cell lengths should be caught."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_lengths"] = jnp.array([-1.0, 5.0, 5.0])
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="cell_lengths must be positive",
+            **kw,
+        )
 
     def test_invalid_cell_angles(self) -> None:
         """Cell angles outside (0, 180) should be caught."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_angles"] = jnp.array([0.0, 90.0, 90.0])
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="cell_angles must be between 0 and 180 degrees",
+            **kw,
+        )
 
     def test_nan_in_positions(self) -> None:
         """NaN in positions should be caught."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 0].set(jnp.nan)
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="cart_positions contain non-finite values",
+            **kw,
+        )
 
     def test_invalid_atomic_number_zero(self) -> None:
         """Atomic number of 0 should be caught."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(0.0)
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="atomic numbers must be in",
+            **kw,
+        )
 
     def test_invalid_atomic_number_too_large(self) -> None:
         """Atomic number > 118 should be caught."""
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(200.0)
-        jax.jit(create_sliced_crystal)(**kw)
+        assert_rejects(
+            create_sliced_crystal,
+            match="atomic numbers must be in",
+            **kw,
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_gradient_flow(self) -> None:

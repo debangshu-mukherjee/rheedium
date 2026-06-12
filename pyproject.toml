@@ -2,9 +2,9 @@
 name = "rheedium"
 version = "2026.6.1"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
-authors = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
-license = {file = "LICENSE"}
-maintainers = [{name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov"}]
+authors = [{ name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov" }]
+license = { file = "LICENSE" }
+maintainers = [{ name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov" }]
 keywords = [
     "RHEED",
     "MBE",
@@ -329,7 +329,7 @@ reportRedeclaration = "none"
 # declared. Same rationale as ty's invalid-assignment / invalid-argument-type.
 reportAssignmentType = "none"
 reportArgumentType = "none"
-# np.loadtxt(Optional[Path]) and jnp.linspace(num=scalar_int) overload
+# np.loadtxt(Optional[Path]) and jnp.linspace(num = scalar_int) overload
 # resolution fails in the stubs; beartype decorators also confuse call checks.
 reportCallIssue = "none"
 # jax.Device and jaxtyping dimension specifiers are seen as "variables" in
@@ -348,4 +348,3 @@ style = "sphinx"
 exclude = ["tests", "build", "dist"]
 ignore-init-module = true
 quiet = true
-

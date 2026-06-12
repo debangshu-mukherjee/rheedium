@@ -52,6 +52,7 @@ import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Final, Tuple
 from jax.core import Tracer
+from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import (
@@ -2234,7 +2235,32 @@ def multislice_simulator(
     return pattern
 
 
+_CHECKIFY_ERRORS = (
+    checkify.nan_checks | checkify.div_checks | checkify.user_checks
+)
+checked_ewald_simulator = checkify.checkify(
+    ewald_simulator,
+    errors=_CHECKIFY_ERRORS,
+)
+checked_simulate_detector_image = checkify.checkify(
+    simulate_detector_image,
+    errors=_CHECKIFY_ERRORS,
+)
+checked_multislice_propagate = checkify.checkify(
+    multislice_propagate,
+    errors=_CHECKIFY_ERRORS,
+)
+checked_multislice_simulator = checkify.checkify(
+    multislice_simulator,
+    errors=_CHECKIFY_ERRORS,
+)
+
+
 __all__: list[str] = [
+    "checked_ewald_simulator",
+    "checked_multislice_propagate",
+    "checked_multislice_simulator",
+    "checked_simulate_detector_image",
     "compute_kinematic_intensities_with_ctrs",
     "detector_extent_mm",
     "ewald_simulator_with_orientation_distribution",

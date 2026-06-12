@@ -26,6 +26,7 @@ from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
 from rheedium.simul.simulator import (
+    checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
@@ -201,6 +202,52 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(
             intensities_surface[0] < intensities_bulk[0], True
         )
+
+
+class TestCheckedNumericalEntryPoints(chex.TestCase):
+    """Tests for opt-in checkified numerical entry points."""
+
+    def test_checked_multislice_propagate_valid(self) -> None:
+        """Checked multislice propagation should allow finite outputs."""
+        potential: PotentialSlices = create_potential_slices(
+            slices=jnp.ones((2, 8, 8)),
+            slice_thickness=1.0,
+            x_calibration=0.2,
+            y_calibration=0.2,
+        )
+
+        err: Any
+        exit_wave: Complex[Array, "8 8"]
+        err, exit_wave = jax.jit(checked_multislice_propagate)(
+            potential,
+            20.0,
+            2.0,
+        )
+        err.throw()
+
+        chex.assert_shape(exit_wave, (8, 8))
+        chex.assert_tree_all_finite(exit_wave)
+
+    def test_checked_multislice_propagate_rejects_nan(self) -> None:
+        """Checked multislice propagation should report NaN outputs."""
+        potential: PotentialSlices = PotentialSlices(
+            slices=jnp.ones((2, 8, 8)).at[0, 0, 0].set(jnp.nan),
+            slice_thickness=jnp.asarray(1.0),
+            x_calibration=jnp.asarray(0.2),
+            y_calibration=jnp.asarray(0.2),
+        )
+
+        err: Any
+        exit_wave: Complex[Array, "8 8"]
+        err, exit_wave = jax.jit(checked_multislice_propagate)(
+            potential,
+            20.0,
+            2.0,
+        )
+
+        del exit_wave
+        with pytest.raises(Exception, match="nan"):
+            err.throw()
 
 
 class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):

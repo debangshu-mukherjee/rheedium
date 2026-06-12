@@ -149,6 +149,10 @@ from .multislice import (
 )
 from .potential import crystal_projected_potential
 from .simulator import (
+    checked_ewald_simulator,
+    checked_multislice_propagate,
+    checked_multislice_simulator,
+    checked_simulate_detector_image,
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
@@ -181,6 +185,10 @@ __all__: list[str] = [
     "atomic_scattering_factor",
     "build_ewald_data",
     "build_transmission_function",
+    "checked_ewald_simulator",
+    "checked_multislice_propagate",
+    "checked_multislice_simulator",
+    "checked_simulate_detector_image",
     "coherence_envelope",
     "crystal_projected_potential",
     "calculate_ctr_intensity",

@@ -47,9 +47,8 @@ leaves.
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Dict, List, Optional, Tuple, Union
-from jax import lax
-from jaxtyping import Array, Bool, Complex, Float, Int, Num, jaxtyped
+from beartype.typing import Dict, List, Optional, Union
+from jaxtyping import Array, Complex, Float, Int, Num, jaxtyped
 
 from .custom_types import scalar_float
 
@@ -162,113 +161,37 @@ def create_crystal_structure(
     def _validate_and_create() -> CrystalStructure:
         max_cols: int = 4
 
-        def _check_frac_shape() -> Float[Array, "... max_cols"]:
-            return lax.cond(
-                frac_positions.shape[1] == max_cols,
-                lambda: frac_positions,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: frac_positions, lambda: frac_positions
-                    )
-                ),
-            )
+        if frac_positions.shape[1] != max_cols:
+            raise ValueError("frac_positions must have shape (N, 4)")
+        if cart_positions.shape[1] != max_cols:
+            raise ValueError("cart_positions must have shape (N, 4)")
+        if cell_lengths.shape != (3,):
+            raise ValueError("cell_lengths must have shape (3,)")
+        if cell_angles.shape != (3,):
+            raise ValueError("cell_angles must have shape (3,)")
+        if frac_positions.shape[0] != cart_positions.shape[0]:
+            raise ValueError("frac_positions and cart_positions length differ")
 
-        def _check_cart_shape() -> Num[Array, "... max_cols"]:
-            return lax.cond(
-                cart_positions.shape[1] == max_cols,
-                lambda: cart_positions,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: cart_positions, lambda: cart_positions
-                    )
-                ),
-            )
-
-        def _check_cell_lengths_shape() -> Num[Array, "3"]:
-            return lax.cond(
-                cell_lengths.shape == (3,),
-                lambda: cell_lengths,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_lengths, lambda: cell_lengths)
-                ),
-            )
-
-        def _check_cell_angles_shape() -> Num[Array, "3"]:
-            return lax.cond(
-                cell_angles.shape == (3,),
-                lambda: cell_angles,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_angles, lambda: cell_angles)
-                ),
-            )
-
-        def _check_atom_count() -> Tuple[
-            Float[Array, "... 4"], Num[Array, "... 4"]
-        ]:
-            return lax.cond(
-                frac_positions.shape[0] == cart_positions.shape[0],
-                lambda: (frac_positions, cart_positions),
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: (frac_positions, cart_positions),
-                        lambda: (frac_positions, cart_positions),
-                    )
-                ),
-            )
-
-        def _check_atomic_numbers() -> Tuple[
-            Float[Array, "... 4"], Num[Array, "... 4"]
-        ]:
-            return lax.cond(
-                jnp.all(frac_positions[:, 3] == cart_positions[:, 3]),
-                lambda: (frac_positions, cart_positions),
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: (frac_positions, cart_positions),
-                        lambda: (frac_positions, cart_positions),
-                    )
-                ),
-            )
-
-        def _check_cell_lengths_positive() -> Num[Array, "3"]:
-            return lax.cond(
-                jnp.all(cell_lengths > 0),
-                lambda: cell_lengths,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_lengths, lambda: cell_lengths)
-                ),
-            )
-
-        def _check_cell_angles_valid() -> Num[Array, "3"]:
-            min_angle: scalar_float = 0.0
-            max_angle: scalar_float = 180.0
-            return lax.cond(
-                jnp.all(
-                    jnp.logical_and(
-                        cell_angles > min_angle, cell_angles < max_angle
-                    )
-                ),
-                lambda: cell_angles,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: cell_angles, lambda: cell_angles)
-                ),
-            )
-
-        _check_frac_shape()
-        _check_cart_shape()
-        _check_cell_lengths_shape()
-        _check_cell_angles_shape()
-        _check_atom_count()
-        _check_atomic_numbers()
-        _check_cell_lengths_positive()
-        _check_cell_angles_valid()
+        checked_frac_positions: Float[Array, "... 4"] = eqx.error_if(
+            frac_positions,
+            jnp.any(frac_positions[:, 3] != cart_positions[:, 3]),
+            "atomic numbers must match between frac and cart positions",
+        )
+        checked_cell_lengths: Num[Array, "3"] = eqx.error_if(
+            cell_lengths,
+            jnp.any(cell_lengths <= 0),
+            "cell_lengths must be positive",
+        )
+        checked_cell_angles: Num[Array, "3"] = eqx.error_if(
+            cell_angles,
+            jnp.any((cell_angles <= 0) | (cell_angles >= 180)),
+            "cell_angles must be between 0 and 180 degrees",
+        )
         return CrystalStructure(
-            frac_positions=frac_positions,
+            frac_positions=checked_frac_positions,
             cart_positions=cart_positions,
-            cell_lengths=cell_lengths,
-            cell_angles=cell_angles,
+            cell_lengths=checked_cell_lengths,
+            cell_angles=checked_cell_angles,
         )
 
     validated_crystal_structure: CrystalStructure = _validate_and_create()
@@ -410,143 +333,84 @@ def create_ewald_data(
     intensities = jnp.asarray(intensities, dtype=jnp.float64)
 
     def _validate_and_create() -> EwaldData:
-        def _check_wavelength_positive() -> Float[Array, ""]:
-            return lax.cond(
-                wavelength_ang > 0,
-                lambda: wavelength_ang,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: wavelength_ang,
-                        lambda: wavelength_ang,
-                    )
-                ),
-            )
+        if recip_vectors.shape != (3, 3):
+            raise ValueError("recip_vectors must have shape (3, 3)")
 
-        def _check_k_magnitude_positive() -> Float[Array, ""]:
-            return lax.cond(
-                k_magnitude > 0,
-                lambda: k_magnitude,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: k_magnitude,
-                        lambda: k_magnitude,
-                    )
-                ),
-            )
+        n_hkl: int = hkl_grid.shape[0]
+        if (
+            g_vectors.shape[0] != n_hkl
+            or g_magnitudes.shape[0] != n_hkl
+            or structure_factors.shape[0] != n_hkl
+            or intensities.shape[0] != n_hkl
+        ):
+            raise ValueError("Ewald arrays must share leading dimension N")
 
-        def _check_sphere_radius_positive() -> Float[Array, ""]:
-            return lax.cond(
-                sphere_radius > 0,
-                lambda: sphere_radius,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: sphere_radius,
-                        lambda: sphere_radius,
-                    )
-                ),
-            )
-
-        def _check_recip_vectors_shape() -> Float[Array, "3 3"]:
-            return lax.cond(
-                recip_vectors.shape == (3, 3),
-                lambda: recip_vectors,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: recip_vectors,
-                        lambda: recip_vectors,
-                    )
-                ),
-            )
-
-        def _check_n_consistency() -> Tuple[
-            Int[Array, "N 3"],
-            Float[Array, "N 3"],
-            Float[Array, "N"],
-        ]:
-            n_hkl: int = hkl_grid.shape[0]
-            consistent: Bool[Array, ""] = (
-                (g_vectors.shape[0] == n_hkl)
-                & (g_magnitudes.shape[0] == n_hkl)
-                & (structure_factors.shape[0] == n_hkl)
-                & (intensities.shape[0] == n_hkl)
-            )
-            return lax.cond(
-                consistent,
-                lambda: (hkl_grid, g_vectors, g_magnitudes),
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: (
-                            hkl_grid,
-                            g_vectors,
-                            g_magnitudes,
-                        ),
-                        lambda: (
-                            hkl_grid,
-                            g_vectors,
-                            g_magnitudes,
-                        ),
-                    )
-                ),
-            )
-
-        def _check_intensities_nonneg() -> Float[Array, "N"]:
-            return lax.cond(
-                jnp.all(intensities >= 0),
-                lambda: intensities,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: intensities,
-                        lambda: intensities,
-                    )
-                ),
-            )
-
-        def _check_finite() -> Float[Array, "N"]:
-            all_finite: Bool[Array, ""] = (
-                jnp.all(jnp.isfinite(wavelength_ang))
-                & jnp.all(jnp.isfinite(k_magnitude))
-                & jnp.all(jnp.isfinite(sphere_radius))
-                & jnp.all(jnp.isfinite(recip_vectors))
-                & jnp.all(jnp.isfinite(g_vectors))
-                & jnp.all(jnp.isfinite(g_magnitudes))
-                & jnp.all(jnp.isfinite(intensities))
-            )
-            return lax.cond(
-                all_finite,
-                lambda: g_magnitudes,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False,
-                        lambda: g_magnitudes,
-                        lambda: g_magnitudes,
-                    )
-                ),
-            )
-
-        _check_wavelength_positive()
-        _check_k_magnitude_positive()
-        _check_sphere_radius_positive()
-        _check_recip_vectors_shape()
-        _check_n_consistency()
-        _check_intensities_nonneg()
-        _check_finite()
+        checked_wavelength: Float[Array, ""] = eqx.error_if(
+            wavelength_ang,
+            wavelength_ang <= 0,
+            "wavelength_ang must be positive",
+        )
+        checked_k_magnitude: Float[Array, ""] = eqx.error_if(
+            k_magnitude,
+            k_magnitude <= 0,
+            "k_magnitude must be positive",
+        )
+        checked_sphere_radius: Float[Array, ""] = eqx.error_if(
+            sphere_radius,
+            sphere_radius <= 0,
+            "sphere_radius must be positive",
+        )
+        checked_g_vectors: Float[Array, "N 3"] = eqx.error_if(
+            g_vectors,
+            jnp.any(~jnp.isfinite(g_vectors)),
+            "g_vectors contain non-finite values",
+        )
+        checked_g_magnitudes: Float[Array, "N"] = eqx.error_if(
+            g_magnitudes,
+            jnp.any(~jnp.isfinite(g_magnitudes)),
+            "g_magnitudes contain non-finite values",
+        )
+        checked_intensities: Float[Array, "N"] = eqx.error_if(
+            intensities,
+            jnp.any(intensities < 0),
+            "intensities must be non-negative",
+        )
+        checked_intensities = eqx.error_if(
+            checked_intensities,
+            jnp.any(~jnp.isfinite(checked_intensities)),
+            "intensities contain non-finite values",
+        )
+        checked_recip_vectors: Float[Array, "3 3"] = eqx.error_if(
+            recip_vectors,
+            jnp.any(~jnp.isfinite(recip_vectors)),
+            "recip_vectors contain non-finite values",
+        )
+        checked_wavelength = eqx.error_if(
+            checked_wavelength,
+            ~jnp.isfinite(checked_wavelength),
+            "wavelength_ang must be finite",
+        )
+        checked_k_magnitude = eqx.error_if(
+            checked_k_magnitude,
+            ~jnp.isfinite(checked_k_magnitude),
+            "k_magnitude must be finite",
+        )
+        checked_sphere_radius = eqx.error_if(
+            checked_sphere_radius,
+            ~jnp.isfinite(checked_sphere_radius),
+            "sphere_radius must be finite",
+        )
 
         return EwaldData(
-            wavelength_ang=wavelength_ang,
-            k_magnitude=k_magnitude,
-            sphere_radius=sphere_radius,
-            recip_vectors=recip_vectors,
+            wavelength_ang=checked_wavelength,
+            k_magnitude=checked_k_magnitude,
+            sphere_radius=checked_sphere_radius,
+            recip_vectors=checked_recip_vectors,
             hkl_grid=hkl_grid,
-            g_vectors=g_vectors,
-            g_magnitudes=g_magnitudes,
+            g_vectors=checked_g_vectors,
+            g_magnitudes=checked_g_magnitudes,
             structure_factors=structure_factors,
-            intensities=intensities,
+            intensities=checked_intensities,
         )
 
     validated_ewald_data: EwaldData = _validate_and_create()
@@ -624,43 +488,40 @@ def create_kirkland_parameters(
     n_coeffs: int = 3
 
     def _validate_and_create() -> KirklandParameters:
-        def _check_shapes() -> None:
-            for arr in (
-                lorentzian_amplitudes,
-                lorentzian_scales,
-                gaussian_amplitudes,
-                gaussian_scales,
-            ):
-                lax.cond(
-                    arr.shape[0] == n_coeffs,
-                    lambda: None,
-                    lambda: lax.stop_gradient(
-                        lax.cond(False, lambda: None, lambda: None)
-                    ),
-                )
+        if lorentzian_amplitudes.shape != (n_coeffs,):
+            raise ValueError("lorentzian_amplitudes must have shape (3,)")
+        if lorentzian_scales.shape != (n_coeffs,):
+            raise ValueError("lorentzian_scales must have shape (3,)")
+        if gaussian_amplitudes.shape != (n_coeffs,):
+            raise ValueError("gaussian_amplitudes must have shape (3,)")
+        if gaussian_scales.shape != (n_coeffs,):
+            raise ValueError("gaussian_scales must have shape (3,)")
 
-        def _check_finite() -> None:
-            for arr in (
-                lorentzian_amplitudes,
-                lorentzian_scales,
-                gaussian_amplitudes,
-                gaussian_scales,
-            ):
-                lax.cond(
-                    jnp.all(jnp.isfinite(arr)),
-                    lambda: None,
-                    lambda: lax.stop_gradient(
-                        lax.cond(False, lambda: None, lambda: None)
-                    ),
-                )
-
-        _check_shapes()
-        _check_finite()
+        checked_lorentzian_amplitudes: Float[Array, "3"] = eqx.error_if(
+            lorentzian_amplitudes,
+            jnp.any(~jnp.isfinite(lorentzian_amplitudes)),
+            "lorentzian_amplitudes contain non-finite values",
+        )
+        checked_lorentzian_scales: Float[Array, "3"] = eqx.error_if(
+            lorentzian_scales,
+            jnp.any(~jnp.isfinite(lorentzian_scales)),
+            "lorentzian_scales contain non-finite values",
+        )
+        checked_gaussian_amplitudes: Float[Array, "3"] = eqx.error_if(
+            gaussian_amplitudes,
+            jnp.any(~jnp.isfinite(gaussian_amplitudes)),
+            "gaussian_amplitudes contain non-finite values",
+        )
+        checked_gaussian_scales: Float[Array, "3"] = eqx.error_if(
+            gaussian_scales,
+            jnp.any(~jnp.isfinite(gaussian_scales)),
+            "gaussian_scales contain non-finite values",
+        )
         return KirklandParameters(
-            lorentzian_amplitudes=lorentzian_amplitudes,
-            lorentzian_scales=lorentzian_scales,
-            gaussian_amplitudes=gaussian_amplitudes,
-            gaussian_scales=gaussian_scales,
+            lorentzian_amplitudes=checked_lorentzian_amplitudes,
+            lorentzian_scales=checked_lorentzian_scales,
+            gaussian_amplitudes=checked_gaussian_amplitudes,
+            gaussian_scales=checked_gaussian_scales,
         )
 
     validated_kirkland_parameters: KirklandParameters = _validate_and_create()
@@ -772,87 +633,38 @@ def create_potential_slices(
     def _validate_and_create() -> PotentialSlices:
         max_dims: int = 3
 
-        def _check_3d() -> Float[Array, "n_slices height width"]:
-            return lax.cond(
-                slices.ndim == max_dims,
-                lambda: slices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: slices, lambda: slices)
-                ),
-            )
+        if slices.ndim != max_dims:
+            raise ValueError("slices must be 3D")
+        if slices.shape[0] <= 0:
+            raise ValueError("slices must contain at least one slice")
+        if slices.shape[1] <= 0 or slices.shape[2] <= 0:
+            raise ValueError("slice dimensions must be positive")
 
-        def _check_slice_count() -> Float[Array, "n_slices height width"]:
-            return lax.cond(
-                slices.shape[0] > 0,
-                lambda: slices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: slices, lambda: slices)
-                ),
-            )
-
-        def _check_slice_dimensions() -> Float[Array, "n_slices height width"]:
-            return lax.cond(
-                jnp.logical_and(slices.shape[1] > 0, slices.shape[2] > 0),
-                lambda: slices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: slices, lambda: slices)
-                ),
-            )
-
-        def _check_thickness() -> Float[Array, ""]:
-            return lax.cond(
-                slice_thickness > 0,
-                lambda: slice_thickness,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: slice_thickness, lambda: slice_thickness
-                    )
-                ),
-            )
-
-        def _check_x_cal() -> Float[Array, ""]:
-            return lax.cond(
-                x_calibration > 0,
-                lambda: x_calibration,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: x_calibration, lambda: x_calibration
-                    )
-                ),
-            )
-
-        def _check_y_cal() -> Float[Array, ""]:
-            return lax.cond(
-                y_calibration > 0,
-                lambda: y_calibration,
-                lambda: lax.stop_gradient(
-                    lax.cond(
-                        False, lambda: y_calibration, lambda: y_calibration
-                    )
-                ),
-            )
-
-        def _check_finite() -> Float[Array, "n_slices height width"]:
-            return lax.cond(
-                jnp.all(jnp.isfinite(slices)),
-                lambda: slices,
-                lambda: lax.stop_gradient(
-                    lax.cond(False, lambda: slices, lambda: slices)
-                ),
-            )
-
-        _check_3d()
-        _check_slice_count()
-        _check_slice_dimensions()
-        _check_thickness()
-        _check_x_cal()
-        _check_y_cal()
-        _check_finite()
+        checked_slices: Float[Array, "n_slices height width"] = eqx.error_if(
+            slices,
+            jnp.any(~jnp.isfinite(slices)),
+            "slices contain non-finite values",
+        )
+        checked_slice_thickness: Float[Array, ""] = eqx.error_if(
+            slice_thickness,
+            slice_thickness <= 0,
+            "slice_thickness must be positive",
+        )
+        checked_x_calibration: Float[Array, ""] = eqx.error_if(
+            x_calibration,
+            x_calibration <= 0,
+            "x_calibration must be positive",
+        )
+        checked_y_calibration: Float[Array, ""] = eqx.error_if(
+            y_calibration,
+            y_calibration <= 0,
+            "y_calibration must be positive",
+        )
         return PotentialSlices(
-            slices=slices,
-            slice_thickness=slice_thickness,
-            x_calibration=x_calibration,
-            y_calibration=y_calibration,
+            slices=checked_slices,
+            slice_thickness=checked_slice_thickness,
+            x_calibration=checked_x_calibration,
+            y_calibration=checked_y_calibration,
         )
 
     validated_potential_slices: PotentialSlices = _validate_and_create()
@@ -999,41 +811,55 @@ def create_xyz_data(
         nn: int = positions.shape[0]
         max_dims: int = 3
 
-        def _check_shape() -> None:
-            if positions.shape[1] != max_dims:
-                raise ValueError("positions must have shape (N, 3)")
-            if atomic_numbers.shape[0] != nn:
-                raise ValueError("atomic_numbers must have shape (N,)")
+        if positions.shape[1] != max_dims:
+            raise ValueError("positions must have shape (N, 3)")
+        if atomic_numbers.shape[0] != nn:
+            raise ValueError("atomic_numbers must have shape (N,)")
+        if lattice is not None and lattice.shape != (3, 3):
+            raise ValueError("lattice must have shape (3, 3)")
+        if stress is not None and stress.shape != (3, 3):
+            raise ValueError("stress must have shape (3, 3)")
 
-        def _check_finiteness() -> None:
-            if not jnp.all(jnp.isfinite(positions)):
-                raise ValueError("positions contain non-finite values")
-            if not jnp.all(atomic_numbers >= 0):
-                raise ValueError("atomic_numbers must be non-negative")
-
-        def _check_optional_matrices() -> None:
-            if lattice is not None:
-                if lattice.shape != (3, 3):
-                    raise ValueError("lattice must have shape (3, 3)")
-                if not jnp.all(jnp.isfinite(lattice)):
-                    raise ValueError("lattice contains non-finite values")
-
-            if stress is not None:
-                if stress.shape != (3, 3):
-                    raise ValueError("stress must have shape (3, 3)")
-                if not jnp.all(jnp.isfinite(stress)):
-                    raise ValueError("stress contains non-finite values")
-
-        _check_shape()
-        _check_finiteness()
-        _check_optional_matrices()
+        checked_positions: Float[Array, "N 3"] = eqx.error_if(
+            positions,
+            jnp.any(~jnp.isfinite(positions)),
+            "positions contain non-finite values",
+        )
+        checked_atomic_numbers: Int[Array, "N"] = eqx.error_if(
+            atomic_numbers,
+            jnp.any(atomic_numbers < 0),
+            "atomic_numbers must be non-negative",
+        )
+        checked_lattice: Optional[Float[Array, "3 3"]] = eqx.error_if(
+            lattice,
+            jnp.any(~jnp.isfinite(lattice)),
+            "lattice contains non-finite values",
+        )
+        checked_stress: Optional[Float[Array, "3 3"]] = (
+            None
+            if stress is None
+            else eqx.error_if(
+                stress,
+                jnp.any(~jnp.isfinite(stress)),
+                "stress contains non-finite values",
+            )
+        )
+        checked_energy: Optional[Float[Array, ""]] = (
+            None
+            if energy is None
+            else eqx.error_if(
+                energy,
+                ~jnp.isfinite(energy),
+                "energy must be finite",
+            )
+        )
 
         return XYZData(
-            positions=positions,
-            atomic_numbers=atomic_numbers,
-            lattice=lattice,
-            stress=stress,
-            energy=energy,
+            positions=checked_positions,
+            atomic_numbers=checked_atomic_numbers,
+            lattice=checked_lattice,
+            stress=checked_stress,
+            energy=checked_energy,
             properties=properties,
             comment=comment,
         )

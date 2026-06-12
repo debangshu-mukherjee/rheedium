@@ -219,19 +219,56 @@ def create_orientation_distribution(
         jnp.asarray(angles_deg, dtype=jnp.float64)
     )
     n_angles: int = angles_arr.shape[0]
+    if n_angles <= 0:
+        raise ValueError("angles_deg must contain at least one angle")
+
+    checked_angles: Float[Array, "M"] = eqx.error_if(
+        angles_arr,
+        jnp.any(~jnp.isfinite(angles_arr)),
+        "angles_deg must be finite",
+    )
     weights_arr: Float[Array, "M"]
     if weights is None:
         weights_arr = jnp.ones(n_angles, dtype=jnp.float64) / n_angles
     else:
-        weights_arr = _normalize_probability_weights(weights)
-    mosaic_fwhm_arr: Float[Array, ""] = jnp.maximum(
-        jnp.asarray(mosaic_fwhm_deg, dtype=jnp.float64),
-        0.0,
+        raw_weights: Float[Array, "M"] = jnp.asarray(
+            weights, dtype=jnp.float64
+        )
+        if raw_weights.shape != angles_arr.shape:
+            raise ValueError("weights must have the same shape as angles_deg")
+        checked_weights: Float[Array, "M"] = eqx.error_if(
+            raw_weights,
+            jnp.any(~jnp.isfinite(raw_weights)),
+            "weights must be finite",
+        )
+        checked_weights = eqx.error_if(
+            checked_weights,
+            jnp.any(checked_weights < 0.0),
+            "weights must be non-negative",
+        )
+        checked_weights = eqx.error_if(
+            checked_weights,
+            jnp.sum(checked_weights) <= 0.0,
+            "weights must have positive total probability",
+        )
+        weights_arr = _normalize_probability_weights(checked_weights)
+    mosaic_fwhm_arr: Float[Array, ""] = jnp.asarray(
+        mosaic_fwhm_deg, dtype=jnp.float64
+    )
+    checked_mosaic_fwhm: Float[Array, ""] = eqx.error_if(
+        mosaic_fwhm_arr,
+        ~jnp.isfinite(mosaic_fwhm_arr),
+        "mosaic_fwhm_deg must be finite",
+    )
+    checked_mosaic_fwhm = eqx.error_if(
+        checked_mosaic_fwhm,
+        checked_mosaic_fwhm < 0.0,
+        "mosaic_fwhm_deg must be non-negative",
     )
     return OrientationDistribution(
-        discrete_angles_deg=angles_arr,
+        discrete_angles_deg=checked_angles,
         discrete_weights=weights_arr,
-        mosaic_fwhm_deg=mosaic_fwhm_arr,
+        mosaic_fwhm_deg=checked_mosaic_fwhm,
         distribution_id=distribution_id,
     )
 
@@ -604,12 +641,60 @@ def create_lognormal_size(
     the distribution is at exp(μ - σ²) where μ, σ are the
     underlying normal parameters.
     """
+    mean_arr: Float[Array, ""] = jnp.asarray(mean_ang, dtype=jnp.float64)
+    sigma_arr: Float[Array, ""] = jnp.asarray(sigma_ang, dtype=jnp.float64)
+    min_size_arr: Float[Array, ""] = jnp.asarray(
+        min_size_ang, dtype=jnp.float64
+    )
+    max_size_arr: Float[Array, ""] = jnp.asarray(
+        max_size_ang, dtype=jnp.float64
+    )
+    checked_mean: Float[Array, ""] = eqx.error_if(
+        mean_arr,
+        ~jnp.isfinite(mean_arr),
+        "mean_ang must be finite",
+    )
+    checked_mean = eqx.error_if(
+        checked_mean,
+        checked_mean <= 0.0,
+        "mean_ang must be positive",
+    )
+    checked_sigma: Float[Array, ""] = eqx.error_if(
+        sigma_arr,
+        ~jnp.isfinite(sigma_arr),
+        "sigma_ang must be finite",
+    )
+    checked_sigma = eqx.error_if(
+        checked_sigma,
+        checked_sigma < 0.0,
+        "sigma_ang must be non-negative",
+    )
+    checked_min_size: Float[Array, ""] = eqx.error_if(
+        min_size_arr,
+        ~jnp.isfinite(min_size_arr),
+        "min_size_ang must be finite",
+    )
+    checked_min_size = eqx.error_if(
+        checked_min_size,
+        checked_min_size <= 0.0,
+        "min_size_ang must be positive",
+    )
+    checked_max_size: Float[Array, ""] = eqx.error_if(
+        max_size_arr,
+        ~jnp.isfinite(max_size_arr),
+        "max_size_ang must be finite",
+    )
+    checked_max_size = eqx.error_if(
+        checked_max_size,
+        checked_max_size <= checked_min_size,
+        "max_size_ang must be greater than min_size_ang",
+    )
     return SizeDistribution(
         distribution_type="lognormal",
-        mean_ang=jnp.asarray(mean_ang, dtype=jnp.float64),
-        sigma_ang=jnp.asarray(sigma_ang, dtype=jnp.float64),
-        min_size_ang=jnp.asarray(min_size_ang, dtype=jnp.float64),
-        max_size_ang=jnp.asarray(max_size_ang, dtype=jnp.float64),
+        mean_ang=checked_mean,
+        sigma_ang=checked_sigma,
+        min_size_ang=checked_min_size,
+        max_size_ang=checked_max_size,
     )
 
 
