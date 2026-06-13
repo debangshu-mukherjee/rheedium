@@ -130,8 +130,8 @@ def _simple_structure_factor(
 
 def _result(
     name: str,
-    residual: float,
-    tolerance: float,
+    residual: scalar_float,
+    tolerance: scalar_float,
     units: str,
     detail: str,
 ) -> InvariantResult:
@@ -648,9 +648,13 @@ def run_default_invariants() -> list[InvariantResult]:
         One entry per invariant, in execution order.
     """
     results: list[InvariantResult] = []
+    pos_kirkland: InvariantResult
+    pos_lobato: InvariantResult
     pos_kirkland, pos_lobato = check_form_factor_positivity()
     results.append(pos_kirkland)
     results.append(pos_lobato)
+    mono_kirkland: InvariantResult
+    mono_lobato: InvariantResult
     mono_kirkland, mono_lobato = check_form_factor_monotonic_decrease()
     results.append(mono_kirkland)
     results.append(mono_lobato)
