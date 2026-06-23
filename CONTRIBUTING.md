@@ -103,6 +103,23 @@ def simulate_pattern(
 
 ### Documentation Standards
 
+### Tutorial Notebooks
+
+Tutorials live in `tutorials/` as Jupyter notebooks. Most notebooks are paired
+with Jupytext percent scripts (`.ipynb` plus `.py`) so they can be edited in VS
+Code/Jupyter while keeping reviewable source diffs.
+
+For remote development, open `tutorials/<notebook>.ipynb` through VS Code
+Remote-SSH and select the project kernel. After editing a paired notebook, run:
+
+```bash
+uv run jupytext --sync tutorials/<notebook>.ipynb
+uv run python scripts/strip_notebook_outputs.py tutorials/<notebook>.ipynb
+```
+
+Commit the synced `.py` and output-stripped `.ipynb` together. The docs render
+the notebooks through `myst-nb`; they do not rely on Marimo.
+
 #### Module Docstrings
 
 Each Python file must start with a module docstring listing all functions and classes:

@@ -1,16 +1,15 @@
 Tutorials
 =========
 
-Tutorial notebooks for Rheedium. The original notebooks are written
-in `Marimo <https://marimo.io>`_, but on Read the Docs they are shown
-as static source pages so the documentation build does not depend on
-live notebook export or execution.
+Tutorial notebooks for Rheedium. They are authored as Jupyter notebooks paired
+with Jupytext percent scripts where available, so they can be opened directly in
+VS Code or Jupyter while still keeping reviewable Python sources in git.
 
 .. note::
 
-   For true notebook interactivity, clone the repository, install Marimo
-   (``pip install marimo``), and launch
-   ``marimo edit tutorials/<notebook>.py``.
+   For remote development, open ``tutorials/<notebook>.ipynb`` in VS Code over
+   Remote-SSH and select the project kernel. After editing paired notebooks,
+   run ``jupytext --sync tutorials/<notebook>.ipynb`` before committing.
 
 .. toctree::
    :maxdepth: 1
@@ -19,4 +18,5 @@ live notebook export or execution.
    02_kinematic_MgO
    03_kinematic_Bi2Se3
    04_finite_domain
-   05_bi2se3_temperature
+   05_bi2se3_temp_sweep
+   06_atomic_visualizer

@@ -9,6 +9,7 @@ from jaxtyping import Array, Float
 
 from rheedium.simul.simulator import simulate_detector_image
 from rheedium.simul.sweeps import (
+    simulate_detector_image_all_sweep,
     simulate_detector_image_energy_sweep,
     simulate_detector_image_orientation_sweep,
     simulate_detector_image_parameter_grid,
@@ -191,6 +192,30 @@ class TestDetectorImageSweeps(chex.TestCase):
                 simulate_detector_image_parameter_grid(
                     crystal=_SI_CRYSTAL_2ATOM,
                     phi_deg_values=jnp.array([0.0, 5.0]),
+                    theta_deg_values=jnp.array([1.0, 2.0, 3.0]),
+                    voltage_kv_values=jnp.array([1.0, 2.0]),
+                    surface_roughness=0.0,
+                )
+            )
+
+        chex.assert_shape(image_grid, (2, 3, 2, 2, 3))
+        expected: Float[Array, "2 3 2"] = (
+            jnp.array([0.0, 5.0])[:, None, None]
+            + 10.0 * jnp.array([1.0, 2.0, 3.0])[None, :, None]
+            + 100.0 * jnp.array([1.0, 2.0])[None, None, :]
+        )
+        chex.assert_trees_all_close(image_grid[..., 0, 0], expected)
+
+    def test_all_sweep_orders_axes(self) -> None:
+        """All-sweep axes are orientation, theta, voltage, height, width."""
+        with patch(
+            "rheedium.simul.sweeps.simulate_detector_image",
+            side_effect=self._encoded_detector_image,
+        ):
+            image_grid: Float[Array, "..."] = (
+                simulate_detector_image_all_sweep(
+                    crystal=_SI_CRYSTAL_2ATOM,
+                    orientation_deg_values=jnp.array([0.0, 5.0]),
                     theta_deg_values=jnp.array([1.0, 2.0, 3.0]),
                     voltage_kv_values=jnp.array([1.0, 2.0]),
                     surface_roughness=0.0,

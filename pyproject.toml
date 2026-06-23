@@ -41,7 +41,6 @@ dependencies = [
     "pymatgen>=2025.10.7",
     "h5py>=3.15.1",
     "tifffile>=2026.3.3",
-    "marimo>=0.22.4",
     "equinox>=0.13.8",
 ]
 [project.optional-dependencies]
@@ -52,8 +51,8 @@ cuda = [
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=3.0.2",
-    "myst-parser>=2.0.0",
-    "sphinx-marimo>=0.3.0",
+    "myst-nb>=1.1.2",
+    "jupytext>=1.16.0",
     "sphinx-autobuild>=2024.10.3",
     "furo>=2025.7.19",
     "sphinx-autodoc-typehints>=3.0.1",
@@ -73,6 +72,8 @@ notebooks = [
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
     "nbclient>=0.10.2",
+    "jupytext>=1.16.0",
+    "myst-nb>=1.1.2",
     "nglview>=3.1.0",
 ]
 dev = [
@@ -126,6 +127,10 @@ link-mode = "copy"
 [tool.uv.build-backend]
 module-name = "rheedium"
 namespace = true
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+cell_metadata_filter = "-trusted"
 
 [tool.pytest.ini_options]
 addopts = "-n auto --jaxtyping-packages=rheedium,beartype.beartype"
@@ -251,22 +256,18 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tutorials/**/*.py" = [
-    "D",      # Marimo notebooks: no module/function docstrings required
-    "ANN",    # Marimo cells use `def _(arg1, arg2):` with no annotations
-    "PLR1711", # Marimo cells end with bare `return` to declare outputs
-    "PLC0415", # Each marimo cell is a function; imports go inside
+    "D",      # Notebook scripts: no module/function docstrings required
+    "ANN",    # Notebook helper functions can stay lightweight
     "N803",   # Allow scientific variable names like X, Y, Mx as args
     "N806",   # Allow scientific variable names like X, Y, Mx in body
     "E501",   # Long lines in exploratory notebook code
     "F541",   # f-strings without placeholders are common in notebook prints
-    "B018",   # Bare expressions are how marimo displays cell outputs
+    "B018",   # Bare expressions are how notebooks display rich outputs
     "B905",   # zip without strict= is fine in tutorial code
     "F841",   # Unused variables are fine in exploratory cells
     "E741",   # Ambiguous variable names (l, I, O) are common in physics
     "PLR2004", # Magic numbers are fine in tutorials
-    "ARG001", # Marimo cells may declare args they do not use
-    "RET504", # Unnecessary assigns are fine for clarity
-    "I001",   # Marimo manages imports per-cell, not sorted globally
+    "I001",   # Jupytext preserves notebook cell import order
     "ERA",    # Commented-out code is acceptable in tutorial notebooks
 ]
 

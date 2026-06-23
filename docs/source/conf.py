@@ -68,21 +68,15 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
-    "myst_parser",
-    "sphinx_marimo",
+    "myst_nb",
     "test_links",
 ]
 
 source_suffix = {
     ".rst": "restructuredtext",
-    ".md": "markdown",
+    ".md": "myst-nb",
+    ".ipynb": "myst-nb",
 }
-
-marimo_notebook_dir = "interactive_notebooks"
-marimo_default_height = "720px"
-marimo_default_width = "100%"
-marimo_click_to_load = True
-marimo_load_button_text = "Run Interactive Example"
 
 # MyST-Parser configuration for LaTeX math rendering
 myst_enable_extensions = [
@@ -94,6 +88,13 @@ suppress_warnings = ["myst.mathjax"]
 
 # Ensure MyST parses all dollar-delimited math correctly
 myst_dmath_double_inline = True
+
+# Notebook execution is intentionally disabled for the documentation build.
+# Tutorial notebooks are committed output-stripped and can be run locally in
+# VS Code/Jupyter. This keeps Read the Docs deterministic while still rendering
+# notebook structure through myst-nb.
+nb_execution_mode = "off"
+nb_execution_timeout = 300
 
 # MathJax configuration to ensure math renders properly
 mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"

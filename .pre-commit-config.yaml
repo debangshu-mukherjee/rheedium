@@ -13,6 +13,16 @@ repos:
         entry: uv run --no-sync ruff format
         language: system
         types: [python]
+      - id: jupytext-sync
+        name: jupytext sync notebooks
+        entry: uv run --no-sync jupytext --sync
+        language: system
+        files: ^(tutorials|docs/source/interactive_notebooks)/.*\.(ipynb|py)$
+      - id: strip-notebook-outputs
+        name: strip notebook outputs
+        entry: uv run --no-sync python scripts/strip_notebook_outputs.py
+        language: system
+        files: \.ipynb$
       - id: ty-check
         name: ty check (src + tests)
         entry: uv run --no-sync ty check

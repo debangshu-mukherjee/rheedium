@@ -97,6 +97,8 @@ Routine Listings
     Gaussian roughness damping factor for CTR intensities.
 :func:`simulate_detector_image`
     High-level kinematic detector-image orchestration.
+:func:`simulate_detector_image_all_sweep`
+    Simulate detector images over orientation, angle, and energy grids.
 :func:`simulate_detector_image_orientation_sweep`
     Simulate detector images over multiple in-plane orientations.
 :func:`simulate_detector_image_theta_sweep`
@@ -186,6 +188,7 @@ from .surface_rods import (
     surface_structure_factor,
 )
 from .sweeps import (
+    simulate_detector_image_all_sweep,
     simulate_detector_image_energy_sweep,
     simulate_detector_image_orientation_sweep,
     simulate_detector_image_parameter_grid,
@@ -240,6 +243,7 @@ __all__: list[str] = [
     "rod_profile_function",
     "roughness_damping",
     "render_pattern_to_image",
+    "simulate_detector_image_all_sweep",
     "simulate_detector_image_energy_sweep",
     "simulate_detector_image_orientation_sweep",
     "simulate_detector_image_parameter_grid",
