@@ -27,6 +27,7 @@ def configure_execution_environment() -> None:
     os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")
     os.environ.setdefault("JAX_PLATFORMS", "cpu")
     os.environ.setdefault("MPLBACKEND", "Agg")
+    os.environ.setdefault("RHEEDIUM_TUTORIAL_FAST_DOCS", "1")
     os.environ.setdefault("RHEEDIUM_VISUALIZER_BACKEND", "x3d")
 
 

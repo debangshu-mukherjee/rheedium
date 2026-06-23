@@ -9,6 +9,7 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["JAX_ENABLE_X64"] = "True"
 os.environ["BUILDING_DOCS"] = "1"
+os.environ.setdefault("RHEEDIUM_TUTORIAL_FAST_DOCS", "1")
 
 
 # Make jaxtyped decorator a no-op during doc building to preserve docstrings

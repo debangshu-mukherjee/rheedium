@@ -38,6 +38,7 @@ from IPython.display import Markdown, display
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from pathlib import Path
 
 import rheedium as rh
@@ -87,6 +88,19 @@ settings = {
     "log_gain": 22.0,
     "dynamic_range_scale": 0.8,
 }
+
+if os.environ.get("RHEEDIUM_TUTORIAL_FAST_DOCS") == "1":
+    settings.update(
+        {
+            "hmax": 4,
+            "kmax": 4,
+            "image_shape_px": (160, 160),
+            "beam_center_px": (80.0, 0.0),
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+        }
+    )
 
 # %%
 Markdown(f"""

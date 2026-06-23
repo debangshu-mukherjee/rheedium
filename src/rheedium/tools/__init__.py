@@ -21,6 +21,8 @@ Routine Listings
 :func:`bessel_kv`
     Modified Bessel function of the second kind, arbitrary real
     order.
+:func:`distribute_batched`
+    Run a batched callable data-parallel across a device mesh.
 :func:`gauss_hermite_nodes_weights`
     Gauss-Hermite quadrature nodes and weights for Gaussian
     averaging integrals.
@@ -52,7 +54,7 @@ rather than in :mod:`rheedium.simul` to break circular import chains
 between simulation sub-modules.
 """
 
-from .parallel import shard_array
+from .parallel import distribute_batched, shard_array
 from .quadrature import gauss_hermite_nodes_weights
 from .simul_utils import (
     incident_wavevector,
@@ -66,6 +68,7 @@ __all__: list[str] = [
     "bessel_k0",
     "bessel_k1",
     "bessel_kv",
+    "distribute_batched",
     "gauss_hermite_nodes_weights",
     "incident_wavevector",
     "interaction_constant",

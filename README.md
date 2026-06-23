@@ -15,64 +15,251 @@
 
 ## Overview
 
-Rheedium is a JAX based computational framework for simulating RHEED patterns with automatic differentiation capabilities and GPU acceleration.
+Rheedium is a JAX-based computational framework for simulating **RHEED**
+(Reflection High-Energy Electron Diffraction) patterns, with full automatic
+differentiation and GPU acceleration. Because every simulation step is a
+differentiable JAX function, you can run it forward (crystal → pattern) *or*
+backward (experimental pattern → crystal/instrument parameters) by gradient
+descent — the same code powers both simulation and reconstruction.
 
-To install **rheedium**
+> **New here? Read this README top to bottom first.** The
+> [Mental model](#mental-model) and [Repository map](#repository-map) sections
+> are enough to know *where* any piece of functionality lives and *why* it is
+> shaped the way it is. Then jump to a [tutorial](#tutorials) for a worked
+> example.
+
+## Install
 
 ```bash
-pip install rheedium
+pip install rheedium            # from PyPI
 ```
-
-or clone it as:
 
 ```bash
 git clone git@github.com:debangshu-mukherjee/rheedium.git
+cd rheedium
+uv sync --extra dev             # full dev environment (recommended for hacking)
 ```
 
-### Guides
+GPU users: install the `cuda` extra (`pip install "rheedium[cuda]"`) on Linux
+x86-64. Everything below works identically on CPU.
 
-- [Guides Overview](https://rheedium.readthedocs.io/en/latest/guides/index.html) - Complete guide index
-- [Ewald-CTR Tutorial](https://rheedium.readthedocs.io/en/latest/guides/ewald-ctr-tutorial.html) - Complete walkthrough from Ewald sphere to CTR rods
-- [Kinematic Scattering](https://rheedium.readthedocs.io/en/latest/guides/kinematic-scattering.html) - Diffraction theory, structure factors, and intensity calculations
-- [Ewald Sphere](https://rheedium.readthedocs.io/en/latest/guides/ewald-sphere.html) - Geometric diffraction conditions in reciprocal space
-- [Form Factors](https://rheedium.readthedocs.io/en/latest/guides/form-factors.html) - Atomic scattering amplitudes and thermal (Debye-Waller) effects
-- [Surface Rods](https://rheedium.readthedocs.io/en/latest/guides/surface-rods.html) - Crystal truncation rods, roughness, and finite domain effects
-- [Layer Control](https://rheedium.readthedocs.io/en/latest/guides/layer-control.html) - Controlling which atomic layers contribute to patterns
-- [Arbitrary Directions](https://rheedium.readthedocs.io/en/latest/guides/arbitrary-directions.html) - Simulating RHEED from any azimuth or surface orientation
-- [Data Wrangling](https://rheedium.readthedocs.io/en/latest/guides/data-wrangling.html) - Parsing XYZ, CIF, and POSCAR files
-- [Unit Cell](https://rheedium.readthedocs.io/en/latest/guides/unit-cell.html) - Lattice vectors, reciprocal space, and surface slabs
-- [PyTree Architecture](https://rheedium.readthedocs.io/en/latest/guides/pytree-architecture.html) - JAX data structures for GPU acceleration
+## Quick start
 
-### Tutorials
+```python
+import rheedium as rh
 
-See the [tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.html) for hands-on examples.
+# 1. Load a crystal from CIF / XYZ / POSCAR (format auto-detected)
+crystal = rh.inout.parse_crystal("tests/test_data/SrTiO3.cif")
 
-### API Reference
+# 2. Simulate a detector image end-to-end (structure -> pattern -> image)
+image = rh.simul.simulate_detector_image(
+    crystal,
+    voltage_kv=20.0,   # beam energy
+    theta_deg=2.0,     # grazing incidence angle
+    hmax=5, kmax=5,    # reciprocal-lattice range
+)
 
-See the [full API documentation](https://rheedium.readthedocs.io/en/latest/api/index.html) on Read the Docs.
+# 3. Display it with a phosphor-screen colormap
+rh.plots.plot_rheed(image)
+```
+
+For the lower-level pattern object (sparse reflections + detector coordinates,
+before rasterization) use `rh.simul.ewald_simulator(crystal, ...)`, which
+returns a `RHEEDPattern`. `simulate_detector_image` is the full kinematic
+pipeline that wraps it and renders a dense image.
+
+## Mental model
+
+RHEED is grazing-incidence electron diffraction off a crystal *surface*. The
+physics — and this codebase — follow one pipeline. Read this once and the
+package layout becomes obvious:
+
+```
+   CIF / XYZ / POSCAR              inout/        parse_crystal()
+            │
+            ▼
+   CrystalStructure  ──────────────  types/      JAX PyTree (positions, cell)
+            │
+   (optional surface work)           procs/      slabs, reconstructions,
+            │                                     defects, grains, library
+            ▼
+   reciprocal lattice + Ewald sphere  ucell/      build_cell_vectors(),
+            │                          simul/      reciprocal lattice, Ewald
+            ▼
+   reflections × structure factors    simul/      form factors, Debye-Waller,
+   intersected with the Ewald sphere              CTRs, finite domains
+            │
+   instrument broadening              simul/      divergence, energy spread,
+            │                                     detector PSF
+            ▼
+   RHEEDPattern  ──► detector image   simul/      project + rasterize
+            │
+            ▼
+   plot / compare / fit               plots/  recon/  audit/
+```
+
+- **Forward** (simulate): walk the pipeline top to bottom. Entry point
+  `simul.simulate_detector_image` / `simul.ewald_simulator`.
+- **Inverse** (reconstruct): `recon/` differentiates the forward pipeline and
+  fits crystal/instrument/orientation parameters to an experimental image.
+- **Validate**: `audit/` checks the simulator against physics invariants
+  (Friedel symmetry, elastic closure, form-factor monotonicity, …) and against
+  stored reference images.
+
+### Why the code is shaped this way (key design choices)
+
+- **JAX everywhere.** Every numerical function is pure, traceable, and
+  `jit`/`grad`/`vmap`-friendly. This is what makes reconstruction (`recon/`)
+  possible at all — the forward simulator *is* the model you optimize through.
+- **PyTrees for all data structures.** `CrystalStructure`, `RHEEDPattern`,
+  `RHEEDImage`, beams, and distributions (in `types/`) are registered JAX
+  PyTrees. They flow through `jit`/`grad` and shard across devices unchanged.
+  Construct them with the `create_*` factory functions, not raw constructors.
+- **Runtime-checked array shapes.** Functions are annotated with
+  [`jaxtyping`](https://docs.kidger.site/jaxtyping/) shapes (e.g.
+  `Float[Array, "n 3"]`) and enforced by `beartype` during tests. A wrong-shape
+  array fails loudly at the call site instead of producing silent garbage.
+- **64-bit by default.** `jax_enable_x64` is set at import (in
+  [src/rheedium/__init__.py](src/rheedium/__init__.py)) — diffraction geometry
+  needs the precision.
+- **Namespace sub-packages, flat public API.** Access everything as
+  `rh.<subpackage>.<function>` (e.g. `rh.inout.parse_crystal`). Each
+  subpackage's `__init__.py` defines its public surface via `__all__`.
+- **Optional distributed execution.** `rh.init_distributed()` wraps multi-host
+  JAX setup; opt in with `RHEEDIUM_DISTRIBUTED=1` for SLURM batch jobs. No-op
+  on a single machine.
+
+## Repository map
+
+```
+src/rheedium/
+├── types/    PyTree data structures + physical constants   (the vocabulary)
+├── ucell/    unit-cell & reciprocal-space crystallography
+├── inout/    parsing & I/O (CIF/XYZ/POSCAR/VASP, TIFF, HDF5, ASE/pymatgen)
+├── simul/    the RHEED simulator (kinematic, multislice, instrument effects)
+├── procs/    differentiable surface models (slabs, reconstructions, defects)
+├── recon/    inverse problems (fit structure/params from experimental data)
+├── plots/    visualization (patterns + physics diagrams)
+├── tools/    shared numerical kernels (Bessel, quadrature, wavelength, sharding)
+└── audit/    physics-invariant checks & reference-image benchmarking
+```
+
+### What lives where
+
+**`types/`** — the data vocabulary the whole package speaks. Define a structure
+or beam here, pass it everywhere.
+- `crystal_types.py`, `beam_types.py`, `rheed_types.py` — the core PyTrees.
+- `distributions.py` — orientation/size distributions for ensemble averaging.
+- `constants.py`, `custom_types.py` — physical constants and scalar/array aliases.
+- Entry points: `create_crystal_structure`, `create_electron_beam`,
+  `create_rheed_pattern`, `create_rheed_image`, `create_ewald_data`.
+
+**`ucell/`** — crystallography: lattice parameters ↔ Cartesian vectors,
+reciprocal space, surface slicing.
+- Entry points: `build_cell_vectors`, `reciprocal_unitcell`,
+  `generate_reciprocal_points`, `atom_scraper`, `bulk_to_slice`,
+  `miller_to_reciprocal`.
+
+**`inout/`** — get structures and images in and out.
+- `crystal.py` (`parse_crystal` — auto-detect), `cif.py`, `poscar.py`,
+  `vaspxml.py`, `xyz.py` — structure parsers.
+- `tiff.py` — load experimental detector frames (`load_tiff_as_rheed_image`,
+  `detect_beam_center`).
+- `hdf5.py` — serialize PyTrees (`save_to_h5`, `load_from_h5`).
+- `interop.py` — `from_ase`/`to_ase`, `from_pymatgen`/`to_pymatgen`.
+
+**`simul/`** — the heart of the package; the forward simulator.
+- `simulator.py` — high-level orchestrators: `simulate_detector_image`,
+  `ewald_simulator`, `multislice_simulator`, plus detector projection/rendering.
+- `ewald.py`, `kinematic.py` — Ewald-sphere construction and kinematic spots.
+- `form_factors.py` — Kirkland/Lobato atomic form factors + Debye-Waller.
+- `surface_rods.py`, `finite_domain.py` — crystal truncation rods and
+  finite-domain broadening (the surface-sensitivity physics).
+- `multislice.py`, `potential.py` — dynamical multislice primitives.
+- `beam_averaging.py` — instrument broadening (divergence, energy spread, PSF).
+- `sweeps.py` — batched simulators over angle/energy/orientation grids.
+
+**`procs/`** — differentiable procedural *surface* models (apply before simulating).
+- `surface_builder.py` (`create_surface_slab`, `apply_surface_reconstruction`,
+  `add_adsorbate_layer`), `surface_modifier.py` (steps, occupancy/displacement
+  fields), `crystal_defects.py`, `grains.py`, `preprocessing.py` (experimental
+  image cleanup), `library.py` (ready-made surfaces: Si(111)-7×7, GaAs(001)-2×4,
+  SrTiO₃, MgO, …).
+
+**`recon/`** — fit parameters to data by differentiating the simulator.
+- `optimizers.py` (`gauss_newton_reconstruction`, `adam_reconstruction`),
+  `losses.py`, `orientation.py` (orientation fitting + Fisher-information
+  uncertainty).
+
+**`plots/`** — `figuring.py` (`plot_rheed`, phosphor colormap) and `diagrams.py`
+(publication physics figures: Ewald sphere, form factors, CTR profiles, …).
+
+**`tools/`** — shared math kernels used across `simul/`: `special.py` (Bessel
+functions), `quadrature.py` (Gauss-Hermite), `simul_utils.py` (`wavelength_ang`,
+`incident_wavevector`, `interaction_constant`), `parallel.py` (device sharding),
+`wrappers.py` (`jax_safe`).
+
+**`audit/`** — `invariants.py` (`run_default_invariants` — physics checks, no
+fixtures needed), `metrics.py` (image-space accuracy metrics),
+`reference_benchmark.py` (regression against stored reference images).
+
+## Common workflows
+
+```python
+import rheedium as rh
+
+# --- Build and simulate a reconstructed surface ---
+crystal = rh.inout.parse_crystal("structure.cif")
+slab    = rh.procs.create_surface_slab(crystal, miller_indices=[1, 1, 1])
+recon7  = rh.procs.apply_surface_reconstruction(slab, m=7, n=7)
+image   = rh.simul.simulate_detector_image(recon7, voltage_kv=20.0, theta_deg=2.0)
+
+# --- Or start from a pre-built surface in the library ---
+si = rh.procs.si111_7x7()
+
+# --- Reconstruct: fit a structure to an experimental image ---
+exp    = rh.inout.load_tiff_as_rheed_image("rheed.tif")
+result = rh.recon.adam_reconstruction(crystal_init, exp.data, ...)
+
+# --- Validate the simulator against physics ---
+rh.audit.run_default_invariants()
+```
+
+## Tests, tutorials, and docs
+
+- **Tutorials** — runnable, narrated examples in [tutorials/](tutorials/) (paired
+  `.ipynb` + jupytext `.py`), e.g.
+  [01_kinematic_SrTiO3.py](tutorials/01_kinematic_SrTiO3.py). Start here for a
+  worked end-to-end run. Also rendered in the
+  [online tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.html).
+- **Tests** — [tests/](tests/) mirrors `src/` one-to-one
+  (`tests/test_rheedium/test_<subpkg>/test_<module>.py`). To understand any
+  function's contract, read its test. Property-based tests use `hypothesis`;
+  shape contracts are enforced via `jaxtyping` + `beartype`.
+- **Guides & API** — conceptual
+  [guides](https://rheedium.readthedocs.io/en/latest/guides/index.html) (Ewald
+  sphere, form factors, CTRs, PyTree architecture, …) and the full
+  [API reference](https://rheedium.readthedocs.io/en/latest/api/index.html) on
+  Read the Docs.
 
 ## Development
-
-Install the development environment with:
 
 ```bash
 uv sync --extra dev
 ```
 
-Run the static type checker with:
+Recommended local validation before pushing (matches CI):
 
 ```bash
-uv run ty check src
+uv run ruff check src/ tests/        # lint
+uv run ruff format --check src/ tests/   # format
+uv run ty check src                  # static type check
+uv run pytest -v                     # tests (pytest-xdist runs them in parallel)
 ```
 
-Recommended local validation before pushing:
-
-```bash
-uv run ruff check src/ tests/
-uv run ruff format --check src/ tests/
-uv run ty check src
-uv run pytest -v
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions (numpydoc docstrings,
+jaxtyping idioms, the tests-mirror-src layout, and the type-checker
+configuration rationale).
 
 ## License
 
