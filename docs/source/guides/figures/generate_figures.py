@@ -50,9 +50,31 @@ FIGSIZE_WIDE = (10, 6)
 FIGSIZE_TALL = (8, 8)
 SAVE_DIR = Path(__file__).parent
 
+# Figures embedded in the top-level README. These additionally need a raster
+# (PNG) copy: PyPI's long-description renderer does not display SVG, and the
+# README points at the PNGs by absolute URL. Keep this set in sync with the
+# images referenced in README.md (validated by docs/check_readme_figures.py).
+README_PNG_FIGURES: frozenset[str] = frozenset(
+    {
+        "grazing_incidence_geometry",
+        "data_flow_diagram",
+        "pytree_hierarchy",
+        "ewald_sphere_3d_perspective",
+        "form_factor_curves",
+        "ctr_intensity_profile",
+        "mgo_kinematic_rheed",
+    }
+)
+README_PNG_DPI: int = 200
+
 
 def save_fig(name: str) -> None:
-    """Save current figure as SVG and close it."""
+    """Save the current figure as SVG (and PNG for README figures), then close.
+
+    All guide figures are written as SVG for the HTML docs. Figures listed in
+    :data:`README_PNG_FIGURES` are *also* written as a high-DPI PNG so the
+    README renders on PyPI, which does not display SVG.
+    """
     # Replace .png or .pdf extension with .svg if present
     if name.endswith(".png") or name.endswith(".pdf"):
         name = name[:-4] + ".svg"
@@ -63,6 +85,17 @@ def save_fig(name: str) -> None:
         facecolor="white",
         edgecolor="none",
     )
+    stem: str = name[:-4]
+    if stem in README_PNG_FIGURES:
+        plt.savefig(
+            SAVE_DIR / f"{stem}.png",
+            format="png",
+            dpi=README_PNG_DPI,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        print(f"  Saved: {stem}.png")
     plt.close()
     print(f"  Saved: {name}")
 

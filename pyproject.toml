@@ -1,6 +1,6 @@
 [project]
 name = "rheedium"
-version = "2026.6.1"
+version = "2026.6.5"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{ name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov" }]
 license = { file = "LICENSE" }
@@ -102,16 +102,6 @@ exclude_lines = [
     "pass",
     "raise ImportError",
 ]
-
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-namespaces = true
-where = ["src"]
-
-[tool.setuptools.package-data]
-"rheedium" = ["py.typed"]
 
 [project.urls]
 Homepage = "https://github.com/debangshu-mukherjee/rheedium/"

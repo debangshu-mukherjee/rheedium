@@ -23,6 +23,14 @@ repos:
         entry: uv run --no-sync python docs/strip_notebook_outputs.py
         language: system
         files: \.ipynb$
+      # Guard the README image cache: every image must be an absolute-URL PNG
+      # that exists in-repo, so the README renders on both GitHub and PyPI.
+      - id: readme-figures
+        name: validate README figures
+        entry: uv run --no-sync python docs/check_readme_figures.py
+        language: system
+        pass_filenames: false
+        files: ^(README\.md|docs/source/guides/figures/.*|docs/check_readme_figures\.py)$
       - id: ty-check
         name: ty check (src + tests)
         entry: uv run --no-sync ty check

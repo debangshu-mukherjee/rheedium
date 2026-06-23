@@ -13,6 +13,10 @@
 [![jax_badge](https://tinyurl.com/mucknrvu)](https://docs.jax.dev/)
 [![Lines of Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/.github/badges/loc.json)](https://github.com/debangshu-mukherjee/rheedium)
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/_static/readme/rheed-sweep-gallery.png" alt="Simulated RHEED detector images for SrTiO3, MgO, and Bi2Se3" width="900">
+</p>
+
 ## Overview
 
 Rheedium is a JAX-based computational framework for simulating **RHEED**
@@ -21,6 +25,12 @@ differentiation and GPU acceleration. Because every simulation step is a
 differentiable JAX function, you can run it forward (crystal → pattern) *or*
 backward (experimental pattern → crystal/instrument parameters) by gradient
 descent — the same code powers both simulation and reconstruction.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/grazing_incidence_geometry.png" alt="Grazing-incidence RHEED geometry: electron beam striking a crystal surface at a shallow angle" width="600">
+  <br>
+  <em>RHEED geometry: a high-energy beam grazes the surface and diffracts onto the detector.</em>
+</p>
 
 > **New here? Read this README top to bottom first.** The
 > [Mental model](#mental-model) and [Repository map](#repository-map) sections
@@ -74,6 +84,10 @@ RHEED is grazing-incidence electron diffraction off a crystal *surface*. The
 physics — and this codebase — follow one pipeline. Read this once and the
 package layout becomes obvious:
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/data_flow_diagram.png" alt="Data flow through Rheedium: crystal structure to reciprocal lattice to Ewald construction to detector image" width="720">
+</p>
+
 ```
    CIF / XYZ / POSCAR              inout/        parse_crystal()
             │
@@ -115,6 +129,11 @@ package layout becomes obvious:
   `RHEEDImage`, beams, and distributions (in `types/`) are registered JAX
   PyTrees. They flow through `jit`/`grad` and shard across devices unchanged.
   Construct them with the `create_*` factory functions, not raw constructors.
+
+  <p align="center">
+    <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/pytree_hierarchy.png" alt="PyTree hierarchy of Rheedium data structures" width="560">
+  </p>
+
 - **Runtime-checked array shapes.** Functions are annotated with
   [`jaxtyping`](https://docs.kidger.site/jaxtyping/) shapes (e.g.
   `Float[Array, "n 3"]`) and enforced by `beartype` during tests. A wrong-shape
@@ -128,6 +147,34 @@ package layout becomes obvious:
 - **Optional distributed execution.** `rh.init_distributed()` wraps multi-host
   JAX setup; opt in with `RHEEDIUM_DISTRIBUTED=1` for SLURM batch jobs. No-op
   on a single machine.
+
+### The physics, visualized
+
+Each stage of the pipeline has a physical knob you can inspect and plot
+(`rh.plots.*`). These figures come straight from the package:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/ewald_sphere_3d_perspective.png" width="330"><br>
+      <em>Ewald construction (<code>simul.ewald</code>)</em>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/form_factor_curves.png" width="330"><br>
+      <em>Atomic form factors (<code>simul.form_factors</code>)</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/ctr_intensity_profile.png" width="330"><br>
+      <em>Crystal truncation rods (<code>simul.surface_rods</code>)</em>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/guides/figures/mgo_kinematic_rheed.png" width="330"><br>
+      <em>Simulated RHEED — MgO(001) (<code>simul.simulate_detector_image</code>)</em>
+    </td>
+  </tr>
+</table>
 
 ## Repository map
 

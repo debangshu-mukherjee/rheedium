@@ -49,6 +49,9 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev
 
+    - name: Validate README figures (absolute URLs + committed PNG cache)
+      run: uv run python docs/check_readme_figures.py
+
     - name: Debug - Check environment
       run: |
         echo "Current directory:"
