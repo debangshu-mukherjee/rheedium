@@ -40,6 +40,7 @@
 # %%
 from pathlib import Path
 import importlib.util
+import os
 
 from IPython.display import display
 import jax.numpy as jnp
@@ -109,7 +110,7 @@ summarize_crystal("500 K slab", slab_500k)
 # for a small structure, set `VISUALIZER_BACKEND = "x3d"`.
 
 # %%
-VISUALIZER_BACKEND = "auto"
+VISUALIZER_BACKEND = os.environ.get("RHEEDIUM_VISUALIZER_BACKEND", "auto")
 has_nglview = importlib.util.find_spec("nglview") is not None
 
 print(f"nglview available: {has_nglview}")

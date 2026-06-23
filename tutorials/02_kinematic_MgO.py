@@ -349,7 +349,8 @@ plt.show()
 # ## Precomputed Sweep Viewer
 #
 # This final section loads the precomputed `MgO` sweep banks from
-# `tutorials/sweeps` and lets you scrub through them instantly with a slider.
+# `tutorials/sweeps`. Change `mgo_sweep_kind` or `mgo_sweep_index` to inspect
+# another cached sweep frame.
 
 # %%
 mgo_phi_sweep_data = np.load(
@@ -396,6 +397,12 @@ mgo_sweep_metadata = {
 # %%
 mgo_sweep_index = 0
 # Increase this index to inspect another precomputed image.
+
+# %%
+mgo_sweep_value = Markdown(
+    f"**Current {mgo_sweep_parameter_name}:** "
+    f"`{mgo_sweep_parameter_values[mgo_sweep_index]:.3f}`"
+)
 
 # %%
 mgo_sweep_fig, _ax = plt.subplots(figsize=(7, 6))

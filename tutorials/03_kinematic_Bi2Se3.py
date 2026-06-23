@@ -377,7 +377,8 @@ plt.show()
 # ## Precomputed Sweep Viewer
 #
 # This final section loads the precomputed `Bi2Se3` sweep banks from
-# `tutorials/sweeps` and lets you scrub through them instantly with a slider.
+# `tutorials/sweeps`. Change `bi2se3_sweep_kind` or `bi2se3_sweep_index` to
+# inspect another cached sweep frame.
 
 # %%
 bi2se3_phi_sweep_data = np.load(
@@ -426,6 +427,12 @@ bi2se3_sweep_metadata = {
 # %%
 bi2se3_sweep_index = 0
 # Increase this index to inspect another precomputed image.
+
+# %%
+bi2se3_sweep_value = Markdown(
+    f"**Current {bi2se3_sweep_parameter_name}:** "
+    f"`{bi2se3_sweep_parameter_values[bi2se3_sweep_index]:.3f}`"
+)
 
 # %%
 bi2se3_sweep_fig, _ax = plt.subplots(figsize=(7, 6))

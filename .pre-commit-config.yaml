@@ -20,7 +20,7 @@ repos:
         files: ^(tutorials|docs/source/interactive_notebooks)/.*\.(ipynb|py)$
       - id: strip-notebook-outputs
         name: strip notebook outputs
-        entry: uv run --no-sync python scripts/strip_notebook_outputs.py
+        entry: uv run --no-sync python docs/strip_notebook_outputs.py
         language: system
         files: \.ipynb$
       - id: ty-check

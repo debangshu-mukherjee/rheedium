@@ -255,6 +255,9 @@ known-third-party = ["jax", "jaxtyping"]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
+"tests/_types.py" = [
+    "UP040",  # Keep Python 3.11-compatible TypeAlias syntax.
+]
 "tutorials/**/*.py" = [
     "D",      # Notebook scripts: no module/function docstrings required
     "ANN",    # Notebook helper functions can stay lightweight
@@ -281,7 +284,7 @@ require-yield-section-when-yielding = true
 
 
 [tool.ty.environment]
-root = ["src/"]
+root = ["src/", "."]
 
 [tool.ty.src]
 include = ["src", "tests", "docs"]

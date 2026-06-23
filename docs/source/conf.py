@@ -89,12 +89,16 @@ suppress_warnings = ["myst.mathjax"]
 # Ensure MyST parses all dollar-delimited math correctly
 myst_dmath_double_inline = True
 
-# Notebook execution is intentionally disabled for the documentation build.
-# Tutorial notebooks are committed output-stripped and can be run locally in
-# VS Code/Jupyter. This keeps Read the Docs deterministic while still rendering
-# notebook structure through myst-nb.
-nb_execution_mode = "off"
+# Tutorial notebooks are committed output-stripped, while the documentation
+# build renders pre-executed outputs from the MyST-NB/Jupyter cache populated by
+# docs/build_notebook_cache.py. If the cache is missing locally, MyST-NB can
+# execute and repopulate it, but CI generates the cache before building docs.
+nb_execution_mode = "cache"
+nb_execution_cache_path = os.path.join(
+    project_root, "docs", "build", ".jupyter_cache"
+)
 nb_execution_timeout = 300
+nb_execution_raise_on_error = True
 
 # MathJax configuration to ensure math renders properly
 mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"

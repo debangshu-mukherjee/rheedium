@@ -6,8 +6,7 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-      - export JAX_PLATFORMS=cpu
-      - python docs/update_tutorials_index.py
+      - python docs/build_notebook_cache.py
 
 python:
   install:
@@ -15,6 +14,7 @@ python:
       path: .
       extra_requirements:
         - docs
+        - notebooks
 
 sphinx:
   configuration: docs/source/conf.py

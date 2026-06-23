@@ -60,6 +60,9 @@ jobs:
         echo "Sphinx version:"
         uv run sphinx-build --version
 
+    - name: Execute notebooks into docs cache
+      run: uv run python docs/build_notebook_cache.py
+
     - name: Build documentation
       run: |
         cd docs

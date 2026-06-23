@@ -18,37 +18,20 @@ from rheedium.simul.sweeps import (
     simulate_detector_image_theta_sweep,
 )
 from rheedium.types import CrystalStructure
-from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.types.custom_types import scalar_float
 
+from ..._assertions import assert_crystal_structure_arrays
+from ..._factories import make_si_crystal_2atom
 
-def _make_si_crystal_2atom() -> CrystalStructure:
-    """Create a 2-atom Si crystal for fast sweep tests."""
-    a_si: float = 5.431
-    frac_coords: Float[Array, "..."] = jnp.array(
-        [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
-    )
-    cart_coords: Float[Array, "..."] = frac_coords * a_si
-    atomic_numbers: Float[Array, "..."] = jnp.full(2, 14.0)
-    frac_positions: Float[Array, "..."] = jnp.column_stack(
-        [frac_coords, atomic_numbers]
-    )
-    cart_positions: Float[Array, "..."] = jnp.column_stack(
-        [cart_coords, atomic_numbers]
-    )
-    return create_crystal_structure(
-        frac_positions=frac_positions,
-        cart_positions=cart_positions,
-        cell_lengths=jnp.array([a_si, a_si, a_si]),
-        cell_angles=jnp.array([90.0, 90.0, 90.0]),
-    )
-
-
-_SI_CRYSTAL_2ATOM = _make_si_crystal_2atom()
+_SI_CRYSTAL_2ATOM: CrystalStructure = make_si_crystal_2atom()
 
 
 class TestDetectorImageSweeps(chex.TestCase):
     """Tests for dense detector-image sweep utilities."""
+
+    def test_shared_si_crystal_fixture_valid(self) -> None:
+        """Shared typed crystal factory returns valid sweep test data."""
+        assert_crystal_structure_arrays(_SI_CRYSTAL_2ATOM, n_atoms=2)
 
     def _small_detector_kwargs(self) -> dict[str, Any]:
         """Return fast detector settings shared by dense-image tests."""
