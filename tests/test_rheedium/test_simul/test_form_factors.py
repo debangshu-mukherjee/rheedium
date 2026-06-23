@@ -23,6 +23,7 @@ from rheedium.simul.form_factors import (
     kirkland_form_factor,
     kirkland_projected_potential,
     load_kirkland_parameters,
+    lobato_form_factor,
 )
 from rheedium.tools import bessel_k0
 from rheedium.tools.wrappers import jax_safe
@@ -555,6 +556,39 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         f_batch_3d: Any = var_scattering(14, batch_3d, 300.0, False)
         chex.assert_shape(f_batch_3d, (3, 4, len(self.q_vectors_3d)))
 
+    def test_atomic_scattering_factor_defaults_to_lobato(self) -> None:
+        """Test atomic_scattering_factor uses Lobato by default."""
+        q_vector: Float[Array, "3"] = jnp.array([0.5, 0.0, 0.0])
+        default_value: Any = atomic_scattering_factor(
+            14,
+            q_vector,
+            300.0,
+            False,
+        )
+        lobato_value: Any = atomic_scattering_factor(
+            14,
+            q_vector,
+            300.0,
+            False,
+            parameterization="lobato",
+        )
+        kirkland_value: Any = atomic_scattering_factor(
+            14,
+            q_vector,
+            300.0,
+            False,
+            parameterization="kirkland",
+        )
+
+        chex.assert_trees_all_close(default_value, lobato_value)
+        assert not bool(jnp.isclose(default_value, kirkland_value))
+
+        q_magnitude: Float[Array, ""] = jnp.linalg.norm(q_vector)
+        msd: Any = get_mean_square_displacement(14, 300.0, False)
+        dw: Any = debye_waller_factor(q_magnitude, msd)
+        expected: Any = lobato_form_factor(14, q_magnitude) * dw
+        chex.assert_trees_all_close(default_value, expected)
+
     @chex.variants(with_jit=True, without_jit=True)
     def test_surface_vs_bulk_comparison(self) -> None:
         """Test that surface atoms have stronger thermal damping.
@@ -686,17 +720,15 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         """Test physical consistency of calculations.
 
         Validates that the combined atomic scattering factor correctly
-        implements the physical relationship: f_total = f_kirkland ×
+        implements the physical relationship: f_total = f_lobato ×
         exp(-B·q²), where B is related to the mean square displacement.
-        Tests that calculating the components separately (Kirkland form
+        Tests that calculating the components separately (Lobato form
         factor, MSD, Debye-Waller factor) and multiplying them gives the
         same result as the combined function. This ensures internal
         consistency and correct implementation of the thermal damping
         model in electron scattering.
         """
-        var_form_factor: Callable[..., Any] = self.variant(
-            kirkland_form_factor
-        )
+        var_form_factor: Callable[..., Any] = self.variant(lobato_form_factor)
         var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
         var_get_msd: Callable[..., Any] = self.variant(
             get_mean_square_displacement
@@ -710,10 +742,10 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         q_vec: Float[Array, "..."] = jnp.array([[2.0, 0.0, 0.0]])
         q_mag: Float[Array, "..."] = jnp.linalg.norm(q_vec, axis=-1)
 
-        f_kirk: Any = var_form_factor(z, q_mag)
+        f_lobato: Any = var_form_factor(z, q_mag)
         msd: Any = var_get_msd(z, temp, False)
         dw: Any = var_dw_factor(q_mag, msd)
-        f_product: Any = f_kirk * dw
+        f_product: Any = f_lobato * dw
 
         f_combined: Any = var_scattering(z, q_vec, temp, False)
 

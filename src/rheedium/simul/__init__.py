@@ -77,6 +77,12 @@ Routine Listings
     parameterization.
 :func:`projected_potential`
     Projected potential with selectable parameterization.
+:func:`crystal_to_edge_on_slices`
+    Convert a crystal slab to edge-on reflection multislice slices.
+:func:`reflection_multislice_propagate`
+    Propagate an edge-on wavefield through reflection slices.
+:func:`reflection_multislice_simulator`
+    Simulate reflected RHEED by edge-on multislice.
 :func:`lorentzian_rod_profile`
     Lorentzian lateral width profile of rods due to finite correlation length.
 :func:`make_ewald_sphere`
@@ -158,6 +164,11 @@ from .multislice import (
     build_transmission_function,
 )
 from .potential import crystal_projected_potential
+from .reflection_multislice import (
+    crystal_to_edge_on_slices,
+    reflection_multislice_propagate,
+    reflection_multislice_simulator,
+)
 from .simulator import (
     checked_ewald_simulator,
     checked_multislice_propagate,
@@ -208,6 +219,7 @@ __all__: list[str] = [
     "checked_simulate_detector_image",
     "coherence_envelope",
     "crystal_projected_potential",
+    "crystal_to_edge_on_slices",
     "calculate_ctr_intensity",
     "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
@@ -243,6 +255,8 @@ __all__: list[str] = [
     "rod_profile_function",
     "roughness_damping",
     "render_pattern_to_image",
+    "reflection_multislice_propagate",
+    "reflection_multislice_simulator",
     "simulate_detector_image_all_sweep",
     "simulate_detector_image_energy_sweep",
     "simulate_detector_image_orientation_sweep",

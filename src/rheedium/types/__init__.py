@@ -16,6 +16,8 @@ Routine Listings
     Complete specification of an electron beam for RHEED simulation.
 :class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
+:class:`EdgeOnSlices`
+    Edge-on projected-potential slices for reflection multislice.
 :class:`KirklandParameters`
     Structured Kirkland coefficients for one element.
 :class:`OrientationDistribution`
@@ -41,6 +43,8 @@ Routine Listings
     Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
+:func:`create_edge_on_slices`
+    Factory function to create EdgeOnSlices instances.
 :func:`create_orientation_distribution`
     Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
@@ -134,11 +138,13 @@ from .constants import (
 )
 from .crystal_types import (
     CrystalStructure,
+    EdgeOnSlices,
     EwaldData,
     KirklandParameters,
     PotentialSlices,
     XYZData,
     create_crystal_structure,
+    create_edge_on_slices,
     create_ewald_data,
     create_kirkland_parameters,
     create_potential_slices,
@@ -193,6 +199,7 @@ __all__: list[str] = [
     "create_crystal_structure",
     "create_discrete_orientation",
     "create_electron_beam",
+    "create_edge_on_slices",
     "create_ewald_data",
     "create_gaussian_orientation",
     "create_orientation_distribution",
@@ -206,6 +213,7 @@ __all__: list[str] = [
     "create_xyz_data",
     "CrystalStructure",
     "DetectorGeometry",
+    "EdgeOnSlices",
     "ElectronBeam",
     "EwaldData",
     "float_jax_image",

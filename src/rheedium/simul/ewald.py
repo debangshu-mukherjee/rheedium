@@ -48,9 +48,7 @@ from .finite_domain import (
     rod_ewald_overlap,
 )
 from .form_factors import (
-    debye_waller_factor,
-    get_mean_square_displacement,
-    kirkland_form_factor,
+    atomic_scattering_factor,
 )
 
 
@@ -59,10 +57,11 @@ def _compute_structure_factor_single(
     atom_positions: Float[Array, "M 3"],
     atomic_numbers: Int[Array, "M"],
     temperature: scalar_float,
+    parameterization: str = "lobato",
 ) -> Complex[Array, ""]:
     r"""Compute structure factor F(G) for a single reciprocal vector.
 
-    Calculates the crystallographic structure factor including Kirkland
+    Calculates the crystallographic structure factor including selected
     atomic form factors and Debye-Waller thermal damping:
 
     .. math::
@@ -81,6 +80,8 @@ def _compute_structure_factor_single(
         Atomic numbers Z for M atoms.
     temperature : scalar_float
         Temperature in Kelvin for Debye-Waller calculation.
+    parameterization : str
+        Atomic form-factor model, ``"lobato"`` or ``"kirkland"``.
 
     Returns
     -------
@@ -89,37 +90,28 @@ def _compute_structure_factor_single(
 
     Notes
     -----
-    1. **Compute scattering magnitude** --
-       Calculate :math:`|G|` for form factor lookup.
-    2. **Per-atom contributions** --
-       For each atom, evaluate Kirkland form factor
-       :math:`f(|G|)`, Debye-Waller damping, and phase
+    1. **Per-atom contributions** --
+       For each atom, evaluate the selected form factor
+       with Debye-Waller damping, and phase
        factor :math:`\\exp(i G \\cdot r_j)`.
-    3. **Sum contributions** --
+    2. **Sum contributions** --
        Accumulate complex structure factor over all atoms.
     """
-    g_magnitude: Float[Array, ""] = jnp.linalg.norm(g_vector)
 
     def _atomic_contribution(atom_idx: Int[Array, ""]) -> Complex[Array, ""]:
         atomic_num: Int[Array, ""] = atomic_numbers[atom_idx]
         atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
-        form_factor: Float[Array, ""] = kirkland_form_factor(
-            atomic_number=atomic_num,
-            q_magnitude=g_magnitude,
-        )
-        mean_sq_disp: Float[Array, ""] = get_mean_square_displacement(
-            atomic_number=atomic_num,
-            temperature=temperature,
-            is_surface=False,
-        )
-        debye_waller: Float[Array, ""] = debye_waller_factor(
-            q_magnitude=g_magnitude,
-            mean_square_displacement=mean_sq_disp,
+        scattering: Float[Array, ""] = jnp.squeeze(
+            atomic_scattering_factor(
+                atomic_number=atomic_num,
+                q_vector=g_vector,
+                temperature=temperature,
+                is_surface=False,
+                parameterization=parameterization,
+            )
         )
         phase: Float[Array, ""] = jnp.dot(g_vector, atom_pos)
-        contribution: Complex[Array, ""] = (
-            form_factor * debye_waller * jnp.exp(1.0j * phase)
-        )
+        contribution: Complex[Array, ""] = scattering * jnp.exp(1.0j * phase)
         return contribution
 
     n_atoms: Int[Array, ""] = atom_positions.shape[0]
@@ -139,6 +131,7 @@ def build_ewald_data(
     kmax: scalar_int,
     lmax: scalar_int,
     temperature: scalar_float = 300.0,
+    parameterization: str = "lobato",
 ) -> EwaldData:
     r"""Build angle-independent EwaldData from crystal and beam parameters.
 
@@ -167,6 +160,8 @@ def build_ewald_data(
     temperature : scalar_float, optional
         Temperature in Kelvin for Debye-Waller factor calculation.
         Default: 300.0 K (room temperature).
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -188,7 +183,7 @@ def build_ewald_data(
     5. **Reciprocal space vectors** --
        Transform Miller indices to G vectors.
     6. **Structure factors** --
-       Calculate :math:`F(G)` with Kirkland form factors
+       Calculate :math:`F(G)` with Lobato form factors by default
        and Debye-Waller thermal damping.
     7. **Intensities** --
        Compute :math:`I(G) = |F(G)|^2`.
@@ -216,6 +211,8 @@ def build_ewald_data(
     kinematic_from_ewald : Apply beam angles to get allowed reflections
     create_ewald_data : Factory function for manual construction
     """
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
     voltage_kv_arr: Float[Array, ""] = jnp.asarray(
         voltage_kv, dtype=jnp.float64
     )
@@ -265,6 +262,7 @@ def build_ewald_data(
             atom_positions=atom_positions,
             atomic_numbers=atomic_numbers,
             temperature=temperature_arr,
+            parameterization=parameterization,
         )
 
     structure_factors: Complex[Array, "N"] = jax.vmap(_compute_sf)(g_vecs)

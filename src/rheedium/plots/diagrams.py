@@ -73,7 +73,7 @@ from rheedium.inout import to_ase
 from rheedium.simul import (
     debye_waller_factor,
     get_mean_square_displacement,
-    kirkland_form_factor,
+    lobato_form_factor,
 )
 from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,
@@ -542,7 +542,7 @@ def plot_form_factors(
 ) -> Axes:
     """Plot atomic form factors f(q) for multiple elements.
 
-    Uses Kirkland parameterization for electron scattering.
+    Uses Lobato-van Dyck parameterization for electron scattering.
 
     :see: :class:`~.test_diagrams.TestDiagramPlots`
 
@@ -565,7 +565,7 @@ def plot_form_factors(
     Notes
     -----
     1. **Evaluate Form Factors** --
-       For each atomic number, call kirkland_form_factor
+       For each atomic number, call lobato_form_factor
        over the q grid and convert to NumPy.
     2. **Plot Per-element Curves** --
        Assign distinct colors from tab10 and draw each
@@ -573,7 +573,7 @@ def plot_form_factors(
 
     See Also
     --------
-    kirkland_form_factor : Compute atomic form factor for element.
+    lobato_form_factor : Compute atomic form factor for element.
     plot_debye_waller : Plot thermal damping factors.
     """
     if ax is None:
@@ -587,7 +587,7 @@ def plot_form_factors(
         np.linspace(0, 1, len(atomic_numbers))
     )
     for i, z in enumerate(atomic_numbers):
-        ff_jax: Any = kirkland_form_factor(z, q_jax)
+        ff_jax: Any = lobato_form_factor(z, q_jax)
         ff: Float[NDArray, "N"] = np.array(ff_jax)
         symbol: str = _ELEMENT_SYMBOLS.get(z, f"Z={z}")
         ax.plot(
@@ -599,7 +599,7 @@ def plot_form_factors(
         )
     ax.set_xlabel("q (1/A)", fontsize=12)
     ax.set_ylabel("f(q) (electron units)", fontsize=12)
-    ax.set_title("Atomic Form Factors (Kirkland)", fontsize=14)
+    ax.set_title("Atomic Form Factors (Lobato-van Dyck)", fontsize=14)
     ax.legend(loc="upper right", fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(q_range)

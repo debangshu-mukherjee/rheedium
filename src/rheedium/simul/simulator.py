@@ -331,7 +331,7 @@ def find_kinematic_reflections(
 
 
 @jaxtyped(typechecker=beartype)
-def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
+def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
     g_allowed: Float[Array, "N 3"],
     k_in: Float[Array, "3"],
@@ -345,6 +345,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     ctr_mixing_mode: str = "incoherent",
     ctr_weight: scalar_float = 1.0,
     hk_tolerance: scalar_float = 0.1,
+    parameterization: str = "lobato",
 ) -> Float[Array, "N"]:
     """Calculate kinematic diffraction intensities with CTR contributions.
 
@@ -401,6 +402,8 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
         Tolerance for validating near-integer h,k indices. CTR is only
         applied when |h - round(h)| < tolerance and same for k.
         Default: 0.1
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -441,6 +444,8 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
     integrated_rod_intensity : CTR intensity for incoherent mixing.
     identify_surface_atoms : Identify surface atoms from positions.
     """
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
@@ -481,11 +486,14 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
             atomic_num: scalar_int = atomic_numbers[atom_idx]
             atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
-            form_factor: scalar_float = atomic_scattering_factor(
-                atomic_number=atomic_num,
-                q_vector=q_vector,
-                temperature=temperature,
-                is_surface=is_surface,
+            form_factor: scalar_float = jnp.squeeze(
+                atomic_scattering_factor(
+                    atomic_number=atomic_num,
+                    q_vector=q_vector,
+                    temperature=temperature,
+                    is_surface=is_surface,
+                    parameterization=parameterization,
+                )
             )
             phase: scalar_float = jnp.dot(g_vec, atom_pos)
             contribution: Complex[Array, ""] = form_factor * jnp.exp(
@@ -535,6 +543,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
                 surface_roughness=surface_roughness,
                 detector_acceptance=detector_acceptance,
                 temperature=temperature,
+                parameterization=parameterization,
             )
             # Apply weight and near-integer mask
             weighted_ctr: Complex[Array, ""] = (
@@ -553,6 +562,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913
                 surface_roughness=surface_roughness,
                 detector_acceptance=detector_acceptance,
                 temperature=temperature,
+                parameterization=parameterization,
             )
             # Apply weight and near-integer mask
             weighted_ctr_intensity: Float[Array, ""] = (
@@ -649,6 +659,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     ctr_regularization: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
     roughness_power: scalar_float = 0.25,
+    parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
 ) -> RHEEDPattern:
     r"""Simulate RHEED pattern using exact Ewald sphere-CTR intersection.
@@ -691,6 +702,8 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
         Exponent applied to the roughness damping term. Set to ``0.0`` to
         disable roughness damping while leaving the geometry unchanged.
         Default: 0.25
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
     surface_config : SurfaceConfig | None, optional
         Configuration for surface atom identification. Default: None
 
@@ -721,7 +734,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     Both solutions with :math:`k_{out,z} > 0` (upward scattering) are kept.
 
     Intensity includes:
-    - Structure factor :math:`|F(G)|^2` with Kirkland form factors
+    - Structure factor :math:`|F(G)|^2` with selected atomic form factors
     - Debye-Waller thermal damping
     - CTR intensity modulation :math:`1/\sin^2(\pi l)`
     - Surface roughness damping :math:`\exp(-\sigma^2 q_z^2)`
@@ -735,7 +748,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
        For each (h, k) rod, solve quadratic for l where
        the rod intersects the Ewald sphere.
     4. **Structure factors** --
-       Kirkland form factors with Debye-Waller and surface
+       Lobato form factors by default with Debye-Waller and surface
        enhancement at each intersection.
     5. **CTR modulation** --
        :math:`1/\\sin^2(\\pi l)` with roughness damping.
@@ -747,6 +760,8 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     find_ctr_ewald_intersection : Solve rod-sphere intersection geometry.
     kinematic_simulator : Deprecated bulk-like simulator.
     """
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
     voltage_kv: Float[Array, ""] = jnp.asarray(voltage_kv)
     theta_deg: Float[Array, ""] = jnp.asarray(theta_deg)
     phi_deg: Float[Array, ""] = jnp.asarray(phi_deg)
@@ -860,11 +875,14 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
             z_num: Int[Array, ""] = atomic_numbers[atom_idx]
             pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: Bool[Array, ""] = is_surface_atom[atom_idx]
-            ff: Float[Array, ""] = atomic_scattering_factor(
-                atomic_number=z_num,
-                q_vector=q_vector,
-                temperature=temperature,
-                is_surface=is_surface,
+            ff: Float[Array, ""] = jnp.squeeze(
+                atomic_scattering_factor(
+                    atomic_number=z_num,
+                    q_vector=q_vector,
+                    temperature=temperature,
+                    is_surface=is_surface,
+                    parameterization=parameterization,
+                )
             )
             phase: Float[Array, ""] = jnp.dot(g_vec, pos)
             return ff * jnp.exp(1j * phase)
@@ -958,6 +976,7 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
     ctr_regularization: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
     roughness_power: scalar_float = 0.25,
+    parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
     n_mosaic_points: scalar_int = 7,
 ) -> RHEEDPattern:
@@ -996,6 +1015,8 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
         Exponent applied to the CTR modulation term. Default: 1.0
     roughness_power : scalar_float, optional
         Exponent applied to the roughness damping term. Default: 0.25
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
     surface_config : SurfaceConfig | None, optional
         Configuration for surface atom identification. Default: None
     n_mosaic_points : scalar_int, optional
@@ -1037,6 +1058,7 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
             ctr_regularization=ctr_regularization,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
+            parameterization=parameterization,
             surface_config=surface_config,
         )
 
@@ -1294,6 +1316,7 @@ def simulate_detector_image(  # noqa: PLR0913
     n_energy_samples: int = 5,
     orientation_distribution: OrientationDistribution | None = None,
     n_mosaic_points: scalar_int = 7,
+    parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
     render_ctrs_as_streaks: bool = True,
 ) -> Float[Array, "H W"]:
@@ -1342,6 +1365,8 @@ def simulate_detector_image(  # noqa: PLR0913
     n_mosaic_points : scalar_int, optional
         Orientation quadrature points per peak when
         ``orientation_distribution`` is supplied. Default: 7
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
     surface_config : SurfaceConfig | None, optional
         Surface atom identification configuration. Default: None
     render_ctrs_as_streaks : bool, optional
@@ -1407,6 +1432,7 @@ def simulate_detector_image(  # noqa: PLR0913
                 ctr_regularization=ctr_regularization,
                 ctr_power=ctr_power,
                 roughness_power=roughness_power,
+                parameterization=parameterization,
                 surface_config=surface_config,
             )
             return _render_sparse_pattern(sparse_pattern)
@@ -1444,6 +1470,7 @@ def simulate_detector_image(  # noqa: PLR0913
                     ctr_regularization=ctr_regularization,
                     ctr_power=ctr_power,
                     roughness_power=roughness_power,
+                    parameterization=parameterization,
                     surface_config=surface_config,
                 )
                 return _render_ctr_streaks_to_image(
@@ -1488,6 +1515,7 @@ def simulate_detector_image(  # noqa: PLR0913
             ctr_regularization=ctr_regularization,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
+            parameterization=parameterization,
             surface_config=surface_config,
             n_mosaic_points=n_mosaic_points,
         )

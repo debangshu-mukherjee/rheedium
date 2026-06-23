@@ -60,6 +60,7 @@ def calculate_ctr_intensity(
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+    parameterization: str = "lobato",
 ) -> Float[Array, "N M"]:
     """Calculate continuous intensity along crystal truncation rods (CTRs).
 
@@ -88,6 +89,8 @@ def calculate_ctr_intensity(
         If None, no surface enhancement is applied (all atoms treated as
         bulk). This prevents double-application when used with kinematic
         calculations that already apply surface enhancement.
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -170,6 +173,7 @@ def calculate_ctr_intensity(
                 atomic_numbers=atomic_numbers,
                 temperature=temperature,
                 is_surface_atom=surface_mask,
+                parameterization=parameterization,
             )
             damping: Float[Array, ""] = roughness_damping(
                 q_z=qz_val, sigma_height=surface_roughness
@@ -196,6 +200,7 @@ def calculate_ctr_amplitude(
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+    parameterization: str = "lobato",
 ) -> Complex[Array, "N M"]:
     r"""Calculate complex amplitude along crystal truncation rods (CTRs).
 
@@ -220,6 +225,8 @@ def calculate_ctr_amplitude(
     is_surface_atom : Bool[Array, "n_atoms"] | None, optional
         Per-atom boolean mask indicating which atoms are surface atoms.
         If None, no surface enhancement is applied. Default: None
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -299,6 +306,7 @@ def calculate_ctr_amplitude(
                 atomic_numbers=atomic_numbers,
                 temperature=temperature,
                 is_surface_atom=surface_mask,
+                parameterization=parameterization,
             )
             damping: Float[Array, ""] = roughness_damping(
                 q_z=qz_val, sigma_height=surface_roughness
@@ -328,6 +336,7 @@ def integrated_ctr_amplitude(
     n_integration_points: int = 50,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+    parameterization: str = "lobato",
 ) -> Complex[Array, ""]:
     """Integrate CTR amplitude over finite detector acceptance.
 
@@ -354,6 +363,8 @@ def integrated_ctr_amplitude(
     is_surface_atom : Bool[Array, "n_atoms"] | None, optional
         Per-atom boolean mask indicating which atoms are surface atoms.
         If None, no surface enhancement is applied. Default: None
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -384,6 +395,7 @@ def integrated_ctr_amplitude(
         surface_roughness=surface_roughness,
         temperature=temperature,
         is_surface_atom=is_surface_atom,
+        parameterization=parameterization,
     )
     rod_amplitudes: Complex[Array, "n_points"] = amplitudes[0]
     q_z_center: Float[Array, ""] = jnp.mean(q_z_values)
@@ -608,6 +620,7 @@ def surface_structure_factor(
     atomic_numbers: Int[Array, "N"],
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "N"] | None = None,
+    parameterization: str = "lobato",
 ) -> Complex[Array, ""]:
     r"""Calculate structure factor for surface with q_z dependence.
 
@@ -632,6 +645,8 @@ def surface_structure_factor(
         Surface atoms receive enhanced Debye-Waller factors.
         If None, all atoms are treated as bulk (no enhancement).
         Default: None (prevents double-application with kinematic path)
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -679,6 +694,7 @@ def surface_structure_factor(
             q_vector=q_vec_expanded,
             temperature=temperature,
             is_surface=is_surf,
+            parameterization=parameterization,
         )
         return jnp.squeeze(scattering)
 
@@ -704,6 +720,7 @@ def integrated_rod_intensity(
     n_integration_points: int = 50,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
+    parameterization: str = "lobato",
 ) -> scalar_float:
     """Integrate CTR intensity over finite detector acceptance.
 
@@ -732,6 +749,8 @@ def integrated_rod_intensity(
     is_surface_atom : Bool[Array, "n_atoms"] | None, optional
         Per-atom boolean mask indicating which atoms are surface atoms.
         If None, no surface enhancement is applied. Default: None
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -760,6 +779,7 @@ def integrated_rod_intensity(
         surface_roughness=surface_roughness,
         temperature=temperature,
         is_surface_atom=is_surface_atom,
+        parameterization=parameterization,
     )
     rod_intensities: Float[Array, "n_points"] = intensities[0]
     q_z_center: Float[Array, ""] = jnp.mean(q_z_values)

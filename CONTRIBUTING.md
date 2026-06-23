@@ -2,6 +2,23 @@
 
 Thank you for your interest in contributing to Rheedium! This guide describes how the codebase is written — type hinting, documentation, validation, testing, and tooling — so your contributions match the existing standards.
 
+## Core Principle: Invertible Modularity
+
+Rheedium's modules are differentiable operators, and the boundaries between them are the boundaries at which the inverse problem is solved. A forward model built from clean but *opaque* boxes can only be run forwards; one built from boxes that never discard a gradient can be run backwards just as well — you attach a loss at any seam and solve for what produced the data (beam coherence, defect density, structure) while freezing the rest. This invertibility is the codebase's core asset.
+
+It rests on one invariant:
+
+> **Reductions stay explicit, late, and differentiable. No module collapses information it is not forced to.**
+
+Concretely:
+
+- Keep amplitudes complex; apply `|·|²` as late as possible, never inside a kernel that something downstream might want to sum coherently.
+- Express averaging as an explicit weighted sum over a distribution, not as a baked-in convolution or a hidden quadrature.
+- Prefer the analytic *coherent-average limit* (e.g. virtual-crystal occupancy, Debye–Waller damping) over a hard, irreversible collapse.
+- Use `jnp.where` / `lax.cond` and continuous fields rather than discrete swaps or data-dependent Python control flow, so every parameter keeps a derivative.
+
+The failure mode is silent: when a module performs a hard, non-differentiable, or premature reduction, the forward model still looks correct — only invertibility breaks, and only at that one seam. Treat any such reduction as a design smell to be justified explicitly in review, not an implementation detail. The JAX-First rules below are the mechanics of upholding this principle.
+
 ## Development Setup
 
 ### Prerequisites

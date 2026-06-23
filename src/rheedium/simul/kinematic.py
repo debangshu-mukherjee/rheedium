@@ -18,7 +18,7 @@ Routine Listings
 Notes
 -----
 Key difference from simulator.py:
-- Simplified structure factors (f_j ≈ Z_j instead of Kirkland)
+- Simplified structure factors (f_j ≈ Z_j instead of tabulated form factors)
 - For detector projection, use :func:`project_on_detector` from simulator
 
 References
@@ -133,8 +133,8 @@ def simple_structure_factor(
 
         F(G) = \\sum_j f_j(G) \\cdot \\exp(i \\cdot G \\cdot r_j)
 
-    For more accurate scattering, use Kirkland parameterization
-    (see :func:`kirkland_form_factor` in form_factors).
+    For more accurate scattering, use the Lobato-default Ewald simulator or
+    :func:`atomic_scattering_factor`.
 
     1. **Approximate scattering factors** --
        Use :math:`f_j \\approx Z_j` (atomic number) as a

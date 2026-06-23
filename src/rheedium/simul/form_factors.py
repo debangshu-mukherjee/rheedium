@@ -3,8 +3,9 @@
 Extended Summary
 ----------------
 This module provides functions for calculating atomic form factors using
-Kirkland parameterization, Debye-Waller temperature factors, and combined
-atomic scattering factors for quantitative RHEED simulations.
+Lobato-van Dyck by default, optional Kirkland parameterization,
+Debye-Waller temperature factors, and combined atomic scattering factors for
+quantitative RHEED simulations.
 
 Routine Listings
 ----------------
@@ -40,8 +41,8 @@ Routine Listings
 Notes
 -----
 All functions support JAX transformations and automatic differentiation.
-Form factors use the Kirkland parameterization optimized for electron
-scattering.
+Combined form-factor and projected-potential dispatchers use Lobato-van Dyck
+by default. Kirkland remains available when requested explicitly.
 
 Debye temperatures are from:
 - Kittel, Introduction to Solid State Physics (8th ed.)
@@ -843,6 +844,7 @@ def atomic_scattering_factor(
     q_vector: Float[Array, "... 3"],
     temperature: scalar_float = 300.0,
     is_surface: scalar_bool = False,
+    parameterization: str = "lobato",
 ) -> Float[Array, "..."]:
     r"""Calculate combined atomic scattering factor with thermal damping.
 
@@ -862,6 +864,8 @@ def atomic_scattering_factor(
         Temperature in Kelvin. Default: 300.0
     is_surface : scalar_bool, optional
         If True, use surface-enhanced thermal vibrations. Default: False
+    parameterization : str, optional
+        Form-factor model: ``"lobato"`` (default) or ``"kirkland"``.
 
     Returns
     -------
@@ -873,7 +877,8 @@ def atomic_scattering_factor(
     1. **q magnitude** --
        :math:`|q| = \\|q\\|`.
     2. **Form factor** --
-       Evaluate Kirkland :math:`f(|q|)`.
+       Evaluate Lobato-van Dyck :math:`f(|q|)` by default, or Kirkland when
+       requested.
     3. **Mean square displacement** --
        Element- and temperature-dependent
        :math:`\\langle u^2 \\rangle` with optional surface
@@ -900,14 +905,20 @@ def atomic_scattering_factor(
 
     See Also
     --------
+    lobato_form_factor : Calculate default form factor without thermal damping
     kirkland_form_factor : Calculate form factor without thermal damping
     get_mean_square_displacement : Calculate thermal displacement
     debye_waller_factor : Calculate thermal damping factor
     """
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
     q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
-    form_factor: Float[Array, "..."] = kirkland_form_factor(
-        atomic_number, q_magnitude
-    )
+    if parameterization == "lobato":
+        form_factor: Float[Array, "..."] = lobato_form_factor(
+            atomic_number, q_magnitude
+        )
+    else:
+        form_factor = kirkland_form_factor(atomic_number, q_magnitude)
     mean_square_disp: Float[Array, ""] = get_mean_square_displacement(
         atomic_number, temperature, is_surface
     )

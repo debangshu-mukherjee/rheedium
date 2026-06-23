@@ -19,6 +19,8 @@ Routine Listings
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice
     potential data.
+:class:`EdgeOnSlices`
+    JAX-compatible edge-on potential slices for reflection multislice.
 :class:`XYZData`
     A PyTree for XYZ file data with atomic positions and
     metadata.
@@ -30,6 +32,9 @@ Routine Listings
     validation.
 :func:`create_potential_slices`
     Factory function to create PotentialSlices instances with
+    data validation.
+:func:`create_edge_on_slices`
+    Factory function to create EdgeOnSlices instances with
     data validation.
 :func:`create_xyz_data`
     Factory function to create XYZData instances with data
@@ -234,8 +239,8 @@ class EwaldData(eqx.Module):
     -----
     This class is an Equinox module (``eqx.Module``) registered as a JAX
     PyTree node for JAX compatibility. The
-    structure factors include Kirkland atomic form factors and Debye-Waller
-    thermal damping.
+    structure factors include Lobato-default atomic form factors and
+    Debye-Waller thermal damping.
 
     Examples
     --------
@@ -669,6 +674,135 @@ def create_potential_slices(
 
     validated_potential_slices: PotentialSlices = _validate_and_create()
     return validated_potential_slices
+
+
+class EdgeOnSlices(eqx.Module):
+    """JAX-compatible edge-on potential slices for RHEED reflection.
+
+    This PyTree stores projected potentials for multislice propagation along
+    an in-plane beam axis. Each slice is projected along ``x`` and resolved on
+    the transverse ``(y, z)`` plane, where ``z`` is the surface normal.
+
+    :see: :class:`~.test_reflection_multislice.TestEdgeOnSlices`
+
+    Attributes
+    ----------
+    slices : Float[Array, "nx_slices ny nz"]
+        Projected potential for each beam-axis slice in Volt-Angstrom.
+    dx_slice : scalar_float
+        Slice thickness along the beam axis in Angstroms.
+    dy : scalar_float
+        Transverse in-plane grid spacing in Angstroms.
+    dz : scalar_float
+        Surface-normal grid spacing in Angstroms.
+    y_extent : scalar_float
+        Periodic transverse in-plane cell length in Angstroms.
+    z_lo : scalar_float
+        Lower edge of the open surface-normal simulation window.
+    z_surf : scalar_float
+        Surface height, the top of the atomic slab.
+    cap_width : scalar_float
+        Absorbing-layer thickness at both z-window edges.
+    """
+
+    slices: Float[Array, "nx_slices ny nz"]
+    dx_slice: scalar_float
+    dy: scalar_float
+    dz: scalar_float
+    y_extent: scalar_float
+    z_lo: scalar_float
+    z_surf: scalar_float
+    cap_width: scalar_float
+
+
+@jaxtyped(typechecker=beartype)
+def create_edge_on_slices(
+    slices: Float[Array, "nx_slices ny nz"],
+    dx_slice: scalar_float,
+    dy: scalar_float,
+    dz: scalar_float,
+    y_extent: scalar_float,
+    z_lo: scalar_float,
+    z_surf: scalar_float,
+    cap_width: scalar_float,
+) -> EdgeOnSlices:
+    """Create an EdgeOnSlices PyTree with data validation.
+
+    :see: :class:`~.test_reflection_multislice.TestEdgeOnSlices`
+
+    Parameters
+    ----------
+    slices : Float[Array, "nx_slices ny nz"]
+        Edge-on projected potentials in Volt-Angstrom.
+    dx_slice, dy, dz : scalar_float
+        Beam-axis and transverse grid spacings in Angstroms.
+    y_extent : scalar_float
+        Periodic transverse in-plane cell length in Angstroms.
+    z_lo : scalar_float
+        Lower edge of the surface-normal window in Angstroms.
+    z_surf : scalar_float
+        Surface height in Angstroms.
+    cap_width : scalar_float
+        Absorbing-layer thickness in Angstroms.
+
+    Returns
+    -------
+    validated_edge_on_slices : EdgeOnSlices
+        Validated edge-on slice container.
+
+    Notes
+    -----
+    1. Convert all numeric inputs to JAX arrays.
+    2. Validate the projected-potential array rank and dimensions.
+    3. Ensure spacings, extents, and CAP width are positive.
+    4. Ensure all potential samples are finite.
+    """
+    slices = jnp.asarray(slices, dtype=jnp.float64)
+    dx_slice = jnp.asarray(dx_slice, dtype=jnp.float64)
+    dy = jnp.asarray(dy, dtype=jnp.float64)
+    dz = jnp.asarray(dz, dtype=jnp.float64)
+    y_extent = jnp.asarray(y_extent, dtype=jnp.float64)
+    z_lo = jnp.asarray(z_lo, dtype=jnp.float64)
+    z_surf = jnp.asarray(z_surf, dtype=jnp.float64)
+    cap_width = jnp.asarray(cap_width, dtype=jnp.float64)
+
+    def _validate_and_create() -> EdgeOnSlices:
+        if slices.ndim != 3:
+            raise ValueError("slices must be 3D")
+        if slices.shape[0] <= 0:
+            raise ValueError("slices must contain at least one x slice")
+        if slices.shape[1] <= 0 or slices.shape[2] <= 0:
+            raise ValueError("transverse slice dimensions must be positive")
+
+        checked_slices = eqx.error_if(
+            slices,
+            jnp.any(~jnp.isfinite(slices)),
+            "slices contain non-finite values",
+        )
+        checked_dx = eqx.error_if(
+            dx_slice, dx_slice <= 0, "dx_slice must be positive"
+        )
+        checked_dy = eqx.error_if(dy, dy <= 0, "dy must be positive")
+        checked_dz = eqx.error_if(dz, dz <= 0, "dz must be positive")
+        checked_y_extent = eqx.error_if(
+            y_extent, y_extent <= 0, "y_extent must be positive"
+        )
+        checked_cap_width = eqx.error_if(
+            cap_width, cap_width <= 0, "cap_width must be positive"
+        )
+        return EdgeOnSlices(
+            slices=checked_slices,
+            dx_slice=checked_dx,
+            dy=checked_dy,
+            dz=checked_dz,
+            y_extent=checked_y_extent,
+            z_lo=z_lo,
+            z_surf=z_surf,
+            cap_width=checked_cap_width,
+        )
+
+    validated_edge_on_slices: EdgeOnSlices = _validate_and_create()
+    return validated_edge_on_slices
 
 
 class XYZData(eqx.Module):

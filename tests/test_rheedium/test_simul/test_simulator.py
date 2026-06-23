@@ -1703,6 +1703,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             ctr_regularization: float,
             ctr_power: float,
             roughness_power: float,
+            parameterization: str,
             surface_config: SurfaceConfig,
         ) -> RHEEDPattern:
             del (
@@ -1717,6 +1718,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
                 ctr_regularization,
                 ctr_power,
                 roughness_power,
+                parameterization,
                 surface_config,
             )
             phi: Float[Array, "..."] = jnp.asarray(phi_deg, dtype=jnp.float64)
