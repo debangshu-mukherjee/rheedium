@@ -97,6 +97,14 @@ Routine Listings
     Gaussian roughness damping factor for CTR intensities.
 :func:`simulate_detector_image`
     High-level kinematic detector-image orchestration.
+:func:`simulate_detector_image_orientation_sweep`
+    Simulate detector images over multiple in-plane orientations.
+:func:`simulate_detector_image_theta_sweep`
+    Simulate detector images over multiple grazing incidence angles.
+:func:`simulate_detector_image_energy_sweep`
+    Simulate detector images over multiple beam energies.
+:func:`simulate_detector_image_parameter_grid`
+    Simulate detector images over orientation, angle, and energy grids.
 :func:`sliced_crystal_to_projected_potential_slices`
     Convert SlicedCrystal to projected-potential slices for multislice
     simulation.
@@ -166,8 +174,6 @@ from .simulator import (
     project_on_detector_geometry,
     render_pattern_to_image,
     simulate_detector_image,
-    simulate_detector_image_phi_sweep,
-    simulate_detector_image_roughness_sweep,
     sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
@@ -178,6 +184,14 @@ from .surface_rods import (
     rod_profile_function,
     roughness_damping,
     surface_structure_factor,
+)
+from .sweeps import (
+    simulate_detector_image_energy_sweep,
+    simulate_detector_image_orientation_sweep,
+    simulate_detector_image_parameter_grid,
+    simulate_detector_image_phi_sweep,
+    simulate_detector_image_roughness_sweep,
+    simulate_detector_image_theta_sweep,
 )
 
 __all__: list[str] = [
@@ -226,8 +240,12 @@ __all__: list[str] = [
     "rod_profile_function",
     "roughness_damping",
     "render_pattern_to_image",
+    "simulate_detector_image_energy_sweep",
+    "simulate_detector_image_orientation_sweep",
+    "simulate_detector_image_parameter_grid",
     "simulate_detector_image_phi_sweep",
     "simulate_detector_image_roughness_sweep",
+    "simulate_detector_image_theta_sweep",
     "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",
     "surface_structure_factor",

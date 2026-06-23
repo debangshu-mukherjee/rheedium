@@ -39,6 +39,8 @@ Routine Listings
     Plot Argand diagram showing structure factor phase contributions.
 :func:`view_atoms`
     View atoms in a CrystalStructure with 3D visualization.
+:func:`view_atoms_interactive`
+    View atoms with an ASE-backed interactive notebook widget.
 
 Notes
 -----
@@ -48,20 +50,26 @@ All plotting functions follow matplotlib conventions and support:
 - 3D functions accept elev and azim parameters for viewing angle control
 """
 
+import importlib.util
 import json
 from pathlib import Path
+from typing import Any as TypingAny
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from ase import Atoms
+from ase.atom import Atom
+from ase.visualize import view as ase_view
 from beartype import beartype
-from beartype.typing import Any, Dict, List, Optional, Tuple, Union
+from beartype.typing import Any, Dict, List, Literal, Optional, Tuple, Union
 from jaxtyping import Bool, Float, Int
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.typing import NDArray
 
+from rheedium.inout import to_ase
 from rheedium.simul import (
     debye_waller_factor,
     get_mean_square_displacement,
@@ -71,6 +79,8 @@ from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,
     RELATIVISTIC_COEFF_PER_V,
     CrystalStructure,
+    SurfaceConfig,
+    identify_surface_atoms,
 )
 
 _LUGGAGE_DIR: Path = Path(__file__).resolve().parent.parent / "_luggage"
@@ -98,6 +108,343 @@ def _load_element_colors() -> Dict[int, str]:
 
 _ELEMENT_SYMBOLS: Dict[int, str] = _load_element_symbols()
 _ELEMENT_COLORS: Dict[int, str] = _load_element_colors()
+_BeamDirection = Tuple[Union[int, float], Union[int, float], Union[int, float]]
+
+
+def _validate_supercell(
+    supercell: Tuple[int, int, int],
+) -> Tuple[int, int, int]:
+    """Validate and normalize an ASE repeat tuple."""
+    if len(supercell) != 3:
+        raise ValueError("supercell must contain exactly three integers.")
+    normalized: Tuple[int, int, int] = (
+        int(supercell[0]),
+        int(supercell[1]),
+        int(supercell[2]),
+    )
+    if any(v < 1 for v in normalized):
+        raise ValueError("supercell repeat counts must be positive.")
+    return normalized
+
+
+def _prepare_interactive_atoms(
+    crystal: CrystalStructure,
+    *,
+    supercell: Tuple[int, int, int] = (1, 1, 1),
+    highlight_surface: bool = False,
+    surface_config: SurfaceConfig | None = None,
+) -> tuple[Atoms, Bool[NDArray, "N"] | None]:
+    """Convert a crystal to ASE atoms and compute visualizer metadata."""
+    repeat: Tuple[int, int, int] = _validate_supercell(supercell)
+    atoms: Atoms = to_ase(crystal)
+    base_atom_count: int = len(atoms)
+    if repeat != (1, 1, 1):
+        atoms = atoms.repeat(repeat)
+
+    surface_mask: Bool[NDArray, "N"] | None = None
+    if highlight_surface:
+        config: SurfaceConfig = surface_config or SurfaceConfig(
+            method="height",
+            height_fraction=0.3,
+        )
+        positions: Float[NDArray, "N 3"] = np.asarray(
+            atoms.get_positions(),
+            dtype=np.float64,
+        )
+        surface_mask = np.asarray(
+            identify_surface_atoms(jnp.asarray(positions), config),
+            dtype=bool,
+        )
+        atoms.set_array("rheedium_surface_mask", surface_mask)
+
+    atoms.info["rheedium_supercell"] = repeat
+    atoms.info["rheedium_base_atom_count"] = base_atom_count
+    return atoms, surface_mask
+
+
+def _resolve_interactive_backend(
+    backend: str,
+) -> Literal["ngl", "x3d"]:
+    """Resolve the requested notebook viewer backend."""
+    if backend not in {"auto", "ngl", "x3d"}:
+        raise ValueError("backend must be one of 'auto', 'ngl', or 'x3d'.")
+    has_nglview: bool = importlib.util.find_spec("nglview") is not None
+    if backend == "auto":
+        return "ngl" if has_nglview else "x3d"
+    if backend == "ngl" and not has_nglview:
+        raise ImportError(
+            "backend='ngl' requires nglview. Install it with "
+            "`pip install nglview` or `uv add --optional notebooks nglview`."
+        )
+    if backend == "ngl":
+        return "ngl"
+    return "x3d"
+
+
+def _set_widget_metadata(
+    handle: object,
+    name: str,
+    value: object,
+) -> None:
+    """Set metadata on dynamic notebook widget objects."""
+    setattr(handle, name, value)
+
+
+def _attach_interactive_metadata(
+    handle: object,
+    *,
+    atoms: Atoms,
+    surface_mask: Bool[NDArray, "N"] | None,
+    backend: str,
+    beam_direction: _BeamDirection | None,
+) -> object:
+    """Attach rheedium metadata to an interactive viewer handle."""
+    _set_widget_metadata(handle, "rheedium_atoms", atoms)
+    _set_widget_metadata(handle, "rheedium_surface_mask", surface_mask)
+    _set_widget_metadata(handle, "rheedium_backend", backend)
+    _set_widget_metadata(handle, "rheedium_beam_direction", beam_direction)
+    return handle
+
+
+def _normalize_beam_direction(
+    beam_direction: _BeamDirection | None,
+) -> Float[NDArray, "3"] | None:
+    """Return a unit beam direction or None."""
+    if beam_direction is None:
+        return None
+    direction: Float[NDArray, "3"] = np.asarray(
+        beam_direction,
+        dtype=np.float64,
+    )
+    if direction.shape != (3,):
+        raise ValueError("beam_direction must contain exactly three values.")
+    norm: float = float(np.linalg.norm(direction))
+    if norm <= 0.0:
+        raise ValueError("beam_direction must have nonzero length.")
+    return direction / norm
+
+
+def _add_ngl_beam_arrow(
+    widget: object,
+    atoms: Atoms,
+    direction: Float[NDArray, "3"] | None,
+) -> None:
+    """Best-effort RHEED beam marker for nglview widgets."""
+    if direction is None:
+        return
+    positions: Float[NDArray, "N 3"] = np.asarray(
+        atoms.get_positions(),
+        dtype=np.float64,
+    )
+    center: Float[NDArray, "3"] = np.mean(positions, axis=0)
+    extent: Float[NDArray, "3"] = np.ptp(positions, axis=0)
+    length: float = max(float(np.max(extent)), 1.0)
+    start: Float[NDArray, "3"] = center - 0.6 * length * direction
+    end: Float[NDArray, "3"] = center + 0.6 * length * direction
+    try:
+        shape_attr: str = "shape"
+        shape: TypingAny = getattr(widget, shape_attr)
+        shape.add_arrow(
+            start.tolist(),
+            end.tolist(),
+            [1.0, 0.25, 0.05],
+            0.25,
+            "RHEED beam",
+        )
+    except (AttributeError, TypeError, ValueError):
+        return
+
+
+def _find_ngl_widget(widget: object) -> object:
+    """Return the nested NGLWidget when ASE wraps it in controls."""
+    if hasattr(widget, "add_representation"):
+        return widget
+    for child in getattr(widget, "children", ()):
+        if hasattr(child, "add_representation"):
+            return child
+    return widget
+
+
+def _view_atoms_ngl(
+    atoms: Atoms,
+    *,
+    surface_mask: Bool[NDArray, "N"] | None,
+    show_cell: bool,
+    beam_direction: _BeamDirection | None,
+) -> object:
+    """Create an nglview widget through ASE."""
+    handle: object = ase_view(atoms, viewer="ngl")
+    if handle is None:
+        raise RuntimeError("ASE ngl viewer did not create a widget.")
+    widget: object = _find_ngl_widget(handle)
+
+    add_unitcell: object = getattr(widget, "add_unitcell", None)
+    if show_cell and callable(add_unitcell):
+        add_unitcell()
+
+    if surface_mask is not None and bool(np.any(surface_mask)):
+        indices: str = ",".join(str(i) for i in np.flatnonzero(surface_mask))
+        add_representation: object = getattr(
+            widget,
+            "add_representation",
+            None,
+        )
+        if callable(add_representation):
+            add_representation(
+                "spacefill",
+                selection=f"@{indices}",
+                color="#ff6b35",
+                radius=0.6,
+            )
+
+    direction: Float[NDArray, "3"] | None = _normalize_beam_direction(
+        beam_direction
+    )
+    _add_ngl_beam_arrow(widget, atoms, direction)
+    return handle
+
+
+def _x3d_atom_element(
+    atom: Atom,
+    *,
+    color: tuple[float, float, float],
+    radius_scale: float = 1.0,
+) -> object:
+    """Build one ASE x3d atom element with an optional custom color."""
+    from ase.data import covalent_radii  # noqa: PLC0415
+    from ase.io.x3d import element, translate  # noqa: PLC0415
+
+    x: float
+    y: float
+    z: float
+    x, y, z = atom.position
+    r, g, b = color
+    material: object = element("material", diffuseColor=f"{r} {g} {b}")
+    appearance: object = element("appearance", child=material)
+    radius: float = float(covalent_radii[atom.number]) * radius_scale
+    sphere: object = element("sphere", radius=f"{radius}")
+    shape: object = element("shape", children=(appearance, sphere))
+    return translate(shape, x, y, z)
+
+
+def _x3d_beam_element(
+    atoms: Atoms,
+    direction: Float[NDArray, "3"] | None,
+) -> object | None:
+    """Build a simple x3d line marker for the RHEED beam direction."""
+    if direction is None:
+        return None
+    from ase.io.x3d import element  # noqa: PLC0415
+
+    positions: Float[NDArray, "N 3"] = np.asarray(
+        atoms.get_positions(),
+        dtype=np.float64,
+    )
+    center: Float[NDArray, "3"] = np.mean(positions, axis=0)
+    extent: Float[NDArray, "3"] = np.ptp(positions, axis=0)
+    length: float = max(float(np.max(extent)), 1.0)
+    start: Float[NDArray, "3"] = center - 0.7 * length * direction
+    end: Float[NDArray, "3"] = center + 0.7 * length * direction
+    point: str = (
+        f"{start[0]} {start[1]} {start[2]}, {end[0]} {end[1]} {end[2]}"
+    )
+    material: object = element(
+        "material",
+        diffuseColor="1.0 0.25 0.05",
+        emissiveColor="1.0 0.25 0.05",
+    )
+    appearance: object = element("appearance", child=material)
+    coordinates: object = element("coordinate", point=point)
+    line_set: object = element("lineset", vertexCount="2", child=coordinates)
+    return element("shape", children=(appearance, line_set))
+
+
+def _view_atoms_x3d(
+    atoms: Atoms,
+    *,
+    show_cell: bool,
+    surface_mask: Bool[NDArray, "N"] | None,
+    beam_direction: _BeamDirection | None,
+) -> object:
+    """Create an ASE x3d widget, raising if IPython HTML is unavailable."""
+    if show_cell and surface_mask is None and beam_direction is None:
+        handle: object = ase_view(atoms, viewer="x3d")
+        if handle is not None:
+            return handle
+
+    try:
+        from IPython.display import HTML  # noqa: PLC0415
+    except ImportError as exc:
+        raise RuntimeError(
+            "ASE x3d viewer requires IPython.display.HTML. Install IPython "
+            "or use backend='ngl' in a notebook with nglview installed."
+        ) from exc
+
+    from ase.data.colors import jmol_colors  # noqa: PLC0415
+    from ase.io.x3d import (  # noqa: PLC0415
+        X3DOM_template,
+        element,
+        get_maximum_extent,
+        group,
+        pretty_print,
+        translate,
+        x3d_wireframe_box,
+    )
+
+    atom_elements: list[object] = []
+    for index, atom in enumerate(atoms):
+        is_surface: bool = surface_mask is not None and bool(
+            surface_mask[index]
+        )
+        color: tuple[float, float, float] = (
+            (1.0, 0.42, 0.21)
+            if is_surface
+            else tuple(float(v) for v in jmol_colors[atom.number])
+        )
+        atom_elements.append(
+            _x3d_atom_element(
+                atom,
+                color=color,
+                radius_scale=1.2 if is_surface else 1.0,
+            )
+        )
+
+    children: list[object] = []
+    if show_cell:
+        children.append(x3d_wireframe_box(atoms.cell))
+    children.append(group(atom_elements))
+
+    direction: Float[NDArray, "3"] | None = _normalize_beam_direction(
+        beam_direction
+    )
+    beam_element: object | None = _x3d_beam_element(atoms, direction)
+    if beam_element is not None:
+        children.append(beam_element)
+
+    positions: Float[NDArray, "N 3"] = np.asarray(
+        atoms.get_positions(),
+        dtype=np.float64,
+    )
+    if show_cell:
+        center: Float[NDArray, "3"] = np.asarray(atoms.cell.diagonal()) / 2.0
+        points: Float[NDArray, "M 3"] = np.vstack((positions, atoms.cell[:]))
+    else:
+        center = np.mean(positions, axis=0)
+        points = positions
+    max_xyz_extent: Float[NDArray, "3"] = get_maximum_extent(points - center)
+    max_dim: float = max(float(np.max(max_xyz_extent)), 1.0)
+    viewpoint: object = element(
+        "viewpoint",
+        position=f"0 0 {max_dim * 2}",
+        child=element("group"),
+    )
+    centered_atoms: object = translate(group(children), *(-center))
+    scene: object = element("scene", children=(viewpoint, centered_atoms))
+    document: str = X3DOM_template.format(
+        scene=pretty_print(scene),
+        style='width="400px"; height="300px";',
+    )
+    return HTML(document)
 
 
 @beartype
@@ -1265,6 +1612,94 @@ def plot_structure_factor_phases(
 
 
 @beartype
+def view_atoms_interactive(
+    crystal: CrystalStructure,
+    *,
+    supercell: Tuple[int, int, int] = (1, 1, 1),
+    show_cell: bool = True,
+    highlight_surface: bool = False,
+    surface_config: SurfaceConfig | None = None,
+    beam_direction: _BeamDirection | None = None,
+    backend: Literal["auto", "ngl", "x3d"] = "auto",
+) -> object:
+    """View atoms with an ASE-backed interactive notebook widget.
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Structure to visualize.
+    supercell : Tuple[int, int, int], optional
+        Repeat counts passed to ``ase.Atoms.repeat`` before rendering.
+        Default: (1, 1, 1)
+    show_cell : bool, optional
+        If True, show the unit-cell box when the backend supports it.
+        Default: True
+    highlight_surface : bool, optional
+        If True, identify surface atoms using
+        :func:`rheedium.types.identify_surface_atoms` and expose the mask on
+        the returned widget as ``rheedium_surface_mask``. NGL backends also add
+        a highlighted surface representation. Default: False
+    surface_config : SurfaceConfig | None, optional
+        Surface identification configuration. If None, uses
+        ``SurfaceConfig(method="height", height_fraction=0.3)`` to match the
+        simulator default.
+    beam_direction : tuple[int | float, int | float, int | float] | None
+        Optional RHEED beam direction. NGL backends add a best-effort arrow;
+        all backends store the value as ``rheedium_beam_direction``.
+    backend : {"auto", "ngl", "x3d"}, optional
+        Viewer backend. ``"auto"`` prefers nglview when importable, otherwise
+        falls back to ASE x3d. Default: "auto"
+
+    Returns
+    -------
+    widget : object
+        ``nglview.NGLWidget`` for the NGL backend, or an IPython HTML object
+        for the ASE x3d backend. The returned object has ``rheedium_atoms``,
+        ``rheedium_surface_mask``, ``rheedium_backend``, and
+        ``rheedium_beam_direction`` attributes for inspection.
+
+    Notes
+    -----
+    This function is a display wrapper over :func:`rheedium.inout.to_ase`.
+    It does not alter the simulation data model.
+    """
+    atoms: Atoms
+    surface_mask: Bool[NDArray, "N"] | None
+    atoms, surface_mask = _prepare_interactive_atoms(
+        crystal,
+        supercell=supercell,
+        highlight_surface=highlight_surface,
+        surface_config=surface_config,
+    )
+    resolved_backend: Literal["ngl", "x3d"] = _resolve_interactive_backend(
+        backend
+    )
+    if resolved_backend == "ngl":
+        handle: object = _view_atoms_ngl(
+            atoms,
+            surface_mask=surface_mask,
+            show_cell=show_cell,
+            beam_direction=beam_direction,
+        )
+    else:
+        _normalize_beam_direction(beam_direction)
+        handle = _view_atoms_x3d(
+            atoms,
+            show_cell=show_cell,
+            surface_mask=surface_mask,
+            beam_direction=beam_direction,
+        )
+
+    return _attach_interactive_metadata(
+        handle,
+        atoms=atoms,
+        surface_mask=surface_mask,
+        backend=resolved_backend,
+        beam_direction=beam_direction,
+    )
+
+
+@beartype
 def view_atoms(
     crystal: CrystalStructure,
     elev: Union[int, float] = 20.0,
@@ -1429,4 +1864,5 @@ __all__: list[str] = [
     "plot_unit_cell_3d",
     "plot_wavelength_curve",
     "view_atoms",
+    "view_atoms_interactive",
 ]

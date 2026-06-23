@@ -22,6 +22,8 @@ matplotlib.use("Agg")
 import jax.numpy as jnp
 
 from rheedium.plots.diagrams import (
+    _prepare_interactive_atoms,
+    _resolve_interactive_backend,
     plot_crystal_structure_3d,
     plot_ctr_profile,
     plot_debye_waller,
@@ -35,8 +37,13 @@ from rheedium.plots.diagrams import (
     plot_unit_cell_3d,
     plot_wavelength_curve,
     view_atoms,
+    view_atoms_interactive,
 )
-from rheedium.types import CrystalStructure
+from rheedium.types import (
+    CrystalStructure,
+    SurfaceConfig,
+    identify_surface_atoms,
+)
 from rheedium.types.crystal_types import create_crystal_structure
 
 
@@ -464,6 +471,37 @@ def _make_crystal(n_atoms: int = 4) -> CrystalStructure:
     )
 
 
+def _make_layered_crystal() -> CrystalStructure:
+    """Create a small crystal with a non-degenerate height range."""
+    frac_coords: Float[Array, "..."] = jnp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.0, 0.25],
+            [0.0, 0.5, 0.75],
+            [0.5, 0.5, 1.0],
+        ],
+        dtype=jnp.float64,
+    )
+    z_nums: Float[Array, "..."] = jnp.array(
+        [[14.0], [8.0], [38.0], [22.0]],
+        dtype=jnp.float64,
+    )
+    frac_pos: Float[Array, "..."] = jnp.concatenate(
+        [frac_coords, z_nums],
+        axis=1,
+    )
+    cart_pos: Float[Array, "..."] = jnp.concatenate(
+        [frac_coords * 4.0, z_nums],
+        axis=1,
+    )
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=jnp.array([4.0, 4.0, 4.0]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+
+
 class TestViewAtoms:
     """Tests for view_atoms function."""
 
@@ -528,6 +566,116 @@ class TestViewAtoms:
         crystal: CrystalStructure = _make_crystal(n_atoms=1)
         ax: Any = view_atoms(crystal)
         assert isinstance(ax, Axes3D)
+
+
+class TestViewAtomsInteractive:
+    """Tests for ASE-backed interactive atom viewing."""
+
+    def test_prepare_atoms_supercell_scales_atom_count(self) -> None:
+        """Prepared ASE atoms should repeat according to supercell."""
+        crystal: CrystalStructure = _make_crystal()
+        atoms: Any
+        surface_mask: Any
+        atoms, surface_mask = _prepare_interactive_atoms(
+            crystal,
+            supercell=(2, 2, 1),
+        )
+
+        assert len(atoms) == 4 * len(crystal.cart_positions)
+        assert surface_mask is None
+        assert atoms.info["rheedium_supercell"] == (2, 2, 1)
+        assert atoms.info["rheedium_base_atom_count"] == len(
+            crystal.cart_positions
+        )
+
+    def test_prepare_atoms_surface_mask_matches_simulator(self) -> None:
+        """Surface mask should match identify_surface_atoms."""
+        crystal: CrystalStructure = _make_layered_crystal()
+        config: SurfaceConfig = SurfaceConfig(
+            method="height",
+            height_fraction=0.5,
+        )
+        atoms: Any
+        surface_mask: Any
+        atoms, surface_mask = _prepare_interactive_atoms(
+            crystal,
+            highlight_surface=True,
+            surface_config=config,
+        )
+        expected: Any = np.asarray(
+            identify_surface_atoms(
+                jnp.asarray(atoms.get_positions()),
+                config,
+            ),
+            dtype=bool,
+        )
+
+        assert surface_mask is not None
+        np.testing.assert_array_equal(surface_mask, expected)
+        assert 0 < int(np.sum(surface_mask)) < len(atoms)
+        np.testing.assert_array_equal(
+            atoms.get_array("rheedium_surface_mask"),
+            expected,
+        )
+
+    def test_x3d_backend_returns_html_with_metadata(self) -> None:
+        """x3d backend should work headlessly via IPython HTML."""
+        crystal: CrystalStructure = _make_crystal()
+        handle: Any = view_atoms_interactive(
+            crystal,
+            supercell=(1, 1, 1),
+            highlight_surface=True,
+            backend="x3d",
+        )
+
+        assert hasattr(handle, "_repr_html_")
+        assert handle.rheedium_backend == "x3d"
+        assert len(handle.rheedium_atoms) == len(crystal.cart_positions)
+        assert handle.rheedium_surface_mask is not None
+
+    def test_x3d_backend_validates_beam_direction(self) -> None:
+        """Invalid beam directions should raise before rendering."""
+        crystal: CrystalStructure = _make_crystal()
+        with pytest.raises(ValueError, match="nonzero"):
+            view_atoms_interactive(
+                crystal,
+                beam_direction=(0.0, 0.0, 0.0),
+                backend="x3d",
+            )
+
+    def test_ngl_backend_returns_widget_with_metadata(self) -> None:
+        """The ngl backend should work when nglview is installed."""
+        pytest.importorskip("nglview")
+        crystal: CrystalStructure = _make_crystal()
+        handle: Any = view_atoms_interactive(
+            crystal,
+            highlight_surface=True,
+            beam_direction=(1, 0, -0.05),
+            backend="ngl",
+        )
+
+        assert handle.rheedium_backend == "ngl"
+        assert len(handle.rheedium_atoms) == len(crystal.cart_positions)
+        assert handle.rheedium_surface_mask is not None
+        assert _resolve_interactive_backend("auto") == "ngl"
+
+    def test_invalid_backend_raises_value_error(self) -> None:
+        """Backend selection should reject unknown values."""
+        with pytest.raises(ValueError, match="backend"):
+            _resolve_interactive_backend("plotly")  # type: ignore[arg-type]
+
+    def test_ngl_backend_requires_nglview(self) -> None:
+        """Explicit ngl backend should give an optional-dep error."""
+        if _resolve_interactive_backend("auto") == "ngl":
+            pytest.skip("nglview is installed in this environment")
+        with pytest.raises(ImportError, match="nglview"):
+            _resolve_interactive_backend("ngl")
+
+    def test_public_plots_export(self) -> None:
+        """view_atoms_interactive should be available from rheedium.plots."""
+        import rheedium as rh
+
+        assert rh.plots.view_atoms_interactive is view_atoms_interactive
 
 
 if __name__ == "__main__":

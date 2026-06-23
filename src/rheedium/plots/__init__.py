@@ -39,6 +39,8 @@ Routine Listings
     Plot electron wavelength vs accelerating voltage.
 :func:`view_atoms`
     View atoms in a CrystalStructure with 3D visualization.
+:func:`view_atoms_interactive`
+    View atoms with an ASE-backed interactive notebook widget.
 
 Notes
 -----
@@ -61,6 +63,7 @@ from .diagrams import (
     plot_unit_cell_3d,
     plot_wavelength_curve,
     view_atoms,
+    view_atoms_interactive,
 )
 from .figuring import create_phosphor_colormap, plot_rheed
 
@@ -80,4 +83,5 @@ __all__: list[str] = [
     "plot_unit_cell_3d",
     "plot_wavelength_curve",
     "view_atoms",
+    "view_atoms_interactive",
 ]

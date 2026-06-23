@@ -72,6 +72,8 @@ notebooks = [
     "ipywidgets>=8.1.0",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
+    "nbclient>=0.10.2",
+    "nglview>=3.1.0",
 ]
 dev = [
     "rheedium[docs,test,notebooks]",
@@ -265,6 +267,7 @@ convention = "numpy"
     "ARG001", # Marimo cells may declare args they do not use
     "RET504", # Unnecessary assigns are fine for clarity
     "I001",   # Marimo manages imports per-cell, not sorted globally
+    "ERA",    # Commented-out code is acceptable in tutorial notebooks
 ]
 
 [tool.pydoclint]
@@ -317,7 +320,16 @@ unresolved-attribute = "ignore"
 # suppressions above so the editor matches the project's actual type checker.
 [tool.pyright]
 include = ["src"]
-exclude = ["**/__pycache__", ".venv", "build", "dist", "tests", "tutorials"]
+exclude = [
+    "**/__pycache__", 
+    "**/node_modules", 
+    "**/.*", 
+    ".venv", 
+    "build", 
+    "dist", 
+    "tests", 
+    "tutorials"
+]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
