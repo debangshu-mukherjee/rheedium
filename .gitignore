@@ -26,8 +26,7 @@ notebooks/__pycache__/
 .tmp/
 .tmp/*.png
 *.py[cod]
-/.agents/
-/.agents/*.md
+/plans/SKILL.md
 /openspec/
 /openspec/*
 /openspec/.ipynb_checkpoints/

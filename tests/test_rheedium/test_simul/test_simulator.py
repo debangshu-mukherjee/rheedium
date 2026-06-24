@@ -25,7 +25,10 @@ from jax.test_util import check_grads
 from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
-from rheedium.simul.beam_averaging import apply_distribution
+from rheedium.simul.beam_averaging import (
+    apply_distribution,
+    decompose_beam_modes,
+)
 from rheedium.simul.simulator import (
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -41,6 +44,7 @@ from rheedium.simul.simulator import (
     render_amplitude_to_field,
     render_pattern_to_image,
     simulate_detector_image,
+    simulate_detector_image_instrument,
     sliced_crystal_to_projected_potential_slices,
 )
 from rheedium.tools import incident_wavevector, wavelength_ang
@@ -51,7 +55,9 @@ from rheedium.types import (
     PotentialSlices,
     ReductionMode,
     SlicedCrystal,
+    create_coherent_beam,
     create_distribution,
+    create_gaussian_schell_beam,
 )
 from rheedium.types.crystal_types import (
     create_crystal_structure,
@@ -2243,6 +2249,125 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 distribution=TRIVIAL_DISTRIBUTION,
                 render_ctrs_as_streaks=False,
             )
+
+    def test_simulate_detector_image_instrument_coherent_beam_is_identity(
+        self,
+    ) -> None:
+        """Single coherent beam mode matches the unbroadened spot path."""
+        image_shape_px: tuple[int, int] = (16, 24)
+        pixel_size_mm: tuple[float, float] = (6.0, 16.0)
+        beam_center_px: tuple[float, float] = (12.0, 2.0)
+        reference: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+        )
+        actual: Float[Array, "..."] = simulate_detector_image_instrument(
+            crystal=_SI_CRYSTAL_2ATOM,
+            beam_modes=create_coherent_beam(),
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            psf_sigma_pixels=0.0,
+            n_modes_per_axis=1,
+            n_energy_points=1,
+        )
+
+        chex.assert_trees_all_close(actual, reference, atol=1e-10)
+
+    def test_simulate_detector_image_instrument_matches_manual_layer1(
+        self,
+    ) -> None:
+        """Beam-mode wrapper delegates to generic Layer-1 reduction."""
+        beam_modes = create_gaussian_schell_beam(
+            beta_in_plane=0.35,
+            beta_out_of_plane=0.2,
+            divergence_in_plane_rad=2.0e-4,
+            divergence_out_of_plane_rad=1.0e-4,
+            energy_spread_ev=0.2,
+        )
+        distribution = decompose_beam_modes(
+            beam_modes,
+            n_modes_per_axis=2,
+            n_modes_out_of_plane=2,
+            n_energy_points=3,
+        )
+        image_shape_px: tuple[int, int] = (16, 24)
+        pixel_size_mm: tuple[float, float] = (6.0, 16.0)
+        beam_center_px: tuple[float, float] = (12.0, 2.0)
+        base_voltage_kv: float = 20.0
+        base_theta_deg: float = 2.0
+        base_phi_deg: float = 1.5
+
+        def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=base_voltage_kv + 1.0e-3 * sample[2],
+                theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
+                phi_deg=base_phi_deg + jnp.rad2deg(sample[1]),
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=1.2,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image_instrument(
+            crystal=_SI_CRYSTAL_2ATOM,
+            beam_modes=beam_modes,
+            voltage_kv=base_voltage_kv,
+            theta_deg=base_theta_deg,
+            phi_deg=base_phi_deg,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            psf_sigma_pixels=0.0,
+            n_modes_per_axis=2,
+            n_modes_out_of_plane=2,
+            n_energy_points=3,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
         """Check dense rendering elongates CTRs vertically on detector."""

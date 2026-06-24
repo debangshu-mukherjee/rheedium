@@ -25,6 +25,12 @@ Routine Listings
     Factory for anisotropic Gaussian Schell-model beam modes.
 :func:`create_coherent_beam`
     Factory for a single sharp coherent beam mode.
+:func:`beam_modes_from_electron_beam`
+    Convert ElectronBeam coherence metadata to GSM beam-mode parameters.
+:func:`create_field_emission_beam`
+    Preset GSM beam producer for field-emission sources.
+:func:`create_thermionic_beam`
+    Preset GSM beam producer for thermionic sources.
 :func:`create_orientation_distribution`
     Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
@@ -68,9 +74,12 @@ from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
 
+from .beam_types import ElectronBeam, create_electron_beam
 from .custom_types import float_jax_image, scalar_float, scalar_int
 
 _ZERO_MOSAIC_FWHM_DEG: Final[float] = 1e-6
+_MIN_SIN_INCIDENCE: Final[float] = 1e-6
+_BETA_UPPER_MARGIN: Final[float] = 1e-12
 
 
 class ReductionMode(str, Enum):
@@ -403,6 +412,158 @@ def create_coherent_beam(
         divergence_in_plane_rad=0.0,
         divergence_out_of_plane_rad=0.0,
         energy_spread_ev=energy_spread_ev,
+        distribution_id=distribution_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def _beta_from_projected_source(
+    projected_source_um: Float[Array, ""],
+    coherence_length_transverse_angstrom: Float[Array, ""],
+) -> Float[Array, ""]:
+    """Map projected source/coherence scale to a bounded GSM beta."""
+    coherence_um: Float[Array, ""] = (
+        coherence_length_transverse_angstrom / 1.0e4
+    )
+    raw_beta: Float[Array, ""] = projected_source_um / (
+        projected_source_um + coherence_um
+    )
+    return jnp.clip(raw_beta, 0.0, 1.0 - _BETA_UPPER_MARGIN)
+
+
+@jaxtyped(typechecker=beartype)
+def beam_modes_from_electron_beam(
+    beam: ElectronBeam,
+    incidence_angle_deg: scalar_float = 2.0,
+    distribution_id: Optional[str] = None,
+) -> BeamModeDistribution:
+    """Convert ElectronBeam metadata to GSM beam-mode parameters.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Parameters
+    ----------
+    beam : ElectronBeam
+        Existing beam metadata with divergence, coherence length, and
+        footprint.
+    incidence_angle_deg : scalar_float, optional
+        Grazing incidence angle used to project the beam footprint in the
+        scattering plane. Default: 2.0.
+    distribution_id : Optional[str], optional
+        Optional override for the returned beam distribution label.
+
+    Returns
+    -------
+    beam_modes : BeamModeDistribution
+        GSM beam-mode producer derived from the existing beam specification.
+    """
+    incidence_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(incidence_angle_deg, dtype=jnp.float64)
+    )
+    sin_incidence: Float[Array, ""] = jnp.maximum(
+        jnp.sin(incidence_rad),
+        _MIN_SIN_INCIDENCE,
+    )
+    projected_in_plane_um: Float[Array, ""] = beam.spot_size_um[0] / (
+        sin_incidence
+    )
+    projected_out_of_plane_um: Float[Array, ""] = beam.spot_size_um[1]
+    beta_in: Float[Array, ""] = _beta_from_projected_source(
+        projected_in_plane_um,
+        beam.coherence_length_transverse_angstrom,
+    )
+    beta_out: Float[Array, ""] = _beta_from_projected_source(
+        projected_out_of_plane_um,
+        beam.coherence_length_transverse_angstrom,
+    )
+    divergence_rad: Float[Array, ""] = beam.angular_divergence_mrad * 1.0e-3
+    axis_id: Optional[str] = (
+        distribution_id if distribution_id is not None else "electron_beam"
+    )
+    return create_gaussian_schell_beam(
+        beta_in_plane=beta_in,
+        beta_out_of_plane=beta_out,
+        divergence_in_plane_rad=divergence_rad,
+        divergence_out_of_plane_rad=divergence_rad,
+        energy_spread_ev=beam.energy_spread_ev,
+        distribution_id=axis_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def create_field_emission_beam(
+    incidence_angle_deg: scalar_float = 2.0,
+    energy_kev: scalar_float = 20.0,
+    energy_spread_ev: scalar_float = 0.5,
+    angular_divergence_mrad: scalar_float = 0.25,
+    coherence_length_transverse_angstrom: scalar_float = 1000.0,
+    coherence_length_longitudinal_angstrom: scalar_float = 2000.0,
+    spot_size_um: Tuple[float, float] = (50.0, 25.0),
+    distribution_id: Optional[str] = "field_emission_beam",
+) -> BeamModeDistribution:
+    """Create a field-emission GSM beam-mode preset.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Returns
+    -------
+    beam_modes : BeamModeDistribution
+        Beam-mode producer with relatively high coherence and low spread.
+    """
+    beam: ElectronBeam = create_electron_beam(
+        energy_kev=energy_kev,
+        energy_spread_ev=energy_spread_ev,
+        angular_divergence_mrad=angular_divergence_mrad,
+        coherence_length_transverse_angstrom=(
+            coherence_length_transverse_angstrom
+        ),
+        coherence_length_longitudinal_angstrom=(
+            coherence_length_longitudinal_angstrom
+        ),
+        spot_size_um=jnp.asarray(spot_size_um, dtype=jnp.float64),
+    )
+    return beam_modes_from_electron_beam(
+        beam,
+        incidence_angle_deg=incidence_angle_deg,
+        distribution_id=distribution_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def create_thermionic_beam(
+    incidence_angle_deg: scalar_float = 2.0,
+    energy_kev: scalar_float = 20.0,
+    energy_spread_ev: scalar_float = 2.0,
+    angular_divergence_mrad: scalar_float = 0.8,
+    coherence_length_transverse_angstrom: scalar_float = 150.0,
+    coherence_length_longitudinal_angstrom: scalar_float = 500.0,
+    spot_size_um: Tuple[float, float] = (250.0, 100.0),
+    distribution_id: Optional[str] = "thermionic_beam",
+) -> BeamModeDistribution:
+    """Create a thermionic GSM beam-mode preset.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Returns
+    -------
+    beam_modes : BeamModeDistribution
+        Beam-mode producer with broad, highly mixed thermionic parameters.
+    """
+    beam: ElectronBeam = create_electron_beam(
+        energy_kev=energy_kev,
+        energy_spread_ev=energy_spread_ev,
+        angular_divergence_mrad=angular_divergence_mrad,
+        coherence_length_transverse_angstrom=(
+            coherence_length_transverse_angstrom
+        ),
+        coherence_length_longitudinal_angstrom=(
+            coherence_length_longitudinal_angstrom
+        ),
+        spot_size_um=jnp.asarray(spot_size_um, dtype=jnp.float64),
+    )
+    return beam_modes_from_electron_beam(
+        beam,
+        incidence_angle_deg=incidence_angle_deg,
         distribution_id=distribution_id,
     )
 
@@ -1218,14 +1379,17 @@ __all__: list[str] = [
     "SizeDistribution",
     "TRIVIAL",
     "TRIVIAL_DISTRIBUTION",
+    "beam_modes_from_electron_beam",
     "create_coherent_beam",
     "create_distribution",
+    "create_field_emission_beam",
     "create_gaussian_schell_beam",
     "create_orientation_distribution",
     "create_discrete_orientation",
     "create_gaussian_orientation",
     "create_lognormal_size",
     "create_mixed_orientation",
+    "create_thermionic_beam",
     "create_trivial_distribution",
     "discretize_orientation",
     "discretize_orientation_static",

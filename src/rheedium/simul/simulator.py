@@ -65,6 +65,7 @@ from rheedium.tools import (
     wavelength_ang,
 )
 from rheedium.types import (
+    BeamModeDistribution,
     CrystalStructure,
     DetectorGeometry,
     Distribution,
@@ -85,7 +86,12 @@ from rheedium.types import (
 )
 from rheedium.ucell import reciprocal_lattice_vectors
 
-from .beam_averaging import apply_distribution, instrument_broadened_pattern
+from .beam_averaging import (
+    apply_distribution,
+    decompose_beam_modes,
+    detector_psf_convolve,
+    instrument_broadened_pattern,
+)
 from .form_factors import (
     atomic_scattering_factor,
     projected_potential,
@@ -1785,6 +1791,142 @@ def simulate_detector_image(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
+def simulate_detector_image_instrument(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    beam_modes: BeamModeDistribution,
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    phi_deg: scalar_num = 0.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance_mm: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
+    image_shape_px: Tuple[int, int] = (192, 192),
+    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
+    beam_center_px: Tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: scalar_float = 1.4,
+    psf_sigma_pixels: scalar_float = 1.2,
+    n_modes_per_axis: int = 3,
+    n_modes_out_of_plane: int | None = None,
+    n_energy_points: int = 1,
+    parameterization: str = "lobato",
+    surface_config: SurfaceConfig | None = None,
+) -> Float[Array, "H W"]:
+    """Simulate a detector image by incoherently summing beam modes.
+
+    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to simulate.
+    beam_modes : BeamModeDistribution
+        GSM source parameters defining angular and longitudinal modes.
+    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+        Nominal beam energy and incidence geometry.
+    hmax, kmax : scalar_int, optional
+        In-plane CTR grid bounds.
+    detector_distance_mm : scalar_float, optional
+        Sample-to-detector distance in millimetres.
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller damping.
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in Ångstroms.
+    ctr_regularization, ctr_power, roughness_power : scalar_float, optional
+        CTR and roughness controls passed to :func:`kinematic_amplitude`.
+    image_shape_px, pixel_size_mm, beam_center_px : tuple, optional
+        Detector grid calibration.
+    spot_sigma_px : scalar_float, optional
+        Anti-aliasing spot width in pixels.
+    psf_sigma_pixels : scalar_float, optional
+        Detector PSF width applied after incoherent modal summation.
+    n_modes_per_axis : int, optional
+        In-plane transverse GSM mode count. Default: 3.
+    n_modes_out_of_plane : int | None, optional
+        Optional out-of-plane transverse GSM mode count. Default: None.
+    n_energy_points : int, optional
+        Longitudinal energy quadrature count. Default: 1.
+    parameterization : str, optional
+        Atomic form-factor model.
+    surface_config : SurfaceConfig | None, optional
+        Surface atom identification configuration.
+
+    Returns
+    -------
+    detector_image : Float[Array, "H W"]
+        Dense detector image normalized to unit maximum.
+
+    Notes
+    -----
+    The beam-mode sample contract is
+    ``[delta_theta_rad, delta_phi_rad, delta_energy_ev]``. Each sample is one
+    coherent kinematic amplitude call; samples are reduced incoherently by the
+    generic Layer-1 distribution reducer.
+    """
+    distribution: Distribution = decompose_beam_modes(
+        beam_modes,
+        n_modes_per_axis=n_modes_per_axis,
+        n_modes_out_of_plane=n_modes_out_of_plane,
+        n_energy_points=n_energy_points,
+    )
+    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
+    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
+    voltage_nominal: Float[Array, ""] = jnp.asarray(
+        voltage_kv,
+        dtype=jnp.float64,
+    )
+
+    def _amplitude_at_beam_sample(
+        sample: Float[Array, "3"],
+    ) -> Complex[Array, "H W"]:
+        theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
+            sample[0]
+        )
+        phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(sample[1])
+        voltage_sample_kv: Float[Array, ""] = (
+            voltage_nominal + 1.0e-3 * sample[2]
+        )
+        return kinematic_amplitude(
+            crystal=crystal,
+            voltage_kv=voltage_sample_kv,
+            theta_deg=theta_sample_deg,
+            phi_deg=phi_sample_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            parameterization=parameterization,
+            surface_config=surface_config,
+        )
+
+    modal_image: Float[Array, "H W"] = apply_distribution(
+        distribution,
+        _amplitude_at_beam_sample,
+    )
+    detector_image: Float[Array, "H W"] = detector_psf_convolve(
+        detector_image=modal_image,
+        psf_sigma_pixels=psf_sigma_pixels,
+    )
+    max_intensity: Float[Array, ""] = jnp.maximum(
+        jnp.max(detector_image),
+        1e-12,
+    )
+    return detector_image / max_intensity
+
+
+@jaxtyped(typechecker=beartype)
 def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
@@ -2346,5 +2488,6 @@ __all__: list[str] = [
     "render_amplitude_to_field",
     "render_pattern_to_image",
     "simulate_detector_image",
+    "simulate_detector_image_instrument",
     "sliced_crystal_to_projected_potential_slices",
 ]

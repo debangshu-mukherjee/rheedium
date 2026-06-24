@@ -14,13 +14,17 @@ from rheedium.types import (
     OrientationDistribution,
     ReductionMode,
     SizeDistribution,
+    beam_modes_from_electron_beam,
     create_coherent_beam,
     create_discrete_orientation,
     create_distribution,
+    create_electron_beam,
+    create_field_emission_beam,
     create_gaussian_orientation,
     create_gaussian_schell_beam,
     create_lognormal_size,
     create_mixed_orientation,
+    create_thermionic_beam,
     create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
@@ -184,6 +188,60 @@ class TestBeamModeDistributionFactories(chex.TestCase):
             divergence_out_of_plane_rad=-1.0e-4,
             match="divergence_out_of_plane_rad",
         )
+
+    def test_beam_modes_from_electron_beam_projects_grazing_footprint(
+        self,
+    ) -> None:
+        """ElectronBeam bridge maps grazing footprint to anisotropic beta."""
+        beam = create_electron_beam(
+            energy_spread_ev=0.4,
+            angular_divergence_mrad=0.3,
+            coherence_length_transverse_angstrom=1000.0,
+            spot_size_um=jnp.array([50.0, 25.0]),
+        )
+
+        modes: BeamModeDistribution = beam_modes_from_electron_beam(
+            beam,
+            incidence_angle_deg=2.0,
+            distribution_id="bridge",
+        )
+
+        self.assertGreater(
+            float(modes.beta_in_plane),
+            float(modes.beta_out_of_plane),
+        )
+        chex.assert_trees_all_close(
+            modes.divergence_in_plane_rad,
+            3.0e-4,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            modes.divergence_out_of_plane_rad,
+            3.0e-4,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(modes.energy_spread_ev, 0.4, atol=1e-12)
+        assert modes.distribution_id == "bridge"
+
+    def test_beam_mode_presets_rank_source_coherence(self) -> None:
+        """Thermionic preset is broader and more mixed than field emission."""
+        field_emission: BeamModeDistribution = create_field_emission_beam()
+        thermionic: BeamModeDistribution = create_thermionic_beam()
+
+        self.assertGreater(
+            float(thermionic.beta_out_of_plane),
+            float(field_emission.beta_out_of_plane),
+        )
+        self.assertGreater(
+            float(thermionic.energy_spread_ev),
+            float(field_emission.energy_spread_ev),
+        )
+        self.assertGreater(
+            float(thermionic.divergence_in_plane_rad),
+            float(field_emission.divergence_in_plane_rad),
+        )
+        assert field_emission.distribution_id == "field_emission_beam"
+        assert thermionic.distribution_id == "thermionic_beam"
 
 
 class TestOrientationDistributionFactories(chex.TestCase):

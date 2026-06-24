@@ -45,6 +45,8 @@ Routine Listings
     A PyTree for XYZ file data with atomic positions and metadata.
 :func:`create_crystal_structure`
     Factory function to create CrystalStructure instances.
+:func:`beam_modes_from_electron_beam`
+    Convert ElectronBeam metadata to GSM beam-mode parameters.
 :func:`create_coherent_beam`
     Create a single sharp coherent beam-mode producer.
 :func:`create_electron_beam`
@@ -53,6 +55,8 @@ Routine Listings
     Factory function to create EwaldData instances.
 :func:`create_edge_on_slices`
     Factory function to create EdgeOnSlices instances.
+:func:`create_field_emission_beam`
+    Create a field-emission GSM beam-mode preset.
 :func:`create_orientation_distribution`
     Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
@@ -77,6 +81,8 @@ Routine Listings
     Factory function to create RHEEDPattern instances.
 :func:`create_sliced_crystal`
     Factory function to create SlicedCrystal instances.
+:func:`create_thermionic_beam`
+    Create a thermionic GSM beam-mode preset.
 :func:`create_trivial_distribution`
     Create the one-sample identity distribution.
 :func:`create_xyz_data`
@@ -193,14 +199,17 @@ from .distributions import (
     OrientationDistribution,
     ReductionMode,
     SizeDistribution,
+    beam_modes_from_electron_beam,
     create_coherent_beam,
     create_discrete_orientation,
     create_distribution,
+    create_field_emission_beam,
     create_gaussian_orientation,
     create_gaussian_schell_beam,
     create_lognormal_size,
     create_mixed_orientation,
     create_orientation_distribution,
+    create_thermionic_beam,
     create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
@@ -232,6 +241,7 @@ __all__: list[str] = [
     "PLANCK_CONSTANT_JS",
     "RELATIVISTIC_COEFF_PER_V",
     "SPEED_OF_LIGHT_MS",
+    "beam_modes_from_electron_beam",
     "create_crystal_structure",
     "create_coherent_beam",
     "create_discrete_orientation",
@@ -239,6 +249,7 @@ __all__: list[str] = [
     "create_electron_beam",
     "create_edge_on_slices",
     "create_ewald_data",
+    "create_field_emission_beam",
     "create_gaussian_orientation",
     "create_gaussian_schell_beam",
     "create_orientation_distribution",
@@ -249,6 +260,7 @@ __all__: list[str] = [
     "create_rheed_image",
     "create_rheed_pattern",
     "create_sliced_crystal",
+    "create_thermionic_beam",
     "create_trivial_distribution",
     "create_xyz_data",
     "CrystalStructure",
