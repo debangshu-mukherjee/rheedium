@@ -56,15 +56,27 @@ degrades to a warning rather than an error if the runtime is already
 initialized. It is nonetheless a *collective* operation that blocks until every
 process in the job connects, so it should be reached by all ranks, not fired
 from a transitive single-rank import.
+
+The XLA persistent compilation cache is opt-in. Set ``RHEEDIUM_CACHE_DIR`` (or
+``RHEEDIUM_COMPILATION_CACHE=1`` to use the default location) before import and
+the package enables it here -- before any compilation -- via
+:func:`~rheedium.tools.enable_compilation_cache`. Interactive users can call
+that function directly instead.
+
+Runtime input validation (``equinox.error_if`` in the factory functions and
+``checked_*`` simulators) is **on by default**. Equinox resolves the
+``EQX_ON_ERROR`` default once, at import, so it cannot be toggled afterwards.
+For trusted, pre-validated data -- or to export a forward model, whose host
+callbacks are otherwise unserializable -- set
+``RHEEDIUM_DISABLE_RUNTIME_CHECKS=1`` before import and the package sets
+``EQX_ON_ERROR=off`` here, ahead of the first equinox import. An explicit
+``EQX_ON_ERROR`` is always respected. The default leaves every check active.
 """
 
 import os
 import warnings
 from importlib.metadata import version
 
-# XLA_FLAGS must be set before JAX is imported. Fill in rheedium's CPU
-# threading defaults *without* clobbering anything the user already set: each
-# flag is appended only if its key is absent, so user-provided values win.
 _RHEEDIUM_XLA_FLAGS: tuple[str, ...] = (
     "--xla_cpu_multi_thread_eigen=true",
     "intra_op_parallelism_threads=0",
@@ -76,12 +88,19 @@ for _flag in _RHEEDIUM_XLA_FLAGS:
         _xla_parts.append(_flag)
 os.environ["XLA_FLAGS"] = " ".join(_xla_parts).strip()
 
+if os.environ.get("RHEEDIUM_DISABLE_RUNTIME_CHECKS", "0") == "1":
+    os.environ.setdefault("EQX_ON_ERROR", "off")
+
 import jax  # noqa: E402
 
-# Enable 64-bit precision before anything can touch the backend or create an
-# array. Config is read at trace time, but flipping precision first removes any
-# chance of an intermediate being materialized at float32.
 jax.config.update("jax_enable_x64", True)
+
+if os.environ.get("RHEEDIUM_COMPILATION_CACHE", "0") == "1" or os.environ.get(
+    "RHEEDIUM_CACHE_DIR"
+):
+    from .tools.caching import enable_compilation_cache  # noqa: E402
+
+    enable_compilation_cache()
 
 
 def init_distributed(
@@ -146,8 +165,6 @@ def init_distributed(
     return True
 
 
-# Environment-triggered auto-init for batch jobs (opt-in and guarded above).
-# Remove this call if you prefer fully explicit initialization.
 init_distributed()
 
 from . import (  # noqa: E402, I001

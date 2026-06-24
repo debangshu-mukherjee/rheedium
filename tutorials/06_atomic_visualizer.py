@@ -9,7 +9,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.4
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: rheedium (3.13.6)
 #     language: python
 #     name: python3
 # ---

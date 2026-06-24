@@ -21,6 +21,7 @@ Rheedium
    guides/unit-cell
    guides/pytree-architecture
    guides/jax-transformability
+   guides/parallelization-and-compilation
    guides/checked-numerical-entry-points
 
 .. toctree::

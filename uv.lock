@@ -651,6 +651,14 @@ wheels = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple/" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
+]
+
+[[package]]
 name = "fonttools"
 version = "4.60.1"
 source = { registry = "https://pypi.org/simple/" }
@@ -2772,6 +2780,7 @@ dependencies = [
     { name = "ase" },
     { name = "beartype" },
     { name = "equinox" },
+    { name = "flatbuffers" },
     { name = "h5py" },
     { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32'" },
     { name = "jaxtyping" },
@@ -2908,6 +2917,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2.2.post1" },
     { name = "chex", marker = "extra == 'test'", specifier = ">=0.1.89" },
     { name = "equinox", specifier = ">=0.13.8" },
+    { name = "flatbuffers", specifier = ">=25.12.19" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2025.7.19" },
     { name = "h5py", specifier = ">=3.15.1" },
     { name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.155.2" },

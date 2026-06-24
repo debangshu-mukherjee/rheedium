@@ -21,8 +21,20 @@ Routine Listings
 :func:`bessel_kv`
     Modified Bessel function of the second kind, arbitrary real
     order.
+:func:`bucketize_grid`
+    Snap a requested detector grid up to the nearest exported bucket.
+:func:`deserialize_exported`
+    Reload an exported forward-model artifact from bytes.
 :func:`distribute_batched`
     Run a batched callable data-parallel across a device mesh.
+:func:`enable_compilation_cache`
+    Point JAX's persistent compilation cache at a directory.
+:func:`export_forward`
+    Export a forward function to a portable StableHLO artifact.
+:func:`serialize_exported`
+    Serialize an exported forward-model artifact to bytes.
+:class:`ExportError`
+    Raised when a forward model cannot be exported as-is.
 :func:`gauss_hermite_nodes_weights`
     Gauss-Hermite quadrature nodes and weights for Gaussian
     averaging integrals.
@@ -54,6 +66,14 @@ rather than in :mod:`rheedium.simul` to break circular import chains
 between simulation sub-modules.
 """
 
+from .caching import enable_compilation_cache
+from .exporting import (
+    ExportError,
+    bucketize_grid,
+    deserialize_exported,
+    export_forward,
+    serialize_exported,
+)
 from .parallel import distribute_batched, shard_array
 from .quadrature import gauss_hermite_nodes_weights
 from .simul_utils import (
@@ -65,14 +85,20 @@ from .special import bessel_k0, bessel_k1, bessel_kv
 from .wrappers import jax_safe
 
 __all__: list[str] = [
+    "ExportError",
     "bessel_k0",
     "bessel_k1",
     "bessel_kv",
+    "bucketize_grid",
+    "deserialize_exported",
     "distribute_batched",
+    "enable_compilation_cache",
+    "export_forward",
     "gauss_hermite_nodes_weights",
     "incident_wavevector",
     "interaction_constant",
     "jax_safe",
+    "serialize_exported",
     "shard_array",
     "wavelength_ang",
 ]

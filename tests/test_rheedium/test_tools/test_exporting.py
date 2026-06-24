@@ -1,0 +1,126 @@
+"""Tests for the ahead-of-time export helpers in rheedium.tools."""
+
+import chex
+import equinox as eqx
+import jax
+import jax.numpy as jnp
+import pytest
+from absl.testing import parameterized
+from jaxtyping import Array, Float
+
+from rheedium.tools.exporting import (
+    ExportError,
+    bucketize_grid,
+    deserialize_exported,
+    export_forward,
+    serialize_exported,
+)
+
+
+def _sum_of_squares(x: Float[Array, " n"]) -> Float[Array, ""]:
+    """Shape-polymorphic reduction used as an exportable forward stand-in."""
+    return jnp.sum(x**2)
+
+
+class TestExportForward(chex.TestCase):
+    """Tests for :func:`export_forward`."""
+
+    def test_symbolic_axis_round_trips(self) -> None:
+        """One artifact serves several sizes of a symbolic leading axis."""
+        (n,) = jax.export.symbolic_shape("n")
+        exported: jax.export.Exported = export_forward(
+            _sum_of_squares, jax.ShapeDtypeStruct((n,), jnp.float64)
+        )
+        size: int
+        for size in (3, 8, 21):
+            values: Float[Array, " n"] = jnp.arange(size, dtype=jnp.float64)
+            result: Float[Array, ""] = exported.call(values)
+            chex.assert_trees_all_close(result, jnp.sum(values**2))
+
+    def test_host_callback_raises_export_error(self) -> None:
+        """Equinox runtime checks (host callbacks) raise ``ExportError``.
+
+        Mirrors the ``checked_*`` simulators: the check operates on a
+        concrete-shaped quantity, so export reaches the unserializable
+        host-callback rather than a symbolic-shape lowering error.
+        """
+
+        def checked(x: Float[Array, "4"]) -> Float[Array, "4"]:
+            x = eqx.error_if(x, jnp.any(x < -1e30), "unreachable")
+            return x * 2.0
+
+        with pytest.raises(ExportError):
+            export_forward(checked, jax.ShapeDtypeStruct((4,), jnp.float64))
+
+    def test_symbolic_fft_raises_export_error(self) -> None:
+        """A symbolic FFT transform size raises ``ExportError``."""
+
+        def fft_forward(x: Float[Array, "h w"]) -> Float[Array, "h w"]:
+            return jnp.abs(jnp.fft.fft2(x))
+
+        h, w = jax.export.symbolic_shape("h, w")
+        with pytest.raises(ExportError):
+            export_forward(
+                fft_forward, jax.ShapeDtypeStruct((h, w), jnp.float64)
+            )
+
+    def test_concrete_fft_exports(self) -> None:
+        """A concrete FFT grid exports and runs (the bucketing path)."""
+
+        def fft_forward(x: Float[Array, "h w"]) -> Float[Array, "h w"]:
+            return jnp.abs(jnp.fft.fft2(x))
+
+        exported: jax.export.Exported = export_forward(
+            fft_forward, jax.ShapeDtypeStruct((16, 16), jnp.float64)
+        )
+        result: Float[Array, "h w"] = exported.call(
+            jnp.ones((16, 16), jnp.float64)
+        )
+        chex.assert_shape(result, (16, 16))
+        chex.assert_tree_all_finite(result)
+
+
+class TestSerializeRoundTrip(chex.TestCase):
+    """Tests for :func:`serialize_exported` / :func:`deserialize_exported`."""
+
+    def test_serialize_then_deserialize(self) -> None:
+        """A serialized artifact reloads and computes identical results."""
+        (n,) = jax.export.symbolic_shape("n")
+        exported: jax.export.Exported = export_forward(
+            _sum_of_squares, jax.ShapeDtypeStruct((n,), jnp.float64)
+        )
+        blob: bytes = serialize_exported(exported)
+        assert isinstance(blob, bytes)
+        assert len(blob) > 0
+
+        reloaded: jax.export.Exported = deserialize_exported(blob)
+        values: Float[Array, " n"] = jnp.arange(6, dtype=jnp.float64)
+        chex.assert_trees_all_close(reloaded.call(values), jnp.sum(values**2))
+
+
+class TestBucketizeGrid(chex.TestCase):
+    """Tests for :func:`bucketize_grid`."""
+
+    @parameterized.parameters(
+        ((200, 200), (256, 256)),
+        ((300, 600), (512, 1024)),
+        ((512, 512), (512, 512)),
+        ((1, 1024), (256, 1024)),
+    )
+    def test_snaps_up_to_nearest_bucket(
+        self,
+        request_hw: tuple[int, int],
+        expected: tuple[int, int],
+    ) -> None:
+        """Each dimension snaps to the smallest bucket that fits it."""
+        assert bucketize_grid(*request_hw, (1024, 256, 512)) == expected
+
+    def test_exceeds_largest_bucket_raises(self) -> None:
+        """A request larger than every bucket raises ``ValueError``."""
+        with pytest.raises(ValueError, match="exceeds the largest bucket"):
+            bucketize_grid(2048, 256, (256, 512, 1024))
+
+    def test_empty_buckets_raises(self) -> None:
+        """An empty bucket list raises ``ValueError``."""
+        with pytest.raises(ValueError, match="must be non-empty"):
+            bucketize_grid(256, 256, ())
