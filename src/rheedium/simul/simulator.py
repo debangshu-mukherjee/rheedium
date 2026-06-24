@@ -67,6 +67,7 @@ from rheedium.tools import (
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
+    Distribution,
     OrientationDistribution,
     PotentialSlices,
     RHEEDPattern,
@@ -77,13 +78,14 @@ from rheedium.types import (
     discretize_orientation,
     discretize_orientation_static,
     identify_surface_atoms,
+    orientation_to_distribution,
     scalar_float,
     scalar_int,
     scalar_num,
 )
 from rheedium.ucell import reciprocal_lattice_vectors
 
-from .beam_averaging import instrument_broadened_pattern
+from .beam_averaging import apply_distribution, instrument_broadened_pattern
 from .form_factors import (
     atomic_scattering_factor,
     projected_potential,
@@ -1506,6 +1508,7 @@ def simulate_detector_image(  # noqa: PLR0913
     n_angular_samples: int = 5,
     n_energy_samples: int = 5,
     orientation_distribution: OrientationDistribution | None = None,
+    distribution: Distribution | None = None,
     n_mosaic_points: scalar_int = 7,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
@@ -1553,6 +1556,11 @@ def simulate_detector_image(  # noqa: PLR0913
     orientation_distribution : OrientationDistribution | None, optional
         Optional azimuthal orientation distribution. When supplied, its
         angles are interpreted relative to ``phi_deg``.
+    distribution : Distribution | None, optional
+        Generic Layer-1 latent distribution. The first sample coordinate is
+        interpreted as an azimuthal offset in degrees relative to the current
+        ``phi_deg`` sample. Currently supported by the spot-rendered coherent
+        amplitude path, so pass ``render_ctrs_as_streaks=False``.
     n_mosaic_points : scalar_int, optional
         Orientation quadrature points per peak when
         ``orientation_distribution`` is supplied. Default: 7
@@ -1581,6 +1589,15 @@ def simulate_detector_image(  # noqa: PLR0913
        :func:`instrument_broadened_pattern`.
     4. Detector PSF broadening and final normalization.
     """
+    if orientation_distribution is not None and distribution is not None:
+        raise ValueError(
+            "Pass either orientation_distribution or distribution, not both."
+        )
+    if distribution is not None and render_ctrs_as_streaks:
+        raise ValueError(
+            "distribution requires render_ctrs_as_streaks=False until CTR "
+            "streaks expose a coherent amplitude renderer."
+        )
 
     def _simulate_dense_image(
         polar_angle_rad: scalar_float,
@@ -1607,6 +1624,37 @@ def simulate_detector_image(  # noqa: PLR0913
                 pixel_size_mm=pixel_size_mm,
                 beam_center_px=beam_center_px,
                 spot_sigma_px=spot_sigma_px,
+            )
+
+        if distribution is not None:
+
+            def _amplitude_at_distribution_sample(
+                sample: Float[Array, "D"],
+            ) -> Complex[Array, "H W"]:
+                return kinematic_amplitude(
+                    crystal=crystal,
+                    voltage_kv=energy_kev,
+                    theta_deg=theta_sample_deg,
+                    phi_deg=phi_sample_deg + sample[0],
+                    hmax=hmax,
+                    kmax=kmax,
+                    detector_distance_mm=detector_distance_mm,
+                    temperature=temperature,
+                    surface_roughness=surface_roughness,
+                    ctr_regularization=ctr_regularization,
+                    ctr_power=ctr_power,
+                    roughness_power=roughness_power,
+                    image_shape_px=image_shape_px,
+                    pixel_size_mm=pixel_size_mm,
+                    beam_center_px=beam_center_px,
+                    spot_sigma_px=spot_sigma_px,
+                    parameterization=parameterization,
+                    surface_config=surface_config,
+                )
+
+            return apply_distribution(
+                distribution,
+                _amplitude_at_distribution_sample,
             )
 
         if orientation_distribution is None:
@@ -1685,32 +1733,39 @@ def simulate_detector_image(  # noqa: PLR0913
             )
             return combined_image / max_intensity
 
-        shifted_distribution = OrientationDistribution(
-            discrete_angles_deg=(
-                orientation_distribution.discrete_angles_deg + phi_sample_deg
-            ),
-            discrete_weights=orientation_distribution.discrete_weights,
-            mosaic_fwhm_deg=orientation_distribution.mosaic_fwhm_deg,
-            distribution_id=orientation_distribution.distribution_id,
-        )
-        sparse_pattern = ewald_simulator_with_orientation_distribution(
-            crystal=crystal,
-            orientation_distribution=shifted_distribution,
-            voltage_kv=energy_kev,
-            theta_deg=theta_sample_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            parameterization=parameterization,
-            surface_config=surface_config,
+        generic_orientation: Distribution = orientation_to_distribution(
+            orientation_distribution,
             n_mosaic_points=n_mosaic_points,
         )
-        return _render_sparse_pattern(sparse_pattern)
+
+        def _amplitude_at_orientation_sample(
+            sample: Float[Array, "D"],
+        ) -> Complex[Array, "H W"]:
+            return kinematic_amplitude(
+                crystal=crystal,
+                voltage_kv=energy_kev,
+                theta_deg=theta_sample_deg,
+                phi_deg=phi_sample_deg + sample[0],
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                parameterization=parameterization,
+                surface_config=surface_config,
+            )
+
+        return apply_distribution(
+            generic_orientation,
+            _amplitude_at_orientation_sample,
+        )
 
     detector_image: Float[Array, "H W"] = instrument_broadened_pattern(
         simulate_fn=_simulate_dense_image,

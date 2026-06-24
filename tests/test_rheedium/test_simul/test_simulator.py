@@ -49,7 +49,9 @@ from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
     CrystalStructure,
     PotentialSlices,
+    ReductionMode,
     SlicedCrystal,
+    create_distribution,
 )
 from rheedium.types.crystal_types import (
     create_crystal_structure,
@@ -2126,6 +2128,121 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             direct_image,
             atol=1e-10,
         )
+
+    def test_simulate_detector_image_trivial_distribution_is_identity(
+        self,
+    ) -> None:
+        """Trivial generic distribution preserves the spot-rendered image."""
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 4.0,
+            "hmax": 0,
+            "kmax": 0,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (16, 24),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (12.0, 2.0),
+            "spot_sigma_px": 1.2,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "render_ctrs_as_streaks": False,
+        }
+        reference: Float[Array, "..."] = simulate_detector_image(**kwargs)
+        distributed: Float[Array, "..."] = simulate_detector_image(
+            **kwargs,
+            distribution=TRIVIAL_DISTRIBUTION,
+        )
+
+        chex.assert_trees_all_close(distributed, reference, atol=1e-10)
+
+    def test_simulate_detector_image_distribution_matches_manual_layer1(
+        self,
+    ) -> None:
+        """Generic distribution delegates reduction to Layer-1 mechanics."""
+        distribution = create_distribution(
+            samples=jnp.array([[0.0], [5.0]], dtype=jnp.float64),
+            weights=jnp.array([0.25, 0.75], dtype=jnp.float64),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="test_phi",
+        )
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 3.0,
+            "hmax": 0,
+            "kmax": 0,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (16, 24),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (12.0, 2.0),
+            "spot_sigma_px": 1.2,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "render_ctrs_as_streaks": False,
+        }
+        base_phi_deg: float = 3.0
+        image_shape_px: tuple[int, int] = (16, 24)
+        pixel_size_mm: tuple[float, float] = (6.0, 16.0)
+        beam_center_px: tuple[float, float] = (12.0, 2.0)
+
+        def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=base_phi_deg + sample[0],
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=1.2,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image(
+            **kwargs,
+            distribution=distribution,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_rejects_ambiguous_distributions(
+        self,
+    ) -> None:
+        """Legacy and generic distributions are mutually exclusive inputs."""
+        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
+            angles_deg=jnp.array([0.0]),
+            weights=jnp.array([1.0]),
+        )
+
+        with pytest.raises(ValueError, match="either"):
+            simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                orientation_distribution=orientation_dist,
+                distribution=TRIVIAL_DISTRIBUTION,
+                render_ctrs_as_streaks=False,
+            )
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
         """Check dense rendering elongates CTRs vertically on detector."""
