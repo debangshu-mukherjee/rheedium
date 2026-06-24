@@ -22,6 +22,10 @@ Routine Listings
     Apply a weighted distribution to a coherent amplitude closure.
 :func:`apply_distributions`
     Apply multiple distribution axes with nested coherent/incoherent reduction.
+:func:`decompose_beam_modes`
+    Convert GSM beam parameters to a generic incoherent Distribution.
+:func:`decompose_beam_modes_static`
+    Eager tolerance-pruned beam-mode decomposition.
 :func:`energy_spread_average`
     Average pattern over Gaussian energy spread distribution.
 :func:`coherence_envelope`
@@ -52,7 +56,13 @@ from beartype.typing import Callable, Sequence
 from jaxtyping import Array, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
-from rheedium.types import Distribution, ReductionMode, scalar_float
+from rheedium.types import (
+    BeamModeDistribution,
+    Distribution,
+    ReductionMode,
+    create_distribution,
+    scalar_float,
+)
 
 
 @jaxtyped(typechecker=beartype)
@@ -242,6 +252,209 @@ def apply_distributions(
         _intensity_for_incoherent_row
     )(incoherent_indices)
     return jnp.einsum("q,qhw->hw", incoherent_weights, intensities)
+
+
+@jaxtyped(typechecker=beartype)
+def _gsm_axis_modes(
+    beta: Float[Array, ""],
+    divergence_rad: Float[Array, ""],
+    n_modes: int,
+) -> tuple[Float[Array, "M"], Float[Array, "M"]]:
+    """Return one transverse GSM axis with variance-matched offsets."""
+    if n_modes <= 0:
+        raise ValueError("n_modes must be positive")
+    indices: Float[Array, "M"] = jnp.arange(n_modes, dtype=jnp.float64)
+    raw_weights: Float[Array, "M"] = (1.0 - beta) * beta**indices
+    weights: Float[Array, "M"] = raw_weights / jnp.maximum(
+        jnp.sum(raw_weights),
+        1e-12,
+    )
+    mean_index: Float[Array, ""] = jnp.sum(weights * indices)
+    centered_indices: Float[Array, "M"] = indices - mean_index
+    index_variance: Float[Array, ""] = jnp.sum(weights * centered_indices**2)
+    scale: Float[Array, ""] = jnp.where(
+        index_variance > 0.0,
+        divergence_rad / jnp.sqrt(index_variance),
+        0.0,
+    )
+    offsets: Float[Array, "M"] = centered_indices * scale
+    return offsets, weights
+
+
+@jaxtyped(typechecker=beartype)
+def _energy_mode_axis(
+    energy_spread_ev: Float[Array, ""],
+    n_energy_points: int,
+) -> tuple[Float[Array, "E"], Float[Array, "E"]]:
+    """Return longitudinal incoherent energy offsets and weights."""
+    if n_energy_points <= 0:
+        raise ValueError("n_energy_points must be positive")
+    if n_energy_points == 1:
+        offsets: Float[Array, "1"] = jnp.zeros((1,), dtype=jnp.float64)
+        weights: Float[Array, "1"] = jnp.ones((1,), dtype=jnp.float64)
+        return offsets, weights
+    nodes: Float[Array, "E"]
+    quad_weights: Float[Array, "E"]
+    nodes, quad_weights = gauss_hermite_nodes_weights(n_energy_points)
+    sqrt2: Float[Array, ""] = jnp.sqrt(jnp.array(2.0, dtype=jnp.float64))
+    sqrt_pi: Float[Array, ""] = jnp.sqrt(jnp.array(jnp.pi, dtype=jnp.float64))
+    offsets = sqrt2 * energy_spread_ev * nodes
+    weights = quad_weights / sqrt_pi
+    return offsets, weights / jnp.sum(weights)
+
+
+@jaxtyped(typechecker=beartype)
+def decompose_beam_modes(
+    beam_modes: BeamModeDistribution,
+    n_modes_per_axis: int = 3,
+    n_modes_out_of_plane: int | None = None,
+    n_energy_points: int = 1,
+) -> Distribution:
+    """Convert GSM beam modes to a generic incoherent Distribution.
+
+    :see: :class:`~.test_beam_averaging.TestBeamModeDecomposition`
+
+    Parameters
+    ----------
+    beam_modes : BeamModeDistribution
+        Physical Gaussian Schell-model source parameters.
+    n_modes_per_axis : int, optional
+        Fixed in-plane transverse mode count. Also used out-of-plane when
+        ``n_modes_out_of_plane`` is not supplied. Default: 3.
+    n_modes_out_of_plane : int | None, optional
+        Optional separate out-of-plane mode count. Default: None.
+    n_energy_points : int, optional
+        Longitudinal Gauss-Hermite energy samples. Default: 1.
+
+    Returns
+    -------
+    distribution : Distribution
+        Incoherent distribution with samples
+        ``[delta_theta_rad, delta_phi_rad, delta_energy_ev]``.
+    """
+    theta_offsets: Float[Array, "T"]
+    theta_weights: Float[Array, "T"]
+    theta_offsets, theta_weights = _gsm_axis_modes(
+        beam_modes.beta_in_plane,
+        beam_modes.divergence_in_plane_rad,
+        n_modes_per_axis,
+    )
+    phi_offsets: Float[Array, "P"]
+    phi_weights: Float[Array, "P"]
+    phi_mode_count: int = (
+        n_modes_per_axis
+        if n_modes_out_of_plane is None
+        else n_modes_out_of_plane
+    )
+    phi_offsets, phi_weights = _gsm_axis_modes(
+        beam_modes.beta_out_of_plane,
+        beam_modes.divergence_out_of_plane_rad,
+        phi_mode_count,
+    )
+    energy_offsets: Float[Array, "E"]
+    energy_weights: Float[Array, "E"]
+    energy_offsets, energy_weights = _energy_mode_axis(
+        beam_modes.energy_spread_ev,
+        n_energy_points,
+    )
+    theta_grid: Float[Array, "T P E"]
+    phi_grid: Float[Array, "T P E"]
+    energy_grid: Float[Array, "T P E"]
+    theta_grid, phi_grid, energy_grid = jnp.meshgrid(
+        theta_offsets,
+        phi_offsets,
+        energy_offsets,
+        indexing="ij",
+    )
+    weight_grid: Float[Array, "T P E"] = (
+        theta_weights[:, None, None]
+        * phi_weights[None, :, None]
+        * energy_weights[None, None, :]
+    )
+    samples: Float[Array, "N 3"] = jnp.stack(
+        [
+            theta_grid.ravel(),
+            phi_grid.ravel(),
+            energy_grid.ravel(),
+        ],
+        axis=-1,
+    )
+    axis_id: str = (
+        beam_modes.distribution_id
+        if beam_modes.distribution_id is not None
+        else "beam_modes"
+    )
+    return create_distribution(
+        samples=samples,
+        weights=weight_grid.ravel(),
+        reduction=ReductionMode.INCOHERENT,
+        axis_id=axis_id,
+    )
+
+
+def _static_mode_count(
+    beta: Float[Array, ""], cap: int, weight_tol: float
+) -> int:
+    """Choose an eager GSM mode count from cumulative geometric mass."""
+    if cap <= 0:
+        raise ValueError("n_modes_per_axis must be positive")
+    beta_value: float = float(beta)
+    if beta_value <= 0.0:
+        return 1
+    cumulative_weight: float = 0.0
+    for mode_idx in range(cap):
+        cumulative_weight += (1.0 - beta_value) * (beta_value**mode_idx)
+        if cumulative_weight >= 1.0 - weight_tol:
+            return mode_idx + 1
+    return cap
+
+
+@jaxtyped(typechecker=beartype)
+def decompose_beam_modes_static(
+    beam_modes: BeamModeDistribution,
+    n_modes_per_axis: int = 16,
+    n_energy_points: int = 1,
+    weight_tol: float = 1e-6,
+) -> Distribution:
+    """Eager tolerance-pruned GSM beam-mode decomposition.
+
+    :see: :class:`~.test_beam_averaging.TestBeamModeDecomposition`
+
+    Parameters
+    ----------
+    beam_modes : BeamModeDistribution
+        Physical Gaussian Schell-model source parameters.
+    n_modes_per_axis : int, optional
+        Maximum transverse mode count per axis. Default: 16.
+    n_energy_points : int, optional
+        Longitudinal energy quadrature point count. Default: 1.
+    weight_tol : float, optional
+        Tail probability tolerance for transverse mode truncation.
+
+    Returns
+    -------
+    distribution : Distribution
+        Incoherent distribution with negligible transverse tails pruned.
+    """
+    theta_modes: int = _static_mode_count(
+        beam_modes.beta_in_plane,
+        n_modes_per_axis,
+        weight_tol,
+    )
+    phi_modes: int = _static_mode_count(
+        beam_modes.beta_out_of_plane,
+        n_modes_per_axis,
+        weight_tol,
+    )
+    energy_points: int = (
+        1 if float(beam_modes.energy_spread_ev) <= 0.0 else n_energy_points
+    )
+    return decompose_beam_modes(
+        beam_modes,
+        n_modes_per_axis=theta_modes,
+        n_modes_out_of_plane=phi_modes,
+        n_energy_points=energy_points,
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -752,6 +965,8 @@ __all__: list[str] = [
     "apply_distribution",
     "apply_distributions",
     "coherence_envelope",
+    "decompose_beam_modes",
+    "decompose_beam_modes_static",
     "detector_psf_convolve",
     "energy_spread_average",
     "gauss_hermite_nodes_weights",

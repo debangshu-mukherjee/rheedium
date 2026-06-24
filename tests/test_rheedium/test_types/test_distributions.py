@@ -9,13 +9,16 @@ from jaxtyping import Array, Complex, Float
 from rheedium.simul.beam_averaging import apply_distributions
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
+    BeamModeDistribution,
     Distribution,
     OrientationDistribution,
     ReductionMode,
     SizeDistribution,
+    create_coherent_beam,
     create_discrete_orientation,
     create_distribution,
     create_gaussian_orientation,
+    create_gaussian_schell_beam,
     create_lognormal_size,
     create_mixed_orientation,
     create_trivial_distribution,
@@ -116,6 +119,71 @@ class TestDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(reconstructed.weights, dist.weights)
         assert reconstructed.reduction is ReductionMode.COHERENT
         assert reconstructed.axis_id == "coherent_axis"
+
+
+class TestBeamModeDistributionFactories(chex.TestCase):
+    """Tests for Gaussian Schell-model beam producer factories."""
+
+    def test_create_gaussian_schell_beam_validates_parameters(self) -> None:
+        """GSM beam parameters are stored as scalar JAX arrays."""
+        beam: BeamModeDistribution = create_gaussian_schell_beam(
+            beta_in_plane=0.25,
+            beta_out_of_plane=0.5,
+            divergence_in_plane_rad=2.0e-4,
+            divergence_out_of_plane_rad=4.0e-4,
+            energy_spread_ev=0.35,
+            distribution_id="schottky",
+        )
+
+        assert isinstance(beam, BeamModeDistribution)
+        chex.assert_trees_all_close(beam.beta_in_plane, 0.25, atol=1e-12)
+        chex.assert_trees_all_close(beam.beta_out_of_plane, 0.5, atol=1e-12)
+        chex.assert_trees_all_close(
+            beam.divergence_in_plane_rad,
+            2.0e-4,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            beam.divergence_out_of_plane_rad,
+            4.0e-4,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(beam.energy_spread_ev, 0.35, atol=1e-12)
+        assert beam.distribution_id == "schottky"
+
+    def test_create_coherent_beam_collapses_transverse_spread(self) -> None:
+        """Coherent beam factory creates a sharp transverse source."""
+        beam: BeamModeDistribution = create_coherent_beam()
+
+        chex.assert_trees_all_close(beam.beta_in_plane, 0.0, atol=1e-12)
+        chex.assert_trees_all_close(beam.beta_out_of_plane, 0.0, atol=1e-12)
+        chex.assert_trees_all_close(
+            beam.divergence_in_plane_rad,
+            0.0,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            beam.divergence_out_of_plane_rad,
+            0.0,
+            atol=1e-12,
+        )
+        assert beam.distribution_id == "coherent_beam"
+
+    def test_create_gaussian_schell_beam_rejects_invalid_beta(self) -> None:
+        """GSM beta values must be in the half-open unit interval."""
+        assert_rejects(
+            create_gaussian_schell_beam,
+            beta_in_plane=1.0,
+            match="beta_in_plane must be finite and in",
+        )
+
+    def test_create_gaussian_schell_beam_rejects_negative_spread(self) -> None:
+        """Beam divergences and energy spread are non-negative."""
+        assert_rejects(
+            create_gaussian_schell_beam,
+            divergence_out_of_plane_rad=-1.0e-4,
+            match="divergence_out_of_plane_rad",
+        )
 
 
 class TestOrientationDistributionFactories(chex.TestCase):

@@ -19,11 +19,19 @@ from rheedium.simul.beam_averaging import (
     apply_distribution,
     apply_distributions,
     coherence_envelope,
+    decompose_beam_modes,
+    decompose_beam_modes_static,
     detector_psf_convolve,
     energy_spread_average,
     instrument_broadened_pattern,
 )
-from rheedium.types import ReductionMode, create_distribution
+from rheedium.types import (
+    Distribution,
+    ReductionMode,
+    create_coherent_beam,
+    create_distribution,
+    create_gaussian_schell_beam,
+)
 from rheedium.types.custom_types import scalar_float
 
 H: int = 32
@@ -56,6 +64,121 @@ class InstrumentBroadenedPatternKwargs(TypedDict):
     psf_sigma_pixels: scalar_float
     n_angular_samples: int
     n_energy_samples: int
+
+
+def _weighted_variance(
+    values: Float[Array, "N"],
+    weights: Float[Array, "N"],
+) -> Float[Array, ""]:
+    """Return weighted variance for one distribution coordinate."""
+    mean: Float[Array, ""] = jnp.sum(weights * values)
+    return jnp.sum(weights * (values - mean) ** 2)
+
+
+class TestBeamModeDecomposition(chex.TestCase):
+    """Tests for Gaussian Schell-model beam-mode decomposition."""
+
+    def test_decompose_beam_modes_normalizes_product_weights(self) -> None:
+        """Beam modes flatten transverse and longitudinal products."""
+        beam = create_gaussian_schell_beam(
+            beta_in_plane=0.25,
+            beta_out_of_plane=0.5,
+            divergence_in_plane_rad=2.0e-4,
+            divergence_out_of_plane_rad=4.0e-4,
+            energy_spread_ev=0.35,
+            distribution_id="beam_test",
+        )
+
+        dist: Distribution = decompose_beam_modes(
+            beam,
+            n_modes_per_axis=4,
+            n_modes_out_of_plane=3,
+            n_energy_points=3,
+        )
+
+        chex.assert_shape(dist.samples, (36, 3))
+        chex.assert_trees_all_close(jnp.sum(dist.weights), 1.0, atol=1e-12)
+        assert dist.reduction is ReductionMode.INCOHERENT
+        assert dist.axis_id == "beam_test"
+
+    def test_decompose_beam_modes_matches_requested_variances(self) -> None:
+        """Occupation-weighted spreads match the physical beam parameters."""
+        theta_sigma: float = 3.0e-4
+        phi_sigma: float = 6.0e-4
+        energy_sigma: float = 0.4
+        beam = create_gaussian_schell_beam(
+            beta_in_plane=0.35,
+            beta_out_of_plane=0.65,
+            divergence_in_plane_rad=theta_sigma,
+            divergence_out_of_plane_rad=phi_sigma,
+            energy_spread_ev=energy_sigma,
+        )
+
+        dist: Distribution = decompose_beam_modes(
+            beam,
+            n_modes_per_axis=5,
+            n_modes_out_of_plane=4,
+            n_energy_points=3,
+        )
+
+        chex.assert_trees_all_close(
+            _weighted_variance(dist.samples[:, 0], dist.weights),
+            theta_sigma**2,
+            rtol=1e-10,
+            atol=1e-16,
+        )
+        chex.assert_trees_all_close(
+            _weighted_variance(dist.samples[:, 1], dist.weights),
+            phi_sigma**2,
+            rtol=1e-10,
+            atol=1e-16,
+        )
+        chex.assert_trees_all_close(
+            _weighted_variance(dist.samples[:, 2], dist.weights),
+            energy_sigma**2,
+            rtol=1e-10,
+            atol=1e-12,
+        )
+
+    def test_decompose_beam_modes_static_collapses_coherent_limit(
+        self,
+    ) -> None:
+        """Static decomposition prunes a sharp coherent beam to one mode."""
+        beam = create_coherent_beam()
+
+        dist: Distribution = decompose_beam_modes_static(
+            beam,
+            n_modes_per_axis=8,
+            n_energy_points=5,
+        )
+
+        chex.assert_shape(dist.samples, (1, 3))
+        chex.assert_trees_all_close(dist.samples, jnp.zeros((1, 3)))
+        chex.assert_trees_all_close(dist.weights, jnp.ones((1,)))
+
+    def test_decompose_beam_modes_preserves_anisotropy(self) -> None:
+        """Different axis divergences produce anisotropic sample variance."""
+        beam = create_gaussian_schell_beam(
+            beta_in_plane=0.4,
+            beta_out_of_plane=0.4,
+            divergence_in_plane_rad=8.0e-4,
+            divergence_out_of_plane_rad=2.0e-4,
+        )
+
+        dist: Distribution = decompose_beam_modes(
+            beam,
+            n_modes_per_axis=4,
+        )
+        theta_variance: Float[Array, ""] = _weighted_variance(
+            dist.samples[:, 0],
+            dist.weights,
+        )
+        phi_variance: Float[Array, ""] = _weighted_variance(
+            dist.samples[:, 1],
+            dist.weights,
+        )
+
+        self.assertGreater(float(theta_variance), float(phi_variance))
 
 
 class TestDistributionApply(chex.TestCase):

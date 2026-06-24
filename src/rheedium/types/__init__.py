@@ -10,6 +10,8 @@ Routine Listings
 ----------------
 :class:`CrystalStructure`
     JAX-compatible crystal structure with fractional and Cartesian coordinates.
+:class:`BeamModeDistribution`
+    Gaussian Schell-model beam-mode source parameters.
 :class:`DetectorGeometry`
     Configuration for RHEED detector geometry (tilt, curvature, offsets).
 :class:`Distribution`
@@ -43,6 +45,8 @@ Routine Listings
     A PyTree for XYZ file data with atomic positions and metadata.
 :func:`create_crystal_structure`
     Factory function to create CrystalStructure instances.
+:func:`create_coherent_beam`
+    Create a single sharp coherent beam-mode producer.
 :func:`create_electron_beam`
     Factory function to create ElectronBeam instances.
 :func:`create_ewald_data`
@@ -57,6 +61,8 @@ Routine Listings
     Create a generic weighted latent-sample distribution.
 :func:`create_gaussian_orientation`
     Create a Gaussian mosaic orientation distribution.
+:func:`create_gaussian_schell_beam`
+    Create an anisotropic Gaussian Schell-model beam producer.
 :func:`create_kirkland_parameters`
     Factory function to create KirklandParameters instances.
 :func:`create_lognormal_size`
@@ -182,13 +188,16 @@ from .custom_types import (
 from .distributions import (
     TRIVIAL,
     TRIVIAL_DISTRIBUTION,
+    BeamModeDistribution,
     Distribution,
     OrientationDistribution,
     ReductionMode,
     SizeDistribution,
+    create_coherent_beam,
     create_discrete_orientation,
     create_distribution,
     create_gaussian_orientation,
+    create_gaussian_schell_beam,
     create_lognormal_size,
     create_mixed_orientation,
     create_orientation_distribution,
@@ -224,12 +233,14 @@ __all__: list[str] = [
     "RELATIVISTIC_COEFF_PER_V",
     "SPEED_OF_LIGHT_MS",
     "create_crystal_structure",
+    "create_coherent_beam",
     "create_discrete_orientation",
     "create_distribution",
     "create_electron_beam",
     "create_edge_on_slices",
     "create_ewald_data",
     "create_gaussian_orientation",
+    "create_gaussian_schell_beam",
     "create_orientation_distribution",
     "create_kirkland_parameters",
     "create_lognormal_size",
@@ -241,6 +252,7 @@ __all__: list[str] = [
     "create_trivial_distribution",
     "create_xyz_data",
     "CrystalStructure",
+    "BeamModeDistribution",
     "DetectorGeometry",
     "Distribution",
     "EdgeOnSlices",

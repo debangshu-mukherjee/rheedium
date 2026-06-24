@@ -34,6 +34,10 @@ Routine Listings
     Calculate kinematic diffraction intensities with CTR contributions.
 :func:`compute_shell_sigma`
     Compute Ewald shell Gaussian thickness from beam parameters.
+:func:`decompose_beam_modes`
+    Convert GSM beam parameters to a generic incoherent Distribution.
+:func:`decompose_beam_modes_static`
+    Eager tolerance-pruned GSM beam-mode decomposition.
 :func:`debye_waller_factor`
     Calculate Debye-Waller damping factor for thermal vibrations.
 :func:`detector_psf_convolve`
@@ -149,6 +153,8 @@ from .beam_averaging import (
     apply_distribution,
     apply_distributions,
     coherence_envelope,
+    decompose_beam_modes,
+    decompose_beam_modes_static,
     detector_psf_convolve,
     energy_spread_average,
     instrument_broadened_pattern,
@@ -235,6 +241,8 @@ __all__: list[str] = [
     "checked_multislice_simulator",
     "checked_simulate_detector_image",
     "coherence_envelope",
+    "decompose_beam_modes",
+    "decompose_beam_modes_static",
     "crystal_projected_potential",
     "crystal_to_edge_on_slices",
     "calculate_ctr_intensity",

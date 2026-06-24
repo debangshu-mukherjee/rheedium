@@ -11,6 +11,8 @@ Routine Listings
 ----------------
 :class:`Distribution`
     Generic weighted ensemble over latent simulation samples.
+:class:`BeamModeDistribution`
+    Gaussian Schell-model beam-mode source parameters.
 :class:`OrientationDistribution`
     Probability distribution over domain azimuthal orientations.
 :class:`ReductionMode`
@@ -19,6 +21,10 @@ Routine Listings
     Probability distribution over coherent domain sizes.
 :func:`create_distribution`
     Factory for generic weighted sample distributions.
+:func:`create_gaussian_schell_beam`
+    Factory for anisotropic Gaussian Schell-model beam modes.
+:func:`create_coherent_beam`
+    Factory for a single sharp coherent beam mode.
 :func:`create_orientation_distribution`
     Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
@@ -107,6 +113,35 @@ class Distribution(eqx.Module):
     weights: Float[Array, "N"]
     reduction: ReductionMode = eqx.field(static=True)
     axis_id: Optional[str] = eqx.field(static=True, default=None)
+
+
+class BeamModeDistribution(eqx.Module):
+    """Gaussian Schell-model beam-mode source parameters.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Attributes
+    ----------
+    beta_in_plane : Float[Array, ""]
+        Geometric occupation decay ratio for scattering-plane modes.
+    beta_out_of_plane : Float[Array, ""]
+        Geometric occupation decay ratio for out-of-plane modes.
+    divergence_in_plane_rad : Float[Array, ""]
+        Total 1-sigma angular divergence along the polar-angle axis.
+    divergence_out_of_plane_rad : Float[Array, ""]
+        Total 1-sigma angular divergence along the azimuthal axis.
+    energy_spread_ev : Float[Array, ""]
+        Longitudinal 1-sigma energy spread in electron-volts.
+    distribution_id : Optional[str]
+        Optional static label for diagnostics and composition.
+    """
+
+    beta_in_plane: Float[Array, ""]
+    beta_out_of_plane: Float[Array, ""]
+    divergence_in_plane_rad: Float[Array, ""]
+    divergence_out_of_plane_rad: Float[Array, ""]
+    energy_spread_ev: Float[Array, ""]
+    distribution_id: Optional[str] = eqx.field(static=True, default=None)
 
 
 @jaxtyped(typechecker=beartype)
@@ -258,6 +293,118 @@ def _normalize_probability_weights(
 
 TRIVIAL_DISTRIBUTION: Final[Distribution] = create_trivial_distribution()
 TRIVIAL: Final[Distribution] = TRIVIAL_DISTRIBUTION
+
+
+@jaxtyped(typechecker=beartype)
+def create_gaussian_schell_beam(
+    beta_in_plane: scalar_float = 0.0,
+    beta_out_of_plane: scalar_float = 0.0,
+    divergence_in_plane_rad: scalar_float = 0.0,
+    divergence_out_of_plane_rad: scalar_float = 0.0,
+    energy_spread_ev: scalar_float = 0.0,
+    distribution_id: Optional[str] = None,
+) -> BeamModeDistribution:
+    """Create a validated Gaussian Schell-model beam-mode producer.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Parameters
+    ----------
+    beta_in_plane, beta_out_of_plane : scalar_float, optional
+        GSM geometric occupation decay ratios. Must satisfy ``0 <= beta < 1``.
+    divergence_in_plane_rad, divergence_out_of_plane_rad : scalar_float
+        Total 1-sigma angular divergence per transverse axis in radians.
+    energy_spread_ev : scalar_float, optional
+        Longitudinal 1-sigma energy spread in electron-volts.
+    distribution_id : Optional[str], optional
+        Optional static identifier for the beam axis.
+
+    Returns
+    -------
+    beam_modes : BeamModeDistribution
+        Validated physical beam-mode parameters.
+    """
+    beta_in: Float[Array, ""] = jnp.asarray(beta_in_plane, dtype=jnp.float64)
+    beta_out: Float[Array, ""] = jnp.asarray(
+        beta_out_of_plane, dtype=jnp.float64
+    )
+    divergence_in: Float[Array, ""] = jnp.asarray(
+        divergence_in_plane_rad,
+        dtype=jnp.float64,
+    )
+    divergence_out: Float[Array, ""] = jnp.asarray(
+        divergence_out_of_plane_rad,
+        dtype=jnp.float64,
+    )
+    energy_spread: Float[Array, ""] = jnp.asarray(
+        energy_spread_ev,
+        dtype=jnp.float64,
+    )
+    checked_beta_in: Float[Array, ""] = eqx.error_if(
+        beta_in,
+        (~jnp.isfinite(beta_in)) | (beta_in < 0.0) | (beta_in >= 1.0),
+        "beta_in_plane must be finite and in [0, 1)",
+    )
+    checked_beta_out: Float[Array, ""] = eqx.error_if(
+        beta_out,
+        (~jnp.isfinite(beta_out)) | (beta_out < 0.0) | (beta_out >= 1.0),
+        "beta_out_of_plane must be finite and in [0, 1)",
+    )
+    checked_divergence_in: Float[Array, ""] = eqx.error_if(
+        divergence_in,
+        (~jnp.isfinite(divergence_in)) | (divergence_in < 0.0),
+        "divergence_in_plane_rad must be finite and non-negative",
+    )
+    checked_divergence_out: Float[Array, ""] = eqx.error_if(
+        divergence_out,
+        (~jnp.isfinite(divergence_out)) | (divergence_out < 0.0),
+        "divergence_out_of_plane_rad must be finite and non-negative",
+    )
+    checked_energy_spread: Float[Array, ""] = eqx.error_if(
+        energy_spread,
+        (~jnp.isfinite(energy_spread)) | (energy_spread < 0.0),
+        "energy_spread_ev must be finite and non-negative",
+    )
+    return BeamModeDistribution(
+        beta_in_plane=checked_beta_in,
+        beta_out_of_plane=checked_beta_out,
+        divergence_in_plane_rad=checked_divergence_in,
+        divergence_out_of_plane_rad=checked_divergence_out,
+        energy_spread_ev=checked_energy_spread,
+        distribution_id=distribution_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def create_coherent_beam(
+    energy_spread_ev: scalar_float = 0.0,
+    distribution_id: Optional[str] = "coherent_beam",
+) -> BeamModeDistribution:
+    """Create a single sharp coherent beam-mode producer.
+
+    :see: :class:`~.test_distributions.TestBeamModeDistributionFactories`
+
+    Parameters
+    ----------
+    energy_spread_ev : scalar_float, optional
+        Optional longitudinal spread to keep while collapsing transverse modes.
+        Default: 0.0.
+    distribution_id : Optional[str], optional
+        Optional static identifier. Default: ``"coherent_beam"``.
+
+    Returns
+    -------
+    beam_modes : BeamModeDistribution
+        Beam parameters with zero transverse modal spread.
+    """
+    return create_gaussian_schell_beam(
+        beta_in_plane=0.0,
+        beta_out_of_plane=0.0,
+        divergence_in_plane_rad=0.0,
+        divergence_out_of_plane_rad=0.0,
+        energy_spread_ev=energy_spread_ev,
+        distribution_id=distribution_id,
+    )
 
 
 class OrientationDistribution(eqx.Module):
@@ -1064,13 +1211,16 @@ def create_lognormal_size(
 
 
 __all__: list[str] = [
+    "BeamModeDistribution",
     "Distribution",
     "OrientationDistribution",
     "ReductionMode",
     "SizeDistribution",
     "TRIVIAL",
     "TRIVIAL_DISTRIBUTION",
+    "create_coherent_beam",
     "create_distribution",
+    "create_gaussian_schell_beam",
     "create_orientation_distribution",
     "create_discrete_orientation",
     "create_gaussian_orientation",
