@@ -486,7 +486,14 @@ pre-commit run --hook-stage manual strict-ty-scan
 ```
 
 A `[tool.pyright]` block mirrors the same suppressions so VS Code / Pylance
-matches the project's actual checker.
+matches the project's actual checker. `ty` remains the **only enforced** checker;
+pyright also runs as a **non-blocking second opinion** (CI `pyright-scan` job)
+that catches categories `ty`'s suppressions hide — e.g. `reportIndexIssue`. Run
+it locally with:
+
+```bash
+pre-commit run --hook-stage manual pyright-scan
+```
 
 ### Pre-commit Hooks
 

@@ -427,7 +427,9 @@ def _view_atoms_x3d(
     )
     if show_cell:
         center: Float[NDArray, "3"] = np.asarray(atoms.cell.diagonal()) / 2.0
-        points: Float[NDArray, "M 3"] = np.vstack((positions, atoms.cell[:]))
+        points: Float[NDArray, "M 3"] = np.vstack(
+            (positions, atoms.cell[:])  # pyright: ignore[reportIndexIssue]
+        )
     else:
         center = np.mean(positions, axis=0)
         points = positions

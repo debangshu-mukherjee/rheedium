@@ -73,7 +73,7 @@ jobs:
 
     - name: Type check with ty
       run: |
-        uv run ty check src
+        uv run ty check
 
     - name: Type check with beartype (runtime)
       run: |
@@ -209,3 +209,49 @@ jobs:
           echo "</details>"
         } >> "$GITHUB_STEP_SUMMARY"
         echo "Strict type scan: ${count} diagnostics in src/ (informational, non-blocking)."
+
+  pyright-scan:
+    name: Pyright scan (informational)
+    needs: resolve-python
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install ${{ needs.resolve-python.outputs.latest }}
+
+    - name: Install dependencies
+      run: uv sync --extra dev
+
+    # Second-opinion type check with pyright, using the same [tool.pyright]
+    # suppressions the editor (Pylance) already follows. `ty` stays the enforced
+    # checker; pyright runs here purely informationally to surface categories
+    # ty's suppressions hide (e.g. reportIndexIssue). NEVER blocks CI (`|| true`).
+    - name: Pyright scan (non-blocking)
+      shell: bash
+      run: |
+        uv run pyright src 1>scan.txt 2>/dev/null || true
+        count=$(grep -cE ' - error:' scan.txt || true)
+        {
+          echo "## Pyright scan (informational)"
+          echo ""
+          echo "Second-opinion static check (pyright, [tool.pyright] config)."
+          echo "**Does not block CI.**"
+          echo ""
+          echo "**Diagnostics in \`src/\`: ${count}**"
+          echo ""
+          echo "<details><summary>Show diagnostics</summary>"
+          echo ""
+          echo '```'
+          grep -E ' - (error|warning):' scan.txt || echo "(none)"
+          echo '```'
+          echo ""
+          echo "</details>"
+        } >> "$GITHUB_STEP_SUMMARY"
+        echo "Pyright scan: ${count} diagnostics in src/ (informational, non-blocking)."

@@ -31,8 +31,14 @@ Routine Listings
     Convert OrientationDistribution to quadrature points and weights.
 :func:`create_trivial_distribution`
     Factory for the identity distribution with one zero sample.
+:func:`discretize_size_distribution`
+    Convert SizeDistribution to quadrature sizes and weights.
+:func:`orientation_to_distribution`
+    Convert OrientationDistribution to the generic Distribution contract.
 :func:`integrate_over_orientation`
     Compute incoherent intensity sum over orientation distribution.
+:func:`size_to_distribution`
+    Convert SizeDistribution to the generic Distribution contract.
 :obj:`TRIVIAL_DISTRIBUTION`
     Identity one-sample distribution.
 :obj:`TRIVIAL`
@@ -723,6 +729,68 @@ def discretize_orientation_static(
 
 
 @jaxtyped(typechecker=beartype)
+def orientation_to_distribution(
+    dist: OrientationDistribution,
+    n_mosaic_points: scalar_int = 7,
+    base_phi_deg: scalar_float = 0.0,
+    use_static_discretization: bool = False,
+) -> Distribution:
+    """Convert orientation samples to a generic incoherent Distribution.
+
+    :see: :class:`~.test_distributions.TestOrientationProducer`
+
+    Parameters
+    ----------
+    dist : OrientationDistribution
+        Orientation probability distribution.
+    n_mosaic_points : scalar_int, optional
+        Quadrature points per mosaic peak. Default: 7.
+    base_phi_deg : scalar_float, optional
+        Base azimuth added to each orientation sample. Default: 0.0.
+    use_static_discretization : bool, optional
+        If True, use the Python-branching static discretizer. Default: False.
+
+    Returns
+    -------
+    distribution : Distribution
+        Generic distribution with one ``phi_deg`` sample coordinate per row
+        and incoherent reduction.
+
+    Notes
+    -----
+    1. Discretize orientation support and probability weights.
+    2. Shift samples by the base azimuth.
+    3. Package as a one-coordinate generic incoherent distribution.
+    """
+    angles_deg: Float[Array, "N"]
+    weights: Float[Array, "N"]
+    if use_static_discretization:
+        angles_deg, weights = discretize_orientation_static(
+            dist,
+            n_mosaic_points=n_mosaic_points,
+        )
+    else:
+        angles_deg, weights = discretize_orientation(
+            dist,
+            n_mosaic_points=n_mosaic_points,
+        )
+    shifted_angles: Float[Array, "N"] = angles_deg + jnp.asarray(
+        base_phi_deg, dtype=jnp.float64
+    )
+    axis_id: str = (
+        dist.distribution_id
+        if dist.distribution_id is not None
+        else "orientation"
+    )
+    return create_distribution(
+        samples=shifted_angles[:, None],
+        weights=weights,
+        reduction=ReductionMode.INCOHERENT,
+        axis_id=axis_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def integrate_over_orientation(
     simulate_fn: Callable[[scalar_float], float_jax_image],
     orientation_dist: OrientationDistribution,
@@ -781,17 +849,129 @@ def integrate_over_orientation(
     >>> # Integrate
     >>> pattern = integrate_over_orientation(sim_at_phi, dist)
     """
-    angles_deg: Float[Array, "N"]
-    weights: Float[Array, "N"]
-    angles_deg, weights = discretize_orientation(
-        orientation_dist, n_mosaic_points=n_mosaic_points
+    distribution: Distribution = orientation_to_distribution(
+        orientation_dist,
+        n_mosaic_points=n_mosaic_points,
     )
-    patterns: Float[Array, "N H W"] = jax.vmap(simulate_fn)(angles_deg)
-    weights_expanded: Float[Array, "N 1 1"] = weights[:, None, None]
-    weighted_sum: float_jax_image = jnp.sum(
-        weights_expanded * patterns, axis=0
+
+    def _amplitude_from_orientation(
+        sample: Float[Array, "D"],
+    ) -> Float[Array, "H W"]:
+        intensity: Float[Array, "H W"] = simulate_fn(sample[0])
+        return jnp.sqrt(jnp.maximum(intensity, 0.0))
+
+    from rheedium.simul.beam_averaging import apply_distribution
+
+    weighted_sum: float_jax_image = apply_distribution(
+        distribution,
+        _amplitude_from_orientation,
     )
     return weighted_sum
+
+
+@jaxtyped(typechecker=beartype)
+def discretize_size_distribution(
+    dist: SizeDistribution,
+    n_points: scalar_int = 7,
+) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
+    """Convert SizeDistribution to quadrature sizes and weights.
+
+    :see: :class:`~.test_distributions.TestSizeProducer`
+
+    Parameters
+    ----------
+    dist : SizeDistribution
+        Domain-size probability distribution.
+    n_points : scalar_int, optional
+        Number of Gauss-Hermite quadrature points for finite-width
+        distributions. Default: 7.
+
+    Returns
+    -------
+    sizes_ang : Float[Array, "N"]
+        Domain-size samples in Angstroms.
+    weights : Float[Array, "N"]
+        Normalized non-negative probability weights.
+
+    Notes
+    -----
+    1. Delta or zero-width distributions collapse to one mean-size sample.
+    2. Lognormal distributions use moment-matched log-space quadrature.
+    3. Gaussian and exponential distributions use clipped positive support.
+    4. Weights are normalized after support clipping.
+    """
+    mean_ang: Float[Array, ""] = dist.mean_ang
+    sigma_ang: Float[Array, ""] = dist.sigma_ang
+    clipped_mean: Float[Array, ""] = jnp.clip(
+        mean_ang,
+        dist.min_size_ang,
+        dist.max_size_ang,
+    )
+    if dist.distribution_type == "delta":
+        sizes: Float[Array, "1"] = jnp.atleast_1d(clipped_mean)
+        weights: Float[Array, "1"] = jnp.ones((1,), dtype=jnp.float64)
+        return sizes, weights
+
+    nodes: Float[Array, "N"]
+    quad_weights: Float[Array, "N"]
+    nodes, quad_weights = gauss_hermite_nodes_weights(n_points)
+    sqrt2: Float[Array, ""] = jnp.sqrt(jnp.array(2.0, dtype=jnp.float64))
+    if dist.distribution_type == "lognormal":
+        variance_ratio: Float[Array, ""] = (sigma_ang / mean_ang) ** 2
+        sigma_log: Float[Array, ""] = jnp.sqrt(jnp.log1p(variance_ratio))
+        mu_log: Float[Array, ""] = jnp.log(mean_ang) - 0.5 * sigma_log**2
+        raw_sizes: Float[Array, "N"] = jnp.exp(
+            mu_log + sqrt2 * sigma_log * nodes
+        )
+    elif dist.distribution_type == "exponential":
+        raw_sizes = jnp.maximum(0.0, mean_ang * (1.0 + sqrt2 * nodes))
+    else:
+        raw_sizes = mean_ang + sqrt2 * sigma_ang * nodes
+    sizes = jnp.clip(raw_sizes, dist.min_size_ang, dist.max_size_ang)
+    weights = _normalize_probability_weights(quad_weights)
+    return sizes, weights
+
+
+@jaxtyped(typechecker=beartype)
+def size_to_distribution(
+    dist: SizeDistribution,
+    n_points: scalar_int = 7,
+) -> Distribution:
+    """Convert size samples to a generic incoherent Distribution.
+
+    :see: :class:`~.test_distributions.TestSizeProducer`
+
+    Parameters
+    ----------
+    dist : SizeDistribution
+        Domain-size probability distribution.
+    n_points : scalar_int, optional
+        Quadrature point count for finite-width distributions. Default: 7.
+
+    Returns
+    -------
+    distribution : Distribution
+        Generic distribution with one size-in-Angstrom sample coordinate per
+        row and incoherent reduction.
+
+    Notes
+    -----
+    1. Discretize the size distribution.
+    2. Store sizes as one-column latent samples.
+    3. Use incoherent reduction for domain-size ensembles.
+    """
+    sizes_ang: Float[Array, "N"]
+    weights: Float[Array, "N"]
+    sizes_ang, weights = discretize_size_distribution(
+        dist,
+        n_points=n_points,
+    )
+    return create_distribution(
+        samples=sizes_ang[:, None],
+        weights=weights,
+        reduction=ReductionMode.INCOHERENT,
+        axis_id="size",
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -899,5 +1079,8 @@ __all__: list[str] = [
     "create_trivial_distribution",
     "discretize_orientation",
     "discretize_orientation_static",
+    "discretize_size_distribution",
     "integrate_over_orientation",
+    "orientation_to_distribution",
+    "size_to_distribution",
 ]

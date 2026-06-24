@@ -79,10 +79,16 @@ Routine Listings
     Convert an orientation distribution to quadrature samples.
 :func:`discretize_orientation_static`
     Python-branching orientation discretization for non-JIT use.
+:func:`discretize_size_distribution`
+    Convert size distribution to quadrature samples.
 :func:`identify_surface_atoms`
     Identify surface atoms using configurable methods.
 :func:`integrate_over_orientation`
     Simulate and incoherently average over orientation samples.
+:func:`orientation_to_distribution`
+    Convert orientation distribution to generic distribution.
+:func:`size_to_distribution`
+    Convert size distribution to generic distribution.
 :obj:`TRIVIAL_DISTRIBUTION`
     Identity one-sample distribution.
 :obj:`TRIVIAL`
@@ -189,7 +195,10 @@ from .distributions import (
     create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
+    discretize_size_distribution,
     integrate_over_orientation,
+    orientation_to_distribution,
+    size_to_distribution,
 )
 from .rheed_types import (
     DetectorGeometry,
@@ -247,6 +256,7 @@ __all__: list[str] = [
     "non_jax_number",
     "discretize_orientation",
     "discretize_orientation_static",
+    "discretize_size_distribution",
     "OrientationDistribution",
     "PotentialSlices",
     "RHEEDImage",
@@ -256,6 +266,8 @@ __all__: list[str] = [
     "scalar_float",
     "scalar_int",
     "scalar_num",
+    "orientation_to_distribution",
+    "size_to_distribution",
     "SlicedCrystal",
     "SizeDistribution",
     "SurfaceConfig",

@@ -4,8 +4,9 @@ import chex
 import jax
 import jax.numpy as jnp
 from jax import tree_util
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex, Float
 
+from rheedium.simul.beam_averaging import apply_distributions
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
     Distribution,
@@ -20,7 +21,10 @@ from rheedium.types import (
     create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
+    discretize_size_distribution,
     integrate_over_orientation,
+    orientation_to_distribution,
+    size_to_distribution,
 )
 from rheedium.types.custom_types import scalar_float
 
@@ -340,6 +344,168 @@ class TestOrientationDiscretization(chex.TestCase):
             jnp.array([0.5, 0.5]),
             atol=1e-12,
         )
+
+
+class TestOrientationProducer(chex.TestCase):
+    """Tests for converting orientation distributions to generic producers."""
+
+    def test_orientation_to_distribution_matches_static_support(self) -> None:
+        """Sharp orientations map directly to one-column phi samples."""
+        dist: OrientationDistribution = create_discrete_orientation(
+            angles_deg=jnp.array([15.0, -15.0]),
+            weights=jnp.array([0.6, 0.4]),
+            distribution_id="twins",
+        )
+
+        produced: Distribution = orientation_to_distribution(
+            dist,
+            base_phi_deg=2.0,
+            use_static_discretization=True,
+        )
+
+        chex.assert_shape(produced.samples, (2, 1))
+        chex.assert_trees_all_close(
+            produced.samples[:, 0],
+            jnp.array([17.0, -13.0]),
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            produced.weights,
+            jnp.array([0.6, 0.4]),
+            atol=1e-12,
+        )
+        assert produced.reduction is ReductionMode.INCOHERENT
+        assert produced.axis_id == "twins"
+
+    def test_orientation_to_distribution_matches_quadrature(self) -> None:
+        """Mosaic orientation producer matches discretize_orientation."""
+        dist: OrientationDistribution = create_gaussian_orientation(
+            center_deg=1.5,
+            fwhm_deg=0.2,
+        )
+        angles: Float[Array, "5"]
+        weights: Float[Array, "5"]
+        angles, weights = discretize_orientation(dist, n_mosaic_points=5)
+
+        produced: Distribution = orientation_to_distribution(
+            dist,
+            n_mosaic_points=5,
+        )
+
+        chex.assert_trees_all_close(produced.samples[:, 0], angles)
+        chex.assert_trees_all_close(produced.weights, weights)
+
+
+class TestSizeProducer(chex.TestCase):
+    """Tests for converting size distributions to generic producers."""
+
+    def test_discretize_size_distribution_returns_normalized_weights(
+        self,
+    ) -> None:
+        """Size quadrature weights remain normalized and positive."""
+        dist: SizeDistribution = create_lognormal_size(
+            mean_ang=100.0,
+            sigma_ang=30.0,
+            min_size_ang=10.0,
+            max_size_ang=500.0,
+        )
+
+        sizes: Float[Array, "5"]
+        weights: Float[Array, "5"]
+        sizes, weights = discretize_size_distribution(dist, n_points=5)
+
+        chex.assert_shape(sizes, (5,))
+        chex.assert_shape(weights, (5,))
+        chex.assert_tree_all_finite(sizes)
+        chex.assert_trees_all_equal(jnp.all(sizes >= dist.min_size_ang), True)
+        chex.assert_trees_all_equal(jnp.all(sizes <= dist.max_size_ang), True)
+        chex.assert_trees_all_close(jnp.sum(weights), 1.0, atol=1e-12)
+
+    def test_size_to_distribution_is_incoherent_one_column_samples(
+        self,
+    ) -> None:
+        """Size producer emits one-column incoherent size samples."""
+        dist: SizeDistribution = create_lognormal_size(
+            mean_ang=100.0,
+            sigma_ang=20.0,
+            min_size_ang=20.0,
+            max_size_ang=300.0,
+        )
+
+        produced: Distribution = size_to_distribution(dist, n_points=3)
+
+        chex.assert_shape(produced.samples, (3, 1))
+        chex.assert_shape(produced.weights, (3,))
+        chex.assert_trees_all_close(jnp.sum(produced.weights), 1.0)
+        assert produced.reduction is ReductionMode.INCOHERENT
+        assert produced.axis_id == "size"
+
+    def test_delta_size_distribution_collapses_to_one_sample(self) -> None:
+        """Static delta size distributions keep one exact support point."""
+        dist = SizeDistribution(
+            distribution_type="delta",
+            mean_ang=jnp.array(75.0),
+            sigma_ang=jnp.array(0.0),
+            min_size_ang=jnp.array(10.0),
+            max_size_ang=jnp.array(200.0),
+        )
+
+        sizes: Float[Array, "1"]
+        weights: Float[Array, "1"]
+        sizes, weights = discretize_size_distribution(dist, n_points=7)
+
+        chex.assert_trees_all_close(sizes, jnp.array([75.0]))
+        chex.assert_trees_all_close(weights, jnp.array([1.0]))
+
+
+class TestProducerComposition(chex.TestCase):
+    """Tests for composing real producer distributions."""
+
+    def test_orientation_size_composition_matches_manual_sum(self) -> None:
+        """Orientation and size producers compose as nested incoherent axes."""
+        orientation = orientation_to_distribution(
+            create_discrete_orientation(
+                angles_deg=jnp.array([0.0, 10.0]),
+                weights=jnp.array([0.25, 0.75]),
+            ),
+            use_static_discretization=True,
+        )
+        size = size_to_distribution(
+            create_lognormal_size(
+                mean_ang=100.0,
+                sigma_ang=10.0,
+                min_size_ang=50.0,
+                max_size_ang=150.0,
+            ),
+            n_points=3,
+        )
+
+        def _bound(sample: Float[Array, "2"]) -> Complex[Array, "2 2"]:
+            phi_deg: Float[Array, ""] = sample[0]
+            size_ang: Float[Array, ""] = sample[1]
+            amplitude: Float[Array, ""] = phi_deg + 0.01 * size_ang
+            return jnp.ones((2, 2), dtype=jnp.complex128) * amplitude
+
+        actual: Float[Array, "2 2"] = apply_distributions(
+            [orientation, size],
+            _bound,
+        )
+        manual: Float[Array, "2 2"] = jnp.zeros((2, 2), dtype=jnp.float64)
+        for orientation_idx in range(orientation.samples.shape[0]):
+            for size_idx in range(size.samples.shape[0]):
+                sample = jnp.concatenate(
+                    [
+                        orientation.samples[orientation_idx],
+                        size.samples[size_idx],
+                    ]
+                )
+                weight = (
+                    orientation.weights[orientation_idx]
+                    * size.weights[size_idx]
+                )
+                manual = manual + weight * jnp.abs(_bound(sample)) ** 2
+
+        chex.assert_trees_all_close(actual, manual, atol=1e-12)
 
 
 class TestOrientationIntegration(chex.TestCase):

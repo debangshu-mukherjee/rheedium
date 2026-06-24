@@ -51,3 +51,16 @@ repos:
         pass_filenames: false
         types: [python]
         stages: [manual]
+      # Informational second-opinion type check with pyright, using the same
+      # [tool.pyright] suppressions the editor (Pylance) already follows. `ty`
+      # remains the enforced checker; this is a manual cross-check that catches
+      # categories ty's suppressions hide (e.g. reportIndexIssue). Invoke with
+      # `pre-commit run --hook-stage manual pyright-scan`. Mirrored by the CI
+      # `pyright-scan` job; non-blocking.
+      - id: pyright-scan
+        name: pyright scan (informational, manual)
+        entry: bash -c "uv run --no-sync pyright src || true"
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [manual]
