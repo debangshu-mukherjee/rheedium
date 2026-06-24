@@ -243,29 +243,39 @@ def crystal_to_edge_on_slices(
         nx_slices - 1,
     )
 
-    def _slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "ny nz"]:
-        def _atom_contribution(
-            atom_idx: Int[Array, ""],
-        ) -> Float[Array, "ny nz"]:
-            atom_position = positions[atom_idx]
-            y_delta_raw = jnp.abs(yy - atom_position[1])
-            y_delta = jnp.minimum(y_delta_raw, l_y - y_delta_raw)
-            z_delta = zz - atom_position[2]
-            radius = jnp.sqrt(y_delta**2 + z_delta**2)
-            in_slice = slice_indices[atom_idx] == slice_idx
-            in_cutoff = radius <= cutoff_value
-            potential = projected_potential(
-                atomic_numbers[atom_idx],
-                radius,
-                parameterization=parameterization,
-            )
-            return jnp.where(in_slice & in_cutoff, potential, 0.0)
+    def _add_atom_to_slice(
+        accumulated: Float[Array, "nx ny nz"],
+        atom_idx: Int[Array, ""],
+    ) -> tuple[Float[Array, "nx ny nz"], None]:
+        atom_position = positions[atom_idx]
+        y_delta_raw = jnp.abs(yy - atom_position[1])
+        y_delta = jnp.minimum(y_delta_raw, l_y - y_delta_raw)
+        z_delta = zz - atom_position[2]
+        radius = jnp.sqrt(y_delta**2 + z_delta**2)
+        in_cutoff = radius <= cutoff_value
+        potential = projected_potential(
+            atomic_numbers[atom_idx],
+            radius,
+            parameterization=parameterization,
+        )
+        contribution: Float[Array, "ny nz"] = jnp.where(
+            in_cutoff,
+            potential,
+            0.0,
+        )
+        updated = accumulated.at[slice_indices[atom_idx]].add(contribution)
+        return updated, None
 
-        atom_indices = jnp.arange(positions.shape[0], dtype=jnp.int32)
-        return jnp.sum(jax.vmap(_atom_contribution)(atom_indices), axis=0)
-
-    x_indices = jnp.arange(nx_slices, dtype=jnp.int32)
-    slices = jax.vmap(_slice_potential)(x_indices)
+    initial_slices: Float[Array, "nx ny nz"] = jnp.zeros(
+        (nx_slices, ny, nz),
+        dtype=jnp.float64,
+    )
+    atom_indices = jnp.arange(positions.shape[0], dtype=jnp.int32)
+    slices, _ = jax.lax.scan(
+        _add_atom_to_slice,
+        initial_slices,
+        atom_indices,
+    )
     return create_edge_on_slices(
         slices=slices,
         dx_slice=actual_dx,

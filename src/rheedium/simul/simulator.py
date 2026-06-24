@@ -60,20 +60,24 @@ from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import (
+    gauss_hermite_nodes_weights,
     incident_wavevector,
     interaction_constant,
     wavelength_ang,
 )
 from rheedium.types import (
+    TRIVIAL_DISTRIBUTION,
     BeamModeDistribution,
     CrystalStructure,
     DetectorGeometry,
     Distribution,
     OrientationDistribution,
     PotentialSlices,
+    ReductionMode,
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
+    create_distribution,
     create_potential_slices,
     create_rheed_pattern,
     discretize_orientation,
@@ -99,6 +103,15 @@ from .form_factors import (
 from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 
 _VALID_THRESHOLD: Final[float] = 0.5
+_KINEMATIC_KERNEL: Final[str] = "kinematic"
+
+
+def _validate_layer0_kernel(kernel: str) -> None:
+    """Validate the public Layer-0 kernel selector."""
+    if kernel != _KINEMATIC_KERNEL:
+        raise ValueError(
+            "Unsupported kernel. Only 'kinematic' is currently implemented."
+        )
 
 
 @jaxtyped(typechecker=beartype)
@@ -1491,6 +1504,183 @@ def log_compress_image(
 
 
 @jaxtyped(typechecker=beartype)
+def _apply_kinematic_distribution(  # noqa: PLR0913
+    distribution: Distribution,
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num,
+    hmax: scalar_int,
+    kmax: scalar_int,
+    detector_distance_mm: scalar_float,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    parameterization: str,
+    surface_config: SurfaceConfig | None,
+) -> Float[Array, "H W"]:
+    """Apply an azimuth-offset distribution to the kinematic kernel."""
+
+    def _amplitude_at_distribution_sample(
+        sample: Float[Array, "D"],
+    ) -> Complex[Array, "H W"]:
+        return kinematic_amplitude(
+            crystal=crystal,
+            voltage_kv=voltage_kv,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg + sample[0],
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            parameterization=parameterization,
+            surface_config=surface_config,
+        )
+
+    return apply_distribution(
+        distribution,
+        _amplitude_at_distribution_sample,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def _legacy_instrument_distribution(
+    angular_divergence_mrad: scalar_float,
+    energy_spread_ev: scalar_float,
+    n_angular_samples: int,
+    n_energy_samples: int,
+) -> Distribution:
+    """Convert legacy broadening widths to a generic instrument axis."""
+    angle_nodes: Float[Array, "A"]
+    angle_weights: Float[Array, "A"]
+    energy_nodes: Float[Array, "E"]
+    energy_weights: Float[Array, "E"]
+    angle_nodes, angle_weights = gauss_hermite_nodes_weights(n_angular_samples)
+    energy_nodes, energy_weights = gauss_hermite_nodes_weights(
+        n_energy_samples
+    )
+    sqrt2: Float[Array, ""] = jnp.sqrt(jnp.asarray(2.0, dtype=jnp.float64))
+    sqrt_pi: Float[Array, ""] = jnp.sqrt(
+        jnp.asarray(jnp.pi, dtype=jnp.float64)
+    )
+    theta_offsets: Float[Array, "A"] = (
+        sqrt2
+        * jnp.asarray(angular_divergence_mrad, dtype=jnp.float64)
+        * 1.0e-3
+        * angle_nodes
+    )
+    energy_offsets: Float[Array, "E"] = (
+        sqrt2 * jnp.asarray(energy_spread_ev, dtype=jnp.float64) * energy_nodes
+    )
+    theta_grid: Float[Array, "A E"]
+    energy_grid: Float[Array, "A E"]
+    theta_grid, energy_grid = jnp.meshgrid(
+        theta_offsets,
+        energy_offsets,
+        indexing="ij",
+    )
+    phi_grid: Float[Array, "A E"] = jnp.zeros_like(theta_grid)
+    weight_grid: Float[Array, "A E"] = (
+        angle_weights[:, None] * energy_weights[None, :]
+    ) / (sqrt_pi**2)
+    samples: Float[Array, "N 3"] = jnp.stack(
+        [
+            theta_grid.ravel(),
+            phi_grid.ravel(),
+            energy_grid.ravel(),
+        ],
+        axis=-1,
+    )
+    return create_distribution(
+        samples=samples,
+        weights=weight_grid.ravel(),
+        reduction=ReductionMode.INCOHERENT,
+        axis_id="legacy_instrument",
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def _apply_kinematic_beam_distribution(  # noqa: PLR0913
+    distribution: Distribution,
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num,
+    hmax: scalar_int,
+    kmax: scalar_int,
+    detector_distance_mm: scalar_float,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    parameterization: str,
+    surface_config: SurfaceConfig | None,
+) -> Float[Array, "H W"]:
+    """Apply a beam-mode-style distribution to the kinematic kernel."""
+    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
+    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
+    voltage_nominal: Float[Array, ""] = jnp.asarray(
+        voltage_kv,
+        dtype=jnp.float64,
+    )
+
+    def _amplitude_at_beam_sample(
+        sample: Float[Array, "3"],
+    ) -> Complex[Array, "H W"]:
+        theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
+            sample[0]
+        )
+        phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(sample[1])
+        voltage_sample_kv: Float[Array, ""] = (
+            voltage_nominal + 1.0e-3 * sample[2]
+        )
+        return kinematic_amplitude(
+            crystal=crystal,
+            voltage_kv=voltage_sample_kv,
+            theta_deg=theta_sample_deg,
+            phi_deg=phi_sample_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            parameterization=parameterization,
+            surface_config=surface_config,
+        )
+
+    return apply_distribution(
+        distribution,
+        _amplitude_at_beam_sample,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def simulate_detector_image(  # noqa: PLR0913
     crystal: CrystalStructure,
     voltage_kv: scalar_num = 20.0,
@@ -1519,6 +1709,7 @@ def simulate_detector_image(  # noqa: PLR0913
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
     render_ctrs_as_streaks: bool = True,
+    kernel: str = _KINEMATIC_KERNEL,
 ) -> Float[Array, "H W"]:
     """Simulate a broadened kinematic detector image from a crystal.
 
@@ -1578,6 +1769,9 @@ def simulate_detector_image(  # noqa: PLR0913
         If True, render each valid crystal truncation rod as a continuous
         detector streak in the dense image. If False, rasterize only the
         discrete Ewald intersections as circular spots. Default: True
+    kernel : str, optional
+        Layer-0 coherent amplitude kernel selector. Currently only
+        ``"kinematic"`` is implemented. Default: ``"kinematic"``.
 
     Returns
     -------
@@ -1591,10 +1785,12 @@ def simulate_detector_image(  # noqa: PLR0913
     1. Kinematic sparse pattern generation via :func:`ewald_simulator`.
     2. Dense detector rasterization as either discrete spots or
        continuous CTR streaks.
-    3. Joint angular-divergence and energy-spread averaging via
+    3. Spot-rendered instrument broadening via the generic Layer-1
+       distribution reducer; legacy CTR streak broadening still uses
        :func:`instrument_broadened_pattern`.
     4. Detector PSF broadening and final normalization.
     """
+    _validate_layer0_kernel(kernel)
     if orientation_distribution is not None and distribution is not None:
         raise ValueError(
             "Pass either orientation_distribution or distribution, not both."
@@ -1604,6 +1800,51 @@ def simulate_detector_image(  # noqa: PLR0913
             "distribution requires render_ctrs_as_streaks=False until CTR "
             "streaks expose a coherent amplitude renderer."
         )
+    if (
+        distribution is None
+        and orientation_distribution is None
+        and not render_ctrs_as_streaks
+    ):
+        instrument_distribution: Distribution = (
+            _legacy_instrument_distribution(
+                angular_divergence_mrad=angular_divergence_mrad,
+                energy_spread_ev=energy_spread_ev,
+                n_angular_samples=n_angular_samples,
+                n_energy_samples=n_energy_samples,
+            )
+        )
+        detector_image: Float[Array, "H W"] = (
+            _apply_kinematic_beam_distribution(
+                instrument_distribution,
+                crystal=crystal,
+                voltage_kv=voltage_kv,
+                theta_deg=theta_deg,
+                phi_deg=phi_deg,
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                parameterization=parameterization,
+                surface_config=surface_config,
+            )
+        )
+        detector_image = detector_psf_convolve(
+            detector_image=detector_image,
+            psf_sigma_pixels=psf_sigma_pixels,
+        )
+        max_intensity: Float[Array, ""] = jnp.maximum(
+            jnp.max(detector_image),
+            1e-12,
+        )
+        return detector_image / max_intensity
 
     def _simulate_dense_image(
         polar_angle_rad: scalar_float,
@@ -1633,15 +1874,36 @@ def simulate_detector_image(  # noqa: PLR0913
             )
 
         if distribution is not None:
+            return _apply_kinematic_distribution(
+                distribution,
+                crystal=crystal,
+                voltage_kv=energy_kev,
+                theta_deg=theta_sample_deg,
+                phi_deg=phi_sample_deg,
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                parameterization=parameterization,
+                surface_config=surface_config,
+            )
 
-            def _amplitude_at_distribution_sample(
-                sample: Float[Array, "D"],
-            ) -> Complex[Array, "H W"]:
-                return kinematic_amplitude(
+        if orientation_distribution is None:
+            if not render_ctrs_as_streaks:
+                return _apply_kinematic_distribution(
+                    TRIVIAL_DISTRIBUTION,
                     crystal=crystal,
                     voltage_kv=energy_kev,
                     theta_deg=theta_sample_deg,
-                    phi_deg=phi_sample_deg + sample[0],
+                    phi_deg=phi_sample_deg,
                     hmax=hmax,
                     kmax=kmax,
                     detector_distance_mm=detector_distance_mm,
@@ -1657,13 +1919,6 @@ def simulate_detector_image(  # noqa: PLR0913
                     parameterization=parameterization,
                     surface_config=surface_config,
                 )
-
-            return apply_distribution(
-                distribution,
-                _amplitude_at_distribution_sample,
-            )
-
-        if orientation_distribution is None:
             sparse_pattern = ewald_simulator(
                 crystal=crystal,
                 voltage_kv=energy_kev,
@@ -1744,33 +1999,26 @@ def simulate_detector_image(  # noqa: PLR0913
             n_mosaic_points=n_mosaic_points,
         )
 
-        def _amplitude_at_orientation_sample(
-            sample: Float[Array, "D"],
-        ) -> Complex[Array, "H W"]:
-            return kinematic_amplitude(
-                crystal=crystal,
-                voltage_kv=energy_kev,
-                theta_deg=theta_sample_deg,
-                phi_deg=phi_sample_deg + sample[0],
-                hmax=hmax,
-                kmax=kmax,
-                detector_distance_mm=detector_distance_mm,
-                temperature=temperature,
-                surface_roughness=surface_roughness,
-                ctr_regularization=ctr_regularization,
-                ctr_power=ctr_power,
-                roughness_power=roughness_power,
-                image_shape_px=image_shape_px,
-                pixel_size_mm=pixel_size_mm,
-                beam_center_px=beam_center_px,
-                spot_sigma_px=spot_sigma_px,
-                parameterization=parameterization,
-                surface_config=surface_config,
-            )
-
-        return apply_distribution(
+        return _apply_kinematic_distribution(
             generic_orientation,
-            _amplitude_at_orientation_sample,
+            crystal=crystal,
+            voltage_kv=energy_kev,
+            theta_deg=theta_sample_deg,
+            phi_deg=phi_sample_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            parameterization=parameterization,
+            surface_config=surface_config,
         )
 
     detector_image: Float[Array, "H W"] = instrument_broadened_pattern(
@@ -1815,6 +2063,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
     n_energy_points: int = 1,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
+    kernel: str = _KINEMATIC_KERNEL,
 ) -> Float[Array, "H W"]:
     """Simulate a detector image by incoherently summing beam modes.
 
@@ -1854,6 +2103,9 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
         Atomic form-factor model.
     surface_config : SurfaceConfig | None, optional
         Surface atom identification configuration.
+    kernel : str, optional
+        Layer-0 coherent amplitude kernel selector. Currently only
+        ``"kinematic"`` is implemented. Default: ``"kinematic"``.
 
     Returns
     -------
@@ -1867,53 +2119,33 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
     coherent kinematic amplitude call; samples are reduced incoherently by the
     generic Layer-1 distribution reducer.
     """
+    _validate_layer0_kernel(kernel)
     distribution: Distribution = decompose_beam_modes(
         beam_modes,
         n_modes_per_axis=n_modes_per_axis,
         n_modes_out_of_plane=n_modes_out_of_plane,
         n_energy_points=n_energy_points,
     )
-    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
-    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
-    voltage_nominal: Float[Array, ""] = jnp.asarray(
-        voltage_kv,
-        dtype=jnp.float64,
-    )
-
-    def _amplitude_at_beam_sample(
-        sample: Float[Array, "3"],
-    ) -> Complex[Array, "H W"]:
-        theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
-            sample[0]
-        )
-        phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(sample[1])
-        voltage_sample_kv: Float[Array, ""] = (
-            voltage_nominal + 1.0e-3 * sample[2]
-        )
-        return kinematic_amplitude(
-            crystal=crystal,
-            voltage_kv=voltage_sample_kv,
-            theta_deg=theta_sample_deg,
-            phi_deg=phi_sample_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            parameterization=parameterization,
-            surface_config=surface_config,
-        )
-
-    modal_image: Float[Array, "H W"] = apply_distribution(
+    modal_image: Float[Array, "H W"] = _apply_kinematic_beam_distribution(
         distribution,
-        _amplitude_at_beam_sample,
+        crystal=crystal,
+        voltage_kv=voltage_kv,
+        theta_deg=theta_deg,
+        phi_deg=phi_deg,
+        hmax=hmax,
+        kmax=kmax,
+        detector_distance_mm=detector_distance_mm,
+        temperature=temperature,
+        surface_roughness=surface_roughness,
+        ctr_regularization=ctr_regularization,
+        ctr_power=ctr_power,
+        roughness_power=roughness_power,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
+        spot_sigma_px=spot_sigma_px,
+        parameterization=parameterization,
+        surface_config=surface_config,
     )
     detector_image: Float[Array, "H W"] = detector_psf_convolve(
         detector_image=modal_image,

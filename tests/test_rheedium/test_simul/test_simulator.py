@@ -47,7 +47,11 @@ from rheedium.simul.simulator import (
     simulate_detector_image_instrument,
     sliced_crystal_to_projected_potential_slices,
 )
-from rheedium.tools import incident_wavevector, wavelength_ang
+from rheedium.tools import (
+    gauss_hermite_nodes_weights,
+    incident_wavevector,
+    wavelength_ang,
+)
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
@@ -2079,10 +2083,10 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(compressed[1, 0], 0.0, atol=1e-12)
         chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
 
-    def test_simulate_detector_image_matches_direct_render_when_unbroadened(
+    def test_simulate_detector_image_uses_layer1_default_when_spot_rendered(
         self,
     ) -> None:
-        """Spot-render mode matches direct rasterization when unbroadened."""
+        """Spot-render default delegates to the trivial Layer-1 reducer."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "voltage_kv": 20.0,
@@ -2098,42 +2102,140 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "beam_center_px": (12.0, 2.0),
             "spot_sigma_px": 1.2,
         }
-        sparse_pattern: Integer[Array, "..."] = RHEEDPattern(
-            G_indices=jnp.array([0, 1], dtype=jnp.int32),
-            k_out=jnp.array(
-                [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]], dtype=jnp.float64
-            ),
-            detector_points=jnp.array(
-                [[0.0, 0.0], [6.0, 8.0]], dtype=jnp.float64
-            ),
-            intensities=jnp.array([1.0, 0.4], dtype=jnp.float64),
+        amplitude: Complex[Array, "16 24"] = kinematic_amplitude(
+            **kwargs,
         )
-        direct_image: Float[Array, "..."] = render_pattern_to_image(
-            pattern=sparse_pattern,
-            image_shape_px=kwargs["image_shape_px"],
-            pixel_size_mm=kwargs["pixel_size_mm"],
-            beam_center_px=kwargs["beam_center_px"],
-            spot_sigma_px=kwargs["spot_sigma_px"],
+        expected: Float[Array, "16 24"] = apply_distribution(
+            TRIVIAL_DISTRIBUTION,
+            lambda _sample: amplitude,
         )
-        with patch(
-            "rheedium.simul.simulator.ewald_simulator",
-            return_value=sparse_pattern,
-        ):
-            orchestrated_image: Float[Array, "..."] = simulate_detector_image(
-                **kwargs,
-                angular_divergence_mrad=0.0,
-                energy_spread_ev=0.0,
-                psf_sigma_pixels=0.0,
-                n_angular_samples=1,
-                n_energy_samples=1,
-                render_ctrs_as_streaks=False,
-            )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        orchestrated_image: Float[Array, "..."] = simulate_detector_image(
+            **kwargs,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+            kernel="kinematic",
+        )
 
         chex.assert_trees_all_close(
             orchestrated_image,
-            direct_image,
+            expected,
             atol=1e-10,
         )
+
+    def test_simulate_detector_image_spot_instrument_uses_distribution(
+        self,
+    ) -> None:
+        """Spot-render instrument widths reduce through Layer-1 mechanics."""
+        image_shape_px: tuple[int, int] = (16, 24)
+        pixel_size_mm: tuple[float, float] = (6.0, 16.0)
+        beam_center_px: tuple[float, float] = (12.0, 2.0)
+        angular_divergence_mrad: float = 0.4
+        energy_spread_ev: float = 0.2
+        n_angular_samples: int = 3
+        n_energy_samples: int = 3
+        angle_nodes: Float[Array, "3"]
+        angle_weights: Float[Array, "3"]
+        energy_nodes: Float[Array, "3"]
+        energy_weights: Float[Array, "3"]
+        angle_nodes, angle_weights = gauss_hermite_nodes_weights(
+            n_angular_samples
+        )
+        energy_nodes, energy_weights = gauss_hermite_nodes_weights(
+            n_energy_samples
+        )
+        sqrt2: Float[Array, ""] = jnp.sqrt(jnp.asarray(2.0, dtype=jnp.float64))
+        sqrt_pi: Float[Array, ""] = jnp.sqrt(
+            jnp.asarray(jnp.pi, dtype=jnp.float64)
+        )
+        theta_offsets: Float[Array, "3"] = (
+            sqrt2 * angular_divergence_mrad * 1.0e-3 * angle_nodes
+        )
+        energy_offsets: Float[Array, "3"] = (
+            sqrt2 * energy_spread_ev * energy_nodes
+        )
+        theta_grid: Float[Array, "3 3"]
+        energy_grid: Float[Array, "3 3"]
+        theta_grid, energy_grid = jnp.meshgrid(
+            theta_offsets,
+            energy_offsets,
+            indexing="ij",
+        )
+        samples: Float[Array, "9 3"] = jnp.stack(
+            [
+                theta_grid.ravel(),
+                jnp.zeros_like(theta_grid).ravel(),
+                energy_grid.ravel(),
+            ],
+            axis=-1,
+        )
+        weights: Float[Array, "9"] = (
+            (angle_weights[:, None] * energy_weights[None, :] / (sqrt_pi**2))
+            .ravel()
+            .astype(jnp.float64)
+        )
+        distribution = create_distribution(
+            samples=samples,
+            weights=weights,
+            reduction=ReductionMode.INCOHERENT,
+        )
+        base_voltage_kv: float = 20.0
+        base_theta_deg: float = 2.0
+        base_phi_deg: float = 3.0
+
+        def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=base_voltage_kv + 1.0e-3 * sample[2],
+                theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
+                phi_deg=base_phi_deg + jnp.rad2deg(sample[1]),
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=1.2,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        with patch(
+            "rheedium.simul.simulator.instrument_broadened_pattern",
+            side_effect=AssertionError("legacy broadening path called"),
+        ):
+            actual: Float[Array, "..."] = simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=base_voltage_kv,
+                theta_deg=base_theta_deg,
+                phi_deg=base_phi_deg,
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=1.2,
+                angular_divergence_mrad=angular_divergence_mrad,
+                energy_spread_ev=energy_spread_ev,
+                psf_sigma_pixels=0.0,
+                n_angular_samples=n_angular_samples,
+                n_energy_samples=n_energy_samples,
+                render_ctrs_as_streaks=False,
+            )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
     def test_simulate_detector_image_trivial_distribution_is_identity(
         self,
@@ -2248,6 +2350,20 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 orientation_distribution=orientation_dist,
                 distribution=TRIVIAL_DISTRIBUTION,
                 render_ctrs_as_streaks=False,
+            )
+
+    def test_simulate_detector_image_rejects_unknown_kernel(self) -> None:
+        """Layer-0 kernel selector fails clearly for unsupported kernels."""
+        with pytest.raises(ValueError, match="Unsupported kernel"):
+            simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                hmax=0,
+                kmax=0,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                render_ctrs_as_streaks=False,
+                kernel="multislice",
             )
 
     def test_simulate_detector_image_instrument_coherent_beam_is_identity(
@@ -2368,6 +2484,22 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_instrument_rejects_unknown_kernel(
+        self,
+    ) -> None:
+        """Instrument wrapper shares the public Layer-0 kernel selector."""
+        with pytest.raises(ValueError, match="Unsupported kernel"):
+            simulate_detector_image_instrument(
+                crystal=_SI_CRYSTAL_2ATOM,
+                beam_modes=create_coherent_beam(),
+                hmax=0,
+                kmax=0,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                kernel="multislice",
+            )
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
         """Check dense rendering elongates CTRs vertically on detector."""
