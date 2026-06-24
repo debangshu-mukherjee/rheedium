@@ -4,10 +4,15 @@ Scope: `rheedium.recon` — turn the inverse problem into a **general, optax-bas
 differentiable solver**: given a measured RHEED pattern (or set), recover the
 latent parameters that produced it — structure / composition / thickness, beam
 coherence (GSM `β`), defect statistics (twin density, grain size, orientation
-spread), and instrument nuisances — by gradient descent through the differentiable
-forward model. This is the realization of the framework's Phase-6 "inverse problem"
-sketch and the autonomous lab's **Loop C** (the differentiable payoff); the
-automatons' `invert_structure` / `recipe_deviation` import this module's API.
+spread), and instrument nuisances — **and, crucially, the full probability
+distributions over those latents** (the orientation spread, the grain-size
+distribution, the beam coherence), not merely point values — by gradient descent
+through the differentiable forward model. **Reconstructing the distributions
+themselves is a key goal** (§2.1), and it is the natural endpoint of a forward
+model that is *literally a function of a `Distribution`*. This is the realization
+of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
+**Loop C** (the differentiable payoff); the automatons' `invert_structure` /
+`recipe_deviation` import this module's API.
 
 Status: **proposed** — gated. **Roadmap position:** third of four —
 [framework](plans/partial/distribution_framework_plan.md) →
@@ -77,6 +82,78 @@ Three layers, each independently testable: **(1)** a reparameterization +
 differentiable-loss foundation, **(2)** an optax solver core, **(3)** robustness
 (multistart), uncertainty, and the recipe-deviation contract on top.
 
+### 2.1 Distribution reconstruction — the key capability
+
+Because the forward model is **literally a function of a `Distribution`** —
+`I = apply(Distribution(samples, weights), kernel)` — inverting it recovers the
+*probability distribution* that produced the data, not just a point estimate.
+This is the deepest capability of the framework + recon combination, in three
+senses:
+
+1. **Parametric** — each producer *is* a parameterized distribution
+   (`OrientationDistribution` peaks+spreads, `SizeDistribution` lognormal params,
+   `BeamModeDistribution` GSM `β`/divergence). Fitting its parameters (the solver
+   core) *is* reconstructing that physical distribution. `fit_orientation_weights`
+   already does this for orientation; the plan generalizes it to every producer.
+2. **Free-form (non-parametric)** — fix a latent grid as the `samples` and fit the
+   `weights` **simplex** directly (the reparameterization layer's `softmax`
+   bijector) under an entropy / smoothness / sparsity prior, recovering an
+   *arbitrary* distribution shape with no family assumption. This needs **no new
+   solver** — it is `solve` over the weight vector.
+3. **Posterior (a distribution over the answer)** — the differentiable model also
+   yields p(distribution │ data): a Laplace/Fisher Gaussian at the optimum now
+   (the UQ phase), with gradient MCMC (HMC/NUTS via `blackjax`) or variational
+   inference as a slot — so the agent gets "the orientation distribution is X with
+   this credible band," not a bare point.
+
+**The `reduction` flag makes this tractable** — and cleanly bifurcated:
+
+- **Incoherent** distributions reduce as `I = Σ_n w_n |A(sample_n)|²` — **linear in
+  the weights**. Reconstructing them is a **convex non-negative linear inverse
+  problem** (NNLS / maximum-entropy deconvolution) over the per-sample intensity
+  library `{|A(sample_n)|²}`: well-posed with regularization, fast, unique up to
+  the operator's null space. Covers orientation, size, grains, beam modes — a
+  dedicated convex fast-path, not gradient descent.
+- **Coherent** distributions reduce as `I = |Σ_n w_n A(sample_n)|²` — **nonlinear
+  in the weights**: gradient descent, non-convex, needs multistart.
+
+**Identifiability (the honest caveat).** The forward operator is a smoothing
+average; distinct distributions can produce near-identical patterns (incoherent
+sums discard phase). Reconstruction recovers the distribution *only up to the
+resolution the data supports* (the operator's effective rank). The entropy/
+smoothness prior fills the null space with the least-committal answer, and the
+posterior (sense 3) reports *which* features of the distribution are actually
+constrained — so recon returns the **identifiable distribution with error bands**,
+never an over-confident shape.
+
+### 2.2 Canonical inverse problems (what you actually ask it)
+
+The one `solve` instantiates a ladder of concrete problems, in increasing
+difficulty and decreasing well-posedness — each the same `ReconProblem` with a
+different *active* latent subset (the rest fixed or supplied as a prior):
+
+1. **Geometry + beam from a known structure** — *given a measured RHEED pattern
+   and a CIF, recover the orientation and beam parameters that generated it.*
+   Structure is fixed from the CIF; fit the ~8 continuous latents — incidence
+   `(θ, φ)` + azimuth/tilt and the beam `(energy, divergence_in/out, GSM
+   β_in/out, energy spread)` as a `BeamModeDistribution`. **The most well-posed
+   and fastest case** (few parameters, structure known) — the natural alignment +
+   beam-metrology problem for the autonomous lab. The one wrinkle is **symmetry**:
+   point-group-equivalent orientations are exact global optima, so seed
+   `multistart` (K3) with the symmetry orbit. Convenience entry
+   `fit_geometry_beam(crystal, measured) -> (orientation, BeamModeDistribution,
+   covariance)`. **The canonical first milestone** and the KG2/KG3 exemplar.
+2. **Distribution reconstruction** (§2.1) — recover the orientation spread, the
+   grain-size distribution, or the beam coherence (parametric family or free-form
+   weights), optionally jointly with the geometry of (1).
+3. **Structure inversion** — fit atomic positions / composition / thickness
+   (hardest; non-convex, seeded by the Loop-B `.xyz` bracket).
+4. **Recipe deviation** (K5) — any of the above against an intended recipe → the
+   per-parameter gap with significance.
+
+The solver, uncertainty, and reporting are shared across all four; they differ
+only in which latents are free.
+
 ---
 
 ## 3. Gated phases
@@ -116,7 +193,9 @@ Until K0 holds this plan does not start.
   `L2`/Huber, **log-intensity** (RHEED spans orders of magnitude), normalized
   cross-correlation (scale-invariant), with **analytic scale/background
   marginalization** so intensity calibration is not a fit parameter; composable
-  priors/regularizers (bounds, smoothness, defect sparsity).
+  priors/regularizers (bounds, smoothness, defect sparsity, and **maximum-entropy
+  / smoothness priors over `Distribution.weights`** for the free-form distribution
+  reconstruction of §2.1 — the regularizer that fills the ill-posed null space).
 
 **Gate KG1:** every loss and every transform is differentiable (finite grad);
 each bijector round-trips (`physical = fwd(inv(physical))` to tolerance); a planted
@@ -135,12 +214,21 @@ a step on a toy objective; universal gate.
 - **Replace** `adam_optimize` / `adagrad_optimize` / `gauss_newton_least_squares`
   with optax-backed equivalents; keep the public names as deprecated shims that
   forward to `solve`.
+- **Distribution reconstruction (§2.1).** `solve` over `Distribution.weights`
+  (with the K1 simplex bijector + entropy prior) recovers a *free-form* shape; and
+  a **convex fast-path** for incoherent distributions — `I = Σ_n w_n |A_n|²` is
+  linear in the weights, so it solves as non-negative least-squares /
+  maximum-entropy over the per-sample library `{|A_n|²}`, no gradient descent
+  (the coherent case stays on `solve`).
 
 **Gate KG2:** on synthetic data simulated from a *known* structure,
 `solve` recovers the parameters to tolerance with a monotone (scheduled) loss;
 the JIT-scan result == the eager result; the optax path reproduces the retired
 hand-rolled optimizers' results to tolerance (regression guard); a **wall-clock
-budget** assertion on the reference problem (the "rapid" claim); universal gate.
+budget** assertion on the reference problem (the "rapid" claim); **a planted
+free-form distribution shape is recovered** — incoherent weights via the convex
+path, a parametric spread (e.g. a lognormal size distribution) via `solve` — to
+tolerance; universal gate.
 
 ### Phase K3 — Robustness: multistart + bracket-then-refine
 
@@ -152,8 +240,9 @@ budget** assertion on the reference problem (the "rapid" claim); universal gate.
   seeds the gradient refine.
 
 **Gate KG3:** `multistart` escapes a *planted* local minimum that a single start
-provably falls into; a bracketed init converges in strictly fewer steps than a
-cold start; reproducible across seeds; universal gate.
+provably falls into (the canonical case: a symmetry-equivalent orientation in the
+§2.2-#1 geometry+beam problem); a bracketed init converges in strictly fewer steps
+than a cold start; reproducible across seeds; universal gate.
 
 ### Phase K4 — Uncertainty quantification (generalized)
 
@@ -162,12 +251,18 @@ cold start; reproducible across seeds; universal gate.
 Gauss–Newton / Fisher covariance from the residual Jacobian (`jax.jacfwd`/`jacrev`),
 a Laplace approximation at the optimum, per-parameter error bars + the correlation
 matrix. UQ is what lets the agent say *what is being grown* **with confidence**,
-not just a point estimate.
+not just a point estimate. This is also the **posterior over a reconstructed
+distribution** (§2.1, sense 3): for a free-form weight vector the Laplace
+covariance is the credible band on the distribution shape, and it flags the
+operator's flat (unidentifiable) directions. Expose a **gradient-MCMC / VI slot
+(`blackjax`)** for full posteriors when the Gaussian approximation is insufficient
+(multimodal orientation, heavy degeneracy).
 
 **Gate KG4:** the recovered covariance matches the **empirical** parameter spread
 over many noisy synthetic realizations to tolerance; the covariance is finite and
 positive semi-definite; it reduces to the existing orientation UQ on that
-sub-problem (regression); universal gate.
+sub-problem (regression); on a free-form reconstruction it reports a calibrated
+band on the recovered shape; universal gate.
 
 ### Phase K5 — the recipe-deviation contract (automaton-facing)
 
@@ -190,8 +285,10 @@ schema; universal gate.
 and (optionally) export the **fixed-iteration grad step** via `tools.export_forward`
 for a deployable inversion; a "Differentiable inversion with optax" guide under
 `docs/source/guides/`; export the inverse API (`ReconProblem`, `solve`,
-`multistart`, `recipe_deviation`, the UQ helpers) via `recon/__init__` `__all__`
-+ Routine Listings, and **freeze it** as the automatons' import surface.
+`multistart`, the §2.2 convenience entries `fit_geometry_beam` /
+`reconstruct_distribution`, `recipe_deviation`, the UQ helpers) via
+`recon/__init__` `__all__` + Routine Listings, and **freeze it** as the
+automatons' import surface.
 
 **Gate KG6:** docs build (`make html`); a reference inversion meets the wall-clock
 budget warm-cache; the public inverse API is exported, typed, and Routine-Listed;
@@ -274,7 +371,11 @@ signal); K6 hardens and freezes the surface for the automatons.
 When complete: `recon` is a **general differentiable inverse-problem solver** —
 one optax-backed `solve` over any latent space, multistart for robustness,
 calibrated uncertainty, and a frozen `recipe_deviation` contract — replacing three
-hand-rolled optimizers and the orientation-only fitter. This is the engine the
+hand-rolled optimizers and the orientation-only fitter. It answers the full ladder
+of §2.2: **orientation + beam from a CIF + pattern** (the fast, well-posed
+alignment case), **probability-distribution reconstruction** (§2.1 — the spread,
+size distribution, or beam coherence, parametric or free-form, *with credible
+bands*), structure inversion, and recipe deviation. This is the engine the
 automatons' Loop C calls to answer, in real time and with error bars, *what is
 actually being grown and how far it is from intent* — the scientific payoff of the
 entire differentiable architecture.

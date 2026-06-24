@@ -53,9 +53,12 @@ this ranks candidate structures by how well their *simulated* RHEED matches the
 **Loop C — inversion (the differentiable payoff).** The keystone, and the reason
 `rheedium` is written in JAX and kept differentiable end-to-end. An automaton
 **rapidly inverts** a measured RHEED pattern — differentiating the forward model
-and fitting structure / composition / thickness by gradient descent — to answer
-two questions the agent needs in real time: *what is actually being grown*, and
-*how far is it from the recipe the LLM agent intended*. That recipe-vs-actual
+by gradient descent — to recover, with credible bands, the **orientation and beam
+parameters** (given a CIF), the **structure / composition / thickness**, and even
+the **probability distributions** over those latents (orientation spread,
+grain-size distribution, beam coherence) — answering the two questions the agent
+needs in real time: *what is actually being grown*, and *how far is it from the
+recipe the LLM agent intended*. That recipe-vs-actual
 deviation is the control signal. The speed work that makes this loop viable
 inside a growth-control cadence — persistent compilation cache, AOT-exported
 forward kernels, the unchecked fast path — already exists in `rheedium.tools`.
@@ -332,6 +335,8 @@ supporting capabilities a forward kernel or a diagnostic needs.
 
 | Script | Pipeline | Key metrics / artifacts |
 |---|---|---|
+| `fit_orientation_beam.py` | measured RHEED + a CIF → `recon.fit_geometry_beam` (orientation + beam params; structure fixed) | recovered `(θ, φ, azimuth)` + `BeamModeDistribution` + covariance, fit overlay |
+| `reconstruct_distribution.py` | measured RHEED + target latent axis → `recon` distribution reconstruction (parametric family or free-form weights) | recovered probability distribution (orientation spread / grain-size / beam coherence) + **credible band** `.json`, shape plot |
 | `invert_structure.py` | measured RHEED frame → differentiable fit via `recon` (grad descent through the forward model) | recovered structure/composition/thickness, fit-loss curve, residual image |
 | `recipe_deviation.py` | intended recipe + measured RHEED → inverted actual + gap | per-parameter intended-vs-actual delta `.json`, severity flag (the control signal) |
 
@@ -561,25 +566,34 @@ per-frame latency thereafter.
 ### Phase 5 — Loop C: inverse — *what is actually being grown*
 
 The keystone, and the payoff of the differentiable architecture. Where Loop B
-*brackets* with a discrete candidate set, Loop C *refines*: it differentiates the
-forward model and fits structure / composition / thickness to the measured RHEED
-by gradient descent — rapidly enough for closed-loop control. Its second output
-is the **recipe deviation**: the per-parameter gap between the LLM agent's
-intended recipe and the inverted reality, which is the control signal the agent
-acts on.
+*brackets* with a discrete candidate set, Loop C *refines* via the
+[recon optax solver](plans/future/recon_optax_plan.md): it differentiates the
+forward model and fits the active latents to the measured RHEED by gradient
+descent — rapidly enough for closed-loop control, **with credible bands**. It
+spans the recon §2.2 ladder, easiest first: **`fit_orientation_beam`** (given a
+CIF + a measured pattern, recover the orientation and beam parameters that
+generated it — the fast, well-posed alignment/beam-metrology case, symmetry
+handled by multistart); **`reconstruct_distribution`** (recover a *probability
+distribution* — orientation spread, grain-size, or beam coherence — as a
+parametric family or free-form weights, with a calibrated band); then
+**`invert_structure`** (the harder structure/composition/thickness fit); and
+**`recipe_deviation`** (the per-parameter gap between intended recipe and inverted
+reality, normalized to a z-score — the control signal the agent acts on).
 
-*Tasks:* `invert_structure` (measured RHEED frame → differentiable fit via
-`recon`: grad descent through the forward model to recover structural parameters);
-`recipe_deviation` (intended recipe + measured RHEED → inverted actual + the
-intended-vs-actual delta and a severity flag). Both lean on the speed machinery —
-the compilation cache, AOT-exported forward kernels, and the unchecked fast path
-— so an inversion completes inside a growth-control cadence.
+*Tasks:* the four automatons above, each a thin wrapper over the frozen recon API
+(`fit_geometry_beam` / `reconstruct_distribution` / `solve` / `recipe_deviation`);
+all lean on the speed machinery — compilation cache, AOT-exported forward kernels,
+the unchecked fast path — so an inversion completes inside a growth-control
+cadence.
 
-**Gate G5:** on a synthetic measured pattern generated from a *known* structure,
-`invert_structure --smoke` recovers the known parameters to tolerance (finite
-gradients, loss decreasing); `recipe_deviation` reports the correct gap against a
-deliberately-mismatched intended recipe; both smoke-green in the ephemeral CI env
-with valid `--describe`; a wall-clock budget assertion guards the "rapid" claim.
+**Gate G5:** on a synthetic pattern generated from a *known* CIF + orientation +
+beam, `fit_orientation_beam --smoke` recovers the orientation and beam parameters
+to tolerance (finite gradients, loss decreasing, multistart resolving the symmetry
+orbit); `reconstruct_distribution` recovers a *planted distribution shape* with a
+calibrated band; `invert_structure` recovers a known structure; `recipe_deviation`
+reports the correct gap against a deliberately-mismatched intended recipe; all
+smoke-green in the ephemeral CI env with valid `--describe`; a wall-clock budget
+assertion guards the "rapid" claim.
 
 ### Phase 6 — Diagnostics & ensemble
 
@@ -630,7 +644,7 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | G2 | exemplar runs `--smoke` green in clean ephemeral CI; template frozen |
 | G3 | **Loop B** — `screen_xyz_ensemble` ranks `.xyz`, bridge scores measured-vs-sim; reproducible; exported kinematic artifact runs over ≥2 atom counts from one lowering |
 | G4 | **Loop A** — `rheed_ingest` emits growth state; `growth_monitor` recovers a known oscillation period; `--serve` warms up once then steady per-frame latency |
-| G5 | **Loop C** — `invert_structure` recovers a known structure; `recipe_deviation` reports the gap; within wall-clock budget |
+| G5 | **Loop C** — `fit_orientation_beam` recovers orientation+beam from a CIF; `reconstruct_distribution` recovers a planted shape w/ band; `invert_structure` recovers a known structure; `recipe_deviation` reports the gap; within budget |
 | G6 | diagnostics/ensemble smoke-green; valid `--describe` |
 | G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green; `export_model` StableHLO deserializes + runs in a separate process |
 | G8 | docs build with the guide; `INDEX.md` matches the directory |
