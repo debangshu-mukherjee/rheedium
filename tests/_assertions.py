@@ -1,8 +1,12 @@
 """Typed Chex assertion helpers for tests."""
 
+from collections.abc import Callable
+
 import chex
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from beartype import beartype
 from jaxtyping import jaxtyped
 
@@ -16,6 +20,26 @@ from ._types import (
     NpF32Tensor3,
     NpF32Vector,
 )
+
+
+def assert_rejects(
+    fn: Callable[..., object],
+    *args: object,
+    match: str | None = None,
+    **kwargs: object,
+) -> None:
+    """Assert a call rejects eagerly and under ``eqx.filter_jit``.
+
+    Use ``eqx.filter_jit``, not bare ``jax.jit``: under ``jax.jit`` the
+    ``error_if`` callback still fires and still raises, but the message is an
+    uninformative Equinox blob, so a ``match=`` regex would not match.
+    ``filter_jit`` surfaces the real message string.
+    """
+    with pytest.raises(Exception, match=match):
+        fn(*args, **kwargs)
+
+    with pytest.raises(Exception, match=match):
+        eqx.filter_jit(lambda: fn(*args, **kwargs))()
 
 
 @jaxtyped(typechecker=beartype)

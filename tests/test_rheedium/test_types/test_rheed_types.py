@@ -4,7 +4,6 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import pytest
@@ -34,19 +33,7 @@ from rheedium.types.rheed_types import (
     identify_surface_atoms,
 )
 
-
-def assert_rejects(
-    fn: Callable[..., object],
-    *args: object,
-    match: str | None = None,
-    **kwargs: object,
-) -> None:
-    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
-    with pytest.raises(Exception, match=match):
-        fn(*args, **kwargs)
-
-    with pytest.raises(Exception, match=match):
-        eqx.filter_jit(lambda: fn(*args, **kwargs))()
+from ..._assertions import assert_rejects
 
 
 class TestRHEEDPattern(chex.TestCase):

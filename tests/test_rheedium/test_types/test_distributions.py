@@ -1,12 +1,8 @@
 """Tests for orientation-distribution probability types and integration."""
 
-from collections.abc import Callable
-
 import chex
-import equinox as eqx
 import jax
 import jax.numpy as jnp
-import pytest
 from jax import tree_util
 from jaxtyping import Array, Float
 
@@ -23,19 +19,7 @@ from rheedium.types import (
 )
 from rheedium.types.custom_types import scalar_float
 
-
-def assert_rejects(
-    fn: Callable[..., object],
-    *args: object,
-    match: str | None = None,
-    **kwargs: object,
-) -> None:
-    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
-    with pytest.raises(Exception, match=match):
-        fn(*args, **kwargs)
-
-    with pytest.raises(Exception, match=match):
-        eqx.filter_jit(lambda: fn(*args, **kwargs))()
+from ..._assertions import assert_rejects
 
 
 class TestOrientationDistributionFactories(chex.TestCase):

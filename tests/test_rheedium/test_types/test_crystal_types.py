@@ -3,7 +3,6 @@
 from collections.abc import Callable
 
 import chex
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -33,19 +32,7 @@ from rheedium.types.crystal_types import (
     create_xyz_data,
 )
 
-
-def assert_rejects(
-    fn: Callable[..., object],
-    *args: object,
-    match: str | None = None,
-    **kwargs: object,
-) -> None:
-    """Assert a call rejects eagerly and under ``eqx.filter_jit``."""
-    with pytest.raises(Exception, match=match):
-        fn(*args, **kwargs)
-
-    with pytest.raises(Exception, match=match):
-        eqx.filter_jit(lambda: fn(*args, **kwargs))()
+from ..._assertions import assert_rejects
 
 
 class EwaldKwargs(TypedDict):

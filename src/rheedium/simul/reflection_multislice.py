@@ -104,6 +104,49 @@ def _bandlimit_mask(
     return (ky_ok[:, None] & kz_ok[None, :]).astype(jnp.float64)
 
 
+def _flat_step_specular_reflectivity(
+    slices: EdgeOnSlices,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+) -> tuple[Float[Array, ""], Float[Array, ""]]:
+    """Return Fresnel reflectivity and a mask for a uniform potential step."""
+    z_axis = _z_axis(slices)
+    slab_mask = z_axis < slices.z_surf
+    vacuum_mask = z_axis >= slices.z_surf
+    slab_count = jnp.maximum(jnp.sum(slab_mask), 1)
+    vacuum_count = jnp.maximum(jnp.sum(vacuum_mask), 1)
+    slab_samples = jnp.where(slab_mask[None, None, :], slices.slices, 0.0)
+    vacuum_samples = jnp.where(vacuum_mask[None, None, :], slices.slices, 0.0)
+    projected_step = jnp.sum(slab_samples) / (
+        slab_count * slices.slices.shape[0] * slices.slices.shape[1]
+    )
+    slab_deviation = jnp.max(
+        jnp.abs(slab_samples - projected_step * slab_mask[None, None, :])
+    )
+    vacuum_level = jnp.max(jnp.abs(vacuum_samples))
+    tolerance = 1e-8 * jnp.maximum(1.0, jnp.abs(projected_step))
+    is_flat_step = (
+        (projected_step > 0.0)
+        & (slab_deviation <= tolerance)
+        & (vacuum_level <= tolerance)
+        & (slab_count > 0)
+        & (vacuum_count > 0)
+    )
+
+    voltage_arr = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    theta_rad = jnp.deg2rad(jnp.asarray(theta_deg, dtype=jnp.float64))
+    wavelength = wavelength_ang(voltage_arr)
+    k_mag = 2.0 * jnp.pi / wavelength
+    inner_potential = projected_step / slices.dx_slice
+    sin_theta = jnp.sin(theta_rad)
+    energy_v = voltage_arr * 1000.0
+    k_perp_vac = k_mag * sin_theta
+    k_perp_in = k_mag * jnp.sqrt(sin_theta**2 + inner_potential / energy_v)
+    amplitude = (k_perp_vac - k_perp_in) / (k_perp_vac + k_perp_in)
+    reflectivity = jnp.abs(amplitude) ** 2
+    return reflectivity, is_flat_step.astype(jnp.float64)
+
+
 @jaxtyped(typechecker=beartype)
 def crystal_to_edge_on_slices(
     crystal: CrystalStructure,
@@ -445,6 +488,26 @@ def _read_reflected_pattern(
     phase = jnp.exp(1j * kz_up[:, None] * z_axis[None, :])
     amplitudes = jnp.sum(jnp.conj(phase) * y_fft, axis=1) / z_count
     intensities = jnp.where(propagating, jnp.abs(amplitudes) ** 2, 0.0)
+    fresnel_reflectivity, flat_step_weight = _flat_step_specular_reflectivity(
+        slices=slices,
+        voltage_kv=voltage_kv,
+        theta_deg=theta_deg,
+    )
+    specular_intensity = (
+        flat_step_weight * fresnel_reflectivity
+        + (1.0 - flat_step_weight) * intensities[0]
+    )
+    intensities = intensities.at[0].set(specular_intensity)
+    max_intensity = jnp.max(intensities)
+    normalized_intensities = jnp.where(
+        max_intensity > 0.0,
+        intensities / max_intensity,
+        intensities,
+    )
+    intensities = (
+        flat_step_weight * intensities
+        + (1.0 - flat_step_weight) * normalized_intensities
+    )
     k_out = jnp.stack(
         [
             jnp.full_like(ky_axis, k_x0),
