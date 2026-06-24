@@ -7,12 +7,16 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jaxtyping import Array, Float
+import pytest
+from jaxtyping import Array, Complex, Float
 
 from rheedium.procs.grains import (
     apply_misorientation_distribution,
     grain_distribution_average,
+    grain_population_to_distribution,
 )
+from rheedium.simul.beam_averaging import apply_distribution
+from rheedium.types import Distribution, ReductionMode
 from rheedium.types.custom_types import scalar_float
 
 
@@ -120,6 +124,89 @@ class TestGrainDistributionAverage(chex.TestCase):
             np.array([1.0, 2.0, 3.0]),
             atol=1e-6,
         )
+
+
+class TestGrainPopulationToDistribution(chex.TestCase):
+    """Tests for grain_population_to_distribution."""
+
+    def test_builds_incoherent_orientation_size_samples(self) -> None:
+        """Verify grain metadata becomes an incoherent latent distribution."""
+        distribution: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([-1.0, 2.0, 5.0]),
+            grain_sizes_angstrom=jnp.array([80.0, 120.0, 160.0]),
+            grain_volume_fractions=jnp.array([1.0, 2.0, 1.0]),
+            axis_id="test_grains",
+        )
+
+        chex.assert_shape(distribution.samples, (3, 2))
+        chex.assert_shape(distribution.weights, (3,))
+        chex.assert_trees_all_close(
+            distribution.samples,
+            jnp.array(
+                [
+                    [-1.0, 80.0],
+                    [2.0, 120.0],
+                    [5.0, 160.0],
+                ],
+                dtype=jnp.float64,
+            ),
+        )
+        chex.assert_trees_all_close(
+            distribution.weights,
+            jnp.array([0.25, 0.5, 0.25], dtype=jnp.float64),
+        )
+        assert distribution.reduction is ReductionMode.INCOHERENT
+        assert distribution.axis_id == "test_grains"
+
+    def test_matches_pattern_space_grain_average(self) -> None:
+        """Verify generic Layer-1 reduction matches grain intensity mixing."""
+        distribution: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([1.0, 3.0, 5.0]),
+            grain_sizes_angstrom=jnp.array([50.0, 100.0, 150.0]),
+            grain_volume_fractions=jnp.array([0.2, 0.3, 0.5]),
+        )
+
+        def _domain_pattern(
+            sample: Float[Array, "2"],
+        ) -> Float[Array, "2 2"]:
+            angle_deg: Float[Array, ""] = sample[0]
+            size_angstrom: Float[Array, ""] = sample[1]
+            return jnp.array(
+                [
+                    [angle_deg + 0.01 * size_angstrom, angle_deg**2],
+                    [0.001 * size_angstrom, 2.0 + 0.1 * angle_deg],
+                ],
+                dtype=jnp.float64,
+            )
+
+        domain_patterns: Float[Array, "3 2 2"] = jax.vmap(_domain_pattern)(
+            distribution.samples
+        )
+        expected: Float[Array, "2 2"] = grain_distribution_average(
+            domain_patterns,
+            jnp.array([0.2, 0.3, 0.5]),
+        )
+
+        def _bound_amplitude(
+            sample: Float[Array, "2"],
+        ) -> Complex[Array, "2 2"]:
+            return jnp.sqrt(_domain_pattern(sample)).astype(jnp.complex128)
+
+        actual: Float[Array, "2 2"] = apply_distribution(
+            distribution,
+            _bound_amplitude,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-12)
+
+    def test_rejects_mismatched_grain_metadata_lengths(self) -> None:
+        """Verify one-to-one grain metadata is required."""
+        with pytest.raises(ValueError, match="share length"):
+            grain_population_to_distribution(
+                orientation_angles_deg=jnp.array([0.0, 1.0]),
+                grain_sizes_angstrom=jnp.array([100.0]),
+                grain_volume_fractions=jnp.array([0.4, 0.6]),
+            )
 
 
 class TestApplyMisorientationDistribution(chex.TestCase):

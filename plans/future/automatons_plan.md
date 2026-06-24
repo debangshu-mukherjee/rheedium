@@ -15,8 +15,17 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **proposed** — not yet implemented. This document is authoritative and
-self-contained.
+Status: **proposed** — not yet implemented, and **sequenced last** in the
+roadmap: [framework](plans/partial/distribution_framework_plan.md) →
+[rationalization](plans/future/rationalization_refactor_plan.md) →
+[recon (optax inversion)](plans/future/recon_optax_plan.md) → automatons. It
+begins only after all three land. The reason for last: these scripts call
+`rheedium`'s public API heavily — the *rationalized* forward surface (the
+collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
+the **recon `solve` / `recipe_deviation` API that Loop C consumes** — so each
+automaton is written once and pins (PEP 723) to the stable release that carries
+both, not rewritten after the API changes underneath it. This document is
+authoritative and self-contained.
 
 ---
 
@@ -455,6 +464,21 @@ output decides pass/fail, not a review opinion. The discipline: no experiment
 automaton is written before the contract gate (G1) is locked, and no fan-out
 before the exemplar gate (G2) proves the whole loop end-to-end.
 
+### Entry — Gate A0 (roadmap precondition for *any* work below)
+
+Both the
+[rationalization refactor](plans/future/rationalization_refactor_plan.md) (R0–R6)
+and the [recon optax solver](plans/future/recon_optax_plan.md) (K0–KG6) are
+**complete** — which transitively requires the
+[distribution framework](plans/partial/distribution_framework_plan.md). A
+`rheedium` release carrying the rationalized API (the ~6-arg
+`simulate_detector_image` + config carriers + unified sweeps) **and** the frozen
+recon inverse API (`ReconProblem` / `solve` / `multistart` / `recipe_deviation`,
+which Loop C's `invert_structure` + `recipe_deviation` automatons import) is
+**published**, so the PEP 723 pin (§3) targets it. Until A0 holds this plan does
+not start — building automatons against the pre-refactor or pre-solver API would
+mean rewriting every one afterward.
+
 ### Phase 0 — Contract design (paper, no code)
 
 *Tasks:* freeze the **result-JSON schema** and the **`--describe` param schema**
@@ -600,6 +624,7 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 
 | Gate | One-line pass condition |
 |---|---|
+| **A0** | rationalization + recon-optax complete (⇒ framework complete); rationalized API + frozen recon inverse API published; PEP 723 pin targets it |
 | G0 | result + `--describe` JSON schemas committed and reviewed |
 | G1 | harness tests + schema-snapshot green; `ty`/`ruff` clean |
 | G2 | exemplar runs `--smoke` green in clean ephemeral CI; template frozen |

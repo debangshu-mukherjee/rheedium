@@ -9,6 +9,9 @@ misorientation distributions.
 
 Routine Listings
 ----------------
+:func:`grain_population_to_distribution`
+    Convert grain orientation/size/fraction metadata into a generic
+    incoherent Distribution.
 :func:`grain_distribution_average`
     Incoherently average a bank of domain patterns with continuous grain
     fractions.
@@ -24,11 +27,105 @@ this later, but continuous orientation populations are the first public
 inverse-facing contract.
 """
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
 from jaxtyping import Array, Float, jaxtyped
 
-from rheedium.types import scalar_float
+from rheedium.types import (
+    Distribution,
+    ReductionMode,
+    create_distribution,
+    scalar_float,
+)
+
+
+@jaxtyped(typechecker=beartype)
+def grain_population_to_distribution(
+    orientation_angles_deg: Float[Array, "N"],
+    grain_sizes_angstrom: Float[Array, "M"],
+    grain_volume_fractions: Float[Array, "K"],
+    axis_id: str | None = "grains",
+) -> Distribution:
+    """Convert grain population metadata to a generic Distribution.
+
+    :see: :class:`~.test_grains.TestGrainPopulationToDistribution`
+
+    Parameters
+    ----------
+    orientation_angles_deg : Float[Array, "N"]
+        Grain/domain azimuth samples in degrees, relative to the nominal
+        crystal orientation.
+    grain_sizes_angstrom : Float[Array, "M"]
+        Characteristic grain sizes in Angstroms, aligned one-to-one with
+        ``orientation_angles_deg``.
+    grain_volume_fractions : Float[Array, "K"]
+        Non-negative grain population fractions. Values are normalized by the
+        generic distribution factory.
+    axis_id : str | None, optional
+        Optional static label for the returned ensemble axis. Default:
+        ``"grains"``.
+
+    Returns
+    -------
+    distribution : Distribution
+        Incoherent grain distribution with samples
+        ``[orientation_angle_deg, grain_size_angstrom]``.
+
+    Notes
+    -----
+    1. Convert grain orientations, sizes, and fractions to ``float64`` arrays.
+    2. Validate one-dimensional, one-to-one grain metadata.
+    3. Reject non-positive grain sizes via ``eqx.error_if``.
+    4. Delegate probability normalization to :func:`create_distribution`.
+
+    See Also
+    --------
+    grain_distribution_average : Pattern-space grain intensity mixture.
+    """
+    orientation_angles: Float[Array, "N"] = jnp.asarray(
+        orientation_angles_deg,
+        dtype=jnp.float64,
+    )
+    grain_sizes: Float[Array, "M"] = jnp.asarray(
+        grain_sizes_angstrom,
+        dtype=jnp.float64,
+    )
+    grain_fractions: Float[Array, "K"] = jnp.asarray(
+        grain_volume_fractions,
+        dtype=jnp.float64,
+    )
+    if orientation_angles.ndim != 1:
+        raise ValueError("orientation_angles_deg must have shape (N,)")
+    if grain_sizes.ndim != 1:
+        raise ValueError("grain_sizes_angstrom must have shape (N,)")
+    if grain_fractions.ndim != 1:
+        raise ValueError("grain_volume_fractions must have shape (N,)")
+    if orientation_angles.shape[0] != grain_sizes.shape[0]:
+        raise ValueError(
+            "orientation_angles_deg and grain_sizes_angstrom must share length"
+        )
+    if orientation_angles.shape[0] != grain_fractions.shape[0]:
+        raise ValueError(
+            "orientation_angles_deg and grain_volume_fractions must share "
+            "length"
+        )
+
+    checked_sizes: Float[Array, "N"] = eqx.error_if(
+        grain_sizes,
+        jnp.any(grain_sizes <= 0.0),
+        "grain_sizes_angstrom must be positive",
+    )
+    samples: Float[Array, "N 2"] = jnp.stack(
+        [orientation_angles, checked_sizes],
+        axis=-1,
+    )
+    return create_distribution(
+        samples=samples,
+        weights=grain_fractions,
+        reduction=ReductionMode.INCOHERENT,
+        axis_id=axis_id,
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -152,4 +249,5 @@ def apply_misorientation_distribution(
 __all__: list[str] = [
     "apply_misorientation_distribution",
     "grain_distribution_average",
+    "grain_population_to_distribution",
 ]

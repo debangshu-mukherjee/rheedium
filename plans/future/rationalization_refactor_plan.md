@@ -8,9 +8,15 @@ wires a dangling piece, or collapses a duplicated path — and every item must
 **preserve the Core Principle** (CONTRIBUTING.md → *Invertible Modularity*): no
 refactor may weld a differentiable seam shut.
 
-Status: **proposed** — sequenced *after* (and partly interleaved with) the
-framework phases. Assumes the three-layer architecture (amplitude kernels →
-`Distribution` integrator → producers) exists.
+Status: **proposed** — gated, sequenced **strictly after** the
+distribution-framework plan completes (no longer interleaved). Entry gate **R0**:
+the framework's six phases have landed and the suite is green. Assumes the
+three-layer architecture (amplitude kernels → `Distribution` integrator →
+producers) is fully in place. **Roadmap position:** second of four — framework →
+*this* → [recon (optax inversion)](plans/future/recon_optax_plan.md) →
+[automatons](plans/future/automatons_plan.md). The recon solver and the
+automatons are both written against the rationalized API this plan produces, so
+neither starts until it completes.
 
 Guard on every workstream below: **tests stay green, public results unchanged
 (or migrated behind a deprecation), and `jax.grad` still flows end-to-end.** A
@@ -18,7 +24,7 @@ refactor that breaks differentiability has failed even if tests pass.
 
 ---
 
-## 1. Why now
+## 1. Why — and why after the framework
 
 The framework turns four structural facts into cleanup opportunities:
 
@@ -29,8 +35,14 @@ The framework turns four structural facts into cleanup opportunities:
    clones) collapse once parameters are bundled into PyTree config objects.
 4. **Two parallel detector-projection paths** unify on one `DetectorGeometry`.
 
-Doing these *with* the framework rather than after keeps the diff coherent and
-prevents a second migration.
+Doing these **after** the framework — not interleaved — is the deliberate
+sequencing: the framework is a large, in-flight migration (the simulator is
+mid-inversion), and layering structural refactors on a half-migrated `simulate_
+detector_image` would be churn-on-churn against a moving baseline. Once the
+framework lands, its enablers exist (`apply`/`apply_all`, the `DetectorGeometry`
+slot, the instrument wrapper, producers returning `Distribution`s), so each
+cleanup below becomes a mechanical harvest against a *stable* tree, reviewable in
+isolation.
 
 ---
 
@@ -155,23 +167,127 @@ changes need a migration path:
 
 ---
 
-## 4. Sequencing (interleave with framework phases)
+## 4. Gated phases (sequenced after the framework)
 
-| After framework phase | Refactor workstream |
-|-----------------------|---------------------|
-| Phase 1 (Layer 0+1, trivial default) | W4 (detector unify), W3 start (`DetectorGeometry`) |
-| Phase 2 (retrofit orientation/size) | W1 (collapse integrators), W2 (dangling code) |
-| Phase 3 (beam modes) | W3 finish (`BeamSpec`), W7 (naming) |
-| Phase 4 (defect producers) | W5 (`procs` split), W6 (sweeps collapse) |
-| Any time | W8 (module reorg) — mechanical, low-risk |
+The workstreams of §2 are scheduled as a strict gated sequence. Each phase is
+one independently reviewable PR that ends at a **gate**: an objectively checkable
+set of conditions that must all hold before the next phase starts.
 
-Each row is an independently reviewable PR that leaves the suite green.
+### Entry — Gate R0 (the precondition for *any* work below)
+
+The distribution-framework plan is **complete**: all six framework phases landed,
+the suite is green, and `simulate_detector_image` is the Layer-1 integrator with
+`kernel=` / `distribution=` first-class. **Reconcile overlap first** — the
+framework's own backlog (the unified `DetectorGeometry`, retiring
+`coherence_envelope`) may already be done; if so, R1/R3 shrink to verification
+rather than work. Until R0 holds this plan does not start.
+
+### Universal gate (applies to *every* phase, on top of its specific gate)
+
+The §5 guardrails, as pass/fail commands:
+
+- `jax.grad` through the touched path returns **finite gradients**;
+- **results unchanged**: `chex.assert_trees_all_close` vs the pre-refactor output,
+  *or* a documented `DeprecationWarning` shim;
+- **no new premature reduction**: no `|·|²`, hard threshold, discrete swap, or
+  data-dependent Python branch added inside a kernel or carrier (reviewer-verified
+  — the silent failure mode);
+- **net complexity down**: `pygount` LOC and/or argument-count reduced, or a
+  dangling symbol removed;
+- suite green; `ty` / `ruff` clean.
+
+### Phase R1 — Detector unification (foundational)  ·  W4 + `DetectorGeometry` half of W3
+
+*Tasks:* route `project_on_detector`, `project_on_detector_geometry`,
+`detector_extent_mm`, `render_pattern_to_image`, `_render_ctr_streaks_to_image`
+through one `DetectorGeometry` carrier (the `types/detector.py` the framework
+slot-defined); intensity and amplitude render variants share one coordinate map.
+
+**Gate RG1:** kinematic and (future) multislice paths assert *identical* detector
+extents from the shared carrier; pixelwise regression vs pre-refactor images;
+universal gate.
+
+### Phase R2 — Collapse the ensemble integrators (highest payoff)  ·  W1
+
+*Tasks:* `integrate_over_orientation`, `grains.grain_distribution_average` /
+`apply_misorientation_distribution`, `surface_modifier.incoherent_domain_average`,
+`ewald_simulator_with_orientation_distribution` + the nested orientation `vmap`s,
+and `instrument_broadened_pattern`'s quadrature → all become "build a
+`Distribution`, call `apply` / `apply_all`."
+
+**Gate RG2:** each retired path reproduces its pre-refactor output to tolerance;
+the count of bespoke averaging functions drops to the one reducer (asserted by an
+inventory/grep-guard test); universal gate.
+
+### Phase R3 — Retire dangling code  ·  W2
+
+*Tasks:* delete `coherence_envelope` (or demote to a documented single-mode
+shortcut), closing the double-counting risk; confirm `SizeDistribution` is fully
+consumed by the framework's `finite_domain` producer and delete any residual dead
+path.
+
+**Gate RG3:** no unreferenced public symbol remains in the touched modules
+(import-graph check); every removal carries a deprecation shim (§3); universal
+gate.
+
+### Phase R4 — Parameter-object rationalization + sweeps collapse  ·  W3 (finish) + W6
+
+*Tasks:* bundle the 24-arg `simulate_detector_image` into `DetectorGeometry`,
+`BeamSpec` (extend `ElectronBeam`), `SurfaceCTRParams`, `RenderParams` → a ~6-arg
+signature; collapse the seven `*_sweep` clones + `generate_*_sweeps` chunking onto
+one or two generic helpers (config + axis/`Distribution` + `distribute_batched`).
+Introduce carriers **additively first** (accept old kwargs *and* new objects),
+migrate call sites, then deprecate the kwargs.
+
+**Gate RG4:** public signature arg-count drops below the set threshold; the seven
+sweep functions reduce to ≤2; the old-kwargs path still works behind a
+`DeprecationWarning`; tutorials + `generate_*` scripts updated in the same PR;
+universal gate.
+
+### Phase R5 — `procs` return-type split + naming/units  ·  W5 + W7
+
+*Tasks:* make the procs trichotomy explicit and documented — structure builders →
+`CrystalStructure`, statistical/defect modifiers → `Distribution`, sub-coherence
+disorder → structure modifier; standardize the `voltage_kv`/`energy_kev` and
+`theta_deg`/`polar_rad` boundary conversions in one place, aliasing the other
+through deprecation.
+
+**Gate RG5:** every `procs` public function's return type matches the trichotomy
+(documented in each module's `Notes`); one canonical energy/angle unit at the
+public boundary with deprecated aliases; universal gate.
+
+### Phase R6 — Module reorganization (mechanical, low-risk)  ·  W8
+
+*Tasks:* split `types/distributions.py` into a `types/distributions/` subpackage
+(base, orientation, size, beam, defects) with a re-exporting `__init__`; separate
+the Layer-0 amplitude kernels from the Layer-1 integrator into clearly named
+`simul` modules so the layering is visible in the tree.
+
+**Gate RG6:** public import paths unchanged (re-exports preserve
+`rheedium.types.*` / `rheedium.simul.*`); a no-op import-parity test; universal
+gate.
+
+### Gate summary
+
+| Gate | Pass condition (+ the universal gate) |
+|------|----------------------------------------|
+| **R0** | framework complete + green; overlap with framework backlog reconciled |
+| **RG1** | one `DetectorGeometry`; identical extents; pixelwise regression |
+| **RG2** | ~5 averaging paths → 1 reducer; per-path regression |
+| **RG3** | no dangling public symbol; deprecation shims for removals |
+| **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deprecated, not broken |
+| **RG5** | `procs` trichotomy enforced; one unit at the boundary |
+| **RG6** | module reorg with unchanged public import paths |
+
+R1–R3 are the structural debt the framework most exposes (do first); R4–R5 are
+the readability/ergonomics wins; R6 is cosmetic and may land any time after R0.
 
 ---
 
-## 5. Guardrails (the principle, operationalized)
+## 5. Guardrails (the principle, operationalized) — the universal gate
 
-Every refactor PR must demonstrate:
+These four are the **universal gate** referenced by every phase in §4; every
+refactor PR must demonstrate them in addition to its phase-specific gate:
 
 1. **Differentiability preserved** — a `jax.grad` smoke test through the touched
    path returns finite gradients (add to the PR's tests if not already covered).

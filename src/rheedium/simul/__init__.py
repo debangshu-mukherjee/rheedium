@@ -111,6 +111,8 @@ Routine Listings
     Rasterize a sparse RHEEDPattern onto a dense detector image.
 :func:`render_amplitude_to_field`
     Rasterize sparse complex amplitudes onto a dense detector field.
+:func:`render_ctr_amplitude_to_field`
+    Rasterize sparse complex CTR amplitudes onto dense detector streaks.
 :func:`rod_profile_function`
     Lateral width profile of rods due to finite correlation length.
 :func:`roughness_damping`
@@ -208,6 +210,7 @@ from .simulator import (
     project_on_detector,
     project_on_detector_geometry,
     render_amplitude_to_field,
+    render_ctr_amplitude_to_field,
     render_pattern_to_image,
     simulate_detector_image,
     simulate_detector_image_instrument,
@@ -285,6 +288,7 @@ __all__: list[str] = [
     "rod_profile_function",
     "roughness_damping",
     "render_amplitude_to_field",
+    "render_ctr_amplitude_to_field",
     "render_pattern_to_image",
     "reflection_multislice_propagate",
     "reflection_multislice_simulator",

@@ -16,19 +16,20 @@ the Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
 `apply_distribution` / `apply_distributions` reduction + nested-composition
 helpers (`src/rheedium/simul/beam_averaging.py`), the Layer-0
 `render_amplitude_to_field` complex renderer and a conservative
-`kinematic_amplitude` bridge (`src/rheedium/simul/simulator.py`), Phase-2
+`kinematic_amplitude` bridge, plus `render_ctr_amplitude_to_field` for complex
+CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
 *adapters* `orientation_to_distribution` / `size_to_distribution`,
 `integrate_over_orientation` as a thin `apply_distribution` wrapper, and the
 spot-rendered `simulate_detector_image(..., distribution=...)` Layer-1 entry
 point. `SizeDistribution` is now wired into finite-domain physics through
 `finite_domain_intensities_for_size_distribution`, which uses the generic size
 producer and incoherently averages per-size rod-overlap intensities. The
-spot-rendered no-distribution path now uses the same Layer-1 reducer for both
-the trivial identity case and the legacy public instrument widths, converting
+no-distribution path now uses the same Layer-1 reducer for both the trivial
+identity case and the legacy public instrument widths, converting
 `angular_divergence_mrad` / `energy_spread_ev` into an incoherent
 `Distribution` over `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` rather
-than calling the old angular+energy broadening helper. `simulate_detector_image(
-..., kernel="kinematic")` exposes the first public Layer-0 kernel selector. Phase 3
+than calling the old angular+energy broadening helper for spot or CTR default
+images. `simulate_detector_image(..., kernel="kinematic")` exposes the first public Layer-0 kernel selector. Phase 3
 beam-mode foundations are started: `BeamModeDistribution`,
 `create_gaussian_schell_beam`, `create_coherent_beam`, `decompose_beam_modes`,
 and `decompose_beam_modes_static` now emit a generic incoherent `Distribution` over
@@ -38,23 +39,27 @@ anisotropic GSM samples. `beam_modes_from_electron_beam`,
 `ElectronBeam` metadata and source presets to the GSM producer.
 `simulate_detector_image_instrument` now consumes beam modes through the Layer-1
 reducer and binds `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` into the
-kinematic amplitude kernel. All exported through `rheedium.types` /
+kinematic amplitude kernel, and `simulate_detector_image(..., beam_modes=...)`
+now exposes the same explicit beam-mode path. Generic `distribution=` and
+explicit `beam_modes=` paths can render CTR streak amplitudes. All exported
+through `rheedium.types` /
 `rheedium.simul` with tests (distribution validation, reduction algebra,
 composition, amplitude parity, coherent interference, trivial→intensity,
 simulator distribution identity / manual Layer-1 parity, size-distribution
 finite-domain parity, beam-mode normalization / variance / coherent-limit
-checks, ElectronBeam/preset bridge checks, and instrument-wrapper Layer-1
-parity).
+checks, ElectronBeam/preset bridge checks, instrument-wrapper Layer-1 parity,
+main-simulator beam-mode parity, and CTR amplitude-renderer parity). Phase 4 is
+started: `grain_population_to_distribution` converts grain orientation / size /
+fraction metadata into an incoherent generic `Distribution`, with tests showing
+Layer-1 reduction matches the existing `grain_distribution_average` intensity
+mixture semantics.
 
 **Not yet done:** the full core inversion — `simulate_detector_image` still has
-legacy CTR orchestration paths; `distribution=` is currently limited to the
-spot-rendered coherent-amplitude path because CTR streaks do not yet expose a
-complex amplitude renderer, and `kernel=` currently supports only the kinematic
-kernel. Also pending: the unified `DetectorGeometry` carrier (plan wanted a new
-`types/detector.py`); completing the Phase 3 default-path replacement for CTR
-streaks and explicit beam-mode defaults; Phase 4 defect producers; Phase 5
-`multislice_amplitude`; Phase 6 inverse problem; and retiring
-`coherence_envelope` / the remaining CTR-only angular+energy Gaussian
+legacy orientation+CTR orchestration paths; `kernel=` currently supports only
+the kinematic kernel. Also pending: the unified `DetectorGeometry` carrier
+(plan wanted a new `types/detector.py`); the remaining Phase 4 twin / step
+defect producers; Phase 5 `multislice_amplitude`; Phase 6 inverse problem; and retiring
+`coherence_envelope` / the remaining orientation+CTR angular+energy Gaussian
 quadrature path. Moved from `plans/future/` to `plans/partial/` on landing the
 Phase-1 slice.
 
@@ -65,6 +70,12 @@ Builds on
 [parallel_sweeps_plan.md](plans/implemented/parallel_sweeps_plan.md): the product ensemble
 is exactly the [`tools.distribute_batched`](src/rheedium/tools/parallel.py) batch
 axis.
+
+**Roadmap position:** first of four — *this* →
+[rationalization refactor](plans/future/rationalization_refactor_plan.md) →
+[recon (optax inversion)](plans/future/recon_optax_plan.md) →
+[automatons](plans/future/automatons_plan.md). Each downstream plan is gated on
+this one completing.
 
 Decisions locked: **(a)** the default distribution is *trivial-sharp* (single
 coherent pattern, no hidden broadening); **kinematic** amplitude kernel ships in

@@ -39,6 +39,8 @@ Routine Listings
     Rasterize a sparse RHEEDPattern onto a dense detector image grid.
 :func:`render_amplitude_to_field`
     Rasterize sparse complex reflection amplitudes onto a dense detector field.
+:func:`render_ctr_amplitude_to_field`
+    Rasterize sparse CTR amplitudes onto elongated complex detector streaks.
 :func:`simulate_detector_image`
     High-level kinematic detector-image orchestration with beam broadening.
 :func:`sliced_crystal_to_projected_potential_slices`
@@ -1270,6 +1272,7 @@ def kinematic_amplitude(  # noqa: PLR0913
     pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
     beam_center_px: Tuple[float, float] = (96.0, 8.0),
     spot_sigma_px: scalar_float = 1.4,
+    render_ctrs_as_streaks: bool = False,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
 ) -> Complex[Array, "H W"]:
@@ -1302,6 +1305,9 @@ def kinematic_amplitude(  # noqa: PLR0913
         Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
     spot_sigma_px : scalar_float, optional
         Gaussian intensity width in detector pixels.
+    render_ctrs_as_streaks : bool, optional
+        If True, render sparse amplitudes as elongated CTR streak amplitudes
+        instead of compact spot amplitudes. Default: False.
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` or ``"kirkland"``.
     surface_config : SurfaceConfig | None, optional
@@ -1342,6 +1348,15 @@ def kinematic_amplitude(  # noqa: PLR0913
     amplitudes: Complex[Array, "N"] = jnp.sqrt(
         jnp.maximum(sparse_pattern.intensities, 0.0)
     ).astype(jnp.complex128)
+    if render_ctrs_as_streaks:
+        return render_ctr_amplitude_to_field(
+            pattern=sparse_pattern,
+            amplitudes=amplitudes,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+        )
     return render_amplitude_to_field(
         pattern=sparse_pattern,
         amplitudes=amplitudes,
@@ -1349,6 +1364,111 @@ def kinematic_amplitude(  # noqa: PLR0913
         pixel_size_mm=pixel_size_mm,
         beam_center_px=beam_center_px,
         spot_sigma_px=spot_sigma_px,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def render_ctr_amplitude_to_field(
+    pattern: RHEEDPattern,
+    amplitudes: Complex[Array, "N"],
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+) -> Complex[Array, "H W"]:
+    """Rasterize sparse complex amplitudes as detector CTR streaks.
+
+    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
+
+    Parameters
+    ----------
+    pattern : RHEEDPattern
+        Sparse detector pattern with detector coordinates in millimetres.
+    amplitudes : Complex[Array, "N"]
+        Complex reflection amplitudes aligned with ``pattern.detector_points``.
+    image_shape_px : Tuple[int, int]
+        Output detector field shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float]
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float]
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    spot_sigma_px : scalar_float
+        Gaussian spot-core width in detector pixels.
+
+    Returns
+    -------
+    field : Complex[Array, "H W"]
+        Dense coherent detector field with elongated CTR envelopes.
+
+    Notes
+    -----
+    1. Render each reflection as a compact Bragg core plus an elongated CTR
+       halo.
+    2. Put the halo in quadrature with the core so a single reflection's
+       ``|field|²`` reproduces the legacy intensity renderer exactly.
+    3. Leave normalization to the downstream intensity reducer.
+    """
+    height_px, width_px = image_shape_px
+    x_mm_per_px, y_mm_per_px = pixel_size_mm
+    center_x_px, center_y_px = beam_center_px
+    sigma_x_px: Float[Array, ""] = jnp.asarray(
+        spot_sigma_px,
+        dtype=jnp.float64,
+    )
+    sigma_y_px: Float[Array, ""] = jnp.maximum(4.0 * sigma_x_px, 2.5)
+    spot_core_weight: Float[Array, ""] = jnp.asarray(1.0, dtype=jnp.float64)
+    streak_halo_weight: Float[Array, ""] = jnp.asarray(0.6, dtype=jnp.float64)
+    amplitudes_arr: Complex[Array, "N"] = jnp.asarray(
+        amplitudes,
+        dtype=jnp.complex128,
+    )
+    if amplitudes_arr.shape[0] != pattern.detector_points.shape[0]:
+        raise ValueError("amplitudes length must match detector_points")
+
+    valid_mask: Bool[Array, "N"] = pattern.G_indices >= 0
+    x_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    )
+    y_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    )
+    valid_amplitudes: Complex[Array, "N"] = jnp.where(
+        valid_mask,
+        amplitudes_arr,
+        0.0 + 0.0j,
+    )
+    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+    x_grid: Float[Array, "H W"]
+    y_grid: Float[Array, "H W"]
+    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+
+    def _render_one_streak(
+        x0_px: Float[Array, ""],
+        y0_px: Float[Array, ""],
+        amplitude: Complex[Array, ""],
+    ) -> Complex[Array, "H W"]:
+        core_envelope: Float[Array, "H W"] = jnp.exp(
+            -0.25 * ((x_grid - x0_px) / sigma_x_px) ** 2
+            - 0.25 * ((y_grid - y0_px) / sigma_x_px) ** 2
+        )
+        halo_envelope: Float[Array, "H W"] = jnp.exp(
+            -0.25 * ((x_grid - x0_px) / sigma_x_px) ** 2
+            - 0.25 * ((y_grid - y0_px) / sigma_y_px) ** 2
+        )
+        streak_envelope: Complex[Array, "H W"] = (
+            jnp.sqrt(spot_core_weight) * core_envelope
+            + 1j * jnp.sqrt(streak_halo_weight) * halo_envelope
+        )
+        return amplitude * streak_envelope
+
+    return jnp.sum(
+        jax.vmap(_render_one_streak)(
+            x_pixels,
+            y_pixels,
+            valid_amplitudes,
+        ),
+        axis=0,
     )
 
 
@@ -1522,6 +1642,7 @@ def _apply_kinematic_distribution(  # noqa: PLR0913
     pixel_size_mm: Tuple[float, float],
     beam_center_px: Tuple[float, float],
     spot_sigma_px: scalar_float,
+    render_ctrs_as_streaks: bool,
     parameterization: str,
     surface_config: SurfaceConfig | None,
 ) -> Float[Array, "H W"]:
@@ -1547,6 +1668,7 @@ def _apply_kinematic_distribution(  # noqa: PLR0913
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
             spot_sigma_px=spot_sigma_px,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
             parameterization=parameterization,
             surface_config=surface_config,
         )
@@ -1632,6 +1754,7 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
     pixel_size_mm: Tuple[float, float],
     beam_center_px: Tuple[float, float],
     spot_sigma_px: scalar_float,
+    render_ctrs_as_streaks: bool,
     parameterization: str,
     surface_config: SurfaceConfig | None,
 ) -> Float[Array, "H W"]:
@@ -1670,6 +1793,7 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
             spot_sigma_px=spot_sigma_px,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
             parameterization=parameterization,
             surface_config=surface_config,
         )
@@ -1705,6 +1829,10 @@ def simulate_detector_image(  # noqa: PLR0913
     n_energy_samples: int = 5,
     orientation_distribution: OrientationDistribution | None = None,
     distribution: Distribution | None = None,
+    beam_modes: BeamModeDistribution | None = None,
+    n_beam_modes_per_axis: int = 3,
+    n_beam_modes_out_of_plane: int | None = None,
+    n_beam_energy_points: int = 1,
     n_mosaic_points: scalar_int = 7,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
@@ -1756,8 +1884,20 @@ def simulate_detector_image(  # noqa: PLR0913
     distribution : Distribution | None, optional
         Generic Layer-1 latent distribution. The first sample coordinate is
         interpreted as an azimuthal offset in degrees relative to the current
-        ``phi_deg`` sample. Currently supported by the spot-rendered coherent
-        amplitude path, so pass ``render_ctrs_as_streaks=False``.
+        ``phi_deg`` sample.
+    beam_modes : BeamModeDistribution | None, optional
+        Explicit GSM beam-mode producer. When supplied, the amplitude-rendered
+        path uses the generic Layer-1 reducer over
+        ``[delta_theta_rad, delta_phi_rad, delta_energy_ev]`` beam samples.
+        Default: None.
+    n_beam_modes_per_axis : int, optional
+        In-plane transverse GSM mode count when ``beam_modes`` is supplied.
+        Default: 3.
+    n_beam_modes_out_of_plane : int | None, optional
+        Optional out-of-plane transverse GSM mode count. Default: None.
+    n_beam_energy_points : int, optional
+        Longitudinal energy quadrature count when ``beam_modes`` is supplied.
+        Default: 1.
     n_mosaic_points : scalar_int, optional
         Orientation quadrature points per peak when
         ``orientation_distribution`` is supplied. Default: 7
@@ -1785,8 +1925,8 @@ def simulate_detector_image(  # noqa: PLR0913
     1. Kinematic sparse pattern generation via :func:`ewald_simulator`.
     2. Dense detector rasterization as either discrete spots or
        continuous CTR streaks.
-    3. Spot-rendered instrument broadening via the generic Layer-1
-       distribution reducer; legacy CTR streak broadening still uses
+    3. No-distribution instrument broadening via the generic Layer-1
+       distribution reducer; legacy orientation+CTR broadening still uses
        :func:`instrument_broadened_pattern`.
     4. Detector PSF broadening and final normalization.
     """
@@ -1795,16 +1935,54 @@ def simulate_detector_image(  # noqa: PLR0913
         raise ValueError(
             "Pass either orientation_distribution or distribution, not both."
         )
-    if distribution is not None and render_ctrs_as_streaks:
+    if beam_modes is not None and distribution is not None:
+        raise ValueError("Pass either beam_modes or distribution, not both.")
+    if beam_modes is not None and orientation_distribution is not None:
         raise ValueError(
-            "distribution requires render_ctrs_as_streaks=False until CTR "
-            "streaks expose a coherent amplitude renderer."
+            "beam_modes and orientation_distribution composition is not wired "
+            "through simulate_detector_image yet."
         )
-    if (
-        distribution is None
-        and orientation_distribution is None
-        and not render_ctrs_as_streaks
-    ):
+    if beam_modes is not None:
+        beam_distribution: Distribution = decompose_beam_modes(
+            beam_modes,
+            n_modes_per_axis=n_beam_modes_per_axis,
+            n_modes_out_of_plane=n_beam_modes_out_of_plane,
+            n_energy_points=n_beam_energy_points,
+        )
+        detector_image: Float[Array, "H W"] = (
+            _apply_kinematic_beam_distribution(
+                beam_distribution,
+                crystal=crystal,
+                voltage_kv=voltage_kv,
+                theta_deg=theta_deg,
+                phi_deg=phi_deg,
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                render_ctrs_as_streaks=render_ctrs_as_streaks,
+                parameterization=parameterization,
+                surface_config=surface_config,
+            )
+        )
+        detector_image = detector_psf_convolve(
+            detector_image=detector_image,
+            psf_sigma_pixels=psf_sigma_pixels,
+        )
+        max_intensity: Float[Array, ""] = jnp.maximum(
+            jnp.max(detector_image),
+            1e-12,
+        )
+        return detector_image / max_intensity
+    if distribution is None and orientation_distribution is None:
         instrument_distribution: Distribution = (
             _legacy_instrument_distribution(
                 angular_divergence_mrad=angular_divergence_mrad,
@@ -1832,6 +2010,7 @@ def simulate_detector_image(  # noqa: PLR0913
                 pixel_size_mm=pixel_size_mm,
                 beam_center_px=beam_center_px,
                 spot_sigma_px=spot_sigma_px,
+                render_ctrs_as_streaks=render_ctrs_as_streaks,
                 parameterization=parameterization,
                 surface_config=surface_config,
             )
@@ -1892,6 +2071,7 @@ def simulate_detector_image(  # noqa: PLR0913
                 pixel_size_mm=pixel_size_mm,
                 beam_center_px=beam_center_px,
                 spot_sigma_px=spot_sigma_px,
+                render_ctrs_as_streaks=render_ctrs_as_streaks,
                 parameterization=parameterization,
                 surface_config=surface_config,
             )
@@ -1916,6 +2096,7 @@ def simulate_detector_image(  # noqa: PLR0913
                     pixel_size_mm=pixel_size_mm,
                     beam_center_px=beam_center_px,
                     spot_sigma_px=spot_sigma_px,
+                    render_ctrs_as_streaks=False,
                     parameterization=parameterization,
                     surface_config=surface_config,
                 )
@@ -2017,6 +2198,7 @@ def simulate_detector_image(  # noqa: PLR0913
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
             spot_sigma_px=spot_sigma_px,
+            render_ctrs_as_streaks=False,
             parameterization=parameterization,
             surface_config=surface_config,
         )
@@ -2144,6 +2326,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
         pixel_size_mm=pixel_size_mm,
         beam_center_px=beam_center_px,
         spot_sigma_px=spot_sigma_px,
+        render_ctrs_as_streaks=False,
         parameterization=parameterization,
         surface_config=surface_config,
     )
@@ -2718,6 +2901,7 @@ __all__: list[str] = [
     "project_on_detector",
     "project_on_detector_geometry",
     "render_amplitude_to_field",
+    "render_ctr_amplitude_to_field",
     "render_pattern_to_image",
     "simulate_detector_image",
     "simulate_detector_image_instrument",

@@ -34,6 +34,8 @@ Routine Listings
     GaAs(001)-2x4 beta2 As-rich surface slab.
 :func:`grain_distribution_average`
     Incoherently average patterns from a grain population.
+:func:`grain_population_to_distribution`
+    Convert grain orientation/size/fraction metadata to a Distribution.
 :func:`incoherent_domain_average`
     Incoherently average RHEED patterns from multiple domains.
 :func:`log_intensity_transform`
@@ -74,6 +76,7 @@ from .crystal_defects import (
 from .grains import (
     apply_misorientation_distribution,
     grain_distribution_average,
+    grain_population_to_distribution,
 )
 from .library import (
     gaas001_2x4,
@@ -116,6 +119,7 @@ __all__: list[str] = [
     "create_surface_slab",
     "gaas001_2x4",
     "grain_distribution_average",
+    "grain_population_to_distribution",
     "incoherent_domain_average",
     "log_intensity_transform",
     "mgo001_bulk_terminated",
