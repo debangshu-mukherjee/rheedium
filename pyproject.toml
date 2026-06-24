@@ -175,9 +175,6 @@ exclude = [
     "venv",
     "docs",
 ]
-# Skip excluded paths (e.g. docs build infra / example notebooks) even when a
-# file is passed explicitly, e.g. by the pre-commit hook or an editor. Keeps
-# the lint scope equal to CI's `ruff check src/ tests/`.
 force-exclude = true
 
 [tool.ruff.format]
@@ -289,38 +286,20 @@ root = ["src/", "."]
 include = ["src", "tests", "docs"]
 
 [tool.ty.rules]
-# ty does not understand beartype/jaxtyping decorator stacks, causing
-# false positives on decorated function signatures.
 too-many-positional-arguments = "ignore"
 missing-argument = "ignore"
 unknown-argument = "ignore"
-# np.loadtxt overload resolution fails with Optional[Path] arguments.
 no-matching-overload = "ignore"
-# JAX arrays vs Python scalars: jaxtyping scalar types (scalar_int,
-# scalar_float) are unions of int|Array, and JAX operations return
-# Array where ty expects bool/int/float.
 invalid-assignment = "ignore"
 invalid-argument-type = "ignore"
-# Enforced: src currently has zero unresolved-attribute violations, so keeping
-# this at "error" catches real attribute-access bugs going forward. Tests use
-# beartype-wrapped constructors heavily (which defeat attribute resolution) and
-# are exempted via the [[tool.ty.overrides]] block below.
 unresolved-attribute = "error"
 
-# Per-path rule overrides. Tests lean on beartype-wrapped factories and
-# fixtures that the static checker cannot follow; the idiom rules that the
-# project tolerates in src are additionally noisy there, so they stay ignored
-# for tests only while src keeps the stricter settings above.
 [[tool.ty.overrides]]
 include = ["tests/**"]
 
 [tool.ty.overrides.rules]
 unresolved-attribute = "ignore"
 
-# Pyright / Pylance (VS Code) configuration. Pylance does not understand the
-# jaxtyping + beartype + JAX idioms this project relies on, producing false
-# positives on otherwise-correct code. These rules mirror the [tool.ty.rules]
-# suppressions above so the editor matches the project's actual type checker.
 [tool.pyright]
 include = ["src"]
 exclude = [
@@ -336,25 +315,12 @@ exclude = [
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
-# Re-annotating a parameter with a concrete jaxtyping shape inside the body
-# (e.g. `x: Float[Array, "n 3"] = jnp.asarray(x)`) is an intentional idiom.
 reportRedeclaration = "none"
-# jaxtyping scalar types (scalar_int, scalar_float) are unions of int|float|
-# Array, and JAX/NumPy operations return Array where a Python scalar is
-# declared. Same rationale as ty's invalid-assignment / invalid-argument-type.
 reportAssignmentType = "none"
 reportArgumentType = "none"
-# np.loadtxt(Optional[Path]) and jnp.linspace(num = scalar_int) overload
-# resolution fails in the stubs; beartype decorators also confuse call checks.
 reportCallIssue = "none"
-# jax.Device and jaxtyping dimension specifiers are seen as "variables" in
-# type expressions by Pyright's view of the JAX stubs.
 reportInvalidTypeForm = "none"
-# Namespace-package re-exports: names listed in __all__ are present in the
-# submodules but Pyright cannot resolve them through the namespace layout.
 reportUnsupportedDunderAll = "none"
-# beartype-wrapped functions lose attribute visibility, matching ty's
-# unresolved-attribute suppression.
 reportAttributeAccessIssue = "none"
 
 [tool.interrogate]
