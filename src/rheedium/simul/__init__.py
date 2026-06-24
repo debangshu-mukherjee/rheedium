@@ -57,6 +57,8 @@ Routine Listings
     Find kinematically allowed reflections for given experimental conditions.
 :func:`finite_domain_intensities`
     Compute intensities with finite domain broadening.
+:func:`finite_domain_intensities_for_size_distribution`
+    Average finite-domain intensities over a SizeDistribution.
 :func:`gaussian_rod_profile`
     Gaussian lateral width profile of rods due to finite correlation length.
 :func:`get_mean_square_displacement`
@@ -157,6 +159,7 @@ from .finite_domain import (
     compute_shell_sigma,
     extent_to_rod_sigma,
     finite_domain_intensities,
+    finite_domain_intensities_for_size_distribution,
 )
 from .form_factors import (
     atomic_scattering_factor,
@@ -249,6 +252,7 @@ __all__: list[str] = [
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
     "finite_domain_intensities",
+    "finite_domain_intensities_for_size_distribution",
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "instrument_broadened_pattern",

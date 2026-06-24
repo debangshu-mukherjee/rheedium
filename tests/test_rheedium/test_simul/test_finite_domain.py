@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
+import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
 from jaxtyping import Array, Float
@@ -20,7 +21,13 @@ from rheedium.simul.finite_domain import (
     compute_shell_sigma,
     extent_to_rod_sigma,
     finite_domain_intensities,
+    finite_domain_intensities_for_size_distribution,
     rod_ewald_overlap,
+)
+from rheedium.types import (
+    SizeDistribution,
+    create_lognormal_size,
+    size_to_distribution,
 )
 from rheedium.types.crystal_types import (
     CrystalStructure,
@@ -658,6 +665,112 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(overlap)
         chex.assert_tree_all_finite(intensities)
+
+    def test_size_distribution_delta_matches_single_domain_extent(
+        self,
+    ) -> None:
+        """Delta size distribution reproduces one finite-domain evaluation."""
+        size_dist: SizeDistribution = SizeDistribution(
+            distribution_type="delta",
+            mean_ang=jnp.asarray(40.0, dtype=jnp.float64),
+            sigma_ang=jnp.asarray(0.0, dtype=jnp.float64),
+            min_size_ang=jnp.asarray(10.0, dtype=jnp.float64),
+            max_size_ang=jnp.asarray(80.0, dtype=jnp.float64),
+        )
+        aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 0.25)
+        expected_overlap: Float[Array, "N"]
+        expected_intensities: Float[Array, "N"]
+        expected_overlap, expected_intensities = finite_domain_intensities(
+            ewald=self.ewald,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            domain_extent_ang=jnp.array([40.0, 40.0, 10.0]),
+        )
+
+        actual_overlap: Float[Array, "N"]
+        actual_intensities: Float[Array, "N"]
+        actual_overlap, actual_intensities = (
+            finite_domain_intensities_for_size_distribution(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                size_distribution=size_dist,
+                domain_aspect_ratio=aspect_ratio,
+                n_size_points=5,
+            )
+        )
+
+        chex.assert_trees_all_close(
+            actual_overlap,
+            expected_overlap,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            actual_intensities,
+            expected_intensities,
+            atol=1e-12,
+        )
+
+    def test_size_distribution_matches_manual_weighted_sum(self) -> None:
+        """SizeDistribution bridge equals explicit incoherent averaging."""
+        size_dist: SizeDistribution = create_lognormal_size(
+            mean_ang=80.0,
+            sigma_ang=12.0,
+            min_size_ang=40.0,
+            max_size_ang=140.0,
+        )
+        size_axis = size_to_distribution(size_dist, n_points=3)
+        aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 0.5)
+        aspect_array: Float[Array, "3"] = jnp.array(aspect_ratio)
+
+        def _manual_size_sample(
+            sample: Float[Array, "1"],
+        ) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
+            return finite_domain_intensities(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                domain_extent_ang=sample[0] * aspect_array,
+            )
+
+        overlap_bank: Float[Array, "S N"]
+        intensity_bank: Float[Array, "S N"]
+        overlap_bank, intensity_bank = jax.vmap(_manual_size_sample)(
+            size_axis.samples
+        )
+        expected_overlap: Float[Array, "N"] = jnp.einsum(
+            "s,sn->n",
+            size_axis.weights,
+            overlap_bank,
+        )
+        expected_intensities: Float[Array, "N"] = jnp.einsum(
+            "s,sn->n",
+            size_axis.weights,
+            intensity_bank,
+        )
+        actual_overlap: Float[Array, "N"]
+        actual_intensities: Float[Array, "N"]
+        actual_overlap, actual_intensities = (
+            finite_domain_intensities_for_size_distribution(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                size_distribution=size_dist,
+                domain_aspect_ratio=aspect_ratio,
+                n_size_points=3,
+            )
+        )
+
+        chex.assert_trees_all_close(
+            actual_overlap,
+            expected_overlap,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            actual_intensities,
+            expected_intensities,
+            atol=1e-12,
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(

@@ -19,6 +19,8 @@ Routine Listings
     Convert domain extent to reciprocal-space rod widths.
 :func:`finite_domain_intensities`
     Compute intensities with finite domain broadening.
+:func:`finite_domain_intensities_for_size_distribution`
+    Incoherently average finite-domain intensities over a SizeDistribution.
 :func:`rod_ewald_overlap`
     Compute overlap between broadened rods and Ewald shell.
 
@@ -50,6 +52,8 @@ References
 
 from __future__ import annotations
 
+import equinox as eqx
+import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
@@ -57,8 +61,12 @@ from jaxtyping import Array, Bool, Float, jaxtyped
 
 from rheedium.tools import incident_wavevector
 from rheedium.types import (
+    Distribution,
     EwaldData,
+    SizeDistribution,
     scalar_float,
+    scalar_int,
+    size_to_distribution,
 )
 
 _MIN_EXTENT_ANG: float = 1.0
@@ -482,10 +490,108 @@ def finite_domain_intensities(
     return overlap_factors, modified_intensities
 
 
+@jaxtyped(typechecker=beartype)
+def finite_domain_intensities_for_size_distribution(
+    ewald: EwaldData,
+    theta_deg: scalar_float,
+    phi_deg: scalar_float,
+    size_distribution: SizeDistribution,
+    domain_aspect_ratio: Tuple[float, float, float] = (1.0, 1.0, 0.5),
+    n_size_points: scalar_int = 7,
+    energy_spread_frac: scalar_float = 1e-4,
+    beam_divergence_rad: scalar_float = 1e-3,
+) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
+    r"""Average finite-domain intensities over a domain-size distribution.
+
+    :see: :class:`~.test_finite_domain.TestSizeDistributionFiniteDomain`
+
+    Parameters
+    ----------
+    ewald : EwaldData
+        Pre-computed angle-independent Ewald data.
+    theta_deg, phi_deg : scalar_float
+        Beam incidence and azimuth angles in degrees.
+    size_distribution : SizeDistribution
+        Statistical distribution over coherent lateral domain sizes.
+    domain_aspect_ratio : Tuple[float, float, float], optional
+        Relative mapping from each scalar size sample to
+        ``[Lx, Ly, Lz]`` domain extent. Default: ``(1.0, 1.0, 0.5)``.
+    n_size_points : scalar_int, optional
+        Quadrature point count for non-delta size distributions. Default: 7.
+    energy_spread_frac : scalar_float, optional
+        Fractional energy spread used in shell broadening. Default: 1e-4.
+    beam_divergence_rad : scalar_float, optional
+        Beam divergence in radians used in shell broadening. Default: 1e-3.
+
+    Returns
+    -------
+    averaged_overlap : Float[Array, "N"]
+        Probability-weighted overlap factors for each reciprocal point.
+    averaged_intensities : Float[Array, "N"]
+        Probability-weighted finite-domain intensities.
+
+    Notes
+    -----
+    Domain size is an incoherent ensemble axis: each finite coherent domain
+    scatters with its own rod width, and the measured signal is the weighted
+    sum of per-size intensities.
+    """
+    aspect_ratio: Float[Array, "3"] = jnp.asarray(
+        domain_aspect_ratio, dtype=jnp.float64
+    )
+    if aspect_ratio.shape != (3,):
+        raise ValueError("domain_aspect_ratio must have shape (3,)")
+    checked_aspect_ratio: Float[Array, "3"] = eqx.error_if(
+        aspect_ratio,
+        jnp.any(~jnp.isfinite(aspect_ratio)),
+        "domain_aspect_ratio must be finite",
+    )
+    checked_aspect_ratio = eqx.error_if(
+        checked_aspect_ratio,
+        jnp.any(checked_aspect_ratio <= 0.0),
+        "domain_aspect_ratio must be positive",
+    )
+    size_axis: Distribution = size_to_distribution(
+        size_distribution,
+        n_points=n_size_points,
+    )
+
+    def _evaluate_size_sample(
+        sample: Float[Array, "1"],
+    ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
+        domain_extent_ang: Float[Array, "3"] = sample[0] * checked_aspect_ratio
+        return finite_domain_intensities(
+            ewald=ewald,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            domain_extent_ang=domain_extent_ang,
+            energy_spread_frac=energy_spread_frac,
+            beam_divergence_rad=beam_divergence_rad,
+        )
+
+    overlap_bank: Float[Array, "S N"]
+    intensity_bank: Float[Array, "S N"]
+    overlap_bank, intensity_bank = jax.vmap(_evaluate_size_sample)(
+        size_axis.samples
+    )
+    averaged_overlap: Float[Array, "N"] = jnp.einsum(
+        "s,sn->n",
+        size_axis.weights,
+        overlap_bank,
+    )
+    averaged_intensities: Float[Array, "N"] = jnp.einsum(
+        "s,sn->n",
+        size_axis.weights,
+        intensity_bank,
+    )
+    return averaged_overlap, averaged_intensities
+
+
 __all__: list[str] = [
     "compute_domain_extent",
     "compute_shell_sigma",
     "extent_to_rod_sigma",
     "finite_domain_intensities",
+    "finite_domain_intensities_for_size_distribution",
     "rod_ewald_overlap",
 ]
