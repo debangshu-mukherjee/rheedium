@@ -12,6 +12,8 @@ Routine Listings
     JAX-compatible crystal structure with fractional and Cartesian coordinates.
 :class:`DetectorGeometry`
     Configuration for RHEED detector geometry (tilt, curvature, offsets).
+:class:`Distribution`
+    Generic weighted ensemble over latent simulation samples.
 :class:`ElectronBeam`
     Complete specification of an electron beam for RHEED simulation.
 :class:`EwaldData`
@@ -29,6 +31,8 @@ Routine Listings
 :class:`RHEEDPattern`
     Container for RHEED diffraction pattern data with detector points and
     intensities.
+:class:`ReductionMode`
+    Static coherent or incoherent distribution reduction mode.
 :class:`SlicedCrystal`
     JAX-compatible crystal structure sliced for multislice simulation.
 :class:`SizeDistribution`
@@ -49,6 +53,8 @@ Routine Listings
     Canonical factory for orientation distributions.
 :func:`create_discrete_orientation`
     Create a sharp rotational-variant distribution.
+:func:`create_distribution`
+    Create a generic weighted latent-sample distribution.
 :func:`create_gaussian_orientation`
     Create a Gaussian mosaic orientation distribution.
 :func:`create_kirkland_parameters`
@@ -65,6 +71,8 @@ Routine Listings
     Factory function to create RHEEDPattern instances.
 :func:`create_sliced_crystal`
     Factory function to create SlicedCrystal instances.
+:func:`create_trivial_distribution`
+    Create the one-sample identity distribution.
 :func:`create_xyz_data`
     Factory function to create XYZData instances.
 :func:`discretize_orientation`
@@ -75,6 +83,10 @@ Routine Listings
     Identify surface atoms using configurable methods.
 :func:`integrate_over_orientation`
     Simulate and incoherently average over orientation samples.
+:obj:`TRIVIAL_DISTRIBUTION`
+    Identity one-sample distribution.
+:obj:`TRIVIAL`
+    Short alias for the identity one-sample distribution.
 :obj:`float_jax_image`
     Type alias for float-valued 2D JAX image arrays.
 :obj:`float_np_image`
@@ -162,13 +174,19 @@ from .custom_types import (
     scalar_num,
 )
 from .distributions import (
+    TRIVIAL,
+    TRIVIAL_DISTRIBUTION,
+    Distribution,
     OrientationDistribution,
+    ReductionMode,
     SizeDistribution,
     create_discrete_orientation,
+    create_distribution,
     create_gaussian_orientation,
     create_lognormal_size,
     create_mixed_orientation,
     create_orientation_distribution,
+    create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
     integrate_over_orientation,
@@ -198,6 +216,7 @@ __all__: list[str] = [
     "SPEED_OF_LIGHT_MS",
     "create_crystal_structure",
     "create_discrete_orientation",
+    "create_distribution",
     "create_electron_beam",
     "create_edge_on_slices",
     "create_ewald_data",
@@ -210,9 +229,11 @@ __all__: list[str] = [
     "create_rheed_image",
     "create_rheed_pattern",
     "create_sliced_crystal",
+    "create_trivial_distribution",
     "create_xyz_data",
     "CrystalStructure",
     "DetectorGeometry",
+    "Distribution",
     "EdgeOnSlices",
     "ElectronBeam",
     "EwaldData",
@@ -230,6 +251,7 @@ __all__: list[str] = [
     "PotentialSlices",
     "RHEEDImage",
     "RHEEDPattern",
+    "ReductionMode",
     "scalar_bool",
     "scalar_float",
     "scalar_int",
@@ -237,5 +259,7 @@ __all__: list[str] = [
     "SlicedCrystal",
     "SizeDistribution",
     "SurfaceConfig",
+    "TRIVIAL",
+    "TRIVIAL_DISTRIBUTION",
     "XYZData",
 ]

@@ -16,15 +16,30 @@ from jaxtyping import Array, Complex, Float
 
 from rheedium.simul.beam_averaging import (
     angular_divergence_average,
+    apply_distribution,
+    apply_distributions,
     coherence_envelope,
     detector_psf_convolve,
     energy_spread_average,
     instrument_broadened_pattern,
 )
+from rheedium.types import ReductionMode, create_distribution
 from rheedium.types.custom_types import scalar_float
 
 H: int = 32
 W: int = 32
+
+
+def _linear_complex_field(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
+    """Return a small complex field controlled by the sample value."""
+    base: Complex[Array, "2 2"] = jnp.array(
+        [
+            [1.0 + 0.0j, 0.0 + 1.0j],
+            [1.0 - 1.0j, -0.5 + 0.25j],
+        ],
+        dtype=jnp.complex128,
+    )
+    return sample[0] * base
 
 
 class InstrumentBroadenedPatternKwargs(TypedDict):
@@ -41,6 +56,128 @@ class InstrumentBroadenedPatternKwargs(TypedDict):
     psf_sigma_pixels: scalar_float
     n_angular_samples: int
     n_energy_samples: int
+
+
+class TestDistributionApply(chex.TestCase):
+    """Tests for generic coherent/incoherent distribution reducers."""
+
+    def test_apply_distribution_incoherent_matches_manual(self) -> None:
+        """Incoherent reduction weights per-sample intensities."""
+        dist = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.25, 0.75]),
+            reduction=ReductionMode.INCOHERENT,
+        )
+
+        actual: Float[Array, "2 2"] = apply_distribution(
+            dist,
+            _linear_complex_field,
+        )
+        fields: Complex[Array, "2 2 2"] = jax.vmap(_linear_complex_field)(
+            dist.samples
+        )
+        expected: Float[Array, "2 2"] = jnp.einsum(
+            "n,nhw->hw",
+            dist.weights,
+            jnp.abs(fields) ** 2,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-12)
+
+    def test_apply_distribution_coherent_matches_manual(self) -> None:
+        """Coherent reduction sums amplitudes before modulus squared."""
+        dist = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.25, 0.75]),
+            reduction=ReductionMode.COHERENT,
+        )
+
+        actual: Float[Array, "2 2"] = apply_distribution(
+            dist,
+            _linear_complex_field,
+        )
+        fields: Complex[Array, "2 2 2"] = jax.vmap(_linear_complex_field)(
+            dist.samples
+        )
+        expected: Float[Array, "2 2"] = (
+            jnp.abs(jnp.einsum("n,nhw->hw", dist.weights, fields)) ** 2
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-12)
+
+    def test_single_sample_reductions_coincide(self) -> None:
+        """Coherent and incoherent reductions agree for one sample."""
+        coherent = create_distribution(
+            samples=jnp.array([[2.0]]),
+            weights=jnp.array([1.0]),
+            reduction=ReductionMode.COHERENT,
+        )
+        incoherent = create_distribution(
+            samples=jnp.array([[2.0]]),
+            weights=jnp.array([1.0]),
+            reduction=ReductionMode.INCOHERENT,
+        )
+
+        coherent_image: Float[Array, "2 2"] = apply_distribution(
+            coherent,
+            _linear_complex_field,
+        )
+        incoherent_image: Float[Array, "2 2"] = apply_distribution(
+            incoherent,
+            _linear_complex_field,
+        )
+
+        chex.assert_trees_all_close(coherent_image, incoherent_image)
+
+    def test_apply_distributions_matches_manual_nested_reduction(self) -> None:
+        """Composed axes use coherent reduction inside incoherent averaging."""
+        coherent = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.4, 0.6]),
+            reduction=ReductionMode.COHERENT,
+        )
+        incoherent = create_distribution(
+            samples=jnp.array([[10.0], [20.0]]),
+            weights=jnp.array([0.25, 0.75]),
+            reduction=ReductionMode.INCOHERENT,
+        )
+
+        def _bound(sample: Float[Array, "2"]) -> Complex[Array, "2 2"]:
+            return (sample[0] + 0.1 * sample[1]) * jnp.ones(
+                (2, 2),
+                dtype=jnp.complex128,
+            )
+
+        actual: Float[Array, "2 2"] = apply_distributions(
+            [coherent, incoherent],
+            _bound,
+        )
+        manual_terms: list[Float[Array, "2 2"]] = []
+        for incoherent_idx in range(incoherent.samples.shape[0]):
+            amplitudes: list[Complex[Array, "2 2"]] = []
+            for coherent_idx in range(coherent.samples.shape[0]):
+                sample = jnp.concatenate(
+                    [
+                        coherent.samples[coherent_idx],
+                        incoherent.samples[incoherent_idx],
+                    ]
+                )
+                amplitudes.append(
+                    coherent.weights[coherent_idx] * _bound(sample)
+                )
+            coherent_sum: Complex[Array, "2 2"] = jnp.sum(
+                jnp.stack(amplitudes),
+                axis=0,
+            )
+            manual_terms.append(
+                incoherent.weights[incoherent_idx] * jnp.abs(coherent_sum) ** 2
+            )
+        expected: Float[Array, "2 2"] = jnp.sum(
+            jnp.stack(manual_terms),
+            axis=0,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-12)
 
 
 def _dummy_angle_sim(

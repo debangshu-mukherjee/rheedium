@@ -7,12 +7,17 @@ from jax import tree_util
 from jaxtyping import Array, Float
 
 from rheedium.types import (
+    TRIVIAL_DISTRIBUTION,
+    Distribution,
     OrientationDistribution,
+    ReductionMode,
     SizeDistribution,
     create_discrete_orientation,
+    create_distribution,
     create_gaussian_orientation,
     create_lognormal_size,
     create_mixed_orientation,
+    create_trivial_distribution,
     discretize_orientation,
     discretize_orientation_static,
     integrate_over_orientation,
@@ -20,6 +25,93 @@ from rheedium.types import (
 from rheedium.types.custom_types import scalar_float
 
 from ..._assertions import assert_rejects
+
+
+class TestDistributionFactories(chex.TestCase):
+    """Tests for generic Distribution factory helpers."""
+
+    def test_create_distribution_normalizes_weights(self) -> None:
+        """Generic distribution weights are normalized."""
+        dist: Distribution = create_distribution(
+            samples=jnp.array([[0.0], [1.0]]),
+            weights=jnp.array([1.0, 3.0]),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="beam",
+        )
+
+        assert isinstance(dist, Distribution)
+        chex.assert_trees_all_close(
+            dist.weights,
+            jnp.array([0.25, 0.75]),
+            atol=1e-12,
+        )
+        assert dist.reduction is ReductionMode.INCOHERENT
+        assert dist.axis_id == "beam"
+
+    def test_create_distribution_accepts_string_reduction(self) -> None:
+        """String reductions are canonicalized to ReductionMode."""
+        dist: Distribution = create_distribution(
+            samples=jnp.array([[0.0], [1.0]]),
+            weights=jnp.array([0.5, 0.5]),
+            reduction="coherent",
+        )
+
+        assert dist.reduction is ReductionMode.COHERENT
+
+    def test_create_distribution_rejects_negative_weights(self) -> None:
+        """Generic distribution weights must be non-negative."""
+        assert_rejects(
+            create_distribution,
+            samples=jnp.array([[0.0], [1.0]]),
+            weights=jnp.array([1.0, -1.0]),
+            match="weights must be non-negative",
+        )
+
+    def test_create_distribution_rejects_shape_mismatch(self) -> None:
+        """Samples and weights must share a leading dimension."""
+        assert_rejects(
+            create_distribution,
+            samples=jnp.array([[0.0], [1.0]]),
+            weights=jnp.array([1.0, 2.0, 3.0]),
+            match="samples and weights must share leading dimension",
+        )
+
+    def test_create_trivial_distribution_identity_sample(self) -> None:
+        """Trivial distribution contains one zero sample with unit weight."""
+        dist: Distribution = create_trivial_distribution(sample_dim=2)
+
+        chex.assert_shape(dist.samples, (1, 2))
+        chex.assert_trees_all_close(dist.samples, jnp.zeros((1, 2)))
+        chex.assert_trees_all_close(dist.weights, jnp.ones((1,)))
+        assert dist.reduction is ReductionMode.INCOHERENT
+
+    def test_trivial_distribution_constant(self) -> None:
+        """Module-level trivial distribution is the identity axis."""
+        chex.assert_shape(TRIVIAL_DISTRIBUTION.samples, (1, 1))
+        chex.assert_trees_all_close(
+            TRIVIAL_DISTRIBUTION.weights,
+            jnp.ones((1,)),
+        )
+
+    def test_distribution_is_pytree(self) -> None:
+        """Generic Distribution should flatten and unflatten cleanly."""
+        dist: Distribution = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.4, 0.6]),
+            reduction=ReductionMode.COHERENT,
+            axis_id="coherent_axis",
+        )
+
+        flat: list[object]
+        treedef: object
+        flat, treedef = tree_util.tree_flatten(dist)
+        reconstructed: Distribution = treedef.unflatten(flat)
+
+        assert isinstance(reconstructed, Distribution)
+        chex.assert_trees_all_close(reconstructed.samples, dist.samples)
+        chex.assert_trees_all_close(reconstructed.weights, dist.weights)
+        assert reconstructed.reduction is ReductionMode.COHERENT
+        assert reconstructed.axis_id == "coherent_axis"
 
 
 class TestOrientationDistributionFactories(chex.TestCase):

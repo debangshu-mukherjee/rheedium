@@ -12,6 +12,10 @@ Routine Listings
 ----------------
 :func:`angular_divergence_average`
     Average pattern over Gaussian angular divergence distribution.
+:func:`apply_distribution`
+    Apply a weighted distribution to a coherent amplitude closure.
+:func:`apply_distributions`
+    Apply multiple distribution axes with nested coherent/incoherent reduction.
 :func:`atomic_scattering_factor`
     Combined form factor with Debye-Waller damping.
 :func:`build_ewald_data`
@@ -63,6 +67,8 @@ Routine Listings
     Integrate CTR intensity over finite detector acceptance.
 :func:`kinematic_spot_simulator`
     RHEED simulation using discrete 3D reciprocal lattice (spots).
+:func:`kinematic_amplitude`
+    Render a single coherent kinematic Ewald pattern as complex amplitude.
 :func:`kirkland_form_factor`
     Calculate atomic form factor f(q) using Kirkland parameterization.
 :func:`kirkland_projected_potential`
@@ -97,6 +103,8 @@ Routine Listings
     Project reciprocal lattice points with full detector geometry support.
 :func:`render_pattern_to_image`
     Rasterize a sparse RHEEDPattern onto a dense detector image.
+:func:`render_amplitude_to_field`
+    Rasterize sparse complex amplitudes onto a dense detector field.
 :func:`rod_profile_function`
     Lateral width profile of rods due to finite correlation length.
 :func:`roughness_damping`
@@ -136,6 +144,8 @@ See the "JAX Transformability" guide for the full support matrix.
 
 from .beam_averaging import (
     angular_divergence_average,
+    apply_distribution,
+    apply_distributions,
     coherence_envelope,
     detector_psf_convolve,
     energy_spread_average,
@@ -180,11 +190,13 @@ from .simulator import (
     ewald_simulator_with_orientation_distribution,
     find_ctr_ewald_intersection,
     find_kinematic_reflections,
+    kinematic_amplitude,
     log_compress_image,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
     project_on_detector_geometry,
+    render_amplitude_to_field,
     render_pattern_to_image,
     simulate_detector_image,
     sliced_crystal_to_projected_potential_slices,
@@ -210,6 +222,8 @@ from .sweeps import (
 
 __all__: list[str] = [
     "angular_divergence_average",
+    "apply_distribution",
+    "apply_distributions",
     "atomic_scattering_factor",
     "build_ewald_data",
     "build_transmission_function",
@@ -240,6 +254,7 @@ __all__: list[str] = [
     "instrument_broadened_pattern",
     "integrated_rod_intensity",
     "kinematic_spot_simulator",
+    "kinematic_amplitude",
     "kirkland_form_factor",
     "kirkland_projected_potential",
     "load_lobato_parameters",
@@ -254,6 +269,7 @@ __all__: list[str] = [
     "project_on_detector_geometry",
     "rod_profile_function",
     "roughness_damping",
+    "render_amplitude_to_field",
     "render_pattern_to_image",
     "reflection_multislice_propagate",
     "reflection_multislice_simulator",

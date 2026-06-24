@@ -21,6 +21,8 @@ Routine Listings
     Simulate RHEED using exact Ewald sphere-CTR intersection.
 :func:`find_kinematic_reflections`
     Find reflections satisfying kinematic conditions.
+:func:`kinematic_amplitude`
+    Render a single coherent kinematic Ewald pattern as complex amplitude.
 :func:`log_compress_image`
     Apply normalized log compression for screen-style visualization.
 :func:`multislice_propagate`
@@ -35,6 +37,8 @@ Routine Listings
     Project wavevectors with full detector geometry support.
 :func:`render_pattern_to_image`
     Rasterize a sparse RHEEDPattern onto a dense detector image grid.
+:func:`render_amplitude_to_field`
+    Rasterize sparse complex reflection amplitudes onto a dense detector field.
 :func:`simulate_detector_image`
     High-level kinematic detector-image orchestration with beam broadening.
 :func:`sliced_crystal_to_projected_potential_slices`
@@ -1141,6 +1145,193 @@ def render_pattern_to_image(
 
 
 @jaxtyped(typechecker=beartype)
+def render_amplitude_to_field(
+    pattern: RHEEDPattern,
+    amplitudes: Complex[Array, "N"],
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+) -> Complex[Array, "H W"]:
+    """Rasterize sparse complex amplitudes onto a dense detector field.
+
+    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
+
+    Parameters
+    ----------
+    pattern : RHEEDPattern
+        Sparse detector pattern carrying detector coordinates in millimetres.
+    amplitudes : Complex[Array, "N"]
+        Complex reflection amplitudes aligned with ``pattern.detector_points``.
+    image_shape_px : Tuple[int, int]
+        Output detector field shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float]
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float]
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    spot_sigma_px : scalar_float
+        Gaussian intensity width in detector pixels.
+
+    Returns
+    -------
+    field : Complex[Array, "H W"]
+        Dense coherent detector amplitude field.
+
+    Notes
+    -----
+    1. Convert detector millimetres to pixel coordinates.
+    2. Deposit each sparse amplitude with a square-root Gaussian envelope.
+    3. Leave normalization to the downstream intensity reducer.
+
+    See Also
+    --------
+    render_pattern_to_image : Rasterize sparse intensities.
+    """
+    height_px, width_px = image_shape_px
+    x_mm_per_px, y_mm_per_px = pixel_size_mm
+    center_x_px, center_y_px = beam_center_px
+    sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
+    amplitudes_arr: Complex[Array, "N"] = jnp.asarray(
+        amplitudes,
+        dtype=jnp.complex128,
+    )
+    if amplitudes_arr.shape[0] != pattern.detector_points.shape[0]:
+        raise ValueError("amplitudes length must match detector_points")
+
+    x_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    )
+    y_pixels: Float[Array, "N"] = (
+        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    )
+    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+    x_grid: Float[Array, "H W"]
+    y_grid: Float[Array, "H W"]
+    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+
+    def _render_one_amplitude(
+        x0_px: Float[Array, ""],
+        y0_px: Float[Array, ""],
+        amplitude: Complex[Array, ""],
+    ) -> Complex[Array, "H W"]:
+        envelope: Float[Array, "H W"] = jnp.exp(
+            -((x_grid - x0_px) ** 2 + (y_grid - y0_px) ** 2)
+            / (4.0 * sigma_px**2)
+        )
+        return amplitude * envelope
+
+    return jnp.sum(
+        jax.vmap(_render_one_amplitude)(
+            x_pixels,
+            y_pixels,
+            amplitudes_arr,
+        ),
+        axis=0,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def kinematic_amplitude(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    phi_deg: scalar_num = 0.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance_mm: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
+    image_shape_px: Tuple[int, int] = (192, 192),
+    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
+    beam_center_px: Tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: scalar_float = 1.4,
+    parameterization: str = "lobato",
+    surface_config: SurfaceConfig | None = None,
+) -> Complex[Array, "H W"]:
+    """Render one coherent kinematic Ewald pattern as detector amplitude.
+
+    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Crystal structure to simulate.
+    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+        Beam energy and incidence geometry.
+    hmax, kmax : scalar_int, optional
+        In-plane CTR grid bounds.
+    detector_distance_mm : scalar_float, optional
+        Sample-to-detector distance in millimetres.
+    temperature : scalar_float, optional
+        Temperature in Kelvin for Debye-Waller damping.
+    surface_roughness : scalar_float, optional
+        RMS surface roughness in Ångstroms.
+    ctr_regularization, ctr_power, roughness_power : scalar_float, optional
+        CTR and roughness weighting controls passed to
+        :func:`ewald_simulator`.
+    image_shape_px : Tuple[int, int], optional
+        Detector field shape as ``(height_px, width_px)``.
+    pixel_size_mm : Tuple[float, float], optional
+        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
+    beam_center_px : Tuple[float, float], optional
+        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    spot_sigma_px : scalar_float, optional
+        Gaussian intensity width in detector pixels.
+    parameterization : str, optional
+        Atomic form-factor model, ``"lobato"`` or ``"kirkland"``.
+    surface_config : SurfaceConfig | None, optional
+        Surface atom identification configuration.
+
+    Returns
+    -------
+    amplitude : Complex[Array, "H W"]
+        Dense coherent detector amplitude field.
+
+    Notes
+    -----
+    1. Use the existing Ewald simulator to generate sparse kinematic spots.
+    2. Convert sparse intensities to real non-negative amplitudes.
+    3. Rasterize the amplitudes onto the shared detector grid.
+
+    See Also
+    --------
+    render_amplitude_to_field : Dense complex detector renderer.
+    ewald_simulator : Sparse kinematic Ewald simulator.
+    """
+    sparse_pattern: RHEEDPattern = ewald_simulator(
+        crystal=crystal,
+        voltage_kv=voltage_kv,
+        theta_deg=theta_deg,
+        phi_deg=phi_deg,
+        hmax=hmax,
+        kmax=kmax,
+        detector_distance=detector_distance_mm,
+        temperature=temperature,
+        surface_roughness=surface_roughness,
+        ctr_regularization=ctr_regularization,
+        ctr_power=ctr_power,
+        roughness_power=roughness_power,
+        parameterization=parameterization,
+        surface_config=surface_config,
+    )
+    amplitudes: Complex[Array, "N"] = jnp.sqrt(
+        jnp.maximum(sparse_pattern.intensities, 0.0)
+    ).astype(jnp.complex128)
+    return render_amplitude_to_field(
+        pattern=sparse_pattern,
+        amplitudes=amplitudes,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
+        spot_sigma_px=spot_sigma_px,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def _render_ctr_streaks_to_image(
     pattern: RHEEDPattern,
     image_shape_px: Tuple[int, int],
@@ -2091,11 +2282,13 @@ __all__: list[str] = [
     "ewald_simulator",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",
+    "kinematic_amplitude",
     "log_compress_image",
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",
     "project_on_detector_geometry",
+    "render_amplitude_to_field",
     "render_pattern_to_image",
     "simulate_detector_image",
     "sliced_crystal_to_projected_potential_slices",

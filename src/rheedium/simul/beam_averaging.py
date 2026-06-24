@@ -18,6 +18,10 @@ Routine Listings
     Gauss-Hermite quadrature nodes and weights for Gaussian averaging.
 :func:`angular_divergence_average`
     Average pattern over Gaussian angular divergence distribution.
+:func:`apply_distribution`
+    Apply a weighted distribution to a coherent amplitude closure.
+:func:`apply_distributions`
+    Apply multiple distribution axes with nested coherent/incoherent reduction.
 :func:`energy_spread_average`
     Average pattern over Gaussian energy spread distribution.
 :func:`coherence_envelope`
@@ -44,11 +48,200 @@ through ``jnp.fft``.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable
-from jaxtyping import Array, Complex, Float, jaxtyped
+from beartype.typing import Callable, Sequence
+from jaxtyping import Array, Complex, Float, Int, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
-from rheedium.types import scalar_float
+from rheedium.types import Distribution, ReductionMode, scalar_float
+
+
+@jaxtyped(typechecker=beartype)
+def apply_distribution(
+    distribution: Distribution,
+    bound_amplitude_fn: Callable[[Float[Array, "D"]], Complex[Array, "H W"]],
+) -> Float[Array, "H W"]:
+    r"""Apply one distribution axis to a coherent amplitude function.
+
+    :see: :class:`~.test_beam_averaging.TestDistributionApply`
+
+    Parameters
+    ----------
+    distribution : Distribution
+        Weighted latent samples and a static coherent/incoherent reduction
+        mode.
+    bound_amplitude_fn : Callable[[Float[Array, "D"]], Complex[Array, "H W"]]
+        Closure mapping one sample vector to a dense coherent detector
+        amplitude field.
+
+    Returns
+    -------
+    intensity : Float[Array, "H W"]
+        Reduced detector intensity.
+
+    Notes
+    -----
+    1. Evaluate the bound coherent kernel for every sample with ``vmap``.
+    2. For coherent axes, sum weighted amplitudes then take ``|.|^2``.
+    3. For incoherent axes, take ``|.|^2`` per sample then weight and sum.
+
+    See Also
+    --------
+    apply_distributions : Compose multiple distribution axes.
+    """
+    amplitudes: Complex[Array, "N H W"] = jax.vmap(bound_amplitude_fn)(
+        distribution.samples
+    )
+    if distribution.reduction is ReductionMode.COHERENT:
+        coherent_amplitude: Complex[Array, "H W"] = jnp.einsum(
+            "n,nhw->hw",
+            distribution.weights,
+            amplitudes,
+        )
+        return jnp.abs(coherent_amplitude) ** 2
+    return jnp.einsum(
+        "n,nhw->hw",
+        distribution.weights,
+        jnp.abs(amplitudes) ** 2,
+    )
+
+
+def _index_product(axis_sizes: Sequence[int]) -> Int[Array, "P K"]:
+    """Return row-wise Cartesian products of axis indices."""
+    if len(axis_sizes) == 0:
+        return jnp.zeros((1, 0), dtype=jnp.int32)
+    index_axes: list[Int[Array, "M"]] = [
+        jnp.arange(axis_size, dtype=jnp.int32) for axis_size in axis_sizes
+    ]
+    grids = jnp.meshgrid(*index_axes, indexing="ij")
+    return jnp.stack([grid.ravel() for grid in grids], axis=-1)
+
+
+@jaxtyped(typechecker=beartype)
+def apply_distributions(
+    distributions: Sequence[Distribution],
+    bound_amplitude_fn: Callable[[Float[Array, "D"]], Complex[Array, "H W"]],
+) -> Float[Array, "H W"]:
+    r"""Apply composed distribution axes to a coherent amplitude closure.
+
+    :see: :class:`~.test_beam_averaging.TestDistributionApply`
+
+    Parameters
+    ----------
+    distributions : Sequence[Distribution]
+        Ordered distribution axes. Each sample passed to ``bound_amplitude_fn``
+        is the concatenation of one sample from each axis in this order.
+    bound_amplitude_fn : Callable[[Float[Array, "D"]], Complex[Array, "H W"]]
+        Closure mapping one concatenated latent sample to a dense coherent
+        detector amplitude field.
+
+    Returns
+    -------
+    intensity : Float[Array, "H W"]
+        Nested coherent/incoherent reduced detector intensity.
+
+    Notes
+    -----
+    1. Split axes by static reduction mode.
+    2. Iterate over the incoherent product outside the modulus.
+    3. For each incoherent sample, sum the coherent product in amplitude.
+    4. Weight and sum the resulting intensities.
+
+    See Also
+    --------
+    apply_distribution : Single-axis distribution reduction.
+    """
+    if len(distributions) == 0:
+        raise ValueError("distributions must contain at least one axis")
+
+    coherent_positions: tuple[int, ...] = tuple(
+        idx
+        for idx, distribution in enumerate(distributions)
+        if distribution.reduction is ReductionMode.COHERENT
+    )
+    incoherent_positions: tuple[int, ...] = tuple(
+        idx
+        for idx, distribution in enumerate(distributions)
+        if distribution.reduction is ReductionMode.INCOHERENT
+    )
+    coherent_indices: Int[Array, "P C"] = _index_product(
+        [distributions[idx].samples.shape[0] for idx in coherent_positions]
+    )
+    incoherent_indices: Int[Array, "Q I"] = _index_product(
+        [distributions[idx].samples.shape[0] for idx in incoherent_positions]
+    )
+
+    def _assemble_sample(
+        coherent_row: Int[Array, "C"],
+        incoherent_row: Int[Array, "I"],
+    ) -> Float[Array, "D"]:
+        sample_parts: list[Float[Array, "D_i"]] = []
+        coherent_cursor: int = 0
+        incoherent_cursor: int = 0
+        for idx, distribution in enumerate(distributions):
+            if idx in coherent_positions:
+                sample_idx = coherent_row[coherent_cursor]
+                coherent_cursor += 1
+            else:
+                sample_idx = incoherent_row[incoherent_cursor]
+                incoherent_cursor += 1
+            sample_parts.append(distribution.samples[sample_idx])
+        return jnp.concatenate(sample_parts)
+
+    def _coherent_weight(coherent_row: Int[Array, "C"]) -> Float[Array, ""]:
+        weight: Float[Array, ""] = jnp.asarray(1.0, dtype=jnp.float64)
+        for axis_pos, distribution_idx in enumerate(coherent_positions):
+            axis_weight: Float[Array, ""] = distributions[
+                distribution_idx
+            ].weights[coherent_row[axis_pos]]
+            weight = weight * axis_weight
+        return weight
+
+    def _incoherent_weight(
+        incoherent_row: Int[Array, "I"],
+    ) -> Float[Array, ""]:
+        weight: Float[Array, ""] = jnp.asarray(1.0, dtype=jnp.float64)
+        for axis_pos, distribution_idx in enumerate(incoherent_positions):
+            weight = (
+                weight
+                * distributions[distribution_idx].weights[
+                    incoherent_row[axis_pos]
+                ]
+            )
+        return weight
+
+    coherent_weights: Float[Array, "P"] = jax.vmap(_coherent_weight)(
+        coherent_indices
+    )
+    incoherent_weights: Float[Array, "Q"] = jax.vmap(_incoherent_weight)(
+        incoherent_indices
+    )
+
+    def _intensity_for_incoherent_row(
+        incoherent_row: Int[Array, "I"],
+    ) -> Float[Array, "H W"]:
+        def _amplitude_for_coherent_row(
+            coherent_row: Int[Array, "C"],
+        ) -> Complex[Array, "H W"]:
+            sample: Float[Array, "D"] = _assemble_sample(
+                coherent_row,
+                incoherent_row,
+            )
+            return bound_amplitude_fn(sample)
+
+        amplitudes: Complex[Array, "P H W"] = jax.vmap(
+            _amplitude_for_coherent_row
+        )(coherent_indices)
+        coherent_amplitude: Complex[Array, "H W"] = jnp.einsum(
+            "p,phw->hw",
+            coherent_weights,
+            amplitudes,
+        )
+        return jnp.abs(coherent_amplitude) ** 2
+
+    intensities: Float[Array, "Q H W"] = jax.vmap(
+        _intensity_for_incoherent_row
+    )(incoherent_indices)
+    return jnp.einsum("q,qhw->hw", incoherent_weights, intensities)
 
 
 @jaxtyped(typechecker=beartype)
@@ -556,6 +749,8 @@ def instrument_broadened_pattern(
 
 __all__: list[str] = [
     "angular_divergence_average",
+    "apply_distribution",
+    "apply_distributions",
     "coherence_envelope",
     "detector_psf_convolve",
     "energy_spread_average",

@@ -25,6 +25,7 @@ from jax.test_util import check_grads
 from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
+from rheedium.simul.beam_averaging import apply_distribution
 from rheedium.simul.simulator import (
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -32,10 +33,12 @@ from rheedium.simul.simulator import (
     ewald_simulator,
     ewald_simulator_with_orientation_distribution,
     find_kinematic_reflections,
+    kinematic_amplitude,
     log_compress_image,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
+    render_amplitude_to_field,
     render_pattern_to_image,
     simulate_detector_image,
     sliced_crystal_to_projected_potential_slices,
@@ -43,6 +46,7 @@ from rheedium.simul.simulator import (
 from rheedium.tools import incident_wavevector, wavelength_ang
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types import (
+    TRIVIAL_DISTRIBUTION,
     CrystalStructure,
     PotentialSlices,
     SlicedCrystal,
@@ -1879,6 +1883,154 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(image)
         chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
         self.assertTrue(jnp.all(image >= 0.0))
+
+    def test_render_amplitude_to_field_matches_single_spot_intensity(
+        self,
+    ) -> None:
+        """Squared single-spot amplitude field matches legacy rendering."""
+        pattern: RHEEDPattern = RHEEDPattern(
+            G_indices=jnp.array([0], dtype=jnp.int32),
+            k_out=jnp.array([[10.0, 0.0, 1.0]], dtype=jnp.float64),
+            detector_points=jnp.array([[0.0, 0.0]], dtype=jnp.float64),
+            intensities=jnp.array([4.0], dtype=jnp.float64),
+        )
+
+        field: Complex[Array, "32 40"] = render_amplitude_to_field(
+            pattern=pattern,
+            amplitudes=jnp.sqrt(pattern.intensities).astype(jnp.complex128),
+            image_shape_px=(32, 40),
+            pixel_size_mm=(1.0, 2.0),
+            beam_center_px=(20.0, 4.0),
+            spot_sigma_px=1.5,
+        )
+        intensity: Float[Array, "32 40"] = jnp.abs(field) ** 2
+        intensity = intensity / jnp.max(intensity)
+        legacy: Float[Array, "32 40"] = render_pattern_to_image(
+            pattern=pattern,
+            image_shape_px=(32, 40),
+            pixel_size_mm=(1.0, 2.0),
+            beam_center_px=(20.0, 4.0),
+            spot_sigma_px=1.5,
+        )
+
+        chex.assert_trees_all_close(intensity, legacy, atol=1e-12)
+
+    def test_render_amplitude_to_field_preserves_interference(self) -> None:
+        """Overlapping amplitudes interfere coherently in the dense field."""
+        pattern: RHEEDPattern = RHEEDPattern(
+            G_indices=jnp.array([0, 1], dtype=jnp.int32),
+            k_out=jnp.array(
+                [[10.0, 0.0, 1.0], [10.0, 0.0, 1.0]],
+                dtype=jnp.float64,
+            ),
+            detector_points=jnp.array(
+                [[0.0, 0.0], [0.0, 0.0]],
+                dtype=jnp.float64,
+            ),
+            intensities=jnp.array([1.0, 1.0], dtype=jnp.float64),
+        )
+
+        constructive: Complex[Array, "16 16"] = render_amplitude_to_field(
+            pattern=pattern,
+            amplitudes=jnp.array([1.0 + 0.0j, 1.0 + 0.0j]),
+            image_shape_px=(16, 16),
+            pixel_size_mm=(1.0, 1.0),
+            beam_center_px=(8.0, 8.0),
+            spot_sigma_px=1.0,
+        )
+        destructive: Complex[Array, "16 16"] = render_amplitude_to_field(
+            pattern=pattern,
+            amplitudes=jnp.array([1.0 + 0.0j, -1.0 + 0.0j]),
+            image_shape_px=(16, 16),
+            pixel_size_mm=(1.0, 1.0),
+            beam_center_px=(8.0, 8.0),
+            spot_sigma_px=1.0,
+        )
+
+        chex.assert_trees_all_close(
+            jnp.max(jnp.abs(constructive) ** 2),
+            4.0,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            jnp.max(jnp.abs(destructive) ** 2),
+            0.0,
+            atol=1e-12,
+        )
+
+    def test_kinematic_amplitude_matches_explicit_sparse_render(self) -> None:
+        """Kinematic amplitude uses the sparse Ewald amplitude-render path."""
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 0.0,
+            "hmax": 0,
+            "kmax": 0,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (16, 24),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (12.0, 2.0),
+            "spot_sigma_px": 1.2,
+        }
+        amplitude: Complex[Array, "16 24"] = kinematic_amplitude(**kwargs)
+        sparse_pattern: RHEEDPattern = ewald_simulator(
+            crystal=kwargs["crystal"],
+            voltage_kv=kwargs["voltage_kv"],
+            theta_deg=kwargs["theta_deg"],
+            phi_deg=kwargs["phi_deg"],
+            hmax=kwargs["hmax"],
+            kmax=kwargs["kmax"],
+            detector_distance=kwargs["detector_distance_mm"],
+            temperature=kwargs["temperature"],
+            surface_roughness=kwargs["surface_roughness"],
+        )
+        expected: Complex[Array, "16 24"] = render_amplitude_to_field(
+            pattern=sparse_pattern,
+            amplitudes=jnp.sqrt(sparse_pattern.intensities).astype(
+                jnp.complex128
+            ),
+            image_shape_px=kwargs["image_shape_px"],
+            pixel_size_mm=kwargs["pixel_size_mm"],
+            beam_center_px=kwargs["beam_center_px"],
+            spot_sigma_px=kwargs["spot_sigma_px"],
+        )
+
+        chex.assert_trees_all_close(amplitude, expected, atol=1e-12)
+
+    def test_trivial_distribution_reduces_kinematic_amplitude_to_intensity(
+        self,
+    ) -> None:
+        """Trivial distribution turns one coherent amplitude into intensity."""
+        amplitude: Complex[Array, "16 24"] = kinematic_amplitude(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+        )
+
+        def _bound(_sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
+            return amplitude
+
+        reduced: Float[Array, "16 24"] = apply_distribution(
+            TRIVIAL_DISTRIBUTION,
+            _bound,
+        )
+
+        chex.assert_trees_all_close(
+            reduced,
+            jnp.abs(amplitude) ** 2,
+            atol=1e-12,
+        )
 
     def test_detector_extent_mm_matches_calibration(self) -> None:
         """Display extent converts beam centre and pixel pitch correctly."""
