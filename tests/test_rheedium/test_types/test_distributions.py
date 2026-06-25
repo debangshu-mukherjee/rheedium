@@ -1,5 +1,7 @@
 """Tests for orientation-distribution probability types and integration."""
 
+from collections.abc import Callable
+
 import chex
 import jax
 import jax.numpy as jnp
@@ -124,6 +126,32 @@ class TestDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(reconstructed.weights, dist.weights)
         assert reconstructed.reduction is ReductionMode.COHERENT
         assert reconstructed.axis_id == "coherent_axis"
+
+    def test_distribution_bind_delegates_to_kernel_binder(self) -> None:
+        """Distribution exposes the public producer-bind contract."""
+        dist: Distribution = create_distribution(
+            samples=jnp.array([[1.0, 2.0]]),
+            weights=jnp.array([1.0]),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="test_axis",
+        )
+
+        def _binder(
+            distribution: Distribution,
+        ) -> Callable[[Float[Array, "D"]], Float[Array, "D"]]:
+            assert distribution.axis_id == "test_axis"
+
+            def _bound(sample: Float[Array, "D"]) -> Float[Array, "D"]:
+                return sample + distribution.samples[0]
+
+            return _bound
+
+        bound = dist.bind(_binder)
+
+        chex.assert_trees_all_close(
+            bound(jnp.array([3.0, 4.0])),
+            jnp.array([4.0, 6.0]),
+        )
 
 
 class TestCoherenceReduction(chex.TestCase):

@@ -48,6 +48,7 @@ from rheedium.simul.simulator import (
     find_kinematic_reflections,
     kinematic_amplitude,
     log_compress_image,
+    multislice_detector_amplitude,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
@@ -1883,6 +1884,19 @@ _SI_CRYSTAL_2ATOM = _make_si_crystal_2atom()
 class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     """Tests for dense detector-image helpers built on ewald_simulator."""
 
+    @staticmethod
+    def _tiny_potential_slices(scale: float = 0.05) -> PotentialSlices:
+        """Create a compact potential volume for public multislice tests."""
+        slices: Float[Array, "2 8 8"] = jnp.zeros((2, 8, 8), dtype=jnp.float64)
+        slices = slices.at[0, 3, 3].set(scale)
+        slices = slices.at[1, 4, 4].set(0.5 * scale)
+        return create_potential_slices(
+            slices=slices,
+            slice_thickness=1.5,
+            x_calibration=0.75,
+            y_calibration=0.75,
+        )
+
     def test_render_pattern_to_image_shape_and_normalization(self) -> None:
         """Rasterized detector image has requested shape and unit maximum."""
         pattern: RHEEDPattern = RHEEDPattern(
@@ -2952,7 +2966,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             )
 
     def test_simulate_detector_image_rejects_unknown_kernel(self) -> None:
-        """Layer-0 kernel selector fails clearly for unsupported kernels."""
+        """Layer-0 kernel selector fails clearly for unsupported names."""
         with pytest.raises(ValueError, match="Unsupported kernel"):
             simulate_detector_image(
                 crystal=_SI_CRYSTAL_2ATOM,
@@ -2962,6 +2976,94 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
                 render_ctrs_as_streaks=False,
+                kernel="dynamical",
+            )
+
+    def test_simulate_detector_image_rejects_multislice_without_payload(
+        self,
+    ) -> None:
+        """Multislice selection requires a concrete potential-slice payload."""
+        with pytest.raises(ValueError, match="potential_slices"):
+            simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                hmax=0,
+                kmax=0,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                render_ctrs_as_streaks=False,
+                kernel="multislice",
+            )
+
+    def test_simulate_detector_image_multislice_kernel_matches_bound_field(
+        self,
+    ) -> None:
+        """Public Layer 1 can select multislice and reduce its field."""
+        potential_slices: PotentialSlices = self._tiny_potential_slices()
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "potential_slices": potential_slices,
+            "voltage_kv": 20.0,
+            "theta_deg": 89.0,
+            "phi_deg": 0.0,
+            "detector_distance_mm": 20.0,
+            "image_shape_px": (32, 32),
+            "pixel_size_mm": (2.0, 2.0),
+            "beam_center_px": (16.0, 16.0),
+            "spot_sigma_px": 1.0,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "kernel": "multislice",
+        }
+
+        actual: Float[Array, "32 32"] = simulate_detector_image(**kwargs)
+        field: Complex[Array, "32 32"] = multislice_detector_amplitude(
+            potential_slices=potential_slices,
+            voltage_kv=kwargs["voltage_kv"],
+            theta_deg=kwargs["theta_deg"],
+            phi_deg=kwargs["phi_deg"],
+            detector_distance_mm=kwargs["detector_distance_mm"],
+            image_shape_px=kwargs["image_shape_px"],
+            pixel_size_mm=kwargs["pixel_size_mm"],
+            beam_center_px=kwargs["beam_center_px"],
+            spot_sigma_px=kwargs["spot_sigma_px"],
+        )
+        expected: Float[Array, "32 32"] = jnp.abs(field) ** 2
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+
+        chex.assert_shape(actual, (32, 32))
+        chex.assert_tree_all_finite(actual)
+        self.assertGreater(float(jnp.max(actual)), 0.0)
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_multislice_rejects_defect_axes(
+        self,
+    ) -> None:
+        """Structure-changing producer axes require a PotentialSlices bind."""
+        distribution: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([0.0, 4.0]),
+            wall_positions_angstrom=jnp.array([0.4, 0.4]),
+            twin_fractions=jnp.array([0.25, 0.75]),
+            twin_spacing_angstrom=4.0,
+            coherence_length_angstrom=10.0,
+        )
+
+        with pytest.raises(ValueError, match="PotentialSlices producer"):
+            simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                potential_slices=self._tiny_potential_slices(),
+                image_shape_px=(16, 16),
+                pixel_size_mm=(2.0, 2.0),
+                beam_center_px=(8.0, 8.0),
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+                psf_sigma_pixels=0.0,
+                n_angular_samples=1,
+                n_energy_samples=1,
+                distribution=distribution,
                 kernel="multislice",
             )
 
@@ -3265,8 +3367,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_instrument_rejects_unknown_kernel(
         self,
     ) -> None:
-        """Instrument wrapper shares the public Layer-0 kernel selector."""
-        with pytest.raises(ValueError, match="Unsupported kernel"):
+        """Instrument wrapper remains kinematic-only compatibility API."""
+        with pytest.raises(ValueError, match="supports only"):
             simulate_detector_image_instrument(
                 crystal=_SI_CRYSTAL_2ATOM,
                 beam_modes=create_coherent_beam(),
@@ -3348,6 +3450,132 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(image)
         self.assertTrue(jnp.all(image >= 0.0))
         chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
+
+
+class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
+    """Phase-6 differentiability gates for the public detector integrator."""
+
+    @staticmethod
+    def _detector_metric(image: Float[Array, "H W"]) -> scalar_float:
+        """Return an asymmetric scalar metric for gradient tests."""
+        height_px, width_px = image.shape
+        x_axis: Float[Array, "W"] = jnp.linspace(0.0, 1.0, width_px)
+        y_axis: Float[Array, "H"] = jnp.linspace(0.0, 1.0, height_px)
+        y_grid: Float[Array, "H W"]
+        x_grid: Float[Array, "H W"]
+        y_grid, x_grid = jnp.meshgrid(y_axis, x_axis, indexing="ij")
+        return jnp.sum(image * (0.7 * x_grid + 1.3 * y_grid))
+
+    @staticmethod
+    def _base_kwargs() -> dict[str, Any]:
+        """Shared compact detector settings for public grad gates."""
+        return {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 3.0,
+            "hmax": 1,
+            "kmax": 1,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (16, 24),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (12.0, 2.0),
+            "spot_sigma_px": 1.2,
+            "psf_sigma_pixels": 0.0,
+            "render_ctrs_as_streaks": False,
+        }
+
+    def test_grad_through_public_simulator_beta_is_finite(self) -> None:
+        """jax.grad through simulate_detector_image w.r.t. GSM beta is live."""
+
+        def loss(beta: scalar_float) -> scalar_float:
+            beam_modes = create_gaussian_schell_beam(
+                beta_in_plane=beta,
+                beta_out_of_plane=0.1,
+                divergence_in_plane_rad=1.0e-4,
+                divergence_out_of_plane_rad=5.0e-5,
+                energy_spread_ev=0.0,
+            )
+            image: Float[Array, "16 24"] = simulate_detector_image(
+                **self._base_kwargs(),
+                beam_modes=beam_modes,
+                n_beam_modes_per_axis=2,
+                n_beam_modes_out_of_plane=1,
+                n_beam_energy_points=1,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(0.2))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
+
+    def test_grad_public_simulator_twin_density_is_finite(
+        self,
+    ) -> None:
+        """jax.grad through public twin fraction is live."""
+
+        def loss(twin_fraction: scalar_float) -> scalar_float:
+            clipped_fraction: scalar_float = jnp.clip(
+                twin_fraction,
+                1.0e-3,
+                1.0 - 1.0e-3,
+            )
+            distribution: Distribution = twin_wall_to_distribution(
+                twin_angles_deg=jnp.array([0.0, 20.0]),
+                wall_positions_angstrom=jnp.array([0.4, 0.4]),
+                twin_fractions=jnp.array(
+                    [1.0 - clipped_fraction, clipped_fraction]
+                ),
+                twin_spacing_angstrom=4.0,
+                coherence_length_angstrom=10.0,
+            )
+            image: Float[Array, "16 24"] = simulate_detector_image(
+                **self._base_kwargs(),
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+                n_angular_samples=1,
+                n_energy_samples=1,
+                distribution=distribution,
+                defect_surface_layer_depth_angstrom=0.8,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(0.4))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-4
+
+    @pytest.mark.xfail(
+        reason=(
+            "Grain size is still metadata in the public kinematic detector "
+            "bind; finite-domain size sensitivity is not wired into "
+            "simulate_detector_image yet."
+        ),
+        strict=True,
+    )
+    def test_grad_through_public_simulator_grain_size_is_live(self) -> None:
+        """Grain-size gradient should become live when size bind lands."""
+
+        def loss(grain_size_angstrom: scalar_float) -> scalar_float:
+            distribution: Distribution = grain_population_to_distribution(
+                orientation_angles_deg=jnp.array([5.0]),
+                grain_sizes_angstrom=jnp.array([grain_size_angstrom]),
+                grain_volume_fractions=jnp.array([1.0]),
+            )
+            image: Float[Array, "16 24"] = simulate_detector_image(
+                **self._base_kwargs(),
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+                n_angular_samples=1,
+                n_energy_samples=1,
+                distribution=distribution,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(80.0))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
 
 
 class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):

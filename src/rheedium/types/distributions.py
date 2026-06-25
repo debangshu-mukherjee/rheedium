@@ -71,7 +71,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable, Final, Optional, Tuple
+from beartype.typing import Any, Callable, Final, Optional, Tuple
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
@@ -124,6 +124,19 @@ class Distribution(eqx.Module):
     weights: Float[Array, "N"]
     reduction: ReductionMode = eqx.field(static=True)
     axis_id: Optional[str] = eqx.field(static=True, default=None)
+
+    def bind(
+        self,
+        binder: Callable[["Distribution"], Callable[[Float[Array, "D"]], Any]],
+    ) -> Callable[[Float[Array, "D"]], Any]:
+        """Bind this axis through a kernel-specific producer binder.
+
+        The base Distribution owns sample/weight/reduction metadata, while the
+        supplied binder owns the kernel-specific interpretation of one sample
+        row. This keeps the public contract polymorphic without forcing the
+        pure type module to import simulator kernels.
+        """
+        return binder(self)
 
 
 class BeamModeDistribution(eqx.Module):
