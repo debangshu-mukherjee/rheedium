@@ -58,11 +58,15 @@ gradient-based optimization and inverse problems.
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Final, Tuple
+from beartype.typing import Callable, Final, Tuple
 from jax.core import Tracer
 from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
+from rheedium.procs.surface_modifier import (
+    bind_step_edge_distribution,
+    bind_twin_wall_distribution,
+)
 from rheedium.tools import (
     gauss_hermite_nodes_weights,
     incident_wavevector,
@@ -109,6 +113,15 @@ from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
 
 _VALID_THRESHOLD: Final[float] = 0.5
 _KINEMATIC_KERNEL: Final[str] = "kinematic"
+_AZIMUTH_AXIS_IDS: Final[frozenset[str]] = frozenset(
+    {"trivial", "orientation", "azimuth", "phi", "test_phi"}
+)
+_BEAM_AXIS_IDS: Final[frozenset[str]] = frozenset(
+    {"beam_modes", "legacy_instrument"}
+)
+_STRUCTURE_AXIS_IDS: Final[frozenset[str]] = frozenset({"twins", "steps"})
+_GRAIN_AXIS_IDS: Final[frozenset[str]] = frozenset({"grains"})
+_UNSUPPORTED_AXIS_IDS: Final[frozenset[str]] = frozenset({"size"})
 
 
 def _validate_layer0_kernel(kernel: str) -> None:
@@ -959,6 +972,191 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
 
 
 @jaxtyped(typechecker=beartype)
+def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num = 20.0,
+    theta_deg: scalar_num = 2.0,
+    phi_deg: scalar_num = 0.0,
+    hmax: scalar_int = 5,
+    kmax: scalar_int = 5,
+    detector_distance: scalar_float = 1000.0,
+    temperature: scalar_float = 300.0,
+    surface_roughness: scalar_float = 0.0,
+    ctr_regularization: scalar_float = 0.01,
+    ctr_power: scalar_float = 1.0,
+    roughness_power: scalar_float = 0.25,
+    parameterization: str = "lobato",
+    surface_config: SurfaceConfig | None = None,
+) -> Tuple[RHEEDPattern, Complex[Array, "K"]]:
+    """Return sparse Ewald pattern plus complex per-reflection amplitudes."""
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
+    voltage_kv_arr: Float[Array, ""] = jnp.asarray(voltage_kv)
+    theta_deg_arr: Float[Array, ""] = jnp.asarray(theta_deg)
+    phi_deg_arr: Float[Array, ""] = jnp.asarray(phi_deg)
+    hmax_int: int = int(hmax)
+    kmax_int: int = int(kmax)
+
+    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
+    k_in: Float[Array, "3"] = incident_wavevector(
+        lam_ang,
+        theta_deg_arr,
+        phi_deg_arr,
+    )
+    recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        *crystal.cell_lengths,
+        *crystal.cell_angles,
+        in_degrees=True,
+    )
+    recip_a: Float[Array, "3"] = recip_vecs[0]
+    recip_b: Float[Array, "3"] = recip_vecs[1]
+    recip_c: Float[Array, "3"] = recip_vecs[2]
+
+    hh: Int[Array, "n_h n_k"]
+    kk: Int[Array, "n_h n_k"]
+    hh, kk = jnp.meshgrid(
+        jnp.arange(-hmax_int, hmax_int + 1, dtype=jnp.int32),
+        jnp.arange(-kmax_int, kmax_int + 1, dtype=jnp.int32),
+        indexing="ij",
+    )
+    h_flat: Int[Array, "N"] = hh.ravel()
+    k_flat: Int[Array, "N"] = kk.ravel()
+    n_rods: int = h_flat.shape[0]
+
+    def _find_intersection(
+        idx: Int[Array, ""],
+    ) -> Tuple[Float[Array, "2"], Float[Array, "2 3"], Float[Array, "2"]]:
+        return find_ctr_ewald_intersection(
+            h=h_flat[idx],
+            k=k_flat[idx],
+            k_in=k_in,
+            recip_a=recip_a,
+            recip_b=recip_b,
+            recip_c=recip_c,
+        )
+
+    rod_indices: Int[Array, "N"] = jnp.arange(n_rods, dtype=jnp.int32)
+    l_all: Float[Array, "N 2"]
+    k_out_all: Float[Array, "N 2 3"]
+    valid_all: Float[Array, "N 2"]
+    l_all, k_out_all, valid_all = jax.vmap(_find_intersection)(rod_indices)
+    l_all = l_all.reshape(-1)
+    k_out_all = k_out_all.reshape(-1, 3)
+    valid_all = valid_all.reshape(-1)
+    h_all: Int[Array, "N2"] = jnp.repeat(h_flat, 2)
+    k_all: Int[Array, "N2"] = jnp.repeat(k_flat, 2)
+    hk_linear_indices: Int[Array, "N2"] = jnp.repeat(rod_indices, 2)
+    n_candidates: int = l_all.shape[0]
+
+    valid_mask: Bool[Array, "N2"] = valid_all > _VALID_THRESHOLD
+    valid_indices: Int[Array, "K"] = jnp.where(
+        valid_mask,
+        size=n_candidates,
+        fill_value=-1,
+    )[0]
+    safe_indices: Int[Array, "K"] = jnp.maximum(valid_indices, 0)
+
+    l_valid: Float[Array, "K"] = l_all[safe_indices]
+    k_out: Float[Array, "K 3"] = k_out_all[safe_indices]
+    h_valid: Int[Array, "K"] = h_all[safe_indices]
+    k_valid: Int[Array, "K"] = k_all[safe_indices]
+    g_vectors: Float[Array, "K 3"] = (
+        h_valid[:, None] * recip_a
+        + k_valid[:, None] * recip_b
+        + l_valid[:, None] * recip_c
+    )
+
+    atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
+        jnp.int32
+    )
+    n_atoms: int = atom_positions.shape[0]
+    config: SurfaceConfig = (
+        surface_config
+        if surface_config is not None
+        else SurfaceConfig(method="height", height_fraction=0.3)
+    )
+    is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
+        atom_positions,
+        config,
+    )
+
+    def _compute_amplitude(
+        refl_idx: Int[Array, ""],
+    ) -> Complex[Array, ""]:
+        g_vec: Float[Array, "3"] = g_vectors[refl_idx]
+        k_out_vec: Float[Array, "3"] = k_out[refl_idx]
+        l_val: Float[Array, ""] = l_valid[refl_idx]
+        is_valid: Bool[Array, ""] = valid_indices[refl_idx] >= 0
+        q_vector: Float[Array, "3"] = k_out_vec - k_in
+        q_z: Float[Array, ""] = q_vector[2]
+
+        def _atomic_contrib(atom_idx: Int[Array, ""]) -> Complex[Array, ""]:
+            z_num: Int[Array, ""] = atomic_numbers[atom_idx]
+            pos: Float[Array, "3"] = atom_positions[atom_idx]
+            is_surface: Bool[Array, ""] = is_surface_atom[atom_idx]
+            form_factor: Float[Array, ""] = jnp.squeeze(
+                atomic_scattering_factor(
+                    atomic_number=z_num,
+                    q_vector=q_vector,
+                    temperature=temperature,
+                    is_surface=is_surface,
+                    parameterization=parameterization,
+                )
+            )
+            phase: Float[Array, ""] = jnp.dot(g_vec, pos)
+            return form_factor * jnp.exp(1j * phase)
+
+        atom_indices: Int[Array, "M"] = jnp.arange(n_atoms)
+        contributions: Complex[Array, "M"] = jax.vmap(_atomic_contrib)(
+            atom_indices
+        )
+        structure_factor: Complex[Array, ""] = jnp.sum(contributions)
+        _, ctr_modulation, roughness_damping = _compose_ewald_intensity(
+            sf_intensity=jnp.abs(structure_factor) ** 2,
+            l_value=l_val,
+            q_z=q_z,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+        )
+        amplitude_scale: Float[Array, ""] = ctr_modulation ** (
+            0.5 * ctr_power
+        ) * roughness_damping ** (0.5 * roughness_power)
+        amplitude: Complex[Array, ""] = structure_factor * amplitude_scale
+        return jnp.where(is_valid, amplitude, 0.0 + 0.0j)
+
+    n_valid: int = valid_indices.shape[0]
+    refl_indices: Int[Array, "K"] = jnp.arange(n_valid, dtype=jnp.int32)
+    raw_amplitudes: Complex[Array, "K"] = jax.vmap(_compute_amplitude)(
+        refl_indices
+    )
+    raw_intensities: Float[Array, "K"] = jnp.abs(raw_amplitudes) ** 2
+    max_intensity: Float[Array, ""] = jnp.maximum(
+        jnp.max(raw_intensities),
+        1e-10,
+    )
+    amplitudes: Complex[Array, "K"] = raw_amplitudes / jnp.sqrt(max_intensity)
+    intensities: Float[Array, "K"] = jnp.abs(amplitudes) ** 2
+    detector_points: Float[Array, "K 2"] = project_on_detector(
+        k_out,
+        detector_distance,
+    )
+    pattern: RHEEDPattern = create_rheed_pattern(
+        g_indices=jnp.where(
+            valid_indices >= 0,
+            hk_linear_indices[safe_indices],
+            -1,
+        ),
+        k_out=k_out,
+        detector_points=detector_points,
+        intensities=intensities,
+    )
+    return pattern, amplitudes
+
+
+@jaxtyped(typechecker=beartype)
 def _discretize_orientation_for_sparse_pattern(
     orientation_distribution: OrientationDistribution,
     n_mosaic_points: scalar_int,
@@ -1323,16 +1521,18 @@ def kinematic_amplitude(  # noqa: PLR0913
 
     Notes
     -----
-    1. Use the existing Ewald simulator to generate sparse kinematic spots.
-    2. Convert sparse intensities to real non-negative amplitudes.
+    1. Compute sparse Ewald intersections with complex structure factors.
+    2. Apply CTR and roughness factors at amplitude level.
     3. Rasterize the amplitudes onto the shared detector grid.
 
     See Also
     --------
     render_amplitude_to_field : Dense complex detector renderer.
-    ewald_simulator : Sparse kinematic Ewald simulator.
+    _ewald_amplitude_pattern : Sparse kinematic Ewald amplitude simulator.
     """
-    sparse_pattern: RHEEDPattern = ewald_simulator(
+    sparse_pattern: RHEEDPattern
+    amplitudes: Complex[Array, "N"]
+    sparse_pattern, amplitudes = _ewald_amplitude_pattern(
         crystal=crystal,
         voltage_kv=voltage_kv,
         theta_deg=theta_deg,
@@ -1348,9 +1548,6 @@ def kinematic_amplitude(  # noqa: PLR0913
         parameterization=parameterization,
         surface_config=surface_config,
     )
-    amplitudes: Complex[Array, "N"] = jnp.sqrt(
-        jnp.maximum(sparse_pattern.intensities, 0.0)
-    ).astype(jnp.complex128)
     if render_ctrs_as_streaks:
         return render_ctr_amplitude_to_field(
             pattern=sparse_pattern,
@@ -1627,6 +1824,176 @@ def log_compress_image(
 
 
 @jaxtyped(typechecker=beartype)
+def _bind_kinematic_distribution(  # noqa: PLR0913, PLR0915
+    distribution: Distribution,
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num,
+    hmax: scalar_int,
+    kmax: scalar_int,
+    detector_distance_mm: scalar_float,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    render_ctrs_as_streaks: bool,
+    parameterization: str,
+    surface_config: SurfaceConfig | None,
+    defect_surface_layer_depth_angstrom: scalar_float,
+) -> Callable[[Float[Array, "D"]], Complex[Array, "H W"]]:
+    """Bind distribution samples to the kinematic amplitude kernel."""
+    axis_id: str | None = distribution.axis_id
+    sample_dim: int = distribution.samples.shape[1]
+    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
+    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
+    voltage_nominal: Float[Array, ""] = jnp.asarray(
+        voltage_kv,
+        dtype=jnp.float64,
+    )
+
+    def _call_kinematic(
+        sample_crystal: CrystalStructure,
+        sample_voltage_kv: scalar_num,
+        sample_theta_deg: scalar_num,
+        sample_phi_deg: scalar_num,
+    ) -> Complex[Array, "H W"]:
+        return kinematic_amplitude(
+            crystal=sample_crystal,
+            voltage_kv=sample_voltage_kv,
+            theta_deg=sample_theta_deg,
+            phi_deg=sample_phi_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
+            parameterization=parameterization,
+            surface_config=surface_config,
+        )
+
+    if axis_id in _UNSUPPORTED_AXIS_IDS:
+        raise ValueError(
+            f"Distribution axis {axis_id!r} has no detector-image bind yet; "
+            "use its dedicated finite-domain API until the shared size "
+            "kernel lands."
+        )
+
+    if axis_id in _BEAM_AXIS_IDS:
+        if sample_dim != 3:
+            raise ValueError(
+                f"Beam-like distribution axis {axis_id!r} requires samples "
+                "with shape (N, 3)."
+            )
+
+        def _beam_bound(sample: Float[Array, "3"]) -> Complex[Array, "H W"]:
+            theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
+                sample[0]
+            )
+            phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(
+                sample[1]
+            )
+            voltage_sample_kv: Float[Array, ""] = (
+                voltage_nominal + 1.0e-3 * sample[2]
+            )
+            return _call_kinematic(
+                crystal,
+                voltage_sample_kv,
+                theta_sample_deg,
+                phi_sample_deg,
+            )
+
+        return _beam_bound
+
+    if axis_id in _STRUCTURE_AXIS_IDS:
+        if axis_id == "twins":
+            structure_builder: Callable[
+                [Float[Array, "2"]],
+                CrystalStructure,
+            ] = bind_twin_wall_distribution(
+                slab=crystal,
+                surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
+            )
+
+            def _twin_bound(
+                sample: Float[Array, "2"],
+            ) -> Complex[Array, "H W"]:
+                return _call_kinematic(
+                    structure_builder(sample),
+                    voltage_kv,
+                    theta_deg,
+                    phi_deg,
+                )
+
+            return _twin_bound
+
+        structure_builder_step: Callable[
+            [Float[Array, "3"]],
+            CrystalStructure,
+        ] = bind_step_edge_distribution(
+            slab=crystal,
+            surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
+        )
+
+        def _step_bound(sample: Float[Array, "3"]) -> Complex[Array, "H W"]:
+            return _call_kinematic(
+                structure_builder_step(sample),
+                voltage_kv,
+                theta_deg,
+                phi_deg,
+            )
+
+        return _step_bound
+
+    if axis_id in _GRAIN_AXIS_IDS:
+        if sample_dim != 2:
+            raise ValueError(
+                "Grain distributions require samples "
+                "[orientation_angle_deg, grain_size_angstrom]."
+            )
+
+        def _grain_bound(sample: Float[Array, "2"]) -> Complex[Array, "H W"]:
+            return _call_kinematic(
+                crystal,
+                voltage_kv,
+                theta_deg,
+                phi_deg + sample[0],
+            )
+
+        return _grain_bound
+
+    if axis_id in _AZIMUTH_AXIS_IDS or (axis_id is None and sample_dim == 1):
+
+        def _azimuth_bound(sample: Float[Array, "1"]) -> Complex[Array, "H W"]:
+            return _call_kinematic(
+                crystal,
+                voltage_kv,
+                theta_deg,
+                phi_deg + sample[0],
+            )
+
+        return _azimuth_bound
+
+    raise ValueError(
+        f"Distribution axis {axis_id!r} with sample dimension {sample_dim} "
+        "does not have a registered kinematic bind."
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def _apply_kinematic_distribution(  # noqa: PLR0913
     distribution: Distribution,
     crystal: CrystalStructure,
@@ -1648,17 +2015,16 @@ def _apply_kinematic_distribution(  # noqa: PLR0913
     render_ctrs_as_streaks: bool,
     parameterization: str,
     surface_config: SurfaceConfig | None,
+    defect_surface_layer_depth_angstrom: scalar_float = 1.0,
 ) -> Float[Array, "H W"]:
-    """Apply an azimuth-offset distribution to the kinematic kernel."""
-
-    def _amplitude_at_distribution_sample(
-        sample: Float[Array, "D"],
-    ) -> Complex[Array, "H W"]:
-        return kinematic_amplitude(
+    """Apply a registered distribution bind to the kinematic kernel."""
+    bound: Callable[[Float[Array, "D"]], Complex[Array, "H W"]] = (
+        _bind_kinematic_distribution(
+            distribution=distribution,
             crystal=crystal,
             voltage_kv=voltage_kv,
             theta_deg=theta_deg,
-            phi_deg=phi_deg + sample[0],
+            phi_deg=phi_deg,
             hmax=hmax,
             kmax=kmax,
             detector_distance_mm=detector_distance_mm,
@@ -1674,12 +2040,11 @@ def _apply_kinematic_distribution(  # noqa: PLR0913
             render_ctrs_as_streaks=render_ctrs_as_streaks,
             parameterization=parameterization,
             surface_config=surface_config,
+            defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
         )
-
-    return apply_distribution(
-        distribution,
-        _amplitude_at_distribution_sample,
     )
+
+    return apply_distribution(distribution, bound)
 
 
 @jaxtyped(typechecker=beartype)
@@ -1912,6 +2277,7 @@ def simulate_detector_image(  # noqa: PLR0913
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
     render_ctrs_as_streaks: bool = True,
+    defect_surface_layer_depth_angstrom: scalar_float = 1.0,
     kernel: str = _KINEMATIC_KERNEL,
 ) -> Float[Array, "H W"]:
     """Simulate a broadened kinematic detector image from a crystal.
@@ -1984,6 +2350,9 @@ def simulate_detector_image(  # noqa: PLR0913
         If True, render each valid crystal truncation rod as a continuous
         detector streak in the dense image. If False, rasterize only the
         discrete Ewald intersections as circular spots. Default: True
+    defect_surface_layer_depth_angstrom : scalar_float, optional
+        Surface-layer depth affected by structure-bound defect distributions
+        such as ``axis_id="twins"`` or ``axis_id="steps"``. Default: 1.0
     kernel : str, optional
         Layer-0 coherent amplitude kernel selector. Currently only
         ``"kinematic"`` is implemented. Default: ``"kinematic"``.
@@ -2214,6 +2583,7 @@ def simulate_detector_image(  # noqa: PLR0913
                     render_ctrs_as_streaks=False,
                     parameterization=parameterization,
                     surface_config=surface_config,
+                    defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
                 )
             sparse_pattern = ewald_simulator(
                 crystal=crystal,
@@ -2316,6 +2686,7 @@ def simulate_detector_image(  # noqa: PLR0913
             render_ctrs_as_streaks=False,
             parameterization=parameterization,
             surface_config=surface_config,
+            defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
         )
 
     detector_image: Float[Array, "H W"] = instrument_broadened_pattern(

@@ -55,6 +55,14 @@ jobs:
       with:
         fetch-depth: 2
 
+    # Defender real-time scanning of every extracted wheel / imported .py file
+    # dominates Windows runner time for a large Python/JAX dependency tree.
+    # Excluding the workspace (which holds the copied .venv) removes that tax.
+    - name: Exclude workspace from Windows Defender
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+
     - name: Install uv
       uses: astral-sh/setup-uv@v7
       with:
@@ -118,13 +126,58 @@ jobs:
           coverage.xml
         if-no-files-found: warn
 
-    - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
+    - name: Publish test results to job summary
       if: always() && matrix.os == 'ubuntu-latest'
-      with:
-        files: test-results.xml
-        check_name: Test Results (Python ${{ matrix.python-version }})
-        comment_mode: always
+      shell: bash
+      env:
+        PYV: ${{ matrix.python-version }}
+      run: |
+        python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+        import glob, os, xml.etree.ElementTree as ET
+
+        pyv = os.environ.get("PYV", "?")
+        files = glob.glob("test-results.xml")
+        if not files:
+            print(f"## Test Results (Python {pyv}) — no results file")
+            raise SystemExit(0)
+
+        total = failures = errors = skipped = 0
+        seconds = 0.0
+        failed = []
+        for path in files:
+            for suite in ET.parse(path).getroot().iter("testsuite"):
+                total += int(suite.get("tests", 0))
+                failures += int(suite.get("failures", 0))
+                errors += int(suite.get("errors", 0))
+                skipped += int(suite.get("skipped", 0))
+                seconds += float(suite.get("time", 0) or 0)
+                for case in suite.iter("testcase"):
+                    if (case.find("failure") is not None
+                            or case.find("error") is not None):
+                        cls = case.get("classname", "")
+                        name = case.get("name", "")
+                        failed.append(f"{cls}::{name}")
+        passed = total - failures - errors - skipped
+        ok = failures == 0 and errors == 0
+        mark = "✅ passed" if ok else "❌ failed"
+        print(f"## Test Results (Python {pyv}) — {mark}")
+        print()
+        print("| total | passed | failed | errors | skipped | time |")
+        print("|---|---|---|---|---|---|")
+        print(
+            f"| {total} | {passed} | {failures} | {errors} "
+            f"| {skipped} | {seconds:.1f}s |"
+        )
+        if failed:
+            print()
+            print("<details><summary>Failed / errored tests</summary>")
+            print()
+            print("```")
+            print("\n".join(failed))
+            print("```")
+            print()
+            print("</details>")
+        PY
 
   build:
     runs-on: ubuntu-latest

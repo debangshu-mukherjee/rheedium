@@ -28,8 +28,6 @@ Routine Listings
     Eager tolerance-pruned beam-mode decomposition.
 :func:`energy_spread_average`
     Average pattern over Gaussian energy spread distribution.
-:func:`coherence_envelope`
-    Apply partial coherence damping envelope in reciprocal space.
 :func:`detector_psf_convolve`
     Convolve detector image with Gaussian point spread function.
 :func:`instrument_broadened_pattern`
@@ -629,109 +627,6 @@ def energy_spread_average(
 
 
 @jaxtyped(typechecker=beartype)
-def coherence_envelope(
-    reciprocal_space_amplitude: Complex[Array, "H W"],
-    transverse_coherence_length_angstrom: scalar_float,
-    longitudinal_coherence_length_angstrom: scalar_float,
-    q_parallel: Float[Array, "H W"],
-    q_z: Float[Array, "H W"],
-) -> Complex[Array, "H W"]:
-    r"""Apply partial coherence damping to diffraction amplitude.
-
-    Extended Summary
-    ----------------
-    Coherence effects act as Gaussian envelopes that damp high-q
-    components of the diffraction amplitude:
-
-    .. math::
-
-        E_t(q_\parallel) = \exp\!\bigl(
-            -q_\parallel^2 / (2 L_t^2)
-        \bigr)
-
-    .. math::
-
-        E_l(q_z) = \exp\!\bigl(-q_z^2 / (2 L_l^2)\bigr)
-
-    These envelopes model the finite spatial extent of electron
-    wavepackets and set the maximum spatial frequency that can
-    produce visible interference fringes.
-
-    :see: :class:`~.test_beam_averaging.TestCoherenceEnvelope`
-
-    Parameters
-    ----------
-    reciprocal_space_amplitude : Complex[Array, "H W"]
-        Diffraction amplitude :math:`F(\mathbf{q})` at each detector
-        pixel.
-    transverse_coherence_length_angstrom : scalar_float
-        Transverse coherence length :math:`L_t` in Angstroms. Controls
-        damping of in-plane high-q components.
-    longitudinal_coherence_length_angstrom : scalar_float
-        Longitudinal coherence length :math:`L_l` in Angstroms.
-        Controls damping along :math:`q_z` (streak modulation).
-    q_parallel : Float[Array, "H W"]
-        In-plane momentum transfer magnitude
-        :math:`q_\parallel = \sqrt{q_x^2 + q_y^2}` at each pixel,
-        in inverse Angstroms.
-    q_z : Float[Array, "H W"]
-        Out-of-plane momentum transfer :math:`q_z` at each pixel,
-        in inverse Angstroms.
-
-    Returns
-    -------
-    damped_amplitude : Complex[Array, "H W"]
-        Amplitude multiplied by coherence envelope.
-
-    Notes
-    -----
-    1. **Transverse envelope** --
-       :math:`E_t = \exp(-q_\parallel^2 / (2 L_t^2))`.
-    2. **Longitudinal envelope** --
-       :math:`E_l = \exp(-q_z^2 / (2 L_l^2))`.
-    3. **Apply damping** --
-       Return :math:`F(\mathbf{q}) \cdot E_t \cdot E_l`.
-
-    Examples
-    --------
-    >>> import jax.numpy as jnp
-    >>> import rheedium as rh
-    >>> amp = jnp.ones((64, 64), dtype=jnp.complex128)
-    >>> q_par = jnp.ones((64, 64)) * 0.1
-    >>> q_z = jnp.ones((64, 64)) * 0.05
-    >>> damped = rh.simul.coherence_envelope(
-    ...     amp,
-    ...     jnp.float64(500.0),
-    ...     jnp.float64(1000.0),
-    ...     q_par,
-    ...     q_z,
-    ... )
-    >>> damped.shape
-    (64, 64)
-    """
-    l_t: scalar_float = jnp.maximum(
-        transverse_coherence_length_angstrom,
-        1e-12,
-    )
-    l_l: scalar_float = jnp.maximum(
-        longitudinal_coherence_length_angstrom,
-        1e-12,
-    )
-    envelope_transverse: Float[Array, "H W"] = jnp.exp(
-        -0.5 * q_parallel**2 / l_t**2
-    )
-    envelope_longitudinal: Float[Array, "H W"] = jnp.exp(
-        -0.5 * q_z**2 / l_l**2
-    )
-    damped_amplitude: Complex[Array, "H W"] = (
-        reciprocal_space_amplitude
-        * envelope_transverse
-        * envelope_longitudinal
-    )
-    return damped_amplitude
-
-
-@jaxtyped(typechecker=beartype)
 def detector_psf_convolve(
     detector_image: Float[Array, "H W"],
     psf_sigma_pixels: scalar_float,
@@ -964,7 +859,6 @@ __all__: list[str] = [
     "angular_divergence_average",
     "apply_distribution",
     "apply_distributions",
-    "coherence_envelope",
     "decompose_beam_modes",
     "decompose_beam_modes_static",
     "detector_psf_convolve",

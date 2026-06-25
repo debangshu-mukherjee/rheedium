@@ -1,9 +1,9 @@
 """Test suite for beam_averaging.py.
 
 Verifies angular divergence averaging, energy spread averaging,
-coherence envelope damping, detector PSF convolution, and the full
-instrument-broadened pipeline. Includes gradient tests to ensure
-end-to-end differentiability through all beam averaging operations.
+detector PSF convolution, and the full instrument-broadened pipeline.
+Includes gradient tests to ensure end-to-end differentiability through
+all beam averaging operations.
 """
 
 from collections.abc import Callable
@@ -18,7 +18,6 @@ from rheedium.simul.beam_averaging import (
     angular_divergence_average,
     apply_distribution,
     apply_distributions,
-    coherence_envelope,
     decompose_beam_modes,
     decompose_beam_modes_static,
     detector_psf_convolve,
@@ -463,83 +462,6 @@ class TestEnergySpreadAverage(chex.TestCase):
         chex.assert_tree_all_finite(avg)
 
 
-class TestCoherenceEnvelope(chex.TestCase):
-    """Tests for coherence envelope damping."""
-
-    def test_damps_high_q(self) -> None:
-        """High-q amplitude is reduced more than low-q."""
-        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par_low: Float[Array, "H W"] = jnp.full((H, W), 0.01)
-        q_par_high: Float[Array, "H W"] = jnp.full((H, W), 1.0)
-        q_z: Float[Array, "H W"] = jnp.zeros((H, W))
-        damped_low: Complex[Array, "H W"] = coherence_envelope(
-            amp,
-            jnp.float64(500.0),
-            jnp.float64(1000.0),
-            q_par_low,
-            q_z,
-        )
-        damped_high: Complex[Array, "H W"] = coherence_envelope(
-            amp,
-            jnp.float64(500.0),
-            jnp.float64(1000.0),
-            q_par_high,
-            q_z,
-        )
-        self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
-
-    def test_zero_q_unchanged(self) -> None:
-        """At q=0 the envelope is unity (no damping)."""
-        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128) * (
-            2.0 + 1.0j
-        )
-        q_par: Float[Array, "H W"] = jnp.zeros((H, W))
-        q_z: Float[Array, "H W"] = jnp.zeros((H, W))
-        damped: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z
-        )
-        chex.assert_trees_all_close(damped, amp, atol=1e-14)
-
-    def test_shape_preserved(self) -> None:
-        """Output shape matches input amplitude shape."""
-        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par: Float[Array, "H W"] = jnp.ones((H, W)) * 0.1
-        q_z: Float[Array, "H W"] = jnp.ones((H, W)) * 0.05
-        damped: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z
-        )
-        chex.assert_shape(damped, (H, W))
-
-    def test_longitudinal_damping(self) -> None:
-        """Longitudinal coherence damps along q_z."""
-        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par: Float[Array, "H W"] = jnp.zeros((H, W))
-        q_z_low: Float[Array, "H W"] = jnp.full((H, W), 0.001)
-        q_z_high: Float[Array, "H W"] = jnp.full((H, W), 0.1)
-        damped_low: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z_low
-        )
-        damped_high: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(500.0), jnp.float64(1000.0), q_par, q_z_high
-        )
-        self.assertTrue(jnp.abs(damped_low[0, 0]) > jnp.abs(damped_high[0, 0]))
-
-    def test_longer_coherence_damps_less(self) -> None:
-        """Longer coherence lengths preserve more high-q amplitude."""
-        amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
-        q_par: Float[Array, "H W"] = jnp.full((H, W), 0.2)
-        q_z: Float[Array, "H W"] = jnp.full((H, W), 0.1)
-        damped_short: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(10.0), jnp.float64(20.0), q_par, q_z
-        )
-        damped_long: Complex[Array, "H W"] = coherence_envelope(
-            amp, jnp.float64(1000.0), jnp.float64(2000.0), q_par, q_z
-        )
-        self.assertTrue(
-            jnp.abs(damped_long[0, 0]) > jnp.abs(damped_short[0, 0])
-        )
-
-
 class TestDetectorPsfConvolve(chex.TestCase):
     """Tests for detector PSF convolution."""
 
@@ -710,25 +632,6 @@ class TestGradients(chex.TestCase):
 
         grad_val: scalar_float = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_val)
-
-    def test_grad_through_coherence_envelope(self) -> None:
-        """jax.grad of sum(|damped|^2) w.r.t. coherence length is finite."""
-
-        def loss(l_t: scalar_float) -> scalar_float:
-            amp: Complex[Array, "H W"] = jnp.ones((H, W), dtype=jnp.complex128)
-            q_par: Float[Array, "H W"] = jnp.ones((H, W)) * 0.005
-            q_z: Float[Array, "H W"] = jnp.ones((H, W)) * 0.002
-            damped: Complex[Array, "H W"] = coherence_envelope(
-                amp, l_t, jnp.float64(100.0), q_par, q_z
-            )
-            return jnp.sum(jnp.abs(damped) ** 2)
-
-        grad_val: scalar_float = jax.grad(loss)(jnp.float64(50.0))
-        chex.assert_tree_all_finite(grad_val)
-        self.assertTrue(
-            jnp.abs(grad_val) > 1e-20,
-            "Gradient through coherence envelope should be non-zero",
-        )
 
     def test_grad_through_full_pipeline(self) -> None:
         """jax.grad flows through the full instrument pipeline."""

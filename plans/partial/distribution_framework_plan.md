@@ -18,10 +18,9 @@ the Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
 `create_trivial_distribution` / `TRIVIAL_DISTRIBUTION`, the
 `apply_distribution` / `apply_distributions` reduction + nested-composition
 helpers (`src/rheedium/simul/beam_averaging.py`), the Layer-0
-`render_amplitude_to_field` complex renderer and a conservative
-`kinematic_amplitude` bridge that currently reconstructs real non-negative
-amplitudes from Ewald intensities, plus `render_ctr_amplitude_to_field` for
-complex CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
+`_ewald_amplitude_pattern` / `kinematic_amplitude` complex Ewald amplitude path,
+`render_amplitude_to_field`, plus `render_ctr_amplitude_to_field` for complex
+CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
 *adapters* `orientation_to_distribution` / `size_to_distribution`,
 `integrate_over_orientation` as a thin `apply_distribution` wrapper, and the
 spot-rendered `simulate_detector_image(..., distribution=...)` Layer-1 entry
@@ -55,7 +54,12 @@ simulator distribution identity / manual Layer-1 parity, size-distribution
 finite-domain parity, beam-mode normalization / variance / coherent-limit
 checks, ElectronBeam/preset bridge checks, instrument-wrapper Layer-1 parity,
 main-simulator beam-mode parity, beam×orientation composition parity, and CTR
-amplitude-renderer parity). Phase 4 is started:
+amplitude-renderer parity). `simulate_detector_image(..., distribution=...)`
+now routes generic distributions through a central kinematic bind registry
+rather than assuming every sample is an azimuth: beam-like, orientation,
+trivial, grain-orientation, twin-wall, and step-edge axes have explicit binds;
+`size` fails loudly until the finite-domain detector kernel is unified.
+Phase 4 is started:
 `grain_population_to_distribution` converts grain orientation / size / fraction
 metadata into an incoherent generic `Distribution`, with tests showing Layer-1
 reduction matches the existing `grain_distribution_average` intensity mixture
@@ -67,27 +71,30 @@ feature size, coherence length, and regular-vs-random step semantics.
 `apply_twin_wall_field` and `apply_step_edge_field` are now bound by
 `bind_twin_wall_distribution` / `bind_step_edge_distribution`, so twin and step
 samples can build modified `CrystalStructure`s inside a Layer-1 amplitude
-closure. Phase 5 is also started: `multislice_amplitude` returns
+closure, and the public detector-image path has end-to-end tests for twin,
+step, and grain distribution binds. Phase 5 is also started:
+`multislice_amplitude` returns
 `FFT(exit_wave)` before modulus-squared, and `multislice_simulator` now consumes
 that amplitude before its legacy sparse-pattern intensity reduction.
 
 **Not yet done:** the full core inversion — `simulate_detector_image` still has
 legacy orientation+CTR orchestration paths; `kernel=` currently supports only
 the kinematic detector-image wrapper, while multislice is exposed as a Layer-0
-amplitude function over `PotentialSlices`. The kinematic amplitude bridge is
-also still **phaseless**: it calls the intensity-returning `ewald_simulator`,
-takes `sqrt(I)`, and casts to complex, so incoherent sums are correct but
-coherent reductions through the real kinematic kernel are not yet physical.
-Also pending: finishing the shared detector contract for multislice projection
-(the existing `DetectorGeometry` carrier lives in `types/rheed_types.py`; the
-plan's proposed new `types/detector.py` has not been split out),
+amplitude function over `PotentialSlices`. Also pending: finishing the shared
+detector contract for multislice projection (the existing `DetectorGeometry`
+carrier lives in `types/rheed_types.py`; the plan's proposed new
+`types/detector.py` has not been split out), replacing the simulator-local
+bind registry with the promised polymorphic `Distribution.bind(...)` /
+producer-bind contract, wiring `size` distributions into the detector-image
+integrator instead of the separate finite-domain intensity API,
 higher-fidelity fine-twin satellite and step-terrace diffraction physics beyond
 the current smooth structure modifiers; the Phase 6 differentiability guarantee
 (the inverse *solver* itself belongs to `recon`, per
 [recon_optimization_plan.md](plans/future/recon_optimization_plan.md)); and retiring
-`coherence_envelope` / the remaining orientation+CTR angular+energy Gaussian
-quadrature path. Moved from `plans/future/` to `plans/partial/` on landing the
-Phase-1 slice.
+the remaining orientation+CTR angular+energy Gaussian quadrature path.
+`coherence_envelope` has been removed from `beam_averaging` and the public
+`rheedium.simul` export surface. Moved from `plans/future/` to
+`plans/partial/` on landing the Phase-1 slice.
 
 Subsumes the earlier mixed-state
 beam decomposition: its GSM mode math, broadening taxonomy, and beam/sample
@@ -118,8 +125,9 @@ inverse-related obligation is to keep `jax.grad` flowing end-to-end (Phase 6).
 
 Today `simulate_detector_image` bakes the modulus-squared into the sparse
 reflection list, then scatters instrument effects (`n_angular_samples`,
-`n_energy_samples`, `orientation_distribution`, the orphan `coherence_envelope`)
-through nested ad-hoc `vmap`s. Statistical physics lives in four near-identical
+`n_energy_samples`, `orientation_distribution`) through nested ad-hoc `vmap`s.
+The former orphan `coherence_envelope` has been removed rather than migrated.
+Statistical physics lives in four near-identical
 but disconnected places — `integrate_over_orientation`, `grains`,
 `SizeDistribution` (dangling), and the proposed `BeamModeDistribution`.
 
@@ -164,11 +172,12 @@ exists by removing a premature `|·|²`.
   field: return amplitude + phase per reflection, not intensity.
 - `ewald_simulator` gains/【or is mirrored by】a complex sibling returning a
   `RHEEDPattern`-like structure carrying **complex** per-reflection amplitude.
-- Current status: `kinematic_amplitude` is only a conservative compatibility
-  bridge. It calls the legacy intensity path, computes `sqrt(I)`, and therefore
-  preserves incoherent intensity parity but discards all relative reflection
-  phase. A strict xfail test now documents that the real kinematic kernel does
-  not yet carry non-trivial phase.
+- Current status: `_ewald_amplitude_pattern` mirrors the sparse Ewald geometry,
+  carries the complex structure factor through CTR and roughness amplitude
+  scaling, and normalizes amplitudes so `|A|²` matches `ewald_simulator`
+  intensities. `kinematic_amplitude` now renders these complex sparse
+  amplitudes directly; tests assert both intensity parity and non-trivial
+  imaginary phase.
 
 ### 2.2 Complex render-to-field (the one genuinely new kernel)
 
@@ -243,6 +252,12 @@ dist.bind(kernel, crystal, geom) -> (sample -> Complex[H, W])
 
 This generalizes exactly what `integrate_over_orientation`'s `simulate_fn`
 already is ([distributions.py:541](src/rheedium/types/distributions.py#L541)).
+Current implementation status: the reducer is generic, while binding is
+centralized in the kinematic detector simulator rather than living as a method
+on `Distribution`. That registry prevents silent mis-binds and has public-path
+coverage for beam-like, orientation/trivial, grain-orientation, twin, and step
+axes, but the final producer-polymorphic `dist.bind(...)` API and the size /
+finite-domain detector bind remain open.
 
 ### 3.3 Reduction and composition
 
@@ -416,8 +431,10 @@ now exercises this composition path directly for the kinematic amplitude kernel.
 - **Statistical / defect modifiers** (grains, twins, steps, size, texture) →
   return a `Distribution` over latent parameters whose bind closure may call a
   builder per sample. Grain, twin-wall, and step-edge producers now emit generic
-  distributions, and twin/step bind helpers map samples to modified
-  `CrystalStructure`s inside Layer-1 closures.
+  distributions; `simulate_detector_image(..., distribution=...)` binds grain
+  orientation samples through the kinematic kernel and twin/step samples through
+  modified `CrystalStructure`s. Grain size is still metadata for future
+  finite-domain coupling rather than an active detector-image parameter.
 - **Sub-coherence disorder** (`apply_vacancy_field` VCA occupancy, Debye–Waller,
   displacement fields) → the **analytic coherent-average limit**; modifies the
   structure factor in closed form, stays a structure modifier. This is the
@@ -445,7 +462,7 @@ axis's `reduction`. Twins and steps live on both sides depending on density.
 | Mechanism | Origin | Fate |
 |-----------|--------|------|
 | Angular-divergence GH quadrature | beam coherence | **Replaced** by beam-mode `Distribution` |
-| `coherence_envelope` (orphan) | beam coherence | **Removed** (double-counts modal spread) |
+| `coherence_envelope` (retired orphan) | beam coherence | **Removed** from code/export surface (double-counted modal spread) |
 | Energy-spread GH quadrature | beam coherence | **Kept** as a longitudinal sub-axis |
 | `spot_sigma_px` | numerical | **Demoted** to anti-aliasing |
 | Detector PSF | detector | **Kept** — a genuine convolution |
@@ -540,16 +557,17 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 
 - **Amplitude path correctness.** Premature `|·|²` removal must be exact;
   guarded by test 4 (pixelwise equality of `|amplitude|²` vs legacy intensity).
-  This is only an incoherent-parity guard today: the current kinematic bridge is
-  phaseless (`sqrt(I) + 0j`). A strict xfail test,
-  `test_kinematic_amplitude_carries_nontrivial_phase`, records the missing
-  complex Ewald sibling and should flip when true per-reflection phase lands.
+  The sparse helper is additionally guarded against legacy drift by
+  `test_ewald_amplitude_pattern_matches_intensity_simulator`, and
+  `test_kinematic_amplitude_carries_nontrivial_phase` asserts the coherent
+  kernel carries non-zero imaginary phase.
 - **Phase-reference consistency** across samples in coherent reduction → fix one
   shared origin; test 5 falsifies a wrong reference.
 - **Kernel detector drift** (kinematic vs multislice) → one `DetectorGeometry`
   carrier; assert identical extents.
-- **Double-counting coherence** → no `coherence_envelope` in Layer 1; the beam
-  `Distribution` is the sole source of partial-coherence broadening.
+- **Double-counting coherence** → `coherence_envelope` is retired; the beam
+  `Distribution` is the sole source of partial-coherence broadening in the
+  framework path.
 - **Ensemble blow-up** → Sobol joint sampling + `distribute_batched`; `log` any
   axis truncated before its tolerance (no silent caps).
 - **Static vs traced mode/sample counts** → tolerance-pruned eager path +
@@ -563,11 +581,11 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 
 | File | Change |
 |------|--------|
-| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`, `render_ctr_amplitude_to_field`, `multislice_amplitude`; `simulate_detector_image` → Layer-1 kinematic integrator; beam×orientation composition; `_instrument` convenience wrapper |
+| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`, `render_ctr_amplitude_to_field`, `multislice_amplitude`; `simulate_detector_image` → Layer-1 kinematic integrator; central kinematic bind registry for beam/orientation/trivial/grain/twin/step axes; beam×orientation composition; `_instrument` convenience wrapper |
 | `src/rheedium/simul/multislice.py` | Multislice primitives remain here; `multislice_amplitude` currently lives in `simulator.py` beside `multislice_propagate` / `multislice_simulator` |
 | `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories; `reduction_mode_from_coherence_length` |
 | `src/rheedium/types/rheed_types.py` | Existing `DetectorGeometry` carrier (not yet split into a new `types/detector.py`) |
-| `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; retire angular/energy quadrature + `coherence_envelope` from the default path |
+| `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; `coherence_envelope` removed; legacy angular/energy quadrature remains outside the default framework path |
 | `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; twin/step bind helpers build modified structures per sample; sub-coherence disorder remains analytic structure modification |
 | `src/rheedium/{simul,types,procs}/__init__.py` | exports + Routine Listings |
 | `tests/.../{test_simulator,test_distributions,test_beam_averaging,test_surface_modifier,test_grains}.py` | identity, reduction-algebra, interference, limits, composition, parallel, grad |

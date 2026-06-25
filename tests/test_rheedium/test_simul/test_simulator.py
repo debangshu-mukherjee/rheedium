@@ -25,12 +25,20 @@ from jax.test_util import check_grads
 from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
+from rheedium.procs.grains import grain_population_to_distribution
+from rheedium.procs.surface_modifier import (
+    bind_step_edge_distribution,
+    bind_twin_wall_distribution,
+    step_edge_to_distribution,
+    twin_wall_to_distribution,
+)
 from rheedium.simul.beam_averaging import (
     apply_distribution,
     apply_distributions,
     decompose_beam_modes,
 )
 from rheedium.simul.simulator import (
+    _ewald_amplitude_pattern,
     _render_ctr_streaks_to_image,
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -59,6 +67,7 @@ from rheedium.tools.wrappers import jax_safe
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
     CrystalStructure,
+    Distribution,
     PotentialSlices,
     ReductionMode,
     SlicedCrystal,
@@ -1974,13 +1983,6 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             atol=1e-12,
         )
 
-    @pytest.mark.xfail(
-        reason=(
-            "kinematic_amplitude currently bridges from Ewald intensities via "
-            "sqrt(I), so it has no per-reflection phase."
-        ),
-        strict=True,
-    )
     def test_kinematic_amplitude_carries_nontrivial_phase(self) -> None:
         """The real kinematic kernel should expose complex reflection phase."""
         field: Complex[Array, "32 32"] = kinematic_amplitude(
@@ -2022,7 +2024,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "spot_sigma_px": 1.2,
         }
         amplitude: Complex[Array, "16 24"] = kinematic_amplitude(**kwargs)
-        sparse_pattern: RHEEDPattern = ewald_simulator(
+        sparse_pattern: RHEEDPattern
+        amplitudes: Complex[Array, "N"]
+        sparse_pattern, amplitudes = _ewald_amplitude_pattern(
             crystal=kwargs["crystal"],
             voltage_kv=kwargs["voltage_kv"],
             theta_deg=kwargs["theta_deg"],
@@ -2035,9 +2039,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         expected: Complex[Array, "16 24"] = render_amplitude_to_field(
             pattern=sparse_pattern,
-            amplitudes=jnp.sqrt(sparse_pattern.intensities).astype(
-                jnp.complex128
-            ),
+            amplitudes=amplitudes,
             image_shape_px=kwargs["image_shape_px"],
             pixel_size_mm=kwargs["pixel_size_mm"],
             beam_center_px=kwargs["beam_center_px"],
@@ -2045,6 +2047,40 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         chex.assert_trees_all_close(amplitude, expected, atol=1e-12)
+
+    def test_ewald_amplitude_pattern_matches_intensity_simulator(self) -> None:
+        """Complex Ewald amplitudes preserve the legacy intensity surface."""
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 0.0,
+            "hmax": 1,
+            "kmax": 1,
+            "detector_distance": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+        }
+        intensity_pattern: RHEEDPattern = ewald_simulator(**kwargs)
+        amplitude_pattern: RHEEDPattern
+        amplitudes: Complex[Array, "N"]
+        amplitude_pattern, amplitudes = _ewald_amplitude_pattern(**kwargs)
+
+        chex.assert_trees_all_close(
+            amplitude_pattern.detector_points,
+            intensity_pattern.detector_points,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            amplitude_pattern.intensities,
+            intensity_pattern.intensities,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            jnp.abs(amplitudes) ** 2,
+            intensity_pattern.intensities,
+            atol=1e-12,
+        )
 
     def test_trivial_distribution_reduces_kinematic_amplitude_to_intensity(
         self,
@@ -2551,6 +2587,225 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_twin_distribution_binds_structure(
+        self,
+    ) -> None:
+        """Twin distributions should bind structures in the public path."""
+        distribution: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([0.0, 4.0]),
+            wall_positions_angstrom=jnp.array([0.4, 0.4]),
+            twin_fractions=jnp.array([0.25, 0.75]),
+            twin_spacing_angstrom=4.0,
+            coherence_length_angstrom=10.0,
+        )
+        builder: Callable[[Float[Array, "2"]], CrystalStructure] = (
+            bind_twin_wall_distribution(
+                slab=_SI_CRYSTAL_2ATOM,
+                surface_layer_depth_angstrom=0.8,
+            )
+        )
+
+        def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=builder(sample),
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=3.0,
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                spot_sigma_px=1.2,
+                render_ctrs_as_streaks=False,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+            defect_surface_layer_depth_angstrom=0.8,
+            distribution=distribution,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_step_distribution_binds_structure(
+        self,
+    ) -> None:
+        """Step distributions should bind structures in the public path."""
+        distribution: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([0.0, 0.4]),
+            terrace_widths_angstrom=jnp.array([2.0, 2.0]),
+            line_azimuths_deg=jnp.array([0.0, 0.0]),
+            step_fractions=jnp.array([0.6, 0.4]),
+            coherence_length_angstrom=0.5,
+            regular=False,
+        )
+        builder: Callable[[Float[Array, "3"]], CrystalStructure] = (
+            bind_step_edge_distribution(
+                slab=_SI_CRYSTAL_2ATOM,
+                surface_layer_depth_angstrom=0.8,
+            )
+        )
+
+        def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=builder(sample),
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=3.0,
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                spot_sigma_px=1.2,
+                render_ctrs_as_streaks=False,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+            defect_surface_layer_depth_angstrom=0.8,
+            distribution=distribution,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_grain_distribution_binds_orientation(
+        self,
+    ) -> None:
+        """Grain distributions should not be interpreted as beam samples."""
+        distribution: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([-1.0, 2.0]),
+            grain_sizes_angstrom=jnp.array([80.0, 120.0]),
+            grain_volume_fractions=jnp.array([0.25, 0.75]),
+        )
+
+        def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=3.0 + sample[0],
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                spot_sigma_px=1.2,
+                render_ctrs_as_streaks=False,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distribution(
+            distribution,
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+            distribution=distribution,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_rejects_unbound_size_distribution(
+        self,
+    ) -> None:
+        """Size axes should fail loudly until the detector bind exists."""
+        distribution: Distribution = create_distribution(
+            samples=jnp.array([[40.0], [80.0]], dtype=jnp.float64),
+            weights=jnp.array([0.5, 0.5], dtype=jnp.float64),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="size",
+        )
+
+        with pytest.raises(ValueError, match="no detector-image bind"):
+            simulate_detector_image(
+                crystal=_SI_CRYSTAL_2ATOM,
+                hmax=0,
+                kmax=0,
+                image_shape_px=(16, 24),
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+                psf_sigma_pixels=0.0,
+                n_angular_samples=1,
+                n_energy_samples=1,
+                render_ctrs_as_streaks=False,
+                distribution=distribution,
+            )
 
     def test_simulate_detector_image_rejects_ambiguous_distributions(
         self,
