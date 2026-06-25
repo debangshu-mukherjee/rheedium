@@ -8,6 +8,12 @@ wires a dangling piece, or collapses a duplicated path — and every item must
 **preserve the Core Principle** (CONTRIBUTING.md → *Invertible Modularity*): no
 refactor may weld a differentiable seam shut.
 
+**Target: zero legacy.** The end state carries **no** legacy code to maintain —
+the framework's three-layer API is the single source of truth, and every
+superseded, duplicated, or dangling path is **deleted outright**. There are **no
+compatibility shims, no `DeprecationWarning`s, no aliases** — the only migration
+surface is a `CHANGELOG.md` note (§3).
+
 Status: **proposed** — gated, sequenced **strictly after** the
 distribution-framework plan completes (no longer interleaved). Entry gate **R0**:
 the framework's six phases have landed and the suite is green. Assumes the
@@ -19,8 +25,9 @@ automatons are both written against the rationalized API this plan produces, so
 neither starts until it completes.
 
 Guard on every workstream below: **tests stay green, public results unchanged
-(or migrated behind a deprecation), and `jax.grad` still flows end-to-end.** A
-refactor that breaks differentiability has failed even if tests pass.
+(verified by regression — legacy paths deleted, not shimmed, per §3), and
+`jax.grad` still flows end-to-end.** A refactor that breaks differentiability has
+failed even if tests pass.
 
 ---
 
@@ -134,7 +141,7 @@ simplify to a config + `distribute_batched` call.
 ### W7 — Naming & units consistency pass
 
 - Energy: `voltage_kv` (simulator) vs `energy_kev` (`ElectronBeam`) — pick one,
-  alias the other through deprecation.
+  **delete** the other (no alias), migrated via `CHANGELOG.md`.
 - Angles: `theta_deg`/`phi_deg` (public) vs `polar`/`azimuth_rad` (internal) —
   standardize the boundary conversion in one place.
 - Keep scientific single-letter symbols (`G`, `T`, `dE_E`) where they mirror the
@@ -150,20 +157,37 @@ simplify to a config + `distribute_batched` call.
 
 ---
 
-## 3. Deprecation & compatibility policy
+## 3. Legacy & compatibility policy — zero shims
 
-`rheedium` is **published on PyPI** (CalVer, currently 2026.6.x). Public API
-changes need a migration path:
+The explicit goal is to finish with **no legacy code to maintain.** A
+compatibility shim is itself legacy that must be carried, tested, and eventually
+removed — so this plan ships **zero shims, no exceptions.** Every superseded path
+is deleted in the PR that supersedes it; the replacement is the only API.
+`rheedium` is pre-1.0 Beta CalVer (currently 2026.6.x) with a small, known user
+surface, so the cost of a clean break is a `CHANGELOG.md` migration note — and
+that is the entire compatibility mechanism.
 
-- Keep removed/renamed public symbols as **thin deprecated shims** for at least
-  one CalVer cycle, emitting `DeprecationWarning` with the replacement.
-- The framework's `simulate_detector_image_instrument(...)` wrapper already
-  preserves the legacy default-broadened behavior — old call sites migrate by
-  name, not by rewrite.
-- Record every break + migration in `CHANGELOG.md` (and the
-  `Backwards Compatibility` section of CONTRIBUTING).
-- Tutorials and `generate_*_sweeps` scripts updated in the same PR that lands
-  each workstream, so the canonical examples never lag the API.
+Policy, in priority order:
+
+1. **Deletion, always — no shim, no `DeprecationWarning`, no alias.** Internal
+   helpers, dangling symbols (`coherence_envelope`, an unconsumed
+   `SizeDistribution`), duplicate projection/averaging paths, the `*_sweep`
+   clones, *and* any renamed/removed **public** symbol are **deleted in the PR
+   that supersedes them**. No forwarding stub is left behind for anything.
+2. **CHANGELOG migration note is the only compatibility surface.** Every public
+   break is documented in `CHANGELOG.md` (and CONTRIBUTING's `Backwards
+   Compatibility` section) with a copy-paste before/after migration snippet. There
+   is no in-code deprecation path — the note *is* the migration path.
+3. **No dual API, even transiently.** R4's additive-carrier step (accept old
+   kwargs *and* new objects) is a **migration scaffold consumed inside the
+   phase** — the old kwargs are removed before the phase's gate closes. A carrier
+   and its superseded kwargs never ship in the same release.
+4. **Examples never lag.** Tutorials, notebooks, and `generate_*_sweeps` scripts
+   are updated in the same PR that lands each workstream — since nothing is
+   shimmed, a stale example is a hard build break, not a warning.
+
+Net: after this plan there is **no** compatibility surface in code — only
+CHANGELOG history. Everything superseded is gone.
 
 ---
 
@@ -187,14 +211,19 @@ rather than work. Until R0 holds this plan does not start.
 The §5 guardrails, as pass/fail commands:
 
 - `jax.grad` through the touched path returns **finite gradients**;
-- **results unchanged**: `chex.assert_trees_all_close` vs the pre-refactor output,
-  *or* a documented `DeprecationWarning` shim;
+- **results unchanged**: `chex.assert_trees_all_close` vs the pre-refactor output;
+  every removal — internal *or* public — is a deletion with **no shim**, migrated
+  via a `CHANGELOG.md` note only (§3);
 - **no new premature reduction**: no `|·|²`, hard threshold, discrete swap, or
   data-dependent Python branch added inside a kernel or carrier (reviewer-verified
   — the silent failure mode);
 - **net complexity down**: `pygount` LOC and/or argument-count reduced, or a
   dangling symbol removed;
-- suite green; `ty` / `ruff` clean.
+- **examples never lag**: every notebook / tutorial and `generate_*_sweeps`
+  script that touches the changed path is updated in the **same PR** — with
+  zero legacy there is no shim to keep an old example limping, so a notebook
+  calling a deleted symbol is a build break, not a deprecation;
+- suite green; `ty` / `ruff` clean; notebooks execute (the docs/notebook CI runs).
 
 ### Phase R1 — Detector unification (foundational)  ·  W4 + `DetectorGeometry` half of W3
 
@@ -227,8 +256,8 @@ consumed by the framework's `finite_domain` producer and delete any residual dea
 path.
 
 **Gate RG3:** no unreferenced public symbol remains in the touched modules
-(import-graph check); every removal carries a deprecation shim (§3); universal
-gate.
+(import-graph check); every removal is a **hard deletion — no shim, no alias**
+(§3), migrated via `CHANGELOG.md`; universal gate.
 
 ### Phase R4 — Parameter-object rationalization + sweeps collapse  ·  W3 (finish) + W6
 
@@ -237,24 +266,27 @@ gate.
 signature; collapse the seven `*_sweep` clones + `generate_*_sweeps` chunking onto
 one or two generic helpers (config + axis/`Distribution` + `distribute_batched`).
 Introduce carriers **additively first** (accept old kwargs *and* new objects),
-migrate call sites, then deprecate the kwargs.
+migrate call sites, then **remove** the old kwargs before the gate closes — the
+additive step is a migration scaffold consumed inside the phase, not a lasting
+dual API (§3).
 
 **Gate RG4:** public signature arg-count drops below the set threshold; the seven
-sweep functions reduce to ≤2; the old-kwargs path still works behind a
-`DeprecationWarning`; tutorials + `generate_*` scripts updated in the same PR;
-universal gate.
+sweep functions reduce to ≤2; the old kwargs are **removed** within the phase (no
+permanent dual API); every affected notebook / tutorial + `generate_*` script
+updated in the same PR; universal gate.
 
 ### Phase R5 — `procs` return-type split + naming/units  ·  W5 + W7
 
 *Tasks:* make the procs trichotomy explicit and documented — structure builders →
 `CrystalStructure`, statistical/defect modifiers → `Distribution`, sub-coherence
 disorder → structure modifier; standardize the `voltage_kv`/`energy_kev` and
-`theta_deg`/`polar_rad` boundary conversions in one place, aliasing the other
-through deprecation.
+`theta_deg`/`polar_rad` boundary conversions in one place with a **clean cut — the
+old name is deleted, not aliased** (§3), migrated via `CHANGELOG.md`.
 
 **Gate RG5:** every `procs` public function's return type matches the trichotomy
 (documented in each module's `Notes`); one canonical energy/angle unit at the
-public boundary with deprecated aliases; universal gate.
+public boundary, the old names **deleted, not aliased** (CHANGELOG migration);
+universal gate.
 
 ### Phase R6 — Module reorganization (mechanical, low-risk)  ·  W8
 
@@ -274,8 +306,8 @@ gate.
 | **R0** | framework complete + green; overlap with framework backlog reconciled |
 | **RG1** | one `DetectorGeometry`; identical extents; pixelwise regression |
 | **RG2** | ~5 averaging paths → 1 reducer; per-path regression |
-| **RG3** | no dangling public symbol; deprecation shims for removals |
-| **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deprecated, not broken |
+| **RG3** | no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
+| **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deleted in-phase (no dual API); notebooks updated |
 | **RG5** | `procs` trichotomy enforced; one unit at the boundary |
 | **RG6** | module reorg with unchanged public import paths |
 
@@ -286,7 +318,7 @@ the readability/ergonomics wins; R6 is cosmetic and may land any time after R0.
 
 ## 5. Guardrails (the principle, operationalized) — the universal gate
 
-These four are the **universal gate** referenced by every phase in §4; every
+These five are the **universal gate** referenced by every phase in §4; every
 refactor PR must demonstrate them in addition to its phase-specific gate:
 
 1. **Differentiability preserved** — a `jax.grad` smoke test through the touched
@@ -294,10 +326,14 @@ refactor PR must demonstrate them in addition to its phase-specific gate:
 2. **No new premature reduction** — no `|·|²`, hard threshold, discrete swap, or
    data-dependent Python branch introduced inside a kernel or carrier. Reviewer
    checks this explicitly (it is the silent failure mode).
-3. **Results unchanged or migrated** — numerical regression vs the pre-refactor
-   output (`chex.assert_trees_all_close`), or a documented deprecation.
+3. **Results unchanged** — numerical regression vs the pre-refactor output
+   (`chex.assert_trees_all_close`). Legacy paths are **deleted, never shimmed or
+   aliased** (§3); the only migration surface is a `CHANGELOG.md` note.
 4. **Net complexity down** — LOC and/or argument-count reduced, or a dangling
    symbol removed; `pygount` LOC and `interrogate` coverage tracked.
+5. **Examples current** — every notebook / tutorial + `generate_*_sweeps` script
+   touching the changed path is updated in the same PR and still executes; with
+   zero legacy there is no shim to keep a stale example alive.
 
 ---
 
@@ -313,8 +349,18 @@ refactor PR must demonstrate them in addition to its phase-specific gate:
 - **Differentiability regressions from "cleanup".** Replacing a `jnp.where` with
   a Python `if` during tidy-up silently welds a seam. Mitigation: guardrail #1/#2
   are mandatory review items, not optional.
-- **PyPI users on the old API.** Mitigation: §3 deprecation shims + CHANGELOG;
-  no silent renames.
+- **PyPI users on the old API.** With zero shims, a removed/renamed symbol breaks
+  on upgrade — by design. Mitigation: a documented hard cut with a copy-paste
+  `CHANGELOG.md` before/after migration snippet for **every** public break
+  (acceptable on pre-1.0 Beta CalVer with a small user surface); a CalVer bump
+  signals the break; no silent renames. Zero legacy is a deliberate trade-off — a
+  clean break now over permanent shim maintenance. *This puts the full weight of
+  compatibility on CHANGELOG discipline: a public break shipped without a
+  migration note is a defect.*
+- **Stale notebooks after a hard cut.** With no shims, a notebook calling a
+  removed symbol breaks immediately. Mitigation: guardrail #5 — examples updated
+  in the same PR and exercised by the notebook CI, so the break surfaces at PR
+  time, not for a user.
 
 ---
 
@@ -325,3 +371,8 @@ geometry, one set of config carriers, and a `procs` layer with a clear
 three-way return contract — with the dangling orphans gone and the seven sweep
 clones collapsed. Fewer lines, far fewer arguments, no orphan code, and the
 invertibility that motivated the framework preserved at every seam.
+
+**Zero legacy.** There is **no** compatibility surface left in code — no shims,
+no `DeprecationWarning`s, no aliases. Every duplicate, dangling, and superseded
+path is deleted; the notebooks/tutorials track the live API; and the only record
+of what changed is `CHANGELOG.md`. There is no legacy code to maintain.

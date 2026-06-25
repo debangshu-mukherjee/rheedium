@@ -9,119 +9,155 @@ auto-`vmap`s and reduces — incoherently *or* coherently — subsumes
 multimodal beams, statistical ensembles, and defects under one differentiable,
 parallel contract.
 
-Status: **partially implemented** — Phases 1–3 are substantially implemented,
-Phase 4 defect producers are implemented at the generic Distribution +
-structure-bind layer, and the Phase 5 `multislice_amplitude` Layer-0 slot has
-landed; Phase 6 remains pending.
-Implemented and tested:
-the Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
-`create_trivial_distribution` / `TRIVIAL_DISTRIBUTION`, the
-`apply_distribution` / `apply_distributions` reduction + nested-composition
-helpers (`src/rheedium/simul/beam_averaging.py`), the Layer-0
-`_ewald_amplitude_pattern` / `kinematic_amplitude` complex Ewald amplitude path,
-`render_amplitude_to_field`, plus `render_ctr_amplitude_to_field` for complex
-CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
-*adapters* `orientation_to_distribution` / `size_to_distribution`,
-`integrate_over_orientation` as a thin `apply_distribution` wrapper, and the
-spot-rendered `simulate_detector_image(..., distribution=...)` Layer-1 entry
-point. `SizeDistribution` is now wired into finite-domain physics through
-`finite_domain_intensities_for_size_distribution`, which uses the generic size
-producer and incoherently averages per-size rod-overlap intensities. The
-no-distribution path now uses the same Layer-1 reducer for both the trivial
-identity case and the legacy public instrument widths, converting
-`angular_divergence_mrad` / `energy_spread_ev` into an incoherent
-`Distribution` over `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` rather
-than calling the old angular+energy broadening helper for spot or CTR default
-images. `simulate_detector_image(..., kernel="kinematic")` exposes the first public Layer-0 kernel selector. Phase 3
-beam-mode foundations are started: `BeamModeDistribution`,
-`create_gaussian_schell_beam`, `create_coherent_beam`, `decompose_beam_modes`,
-and `decompose_beam_modes_static` now emit a generic incoherent `Distribution` over
-`(delta_theta_rad, delta_phi_rad, delta_energy_ev)` with variance-matched
-anisotropic GSM samples. `beam_modes_from_electron_beam`,
-`create_field_emission_beam`, and `create_thermionic_beam` connect the existing
-`ElectronBeam` metadata and source presets to the GSM producer.
-`simulate_detector_image_instrument` now consumes beam modes through the Layer-1
-reducer and binds `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` into the
-kinematic amplitude kernel, and `simulate_detector_image(..., beam_modes=...)`
-now exposes the same explicit beam-mode path. Beam modes and orientation
-distributions now compose through `apply_distributions` in
-`simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`.
-Generic `distribution=` and explicit `beam_modes=` paths can render CTR streak
-amplitudes. All exported through `rheedium.types` /
-`rheedium.simul` with tests (distribution validation, reduction algebra,
-composition, amplitude parity, coherent interference, trivial→intensity,
-simulator distribution identity / manual Layer-1 parity, size-distribution
-finite-domain parity, beam-mode normalization / variance / coherent-limit
-checks, ElectronBeam/preset bridge checks, instrument-wrapper Layer-1 parity,
-main-simulator beam-mode parity, beam×orientation composition parity, and CTR
-amplitude-renderer parity). `simulate_detector_image(..., distribution=...)`
-now routes generic distributions through a central kinematic bind registry
-rather than assuming every sample is an azimuth: beam-like, orientation,
-trivial, grain-orientation, twin-wall, and step-edge axes have explicit binds;
-`size` fails loudly until the finite-domain detector kernel is unified.
-Phase 4 is started:
-`grain_population_to_distribution` converts grain orientation / size / fraction
-metadata into an incoherent generic `Distribution`, with tests showing Layer-1
-reduction matches the existing `grain_distribution_average` intensity mixture
-semantics. `reduction_mode_from_coherence_length` provides the first static
-coherence-threshold reducer, and `twin_wall_to_distribution` /
-`step_edge_to_distribution` convert twin-wall and step-edge metadata into
-generic `Distribution`s with coherent/incoherent reduction selected from
-feature size, coherence length, and regular-vs-random step semantics.
-`apply_twin_wall_field` and `apply_step_edge_field` are now bound by
-`bind_twin_wall_distribution` / `bind_step_edge_distribution`, so twin and step
-samples can build modified `CrystalStructure`s inside a Layer-1 amplitude
-closure, and the public detector-image path has end-to-end tests for twin,
-step, and grain distribution binds. Phase 5 is also started:
-`multislice_amplitude` returns
-`FFT(exit_wave)` before modulus-squared, and `multislice_simulator` now consumes
-that amplitude before its legacy sparse-pattern intensity reduction.
+Status: **partially implemented.** Phases 1–3 are substantially in; Phase 4
+(defect producers) and Phase 5 (`multislice_amplitude` slot) are started; Phase 6
+is pending. The full architectural inversion (§1) has not yet landed.
 
-**Not yet done:** the full core inversion — `simulate_detector_image` still has
-legacy orientation+CTR orchestration paths; `kernel=` currently supports only
-the kinematic detector-image wrapper, while multislice is exposed as a Layer-0
-amplitude function over `PotentialSlices`. Also pending: finishing the shared
-detector contract for multislice projection (the existing `DetectorGeometry`
-carrier lives in `types/rheed_types.py`; the plan's proposed new
-`types/detector.py` has not been split out), replacing the simulator-local
-bind registry with the promised polymorphic `Distribution.bind(...)` /
-producer-bind contract, wiring `size` distributions into the detector-image
-integrator instead of the separate finite-domain intensity API,
-higher-fidelity fine-twin satellite and step-terrace diffraction physics beyond
-the current smooth structure modifiers; the Phase 6 differentiability guarantee
-(the inverse *solver* itself belongs to `recon`, per
-[recon_optimization_plan.md](plans/future/recon_optimization_plan.md)); and retiring
-the remaining orientation+CTR angular+energy Gaussian quadrature path.
-`coherence_envelope` has been removed from `beam_averaging` and the public
-`rheedium.simul` export surface. Moved from `plans/future/` to
-`plans/partial/` on landing the Phase-1 slice.
+### Done — Phase 1 (Layer 0 + Layer 1 core)
 
-Subsumes the earlier mixed-state
-beam decomposition: its GSM mode math, broadening taxonomy, and beam/sample
-ensemble now live here as producers (§4.1) and Layer-1 mechanics (§3, §5).
-Builds on
-[parallel_sweeps_plan.md](plans/implemented/parallel_sweeps_plan.md): the product ensemble
-is exactly the [`tools.distribute_batched`](src/rheedium/tools/parallel.py) batch
-axis.
+- Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
+  `create_trivial_distribution` / `TRIVIAL_DISTRIBUTION`, and the
+  `apply_distribution` / `apply_distributions` reduction + nested-composition
+  helpers (`src/rheedium/simul/beam_averaging.py`).
+- Layer-0 complex amplitude path: `_ewald_amplitude_pattern` /
+  `kinematic_amplitude` (complex Ewald amplitudes), `render_amplitude_to_field`,
+  and `render_ctr_amplitude_to_field` for complex CTR streaks
+  (`src/rheedium/simul/simulator.py`).
+- `simulate_detector_image(..., kernel="kinematic")` — the first public Layer-0
+  kernel selector.
+- Generic `distribution=` routes through a **central kinematic bind registry**
+  rather than assuming every sample is an azimuth: beam-like, orientation,
+  trivial, grain-orientation, twin-wall, and step-edge axes have explicit binds;
+  `size` fails loudly until the finite-domain detector kernel is unified.
 
-**Roadmap position:** first of four — *this* →
-[rationalization refactor](plans/future/rationalization_refactor_plan.md) →
-[recon (inversion)](plans/future/recon_optimization_plan.md) →
-[automatons](plans/future/automatons_plan.md). Each downstream plan is gated on
-this one completing.
+### Done — Phase 2 (retrofit existing producers)
 
-Decisions locked: **(a)** the default distribution is *trivial-sharp* (single
-coherent pattern, no hidden broadening); **kinematic** amplitude kernel ships in
-v1 with **multislice** as a defined Layer-0 slot. **(b)** This plan owns the
-*forward* model and its differentiability **only**. Every inverse / reconstruction
-capability — fitting latents, reconstructing probability distributions,
-recipe-deviation, uncertainty — lives in the **`recon`** module and is specified
-by [recon_optimization_plan.md](plans/future/recon_optimization_plan.md); the framework's sole
-inverse-related obligation is to keep `jax.grad` flowing end-to-end (Phase 6).
+- Adapters `orientation_to_distribution` / `size_to_distribution`;
+  `integrate_over_orientation` is now a thin `apply_distribution` wrapper; the
+  spot-rendered `simulate_detector_image(..., distribution=...)` Layer-1 entry
+  point.
+- `SizeDistribution` is wired into finite-domain physics through
+  `finite_domain_intensities_for_size_distribution`, which uses the generic size
+  producer and incoherently averages per-size rod-overlap intensities.
+- The no-distribution path now uses the same Layer-1 reducer for both the trivial
+  identity case and the legacy public instrument widths — converting
+  `angular_divergence_mrad` / `energy_spread_ev` into an incoherent `Distribution`
+  over `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` instead of the old
+  angular+energy broadening helper (spot or CTR default images).
+
+### Done — Phase 3 (beam modes, GSM)
+
+- `BeamModeDistribution`, `create_gaussian_schell_beam`, `create_coherent_beam`,
+  `decompose_beam_modes`, and `decompose_beam_modes_static` emit a generic
+  incoherent `Distribution` over `(delta_theta_rad, delta_phi_rad,
+  delta_energy_ev)` with variance-matched anisotropic GSM samples.
+- `beam_modes_from_electron_beam`, `create_field_emission_beam`, and
+  `create_thermionic_beam` bridge the existing `ElectronBeam` metadata and source
+  presets to the GSM producer.
+- `simulate_detector_image_instrument` consumes beam modes through the Layer-1
+  reducer; `simulate_detector_image(..., beam_modes=...)` exposes the explicit
+  path; beam modes and orientation compose through `apply_distributions` in
+  `simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`;
+  both generic `distribution=` and explicit `beam_modes=` can render CTR streaks.
+
+### Started — Phase 4 (defect producers)
+
+- `grain_population_to_distribution` converts grain orientation / size / fraction
+  metadata into an incoherent generic `Distribution` (tested to match
+  `grain_distribution_average` mixture semantics).
+- `reduction_mode_from_coherence_length` — the first static coherence-threshold
+  reducer.
+- `twin_wall_to_distribution` / `step_edge_to_distribution` convert twin-wall and
+  step-edge metadata into `Distribution`s, with coherent/incoherent reduction
+  selected from feature size, coherence length, and regular-vs-random step
+  semantics.
+- `apply_twin_wall_field` / `apply_step_edge_field` are bound by
+  `bind_twin_wall_distribution` / `bind_step_edge_distribution`, so twin/step
+  samples build modified `CrystalStructure`s inside a Layer-1 amplitude closure;
+  the public detector-image path has end-to-end tests for twin, step, and grain
+  binds.
+
+### Started — Phase 5 (multislice slot)
+
+- `multislice_amplitude` returns `FFT(exit_wave)` before modulus-squared, and
+  `multislice_simulator` consumes that amplitude before its legacy sparse-pattern
+  intensity reduction.
+
+### Tests & exports
+
+All of the above is exported through `rheedium.types` / `rheedium.simul` and
+covered by tests: distribution validation, reduction algebra, composition,
+amplitude parity, coherent interference, trivial→intensity, simulator
+distribution identity / manual Layer-1 parity, size-distribution finite-domain
+parity, beam-mode normalization / variance / coherent-limit, ElectronBeam/preset
+bridge, instrument-wrapper Layer-1 parity, main-simulator beam-mode parity,
+beam×orientation composition parity, and CTR amplitude-renderer parity.
+
+### Not yet done
+
+- **The full architectural inversion (the §1 forward-model refactor)** —
+  `simulate_detector_image` still has legacy orientation+CTR orchestration paths.
+- `kernel=` supports only the kinematic detector-image wrapper; multislice is
+  exposed only as a Layer-0 amplitude function over `PotentialSlices`.
+- The shared detector contract for multislice projection — `DetectorGeometry`
+  still lives in `types/rheed_types.py`; the proposed `types/detector.py` has not
+  been split out.
+- Replace the simulator-local bind registry with the promised polymorphic
+  `Distribution.bind(...)` / producer-bind contract.
+- Wire `size` distributions into the detector-image integrator instead of the
+  separate finite-domain intensity API.
+- Higher-fidelity fine-twin satellite and step-terrace diffraction physics beyond
+  the current smooth structure modifiers.
+- The Phase 6 differentiability guarantee (the inverse *solver* itself belongs to
+  `recon`, per
+  [recon_optimization_plan.md](plans/future/recon_optimization_plan.md)).
+- Retire the remaining orientation+CTR angular+energy Gaussian quadrature path.
+
+### Housekeeping
+
+- `coherence_envelope` has been removed from `beam_averaging` and the public
+  `rheedium.simul` export surface.
+- Moved from `plans/future/` to `plans/partial/` on landing the Phase-1 slice.
+
+### Relationship to other plans
+
+- **Subsumes** the earlier mixed-state beam decomposition: its GSM mode math,
+  broadening taxonomy, and beam/sample ensemble now live here as producers (§4.1)
+  and Layer-1 mechanics (§3, §5).
+- **Builds on**
+  [parallel_sweeps_plan.md](plans/implemented/parallel_sweeps_plan.md): the product
+  ensemble is exactly the
+  [`tools.distribute_batched`](src/rheedium/tools/parallel.py) batch axis.
+- **Roadmap position** — first of four, each downstream plan gated on this one
+  completing:
+  1. *this* (distribution framework)
+  2. [rationalization refactor](plans/future/rationalization_refactor_plan.md)
+  3. [recon (inversion)](plans/future/recon_optimization_plan.md)
+  4. [automatons](plans/future/automatons_plan.md)
+
+### Decisions locked
+
+1. **(a) Default is *trivial-sharp*** — a single coherent pattern, no hidden
+   broadening; the **kinematic** amplitude kernel ships in v1 with **multislice**
+   as a defined Layer-0 slot.
+2. **(b) Forward-only ownership** — this plan owns the *forward* model and its
+   differentiability **only**. Every inverse / reconstruction capability (fitting
+   latents, reconstructing probability distributions, recipe-deviation,
+   uncertainty) lives in the **`recon`** module, specified by
+   [recon_optimization_plan.md](plans/future/recon_optimization_plan.md); the
+   framework's sole inverse-related obligation is to keep `jax.grad` flowing
+   end-to-end (Phase 6).
 
 ---
 
-## 1. The inversion
+## 1. Architectural inversion (the forward model)
+
+**Disambiguation.** "Inversion" in this plan means *flipping the forward
+architecture* — pushing the modulus-squared down to Layer 0 so kernels return
+amplitude, and collapsing the simulator into a thin `apply(distribution, kernel)`
+integrator. It does **not** mean the inverse problem (recovering parameters from a
+pattern); that — fitting, reconstruction, recipe-deviation, UQ — lives in
+[`recon`](plans/future/recon_optimization_plan.md), per decision (b).
 
 Today `simulate_detector_image` bakes the modulus-squared into the sparse
 reflection list, then scatters instrument effects (`n_angular_samples`,

@@ -2316,31 +2316,27 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             _bound,
         )
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
-        with patch(
-            "rheedium.simul.simulator.instrument_broadened_pattern",
-            side_effect=AssertionError("legacy broadening path called"),
-        ):
-            actual: Float[Array, "..."] = simulate_detector_image(
-                crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=base_voltage_kv,
-                theta_deg=base_theta_deg,
-                phi_deg=base_phi_deg,
-                hmax=0,
-                kmax=0,
-                detector_distance_mm=1000.0,
-                temperature=300.0,
-                surface_roughness=0.5,
-                image_shape_px=image_shape_px,
-                pixel_size_mm=pixel_size_mm,
-                beam_center_px=beam_center_px,
-                spot_sigma_px=1.2,
-                angular_divergence_mrad=angular_divergence_mrad,
-                energy_spread_ev=energy_spread_ev,
-                psf_sigma_pixels=0.0,
-                n_angular_samples=n_angular_samples,
-                n_energy_samples=n_energy_samples,
-                render_ctrs_as_streaks=False,
-            )
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=base_voltage_kv,
+            theta_deg=base_theta_deg,
+            phi_deg=base_phi_deg,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=angular_divergence_mrad,
+            energy_spread_ev=energy_spread_ev,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=n_angular_samples,
+            n_energy_samples=n_energy_samples,
+            render_ctrs_as_streaks=False,
+        )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
@@ -2429,31 +2425,27 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             _bound,
         )
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
-        with patch(
-            "rheedium.simul.simulator.instrument_broadened_pattern",
-            side_effect=AssertionError("legacy broadening path called"),
-        ):
-            actual: Float[Array, "..."] = simulate_detector_image(
-                crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=base_voltage_kv,
-                theta_deg=base_theta_deg,
-                phi_deg=base_phi_deg,
-                hmax=0,
-                kmax=0,
-                detector_distance_mm=1000.0,
-                temperature=300.0,
-                surface_roughness=0.5,
-                image_shape_px=image_shape_px,
-                pixel_size_mm=pixel_size_mm,
-                beam_center_px=beam_center_px,
-                spot_sigma_px=1.2,
-                angular_divergence_mrad=angular_divergence_mrad,
-                energy_spread_ev=energy_spread_ev,
-                psf_sigma_pixels=0.0,
-                n_angular_samples=n_angular_samples,
-                n_energy_samples=n_energy_samples,
-                render_ctrs_as_streaks=True,
-            )
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=base_voltage_kv,
+            theta_deg=base_theta_deg,
+            phi_deg=base_phi_deg,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=angular_divergence_mrad,
+            energy_spread_ev=energy_spread_ev,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=n_angular_samples,
+            n_energy_samples=n_energy_samples,
+            render_ctrs_as_streaks=True,
+        )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
