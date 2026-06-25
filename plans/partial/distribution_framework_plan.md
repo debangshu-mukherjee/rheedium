@@ -10,16 +10,18 @@ multimodal beams, statistical ensembles, and defects under one differentiable,
 parallel contract.
 
 Status: **partially implemented** — Phases 1–3 are substantially implemented,
-Phase 4 defect-producer foundations are in place, and the Phase 5
-`multislice_amplitude` Layer-0 slot has landed; Phase 6 remains pending.
+Phase 4 defect producers are implemented at the generic Distribution +
+structure-bind layer, and the Phase 5 `multislice_amplitude` Layer-0 slot has
+landed; Phase 6 remains pending.
 Implemented and tested:
 the Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
 `create_trivial_distribution` / `TRIVIAL_DISTRIBUTION`, the
 `apply_distribution` / `apply_distributions` reduction + nested-composition
 helpers (`src/rheedium/simul/beam_averaging.py`), the Layer-0
 `render_amplitude_to_field` complex renderer and a conservative
-`kinematic_amplitude` bridge, plus `render_ctr_amplitude_to_field` for complex
-CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
+`kinematic_amplitude` bridge that currently reconstructs real non-negative
+amplitudes from Ewald intensities, plus `render_ctr_amplitude_to_field` for
+complex CTR streak amplitudes (`src/rheedium/simul/simulator.py`), Phase-2
 *adapters* `orientation_to_distribution` / `size_to_distribution`,
 `integrate_over_orientation` as a thin `apply_distribution` wrapper, and the
 spot-rendered `simulate_detector_image(..., distribution=...)` Layer-1 entry
@@ -61,19 +63,28 @@ semantics. `reduction_mode_from_coherence_length` provides the first static
 coherence-threshold reducer, and `twin_wall_to_distribution` /
 `step_edge_to_distribution` convert twin-wall and step-edge metadata into
 generic `Distribution`s with coherent/incoherent reduction selected from
-feature size, coherence length, and regular-vs-random step semantics. Phase 5
-is also started: `multislice_amplitude` returns `FFT(exit_wave)` before
-modulus-squared, and `multislice_simulator` now consumes that amplitude before
-its legacy sparse-pattern intensity reduction.
+feature size, coherence length, and regular-vs-random step semantics.
+`apply_twin_wall_field` and `apply_step_edge_field` are now bound by
+`bind_twin_wall_distribution` / `bind_step_edge_distribution`, so twin and step
+samples can build modified `CrystalStructure`s inside a Layer-1 amplitude
+closure. Phase 5 is also started: `multislice_amplitude` returns
+`FFT(exit_wave)` before modulus-squared, and `multislice_simulator` now consumes
+that amplitude before its legacy sparse-pattern intensity reduction.
 
 **Not yet done:** the full core inversion — `simulate_detector_image` still has
 legacy orientation+CTR orchestration paths; `kernel=` currently supports only
 the kinematic detector-image wrapper, while multislice is exposed as a Layer-0
-amplitude function over `PotentialSlices`. Also pending: finishing the shared
-detector contract for multislice projection (the existing `DetectorGeometry`
-carrier lives in `types/rheed_types.py`; the plan's proposed new
-`types/detector.py` has not been split out), full structure-building bind
-closures for twin/step samples, Phase 6 inverse problem; and retiring
+amplitude function over `PotentialSlices`. The kinematic amplitude bridge is
+also still **phaseless**: it calls the intensity-returning `ewald_simulator`,
+takes `sqrt(I)`, and casts to complex, so incoherent sums are correct but
+coherent reductions through the real kinematic kernel are not yet physical.
+Also pending: finishing the shared detector contract for multislice projection
+(the existing `DetectorGeometry` carrier lives in `types/rheed_types.py`; the
+plan's proposed new `types/detector.py` has not been split out),
+higher-fidelity fine-twin satellite and step-terrace diffraction physics beyond
+the current smooth structure modifiers; the Phase 6 differentiability guarantee
+(the inverse *solver* itself belongs to `recon`, per
+[recon_optimization_plan.md](plans/future/recon_optimization_plan.md)); and retiring
 `coherence_envelope` / the remaining orientation+CTR angular+energy Gaussian
 quadrature path. Moved from `plans/future/` to `plans/partial/` on landing the
 Phase-1 slice.
@@ -88,13 +99,18 @@ axis.
 
 **Roadmap position:** first of four — *this* →
 [rationalization refactor](plans/future/rationalization_refactor_plan.md) →
-[recon (optax inversion)](plans/future/recon_optax_plan.md) →
+[recon (inversion)](plans/future/recon_optimization_plan.md) →
 [automatons](plans/future/automatons_plan.md). Each downstream plan is gated on
 this one completing.
 
 Decisions locked: **(a)** the default distribution is *trivial-sharp* (single
 coherent pattern, no hidden broadening); **kinematic** amplitude kernel ships in
-v1 with **multislice** as a defined Layer-0 slot.
+v1 with **multislice** as a defined Layer-0 slot. **(b)** This plan owns the
+*forward* model and its differentiability **only**. Every inverse / reconstruction
+capability — fitting latents, reconstructing probability distributions,
+recipe-deviation, uncertainty — lives in the **`recon`** module and is specified
+by [recon_optimization_plan.md](plans/future/recon_optimization_plan.md); the framework's sole
+inverse-related obligation is to keep `jax.grad` flowing end-to-end (Phase 6).
 
 ---
 
@@ -148,6 +164,11 @@ exists by removing a premature `|·|²`.
   field: return amplitude + phase per reflection, not intensity.
 - `ewald_simulator` gains/【or is mirrored by】a complex sibling returning a
   `RHEEDPattern`-like structure carrying **complex** per-reflection amplitude.
+- Current status: `kinematic_amplitude` is only a conservative compatibility
+  bridge. It calls the legacy intensity path, computes `sqrt(I)`, and therefore
+  preserves incoherent intensity parity but discards all relative reflection
+  phase. A strict xfail test now documents that the real kinematic kernel does
+  not yet carry non-trivial phase.
 
 ### 2.2 Complex render-to-field (the one genuinely new kernel)
 
@@ -393,10 +414,10 @@ now exercises this composition path directly for the kinematic amplitude kernel.
   `apply_surface_reconstruction`, 7×7 library) → still return `CrystalStructure`
   (a 7×7 is a different cell, not a distribution over 1×1).
 - **Statistical / defect modifiers** (grains, twins, steps, size, texture) →
-  return a `Distribution` over latent parameters whose `bind` closure may call a
+  return a `Distribution` over latent parameters whose bind closure may call a
   builder per sample. Grain, twin-wall, and step-edge producers now emit generic
-  distributions; the atomistic per-sample builder/bind closure for twins/steps
-  remains future work.
+  distributions, and twin/step bind helpers map samples to modified
+  `CrystalStructure`s inside Layer-1 closures.
 - **Sub-coherence disorder** (`apply_vacancy_field` VCA occupancy, Debye–Waller,
   displacement fields) → the **analytic coherent-average limit**; modifies the
   structure factor in closed form, stays a structure modifier. This is the
@@ -466,13 +487,21 @@ cannot — strictly more expressive, not a re-weighting.
 4. **Phase 4 — defect producers.** Twins, steps, grains/texture as
    Distributions; the coherent fine-twin/satellite path exercises a coherent
    reduction end-to-end. Grain, twin-wall, and step-edge producers now exist;
-   atomistic twin/step bind closures and fine-twin satellite physics remain.
+   twin/step bind closures now build modified structures per sample. Fine-twin
+   satellite physics and higher-fidelity step diffraction remain future
+   refinements.
 5. **Phase 5 — `multislice_amplitude`** fills the Layer-0 slot. The complex
    amplitude slot exists and is used by `multislice_simulator`; high-level
    detector geometry unification remains.
-6. **Phase 6 — inverse problem.** Differentiate through `apply` to fit beam
-   coherence, twin density, grain size jointly from measured RHEED data in
-   `recon`.
+6. **Phase 6 — differentiability guarantee (the inverse *solver* lives in
+   `recon`).** The framework's only inverse-related obligation is to keep the
+   forward model differentiable end-to-end w.r.t. every producer latent —
+   `jax.grad` through `apply` / `simulate_detector_image` finite (test 9). The
+   inverse-problem *solver* itself — optax optimization, loss design, multistart,
+   uncertainty, distribution reconstruction, recipe-deviation — is **not built
+   here**; it belongs to the `recon` module and is specified by
+   [recon_optimization_plan.md](plans/future/recon_optimization_plan.md), whose entry gate
+   **K0** is exactly this differentiability guarantee.
 
 Phases 1–2 are independently shippable and fully CPU-testable; later phases are
 additive.
@@ -511,6 +540,10 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 
 - **Amplitude path correctness.** Premature `|·|²` removal must be exact;
   guarded by test 4 (pixelwise equality of `|amplitude|²` vs legacy intensity).
+  This is only an incoherent-parity guard today: the current kinematic bridge is
+  phaseless (`sqrt(I) + 0j`). A strict xfail test,
+  `test_kinematic_amplitude_carries_nontrivial_phase`, records the missing
+  complex Ewald sibling and should flip when true per-reflection phase lands.
 - **Phase-reference consistency** across samples in coherent reduction → fix one
   shared origin; test 5 falsifies a wrong reference.
 - **Kernel detector drift** (kinematic vs multislice) → one `DetectorGeometry`
@@ -535,7 +568,7 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 | `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories; `reduction_mode_from_coherence_length` |
 | `src/rheedium/types/rheed_types.py` | Existing `DetectorGeometry` carrier (not yet split into a new `types/detector.py`) |
 | `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; retire angular/energy quadrature + `coherence_envelope` from the default path |
-| `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; structure builders unchanged; atomistic bind closures pending |
+| `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; twin/step bind helpers build modified structures per sample; sub-coherence disorder remains analytic structure modification |
 | `src/rheedium/{simul,types,procs}/__init__.py` | exports + Routine Listings |
 | `tests/.../{test_simulator,test_distributions,test_beam_averaging,test_surface_modifier,test_grains}.py` | identity, reduction-algebra, interference, limits, composition, parallel, grad |
 | `tutorials/` | trivial vs instrument default; mode-count convergence; defect-density demo |

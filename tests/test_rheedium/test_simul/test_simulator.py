@@ -1974,6 +1974,36 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             atol=1e-12,
         )
 
+    @pytest.mark.xfail(
+        reason=(
+            "kinematic_amplitude currently bridges from Ewald intensities via "
+            "sqrt(I), so it has no per-reflection phase."
+        ),
+        strict=True,
+    )
+    def test_kinematic_amplitude_carries_nontrivial_phase(self) -> None:
+        """The real kinematic kernel should expose complex reflection phase."""
+        field: Complex[Array, "32 32"] = kinematic_amplitude(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=1,
+            kmax=1,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=(32, 32),
+            pixel_size_mm=(8.0, 8.0),
+            beam_center_px=(16.0, 3.0),
+            spot_sigma_px=1.2,
+            render_ctrs_as_streaks=False,
+        )
+
+        chex.assert_tree_all_finite(jnp.real(field))
+        chex.assert_tree_all_finite(jnp.imag(field))
+        assert float(jnp.max(jnp.abs(jnp.imag(field)))) > 1e-12
+
     def test_kinematic_amplitude_matches_explicit_sparse_render(self) -> None:
         """Kinematic amplitude uses the sparse Ewald amplitude-render path."""
         kwargs: Any = {

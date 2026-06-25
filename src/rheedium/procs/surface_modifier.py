@@ -17,6 +17,12 @@ Routine Listings
     Attenuate the effective atomic numbers of atoms near the surface.
 :func:`apply_surface_displacement_field`
     Apply per-atom displacement vectors to the top surface region.
+:func:`apply_twin_wall_field`
+    Apply a smooth twin-wall rotation field to the top surface.
+:func:`bind_step_edge_distribution`
+    Bind step-edge samples to per-sample structure builders.
+:func:`bind_twin_wall_distribution`
+    Bind twin-wall samples to per-sample structure builders.
 :func:`step_edge_to_distribution`
     Convert step-edge population metadata into a generic Distribution.
 :func:`twin_wall_to_distribution`
@@ -38,6 +44,7 @@ position or effective-occupancy fields in the returned
 import jax
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import Callable
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import (
@@ -52,6 +59,7 @@ from rheedium.types import (
 from rheedium.ucell import build_cell_vectors
 
 _DEFAULT_STEP_DIRECTION: Float[Array, "2"] = jnp.array([1.0, 0.0])
+_DEFAULT_TWIN_NORMAL: Float[Array, "2"] = jnp.array([1.0, 0.0])
 
 
 def _surface_depth_weights(
@@ -96,6 +104,17 @@ def _rebuild_surface_structure(
         cell_lengths=slab.cell_lengths,
         cell_angles=slab.cell_angles,
     )
+
+
+@jaxtyped(typechecker=beartype)
+def _unit_vector_from_azimuth_deg(
+    azimuth_deg: scalar_float,
+) -> Float[Array, "2"]:
+    """Return an in-plane unit vector from an azimuth in degrees."""
+    azimuth_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(azimuth_deg, dtype=jnp.float64)
+    )
+    return jnp.array([jnp.cos(azimuth_rad), jnp.sin(azimuth_rad)])
 
 
 @jaxtyped(typechecker=beartype)
@@ -186,6 +205,102 @@ def apply_step_edge_field(
     )
     displaced_cart_xyz: Float[Array, "N_atoms 3"] = (
         slab.cart_positions[:, :3].at[:, 2].add(z_shift)
+    )
+    return _rebuild_surface_structure(
+        slab=slab,
+        cart_xyz=displaced_cart_xyz,
+        effective_atomic_numbers=slab.cart_positions[:, 3],
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def apply_twin_wall_field(
+    slab: CrystalStructure,
+    twin_angle_deg: scalar_float,
+    wall_position_angstrom: scalar_float,
+    surface_layer_depth_angstrom: scalar_float,
+    wall_normal_xy: Float[Array, "2"] = _DEFAULT_TWIN_NORMAL,
+    wall_width_angstrom: scalar_float = 1.0,
+    transition_sharpness: scalar_float = 40.0,
+) -> CrystalStructure:
+    """Apply a smooth twin-wall rotation field to a surface slab.
+
+    :see: :class:`~.test_surface_modifier.TestApplyTwinWallField`
+
+    Parameters
+    ----------
+    slab : CrystalStructure
+        Input surface slab.
+    twin_angle_deg : scalar_float
+        Relative in-plane twin rotation angle in degrees across the wall.
+    wall_position_angstrom : scalar_float
+        Signed wall position along ``wall_normal_xy`` in Angstroms.
+    surface_layer_depth_angstrom : scalar_float
+        Depth of the surface region affected by the twin field.
+    wall_normal_xy : Float[Array, "2"], optional
+        In-plane normal direction of the twin wall. Default: ``[1, 0]``.
+    wall_width_angstrom : scalar_float, optional
+        Smooth transition width across the wall in Angstroms. Default: 1.0.
+    transition_sharpness : scalar_float, optional
+        Sharpness of the depth gate selecting the top surface. Default: 40.0.
+
+    Returns
+    -------
+    twin_modified_slab : CrystalStructure
+        Slab with a smooth, shape-stable in-plane twin rotation near the
+        surface.
+
+    Notes
+    -----
+    1. Build a surface depth gate.
+    2. Build a smooth wall-side coordinate using ``tanh``.
+    3. Rotate surface atoms about the slab in-plane centroid by a signed
+       fraction of ``twin_angle_deg``.
+    4. Rebuild fractional coordinates in the original cell.
+    """
+    surface_weights: Float[Array, "N_atoms"] = _surface_depth_weights(
+        slab=slab,
+        surface_layer_depth_angstrom=surface_layer_depth_angstrom,
+        transition_sharpness=transition_sharpness,
+    )
+    normal: Float[Array, "2"] = jnp.asarray(wall_normal_xy, dtype=jnp.float64)
+    normalized_normal: Float[Array, "2"] = normal / (
+        jnp.linalg.norm(normal) + 1e-10
+    )
+    wall_coordinate: Float[Array, "N_atoms"] = jnp.dot(
+        slab.cart_positions[:, :2], normalized_normal
+    ) - jnp.asarray(wall_position_angstrom, dtype=jnp.float64)
+    width: Float[Array, ""] = jnp.maximum(
+        jnp.asarray(wall_width_angstrom, dtype=jnp.float64),
+        1e-10,
+    )
+    side_weight: Float[Array, "N_atoms"] = jnp.tanh(wall_coordinate / width)
+    local_angle_rad: Float[Array, "N_atoms"] = (
+        surface_weights
+        * side_weight
+        * 0.5
+        * jnp.deg2rad(jnp.asarray(twin_angle_deg, dtype=jnp.float64))
+    )
+    centroid_xy: Float[Array, "2"] = jnp.mean(
+        slab.cart_positions[:, :2],
+        axis=0,
+    )
+    relative_xy: Float[Array, "N_atoms 2"] = (
+        slab.cart_positions[:, :2] - centroid_xy
+    )
+    cos_angle: Float[Array, "N_atoms"] = jnp.cos(local_angle_rad)
+    sin_angle: Float[Array, "N_atoms"] = jnp.sin(local_angle_rad)
+    rotated_x: Float[Array, "N_atoms"] = (
+        cos_angle * relative_xy[:, 0] - sin_angle * relative_xy[:, 1]
+    )
+    rotated_y: Float[Array, "N_atoms"] = (
+        sin_angle * relative_xy[:, 0] + cos_angle * relative_xy[:, 1]
+    )
+    rotated_xy: Float[Array, "N_atoms 2"] = (
+        jnp.stack([rotated_x, rotated_y], axis=-1) + centroid_xy
+    )
+    displaced_cart_xyz: Float[Array, "N_atoms 3"] = (
+        slab.cart_positions[:, :3].at[:, :2].set(rotated_xy)
     )
     return _rebuild_surface_structure(
         slab=slab,
@@ -507,6 +622,106 @@ def step_edge_to_distribution(
 
 
 @jaxtyped(typechecker=beartype)
+def bind_twin_wall_distribution(
+    slab: CrystalStructure,
+    surface_layer_depth_angstrom: scalar_float,
+    wall_normal_xy: Float[Array, "2"] = _DEFAULT_TWIN_NORMAL,
+    wall_width_angstrom: scalar_float = 1.0,
+    transition_sharpness: scalar_float = 40.0,
+) -> Callable[[Float[Array, "2"]], CrystalStructure]:
+    """Bind twin-wall samples to a structure-building closure.
+
+    :see: :class:`~.test_surface_modifier.TestBindTwinWallDistribution`
+
+    Parameters
+    ----------
+    slab : CrystalStructure
+        Reference surface slab.
+    surface_layer_depth_angstrom : scalar_float
+        Depth affected by each twin sample.
+    wall_normal_xy : Float[Array, "2"], optional
+        Twin-wall normal direction. Default: ``[1, 0]``.
+    wall_width_angstrom : scalar_float, optional
+        Smooth transition width. Default: 1.0.
+    transition_sharpness : scalar_float, optional
+        Surface depth-gate sharpness. Default: 40.0.
+
+    Returns
+    -------
+    builder : Callable[[Float[Array, "2"]], CrystalStructure]
+        Closure mapping ``[twin_angle_deg, wall_position_angstrom]`` samples
+        to modified slabs.
+
+    Notes
+    -----
+    The returned closure is intended to run inside a Layer-1 amplitude closure,
+    so defect samples can modify the structure before the coherent kernel call.
+    """
+
+    def _builder(sample: Float[Array, "2"]) -> CrystalStructure:
+        return apply_twin_wall_field(
+            slab=slab,
+            twin_angle_deg=sample[0],
+            wall_position_angstrom=sample[1],
+            surface_layer_depth_angstrom=surface_layer_depth_angstrom,
+            wall_normal_xy=wall_normal_xy,
+            wall_width_angstrom=wall_width_angstrom,
+            transition_sharpness=transition_sharpness,
+        )
+
+    return _builder
+
+
+@jaxtyped(typechecker=beartype)
+def bind_step_edge_distribution(
+    slab: CrystalStructure,
+    surface_layer_depth_angstrom: scalar_float,
+    edge_sharpness: scalar_float = 12.0,
+    transition_sharpness: scalar_float = 40.0,
+) -> Callable[[Float[Array, "3"]], CrystalStructure]:
+    """Bind step-edge samples to a structure-building closure.
+
+    :see: :class:`~.test_surface_modifier.TestBindStepEdgeDistribution`
+
+    Parameters
+    ----------
+    slab : CrystalStructure
+        Reference surface slab.
+    surface_layer_depth_angstrom : scalar_float
+        Depth affected by each step sample.
+    edge_sharpness : scalar_float, optional
+        Smoothness of the periodic step profile. Default: 12.0.
+    transition_sharpness : scalar_float, optional
+        Surface depth-gate sharpness. Default: 40.0.
+
+    Returns
+    -------
+    builder : Callable[[Float[Array, "3"]], CrystalStructure]
+        Closure mapping
+        ``[step_height_angstrom, terrace_width_angstrom, line_azimuth_deg]``
+        samples to modified slabs.
+
+    Notes
+    -----
+    The line azimuth sample is converted to the step-progression direction
+    consumed by :func:`apply_step_edge_field`.
+    """
+
+    def _builder(sample: Float[Array, "3"]) -> CrystalStructure:
+        return apply_step_edge_field(
+            slab=slab,
+            step_height_angstrom=sample[0],
+            terrace_width_angstrom=sample[1],
+            surface_layer_depth_angstrom=surface_layer_depth_angstrom,
+            step_direction_xy=_unit_vector_from_azimuth_deg(sample[2]),
+            edge_sharpness=edge_sharpness,
+            transition_sharpness=transition_sharpness,
+        )
+
+    return _builder
+
+
+@jaxtyped(typechecker=beartype)
 def vicinal_surface_step_splitting(
     hk_index: Int[Array, "2"],
     step_height_angstrom: scalar_float,
@@ -606,6 +821,9 @@ __all__: list[str] = [
     "apply_step_edge_field",
     "apply_surface_displacement_field",
     "apply_surface_occupancy_field",
+    "apply_twin_wall_field",
+    "bind_step_edge_distribution",
+    "bind_twin_wall_distribution",
     "incoherent_domain_average",
     "step_edge_to_distribution",
     "twin_wall_to_distribution",

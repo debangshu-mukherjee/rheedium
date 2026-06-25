@@ -13,7 +13,7 @@ distribution-framework plan completes (no longer interleaved). Entry gate **R0**
 the framework's six phases have landed and the suite is green. Assumes the
 three-layer architecture (amplitude kernels → `Distribution` integrator →
 producers) is fully in place. **Roadmap position:** second of four — framework →
-*this* → [recon (optax inversion)](plans/future/recon_optax_plan.md) →
+*this* → [recon (inversion)](plans/future/recon_optimization_plan.md) →
 [automatons](plans/future/automatons_plan.md). The recon solver and the
 automatons are both written against the rationalized API this plan produces, so
 neither starts until it completes.

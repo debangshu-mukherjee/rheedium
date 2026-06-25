@@ -17,6 +17,9 @@ from rheedium.procs.surface_modifier import (
     apply_step_edge_field,
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
+    apply_twin_wall_field,
+    bind_step_edge_distribution,
+    bind_twin_wall_distribution,
     incoherent_domain_average,
     step_edge_to_distribution,
     twin_wall_to_distribution,
@@ -453,6 +456,71 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
 
+class TestApplyTwinWallField(chex.TestCase):
+    """Tests for apply_twin_wall_field."""
+
+    def test_rotates_surface_atoms_smoothly_across_wall(self) -> None:
+        """Twin wall should move top-surface in-plane coordinates."""
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_twin_wall_field(
+            slab=slab,
+            twin_angle_deg=10.0,
+            wall_position_angstrom=0.8,
+            surface_layer_depth_angstrom=0.8,
+            wall_normal_xy=jnp.array([1.0, 0.0]),
+            wall_width_angstrom=0.5,
+        )
+
+        chex.assert_shape(modified.cart_positions, slab.cart_positions.shape)
+        chex.assert_trees_all_close(
+            modified.cart_positions[:, 3],
+            slab.cart_positions[:, 3],
+            atol=1e-12,
+        )
+        assert (
+            float(
+                jnp.linalg.norm(
+                    modified.cart_positions[1:, :2]
+                    - slab.cart_positions[1:, :2]
+                )
+            )
+            > 0.0
+        )
+
+    def test_zero_angle_is_identity(self) -> None:
+        """Zero twin angle preserves coordinates."""
+        slab: CrystalStructure = _make_test_slab()
+        modified: CrystalStructure = apply_twin_wall_field(
+            slab=slab,
+            twin_angle_deg=0.0,
+            wall_position_angstrom=0.8,
+            surface_layer_depth_angstrom=0.8,
+        )
+
+        chex.assert_trees_all_close(
+            modified.cart_positions,
+            slab.cart_positions,
+            atol=1e-12,
+        )
+
+    def test_grad_flows_through_twin_angle(self) -> None:
+        """Twin-wall structure builder remains differentiable."""
+        slab: CrystalStructure = _make_test_slab()
+
+        def objective(angle: scalar_float) -> scalar_float:
+            modified: CrystalStructure = apply_twin_wall_field(
+                slab=slab,
+                twin_angle_deg=angle,
+                wall_position_angstrom=0.8,
+                surface_layer_depth_angstrom=0.8,
+            )
+            return jnp.sum(modified.cart_positions[:, 0])
+
+        grad_value: scalar_float = jax.grad(objective)(5.0)
+        assert jnp.isfinite(grad_value)
+        assert grad_value != 0.0
+
+
 class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
     """Tests for incoherent_domain_average function."""
 
@@ -624,3 +692,127 @@ class TestStepEdgeToDistribution(chex.TestCase):
             reduced,
             jnp.ones((2, 2)) * manual_intensity,
         )
+
+
+class TestBindTwinWallDistribution(chex.TestCase):
+    """Tests for twin-wall sample-to-structure binding."""
+
+    def test_builder_matches_direct_twin_wall_modifier(self) -> None:
+        """Bound twin samples should call the structure modifier."""
+        slab: CrystalStructure = _make_test_slab()
+        builder: Callable[[Float[Array, "2"]], CrystalStructure] = (
+            bind_twin_wall_distribution(
+                slab=slab,
+                surface_layer_depth_angstrom=0.8,
+                wall_width_angstrom=0.5,
+            )
+        )
+        sample: Float[Array, "2"] = jnp.array([8.0, 0.8])
+
+        bound: CrystalStructure = builder(sample)
+        direct: CrystalStructure = apply_twin_wall_field(
+            slab=slab,
+            twin_angle_deg=sample[0],
+            wall_position_angstrom=sample[1],
+            surface_layer_depth_angstrom=0.8,
+            wall_width_angstrom=0.5,
+        )
+
+        chex.assert_trees_all_close(
+            bound.cart_positions,
+            direct.cart_positions,
+        )
+
+    def test_layer1_reduction_can_use_bound_twin_structures(self) -> None:
+        """A twin Distribution can build structures inside Layer 1."""
+        slab: CrystalStructure = _make_test_slab()
+        dist: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([0.0, 6.0]),
+            wall_positions_angstrom=jnp.array([0.8, 0.8]),
+            twin_fractions=jnp.array([0.25, 0.75]),
+            twin_spacing_angstrom=10.0,
+            coherence_length_angstrom=20.0,
+        )
+        builder: Callable[[Float[Array, "2"]], CrystalStructure] = (
+            bind_twin_wall_distribution(
+                slab=slab,
+                surface_layer_depth_angstrom=0.8,
+                wall_width_angstrom=0.5,
+            )
+        )
+
+        def amp(sample: Float[Array, "2"]) -> Complex[Array, "1 1"]:
+            modified: CrystalStructure = builder(sample)
+            value: scalar_float = jnp.sum(modified.cart_positions[:, 0])
+            return jnp.asarray([[value]], dtype=jnp.complex128)
+
+        reduced: Float[Array, "1 1"] = apply_distribution(dist, amp)
+        manual_amplitude: scalar_float = (
+            0.25 * amp(dist.samples[0])[0, 0]
+            + 0.75 * amp(dist.samples[1])[0, 0]
+        )
+
+        chex.assert_trees_all_close(
+            reduced,
+            jnp.abs(manual_amplitude) ** 2,
+        )
+
+
+class TestBindStepEdgeDistribution(chex.TestCase):
+    """Tests for step-edge sample-to-structure binding."""
+
+    def test_builder_matches_direct_step_modifier(self) -> None:
+        """Bound step samples should call the structure modifier."""
+        slab: CrystalStructure = _make_test_slab()
+        builder: Callable[[Float[Array, "3"]], CrystalStructure] = (
+            bind_step_edge_distribution(
+                slab=slab,
+                surface_layer_depth_angstrom=0.8,
+            )
+        )
+        sample: Float[Array, "3"] = jnp.array([1.0, 2.0, 0.0])
+
+        bound: CrystalStructure = builder(sample)
+        direct: CrystalStructure = apply_step_edge_field(
+            slab=slab,
+            step_height_angstrom=sample[0],
+            terrace_width_angstrom=sample[1],
+            surface_layer_depth_angstrom=0.8,
+            step_direction_xy=jnp.array([1.0, 0.0]),
+        )
+
+        chex.assert_trees_all_close(
+            bound.cart_positions,
+            direct.cart_positions,
+        )
+
+    def test_layer1_reduction_can_use_bound_step_structures(self) -> None:
+        """A step Distribution can build structures inside Layer 1."""
+        slab: CrystalStructure = _make_test_slab()
+        dist: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([1.0, 3.0]),
+            terrace_widths_angstrom=jnp.array([2.0, 2.0]),
+            line_azimuths_deg=jnp.array([0.0, 0.0]),
+            step_fractions=jnp.array([0.25, 0.75]),
+            coherence_length_angstrom=0.5,
+            regular=False,
+        )
+        builder: Callable[[Float[Array, "3"]], CrystalStructure] = (
+            bind_step_edge_distribution(
+                slab=slab,
+                surface_layer_depth_angstrom=0.8,
+            )
+        )
+
+        def amp(sample: Float[Array, "3"]) -> Complex[Array, "1 1"]:
+            modified: CrystalStructure = builder(sample)
+            value: scalar_float = modified.cart_positions[1, 2]
+            return jnp.asarray([[value]], dtype=jnp.complex128)
+
+        reduced: Float[Array, "1 1"] = apply_distribution(dist, amp)
+        manual_intensity: scalar_float = (
+            0.25 * jnp.abs(amp(dist.samples[0])[0, 0]) ** 2
+            + 0.75 * jnp.abs(amp(dist.samples[1])[0, 0]) ** 2
+        )
+
+        chex.assert_trees_all_close(reduced, manual_intensity)

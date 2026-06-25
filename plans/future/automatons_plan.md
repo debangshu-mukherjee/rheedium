@@ -18,7 +18,7 @@ dependency list is usually just `["rheedium"]`.
 Status: **proposed** — not yet implemented, and **sequenced last** in the
 roadmap: [framework](plans/partial/distribution_framework_plan.md) →
 [rationalization](plans/future/rationalization_refactor_plan.md) →
-[recon (optax inversion)](plans/future/recon_optax_plan.md) → automatons. It
+[recon (inversion)](plans/future/recon_optimization_plan.md) → automatons. It
 begins only after all three land. The reason for last: these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
@@ -62,6 +62,12 @@ recipe the LLM agent intended*. That recipe-vs-actual
 deviation is the control signal. The speed work that makes this loop viable
 inside a growth-control cadence — persistent compilation cache, AOT-exported
 forward kernels, the unchecked fast path — already exists in `rheedium.tools`.
+And where the inversion is **model-degenerate** — distinct material mechanisms
+that produce the same distribution (recon §2.3) — Loop C does not guess: it
+**designs the tie-breaking experiment**, choosing the next perturbation
+(temperature / flux / time) that maximizes the predicted divergence between the
+competing mechanisms' distribution-evolution (expected information gain), turning
+non-identifiability into the agent's next action.
 
 The loops close on each other: **A** supplies the measured ground truth, **B**
 brackets it with a discrete candidate set (a forward-and-rank comparison), and
@@ -474,7 +480,7 @@ end-to-end.
 
 Both the
 [rationalization refactor](plans/future/rationalization_refactor_plan.md) (R0–R6)
-and the [recon optax solver](plans/future/recon_optax_plan.md) (K0–KG6) are
+and the [recon optax solver](plans/future/recon_optimization_plan.md) (K0–KG6) are
 **complete** — which transitively requires the
 [distribution framework](plans/partial/distribution_framework_plan.md). A
 `rheedium` release carrying the rationalized API (the ~6-arg
@@ -568,7 +574,7 @@ per-frame latency thereafter.
 
 The keystone, and the payoff of the differentiable architecture. Where Loop B
 *brackets* with a discrete candidate set, Loop C *refines* via the
-[recon optax solver](plans/future/recon_optax_plan.md): it differentiates the
+[recon optax solver](plans/future/recon_optimization_plan.md): it differentiates the
 forward model and fits the active latents to the measured RHEED by gradient
 descent — rapidly enough for closed-loop control, **with credible bands**. It
 spans the recon §2.2 ladder, easiest first: **`fit_orientation_beam`** (given a

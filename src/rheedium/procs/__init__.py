@@ -26,8 +26,14 @@ Routine Listings
     Attenuate effective atomic numbers near the top surface.
 :func:`apply_surface_reconstruction`
     Apply an m x n surface reconstruction to a slab.
+:func:`apply_twin_wall_field`
+    Apply a smooth twin-wall rotation field to the top surface.
 :func:`apply_vacancy_field`
     Attenuate site scattering strength with continuous occupancies.
+:func:`bind_step_edge_distribution`
+    Bind step-edge samples to per-sample structure builders.
+:func:`bind_twin_wall_distribution`
+    Bind twin-wall samples to per-sample structure builders.
 :func:`create_surface_slab`
     Construct a surface slab from a bulk crystal.
 :func:`gaas001_2x4`
@@ -106,6 +112,9 @@ from .surface_modifier import (
     apply_step_edge_field,
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
+    apply_twin_wall_field,
+    bind_step_edge_distribution,
+    bind_twin_wall_distribution,
     incoherent_domain_average,
     step_edge_to_distribution,
     twin_wall_to_distribution,
@@ -121,7 +130,10 @@ __all__: list[str] = [
     "apply_surface_displacement_field",
     "apply_surface_occupancy_field",
     "apply_surface_reconstruction",
+    "apply_twin_wall_field",
     "apply_vacancy_field",
+    "bind_step_edge_distribution",
+    "bind_twin_wall_distribution",
     "create_surface_slab",
     "gaas001_2x4",
     "grain_distribution_average",
