@@ -17,7 +17,7 @@ dependency list is usually just `["rheedium"]`.
 
 Status: **proposed** — not yet implemented, and **sequenced last** in the
 roadmap: [framework](plans/implemented/distribution_framework_plan.md) →
-[rationalization](plans/future/rationalization_refactor_plan.md) →
+[rationalization](plans/partial/rationalization_refactor_plan.md) →
 [recon (inversion)](plans/future/recon_optimization_plan.md) → automatons. It
 begins only after all three land. The reason for last: these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
@@ -479,7 +479,7 @@ end-to-end.
 ### Entry — Gate A0 (roadmap precondition for *any* work below)
 
 Both the
-[rationalization refactor](plans/future/rationalization_refactor_plan.md) (R0–R6)
+[rationalization refactor](plans/partial/rationalization_refactor_plan.md) (R0–R6)
 and the [recon optax solver](plans/future/recon_optimization_plan.md) (K0–KG6) are
 **complete** — which transitively requires the
 [distribution framework](plans/implemented/distribution_framework_plan.md). A

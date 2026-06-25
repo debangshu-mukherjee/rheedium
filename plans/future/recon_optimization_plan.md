@@ -18,15 +18,18 @@ of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
 
 Status: **proposed** — gated. **Roadmap position:** third of four —
 [framework](plans/implemented/distribution_framework_plan.md) →
-[rationalization](plans/future/rationalization_refactor_plan.md) → *this* →
+[rationalization](plans/partial/rationalization_refactor_plan.md) → *this* →
 [automatons](plans/future/automatons_plan.md). Entry gate **K0**: the
 rationalization refactor is complete (⇒ the forward model differentiates
 end-to-end against a clean, stable API). It **supersedes** the framework's
 Phase-6 line and **replaces** the existing hand-rolled `recon` optimizers.
 
 Guard on every phase: **`jax.grad` flows end-to-end, tests stay green, results are
-reproducible (seeded), and solver-migrated functions preserve the old numerical
-behavior behind a deprecation shim.** Recon is the one consumer that makes
+reproducible (seeded), and solver-migrated functions are verified to preserve the
+old numerical behavior by regression test before the hand-rolled path is deleted —
+no shim.** Per the rationalization plan's zero-legacy policy, the retired
+optimizers are **deleted outright** (no `DeprecationWarning`, no alias); the only
+migration surface is a `CHANGELOG.md` note. Recon is the one consumer that makes
 differentiability pay off — a welded seam anywhere upstream is caught here.
 
 ---
@@ -225,7 +228,7 @@ of conditions that must all hold before the next phase starts.
 
 ### Entry — Gate K0 (precondition for *any* work below)
 
-The [rationalization refactor](plans/future/rationalization_refactor_plan.md) is
+The [rationalization refactor](plans/partial/rationalization_refactor_plan.md) is
 **complete** (its R0–R6 done), so the forward model (`simulate_detector_image` /
 `apply`) differentiates end-to-end against the rationalized API (config carriers,
 one reduction). A `jax.grad` of a forward pattern w.r.t. a producer's latent
