@@ -39,6 +39,7 @@ from rheedium.simul.beam_averaging import (
 )
 from rheedium.simul.simulator import (
     _ewald_amplitude_pattern,
+    _kinematic_finite_domain_amplitude,
     _render_ctr_streaks_to_image,
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -2071,6 +2072,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
+                ctr_regularization=0.01,
+                ctr_power=1.0,
+                roughness_power=0.25,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(8.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -2694,6 +2698,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
+                ctr_regularization=0.01,
+                ctr_power=1.0,
+                roughness_power=0.25,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -2762,6 +2769,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
+                ctr_regularization=0.01,
+                ctr_power=1.0,
+                roughness_power=0.25,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -2811,21 +2821,30 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            return _kinematic_finite_domain_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 voltage_kv=20.0,
                 theta_deg=2.0,
                 phi_deg=3.0 + sample[0],
+                domain_size_angstrom=sample[1],
+                domain_aspect_ratio=(1.0, 1.0, 0.5),
                 hmax=0,
                 kmax=0,
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
+                ctr_regularization=0.01,
+                ctr_power=1.0,
+                roughness_power=0.25,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
                 spot_sigma_px=1.2,
                 render_ctrs_as_streaks=False,
+                parameterization="lobato",
+                surface_config=None,
+                energy_spread_frac=0.0,
+                beam_divergence_rad=0.0,
             )
 
         expected: Float[Array, "16 24"] = apply_distribution(
@@ -2858,9 +2877,10 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
-    def test_defect_distributions_change_detector_images(self) -> None:
-        """Defect producers should change detector output, not only bind."""
-        kwargs: Any = {
+    @staticmethod
+    def _defect_image_kwargs() -> dict[str, Any]:
+        """Compact detector settings for defect distinguishability tests."""
+        return {
             "crystal": _SI_CRYSTAL_2ATOM,
             "voltage_kv": 20.0,
             "theta_deg": 2.0,
@@ -2870,9 +2890,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "detector_distance_mm": 1000.0,
             "temperature": 300.0,
             "surface_roughness": 0.5,
-            "image_shape_px": (32, 48),
+            "image_shape_px": (16, 24),
             "pixel_size_mm": (6.0, 16.0),
-            "beam_center_px": (24.0, 2.0),
+            "beam_center_px": (12.0, 2.0),
             "spot_sigma_px": 1.2,
             "angular_divergence_mrad": 0.0,
             "energy_spread_ev": 0.0,
@@ -2881,7 +2901,11 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "n_energy_samples": 1,
             "render_ctrs_as_streaks": False,
         }
-        base: Float[Array, "32 48"] = simulate_detector_image(**kwargs)
+
+    def test_twin_distribution_changes_detector_image(self) -> None:
+        """Twin producers should change detector output, not only bind."""
+        kwargs: Any = self._defect_image_kwargs()
+        base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         twin_dist: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([20.0]),
             wall_positions_angstrom=jnp.array([0.4]),
@@ -2889,6 +2913,18 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             twin_spacing_angstrom=4.0,
             coherence_length_angstrom=10.0,
         )
+        twin_image: Float[Array, "16 24"] = simulate_detector_image(
+            **kwargs,
+            distribution=twin_dist,
+            defect_surface_layer_depth_angstrom=0.8,
+        )
+
+        assert float(jnp.max(jnp.abs(twin_image - base))) > 1e-4
+
+    def test_step_distribution_changes_detector_image(self) -> None:
+        """Step producers should change detector output, not only bind."""
+        kwargs: Any = self._defect_image_kwargs()
+        base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         step_dist: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([1.0]),
             terrace_widths_angstrom=jnp.array([2.0]),
@@ -2897,35 +2933,34 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             coherence_length_angstrom=0.5,
             regular=False,
         )
+        step_image: Float[Array, "16 24"] = simulate_detector_image(
+            **kwargs,
+            distribution=step_dist,
+            defect_surface_layer_depth_angstrom=0.8,
+        )
+
+        assert float(jnp.max(jnp.abs(step_image - base))) > 1e-3
+
+    def test_grain_distribution_changes_detector_image(self) -> None:
+        """Grain producers should change detector output, not only bind."""
+        kwargs: Any = self._defect_image_kwargs()
+        base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         grain_dist: Distribution = grain_population_to_distribution(
             orientation_angles_deg=jnp.array([5.0]),
             grain_sizes_angstrom=jnp.array([80.0]),
             grain_volume_fractions=jnp.array([1.0]),
         )
-
-        twin_image: Float[Array, "32 48"] = simulate_detector_image(
-            **kwargs,
-            distribution=twin_dist,
-            defect_surface_layer_depth_angstrom=0.8,
-        )
-        step_image: Float[Array, "32 48"] = simulate_detector_image(
-            **kwargs,
-            distribution=step_dist,
-            defect_surface_layer_depth_angstrom=0.8,
-        )
-        grain_image: Float[Array, "32 48"] = simulate_detector_image(
+        grain_image: Float[Array, "16 24"] = simulate_detector_image(
             **kwargs,
             distribution=grain_dist,
         )
 
-        assert float(jnp.max(jnp.abs(twin_image - base))) > 1e-4
-        assert float(jnp.max(jnp.abs(step_image - base))) > 1e-3
         assert float(jnp.max(jnp.abs(grain_image - base))) > 1e-3
 
-    def test_simulate_detector_image_rejects_unbound_size_distribution(
+    def test_simulate_detector_image_binds_size_distribution(
         self,
     ) -> None:
-        """Size axes should fail loudly until the detector bind exists."""
+        """Size axes bind finite-domain broadening in the public path."""
         distribution: Distribution = create_distribution(
             samples=jnp.array([[40.0], [80.0]], dtype=jnp.float64),
             weights=jnp.array([0.5, 0.5], dtype=jnp.float64),
@@ -2933,20 +2968,49 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             axis_id="size",
         )
 
-        with pytest.raises(ValueError, match="no detector-image bind"):
-            simulate_detector_image(
-                crystal=_SI_CRYSTAL_2ATOM,
-                hmax=0,
-                kmax=0,
-                image_shape_px=(16, 24),
-                angular_divergence_mrad=0.0,
-                energy_spread_ev=0.0,
-                psf_sigma_pixels=0.0,
-                n_angular_samples=1,
-                n_energy_samples=1,
-                render_ctrs_as_streaks=False,
-                distribution=distribution,
-            )
+        base: Float[Array, "16 24"] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=1,
+            kmax=1,
+            detector_distance_mm=1000.0,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+        )
+        sized: Float[Array, "16 24"] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=3.0,
+            hmax=1,
+            kmax=1,
+            detector_distance_mm=1000.0,
+            image_shape_px=(16, 24),
+            pixel_size_mm=(6.0, 16.0),
+            beam_center_px=(12.0, 2.0),
+            spot_sigma_px=1.2,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+            distribution=distribution,
+        )
+
+        chex.assert_shape(sized, (16, 24))
+        chex.assert_tree_all_finite(sized)
+        assert float(jnp.max(jnp.abs(sized - base))) > 1e-6
 
     def test_simulate_detector_image_rejects_ambiguous_distributions(
         self,
@@ -3004,7 +3068,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             "crystal": _SI_CRYSTAL_2ATOM,
             "potential_slices": potential_slices,
             "voltage_kv": 20.0,
-            "theta_deg": 89.0,
+            "theta_deg": 5.0,
             "phi_deg": 0.0,
             "detector_distance_mm": 20.0,
             "image_shape_px": (32, 32),
@@ -3546,16 +3610,8 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_value)
         assert float(jnp.abs(grad_value)) > 1e-4
 
-    @pytest.mark.xfail(
-        reason=(
-            "Grain size is still metadata in the public kinematic detector "
-            "bind; finite-domain size sensitivity is not wired into "
-            "simulate_detector_image yet."
-        ),
-        strict=True,
-    )
     def test_grad_through_public_simulator_grain_size_is_live(self) -> None:
-        """Grain-size gradient should become live when size bind lands."""
+        """jax.grad through public grain size is live."""
 
         def loss(grain_size_angstrom: scalar_float) -> scalar_float:
             distribution: Distribution = grain_population_to_distribution(

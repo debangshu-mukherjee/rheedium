@@ -14,6 +14,7 @@ Source plans:
 [distribution framework](plans/partial/distribution_framework_plan.md) ·
 [recon (inversion)](plans/future/recon_optimization_plan.md) ·
 [rationalization](plans/future/rationalization_refactor_plan.md) ·
+[defect diffraction fidelity](plans/future/defect_diffraction_fidelity_plan.md) ·
 [audit/formal verification](plans/future/audit_formal_verification_plan.md) ·
 [hypothesis testing](plans/future/hypothesis_testing_plan.md) ·
 [parallel sweeps](plans/implemented/parallel_sweeps_plan.md) ·
@@ -100,6 +101,14 @@ gradient-based fit rather than a bespoke optimizer.
    reference simulations (kinematic and multislice) and ≥1 experimental pattern;
    recovery of known structure/orientation/beam/distributions from synthetic ground
    truth; throughput sufficient for high-volume and near-real-time use. [results]
+8. **(Conditional — defect diffraction fine structure.)** *If* the
+   [defect diffraction fidelity](plans/future/defect_diffraction_fidelity_plan.md)
+   track lands in time: the *characteristic* signatures of defects — **fine-twin
+   satellites** at `G ± n·q_twin` and **vicinal step-splitting** of streaks — not a
+   blended change, all through the same differentiable `Distribution` contract.
+   This is exactly the diffraction-physics depth a Comp Mater referee looks for. If
+   it does **not** land, the paper states the smooth-structure-modifier scope plainly
+   (see [framing decision 5](#open-framing-decisions)). [defect fidelity DG1–DG2]
 
 *Architecture and implementation (the three-layer inversion, the `Distribution`
 PyTree + bind contract, AOT/compilation-cache engineering, the typing/validation
@@ -141,6 +150,13 @@ see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K
     `model → distribution → pattern` hierarchy; what the data can and cannot
     determine.
 
+*Conditional main figure (defect fine structure).* If the
+[defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) track lands,
+a panel of **fine-twin satellites + vicinal step-splitting** (observed vs analytic
+positions/intensities) upgrades Fig 5 from a regime *map* to a regime map **with
+the measured fine structure** — or is promoted to an 11th main figure if space
+allows. Its quantitative validation lives in SI (S19–S20 below).
+
 ### Supplementary figures (architecture · engineering · extended validation) — 10–20
 
 - **S1 Three-layer architecture** — Layer 0 amplitude → Layer 1 `apply` → Layer 2
@@ -167,15 +183,21 @@ see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K
 - **S12 Batched scaling** — `distribute_batched` throughput vs devices.
 - **S13 Validation discipline** — jaxtyping + beartype two-tier checks; a caught
   malformed input.
-- **S14 Rigor ladder** — `audit` invariants labelled proof vs sampled-within-
-  tolerance.
+- **S14 Rigor ladder (`rheedium.audit`)** — the module's invariant checks with each
+  result labelled proof vs sampled-within-tolerance; the rigor-tier table.
 - **S15 Property-based tests** — `hypothesis` round-trip/invariant coverage; a
   shrunk counterexample.
 - **S16 Convergence studies** — mode-count and multislice-grid convergence.
 - **S17 Additional experimental examples** — further measured patterns / inversions.
 - **S18 Reproducibility build graph** — `rheedium_paper` one-command figure→PDF DAG.
-- *(S19–S20 reserve)* — extra ablations / robustness (noise, partial detector,
-  background) as needed to fill 10–20.
+- **S19 Fine-twin satellite validation** *(conditional — defect fidelity)* —
+  satellite positions vs `q_twin` and intensity vs twin fraction, observed vs
+  analytic superlattice. [defect fidelity DG1]
+- **S20 Step-splitting + displacement fringes** *(conditional — defect fidelity)* —
+  streak split-spacing vs terrace width, the regular↔random crossover, and the
+  within-`ℓ_c` fringe-spacing check. [defect fidelity DG2–DG3]
+- *(reserve)* — extra ablations / robustness (noise, partial detector, background)
+  as needed to fill 10–20.
 
 ## Section skeleton
 
@@ -200,8 +222,11 @@ see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K
    use).
 6. **Methods** — concise: the engine in one paragraph (forward kernels →
    `Distribution` integrator → differentiable inverse), pointing to the SI for the
-   architecture, solver, and implementation; data sources; reproducibility
-   (pinned version, seeds, DOI).
+   architecture (SI-A), the inverse solver (SI-D), and implementation; and a
+   sentence on **correctness** — the `rheedium.audit` invariant checks (labelled
+   proof vs sampled-within-tolerance) and the typing/property-based test discipline
+   (SI-F) — so verification is signposted without intruding on the physics. Data
+   sources; reproducibility (pinned version, seeds, DOI).
 7. **Code & data availability** — PyPI release + GitHub (MIT), pinned version, the
    archived `rheedium_paper` reproducibility repo (DOI).
 
@@ -218,9 +243,14 @@ see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K
   multistart, UQ derivation. *(Figs S6–S9)*
 - **SI-E Performance & deployment** — compilation cache, AOT StableHLO export,
   batched scaling. *(Figs S10–S12)*
-- **SI-F Correctness & reproducibility** — typing/validation discipline, the
-  proof-vs-sampled rigor ladder, property-based tests, convergence, the
-  reproducibility repo. *(Figs S13–S18)*
+- **SI-F Correctness & reproducibility** — the **`rheedium.audit` module**
+  (`invariants.py` / `reference_types.py` / `metrics.py` / `reference_benchmark.py`):
+  physical-law invariant checks that *label each result* proof vs
+  sampled-within-tolerance (the rigor ladder, per
+  [audit/formal verification](plans/future/audit_formal_verification_plan.md));
+  the jaxtyping + beartype typing/validation discipline; property-based
+  (`hypothesis`) round-trip/invariant tests; convergence; the reproducibility repo.
+  *(Figs S13–S18)*
 
 ---
 
@@ -232,6 +262,7 @@ see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K
 | **Inverse half** | `recon` K0–KG6: solver, distribution reconstruction, identifiability, UQ on synthetic ground truth | specified, **not built** (gated after rationalization) |
 | **Rigor** | `audit` proof/sampled labelling + `hypothesis` round-trip/invariant tests | planned |
 | **Evidence** | ≥1 experimental RHEED dataset inverted end-to-end | to source |
+| **Defect fine structure** *(optional enhancer, not a prerequisite)* | [defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) DG1–DG3: satellites, step-splitting, fringes | proposed, **off the critical path** — adds contribution 8 + Fig 5 upgrade + S19–S20 if it lands; paper ships without it otherwise |
 
 **Recommended writing order**
 
@@ -344,3 +375,10 @@ release / GitHub tag, and the archived paper repo) rather than a promise.
 4. **Distribution-reconstruction emphasis.** Headline the identifiability story
    (novel, distinctive) vs treat it as one result among several — affects title
    and abstract framing.
+5. **Defect fine structure — wait or ship without.** Hold submission for the
+   [defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) track (adds
+   a distinctive physics result — satellites + step-splitting — that referees value)
+   vs ship the kinematic + smooth-defect paper now and treat fidelity as a
+   follow-up. It is **off the critical path**, so the default is *ship without and
+   add if it lands before submission*; only delay if reviewers would expect the
+   fine structure. State the smooth-modifier scope plainly either way (decision 2).

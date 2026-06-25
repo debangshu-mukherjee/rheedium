@@ -11,12 +11,13 @@ parallel contract.
 
 Status: **partially implemented.** Phases 1–3 are substantially in; Phase 4
 (defect producers) and Phase 5 (`multislice` kernel selection) are started;
-Phase 6 is partially gated. The architectural inversion (§1) **has landed for
-the kinematic kernel and opt-in multislice** — `simulate_detector_image` is now
-the thin Layer-1 integrator (build distributions → bind selected kernel →
-`apply_distributions` → PSF/normalize). Remaining gaps are producer-owned bind
-modules, size/finite-domain detector bind, and automatic `PotentialSlices`
-producers for structure-changing multislice axes.
+Phase 6 / recon K0 is gated green. The architectural inversion (§1) **has
+landed for the kinematic kernel and opt-in multislice** —
+`simulate_detector_image` is now the thin Layer-1 integrator (build
+distributions → bind selected kernel → `apply_distributions` → PSF/normalize).
+Remaining gaps are higher-fidelity defect diffraction, automatic
+`PotentialSlices` producers for structure-changing multislice axes, and legacy
+Gaussian-quadrature cleanup.
 
 > **Keystone — the critical path.** This is the root of the whole roadmap:
 > [rationalization](plans/future/rationalization_refactor_plan.md) R0,
@@ -25,12 +26,10 @@ producers for structure-changing multislice axes.
 > The single load-bearing item is the **Phase 6 end-to-end differentiability
 > guarantee** — `jax.grad` finite through `simulate_detector_image` w.r.t. every
 > producer latent — because it is *literally* recon's entry gate **K0**. It is
-> **partially locked today**: grads are live for GSM `β` and twin population
-> fraction, but **grain-size sensitivity is a strict `xfail`** until `size` /
-> finite-domain physics is wired into the integrator. Closing that one xfail
-> (which requires the `size`-into-integrator work) completes K0 and unblocks the
-> entire downstream chain — and it does **not** require kernel-polymorphism or the
-> producer-owned bind-module split first. Lock it before anything else.
+> **locked today**: grads are live for GSM `β`, twin population fraction, and
+> grain/domain size through the public detector integrator. This completes K0 and
+> unblocks the downstream chain; it did **not** require the producer-owned
+> bind-module split, detector type split, or deeper defect-fidelity work.
 
 ### Done — Phase 1 (Layer 0 + Layer 1 core)
 
@@ -48,7 +47,8 @@ producers for structure-changing multislice axes.
 - Generic `distribution=` routes through a **central kinematic bind registry**
   rather than assuming every sample is an azimuth: beam-like, orientation,
   trivial, grain-orientation, twin-wall, and step-edge axes have explicit binds;
-  `size` fails loudly until the finite-domain detector kernel is unified.
+  `size` and grain-size axes bind finite-domain rod broadening into the detector
+  integrator.
 
 ### Done — Phase 2 (retrofit existing producers)
 
@@ -123,25 +123,42 @@ beam×orientation composition parity, and CTR amplitude-renderer parity.
 
 ### Not yet done
 
-- The public detector-image path is inverted for kinematic and opt-in multislice
-  kernels, but multislice currently requires precomputed `PotentialSlices`.
-  There is no automatic `CrystalStructure` / defect-sample → `PotentialSlices`
-  producer bind yet.
-- The shared detector contract is still only functionally shared through
-  `(image_shape_px, pixel_size_mm, beam_center_px, detector_distance_mm)`;
-  `DetectorGeometry` still lives in `types/rheed_types.py`, and the proposed
-  `types/detector.py` split has not been done.
-- Split the remaining kernel-context bind registries into producer-owned bind
-  modules. `Distribution.bind(...)` now exists and the detector integrator uses
-  it, but the per-axis semantics still live beside the simulator kernels.
-- Wire `size` distributions into the detector-image integrator instead of the
-  separate finite-domain intensity API.
-- Phase 6 is partially gated: public `simulate_detector_image` gradients are
-  finite and non-zero for GSM `β` and twin population fraction, but grain-size
-  sensitivity is a strict xfail until size / finite-domain physics is wired into
-  the detector-image integrator. The inverse *solver* itself belongs to `recon`,
-  per [recon_optimization_plan.md](plans/future/recon_optimization_plan.md).
-- Retire the remaining orientation+CTR angular+energy Gaussian quadrature path.
+- Add automatic `CrystalStructure` / defect-sample → `PotentialSlices` producer
+  binds so structure-changing axes can run under `kernel="multislice"` instead
+  of requiring precomputed `PotentialSlices`.
+- Retire the remaining orientation+CTR angular+energy Gaussian quadrature path
+  in the rationalization track rather than duplicating that cleanup here.
+
+### Remaining work to completion
+
+The keystone (**Phase 6 / recon K0**) is **green**, so the roadmap is already
+unblocked. What remains to mark *this plan* complete is small and well-scoped —
+two framework tasks plus one delegated cleanup:
+
+- **F1 — Multislice producer polymorphism** *(the only substantive item)*. Add the
+  `CrystalStructure` / defect-sample → `PotentialSlices` producer bind so
+  structure-changing axes (twins, steps, grain morphology, size) run under
+  `kernel="multislice"` instead of raising
+  ([distribution_binds.py:178](src/rheedium/procs/distribution_binds.py#L178)).
+  **Gate FG1:** each structure-changing axis produces a *distinguishable* and
+  *differentiable* multislice detector image (no raise), mirroring the kinematic
+  distinguishability + grad tests. *(Medium–Large.)*
+- **F2 — Detector-contract verification** *(mostly done)*. `DetectorGeometry` is
+  split into `types/detector.py` and both kernels already project through
+  `project_on_detector_geometry` (§2.4). What remains is the **standing
+  regression**: **Gate FG2** — a test asserting kinematic and multislice yield
+  *identical* detector extents from the shared carrier (so they cannot drift).
+  Tilted/curved dense rendering is explicitly a future geometry-depth item, not a
+  gate. *(Small — a test, not a refactor.)*
+- **Delegated — legacy quadrature.** Retiring `instrument_broadened_pattern` /
+  `gauss_hermite_nodes_weights` is owned by
+  [rationalization R2](plans/future/rationalization_refactor_plan.md); not a
+  framework task.
+
+**Definition of done:** FG1 + FG2 green (K0 already is); the legacy quadrature is
+retired by rationalization. Higher-fidelity defect physics is explicitly **out of
+scope** — see
+[defect_diffraction_fidelity_plan.md](plans/future/defect_diffraction_fidelity_plan.md).
 
 ### Housekeeping
 
@@ -282,10 +299,11 @@ Both kernels now render onto the same dense `(H, W, pixel_size_mm,
 beam_center_px)` field so Layer 1 can reduce either selected kernel. Kinematic
 maps `k_out → detector` via Ewald geometry; multislice maps a `q`-grid →
 detector and rasterizes the complex field with the same amplitude renderer.
-Still open: unify on `project_on_detector_geometry` + `detector_extent_mm`
-([simulator.py:164](src/rheedium/simul/simulator.py#L164),
-[simulator.py:1197](src/rheedium/simul/simulator.py#L1197)). Define one
-`DetectorGeometry` carrier so the two paths cannot drift.
+`DetectorGeometry` lives in `types/detector.py`; kinematic and multislice sparse
+pattern builders both project through `project_on_detector_geometry`, and the
+public detector-image path binds distance and PSF through that carrier for both
+selected kernels. Full tilted/curved dense-image rendering remains a future
+geometry-depth improvement rather than a framework gate.
 
 ---
 
@@ -330,12 +348,11 @@ This generalizes exactly what `integrate_over_orientation`'s `simulate_fn`
 already is ([distributions.py:541](src/rheedium/types/distributions.py#L541)).
 Current implementation status: the reducer is generic, and `Distribution.bind`
 now owns the public entry point for turning one distribution axis into a bound
-sample closure. The concrete axis semantics are still supplied by
-kernel-context binders used by the detector simulator. Those binders prevent
-silent mis-binds and have public-path coverage for beam-like,
-orientation/trivial, grain-orientation, twin, and step axes, but they still need
-to move into producer-owned modules; the size / finite-domain detector bind also
-remains open.
+sample closure. Concrete axis semantics live in
+`rheedium.procs.distribution_binds`, which returns kernel-local update records
+for kinematic and multislice detector kernels. Those producer-owned binders
+prevent silent mis-binds and have public-path coverage for beam-like,
+orientation/trivial, grain-orientation, grain-size, size, twin, and step axes.
 
 ### 3.3 Reduction and composition
 
@@ -371,8 +388,8 @@ Current status: the public path follows this spine for the kinematic kernel
 (default instrument widths, explicit beam modes, orientations, generic
 distributions, grains, twins, and steps) and for the opt-in multislice kernel
 when `potential_slices` are supplied. Each axis is bound through
-`Distribution.bind(...)`; the concrete per-axis semantics are still
-kernel-context binders rather than fully producer-owned bind modules.
+`Distribution.bind(...)`; concrete per-axis semantics are producer-owned in
+`rheedium.procs.distribution_binds` and return kernel-local update records.
 
 > **Caveat — kernel-agnostic Layer 1 is now real but incomplete.** The same
 > reducer/PSF spine can select `"kinematic"` or `"multislice"`; multislice shares
@@ -590,7 +607,8 @@ cannot — strictly more expressive, not a re-weighting.
    `apply(TRIVIAL, kinematic_amplitude)` reproduces today's single pattern.
 2. **Phase 2 — retrofit existing producers.** `OrientationDistribution` and
    `SizeDistribution` onto the base type; `integrate_over_orientation` becomes a
-   thin `apply`. Wire `SizeDistribution → finite_domain`.
+   thin `apply`. `SizeDistribution` and grain-size samples now bind
+   finite-domain broadening through the detector integrator.
 3. **Phase 3 — beam modes (GSM).** `BeamModeDistribution` producer; instrument
    convenience wrapper; the first coherence-length `reduction` machinery; and
    beam×orientation composition through Layer 1.
@@ -608,13 +626,11 @@ cannot — strictly more expressive, not a re-weighting.
    `recon`).** The framework's only inverse-related obligation is to keep the
    forward model differentiable end-to-end w.r.t. every producer latent —
    `jax.grad` through `apply` / `simulate_detector_image` finite and live
-   (test 9). Current gates cover public gradients w.r.t. GSM `β` and twin
-   population fraction. Grain-size sensitivity is deliberately a strict xfail
-   until size distributions are bound into detector-image finite-domain
-   physics. The inverse-problem *solver* itself — optax optimization, loss
-   design, multistart, uncertainty, distribution reconstruction,
-   recipe-deviation — is **not built here**; it belongs to the `recon` module
-   and is specified by
+   (test 9). Current gates cover public gradients w.r.t. GSM `β`, twin
+   population fraction, and grain/domain size. The inverse-problem *solver*
+   itself — optax optimization, loss design, multistart, uncertainty,
+   distribution reconstruction, recipe-deviation — is **not built here**; it
+   belongs to the `recon` module and is specified by
    [recon_optimization_plan.md](plans/future/recon_optimization_plan.md), whose
    entry gate **K0** is exactly this differentiability guarantee.
 
@@ -645,11 +661,10 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
    Covered both at reducer level and through
    `simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`.
 8. **Parallel:** ensemble via `distribute_batched` == serial.
-9. **Differentiability:** `jax.grad` of public detector images w.r.t. β and
-   twin density is finite and non-zero. Grain-size gradient is a strict xfail
-   until finite-domain size physics joins the detector integrator. Multislice
-   amplitude gradients through potential scale are covered separately; full
-   inverse-problem gradients over the joint parameter set remain Phase 6 work.
+9. **Differentiability:** `jax.grad` of public detector images w.r.t. β, twin
+   density, and grain/domain size is finite and non-zero. Multislice amplitude
+   gradients through potential scale are covered separately; the inverse solver
+   lives in `recon`.
 10. **Anisotropy:** in-plane ≠ out-of-plane streak FWHM under anisotropic β.
 
 ---
@@ -686,12 +701,14 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 
 | File | Change |
 |------|--------|
-| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`, `render_ctr_amplitude_to_field`, `multislice_amplitude`, `multislice_detector_amplitude`; `simulate_detector_image` → Layer-1 kernel selector for kinematic and opt-in multislice; central bind registries for kinematic and multislice axes; beam×orientation composition; `_instrument` kinematic convenience wrapper |
+| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`, `render_ctr_amplitude_to_field`, `multislice_amplitude`, `multislice_detector_amplitude`; `simulate_detector_image` → Layer-1 kernel selector for kinematic and opt-in multislice; consumes producer-owned bind updates; beam×orientation composition; `_instrument` kinematic convenience wrapper |
 | `src/rheedium/simul/multislice.py` | Multislice primitives remain here; `multislice_amplitude` currently lives in `simulator.py` beside `multislice_propagate` / `multislice_simulator` |
 | `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories; `reduction_mode_from_coherence_length` |
-| `src/rheedium/types/rheed_types.py` | Existing `DetectorGeometry` carrier (not yet split into a new `types/detector.py`) |
+| `src/rheedium/types/detector.py` | `DetectorGeometry` carrier and detector helper accessors shared by kinematic and multislice detector paths |
+| `src/rheedium/types/rheed_types.py` | RHEED image/pattern/sliced-crystal/surface types; compatibility re-export of `DetectorGeometry` |
 | `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; `coherence_envelope` removed; legacy angular/energy quadrature remains outside the default framework path |
 | `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; twin/step bind helpers build modified structures per sample; sub-coherence disorder remains analytic structure modification |
+| `src/rheedium/procs/distribution_binds.py` | Producer-owned kinematic and multislice axis bind semantics for beam/orientation/grain/size/twin/step axes |
 | `src/rheedium/{simul,types,procs}/__init__.py` | exports + Routine Listings |
 | `tests/.../{test_simulator,test_distributions,test_beam_averaging,test_surface_modifier,test_grains}.py` | identity, reduction-algebra, interference, limits, composition, parallel, grad |
 | `tutorials/` | trivial vs instrument default; mode-count convergence; defect-density demo |

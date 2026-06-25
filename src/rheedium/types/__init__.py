@@ -63,6 +63,10 @@ Routine Listings
     Create a sharp rotational-variant distribution.
 :func:`create_distribution`
     Create a generic weighted latent-sample distribution.
+:func:`detector_distance_mm`
+    Extract detector distance from a DetectorGeometry carrier.
+:func:`detector_psf_sigma_pixels`
+    Extract detector PSF width from a DetectorGeometry carrier.
 :func:`create_gaussian_orientation`
     Create a Gaussian mosaic orientation distribution.
 :func:`create_gaussian_schell_beam`
@@ -193,6 +197,11 @@ from .custom_types import (
     scalar_int,
     scalar_num,
 )
+from .detector import (
+    DetectorGeometry,
+    detector_distance_mm,
+    detector_psf_sigma_pixels,
+)
 from .distributions import (
     TRIVIAL,
     TRIVIAL_DISTRIBUTION,
@@ -222,7 +231,6 @@ from .distributions import (
     size_to_distribution,
 )
 from .rheed_types import (
-    DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,
@@ -269,6 +277,8 @@ __all__: list[str] = [
     "CrystalStructure",
     "BeamModeDistribution",
     "DetectorGeometry",
+    "detector_distance_mm",
+    "detector_psf_sigma_pixels",
     "Distribution",
     "EdgeOnSlices",
     "ElectronBeam",

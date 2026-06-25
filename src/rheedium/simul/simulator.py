@@ -65,6 +65,12 @@ from jax.core import Tracer
 from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
+from rheedium.procs.distribution_binds import (
+    KinematicAxisUpdate,
+    MultisliceAxisUpdate,
+    bind_kinematic_axis_distribution,
+    bind_multislice_axis_distribution,
+)
 from rheedium.procs.surface_modifier import (
     bind_step_edge_distribution,
     bind_twin_wall_distribution,
@@ -89,6 +95,7 @@ from rheedium.types import (
     create_distribution,
     create_potential_slices,
     create_rheed_pattern,
+    detector_psf_sigma_pixels,
     discretize_orientation,
     discretize_orientation_static,
     identify_surface_atoms,
@@ -97,6 +104,9 @@ from rheedium.types import (
     scalar_int,
     scalar_num,
 )
+from rheedium.types import (
+    detector_distance_mm as detector_geometry_distance_mm,
+)
 from rheedium.ucell import reciprocal_lattice_vectors
 
 from .beam_averaging import (
@@ -104,6 +114,11 @@ from .beam_averaging import (
     apply_distributions,
     decompose_beam_modes,
     detector_psf_convolve,
+)
+from .finite_domain import (
+    compute_shell_sigma,
+    extent_to_rod_sigma,
+    rod_ewald_overlap,
 )
 from .form_factors import (
     atomic_scattering_factor,
@@ -117,15 +132,6 @@ _MULTISLICE_KERNEL: Final[str] = "multislice"
 _SUPPORTED_LAYER0_KERNELS: Final[frozenset[str]] = frozenset(
     {_KINEMATIC_KERNEL, _MULTISLICE_KERNEL}
 )
-_AZIMUTH_AXIS_IDS: Final[frozenset[str]] = frozenset(
-    {"trivial", "orientation", "azimuth", "phi", "test_phi"}
-)
-_BEAM_AXIS_IDS: Final[frozenset[str]] = frozenset(
-    {"beam_modes", "coherent_beam", "legacy_instrument"}
-)
-_STRUCTURE_AXIS_IDS: Final[frozenset[str]] = frozenset({"twins", "steps"})
-_GRAIN_AXIS_IDS: Final[frozenset[str]] = frozenset({"grains"})
-_UNSUPPORTED_AXIS_IDS: Final[frozenset[str]] = frozenset({"size"})
 
 
 def _validate_layer0_kernel(kernel: str) -> None:
@@ -1144,9 +1150,9 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     )
     amplitudes: Complex[Array, "K"] = raw_amplitudes / jnp.sqrt(max_intensity)
     intensities: Float[Array, "K"] = jnp.abs(amplitudes) ** 2
-    detector_points: Float[Array, "K 2"] = project_on_detector(
+    detector_points: Float[Array, "K 2"] = project_on_detector_geometry(
         k_out,
-        detector_distance,
+        DetectorGeometry(distance=detector_distance),
     )
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=jnp.where(
@@ -1573,6 +1579,108 @@ def kinematic_amplitude(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
+def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num,
+    domain_size_angstrom: scalar_float,
+    domain_aspect_ratio: Tuple[float, float, float],
+    hmax: scalar_int,
+    kmax: scalar_int,
+    detector_distance_mm: scalar_float,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    render_ctrs_as_streaks: bool,
+    parameterization: str,
+    surface_config: SurfaceConfig | None,
+    energy_spread_frac: scalar_float,
+    beam_divergence_rad: scalar_float,
+) -> Complex[Array, "H W"]:
+    """Render kinematic amplitudes with finite-domain rod/Ewald overlap."""
+    sparse_pattern: RHEEDPattern
+    amplitudes: Complex[Array, "N"]
+    sparse_pattern, amplitudes = _ewald_amplitude_pattern(
+        crystal=crystal,
+        voltage_kv=voltage_kv,
+        theta_deg=theta_deg,
+        phi_deg=phi_deg,
+        hmax=hmax,
+        kmax=kmax,
+        detector_distance=detector_distance_mm,
+        temperature=temperature,
+        surface_roughness=surface_roughness,
+        ctr_regularization=ctr_regularization,
+        ctr_power=ctr_power,
+        roughness_power=roughness_power,
+        parameterization=parameterization,
+        surface_config=surface_config,
+    )
+    aspect_ratio: Float[Array, "3"] = jnp.asarray(
+        domain_aspect_ratio,
+        dtype=jnp.float64,
+    )
+    domain_extent_ang: Float[Array, "3"] = (
+        jnp.asarray(domain_size_angstrom, dtype=jnp.float64) * aspect_ratio
+    )
+    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
+    k_in: Float[Array, "3"] = incident_wavevector(
+        lam_ang,
+        theta_deg,
+        phi_deg,
+    )
+    k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
+    rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_extent_ang)
+    overlap: Float[Array, "N"] = rod_ewald_overlap(
+        g_vectors=sparse_pattern.k_out - k_in,
+        k_in=k_in,
+        k_magnitude=k_magnitude,
+        rod_sigma=rod_sigma,
+        shell_sigma=compute_shell_sigma(
+            k_magnitude=k_magnitude,
+            energy_spread_frac=energy_spread_frac,
+            beam_divergence_rad=beam_divergence_rad,
+        ),
+    )
+    finite_amplitudes: Complex[Array, "N"] = amplitudes * jnp.sqrt(overlap)
+    mean_pixel_size_mm: Float[Array, ""] = jnp.mean(
+        jnp.asarray(pixel_size_mm, dtype=jnp.float64)
+    )
+    finite_sigma_px: Float[Array, ""] = (
+        detector_distance_mm
+        * jnp.mean(rod_sigma)
+        / jnp.maximum(k_magnitude * mean_pixel_size_mm, 1e-12)
+    )
+    effective_spot_sigma_px: Float[Array, ""] = jnp.sqrt(
+        jnp.asarray(spot_sigma_px, dtype=jnp.float64) ** 2 + finite_sigma_px**2
+    )
+    if render_ctrs_as_streaks:
+        return render_ctr_amplitude_to_field(
+            pattern=sparse_pattern,
+            amplitudes=finite_amplitudes,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=effective_spot_sigma_px,
+        )
+    return render_amplitude_to_field(
+        pattern=sparse_pattern,
+        amplitudes=finite_amplitudes,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
+        spot_sigma_px=effective_spot_sigma_px,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def render_ctr_amplitude_to_field(
     pattern: RHEEDPattern,
     amplitudes: Complex[Array, "N"],
@@ -1843,6 +1951,9 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     ctr_regularization: scalar_float,
     ctr_power: scalar_float,
     roughness_power: scalar_float,
+    angular_divergence_mrad: scalar_float,
+    energy_spread_ev: scalar_float,
+    domain_aspect_ratio: Tuple[float, float, float],
     image_shape_px: Tuple[int, int],
     pixel_size_mm: Tuple[float, float],
     beam_center_px: Tuple[float, float],
@@ -1855,9 +1966,6 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     """Bind composed distribution samples to the kinematic kernel."""
     axis_dims: tuple[int, ...] = tuple(
         distribution.samples.shape[1] for distribution in distributions
-    )
-    axis_ids: tuple[str | None, ...] = tuple(
-        distribution.axis_id for distribution in distributions
     )
     twin_builder: Callable[[Float[Array, "2"]], CrystalStructure] = (
         bind_twin_wall_distribution(
@@ -1872,71 +1980,19 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
         )
     )
 
-    for axis_id, sample_dim in zip(axis_ids, axis_dims, strict=True):
-        if axis_id in _UNSUPPORTED_AXIS_IDS:
-            raise ValueError(
-                f"Distribution axis {axis_id!r} has no detector-image bind "
-                "yet; use its dedicated finite-domain API until the shared "
-                "size kernel lands."
-            )
-        if axis_id in _BEAM_AXIS_IDS and sample_dim != 3:
-            raise ValueError(
-                f"Beam-like distribution axis {axis_id!r} requires samples "
-                "with shape (N, 3)."
-            )
-        if axis_id == "twins" and sample_dim != 2:
-            raise ValueError("Twin distributions require samples (N, 2).")
-        if axis_id == "steps" and sample_dim != 3:
-            raise ValueError("Step distributions require samples (N, 3).")
-        if axis_id in _GRAIN_AXIS_IDS and sample_dim != 2:
-            raise ValueError(
-                "Grain distributions require samples "
-                "[orientation_angle_deg, grain_size_angstrom]."
-            )
-        if (
-            axis_id not in _BEAM_AXIS_IDS
-            and axis_id not in _STRUCTURE_AXIS_IDS
-            and axis_id not in _GRAIN_AXIS_IDS
-            and axis_id not in _AZIMUTH_AXIS_IDS
-            and not (axis_id is None and sample_dim == 1)
-        ):
-            raise ValueError(
-                f"Distribution axis {axis_id!r} with sample dimension "
-                f"{sample_dim} does not have a registered kinematic bind."
-            )
-
-    def _bind_axis(
-        distribution: Distribution,
-    ) -> Callable[
-        [Float[Array, "D_axis"]], tuple[CrystalStructure | None, Any, Any, Any]
-    ]:
-        axis_id: str | None = distribution.axis_id
-
-        def _axis_bound(
-            axis_sample: Float[Array, "D_axis"],
-        ) -> tuple[CrystalStructure | None, Any, Any, Any]:
-            if axis_id in _BEAM_AXIS_IDS:
-                return (
-                    None,
-                    1.0e-3 * axis_sample[2],
-                    jnp.rad2deg(axis_sample[0]),
-                    jnp.rad2deg(axis_sample[1]),
-                )
-            if axis_id == "twins":
-                return twin_builder(axis_sample), 0.0, 0.0, 0.0
-            if axis_id == "steps":
-                return step_builder(axis_sample), 0.0, 0.0, 0.0
-            return None, 0.0, 0.0, axis_sample[0]
-
-        return _axis_bound
-
     axis_binds: tuple[
-        Callable[
-            [Float[Array, "D_axis"]],
-            tuple[CrystalStructure | None, Any, Any, Any],
-        ],
+        Callable[[Float[Array, "D_axis"]], KinematicAxisUpdate],
         ...,
-    ] = tuple(distribution.bind(_bind_axis) for distribution in distributions)
+    ] = tuple(
+        distribution.bind(
+            lambda dist: bind_kinematic_axis_distribution(
+                dist,
+                twin_builder=twin_builder,
+                step_builder=step_builder,
+            )
+        )
+        for distribution in distributions
+    )
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
         sample_crystal: CrystalStructure = crystal
@@ -1952,20 +2008,54 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
             phi_deg,
             dtype=jnp.float64,
         )
+        sample_domain_size_angstrom: Any | None = None
         cursor: int = 0
         for axis_bind, sample_dim in zip(axis_binds, axis_dims, strict=True):
             axis_sample: Float[Array, "D_axis"] = sample[
                 cursor : cursor + sample_dim
             ]
             cursor += sample_dim
-            crystal_update, voltage_delta, theta_delta, phi_delta = axis_bind(
-                axis_sample
+            axis_update: KinematicAxisUpdate = axis_bind(axis_sample)
+            if axis_update.crystal is not None:
+                sample_crystal = axis_update.crystal
+            if axis_update.domain_size_angstrom is not None:
+                sample_domain_size_angstrom = axis_update.domain_size_angstrom
+            sample_voltage_kv = (
+                sample_voltage_kv + axis_update.voltage_delta_kv
             )
-            if crystal_update is not None:
-                sample_crystal = crystal_update
-            sample_voltage_kv = sample_voltage_kv + voltage_delta
-            sample_theta_deg = sample_theta_deg + theta_delta
-            sample_phi_deg = sample_phi_deg + phi_delta
+            sample_theta_deg = sample_theta_deg + axis_update.theta_delta_deg
+            sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
+
+        if sample_domain_size_angstrom is not None:
+            energy_spread_frac: Float[Array, ""] = jnp.asarray(
+                energy_spread_ev,
+                dtype=jnp.float64,
+            ) / jnp.maximum(sample_voltage_kv * 1000.0, 1e-12)
+            return _kinematic_finite_domain_amplitude(
+                crystal=sample_crystal,
+                voltage_kv=sample_voltage_kv,
+                theta_deg=sample_theta_deg,
+                phi_deg=sample_phi_deg,
+                domain_size_angstrom=sample_domain_size_angstrom,
+                domain_aspect_ratio=domain_aspect_ratio,
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                render_ctrs_as_streaks=render_ctrs_as_streaks,
+                parameterization=parameterization,
+                surface_config=surface_config,
+                energy_spread_frac=energy_spread_frac,
+                beam_divergence_rad=angular_divergence_mrad * 1.0e-3,
+            )
 
         return kinematic_amplitude(
             crystal=sample_crystal,
@@ -2011,57 +2101,13 @@ def _bind_multislice_distributions(  # noqa: PLR0913
     axis_dims: tuple[int, ...] = tuple(
         distribution.samples.shape[1] for distribution in distributions
     )
-    axis_ids: tuple[str | None, ...] = tuple(
-        distribution.axis_id for distribution in distributions
-    )
-    unsupported_axes: frozenset[str] = (
-        _STRUCTURE_AXIS_IDS | _GRAIN_AXIS_IDS | _UNSUPPORTED_AXIS_IDS
-    )
-
-    for axis_id, sample_dim in zip(axis_ids, axis_dims, strict=True):
-        if axis_id in unsupported_axes:
-            raise ValueError(
-                f"Distribution axis {axis_id!r} cannot bind to "
-                "kernel='multislice' yet; multislice requires a "
-                "PotentialSlices producer for structure-changing axes."
-            )
-        if axis_id in _BEAM_AXIS_IDS and sample_dim != 3:
-            raise ValueError(
-                f"Beam-like distribution axis {axis_id!r} requires samples "
-                "with shape (N, 3)."
-            )
-        if (
-            axis_id not in _BEAM_AXIS_IDS
-            and axis_id not in _AZIMUTH_AXIS_IDS
-            and not (axis_id is None and sample_dim == 1)
-        ):
-            raise ValueError(
-                f"Distribution axis {axis_id!r} with sample dimension "
-                f"{sample_dim} does not have a registered multislice bind."
-            )
-
-    def _bind_axis(
-        distribution: Distribution,
-    ) -> Callable[[Float[Array, "D_axis"]], tuple[Any, Any, Any]]:
-        axis_id: str | None = distribution.axis_id
-
-        def _axis_bound(
-            axis_sample: Float[Array, "D_axis"],
-        ) -> tuple[Any, Any, Any]:
-            if axis_id in _BEAM_AXIS_IDS:
-                return (
-                    1.0e-3 * axis_sample[2],
-                    jnp.rad2deg(axis_sample[0]),
-                    jnp.rad2deg(axis_sample[1]),
-                )
-            return 0.0, 0.0, axis_sample[0]
-
-        return _axis_bound
-
     axis_binds: tuple[
-        Callable[[Float[Array, "D_axis"]], tuple[Any, Any, Any]],
+        Callable[[Float[Array, "D_axis"]], MultisliceAxisUpdate],
         ...,
-    ] = tuple(distribution.bind(_bind_axis) for distribution in distributions)
+    ] = tuple(
+        distribution.bind(bind_multislice_axis_distribution)
+        for distribution in distributions
+    )
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
         sample_voltage_kv: Float[Array, ""] = jnp.asarray(
@@ -2082,10 +2128,12 @@ def _bind_multislice_distributions(  # noqa: PLR0913
                 cursor : cursor + sample_dim
             ]
             cursor += sample_dim
-            voltage_delta, theta_delta, phi_delta = axis_bind(axis_sample)
-            sample_voltage_kv = sample_voltage_kv + voltage_delta
-            sample_theta_deg = sample_theta_deg + theta_delta
-            sample_phi_deg = sample_phi_deg + phi_delta
+            axis_update: MultisliceAxisUpdate = axis_bind(axis_sample)
+            sample_voltage_kv = (
+                sample_voltage_kv + axis_update.voltage_delta_kv
+            )
+            sample_theta_deg = sample_theta_deg + axis_update.theta_delta_deg
+            sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
 
         return multislice_detector_amplitude(
             potential_slices=potential_slices,
@@ -2336,6 +2384,7 @@ def simulate_detector_image(  # noqa: PLR0913
     potential_slices: PotentialSlices | None = None,
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
+    finite_domain_aspect_ratio: Tuple[float, float, float] = (1.0, 1.0, 0.5),
 ) -> Float[Array, "H W"]:
     """Simulate a broadened detector image from a Layer-0 amplitude kernel.
 
@@ -2421,6 +2470,10 @@ def simulate_detector_image(  # noqa: PLR0913
     bandwidth_limit : scalar_float, optional
         Fraction of Nyquist frequency retained by multislice propagation.
         Default: 2/3.
+    finite_domain_aspect_ratio : Tuple[float, float, float], optional
+        Relative mapping from scalar size samples to finite-domain
+        ``[Lx, Ly, Lz]`` extents for kinematic size/grain axes.
+        Default: ``(1.0, 1.0, 0.5)``.
 
     Returns
     -------
@@ -2437,6 +2490,10 @@ def simulate_detector_image(  # noqa: PLR0913
     4. Apply detector PSF and normalize.
     """
     _validate_layer0_kernel(kernel)
+    detector_geometry: DetectorGeometry = DetectorGeometry(
+        distance=detector_distance_mm,
+        psf_sigma_pixels=psf_sigma_pixels,
+    )
     if orientation_distribution is not None and distribution is not None:
         raise ValueError(
             "Pass either orientation_distribution or distribution, not both."
@@ -2472,6 +2529,9 @@ def simulate_detector_image(  # noqa: PLR0913
             ctr_regularization=ctr_regularization,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
+            angular_divergence_mrad=angular_divergence_mrad,
+            energy_spread_ev=energy_spread_ev,
+            domain_aspect_ratio=finite_domain_aspect_ratio,
             image_shape_px=image_shape_px,
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
@@ -2495,7 +2555,9 @@ def simulate_detector_image(  # noqa: PLR0913
             voltage_kv=voltage_kv,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
-            detector_distance_mm=detector_distance_mm,
+            detector_distance_mm=detector_geometry_distance_mm(
+                detector_geometry
+            ),
             image_shape_px=image_shape_px,
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
@@ -2509,7 +2571,7 @@ def simulate_detector_image(  # noqa: PLR0913
     )
     return _apply_detector_psf_and_normalize(
         detector_image,
-        psf_sigma_pixels=psf_sigma_pixels,
+        psf_sigma_pixels=detector_psf_sigma_pixels(detector_geometry),
     )
 
 
@@ -3066,18 +3128,13 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
         jnp.sqrt(jnp.maximum(k_out_z_squared, 0.0)),
         0.0,
     )
-    theta_x: Float[Array, "nx ny"] = jnp.where(
-        valid_mask,
-        k_out_x / jnp.maximum(k_out_z, 1e-12),
-        0.0,
+    k_out_flat: Float[Array, "N 3"] = jnp.column_stack(
+        [k_out_x.ravel(), k_out_y.ravel(), k_out_z.ravel()]
     )
-    theta_y: Float[Array, "nx ny"] = jnp.where(
-        valid_mask,
-        k_out_y / jnp.maximum(k_out_z, 1e-12),
-        0.0,
+    detector_points: Float[Array, "N 2"] = project_on_detector_geometry(
+        k_out_flat,
+        DetectorGeometry(distance=detector_distance_mm),
     )
-    det_x: Float[Array, "nx ny"] = detector_distance_mm * theta_x
-    det_y: Float[Array, "nx ny"] = detector_distance_mm * theta_y
     valid_flat: Bool[Array, "N"] = valid_mask.ravel()
     amplitudes: Complex[Array, "N"] = jnp.where(
         valid_flat,
@@ -3094,10 +3151,8 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     intensities: Float[Array, "N"] = jnp.abs(normalized_amplitudes) ** 2
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=jnp.arange(nx * ny, dtype=jnp.int32),
-        k_out=jnp.column_stack(
-            [k_out_x.ravel(), k_out_y.ravel(), k_out_z.ravel()]
-        ),
-        detector_points=jnp.column_stack([det_x.ravel(), det_y.ravel()]),
+        k_out=k_out_flat,
+        detector_points=detector_points,
         intensities=intensities,
     )
     return pattern, normalized_amplitudes

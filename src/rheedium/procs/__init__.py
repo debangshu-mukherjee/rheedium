@@ -32,6 +32,10 @@ Routine Listings
     Attenuate site scattering strength with continuous occupancies.
 :func:`bind_step_edge_distribution`
     Bind step-edge samples to per-sample structure builders.
+:func:`bind_kinematic_axis_distribution`
+    Bind one Distribution axis to kinematic sample-update semantics.
+:func:`bind_multislice_axis_distribution`
+    Bind one Distribution axis to multislice sample-update semantics.
 :func:`bind_twin_wall_distribution`
     Bind twin-wall samples to per-sample structure builders.
 :func:`create_surface_slab`
@@ -83,6 +87,14 @@ from .crystal_defects import (
     apply_interstitial_field,
     apply_vacancy_field,
 )
+from .distribution_binds import (
+    KinematicAxisUpdate,
+    MultisliceAxisUpdate,
+    bind_kinematic_axis_distribution,
+    bind_multislice_axis_distribution,
+    validate_kinematic_axis,
+    validate_multislice_axis,
+)
 from .grains import (
     apply_misorientation_distribution,
     grain_distribution_average,
@@ -133,14 +145,18 @@ __all__: list[str] = [
     "apply_twin_wall_field",
     "apply_vacancy_field",
     "bind_step_edge_distribution",
+    "bind_kinematic_axis_distribution",
+    "bind_multislice_axis_distribution",
     "bind_twin_wall_distribution",
     "create_surface_slab",
     "gaas001_2x4",
     "grain_distribution_average",
     "grain_population_to_distribution",
     "incoherent_domain_average",
+    "KinematicAxisUpdate",
     "log_intensity_transform",
     "mgo001_bulk_terminated",
+    "MultisliceAxisUpdate",
     "normalize_image",
     "preprocess_experimental",
     "si100_2x1",
@@ -152,4 +168,6 @@ __all__: list[str] = [
     "subtract_background",
     "twin_wall_to_distribution",
     "vicinal_surface_step_splitting",
+    "validate_kinematic_axis",
+    "validate_multislice_axis",
 ]
