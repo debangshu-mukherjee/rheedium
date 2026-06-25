@@ -65,6 +65,8 @@ Routine Listings
     Create a generic weighted latent-sample distribution.
 :func:`detector_distance_mm`
     Extract detector distance from a DetectorGeometry carrier.
+:func:`detector_extent_mm`
+    Compute display extent from a DetectorGeometry carrier.
 :func:`detector_psf_sigma_pixels`
     Extract detector PSF width from a DetectorGeometry carrier.
 :func:`create_gaussian_orientation`
@@ -199,7 +201,11 @@ from .custom_types import (
 )
 from .detector import (
     DetectorGeometry,
+    detector_beam_center_px,
     detector_distance_mm,
+    detector_extent_mm,
+    detector_image_shape_px,
+    detector_pixel_size_mm,
     detector_psf_sigma_pixels,
 )
 from .distributions import (
@@ -277,7 +283,11 @@ __all__: list[str] = [
     "CrystalStructure",
     "BeamModeDistribution",
     "DetectorGeometry",
+    "detector_beam_center_px",
     "detector_distance_mm",
+    "detector_extent_mm",
+    "detector_image_shape_px",
+    "detector_pixel_size_mm",
     "detector_psf_sigma_pixels",
     "Distribution",
     "EdgeOnSlices",

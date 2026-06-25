@@ -1,7 +1,7 @@
 # Codebase Rationalization & Refactor Plan
 
 Scope: `rheedium` — after the
-[distribution_framework_plan.md](plans/implemented/distribution_framework_plan.md) lands,
+[distribution_framework_plan.md](../implemented/distribution_framework_plan.md) lands,
 harvest the simplification it makes possible and pay down the structural debt it
 exposes. This is **not** gratuitous churn: every item either deletes redundancy,
 wires a dangling piece, or collapses a duplicated path — and every item must
@@ -14,20 +14,58 @@ superseded, duplicated, or dangling path is **deleted outright**. There are **no
 compatibility shims, no `DeprecationWarning`s, no aliases** — the only migration
 surface is a `CHANGELOG.md` note (§3).
 
-Status: **proposed** — gated, sequenced **strictly after** the
-distribution-framework plan completes (no longer interleaved). Entry gate **R0**:
-the framework's six phases have landed and the suite is green. Assumes the
-three-layer architecture (amplitude kernels → `Distribution` integrator →
-producers) is fully in place. **Roadmap position:** second of four — framework →
-*this* → [recon (inversion)](plans/future/recon_optimization_plan.md) →
-[automatons](plans/future/automatons_plan.md). The recon solver and the
-automatons are both written against the rationalized API this plan produces, so
-neither starts until it completes.
+Status: **partial implementation active** — moved from `plans/future/` to
+`plans/partial/` on 2026-06-25 because implementation has started. Entry gate
+**R0 is satisfied**: the distribution-framework plan has landed, the framework's
+six phases are present, and `simulate_detector_image` is the Layer-1 integrator
+with first-class `kernel=` / `distribution=` inputs. The current active phase is
+**R1 Detector unification**, with the first detector-carrier slice landed and
+verified (see §4, Phase R1 progress). **Roadmap position:** second of four —
+framework → *this* → [recon (inversion)](../future/recon_optimization_plan.md) →
+[automatons](../future/automatons_plan.md). The recon solver and the automatons
+are both written against the rationalized API this plan produces, so neither
+starts until it completes.
 
 Guard on every workstream below: **tests stay green, public results unchanged
 (verified by regression — legacy paths deleted, not shimmed, per §3), and
 `jax.grad` still flows end-to-end.** A refactor that breaks differentiability has
 failed even if tests pass.
+
+## 0. Implementation progress
+
+This section records landed slices so the partial plan remains executable rather
+than aspirational.
+
+### 2026-06-25 — R1 detector carrier slice landed
+
+- `DetectorGeometry` now carries dense detector calibration:
+  `image_shape_px`, `pixel_size_mm`, and `beam_center_px`, in addition to
+  distance/tilt/curvature/offset/PSF fields.
+- `render_pattern_to_image`, `render_amplitude_to_field`,
+  `render_ctr_amplitude_to_field`, `_render_ctr_streaks_to_image`, and
+  `detector_extent_mm` now consume `DetectorGeometry` for pixel-grid and extent
+  mapping.
+- The intensity and amplitude render variants share one detector
+  millimetres-to-pixels helper, reducing coordinate-map duplication.
+- Tutorials, paired notebooks, sweep exporters, tests, and `CHANGELOG.md` were
+  updated in the same slice. The public break has no shim; the migration surface
+  is the `CHANGELOG.md` note only, as required by §3.
+- Verification run:
+  `uv run pytest tests/test_rheedium/test_types/test_detector.py tests/test_rheedium/test_types/test_rheed_types.py tests/test_rheedium/test_inout/test_hdf5.py tests/test_rheedium/test_simul/test_simulator.py -q`
+  → `369 passed`;
+  `uv run ruff check src tests tutorials` → passed;
+  `uv run ty check src/rheedium/types src/rheedium/simul/simulator.py tests/test_rheedium/test_types/test_detector.py tests/test_rheedium/test_simul/test_simulator.py`
+  → passed.
+
+Remaining R1 work before RG1 closes:
+
+- Route the remaining projection entry points and call sites through the shared
+  carrier consistently, including simple `project_on_detector` callers that
+  still pass only a distance.
+- Decide whether `project_on_detector` remains an internal simple helper or is
+  deleted/replaced at the public boundary by `project_on_detector_geometry`.
+- Add/confirm pixelwise regression coverage against pre-refactor images for the
+  full R1 surface, not only renderer equivalence and detector-contract tests.
 
 ---
 
@@ -59,18 +97,18 @@ isolation.
 
 One reduction operator replaces all hand-rolled incoherent sums:
 
-- `integrate_over_orientation` ([distributions.py:541](src/rheedium/types/distributions.py#L541))
+- `integrate_over_orientation` ([distributions.py](../../src/rheedium/types/distributions.py))
   → thin wrapper over `apply`.
 - `grains.grain_distribution_average`, `grains.apply_misorientation_distribution`
-  ([procs/grains.py](src/rheedium/procs/grains.py)) → producers + `apply`.
+  ([procs/grains.py](../../src/rheedium/procs/grains.py)) → producers + `apply`.
 - `surface_modifier.incoherent_domain_average` → `apply`.
 - `ewald_simulator_with_orientation_distribution`
-  ([simulator.py:948](src/rheedium/simul/simulator.py#L948)) and the nested
+  ([simulator.py](../../src/rheedium/simul/simulator.py)) and the nested
   orientation `vmap`s inside `simulate_detector_image`
-  ([simulator.py:1420-1500](src/rheedium/simul/simulator.py#L1420)) → an
+  ([simulator.py](../../src/rheedium/simul/simulator.py)) → an
   `OrientationDistribution` passed to Layer 1.
 - `instrument_broadened_pattern`'s angular+energy quadrature
-  ([beam_averaging.py:409](src/rheedium/simul/beam_averaging.py#L409)) → a
+  ([beam_averaging.py](../../src/rheedium/simul/beam_averaging.py)) → a
   `BeamModeDistribution`.
 
 Net: ~5 bespoke averaging code paths → 1. Each call site becomes "build a
@@ -78,24 +116,30 @@ Net: ~5 bespoke averaging code paths → 1. Each call site becomes "build a
 
 ### W2 — Wire or delete dangling code
 
-- `coherence_envelope` ([beam_averaging.py:225](src/rheedium/simul/beam_averaging.py#L225))
+- `coherence_envelope` ([beam_averaging.py](../../src/rheedium/simul/beam_averaging.py))
   — never called; superseded by explicit beam-mode spread. **Delete** (or demote
   to a documented single-mode shortcut). Removing it also closes the
   double-counting risk.
-- `SizeDistribution` ([distributions.py:150](src/rheedium/types/distributions.py#L150))
+- `SizeDistribution` ([distributions.py](../../src/rheedium/types/distributions.py))
   — type with no consumer. **Wire** to `finite_domain` rod broadening as a
   size producer, or delete if the producer subsumes it.
 
 ### W3 — Parameter-object rationalization (biggest readability win)
 
 `simulate_detector_image` takes **24 arguments**
-([simulator.py:1273](src/rheedium/simul/simulator.py#L1273)); the seven
-`*_sweep` functions ([sweeps.py](src/rheedium/simul/sweeps.py)) each duplicate
-the full passthrough; the `generate_*_sweeps` scripts thread ~20-key settings
-dicts. Bundle into PyTree carriers (all `eqx.Module`, all differentiable):
+([simulator.py](../../src/rheedium/simul/simulator.py)); the seven
+`*_sweep` functions ([sweeps.py](../../src/rheedium/simul/sweeps.py)) each
+duplicate the full passthrough; the `generate_*_sweeps` scripts thread ~20-key
+settings dicts. Bundle into PyTree carriers (differentiable where numeric leaves
+are intended to participate in gradients; `DetectorGeometry` is currently a
+`NamedTuple` carrier):
 
 - `DetectorGeometry` — `image_shape_px`, `pixel_size_mm`, `beam_center_px`,
-  `detector_distance_mm` (also the W4 unifier).
+  `distance` (the carrier for the public `detector_distance_mm` value, also the
+  W4 unifier). **Partial:** the dense calibration fields and distance now live
+  in `DetectorGeometry`; the remaining R4 work is to make
+  `simulate_detector_image` consume the carrier directly instead of accepting the
+  superseded kwargs.
 - `BeamSpec` — energy, divergence, spread, coherence (reuse/extend the existing
   `ElectronBeam` rather than inventing a parallel type).
 - `SurfaceCTRParams` — `ctr_regularization`, `ctr_power`, `roughness_power`,
@@ -112,10 +156,14 @@ inert data carriers, not reductions.
 
 `project_on_detector`, `project_on_detector_geometry`, `detector_extent_mm`,
 `render_pattern_to_image`, `_render_ctr_streaks_to_image`
-([simulator.py:117-1196](src/rheedium/simul/simulator.py#L117)) carry
+([simulator.py](../../src/rheedium/simul/simulator.py)) carry
 overlapping geometry logic. Route all through the single `DetectorGeometry`
 carrier so the kinematic and (future) multislice kernels cannot drift, and the
 intensity/amplitude render variants share one coordinate mapping.
+
+**Partial:** dense rendering and extent mapping are now carrier-based and share
+one coordinate helper. Remaining W4 work is the projection side:
+`project_on_detector` still accepts a raw distance at some call sites.
 
 ### W5 — `procs` return-type split
 
@@ -132,10 +180,10 @@ Document the trichotomy in each `procs` module's `Notes`.
 ### W6 — Sweeps collapse
 
 With W3's config objects + `distribute_batched`, the seven `simulate_detector_image_*_sweep`
-functions ([sweeps.py](src/rheedium/simul/sweeps.py)) — each ~60 lines of
+functions ([sweeps.py](../../src/rheedium/simul/sweeps.py)) — each ~60 lines of
 passthrough — reduce to one or two generic helpers: a parameter axis (or a
 `Distribution`) + the bundled config. The `generate_*_sweeps.py` scripts and
-their hand-rolled chunking ([generate_bi2se3_sweeps.py:19](tutorials/sweeps/generate_bi2se3_sweeps.py#L19))
+their hand-rolled chunking ([generate_bi2se3_sweeps.py](../../tutorials/sweeps/generate_bi2se3_sweeps.py))
 simplify to a config + `distribute_batched` call.
 
 ### W7 — Naming & units consistency pass
@@ -206,6 +254,9 @@ framework's own backlog (the unified `DetectorGeometry`, retiring
 `coherence_envelope`) may already be done; if so, R1/R3 shrink to verification
 rather than work. Until R0 holds this plan does not start.
 
+**Status:** complete as of 2026-06-25. This plan is now active under
+`plans/partial/`.
+
 ### Universal gate (applies to *every* phase, on top of its specific gate)
 
 The §5 guardrails, as pass/fail commands:
@@ -231,6 +282,16 @@ The §5 guardrails, as pass/fail commands:
 `detector_extent_mm`, `render_pattern_to_image`, `_render_ctr_streaks_to_image`
 through one `DetectorGeometry` carrier (the `types/detector.py` the framework
 slot-defined); intensity and amplitude render variants share one coordinate map.
+
+**Progress:** partially complete as of 2026-06-25. `DetectorGeometry` now carries
+`image_shape_px`, `pixel_size_mm`, and `beam_center_px`; the sparse intensity,
+amplitude, CTR-streak renderers, and `detector_extent_mm` consume that carrier.
+Tutorials/notebooks/sweep exporters were migrated in the same slice, and the
+public break is documented in `CHANGELOG.md` with no shim.
+
+**Remaining:** finish projection unification by routing/deleting the remaining
+raw-distance `project_on_detector` path and its call sites, then add/confirm the
+full pixelwise R1 regression coverage.
 
 **Gate RG1:** kinematic and (future) multislice paths assert *identical* detector
 extents from the shared carrier; pixelwise regression vs pre-refactor images;
@@ -303,8 +364,8 @@ gate.
 
 | Gate | Pass condition (+ the universal gate) |
 |------|----------------------------------------|
-| **R0** | framework complete + green; overlap with framework backlog reconciled |
-| **RG1** | one `DetectorGeometry`; identical extents; pixelwise regression |
+| **R0** | **complete 2026-06-25** — framework complete + green; overlap reconciled enough to start R1 |
+| **RG1** | **partial** — dense render/extent mapping unified; remaining projection unification + full pixelwise regression |
 | **RG2** | ~5 averaging paths → 1 reducer; per-path regression |
 | **RG3** | no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
 | **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deleted in-phase (no dual API); notebooks updated |

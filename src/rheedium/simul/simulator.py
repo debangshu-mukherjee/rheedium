@@ -95,6 +95,9 @@ from rheedium.types import (
     create_distribution,
     create_potential_slices,
     create_rheed_pattern,
+    detector_beam_center_px,
+    detector_image_shape_px,
+    detector_pixel_size_mm,
     detector_psf_sigma_pixels,
     discretize_orientation,
     discretize_orientation_static,
@@ -106,6 +109,9 @@ from rheedium.types import (
 )
 from rheedium.types import (
     detector_distance_mm as detector_geometry_distance_mm,
+)
+from rheedium.types import (
+    detector_extent_mm as detector_geometry_extent_mm,
 )
 from rheedium.ucell import reciprocal_lattice_vectors
 
@@ -305,6 +311,31 @@ def project_on_detector_geometry(
         [detector_h, detector_v], axis=-1
     )
     return detector_coords
+
+
+def _detector_grid(
+    geometry: DetectorGeometry,
+) -> tuple[Float[Array, "H W"], Float[Array, "H W"]]:
+    """Build the dense pixel grid for a detector geometry."""
+    height_px, width_px = detector_image_shape_px(geometry)
+    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+    x_grid: Float[Array, "H W"]
+    y_grid: Float[Array, "H W"]
+    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+    return x_grid, y_grid
+
+
+def _detector_points_to_pixels(
+    detector_points: Float[Array, "N 2"],
+    geometry: DetectorGeometry,
+) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
+    """Map detector millimetre coordinates to dense image pixels."""
+    x_mm_per_px, y_mm_per_px = detector_pixel_size_mm(geometry)
+    center_x_px, center_y_px = detector_beam_center_px(geometry)
+    x_pixels: Float[Array, "N"] = detector_points[:, 0] / x_mm_per_px
+    y_pixels: Float[Array, "N"] = detector_points[:, 1] / y_mm_per_px
+    return x_pixels + center_x_px, y_pixels + center_y_px
 
 
 @jaxtyped(typechecker=beartype)
@@ -1308,9 +1339,7 @@ def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def render_pattern_to_image(
     pattern: RHEEDPattern,
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
+    geometry: DetectorGeometry,
     spot_sigma_px: scalar_float,
 ) -> Float[Array, "H W"]:
     """Rasterize a sparse RHEEDPattern onto a dense detector image.
@@ -1319,13 +1348,9 @@ def render_pattern_to_image(
     ----------
     pattern : RHEEDPattern
         Sparse detector pattern with positions in millimetres.
-    image_shape_px : Tuple[int, int]
-        Output detector image shape as ``(height_px, width_px)``.
-    pixel_size_mm : Tuple[float, float]
-        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
-    beam_center_px : Tuple[float, float]
-        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)`` as
-        ``(center_x_px, center_y_px)``.
+    geometry : DetectorGeometry
+        Detector geometry carrying output shape, pixel calibration, and beam
+        centre.
     spot_sigma_px : scalar_float
         Gaussian spot width in detector pixels.
 
@@ -1340,26 +1365,20 @@ def render_pattern_to_image(
     simulations and experiment-like detector rendering. Each sparse hit is
     painted as a Gaussian on a calibrated pixel grid.
     """
-    height_px, width_px = image_shape_px
-    x_mm_per_px, y_mm_per_px = pixel_size_mm
-    center_x_px, center_y_px = beam_center_px
     sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
-
-    x_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
-    )
-    y_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    x_pixels: Float[Array, "N"]
+    y_pixels: Float[Array, "N"]
+    x_pixels, y_pixels = _detector_points_to_pixels(
+        pattern.detector_points,
+        geometry,
     )
     intensities: Float[Array, "N"] = jnp.asarray(
         pattern.intensities, dtype=jnp.float64
     )
 
-    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
-    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
     x_grid: Float[Array, "H W"]
     y_grid: Float[Array, "H W"]
-    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+    x_grid, y_grid = _detector_grid(geometry)
 
     def _render_one_spot(
         x0_px: Float[Array, ""],
@@ -1383,9 +1402,7 @@ def render_pattern_to_image(
 def render_amplitude_to_field(
     pattern: RHEEDPattern,
     amplitudes: Complex[Array, "N"],
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
+    geometry: DetectorGeometry,
     spot_sigma_px: scalar_float,
 ) -> Complex[Array, "H W"]:
     """Rasterize sparse complex amplitudes onto a dense detector field.
@@ -1398,12 +1415,9 @@ def render_amplitude_to_field(
         Sparse detector pattern carrying detector coordinates in millimetres.
     amplitudes : Complex[Array, "N"]
         Complex reflection amplitudes aligned with ``pattern.detector_points``.
-    image_shape_px : Tuple[int, int]
-        Output detector field shape as ``(height_px, width_px)``.
-    pixel_size_mm : Tuple[float, float]
-        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
-    beam_center_px : Tuple[float, float]
-        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    geometry : DetectorGeometry
+        Detector geometry carrying output shape, pixel calibration, and beam
+        centre.
     spot_sigma_px : scalar_float
         Gaussian intensity width in detector pixels.
 
@@ -1422,9 +1436,6 @@ def render_amplitude_to_field(
     --------
     render_pattern_to_image : Rasterize sparse intensities.
     """
-    height_px, width_px = image_shape_px
-    x_mm_per_px, y_mm_per_px = pixel_size_mm
-    center_x_px, center_y_px = beam_center_px
     sigma_px: Float[Array, ""] = jnp.asarray(spot_sigma_px, dtype=jnp.float64)
     amplitudes_arr: Complex[Array, "N"] = jnp.asarray(
         amplitudes,
@@ -1433,17 +1444,15 @@ def render_amplitude_to_field(
     if amplitudes_arr.shape[0] != pattern.detector_points.shape[0]:
         raise ValueError("amplitudes length must match detector_points")
 
-    x_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
+    x_pixels: Float[Array, "N"]
+    y_pixels: Float[Array, "N"]
+    x_pixels, y_pixels = _detector_points_to_pixels(
+        pattern.detector_points,
+        geometry,
     )
-    y_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
-    )
-    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
-    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
     x_grid: Float[Array, "H W"]
     y_grid: Float[Array, "H W"]
-    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+    x_grid, y_grid = _detector_grid(geometry)
 
     def _render_one_amplitude(
         x0_px: Float[Array, ""],
@@ -1559,21 +1568,23 @@ def kinematic_amplitude(  # noqa: PLR0913
         parameterization=parameterization,
         surface_config=surface_config,
     )
+    geometry: DetectorGeometry = DetectorGeometry(
+        distance=detector_distance_mm,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
+    )
     if render_ctrs_as_streaks:
         return render_ctr_amplitude_to_field(
             pattern=sparse_pattern,
             amplitudes=amplitudes,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
+            geometry=geometry,
             spot_sigma_px=spot_sigma_px,
         )
     return render_amplitude_to_field(
         pattern=sparse_pattern,
         amplitudes=amplitudes,
-        image_shape_px=image_shape_px,
-        pixel_size_mm=pixel_size_mm,
-        beam_center_px=beam_center_px,
+        geometry=geometry,
         spot_sigma_px=spot_sigma_px,
     )
 
@@ -1661,21 +1672,23 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     effective_spot_sigma_px: Float[Array, ""] = jnp.sqrt(
         jnp.asarray(spot_sigma_px, dtype=jnp.float64) ** 2 + finite_sigma_px**2
     )
+    geometry: DetectorGeometry = DetectorGeometry(
+        distance=detector_distance_mm,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
+    )
     if render_ctrs_as_streaks:
         return render_ctr_amplitude_to_field(
             pattern=sparse_pattern,
             amplitudes=finite_amplitudes,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
+            geometry=geometry,
             spot_sigma_px=effective_spot_sigma_px,
         )
     return render_amplitude_to_field(
         pattern=sparse_pattern,
         amplitudes=finite_amplitudes,
-        image_shape_px=image_shape_px,
-        pixel_size_mm=pixel_size_mm,
-        beam_center_px=beam_center_px,
+        geometry=geometry,
         spot_sigma_px=effective_spot_sigma_px,
     )
 
@@ -1684,9 +1697,7 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
 def render_ctr_amplitude_to_field(
     pattern: RHEEDPattern,
     amplitudes: Complex[Array, "N"],
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
+    geometry: DetectorGeometry,
     spot_sigma_px: scalar_float,
 ) -> Complex[Array, "H W"]:
     """Rasterize sparse complex amplitudes as detector CTR streaks.
@@ -1699,12 +1710,9 @@ def render_ctr_amplitude_to_field(
         Sparse detector pattern with detector coordinates in millimetres.
     amplitudes : Complex[Array, "N"]
         Complex reflection amplitudes aligned with ``pattern.detector_points``.
-    image_shape_px : Tuple[int, int]
-        Output detector field shape as ``(height_px, width_px)``.
-    pixel_size_mm : Tuple[float, float]
-        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
-    beam_center_px : Tuple[float, float]
-        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    geometry : DetectorGeometry
+        Detector geometry carrying output shape, pixel calibration, and beam
+        centre.
     spot_sigma_px : scalar_float
         Gaussian spot-core width in detector pixels.
 
@@ -1721,9 +1729,6 @@ def render_ctr_amplitude_to_field(
        ``|field|²`` reproduces the legacy intensity renderer exactly.
     3. Leave normalization to the downstream intensity reducer.
     """
-    height_px, width_px = image_shape_px
-    x_mm_per_px, y_mm_per_px = pixel_size_mm
-    center_x_px, center_y_px = beam_center_px
     sigma_x_px: Float[Array, ""] = jnp.asarray(
         spot_sigma_px,
         dtype=jnp.float64,
@@ -1739,22 +1744,20 @@ def render_ctr_amplitude_to_field(
         raise ValueError("amplitudes length must match detector_points")
 
     valid_mask: Bool[Array, "N"] = pattern.G_indices >= 0
-    x_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
-    )
-    y_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    x_pixels: Float[Array, "N"]
+    y_pixels: Float[Array, "N"]
+    x_pixels, y_pixels = _detector_points_to_pixels(
+        pattern.detector_points,
+        geometry,
     )
     valid_amplitudes: Complex[Array, "N"] = jnp.where(
         valid_mask,
         amplitudes_arr,
         0.0 + 0.0j,
     )
-    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
-    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
     x_grid: Float[Array, "H W"]
     y_grid: Float[Array, "H W"]
-    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+    x_grid, y_grid = _detector_grid(geometry)
 
     def _render_one_streak(
         x0_px: Float[Array, ""],
@@ -1788,15 +1791,10 @@ def render_ctr_amplitude_to_field(
 @jaxtyped(typechecker=beartype)
 def _render_ctr_streaks_to_image(
     pattern: RHEEDPattern,
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
+    geometry: DetectorGeometry,
     spot_sigma_px: scalar_float,
 ) -> Float[Array, "H W"]:
     """Render detector-anchored streaks with visible Bragg spot cores."""
-    height_px, width_px = image_shape_px
-    x_mm_per_px, y_mm_per_px = pixel_size_mm
-    center_x_px, center_y_px = beam_center_px
     sigma_x_px: Float[Array, ""] = jnp.asarray(
         spot_sigma_px,
         dtype=jnp.float64,
@@ -1806,11 +1804,11 @@ def _render_ctr_streaks_to_image(
     streak_halo_weight: Float[Array, ""] = jnp.asarray(0.6, dtype=jnp.float64)
 
     valid_mask: Bool[Array, "N"] = pattern.G_indices >= 0
-    x_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 0] / x_mm_per_px + center_x_px
-    )
-    y_pixels: Float[Array, "N"] = (
-        pattern.detector_points[:, 1] / y_mm_per_px + center_y_px
+    x_pixels: Float[Array, "N"]
+    y_pixels: Float[Array, "N"]
+    x_pixels, y_pixels = _detector_points_to_pixels(
+        pattern.detector_points,
+        geometry,
     )
     intensities: Float[Array, "N"] = jnp.where(
         valid_mask,
@@ -1818,11 +1816,9 @@ def _render_ctr_streaks_to_image(
         0.0,
     )
 
-    x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
-    y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
     x_grid: Float[Array, "H W"]
     y_grid: Float[Array, "H W"]
-    x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+    x_grid, y_grid = _detector_grid(geometry)
 
     def _render_one_spot_core(
         x0_px: Float[Array, ""],
@@ -1862,35 +1858,22 @@ def _render_ctr_streaks_to_image(
 
 @beartype
 def detector_extent_mm(
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
+    geometry: DetectorGeometry,
 ) -> Tuple[float, float, float, float]:
     """Compute matplotlib-style detector extent in millimetres.
 
     Parameters
     ----------
-    image_shape_px : Tuple[int, int]
-        Detector image shape as ``(height_px, width_px)``.
-    pixel_size_mm : Tuple[float, float]
-        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
-    beam_center_px : Tuple[float, float]
-        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
+    geometry : DetectorGeometry
+        Detector geometry carrying output shape, pixel calibration, and beam
+        centre.
 
     Returns
     -------
     extent_mm : Tuple[float, float, float, float]
         ``(x_min, x_max, y_min, y_max)`` extent in millimetres.
     """
-    height_px, width_px = image_shape_px
-    x_mm_per_px, y_mm_per_px = pixel_size_mm
-    center_x_px, center_y_px = beam_center_px
-    return (
-        -center_x_px * x_mm_per_px,
-        (width_px - center_x_px) * x_mm_per_px,
-        -center_y_px * y_mm_per_px,
-        (height_px - center_y_px) * y_mm_per_px,
-    )
+    return detector_geometry_extent_mm(geometry)
 
 
 @jaxtyped(typechecker=beartype)
@@ -2674,6 +2657,9 @@ def simulate_detector_image(  # noqa: PLR0913
     _validate_layer0_kernel(kernel)
     detector_geometry: DetectorGeometry = DetectorGeometry(
         distance=detector_distance_mm,
+        image_shape_px=image_shape_px,
+        pixel_size_mm=pixel_size_mm,
+        beam_center_px=beam_center_px,
         psf_sigma_pixels=psf_sigma_pixels,
     )
     if orientation_distribution is not None and distribution is not None:
@@ -3368,12 +3354,16 @@ def multislice_detector_amplitude(  # noqa: PLR0913
         inner_potential_v0=inner_potential_v0,
         bandwidth_limit=bandwidth_limit,
     )
-    return render_amplitude_to_field(
-        pattern=pattern,
-        amplitudes=amplitudes,
+    geometry: DetectorGeometry = DetectorGeometry(
+        distance=detector_distance_mm,
         image_shape_px=image_shape_px,
         pixel_size_mm=pixel_size_mm,
         beam_center_px=beam_center_px,
+    )
+    return render_amplitude_to_field(
+        pattern=pattern,
+        amplitudes=amplitudes,
+        geometry=geometry,
         spot_sigma_px=spot_sigma_px,
     )
 

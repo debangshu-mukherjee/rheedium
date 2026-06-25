@@ -11,6 +11,39 @@ Each entry summarizes the commits that landed for that version bump in
 
 - Multislice simulator and Lobató potentials are now the **default** scattering
   model.
+- Began detector-geometry rationalization: `DetectorGeometry` now carries dense
+  detector calibration (`image_shape_px`, `pixel_size_mm`, `beam_center_px`) in
+  addition to projection distance/tilt/PSF fields, and sparse render helpers now
+  consume that carrier directly.
+  Migration:
+  ```python
+  # Before
+  image = rh.simul.render_pattern_to_image(
+      pattern,
+      image_shape_px=(192, 192),
+      pixel_size_mm=(1.5, 3.0),
+      beam_center_px=(96.0, 8.0),
+      spot_sigma_px=1.4,
+  )
+  extent = rh.simul.detector_extent_mm(
+      image_shape_px=(192, 192),
+      pixel_size_mm=(1.5, 3.0),
+      beam_center_px=(96.0, 8.0),
+  )
+
+  # After
+  detector = rh.types.DetectorGeometry(
+      image_shape_px=(192, 192),
+      pixel_size_mm=(1.5, 3.0),
+      beam_center_px=(96.0, 8.0),
+  )
+  image = rh.simul.render_pattern_to_image(
+      pattern,
+      geometry=detector,
+      spot_sigma_px=1.4,
+  )
+  extent = rh.simul.detector_extent_mm(detector)
+  ```
 
 ## [2026.6.6] - 2026-06-23
 

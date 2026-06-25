@@ -70,6 +70,7 @@ from rheedium.tools.wrappers import jax_safe
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
     CrystalStructure,
+    DetectorGeometry,
     Distribution,
     PotentialSlices,
     ReductionMode,
@@ -1912,11 +1913,14 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             intensities=jnp.array([1.0, 0.5], dtype=jnp.float64),
         )
 
-        image: Float[Array, "..."] = render_pattern_to_image(
-            pattern=pattern,
+        geometry: DetectorGeometry = DetectorGeometry(
             image_shape_px=(32, 40),
             pixel_size_mm=(1.0, 2.0),
             beam_center_px=(20.0, 4.0),
+        )
+        image: Float[Array, "..."] = render_pattern_to_image(
+            pattern=pattern,
+            geometry=geometry,
             spot_sigma_px=1.5,
         )
 
@@ -1936,21 +1940,22 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             intensities=jnp.array([4.0], dtype=jnp.float64),
         )
 
-        field: Complex[Array, "32 40"] = render_amplitude_to_field(
-            pattern=pattern,
-            amplitudes=jnp.sqrt(pattern.intensities).astype(jnp.complex128),
+        geometry: DetectorGeometry = DetectorGeometry(
             image_shape_px=(32, 40),
             pixel_size_mm=(1.0, 2.0),
             beam_center_px=(20.0, 4.0),
+        )
+        field: Complex[Array, "32 40"] = render_amplitude_to_field(
+            pattern=pattern,
+            amplitudes=jnp.sqrt(pattern.intensities).astype(jnp.complex128),
+            geometry=geometry,
             spot_sigma_px=1.5,
         )
         intensity: Float[Array, "32 40"] = jnp.abs(field) ** 2
         intensity = intensity / jnp.max(intensity)
         legacy: Float[Array, "32 40"] = render_pattern_to_image(
             pattern=pattern,
-            image_shape_px=(32, 40),
-            pixel_size_mm=(1.0, 2.0),
-            beam_center_px=(20.0, 4.0),
+            geometry=geometry,
             spot_sigma_px=1.5,
         )
 
@@ -1971,20 +1976,21 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             intensities=jnp.array([1.0, 1.0], dtype=jnp.float64),
         )
 
-        constructive: Complex[Array, "16 16"] = render_amplitude_to_field(
-            pattern=pattern,
-            amplitudes=jnp.array([1.0 + 0.0j, 1.0 + 0.0j]),
+        geometry: DetectorGeometry = DetectorGeometry(
             image_shape_px=(16, 16),
             pixel_size_mm=(1.0, 1.0),
             beam_center_px=(8.0, 8.0),
+        )
+        constructive: Complex[Array, "16 16"] = render_amplitude_to_field(
+            pattern=pattern,
+            amplitudes=jnp.array([1.0 + 0.0j, 1.0 + 0.0j]),
+            geometry=geometry,
             spot_sigma_px=1.0,
         )
         destructive: Complex[Array, "16 16"] = render_amplitude_to_field(
             pattern=pattern,
             amplitudes=jnp.array([1.0 + 0.0j, -1.0 + 0.0j]),
-            image_shape_px=(16, 16),
-            pixel_size_mm=(1.0, 1.0),
-            beam_center_px=(8.0, 8.0),
+            geometry=geometry,
             spot_sigma_px=1.0,
         )
 
@@ -2130,9 +2136,11 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected: Complex[Array, "16 24"] = render_amplitude_to_field(
             pattern=sparse_pattern,
             amplitudes=amplitudes,
-            image_shape_px=kwargs["image_shape_px"],
-            pixel_size_mm=kwargs["pixel_size_mm"],
-            beam_center_px=kwargs["beam_center_px"],
+            geometry=DetectorGeometry(
+                image_shape_px=kwargs["image_shape_px"],
+                pixel_size_mm=kwargs["pixel_size_mm"],
+                beam_center_px=kwargs["beam_center_px"],
+            ),
             spot_sigma_px=kwargs["spot_sigma_px"],
         )
 
@@ -2207,9 +2215,11 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_detector_extent_mm_matches_calibration(self) -> None:
         """Display extent converts beam centre and pixel pitch correctly."""
         extent: Float[Array, "..."] = detector_extent_mm(
-            image_shape_px=(100, 200),
-            pixel_size_mm=(1.5, 3.0),
-            beam_center_px=(80.0, 5.0),
+            DetectorGeometry(
+                image_shape_px=(100, 200),
+                pixel_size_mm=(1.5, 3.0),
+                beam_center_px=(80.0, 5.0),
+            )
         )
         self.assertEqual(extent, (-120.0, 180.0, -15.0, 285.0))
 
@@ -2259,22 +2269,23 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         amplitudes: Complex[Array, "1"] = jnp.sqrt(pattern.intensities).astype(
             jnp.complex128
         )
+        geometry: DetectorGeometry = DetectorGeometry(
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+        )
 
         field: Complex[Array, "32 24"] = render_ctr_amplitude_to_field(
             pattern=pattern,
             amplitudes=amplitudes,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
+            geometry=geometry,
             spot_sigma_px=1.2,
         )
         actual: Float[Array, "32 24"] = jnp.abs(field) ** 2
         actual = actual / jnp.maximum(jnp.max(actual), 1e-12)
         expected: Float[Array, "32 24"] = _render_ctr_streaks_to_image(
             pattern=pattern,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
+            geometry=geometry,
             spot_sigma_px=1.2,
         )
 
@@ -3115,16 +3126,22 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         beam_center_px: tuple[float, float] = (16.0, 16.0)
         kinematic_extent: tuple[float, float, float, float] = (
             detector_extent_mm(
-                image_shape_px=image_shape_px,
-                pixel_size_mm=pixel_size_mm,
-                beam_center_px=beam_center_px,
+                DetectorGeometry(
+                    distance=detector_distance_mm,
+                    image_shape_px=image_shape_px,
+                    pixel_size_mm=pixel_size_mm,
+                    beam_center_px=beam_center_px,
+                )
             )
         )
         multislice_extent: tuple[float, float, float, float] = (
             detector_extent_mm(
-                image_shape_px=image_shape_px,
-                pixel_size_mm=pixel_size_mm,
-                beam_center_px=beam_center_px,
+                DetectorGeometry(
+                    distance=detector_distance_mm,
+                    image_shape_px=image_shape_px,
+                    pixel_size_mm=pixel_size_mm,
+                    beam_center_px=beam_center_px,
+                )
             )
         )
         chex.assert_trees_all_close(

@@ -124,13 +124,12 @@ def main() -> None:
         "dynamic_range_floor": 1.3001876993458826e-05,
     }
 
-    extent_mm = np.asarray(
-        rh.simul.detector_extent_mm(
-            image_shape_px=settings["image_shape_px"],
-            pixel_size_mm=settings["pixel_size_mm"],
-            beam_center_px=settings["beam_center_px"],
-        )
+    detector_geometry = rh.types.DetectorGeometry(
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
     )
+    extent_mm = np.asarray(rh.simul.detector_extent_mm(detector_geometry))
 
     phi_values = np.linspace(0.0, 45.0, 10)
     phi_bank = _chunked_phi_bank(

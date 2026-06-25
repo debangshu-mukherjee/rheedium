@@ -164,11 +164,14 @@ detector_image = rh.simul.simulate_detector_image(
 print(f"Sparse intersections: {len(sparse_pattern.intensities)}")
 
 # %%
-sparse_image = rh.simul.render_pattern_to_image(
-    pattern=sparse_pattern,
+detector_geometry = rh.types.DetectorGeometry(
     image_shape_px=settings["image_shape_px"],
     pixel_size_mm=settings["pixel_size_mm"],
     beam_center_px=settings["beam_center_px"],
+)
+sparse_image = rh.simul.render_pattern_to_image(
+    pattern=sparse_pattern,
+    geometry=detector_geometry,
     spot_sigma_px=settings["spot_sigma_px"],
 )
 valid = np.asarray(sparse_pattern.G_indices) >= 0
@@ -202,11 +205,7 @@ detector_cutoff_display = rh.simul.log_compress_image(
     gain=settings["log_gain"],
     dynamic_range_floor=dynamic_range_floor,
 )
-extent_mm = rh.simul.detector_extent_mm(
-    image_shape_px=settings["image_shape_px"],
-    pixel_size_mm=settings["pixel_size_mm"],
-    beam_center_px=settings["beam_center_px"],
-)
+extent_mm = rh.simul.detector_extent_mm(detector_geometry)
 
 # %% [markdown]
 # ## Bragg Spots
@@ -295,11 +294,7 @@ parameter.
 
 # %%
 roughness_values = [0.0, 0.25, 0.5, 1.0]
-_extent_mm = rh.simul.detector_extent_mm(
-    image_shape_px=settings["image_shape_px"],
-    pixel_size_mm=settings["pixel_size_mm"],
-    beam_center_px=settings["beam_center_px"],
-)
+_extent_mm = rh.simul.detector_extent_mm(detector_geometry)
 _cmap = rh.plots.create_phosphor_colormap()
 image_bank = rh.simul.simulate_detector_image_roughness_sweep(
     crystal=crystal,
