@@ -17,7 +17,7 @@ of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
 `recipe_deviation` import this module's API.
 
 Status: **proposed** — gated. **Roadmap position:** third of four —
-[framework](plans/partial/distribution_framework_plan.md) →
+[framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/future/rationalization_refactor_plan.md) → *this* →
 [automatons](plans/future/automatons_plan.md). Entry gate **K0**: the
 rationalization refactor is complete (⇒ the forward model differentiates

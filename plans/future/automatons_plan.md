@@ -16,7 +16,7 @@ the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
 Status: **proposed** — not yet implemented, and **sequenced last** in the
-roadmap: [framework](plans/partial/distribution_framework_plan.md) →
+roadmap: [framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/future/rationalization_refactor_plan.md) →
 [recon (inversion)](plans/future/recon_optimization_plan.md) → automatons. It
 begins only after all three land. The reason for last: these scripts call
@@ -482,7 +482,7 @@ Both the
 [rationalization refactor](plans/future/rationalization_refactor_plan.md) (R0–R6)
 and the [recon optax solver](plans/future/recon_optimization_plan.md) (K0–KG6) are
 **complete** — which transitively requires the
-[distribution framework](plans/partial/distribution_framework_plan.md). A
+[distribution framework](plans/implemented/distribution_framework_plan.md). A
 `rheedium` release carrying the rationalized API (the ~6-arg
 `simulate_detector_image` + config carriers + unified sweeps) **and** the frozen
 recon inverse API (`ReconProblem` / `solve` / `multistart` / `recipe_deviation`,

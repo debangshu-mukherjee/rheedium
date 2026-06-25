@@ -11,7 +11,7 @@ is gated on roadmap milestones that have not all landed yet (see
 target, not a claim that the results exist today.
 
 Source plans:
-[distribution framework](plans/partial/distribution_framework_plan.md) ·
+[distribution framework](plans/implemented/distribution_framework_plan.md) ·
 [recon (inversion)](plans/future/recon_optimization_plan.md) ·
 [rationalization](plans/future/rationalization_refactor_plan.md) ·
 [defect diffraction fidelity](plans/future/defect_diffraction_fidelity_plan.md) ·
@@ -114,7 +114,7 @@ gradient-based fit rather than a bespoke optimizer.
 PyTree + bind contract, AOT/compilation-cache engineering, the typing/validation
 discipline, and the proof-vs-sampled rigor ladder) are the **means** to the above
 and are documented in the **Supplementary Information**, summarized in Methods —
-see [framework §1–§4](plans/partial/distribution_framework_plan.md), recon K6,
+see [framework §1–§4](plans/implemented/distribution_framework_plan.md), recon K6,
 [audit](plans/future/audit_formal_verification_plan.md), and
 [hypothesis](plans/future/hypothesis_testing_plan.md).*
 

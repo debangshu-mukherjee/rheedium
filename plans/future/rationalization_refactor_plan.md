@@ -1,7 +1,7 @@
 # Codebase Rationalization & Refactor Plan
 
 Scope: `rheedium` — after the
-[distribution_framework_plan.md](plans/partial/distribution_framework_plan.md) lands,
+[distribution_framework_plan.md](plans/implemented/distribution_framework_plan.md) lands,
 harvest the simplification it makes possible and pay down the structural debt it
 exposes. This is **not** gratuitous churn: every item either deletes redundancy,
 wires a dangling piece, or collapses a duplicated path — and every item must

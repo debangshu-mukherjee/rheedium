@@ -65,8 +65,8 @@ class TestDistributionBindHelpers(chex.TestCase):
         chex.assert_trees_all_close(update.phi_delta_deg, 5.0)
         chex.assert_trees_all_close(update.domain_size_angstrom, 80.0)
 
-    def test_multislice_rejects_structure_changing_axes(self) -> None:
-        """Multislice rejects axes needing PotentialSlices producers."""
+    def test_multislice_size_axis_carries_domain_size(self) -> None:
+        """Multislice size axes request a PotentialSlices domain envelope."""
         distribution = create_distribution(
             samples=jnp.array([[40.0]]),
             weights=jnp.array([1.0]),
@@ -74,5 +74,32 @@ class TestDistributionBindHelpers(chex.TestCase):
             axis_id="size",
         )
 
-        with pytest.raises(ValueError, match="PotentialSlices producer"):
-            distribution.bind(bind_multislice_axis_distribution)
+        bound = distribution.bind(
+            lambda dist: bind_multislice_axis_distribution(
+                dist,
+                twin_builder=_unused_structure_builder,
+                step_builder=_unused_structure_builder,
+            )
+        )
+        update = bound(distribution.samples[0])
+
+        assert update.crystal is None
+        chex.assert_trees_all_close(update.domain_size_angstrom, 40.0)
+
+    def test_multislice_unknown_axis_still_fails_loudly(self) -> None:
+        """Unregistered multislice axes still fail before binding."""
+        distribution = create_distribution(
+            samples=jnp.array([[40.0]]),
+            weights=jnp.array([1.0]),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="unknown_axis",
+        )
+
+        with pytest.raises(ValueError, match="registered multislice bind"):
+            distribution.bind(
+                lambda dist: bind_multislice_axis_distribution(
+                    dist,
+                    twin_builder=_unused_structure_builder,
+                    step_builder=_unused_structure_builder,
+                )
+            )

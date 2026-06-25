@@ -9,15 +9,14 @@ auto-`vmap`s and reduces — incoherently *or* coherently — subsumes
 multimodal beams, statistical ensembles, and defects under one differentiable,
 parallel contract.
 
-Status: **partially implemented.** Phases 1–3 are substantially in; Phase 4
-(defect producers) and Phase 5 (`multislice` kernel selection) are started;
-Phase 6 / recon K0 is gated green. The architectural inversion (§1) **has
-landed for the kinematic kernel and opt-in multislice** —
+Status: **framework-complete.** Phases 1–6 and the completion gates FG1/FG2 are
+green. The architectural inversion (§1) **has landed for the kinematic kernel
+and opt-in multislice** —
 `simulate_detector_image` is now the thin Layer-1 integrator (build
 distributions → bind selected kernel → `apply_distributions` → PSF/normalize).
-Remaining gaps are higher-fidelity defect diffraction, automatic
-`PotentialSlices` producers for structure-changing multislice axes, and legacy
-Gaussian-quadrature cleanup.
+Remaining work is outside this framework gate: higher-fidelity defect
+diffraction belongs to the fidelity plan, and legacy Gaussian-quadrature cleanup
+belongs to rationalization R2.
 
 > **Keystone — the critical path.** This is the root of the whole roadmap:
 > [rationalization](plans/future/rationalization_refactor_plan.md) R0,
@@ -80,7 +79,7 @@ Gaussian-quadrature cleanup.
   `simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`;
   both generic `distribution=` and explicit `beam_modes=` can render CTR streaks.
 
-### Started — Phase 4 (defect producers)
+### Done — Phase 4 (defect producers)
 
 - `grain_population_to_distribution` converts grain orientation / size / fraction
   metadata into an incoherent generic `Distribution` (tested to match
@@ -97,7 +96,7 @@ Gaussian-quadrature cleanup.
   the public detector-image path has end-to-end tests for twin, step, and grain
   binds.
 
-### Started — Phase 5 (multislice slot)
+### Done — Phase 5 (multislice slot)
 
 - `multislice_amplitude` returns `FFT(exit_wave)` before modulus-squared, and
   `multislice_simulator` consumes that amplitude before its legacy sparse-pattern
@@ -106,8 +105,10 @@ Gaussian-quadrature cleanup.
   onto the dense detector field, and `simulate_detector_image(...,
   kernel="multislice", potential_slices=...)` routes it through the same
   Distribution reducer, detector PSF, and normalization as the kinematic kernel.
-  Beam-like and orientation-style axes bind to multislice; structure-changing
-  axes fail loudly until a `PotentialSlices` producer exists for them.
+  Beam-like, orientation-style, twin, step, grain, and size axes bind to
+  multislice. Structure-changing axes generate per-sample `PotentialSlices` on
+  the supplied multislice template grid; size/grain axes additionally apply a
+  differentiable finite-domain envelope and detector broadening.
 
 ### Tests & exports
 
@@ -116,55 +117,55 @@ covered by tests: distribution validation, reduction algebra, composition,
 amplitude parity, sparse relative phase, real-kernel coherent interference,
 trivial→intensity, simulator distribution identity / manual Layer-1 parity,
 defect detector-image distinguishability, multislice public-kernel selection and
-direct-field parity, size-distribution finite-domain parity, beam-mode
-normalization / variance / coherent-limit, ElectronBeam/preset bridge,
+direct-field parity, detector-contract extent parity (FG2),
+multislice structure-axis distinguishability + differentiability (FG1),
+size-distribution finite-domain parity, beam-mode normalization / variance /
+coherent-limit, ElectronBeam/preset bridge,
 instrument-wrapper Layer-1 parity, main-simulator beam-mode parity,
 beam×orientation composition parity, and CTR amplitude-renderer parity.
 
-### Not yet done
+### Delegated / out of scope
 
-- Add automatic `CrystalStructure` / defect-sample → `PotentialSlices` producer
-  binds so structure-changing axes can run under `kernel="multislice"` instead
-  of requiring precomputed `PotentialSlices`.
 - Retire the remaining orientation+CTR angular+energy Gaussian quadrature path
   in the rationalization track rather than duplicating that cleanup here.
+- Higher-fidelity defect diffraction (fine-twin satellites, step-terrace
+  diffraction fidelity) belongs to the defect-fidelity plan, not this framework
+  gate.
 
 ### Remaining work to completion
 
-The keystone (**Phase 6 / recon K0**) is **green**, so the roadmap is already
-unblocked. What remains to mark *this plan* complete is small and well-scoped —
-two framework tasks plus one delegated cleanup:
+The keystone (**Phase 6 / recon K0**) is **green**, so the roadmap is unblocked.
+The final framework gates are now locked:
 
-- **F1 — Multislice producer polymorphism** *(the only substantive item)*. Add the
-  `CrystalStructure` / defect-sample → `PotentialSlices` producer bind so
-  structure-changing axes (twins, steps, grain morphology, size) run under
-  `kernel="multislice"` instead of raising
-  ([distribution_binds.py:178](src/rheedium/procs/distribution_binds.py#L178)).
-  **Gate FG1:** each structure-changing axis produces a *distinguishable* and
-  *differentiable* multislice detector image (no raise), mirroring the kinematic
-  distinguishability + grad tests. *(Medium–Large.)*
-- **F2 — Detector-contract verification** *(mostly done)*. `DetectorGeometry` is
+- **F1 — Multislice producer polymorphism** *(gate green)*. Structure-changing
+  axes (twins, steps, grain morphology, size) run under `kernel="multislice"`
+  instead of raising. Twin/step samples generate per-sample `PotentialSlices`
+  from the sampled `CrystalStructure`; grain/size samples drive finite-domain
+  multislice envelope + detector broadening. **Gate FG1** is covered by
+  distinguishability and `jax.grad` tests for each structure-changing axis.
+- **F2 — Detector-contract verification** *(gate green)*. `DetectorGeometry` is
   split into `types/detector.py` and both kernels already project through
-  `project_on_detector_geometry` (§2.4). What remains is the **standing
-  regression**: **Gate FG2** — a test asserting kinematic and multislice yield
-  *identical* detector extents from the shared carrier (so they cannot drift).
-  Tilted/curved dense rendering is explicitly a future geometry-depth item, not a
-  gate. *(Small — a test, not a refactor.)*
+  `project_on_detector_geometry` (§2.4). **Gate FG2** is now covered by a
+  regression asserting kinematic and multislice yield identical detector extents
+  from the shared carrier, so the paths cannot drift. Tilted/curved dense
+  rendering is explicitly a future geometry-depth item, not a gate.
 - **Delegated — legacy quadrature.** Retiring `instrument_broadened_pattern` /
   `gauss_hermite_nodes_weights` is owned by
   [rationalization R2](plans/future/rationalization_refactor_plan.md); not a
   framework task.
 
-**Definition of done:** FG1 + FG2 green (K0 already is); the legacy quadrature is
-retired by rationalization. Higher-fidelity defect physics is explicitly **out of
-scope** — see
+**Definition of done:** FG1, FG2, and K0 are green. Legacy quadrature retirement
+is delegated to rationalization. Higher-fidelity defect physics is explicitly
+**out of scope** — see
 [defect_diffraction_fidelity_plan.md](plans/future/defect_diffraction_fidelity_plan.md).
 
 ### Housekeeping
 
 - `coherence_envelope` has been removed from `beam_averaging` and the public
   `rheedium.simul` export surface.
-- Moved from `plans/future/` to `plans/partial/` on landing the Phase-1 slice.
+- Moved `plans/future/` → `plans/partial/` on landing the Phase-1 slice, then
+  `plans/partial/` → `plans/implemented/` on framework completion (Phases 1–6 +
+  FG1/FG2 green).
 
 ### Relationship to other plans
 

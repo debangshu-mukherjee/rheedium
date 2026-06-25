@@ -52,9 +52,11 @@ class KinematicAxisUpdate(NamedTuple):
 class MultisliceAxisUpdate(NamedTuple):
     """Kernel-local updates produced by one multislice axis sample."""
 
+    crystal: CrystalStructure | None
     voltage_delta_kv: Any
     theta_delta_deg: Any
     phi_delta_deg: Any
+    domain_size_angstrom: Any | None
 
 
 @beartype
@@ -165,25 +167,31 @@ def validate_multislice_axis(distribution: Distribution) -> None:
     """Validate one Distribution axis for the multislice detector kernel."""
     axis_id: str | None = distribution.axis_id
     sample_dim: int = distribution.samples.shape[1]
-    unsupported_axes: frozenset[str] = (
-        STRUCTURE_AXIS_IDS
-        | GRAIN_AXIS_IDS
-        | SIZE_AXIS_IDS
-        | UNSUPPORTED_AXIS_IDS
-    )
-    if axis_id in unsupported_axes:
+    if axis_id in UNSUPPORTED_AXIS_IDS:
         raise ValueError(
-            f"Distribution axis {axis_id!r} cannot bind to "
-            "kernel='multislice' yet; multislice requires a "
-            "PotentialSlices producer for structure-changing axes."
+            f"Distribution axis {axis_id!r} has no multislice bind yet."
         )
     if axis_id in BEAM_AXIS_IDS and sample_dim != 3:
         raise ValueError(
             f"Beam-like distribution axis {axis_id!r} requires samples "
             "with shape (N, 3)."
         )
+    if axis_id == "twins" and sample_dim != 2:
+        raise ValueError("Twin distributions require samples (N, 2).")
+    if axis_id == "steps" and sample_dim != 3:
+        raise ValueError("Step distributions require samples (N, 3).")
+    if axis_id in GRAIN_AXIS_IDS and sample_dim != 2:
+        raise ValueError(
+            "Grain distributions require samples "
+            "[orientation_angle_deg, grain_size_angstrom]."
+        )
+    if axis_id in SIZE_AXIS_IDS and sample_dim != 1:
+        raise ValueError("Size distributions require samples (N, 1).")
     if (
         axis_id not in BEAM_AXIS_IDS
+        and axis_id not in STRUCTURE_AXIS_IDS
+        and axis_id not in GRAIN_AXIS_IDS
+        and axis_id not in SIZE_AXIS_IDS
         and axis_id not in AZIMUTH_AXIS_IDS
         and not (axis_id is None and sample_dim == 1)
     ):
@@ -196,6 +204,8 @@ def validate_multislice_axis(distribution: Distribution) -> None:
 @beartype
 def bind_multislice_axis_distribution(
     distribution: Distribution,
+    twin_builder: Callable[[Float[Array, "2"]], CrystalStructure],
+    step_builder: Callable[[Float[Array, "3"]], CrystalStructure],
 ) -> Callable[[Float[Array, "D_axis"]], MultisliceAxisUpdate]:
     """Bind one Distribution axis to multislice sample-update semantics."""
     validate_multislice_axis(distribution)
@@ -206,14 +216,50 @@ def bind_multislice_axis_distribution(
     ) -> MultisliceAxisUpdate:
         if axis_id in BEAM_AXIS_IDS:
             return MultisliceAxisUpdate(
+                crystal=None,
                 voltage_delta_kv=1.0e-3 * axis_sample[2],
                 theta_delta_deg=jnp.rad2deg(axis_sample[0]),
                 phi_delta_deg=jnp.rad2deg(axis_sample[1]),
+                domain_size_angstrom=None,
+            )
+        if axis_id == "twins":
+            return MultisliceAxisUpdate(
+                crystal=twin_builder(axis_sample),
+                voltage_delta_kv=0.0,
+                theta_delta_deg=0.0,
+                phi_delta_deg=0.0,
+                domain_size_angstrom=None,
+            )
+        if axis_id == "steps":
+            return MultisliceAxisUpdate(
+                crystal=step_builder(axis_sample),
+                voltage_delta_kv=0.0,
+                theta_delta_deg=0.0,
+                phi_delta_deg=0.0,
+                domain_size_angstrom=None,
+            )
+        if axis_id in GRAIN_AXIS_IDS:
+            return MultisliceAxisUpdate(
+                crystal=None,
+                voltage_delta_kv=0.0,
+                theta_delta_deg=0.0,
+                phi_delta_deg=axis_sample[0],
+                domain_size_angstrom=axis_sample[1],
+            )
+        if axis_id in SIZE_AXIS_IDS:
+            return MultisliceAxisUpdate(
+                crystal=None,
+                voltage_delta_kv=0.0,
+                theta_delta_deg=0.0,
+                phi_delta_deg=0.0,
+                domain_size_angstrom=axis_sample[0],
             )
         return MultisliceAxisUpdate(
+            crystal=None,
             voltage_delta_kv=0.0,
             theta_delta_deg=0.0,
             phi_delta_deg=axis_sample[0],
+            domain_size_angstrom=None,
         )
 
     return _axis_bound

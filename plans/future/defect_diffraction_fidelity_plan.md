@@ -2,7 +2,7 @@
 
 Scope: `rheedium` — add the **physically-faithful diffraction signatures of
 defects and partial coherence** that the
-[distribution framework](plans/partial/distribution_framework_plan.md) ships as
+[distribution framework](plans/implemented/distribution_framework_plan.md) ships as
 *smooth structure modifiers*. Specifically the three fidelity items scoped **out**
 of the framework plan (its "Tier 3"):
 
@@ -23,7 +23,7 @@ differentiability guarantee, which this plan does not touch. It runs in parallel
 to — or after — the roadmap, purely to raise simulation fidelity.
 
 Status: **proposed.** Scoped out of
-[distribution_framework_plan.md](plans/partial/distribution_framework_plan.md) by
+[distribution_framework_plan.md](plans/implemented/distribution_framework_plan.md) by
 decision (the framework treats these defects as smooth structure modifiers that
 *change* the pattern but do not reproduce satellites / streak splitting). Not on
 the critical path.

@@ -40,6 +40,7 @@ from rheedium.simul.beam_averaging import (
 from rheedium.simul.simulator import (
     _ewald_amplitude_pattern,
     _kinematic_finite_domain_amplitude,
+    _multislice_amplitude_pattern,
     _render_ctr_streaks_to_image,
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -3103,10 +3104,118 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self.assertGreater(float(jnp.max(actual)), 0.0)
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
 
-    def test_simulate_detector_image_multislice_rejects_defect_axes(
+    def test_detector_contract_extents_match_kinematic_and_multislice(
         self,
     ) -> None:
-        """Structure-changing producer axes require a PotentialSlices bind."""
+        """FG2: both kernels consume the same detector extent contract."""
+        potential_slices: PotentialSlices = self._tiny_potential_slices()
+        detector_distance_mm: float = 20.0
+        image_shape_px: tuple[int, int] = (32, 32)
+        pixel_size_mm: tuple[float, float] = (2.0, 2.0)
+        beam_center_px: tuple[float, float] = (16.0, 16.0)
+        kinematic_extent: tuple[float, float, float, float] = (
+            detector_extent_mm(
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+            )
+        )
+        multislice_extent: tuple[float, float, float, float] = (
+            detector_extent_mm(
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+            )
+        )
+        chex.assert_trees_all_close(
+            jnp.asarray(kinematic_extent),
+            jnp.asarray(multislice_extent),
+            atol=0.0,
+        )
+
+        kinematic_pattern: RHEEDPattern
+        multislice_pattern: RHEEDPattern
+        kinematic_pattern, _ = _ewald_amplitude_pattern(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=5.0,
+            phi_deg=0.0,
+            hmax=0,
+            kmax=0,
+            detector_distance=detector_distance_mm,
+        )
+        multislice_pattern, _ = _multislice_amplitude_pattern(
+            potential_slices=potential_slices,
+            voltage_kv=20.0,
+            theta_deg=5.0,
+            phi_deg=0.0,
+            detector_distance_mm=detector_distance_mm,
+        )
+
+        xmin: float
+        xmax: float
+        ymin: float
+        ymax: float
+        xmin, xmax, ymin, ymax = kinematic_extent
+        for pattern in (kinematic_pattern, multislice_pattern):
+            points: Float[Array, "N 2"] = pattern.detector_points
+            visible: Bool[Array, "N"] = (
+                (points[:, 0] >= xmin)
+                & (points[:, 0] <= xmax)
+                & (points[:, 1] >= ymin)
+                & (points[:, 1] <= ymax)
+            )
+            assert bool(jnp.any(visible))
+
+    @staticmethod
+    def _detector_metric(image: Float[Array, "H W"]) -> scalar_float:
+        """Return an asymmetric scalar image metric."""
+        height_px, width_px = image.shape
+        x_axis: Float[Array, "W"] = jnp.linspace(0.0, 1.0, width_px)
+        y_axis: Float[Array, "H"] = jnp.linspace(0.0, 1.0, height_px)
+        y_grid: Float[Array, "H W"]
+        x_grid: Float[Array, "H W"]
+        y_grid, x_grid = jnp.meshgrid(y_axis, x_axis, indexing="ij")
+        return jnp.sum(image * (0.7 * x_grid + 1.3 * y_grid))
+
+    def _assert_multislice_distribution_changes_image(
+        self,
+        distribution: Distribution,
+    ) -> None:
+        """Assert one multislice producer axis changes the detector image."""
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "potential_slices": self._tiny_potential_slices(),
+            "voltage_kv": 20.0,
+            "theta_deg": 5.0,
+            "phi_deg": 0.0,
+            "detector_distance_mm": 20.0,
+            "image_shape_px": (16, 16),
+            "pixel_size_mm": (2.0, 2.0),
+            "beam_center_px": (8.0, 8.0),
+            "spot_sigma_px": 1.0,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "kernel": "multislice",
+        }
+        base: Float[Array, "16 16"] = simulate_detector_image(**kwargs)
+        modified: Float[Array, "16 16"] = simulate_detector_image(
+            **kwargs,
+            distribution=distribution,
+            defect_surface_layer_depth_angstrom=0.8,
+        )
+
+        chex.assert_shape(modified, (16, 16))
+        chex.assert_tree_all_finite(modified)
+        assert float(jnp.max(jnp.abs(modified - base))) > 1.0e-8
+
+    def test_simulate_detector_image_multislice_twin_axis_changes_image(
+        self,
+    ) -> None:
+        """FG1: twin axes bind to generated multislice potentials."""
         distribution: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([0.0, 4.0]),
             wall_positions_angstrom=jnp.array([0.4, 0.4]),
@@ -3114,22 +3223,44 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             twin_spacing_angstrom=4.0,
             coherence_length_angstrom=10.0,
         )
+        self._assert_multislice_distribution_changes_image(distribution)
 
-        with pytest.raises(ValueError, match="PotentialSlices producer"):
-            simulate_detector_image(
-                crystal=_SI_CRYSTAL_2ATOM,
-                potential_slices=self._tiny_potential_slices(),
-                image_shape_px=(16, 16),
-                pixel_size_mm=(2.0, 2.0),
-                beam_center_px=(8.0, 8.0),
-                angular_divergence_mrad=0.0,
-                energy_spread_ev=0.0,
-                psf_sigma_pixels=0.0,
-                n_angular_samples=1,
-                n_energy_samples=1,
-                distribution=distribution,
-                kernel="multislice",
-            )
+    def test_simulate_detector_image_multislice_step_axis_changes_image(
+        self,
+    ) -> None:
+        """FG1: step axes bind to generated multislice potentials."""
+        distribution: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([1.0]),
+            terrace_widths_angstrom=jnp.array([2.0]),
+            step_fractions=jnp.array([1.0]),
+            line_azimuths_deg=jnp.array([30.0]),
+            coherence_length_angstrom=0.5,
+            regular=False,
+        )
+        self._assert_multislice_distribution_changes_image(distribution)
+
+    def test_simulate_detector_image_multislice_grain_axis_changes_image(
+        self,
+    ) -> None:
+        """FG1: grain axes bind orientation and size under multislice."""
+        distribution: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([5.0]),
+            grain_sizes_angstrom=jnp.array([1.0]),
+            grain_volume_fractions=jnp.array([1.0]),
+        )
+        self._assert_multislice_distribution_changes_image(distribution)
+
+    def test_simulate_detector_image_multislice_size_axis_changes_image(
+        self,
+    ) -> None:
+        """FG1: size axes bind finite-domain multislice envelopes."""
+        distribution: Distribution = create_distribution(
+            samples=jnp.array([[1.0]], dtype=jnp.float64),
+            weights=jnp.array([1.0], dtype=jnp.float64),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="size",
+        )
+        self._assert_multislice_distribution_changes_image(distribution)
 
     def test_simulate_detector_image_beam_modes_match_instrument_wrapper(
         self,
@@ -3630,6 +3761,124 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
             return self._detector_metric(image)
 
         grad_value: scalar_float = jax.grad(loss)(jnp.float64(80.0))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
+
+    @staticmethod
+    def _tiny_potential_slices(scale: float = 0.05) -> PotentialSlices:
+        """Create a compact potential volume for multislice grad gates."""
+        slices: Float[Array, "2 8 8"] = jnp.zeros((2, 8, 8), dtype=jnp.float64)
+        slices = slices.at[0, 3, 3].set(scale)
+        slices = slices.at[1, 4, 4].set(0.5 * scale)
+        return create_potential_slices(
+            slices=slices,
+            slice_thickness=1.5,
+            x_calibration=0.75,
+            y_calibration=0.75,
+        )
+
+    def _multislice_kwargs(self) -> dict[str, Any]:
+        """Shared compact multislice settings for FG1 grad gates."""
+        return {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "potential_slices": self._tiny_potential_slices(),
+            "voltage_kv": 20.0,
+            "theta_deg": 5.0,
+            "phi_deg": 0.0,
+            "detector_distance_mm": 20.0,
+            "image_shape_px": (16, 16),
+            "pixel_size_mm": (2.0, 2.0),
+            "beam_center_px": (8.0, 8.0),
+            "spot_sigma_px": 1.0,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "kernel": "multislice",
+        }
+
+    def test_grad_public_multislice_twin_axis_is_live(self) -> None:
+        """FG1: jax.grad through multislice twin samples is live."""
+
+        def loss(twin_angle_deg: scalar_float) -> scalar_float:
+            distribution: Distribution = twin_wall_to_distribution(
+                twin_angles_deg=jnp.array([twin_angle_deg]),
+                wall_positions_angstrom=jnp.array([0.4]),
+                twin_fractions=jnp.array([1.0]),
+                twin_spacing_angstrom=4.0,
+                coherence_length_angstrom=10.0,
+            )
+            image: Float[Array, "16 16"] = simulate_detector_image(
+                **self._multislice_kwargs(),
+                distribution=distribution,
+                defect_surface_layer_depth_angstrom=0.8,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
+
+    def test_grad_public_multislice_step_axis_is_live(self) -> None:
+        """FG1: jax.grad through multislice step samples is live."""
+
+        def loss(step_height_angstrom: scalar_float) -> scalar_float:
+            distribution: Distribution = step_edge_to_distribution(
+                step_heights_angstrom=jnp.array([step_height_angstrom]),
+                terrace_widths_angstrom=jnp.array([2.0]),
+                step_fractions=jnp.array([1.0]),
+                line_azimuths_deg=jnp.array([30.0]),
+                coherence_length_angstrom=0.5,
+                regular=False,
+            )
+            image: Float[Array, "16 16"] = simulate_detector_image(
+                **self._multislice_kwargs(),
+                distribution=distribution,
+                defect_surface_layer_depth_angstrom=0.8,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
+
+    def test_grad_public_multislice_grain_axis_is_live(self) -> None:
+        """FG1: jax.grad through multislice grain size is live."""
+
+        def loss(grain_size_angstrom: scalar_float) -> scalar_float:
+            distribution: Distribution = grain_population_to_distribution(
+                orientation_angles_deg=jnp.array([5.0]),
+                grain_sizes_angstrom=jnp.array([grain_size_angstrom]),
+                grain_volume_fractions=jnp.array([1.0]),
+            )
+            image: Float[Array, "16 16"] = simulate_detector_image(
+                **self._multislice_kwargs(),
+                distribution=distribution,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
+        chex.assert_tree_all_finite(grad_value)
+        assert float(jnp.abs(grad_value)) > 1e-8
+
+    def test_grad_public_multislice_size_axis_is_live(self) -> None:
+        """FG1: jax.grad through multislice size samples is live."""
+
+        def loss(size_angstrom: scalar_float) -> scalar_float:
+            distribution: Distribution = create_distribution(
+                samples=jnp.array([[size_angstrom]], dtype=jnp.float64),
+                weights=jnp.array([1.0], dtype=jnp.float64),
+                reduction=ReductionMode.INCOHERENT,
+                axis_id="size",
+            )
+            image: Float[Array, "16 16"] = simulate_detector_image(
+                **self._multislice_kwargs(),
+                distribution=distribution,
+            )
+            return self._detector_metric(image)
+
+        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
         chex.assert_tree_all_finite(grad_value)
         assert float(jnp.abs(grad_value)) > 1e-8
 

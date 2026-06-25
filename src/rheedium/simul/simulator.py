@@ -1937,6 +1937,135 @@ def log_compress_image(
 
 
 @jaxtyped(typechecker=beartype)
+def _crystal_to_potential_slices_like(
+    crystal: CrystalStructure,
+    template: PotentialSlices,
+    parameterization: str,
+) -> PotentialSlices:
+    """Project a sampled structure onto the fixed multislice grid."""
+    slices: Float[Array, "nz nx ny"] = template.slices
+    nz: int = slices.shape[0]
+    nx: int = slices.shape[1]
+    ny: int = slices.shape[2]
+    slice_thickness: Float[Array, ""] = jnp.asarray(
+        template.slice_thickness,
+        dtype=jnp.float64,
+    )
+    dx: Float[Array, ""] = jnp.asarray(
+        template.x_calibration,
+        dtype=jnp.float64,
+    )
+    dy: Float[Array, ""] = jnp.asarray(
+        template.y_calibration,
+        dtype=jnp.float64,
+    )
+    x_extent: Float[Array, ""] = nx * dx
+    y_extent: Float[Array, ""] = ny * dy
+    positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Float[Array, "N"] = crystal.cart_positions[:, 3]
+    x_coords: Float[Array, "nx"] = jnp.arange(nx, dtype=jnp.float64) * dx
+    y_coords: Float[Array, "ny"] = jnp.arange(ny, dtype=jnp.float64) * dy
+    xx: Float[Array, "nx ny"]
+    yy: Float[Array, "nx ny"]
+    xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
+
+    def _slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "nx ny"]:
+        z_start: Float[Array, ""] = slice_idx * slice_thickness
+        z_end: Float[Array, ""] = (slice_idx + 1) * slice_thickness
+        z_positions: Float[Array, "N"] = positions[:, 2]
+        z_width: Float[Array, ""] = jnp.maximum(
+            0.05 * slice_thickness,
+            1.0e-6,
+        )
+        slice_weight: Float[Array, "N"] = jax.nn.sigmoid(
+            (z_positions - z_start) / z_width
+        ) * jax.nn.sigmoid((z_end - z_positions) / z_width)
+
+        def _atom_contribution(
+            atom_idx: Int[Array, ""],
+        ) -> Float[Array, "nx ny"]:
+            position: Float[Array, "3"] = positions[atom_idx]
+            z_number: Int[Array, ""] = atomic_numbers[atom_idx].astype(
+                jnp.int32
+            )
+            dx_grid: Float[Array, "nx ny"] = xx - position[0]
+            dy_grid: Float[Array, "nx ny"] = yy - position[1]
+            dx_grid = dx_grid - x_extent * jnp.round(dx_grid / x_extent)
+            dy_grid = dy_grid - y_extent * jnp.round(dy_grid / y_extent)
+            radius: Float[Array, "nx ny"] = jnp.sqrt(dx_grid**2 + dy_grid**2)
+            atom_potential: Float[Array, "nx ny"] = projected_potential(
+                z_number,
+                radius,
+                parameterization,
+            )
+            return slice_weight[atom_idx] * atom_potential
+
+        atom_indices: Int[Array, "N"] = jnp.arange(positions.shape[0])
+        return jnp.sum(jax.vmap(_atom_contribution)(atom_indices), axis=0)
+
+    slice_indices: Int[Array, "nz"] = jnp.arange(nz)
+    return create_potential_slices(
+        slices=jax.vmap(_slice_potential)(slice_indices),
+        slice_thickness=slice_thickness,
+        x_calibration=dx,
+        y_calibration=dy,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def _apply_domain_envelope_to_potential_slices(
+    potential_slices: PotentialSlices,
+    domain_size_angstrom: scalar_float,
+    domain_aspect_ratio: Tuple[float, float, float],
+) -> PotentialSlices:
+    """Apply a differentiable finite-domain envelope to a slice grid."""
+    slices: Float[Array, "nz nx ny"] = potential_slices.slices
+    nx: int = slices.shape[1]
+    ny: int = slices.shape[2]
+    dx: Float[Array, ""] = jnp.asarray(
+        potential_slices.x_calibration,
+        dtype=jnp.float64,
+    )
+    dy: Float[Array, ""] = jnp.asarray(
+        potential_slices.y_calibration,
+        dtype=jnp.float64,
+    )
+    aspect: Float[Array, "3"] = jnp.asarray(
+        domain_aspect_ratio,
+        dtype=jnp.float64,
+    )
+    size: Float[Array, ""] = jnp.maximum(
+        jnp.asarray(domain_size_angstrom, dtype=jnp.float64),
+        1.0e-6,
+    )
+    x_axis: Float[Array, "nx"] = (
+        jnp.arange(nx, dtype=jnp.float64) - 0.5 * (nx - 1)
+    ) * dx
+    y_axis: Float[Array, "ny"] = (
+        jnp.arange(ny, dtype=jnp.float64) - 0.5 * (ny - 1)
+    ) * dy
+    xx: Float[Array, "nx ny"]
+    yy: Float[Array, "nx ny"]
+    xx, yy = jnp.meshgrid(x_axis, y_axis, indexing="ij")
+    sigma_x: Float[Array, ""] = jnp.maximum(size * aspect[0], dx)
+    sigma_y: Float[Array, ""] = jnp.maximum(size * aspect[1], dy)
+    envelope: Float[Array, "nx ny"] = jnp.exp(
+        -0.5 * ((xx / sigma_x) ** 2 + (yy / sigma_y) ** 2)
+    )
+    skew_coordinate: Float[Array, "nx ny"] = (xx + 0.5 * yy) / jnp.maximum(
+        size,
+        1.0e-6,
+    )
+    envelope = envelope * (1.0 + 0.75 * jnp.tanh(skew_coordinate))
+    return create_potential_slices(
+        slices=slices * envelope[None, :, :],
+        slice_thickness=potential_slices.slice_thickness,
+        x_calibration=potential_slices.x_calibration,
+        y_calibration=potential_slices.y_calibration,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     distributions: tuple[Distribution, ...],
     crystal: CrystalStructure,
@@ -2085,6 +2214,7 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
 @jaxtyped(typechecker=beartype)
 def _bind_multislice_distributions(  # noqa: PLR0913
     distributions: tuple[Distribution, ...],
+    crystal: CrystalStructure,
     potential_slices: PotentialSlices,
     voltage_kv: scalar_num,
     theta_deg: scalar_num,
@@ -2096,20 +2226,44 @@ def _bind_multislice_distributions(  # noqa: PLR0913
     spot_sigma_px: scalar_float,
     inner_potential_v0: scalar_float,
     bandwidth_limit: scalar_float,
+    parameterization: str,
+    domain_aspect_ratio: Tuple[float, float, float],
+    defect_surface_layer_depth_angstrom: scalar_float,
 ) -> Callable[[Float[Array, "D"]], Complex[Array, "H W"]]:
     """Bind composed distribution samples to the multislice kernel."""
     axis_dims: tuple[int, ...] = tuple(
         distribution.samples.shape[1] for distribution in distributions
     )
+    twin_builder: Callable[
+        [Float[Array, "2"]],
+        CrystalStructure,
+    ] = bind_twin_wall_distribution(
+        slab=crystal,
+        surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
+    )
+    step_builder: Callable[
+        [Float[Array, "3"]],
+        CrystalStructure,
+    ] = bind_step_edge_distribution(
+        slab=crystal,
+        surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
+    )
     axis_binds: tuple[
         Callable[[Float[Array, "D_axis"]], MultisliceAxisUpdate],
         ...,
     ] = tuple(
-        distribution.bind(bind_multislice_axis_distribution)
+        distribution.bind(
+            lambda dist: bind_multislice_axis_distribution(
+                dist,
+                twin_builder=twin_builder,
+                step_builder=step_builder,
+            )
+        )
         for distribution in distributions
     )
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
+        sample_potential_slices: PotentialSlices = potential_slices
         sample_voltage_kv: Float[Array, ""] = jnp.asarray(
             voltage_kv,
             dtype=jnp.float64,
@@ -2122,6 +2276,10 @@ def _bind_multislice_distributions(  # noqa: PLR0913
             phi_deg,
             dtype=jnp.float64,
         )
+        sample_spot_sigma_px: Float[Array, ""] = jnp.asarray(
+            spot_sigma_px,
+            dtype=jnp.float64,
+        )
         cursor: int = 0
         for axis_bind, sample_dim in zip(axis_binds, axis_dims, strict=True):
             axis_sample: Float[Array, "D_axis"] = sample[
@@ -2129,6 +2287,30 @@ def _bind_multislice_distributions(  # noqa: PLR0913
             ]
             cursor += sample_dim
             axis_update: MultisliceAxisUpdate = axis_bind(axis_sample)
+            if axis_update.crystal is not None:
+                sample_potential_slices = _crystal_to_potential_slices_like(
+                    axis_update.crystal,
+                    template=potential_slices,
+                    parameterization=parameterization,
+                )
+            if axis_update.domain_size_angstrom is not None:
+                sample_potential_slices = (
+                    _apply_domain_envelope_to_potential_slices(
+                        sample_potential_slices,
+                        domain_size_angstrom=axis_update.domain_size_angstrom,
+                        domain_aspect_ratio=domain_aspect_ratio,
+                    )
+                )
+                finite_sigma_px: Float[Array, ""] = 4.0 / jnp.maximum(
+                    jnp.asarray(
+                        axis_update.domain_size_angstrom,
+                        dtype=jnp.float64,
+                    ),
+                    1.0e-6,
+                )
+                sample_spot_sigma_px = jnp.sqrt(
+                    sample_spot_sigma_px**2 + finite_sigma_px**2
+                )
             sample_voltage_kv = (
                 sample_voltage_kv + axis_update.voltage_delta_kv
             )
@@ -2136,7 +2318,7 @@ def _bind_multislice_distributions(  # noqa: PLR0913
             sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
 
         return multislice_detector_amplitude(
-            potential_slices=potential_slices,
+            potential_slices=sample_potential_slices,
             voltage_kv=sample_voltage_kv,
             theta_deg=sample_theta_deg,
             phi_deg=sample_phi_deg,
@@ -2144,7 +2326,7 @@ def _bind_multislice_distributions(  # noqa: PLR0913
             image_shape_px=image_shape_px,
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
+            spot_sigma_px=sample_spot_sigma_px,
             inner_potential_v0=inner_potential_v0,
             bandwidth_limit=bandwidth_limit,
         )
@@ -2551,6 +2733,7 @@ def simulate_detector_image(  # noqa: PLR0913
             )
         bound = _bind_multislice_distributions(
             distributions=distributions,
+            crystal=crystal,
             potential_slices=potential_slices,
             voltage_kv=voltage_kv,
             theta_deg=theta_deg,
@@ -2564,6 +2747,9 @@ def simulate_detector_image(  # noqa: PLR0913
             spot_sigma_px=spot_sigma_px,
             inner_potential_v0=inner_potential_v0,
             bandwidth_limit=bandwidth_limit,
+            parameterization=parameterization,
+            domain_aspect_ratio=finite_domain_aspect_ratio,
+            defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
         )
     detector_image: Float[Array, "H W"] = apply_distributions(
         distributions,
