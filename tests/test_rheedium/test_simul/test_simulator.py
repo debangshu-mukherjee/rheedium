@@ -1985,6 +1985,19 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
     def test_kinematic_amplitude_carries_nontrivial_phase(self) -> None:
         """The real kinematic kernel should expose complex reflection phase."""
+        sparse_pattern: RHEEDPattern
+        amplitudes: Complex[Array, "N"]
+        sparse_pattern, amplitudes = _ewald_amplitude_pattern(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            hmax=1,
+            kmax=1,
+            detector_distance=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+        )
         field: Complex[Array, "32 32"] = kinematic_amplitude(
             crystal=_SI_CRYSTAL_2ATOM,
             voltage_kv=20.0,
@@ -2004,7 +2017,65 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
         chex.assert_tree_all_finite(jnp.real(field))
         chex.assert_tree_all_finite(jnp.imag(field))
-        assert float(jnp.max(jnp.abs(jnp.imag(field)))) > 1e-12
+        valid_mask: Bool[Array, "N"] = (sparse_pattern.G_indices >= 0) & (
+            jnp.abs(amplitudes) > 1e-8
+        )
+        pairwise_phase_area: Float[Array, "N N"] = jnp.imag(
+            amplitudes[:, None] * jnp.conj(amplitudes[None, :])
+        )
+        valid_pairs: Bool[Array, "N N"] = (
+            valid_mask[:, None] & valid_mask[None, :]
+        )
+        relative_phase_signal: Float[Array, ""] = jnp.max(
+            jnp.abs(jnp.where(valid_pairs, pairwise_phase_area, 0.0))
+        )
+        assert float(relative_phase_signal) > 1e-6
+
+    def test_real_kinematic_kernel_coherently_interferes(self) -> None:
+        """Coherent reduction should interfere real kinematic amplitudes."""
+        distribution_coherent: Distribution = create_distribution(
+            samples=jnp.array([[0.0], [jnp.pi]], dtype=jnp.float64),
+            weights=jnp.array([0.5, 0.5], dtype=jnp.float64),
+            reduction=ReductionMode.COHERENT,
+            axis_id="phase",
+        )
+        distribution_incoherent: Distribution = create_distribution(
+            samples=distribution_coherent.samples,
+            weights=distribution_coherent.weights,
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="phase",
+        )
+
+        def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                hmax=1,
+                kmax=1,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=(16, 24),
+                pixel_size_mm=(8.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                spot_sigma_px=1.2,
+                render_ctrs_as_streaks=False,
+            )
+            return jnp.exp(1j * sample[0]) * field
+
+        coherent: Float[Array, "16 24"] = apply_distribution(
+            distribution_coherent,
+            _bound,
+        )
+        incoherent: Float[Array, "16 24"] = apply_distribution(
+            distribution_incoherent,
+            _bound,
+        )
+
+        assert float(jnp.max(coherent)) < 1e-12
+        assert float(jnp.max(incoherent)) > 1e-3
 
     def test_kinematic_amplitude_matches_explicit_sparse_render(self) -> None:
         """Kinematic amplitude uses the sparse Ewald amplitude-render path."""
@@ -2772,6 +2843,70 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_defect_distributions_change_detector_images(self) -> None:
+        """Defect producers should change detector output, not only bind."""
+        kwargs: Any = {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "voltage_kv": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 3.0,
+            "hmax": 1,
+            "kmax": 1,
+            "detector_distance_mm": 1000.0,
+            "temperature": 300.0,
+            "surface_roughness": 0.5,
+            "image_shape_px": (32, 48),
+            "pixel_size_mm": (6.0, 16.0),
+            "beam_center_px": (24.0, 2.0),
+            "spot_sigma_px": 1.2,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "render_ctrs_as_streaks": False,
+        }
+        base: Float[Array, "32 48"] = simulate_detector_image(**kwargs)
+        twin_dist: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([20.0]),
+            wall_positions_angstrom=jnp.array([0.4]),
+            twin_fractions=jnp.array([1.0]),
+            twin_spacing_angstrom=4.0,
+            coherence_length_angstrom=10.0,
+        )
+        step_dist: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([1.0]),
+            terrace_widths_angstrom=jnp.array([2.0]),
+            line_azimuths_deg=jnp.array([0.0]),
+            step_fractions=jnp.array([1.0]),
+            coherence_length_angstrom=0.5,
+            regular=False,
+        )
+        grain_dist: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([5.0]),
+            grain_sizes_angstrom=jnp.array([80.0]),
+            grain_volume_fractions=jnp.array([1.0]),
+        )
+
+        twin_image: Float[Array, "32 48"] = simulate_detector_image(
+            **kwargs,
+            distribution=twin_dist,
+            defect_surface_layer_depth_angstrom=0.8,
+        )
+        step_image: Float[Array, "32 48"] = simulate_detector_image(
+            **kwargs,
+            distribution=step_dist,
+            defect_surface_layer_depth_angstrom=0.8,
+        )
+        grain_image: Float[Array, "32 48"] = simulate_detector_image(
+            **kwargs,
+            distribution=grain_dist,
+        )
+
+        assert float(jnp.max(jnp.abs(twin_image - base))) > 1e-4
+        assert float(jnp.max(jnp.abs(step_image - base))) > 1e-3
+        assert float(jnp.max(jnp.abs(grain_image - base))) > 1e-3
 
     def test_simulate_detector_image_rejects_unbound_size_distribution(
         self,

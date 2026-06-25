@@ -87,16 +87,18 @@ is pending. The full architectural inversion (§1) has not yet landed.
 
 All of the above is exported through `rheedium.types` / `rheedium.simul` and
 covered by tests: distribution validation, reduction algebra, composition,
-amplitude parity, coherent interference, trivial→intensity, simulator
-distribution identity / manual Layer-1 parity, size-distribution finite-domain
+amplitude parity, sparse relative phase, real-kernel coherent interference,
+trivial→intensity, simulator distribution identity / manual Layer-1 parity,
+defect detector-image distinguishability, size-distribution finite-domain
 parity, beam-mode normalization / variance / coherent-limit, ElectronBeam/preset
 bridge, instrument-wrapper Layer-1 parity, main-simulator beam-mode parity,
 beam×orientation composition parity, and CTR amplitude-renderer parity.
 
 ### Not yet done
 
-- **The full architectural inversion (the §1 forward-model refactor)** —
-  `simulate_detector_image` still has legacy orientation+CTR orchestration paths.
+- The public kinematic detector-image path is inverted, but the inversion is not
+  yet fully kernel-polymorphic: `simulate_detector_image` still selects only the
+  kinematic amplitude kernel.
 - `kernel=` supports only the kinematic detector-image wrapper; multislice is
   exposed only as a Layer-0 amplitude function over `PotentialSlices`.
 - The shared detector contract for multislice projection — `DetectorGeometry`
@@ -320,10 +322,16 @@ coherent product inside `|·|²`, the incoherent product outside.
 
 `simulate_detector_image` keeps its role but its body becomes:
 
-1. choose kernel (kinematic default; multislice opt-in),
-2. `bound = distribution.bind(kernel, crystal, detector_geom)`,
-3. `image = apply_all(distribution, bound)`,
+1. normalize public inputs into ordered `Distribution` axes,
+2. bind the selected coherent kernel to the composed sample contract,
+3. `image = apply_all(distributions, bound)`,
 4. `detector_psf_convolve` + normalize.
+
+Current status: the public kinematic path now follows this spine for default
+instrument widths, explicit beam modes, orientations, generic distributions,
+grains, twins, and steps. The bind step is still a simulator-local registry
+rather than the final producer-polymorphic `Distribution.bind(...)`, and
+`kernel="multislice"` remains unwired.
 
 `distribution=TRIVIAL` ⇒ a single coherent pattern's intensity — the (a)
 default. **No** `coherence_envelope` here: partial coherence is produced
@@ -572,8 +580,10 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
    case matches `|w₀A₀+w₁A₁|²` vs `w₀|A₀|²+w₁|A₁|²` exactly.
 3. **N=1 coincidence:** both reductions agree at one sample.
 4. **Amplitude kernel:** `|kinematic_amplitude|²` == legacy intensity, pixelwise.
-5. **Coherent interference:** two displaced identical reflections within `ℓ_c`
-   produce fringes; outside `ℓ_c` (incoherent) they sum flat.
+5. **Coherent interference:** real `kinematic_amplitude` fields cancel under a
+   coherent opposite-phase axis while the same samples remain bright under
+   incoherent reduction. Full displacement-fringe validation remains future
+   higher-fidelity physics.
 6. **Beam-mode limits:** β→0 → 1 mode → coherent pattern; incoherent isotropic
    limit reproduces legacy angular-Gaussian broadening (regression guard for
    removing the Gaussian).
@@ -595,10 +605,14 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
   guarded by test 4 (pixelwise equality of `|amplitude|²` vs legacy intensity).
   The sparse helper is additionally guarded against legacy drift by
   `test_ewald_amplitude_pattern_matches_intensity_simulator`, and
-  `test_kinematic_amplitude_carries_nontrivial_phase` asserts the coherent
-  kernel carries non-zero imaginary phase.
+  `test_kinematic_amplitude_carries_nontrivial_phase` asserts non-zero relative
+  phase between sparse reflections, not only a dense-field imaginary smoke
+  signal.
 - **Phase-reference consistency** across samples in coherent reduction → fix one
   shared origin; test 5 falsifies a wrong reference.
+- **Defect bind no-ops** → public twin, step, and grain distributions must change
+  detector images relative to the undefected crystal, not merely match a manual
+  binding parity calculation.
 - **Kernel detector drift** (kinematic vs multislice) → one `DetectorGeometry`
   carrier; assert identical extents.
 - **Double-counting coherence** → `coherence_envelope` is retired; the beam
