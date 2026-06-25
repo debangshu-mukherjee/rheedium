@@ -26,6 +26,8 @@ from rheedium.simul.multislice import (
     multislice_one_step,
 )
 from rheedium.simul.potential import crystal_projected_potential
+from rheedium.simul.simulator import multislice_amplitude, multislice_propagate
+from rheedium.types import PotentialSlices, create_potential_slices
 from rheedium.types.custom_types import scalar_float
 
 
@@ -63,6 +65,19 @@ def _single_atom_potential(
         cell_dimensions_angstrom=cell,
         absorption_fraction=absorption,
         parameterization="lobato",
+    )
+
+
+def _make_potential_slices(
+    scale: float = 0.0,
+) -> PotentialSlices:
+    """Return a tiny deterministic PotentialSlices object."""
+    slices: Float[Array, "2 8 8"] = jnp.ones((2, 8, 8)) * scale
+    return create_potential_slices(
+        slices=slices,
+        slice_thickness=1.0,
+        x_calibration=0.5,
+        y_calibration=0.5,
     )
 
 
@@ -342,6 +357,60 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         g: float = float(jax.grad(loss_fn)(0.1))
         assert jnp.isfinite(g)
         assert g != 0.0
+
+
+class TestMultisliceAmplitude(chex.TestCase):
+    """Tests for the Layer-0 multislice amplitude slot."""
+
+    def test_matches_fft_of_exit_wave(self) -> None:
+        """Amplitude is the reciprocal-space exit wave before |.|^2."""
+        potential: PotentialSlices = _make_potential_slices(scale=0.0)
+
+        amplitude: Complex[Array, "8 8"] = multislice_amplitude(
+            potential,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+        )
+        exit_wave: Complex[Array, "8 8"] = multislice_propagate(
+            potential,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+        )
+
+        chex.assert_trees_all_close(
+            amplitude,
+            jnp.fft.fft2(exit_wave),
+            atol=1e-10,
+        )
+
+    def test_modulus_squared_is_finite_intensity(self) -> None:
+        """Taking |amplitude|^2 gives a finite diffraction intensity grid."""
+        potential: PotentialSlices = _make_potential_slices(scale=0.01)
+        amplitude: Complex[Array, "8 8"] = multislice_amplitude(
+            potential,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+        )
+
+        intensity: Float[Array, "8 8"] = jnp.abs(amplitude) ** 2
+        chex.assert_shape(intensity, (8, 8))
+        chex.assert_tree_all_finite(intensity)
+        assert float(jnp.sum(intensity)) > 0.0
+
+    def test_grad_flows_through_potential_scale(self) -> None:
+        """Layer-0 multislice amplitude remains differentiable."""
+
+        def objective(scale: float) -> scalar_float:
+            potential: PotentialSlices = _make_potential_slices(scale=scale)
+            amplitude: Complex[Array, "8 8"] = multislice_amplitude(
+                potential,
+                voltage_kv=20.0,
+                theta_deg=2.0,
+            )
+            return jnp.sum(jnp.abs(amplitude) ** 2).real
+
+        grad_value: scalar_float = jax.grad(objective)(0.01)
+        assert jnp.isfinite(grad_value)
 
 
 class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):

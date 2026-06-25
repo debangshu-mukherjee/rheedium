@@ -17,6 +17,10 @@ Routine Listings
     Attenuate the effective atomic numbers of atoms near the surface.
 :func:`apply_surface_displacement_field`
     Apply per-atom displacement vectors to the top surface region.
+:func:`step_edge_to_distribution`
+    Convert step-edge population metadata into a generic Distribution.
+:func:`twin_wall_to_distribution`
+    Convert twin-wall population metadata into a generic Distribution.
 :func:`vicinal_surface_step_splitting`
     Compute CTR intensity modification due to a periodic step array.
 :func:`incoherent_domain_average`
@@ -38,7 +42,11 @@ from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import (
     CrystalStructure,
+    Distribution,
+    ReductionMode,
     create_crystal_structure,
+    create_distribution,
+    reduction_mode_from_coherence_length,
     scalar_float,
 )
 from rheedium.ucell import build_cell_vectors
@@ -308,6 +316,197 @@ def apply_surface_displacement_field(
 
 
 @jaxtyped(typechecker=beartype)
+def twin_wall_to_distribution(
+    twin_angles_deg: Float[Array, "N"],
+    wall_positions_angstrom: Float[Array, "M"],
+    twin_fractions: Float[Array, "K"],
+    twin_spacing_angstrom: scalar_float,
+    coherence_length_angstrom: scalar_float,
+    axis_id: str | None = "twins",
+) -> Distribution:
+    """Convert twin-wall metadata to a generic Distribution.
+
+    :see: :class:`~.test_surface_modifier.TestTwinWallToDistribution`
+
+    Parameters
+    ----------
+    twin_angles_deg : Float[Array, "N"]
+        Twin rotation or shear-angle samples in degrees.
+    wall_positions_angstrom : Float[Array, "M"]
+        Representative twin-wall positions in Angstroms.
+    twin_fractions : Float[Array, "K"]
+        Non-negative population weights for each twin sample.
+    twin_spacing_angstrom : scalar_float
+        Characteristic spacing between twin walls in Angstroms.
+    coherence_length_angstrom : scalar_float
+        Beam-mode transverse coherence length in Angstroms.
+    axis_id : str | None, optional
+        Optional static label for the returned distribution. Default:
+        ``"twins"``.
+
+    Returns
+    -------
+    distribution : Distribution
+        Generic distribution with samples
+        ``[twin_angle_deg, wall_position_angstrom]`` and a coherence-derived
+        reduction mode.
+
+    Notes
+    -----
+    1. Validate one-to-one twin angle, position, and fraction arrays.
+    2. Choose coherent reduction when wall spacing fits inside the coherent
+       footprint.
+    3. Delegate probability validation and normalization to
+       :func:`create_distribution`.
+    """
+    twin_angles: Float[Array, "N"] = jnp.asarray(
+        twin_angles_deg,
+        dtype=jnp.float64,
+    )
+    wall_positions: Float[Array, "M"] = jnp.asarray(
+        wall_positions_angstrom,
+        dtype=jnp.float64,
+    )
+    fractions: Float[Array, "K"] = jnp.asarray(
+        twin_fractions,
+        dtype=jnp.float64,
+    )
+    if twin_angles.ndim != 1:
+        raise ValueError("twin_angles_deg must have shape (N,)")
+    if wall_positions.ndim != 1:
+        raise ValueError("wall_positions_angstrom must have shape (N,)")
+    if fractions.ndim != 1:
+        raise ValueError("twin_fractions must have shape (N,)")
+    if twin_angles.shape[0] != wall_positions.shape[0]:
+        raise ValueError(
+            "twin_angles_deg and wall_positions_angstrom must share length"
+        )
+    if twin_angles.shape[0] != fractions.shape[0]:
+        raise ValueError(
+            "twin_angles_deg and twin_fractions must share length"
+        )
+
+    samples: Float[Array, "N 2"] = jnp.stack(
+        [twin_angles, wall_positions],
+        axis=-1,
+    )
+    reduction: ReductionMode = reduction_mode_from_coherence_length(
+        feature_length_angstrom=twin_spacing_angstrom,
+        coherence_length_angstrom=coherence_length_angstrom,
+    )
+    return create_distribution(
+        samples=samples,
+        weights=fractions,
+        reduction=reduction,
+        axis_id=axis_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def step_edge_to_distribution(
+    step_heights_angstrom: Float[Array, "N"],
+    terrace_widths_angstrom: Float[Array, "M"],
+    line_azimuths_deg: Float[Array, "K"],
+    step_fractions: Float[Array, "L"],
+    coherence_length_angstrom: scalar_float,
+    regular: bool = True,
+    axis_id: str | None = "steps",
+) -> Distribution:
+    """Convert step-edge metadata to a generic Distribution.
+
+    :see: :class:`~.test_surface_modifier.TestStepEdgeToDistribution`
+
+    Parameters
+    ----------
+    step_heights_angstrom : Float[Array, "N"]
+        Step-height samples in Angstroms.
+    terrace_widths_angstrom : Float[Array, "M"]
+        Terrace-width samples in Angstroms.
+    line_azimuths_deg : Float[Array, "K"]
+        Step-line azimuth samples in degrees.
+    step_fractions : Float[Array, "L"]
+        Non-negative population weights for each step sample.
+    coherence_length_angstrom : scalar_float
+        Beam-mode transverse coherence length in Angstroms.
+    regular : bool, optional
+        If True, choose coherent reduction when the terrace period is inside
+        the coherence length. If False, random steps reduce incoherently.
+        Default: True.
+    axis_id : str | None, optional
+        Optional static label for the returned distribution. Default:
+        ``"steps"``.
+
+    Returns
+    -------
+    distribution : Distribution
+        Generic distribution with samples
+        ``[step_height_angstrom, terrace_width_angstrom, line_azimuth_deg]``.
+
+    Notes
+    -----
+    1. Validate one-to-one step metadata arrays.
+    2. Encode regular terraces as coherent only when the mean terrace width
+       fits inside the coherent footprint.
+    3. Encode random step populations as incoherent mixtures.
+    """
+    heights: Float[Array, "N"] = jnp.asarray(
+        step_heights_angstrom,
+        dtype=jnp.float64,
+    )
+    widths: Float[Array, "M"] = jnp.asarray(
+        terrace_widths_angstrom,
+        dtype=jnp.float64,
+    )
+    azimuths: Float[Array, "K"] = jnp.asarray(
+        line_azimuths_deg,
+        dtype=jnp.float64,
+    )
+    fractions: Float[Array, "L"] = jnp.asarray(
+        step_fractions,
+        dtype=jnp.float64,
+    )
+    if heights.ndim != 1:
+        raise ValueError("step_heights_angstrom must have shape (N,)")
+    if widths.ndim != 1:
+        raise ValueError("terrace_widths_angstrom must have shape (N,)")
+    if azimuths.ndim != 1:
+        raise ValueError("line_azimuths_deg must have shape (N,)")
+    if fractions.ndim != 1:
+        raise ValueError("step_fractions must have shape (N,)")
+    if heights.shape[0] != widths.shape[0]:
+        raise ValueError(
+            "step_heights_angstrom and terrace_widths_angstrom must share "
+            "length"
+        )
+    if heights.shape[0] != azimuths.shape[0]:
+        raise ValueError(
+            "step_heights_angstrom and line_azimuths_deg must share length"
+        )
+    if heights.shape[0] != fractions.shape[0]:
+        raise ValueError(
+            "step_heights_angstrom and step_fractions must share length"
+        )
+
+    samples: Float[Array, "N 3"] = jnp.stack(
+        [heights, widths, azimuths],
+        axis=-1,
+    )
+    reduction: ReductionMode = ReductionMode.INCOHERENT
+    if regular:
+        mean_terrace_width: float = float(jnp.mean(widths))
+        reduction = reduction_mode_from_coherence_length(
+            feature_length_angstrom=mean_terrace_width,
+            coherence_length_angstrom=coherence_length_angstrom,
+        )
+    return create_distribution(
+        samples=samples,
+        weights=fractions,
+        reduction=reduction,
+        axis_id=axis_id,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def vicinal_surface_step_splitting(
     hk_index: Int[Array, "2"],
     step_height_angstrom: scalar_float,
@@ -408,5 +607,7 @@ __all__: list[str] = [
     "apply_surface_displacement_field",
     "apply_surface_occupancy_field",
     "incoherent_domain_average",
+    "step_edge_to_distribution",
+    "twin_wall_to_distribution",
     "vicinal_surface_step_splitting",
 ]

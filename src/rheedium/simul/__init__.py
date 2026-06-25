@@ -101,6 +101,8 @@ Routine Listings
     Create incident wavevector k_in from beam parameters.
 :func:`multislice_propagate`
     Propagate electron wave through potential slices via multislice.
+:func:`multislice_amplitude`
+    Return reciprocal-space multislice amplitude before modulus-squared.
 :func:`multislice_simulator`
     Simulate RHEED pattern from potential slices using multislice (dynamical).
 :func:`project_on_detector`
@@ -205,6 +207,7 @@ from .simulator import (
     find_kinematic_reflections,
     kinematic_amplitude,
     log_compress_image,
+    multislice_amplitude,
     multislice_propagate,
     multislice_simulator,
     project_on_detector,
@@ -282,6 +285,7 @@ __all__: list[str] = [
     "projected_potential",
     "make_ewald_sphere",
     "multislice_propagate",
+    "multislice_amplitude",
     "multislice_simulator",
     "project_on_detector",
     "project_on_detector_geometry",

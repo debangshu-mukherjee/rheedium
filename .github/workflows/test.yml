@@ -147,7 +147,7 @@ jobs:
 
     - name: Check package metadata
       run: |
-        uv run python -m twine check dist/*
+        uvx twine check dist/*
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v6

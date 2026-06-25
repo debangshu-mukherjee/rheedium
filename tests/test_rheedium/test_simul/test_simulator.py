@@ -27,6 +27,7 @@ from numpy.typing import NDArray
 
 from rheedium.simul.beam_averaging import (
     apply_distribution,
+    apply_distributions,
     decompose_beam_modes,
 )
 from rheedium.simul.simulator import (
@@ -64,6 +65,7 @@ from rheedium.types import (
     create_coherent_beam,
     create_distribution,
     create_gaussian_schell_beam,
+    orientation_to_distribution,
 )
 from rheedium.types.crystal_types import (
     create_crystal_structure,
@@ -2767,6 +2769,83 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             n_modes_per_axis=2,
             n_modes_out_of_plane=2,
             n_energy_points=3,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-10)
+
+    def test_simulate_detector_image_composes_beam_and_orientation(
+        self,
+    ) -> None:
+        """Beam and orientation producers compose through Layer 1."""
+        beam_modes = create_gaussian_schell_beam(
+            beta_in_plane=0.2,
+            beta_out_of_plane=0.1,
+            divergence_in_plane_rad=1.0e-4,
+            divergence_out_of_plane_rad=5.0e-5,
+            energy_spread_ev=0.0,
+        )
+        orientation_dist = create_discrete_orientation(
+            angles_deg=jnp.array([-2.0, 3.0]),
+            weights=jnp.array([0.25, 0.75]),
+        )
+        beam_distribution = decompose_beam_modes(
+            beam_modes,
+            n_modes_per_axis=2,
+            n_modes_out_of_plane=1,
+            n_energy_points=1,
+        )
+        orientation_distribution = orientation_to_distribution(
+            orientation_dist,
+            n_mosaic_points=7,
+        )
+        image_shape_px: tuple[int, int] = (16, 24)
+        pixel_size_mm: tuple[float, float] = (6.0, 16.0)
+        beam_center_px: tuple[float, float] = (12.0, 2.0)
+
+        def _bound(sample: Float[Array, "4"]) -> Complex[Array, "16 24"]:
+            return kinematic_amplitude(
+                crystal=_SI_CRYSTAL_2ATOM,
+                voltage_kv=20.0 + 1.0e-3 * sample[2],
+                theta_deg=2.0 + jnp.rad2deg(sample[0]),
+                phi_deg=1.5 + jnp.rad2deg(sample[1]) + sample[3],
+                hmax=0,
+                kmax=0,
+                detector_distance_mm=1000.0,
+                temperature=300.0,
+                surface_roughness=0.5,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=1.2,
+            )
+
+        expected: Float[Array, "16 24"] = apply_distributions(
+            [beam_distribution, orientation_distribution],
+            _bound,
+        )
+        expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
+        actual: Float[Array, "..."] = simulate_detector_image(
+            crystal=_SI_CRYSTAL_2ATOM,
+            beam_modes=beam_modes,
+            orientation_distribution=orientation_dist,
+            voltage_kv=20.0,
+            theta_deg=2.0,
+            phi_deg=1.5,
+            hmax=0,
+            kmax=0,
+            detector_distance_mm=1000.0,
+            temperature=300.0,
+            surface_roughness=0.5,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.2,
+            psf_sigma_pixels=0.0,
+            n_beam_modes_per_axis=2,
+            n_beam_modes_out_of_plane=1,
+            n_beam_energy_points=1,
+            n_mosaic_points=7,
+            render_ctrs_as_streaks=False,
         )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-10)

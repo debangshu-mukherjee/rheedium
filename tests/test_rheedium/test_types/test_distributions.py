@@ -31,6 +31,7 @@ from rheedium.types import (
     discretize_size_distribution,
     integrate_over_orientation,
     orientation_to_distribution,
+    reduction_mode_from_coherence_length,
     size_to_distribution,
 )
 from rheedium.types.custom_types import scalar_float
@@ -123,6 +124,37 @@ class TestDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(reconstructed.weights, dist.weights)
         assert reconstructed.reduction is ReductionMode.COHERENT
         assert reconstructed.axis_id == "coherent_axis"
+
+
+class TestCoherenceReduction(chex.TestCase):
+    """Tests for coherence-length reduction selection."""
+
+    def test_sub_coherence_feature_is_coherent(self) -> None:
+        """Features inside the coherent footprint reduce coherently."""
+        mode: ReductionMode = reduction_mode_from_coherence_length(
+            feature_length_angstrom=50.0,
+            coherence_length_angstrom=100.0,
+        )
+
+        assert mode is ReductionMode.COHERENT
+
+    def test_super_coherence_feature_is_incoherent(self) -> None:
+        """Features larger than the coherent footprint reduce incoherently."""
+        mode: ReductionMode = reduction_mode_from_coherence_length(
+            feature_length_angstrom=150.0,
+            coherence_length_angstrom=100.0,
+        )
+
+        assert mode is ReductionMode.INCOHERENT
+
+    def test_rejects_non_positive_feature_length(self) -> None:
+        """Feature length must be positive."""
+        assert_rejects(
+            reduction_mode_from_coherence_length,
+            feature_length_angstrom=0.0,
+            coherence_length_angstrom=100.0,
+            match="feature_length_angstrom must be positive",
+        )
 
 
 class TestBeamModeDistributionFactories(chex.TestCase):

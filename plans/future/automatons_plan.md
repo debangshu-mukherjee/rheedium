@@ -466,8 +466,9 @@ The "fully and independently executable" promise is only real if CI proves it:
 Each phase ends at a **gate**: an objectively checkable set of conditions that
 must *all* be green before the next phase starts. A gate is a command whose
 output decides pass/fail, not a review opinion. The discipline: no experiment
-automaton is written before the contract gate (G1) is locked, and no fan-out
-before the exemplar gate (G2) proves the whole loop end-to-end.
+automaton is written before the contract is locked (schemas at **G0**, harness at
+**G1**), and no fan-out before the exemplar gate (**G2**) proves the whole loop
+end-to-end.
 
 ### Entry — Gate A0 (roadmap precondition for *any* work below)
 

@@ -43,6 +43,8 @@ Routine Listings
     Convert OrientationDistribution to quadrature points and weights.
 :func:`create_trivial_distribution`
     Factory for the identity distribution with one zero sample.
+:func:`reduction_mode_from_coherence_length`
+    Choose coherent/incoherent reduction from feature and coherence lengths.
 :func:`discretize_size_distribution`
     Convert SizeDistribution to quadrature sizes and weights.
 :func:`orientation_to_distribution`
@@ -302,6 +304,46 @@ def _normalize_probability_weights(
 
 TRIVIAL_DISTRIBUTION: Final[Distribution] = create_trivial_distribution()
 TRIVIAL: Final[Distribution] = TRIVIAL_DISTRIBUTION
+
+
+@jaxtyped(typechecker=beartype)
+def reduction_mode_from_coherence_length(
+    feature_length_angstrom: scalar_float,
+    coherence_length_angstrom: scalar_float,
+) -> ReductionMode:
+    """Choose a static reduction mode from a coherence-length threshold.
+
+    :see: :class:`~.test_distributions.TestCoherenceReduction`
+
+    Parameters
+    ----------
+    feature_length_angstrom : scalar_float
+        Characteristic feature size in Angstroms. Features no larger than the
+        coherent footprint are averaged coherently.
+    coherence_length_angstrom : scalar_float
+        Beam-mode transverse coherence length in Angstroms.
+
+    Returns
+    -------
+    reduction_mode : ReductionMode
+        ``COHERENT`` when ``feature_length_angstrom <= coherence_length`` and
+        ``INCOHERENT`` otherwise.
+
+    Notes
+    -----
+    1. Convert scalar inputs to Python floats for a static PyTree field.
+    2. Validate positive length scales.
+    3. Return the corresponding static reduction mode.
+    """
+    feature_length: float = float(feature_length_angstrom)
+    coherence_length: float = float(coherence_length_angstrom)
+    if feature_length <= 0.0:
+        raise ValueError("feature_length_angstrom must be positive")
+    if coherence_length <= 0.0:
+        raise ValueError("coherence_length_angstrom must be positive")
+    if feature_length <= coherence_length:
+        return ReductionMode.COHERENT
+    return ReductionMode.INCOHERENT
 
 
 @jaxtyped(typechecker=beartype)
@@ -1396,5 +1438,6 @@ __all__: list[str] = [
     "discretize_size_distribution",
     "integrate_over_orientation",
     "orientation_to_distribution",
+    "reduction_mode_from_coherence_length",
     "size_to_distribution",
 ]

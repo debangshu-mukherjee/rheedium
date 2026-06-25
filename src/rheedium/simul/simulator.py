@@ -28,6 +28,8 @@ Routine Listings
 :func:`multislice_propagate`
     Propagate electron wave through potential slices using multislice
     algorithm.
+:func:`multislice_amplitude`
+    Return reciprocal-space multislice amplitude before modulus-squared.
 :func:`multislice_simulator`
     Simulate RHEED pattern from potential slices using multislice
     (dynamical).
@@ -94,6 +96,7 @@ from rheedium.ucell import reciprocal_lattice_vectors
 
 from .beam_averaging import (
     apply_distribution,
+    apply_distributions,
     decompose_beam_modes,
     detector_psf_convolve,
     instrument_broadened_pattern,
@@ -1805,6 +1808,78 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
+def _apply_kinematic_beam_orientation_distributions(  # noqa: PLR0913
+    beam_distribution: Distribution,
+    orientation_distribution: Distribution,
+    crystal: CrystalStructure,
+    voltage_kv: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num,
+    hmax: scalar_int,
+    kmax: scalar_int,
+    detector_distance_mm: scalar_float,
+    temperature: scalar_float,
+    surface_roughness: scalar_float,
+    ctr_regularization: scalar_float,
+    ctr_power: scalar_float,
+    roughness_power: scalar_float,
+    image_shape_px: Tuple[int, int],
+    pixel_size_mm: Tuple[float, float],
+    beam_center_px: Tuple[float, float],
+    spot_sigma_px: scalar_float,
+    render_ctrs_as_streaks: bool,
+    parameterization: str,
+    surface_config: SurfaceConfig | None,
+) -> Float[Array, "H W"]:
+    """Compose beam-mode and orientation axes through Layer 1."""
+    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
+    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
+    voltage_nominal: Float[Array, ""] = jnp.asarray(
+        voltage_kv,
+        dtype=jnp.float64,
+    )
+
+    def _amplitude_at_composed_sample(
+        sample: Float[Array, "4"],
+    ) -> Complex[Array, "H W"]:
+        theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
+            sample[0]
+        )
+        phi_sample_deg: Float[Array, ""] = (
+            phi_nominal + jnp.rad2deg(sample[1]) + sample[3]
+        )
+        voltage_sample_kv: Float[Array, ""] = (
+            voltage_nominal + 1.0e-3 * sample[2]
+        )
+        return kinematic_amplitude(
+            crystal=crystal,
+            voltage_kv=voltage_sample_kv,
+            theta_deg=theta_sample_deg,
+            phi_deg=phi_sample_deg,
+            hmax=hmax,
+            kmax=kmax,
+            detector_distance_mm=detector_distance_mm,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
+            parameterization=parameterization,
+            surface_config=surface_config,
+        )
+
+    return apply_distributions(
+        [beam_distribution, orientation_distribution],
+        _amplitude_at_composed_sample,
+    )
+
+
+@jaxtyped(typechecker=beartype)
 def simulate_detector_image(  # noqa: PLR0913
     crystal: CrystalStructure,
     voltage_kv: scalar_num = 20.0,
@@ -1938,10 +2013,50 @@ def simulate_detector_image(  # noqa: PLR0913
     if beam_modes is not None and distribution is not None:
         raise ValueError("Pass either beam_modes or distribution, not both.")
     if beam_modes is not None and orientation_distribution is not None:
-        raise ValueError(
-            "beam_modes and orientation_distribution composition is not wired "
-            "through simulate_detector_image yet."
+        beam_distribution: Distribution = decompose_beam_modes(
+            beam_modes,
+            n_modes_per_axis=n_beam_modes_per_axis,
+            n_modes_out_of_plane=n_beam_modes_out_of_plane,
+            n_energy_points=n_beam_energy_points,
         )
+        generic_orientation: Distribution = orientation_to_distribution(
+            orientation_distribution,
+            n_mosaic_points=n_mosaic_points,
+        )
+        detector_image: Float[Array, "H W"] = (
+            _apply_kinematic_beam_orientation_distributions(
+                beam_distribution,
+                generic_orientation,
+                crystal=crystal,
+                voltage_kv=voltage_kv,
+                theta_deg=theta_deg,
+                phi_deg=phi_deg,
+                hmax=hmax,
+                kmax=kmax,
+                detector_distance_mm=detector_distance_mm,
+                temperature=temperature,
+                surface_roughness=surface_roughness,
+                ctr_regularization=ctr_regularization,
+                ctr_power=ctr_power,
+                roughness_power=roughness_power,
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+                spot_sigma_px=spot_sigma_px,
+                render_ctrs_as_streaks=render_ctrs_as_streaks,
+                parameterization=parameterization,
+                surface_config=surface_config,
+            )
+        )
+        detector_image = detector_psf_convolve(
+            detector_image=detector_image,
+            psf_sigma_pixels=psf_sigma_pixels,
+        )
+        max_intensity: Float[Array, ""] = jnp.maximum(
+            jnp.max(detector_image),
+            1e-12,
+        )
+        return detector_image / max_intensity
     if beam_modes is not None:
         beam_distribution: Distribution = decompose_beam_modes(
             beam_modes,
@@ -2660,6 +2775,64 @@ def multislice_propagate(
 
 
 @jaxtyped(typechecker=beartype)
+def multislice_amplitude(
+    potential_slices: PotentialSlices,
+    voltage_kv: scalar_float,
+    theta_deg: scalar_float,
+    phi_deg: scalar_float = 0.0,
+    inner_potential_v0: scalar_float = 0.0,
+    bandwidth_limit: scalar_float = 2.0 / 3.0,
+) -> Complex[Array, "nx ny"]:
+    """Return the coherent multislice diffraction amplitude.
+
+    :see: :class:`~.test_multislice.TestMultisliceAmplitude`
+
+    Parameters
+    ----------
+    potential_slices : PotentialSlices
+        Projected potential slices with shape ``(nz, nx, ny)``.
+    voltage_kv : scalar_float
+        Accelerating voltage in kilovolts.
+    theta_deg : scalar_float
+        Grazing incidence angle in degrees.
+    phi_deg : scalar_float, optional
+        Azimuthal angle of incident beam in degrees. Default: 0.0.
+    inner_potential_v0 : scalar_float, optional
+        Inner potential used by :func:`multislice_propagate`. Default: 0.0.
+    bandwidth_limit : scalar_float, optional
+        Fraction of Nyquist frequency retained during propagation.
+        Default: 2/3.
+
+    Returns
+    -------
+    amplitude : Complex[Array, "nx ny"]
+        Complex reciprocal-space exit-wave amplitude before the modulus
+        squared reduction.
+
+    Notes
+    -----
+    1. Propagate the tilted incident wave through all slices.
+    2. Fourier transform the exit wave into reciprocal space.
+    3. Return the complex field so Layer 1 can choose coherent or incoherent
+       reduction explicitly.
+
+    See Also
+    --------
+    multislice_simulator : Legacy sparse pattern path using ``|amplitude|^2``.
+    """
+    exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
+        potential_slices=potential_slices,
+        voltage_kv=voltage_kv,
+        theta_deg=theta_deg,
+        phi_deg=phi_deg,
+        inner_potential_v0=inner_potential_v0,
+        bandwidth_limit=bandwidth_limit,
+    )
+    amplitude: Complex[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
+    return amplitude
+
+
+@jaxtyped(typechecker=beartype)
 def multislice_simulator(
     potential_slices: PotentialSlices,
     voltage_kv: scalar_float,
@@ -2760,7 +2933,7 @@ def multislice_simulator(
       2nd ed.
     - Ichimiya & Cohen (2004). Reflection High-Energy Electron Diffraction.
     """
-    exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
+    exit_wave_k: Complex[Array, "nx ny"] = multislice_amplitude(
         potential_slices=potential_slices,
         voltage_kv=voltage_kv,
         theta_deg=theta_deg,
@@ -2768,7 +2941,6 @@ def multislice_simulator(
         inner_potential_v0=inner_potential_v0,
         bandwidth_limit=bandwidth_limit,
     )
-    exit_wave_k: Complex[Array, "nx ny"] = jnp.fft.fft2(exit_wave)
     nx: int = potential_slices.slices.shape[1]
     ny: int = potential_slices.slices.shape[2]
     dx: scalar_float = potential_slices.x_calibration
@@ -2896,6 +3068,7 @@ __all__: list[str] = [
     "find_kinematic_reflections",
     "kinematic_amplitude",
     "log_compress_image",
+    "multislice_amplitude",
     "multislice_propagate",
     "multislice_simulator",
     "project_on_detector",

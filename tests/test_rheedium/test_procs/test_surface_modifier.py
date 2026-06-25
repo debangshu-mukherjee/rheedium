@@ -11,16 +11,19 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex, Float
 
 from rheedium.procs.surface_modifier import (
     apply_step_edge_field,
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
     incoherent_domain_average,
+    step_edge_to_distribution,
+    twin_wall_to_distribution,
     vicinal_surface_step_splitting,
 )
-from rheedium.types import CrystalStructure
+from rheedium.simul.beam_averaging import apply_distribution
+from rheedium.types import CrystalStructure, Distribution, ReductionMode
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.types.custom_types import scalar_float
 from rheedium.ucell.unitcell import build_cell_vectors
@@ -540,3 +543,84 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
             domain_volume_fractions=fractions,
         )
         chex.assert_tree_all_finite(result)
+
+
+class TestTwinWallToDistribution(chex.TestCase):
+    """Tests for twin-wall Distribution producer."""
+
+    def test_sub_coherence_twins_reduce_coherently(self) -> None:
+        """Fine twin spacing selects coherent amplitude reduction."""
+        dist: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([-1.0, 1.0]),
+            wall_positions_angstrom=jnp.array([0.0, 20.0]),
+            twin_fractions=jnp.array([1.0, 3.0]),
+            twin_spacing_angstrom=25.0,
+            coherence_length_angstrom=50.0,
+        )
+
+        chex.assert_shape(dist.samples, (2, 2))
+        chex.assert_trees_all_close(dist.weights, jnp.array([0.25, 0.75]))
+        assert dist.reduction is ReductionMode.COHERENT
+        assert dist.axis_id == "twins"
+
+    def test_coherent_reduction_matches_manual_amplitude_sum(self) -> None:
+        """Twin producer composes with the Layer-1 coherent reducer."""
+        dist: Distribution = twin_wall_to_distribution(
+            twin_angles_deg=jnp.array([0.0, 2.0]),
+            wall_positions_angstrom=jnp.array([0.0, 1.0]),
+            twin_fractions=jnp.array([0.25, 0.75]),
+            twin_spacing_angstrom=10.0,
+            coherence_length_angstrom=20.0,
+        )
+
+        def amp(sample: Float[Array, "2"]) -> Complex[Array, "2 2"]:
+            return jnp.ones((2, 2), dtype=jnp.complex128) * (1.0 + sample[0])
+
+        reduced: Float[Array, "2 2"] = apply_distribution(dist, amp)
+        manual_amplitude: scalar_float = 0.25 * 1.0 + 0.75 * 3.0
+        chex.assert_trees_all_close(
+            reduced,
+            jnp.ones((2, 2)) * manual_amplitude**2,
+        )
+
+
+class TestStepEdgeToDistribution(chex.TestCase):
+    """Tests for step-edge Distribution producer."""
+
+    def test_regular_sub_coherence_steps_reduce_coherently(self) -> None:
+        """Regular terrace arrays can interfere coherently."""
+        dist: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([1.0, 2.0]),
+            terrace_widths_angstrom=jnp.array([20.0, 30.0]),
+            line_azimuths_deg=jnp.array([0.0, 90.0]),
+            step_fractions=jnp.array([2.0, 2.0]),
+            coherence_length_angstrom=50.0,
+            regular=True,
+        )
+
+        chex.assert_shape(dist.samples, (2, 3))
+        chex.assert_trees_all_close(dist.weights, jnp.array([0.5, 0.5]))
+        assert dist.reduction is ReductionMode.COHERENT
+
+    def test_random_steps_reduce_incoherently(self) -> None:
+        """Random step populations remain intensity mixtures."""
+        dist: Distribution = step_edge_to_distribution(
+            step_heights_angstrom=jnp.array([1.0, 3.0]),
+            terrace_widths_angstrom=jnp.array([20.0, 30.0]),
+            line_azimuths_deg=jnp.array([0.0, 90.0]),
+            step_fractions=jnp.array([0.25, 0.75]),
+            coherence_length_angstrom=50.0,
+            regular=False,
+        )
+
+        assert dist.reduction is ReductionMode.INCOHERENT
+
+        def amp(sample: Float[Array, "3"]) -> Complex[Array, "2 2"]:
+            return jnp.ones((2, 2), dtype=jnp.complex128) * sample[0]
+
+        reduced: Float[Array, "2 2"] = apply_distribution(dist, amp)
+        manual_intensity: scalar_float = 0.25 * 1.0**2 + 0.75 * 3.0**2
+        chex.assert_trees_all_close(
+            reduced,
+            jnp.ones((2, 2)) * manual_intensity,
+        )

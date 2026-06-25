@@ -99,6 +99,8 @@ Routine Listings
     Simulate and incoherently average over orientation samples.
 :func:`orientation_to_distribution`
     Convert orientation distribution to generic distribution.
+:func:`reduction_mode_from_coherence_length`
+    Choose coherent/incoherent reduction from feature and coherence lengths.
 :func:`size_to_distribution`
     Convert size distribution to generic distribution.
 :obj:`TRIVIAL_DISTRIBUTION`
@@ -216,6 +218,7 @@ from .distributions import (
     discretize_size_distribution,
     integrate_over_orientation,
     orientation_to_distribution,
+    reduction_mode_from_coherence_length,
     size_to_distribution,
 )
 from .rheed_types import (
@@ -291,6 +294,7 @@ __all__: list[str] = [
     "scalar_int",
     "scalar_num",
     "orientation_to_distribution",
+    "reduction_mode_from_coherence_length",
     "size_to_distribution",
     "SlicedCrystal",
     "SizeDistribution",

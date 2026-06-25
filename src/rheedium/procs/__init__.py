@@ -54,10 +54,14 @@ Routine Listings
     Si(111)-7x7 DAS reconstruction surface slab.
 :func:`soft_threshold_mask`
     Create a differentiable soft mask from a distance field.
+:func:`step_edge_to_distribution`
+    Convert step-edge population metadata into a generic Distribution.
 :func:`srtio3_001_2x1`
     SrTiO3(001)-2x1 TiO2-terminated surface slab.
 :func:`subtract_background`
     Subtract dark frame background with non-negative clipping.
+:func:`twin_wall_to_distribution`
+    Convert twin-wall population metadata into a generic Distribution.
 :func:`vicinal_surface_step_splitting`
     CTR intensity modification from periodic surface steps.
 
@@ -103,6 +107,8 @@ from .surface_modifier import (
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
     incoherent_domain_average,
+    step_edge_to_distribution,
+    twin_wall_to_distribution,
     vicinal_surface_step_splitting,
 )
 
@@ -129,7 +135,9 @@ __all__: list[str] = [
     "si111_1x1",
     "si111_7x7",
     "soft_threshold_mask",
+    "step_edge_to_distribution",
     "srtio3_001_2x1",
     "subtract_background",
+    "twin_wall_to_distribution",
     "vicinal_surface_step_splitting",
 ]

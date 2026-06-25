@@ -9,8 +9,10 @@ auto-`vmap`s and reduces — incoherently *or* coherently — subsumes
 multimodal beams, statistical ensembles, and defects under one differentiable,
 parallel contract.
 
-Status: **partially implemented** — Phases 1–2 landed and Phase 3 foundations
-started (commits `264a722`…`6044682`); Phases 4–6 pending. Implemented and tested:
+Status: **partially implemented** — Phases 1–3 are substantially implemented,
+Phase 4 defect-producer foundations are in place, and the Phase 5
+`multislice_amplitude` Layer-0 slot has landed; Phase 6 remains pending.
+Implemented and tested:
 the Layer-1 `Distribution` PyTree + `ReductionMode` (COHERENT/INCOHERENT),
 `create_trivial_distribution` / `TRIVIAL_DISTRIBUTION`, the
 `apply_distribution` / `apply_distributions` reduction + nested-composition
@@ -40,25 +42,38 @@ anisotropic GSM samples. `beam_modes_from_electron_beam`,
 `simulate_detector_image_instrument` now consumes beam modes through the Layer-1
 reducer and binds `(delta_theta_rad, delta_phi_rad, delta_energy_ev)` into the
 kinematic amplitude kernel, and `simulate_detector_image(..., beam_modes=...)`
-now exposes the same explicit beam-mode path. Generic `distribution=` and
-explicit `beam_modes=` paths can render CTR streak amplitudes. All exported
-through `rheedium.types` /
+now exposes the same explicit beam-mode path. Beam modes and orientation
+distributions now compose through `apply_distributions` in
+`simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`.
+Generic `distribution=` and explicit `beam_modes=` paths can render CTR streak
+amplitudes. All exported through `rheedium.types` /
 `rheedium.simul` with tests (distribution validation, reduction algebra,
 composition, amplitude parity, coherent interference, trivial→intensity,
 simulator distribution identity / manual Layer-1 parity, size-distribution
 finite-domain parity, beam-mode normalization / variance / coherent-limit
 checks, ElectronBeam/preset bridge checks, instrument-wrapper Layer-1 parity,
-main-simulator beam-mode parity, and CTR amplitude-renderer parity). Phase 4 is
-started: `grain_population_to_distribution` converts grain orientation / size /
-fraction metadata into an incoherent generic `Distribution`, with tests showing
-Layer-1 reduction matches the existing `grain_distribution_average` intensity
-mixture semantics.
+main-simulator beam-mode parity, beam×orientation composition parity, and CTR
+amplitude-renderer parity). Phase 4 is started:
+`grain_population_to_distribution` converts grain orientation / size / fraction
+metadata into an incoherent generic `Distribution`, with tests showing Layer-1
+reduction matches the existing `grain_distribution_average` intensity mixture
+semantics. `reduction_mode_from_coherence_length` provides the first static
+coherence-threshold reducer, and `twin_wall_to_distribution` /
+`step_edge_to_distribution` convert twin-wall and step-edge metadata into
+generic `Distribution`s with coherent/incoherent reduction selected from
+feature size, coherence length, and regular-vs-random step semantics. Phase 5
+is also started: `multislice_amplitude` returns `FFT(exit_wave)` before
+modulus-squared, and `multislice_simulator` now consumes that amplitude before
+its legacy sparse-pattern intensity reduction.
 
 **Not yet done:** the full core inversion — `simulate_detector_image` still has
 legacy orientation+CTR orchestration paths; `kernel=` currently supports only
-the kinematic kernel. Also pending: the unified `DetectorGeometry` carrier
-(plan wanted a new `types/detector.py`); the remaining Phase 4 twin / step
-defect producers; Phase 5 `multislice_amplitude`; Phase 6 inverse problem; and retiring
+the kinematic detector-image wrapper, while multislice is exposed as a Layer-0
+amplitude function over `PotentialSlices`. Also pending: finishing the shared
+detector contract for multislice projection (the existing `DetectorGeometry`
+carrier lives in `types/rheed_types.py`; the plan's proposed new
+`types/detector.py` has not been split out), full structure-building bind
+closures for twin/step samples, Phase 6 inverse problem; and retiring
 `coherence_envelope` / the remaining orientation+CTR angular+energy Gaussian
 quadrature path. Moved from `plans/future/` to `plans/partial/` on landing the
 Phase-1 slice.
@@ -146,12 +161,15 @@ complex variant of `_render_ctr_streaks_to_image` for streak amplitudes.
 Relative phase is what matters; fix a single phase origin (beam/sample origin)
 shared by all samples so cross-sample phases are consistent.
 
-### 2.3 `multislice_amplitude` (Layer-0 slot, v2)
+### 2.3 `multislice_amplitude` (Layer-0 slot)
 
 `multislice_propagate` already carries a complex exit wavefunction; the pattern
 is `|FFT(ψ)|²`. `multislice_amplitude` returns the complex diffraction field
-before the modulus. Filled after v1; Layers 1–2 are kernel-agnostic so nothing
-above changes.
+before the modulus. This slot is now implemented as `FFT(exit_wave)` and is
+used by `multislice_simulator` before that legacy path applies `|·|²`. It is
+not yet wired into `simulate_detector_image(kernel="multislice")`, because the
+high-level detector-image wrapper still accepts `CrystalStructure` rather than
+precomputed `PotentialSlices`.
 
 ### 2.4 Shared detector contract
 
@@ -180,7 +198,10 @@ class Distribution(eqx.Module):
 - **`reduction` is the §6 switch.** It may be *computed* (not hardcoded) by
   comparing the axis's characteristic length to the beam per-mode coherence
   length `ℓ_c` — making the coherent/incoherent partition physics, not a user
-  choice.
+  choice. The first implementation is
+  `reduction_mode_from_coherence_length(feature_length_angstrom,
+  coherence_length_angstrom)`, which returns a static `ReductionMode` for
+  producers that know their characteristic length eagerly.
 - `TRIVIAL = Distribution(samples=zeros(1, …), weights=ones(1),
   reduction=INCOHERENT)` — the identity element.
 - Concrete distributions (Orientation, Size, BeamMode, TwinWall, StepEdge,
@@ -363,6 +384,8 @@ tilted plane-wave bundles whose detector intensities add — so each mode is one
 coherent Layer-0 call and the modes sum with `λ_n`. Energy spread is a
 longitudinal incoherent sub-axis. This composes cleanly with the orientation and
 defect producers: modes × orientations is the nested incoherent sum of §3.3.
+`simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`
+now exercises this composition path directly for the kinematic amplitude kernel.
 
 ### 4.2 procs returns Distributions, not CrystalStructures — with one split
 
@@ -371,7 +394,9 @@ defect producers: modes × orientations is the nested incoherent sum of §3.3.
   (a 7×7 is a different cell, not a distribution over 1×1).
 - **Statistical / defect modifiers** (grains, twins, steps, size, texture) →
   return a `Distribution` over latent parameters whose `bind` closure may call a
-  builder per sample.
+  builder per sample. Grain, twin-wall, and step-edge producers now emit generic
+  distributions; the atomistic per-sample builder/bind closure for twins/steps
+  remains future work.
 - **Sub-coherence disorder** (`apply_vacancy_field` VCA occupancy, Debye–Waller,
   displacement fields) → the **analytic coherent-average limit**; modifies the
   structure factor in closed form, stays a structure modifier. This is the
@@ -436,11 +461,15 @@ cannot — strictly more expressive, not a re-weighting.
    `SizeDistribution` onto the base type; `integrate_over_orientation` becomes a
    thin `apply`. Wire `SizeDistribution → finite_domain`.
 3. **Phase 3 — beam modes (GSM).** `BeamModeDistribution` producer; instrument
-   convenience wrapper; the coherence-length `reduction` machinery.
+   convenience wrapper; the first coherence-length `reduction` machinery; and
+   beam×orientation composition through Layer 1.
 4. **Phase 4 — defect producers.** Twins, steps, grains/texture as
    Distributions; the coherent fine-twin/satellite path exercises a coherent
-   reduction end-to-end.
-5. **Phase 5 — `multislice_amplitude`** fills the Layer-0 slot.
+   reduction end-to-end. Grain, twin-wall, and step-edge producers now exist;
+   atomistic twin/step bind closures and fine-twin satellite physics remain.
+5. **Phase 5 — `multislice_amplitude`** fills the Layer-0 slot. The complex
+   amplitude slot exists and is used by `multislice_simulator`; high-level
+   detector geometry unification remains.
 6. **Phase 6 — inverse problem.** Differentiate through `apply` to fit beam
    coherence, twin density, grain size jointly from measured RHEED data in
    `recon`.
@@ -467,9 +496,13 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
    limit reproduces legacy angular-Gaussian broadening (regression guard for
    removing the Gaussian).
 7. **Composition:** `apply_all([beam, orientation])` == manual nested reduction.
+   Covered both at reducer level and through
+   `simulate_detector_image(..., beam_modes=..., orientation_distribution=...)`.
 8. **Parallel:** ensemble via `distribute_batched` == serial.
 9. **Differentiability:** `jax.grad` of pattern w.r.t. β, twin density, grain
-   size is finite.
+   size is finite. Multislice amplitude gradients through potential scale are
+   now covered; inverse-problem gradients over the full joint parameter set are
+   still Phase 6.
 10. **Anisotropy:** in-plane ≠ out-of-plane streak FWHM under anisotropic β.
 
 ---
@@ -497,12 +530,12 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 
 | File | Change |
 |------|--------|
-| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`; `simulate_detector_image` → Layer-1 integrator; `_instrument` convenience wrapper |
-| `src/rheedium/simul/multislice.py` | `multislice_amplitude` (Phase 5) |
-| `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories |
-| `src/rheedium/types/` (new `detector.py`) | `DetectorGeometry` carrier |
+| `src/rheedium/simul/simulator.py` | `kinematic_amplitude`, `render_amplitude_to_field`, `render_ctr_amplitude_to_field`, `multislice_amplitude`; `simulate_detector_image` → Layer-1 kinematic integrator; beam×orientation composition; `_instrument` convenience wrapper |
+| `src/rheedium/simul/multislice.py` | Multislice primitives remain here; `multislice_amplitude` currently lives in `simulator.py` beside `multislice_propagate` / `multislice_simulator` |
+| `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories; `reduction_mode_from_coherence_length` |
+| `src/rheedium/types/rheed_types.py` | Existing `DetectorGeometry` carrier (not yet split into a new `types/detector.py`) |
 | `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; retire angular/energy quadrature + `coherence_envelope` from the default path |
-| `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | twin/step/grain/texture producers return `Distribution`; structure builders unchanged |
+| `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; structure builders unchanged; atomistic bind closures pending |
 | `src/rheedium/{simul,types,procs}/__init__.py` | exports + Routine Listings |
 | `tests/.../{test_simulator,test_distributions,test_beam_averaging,test_surface_modifier,test_grains}.py` | identity, reduction-algebra, interference, limits, composition, parallel, grad |
 | `tutorials/` | trivial vs instrument default; mode-count convergence; defect-density demo |
