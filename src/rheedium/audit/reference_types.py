@@ -44,7 +44,7 @@ REQUIRED_REFERENCE_METADATA_KEYS: tuple[str, ...] = (
     "detector_pixel_pitch_mm",
     "beam_center_px",
     "specular_position_px",
-    "voltage_kv",
+    "energy_kev",
     "theta_deg",
     "phi_deg",
     "hmax",
@@ -94,7 +94,7 @@ class ReferenceMetadata:
     detector_pixel_pitch_mm: tuple[float, float]
     beam_center_px: tuple[float, float]
     specular_position_px: tuple[float, float]
-    voltage_kv: float
+    energy_kev: float
     theta_deg: float
     phi_deg: float
     hmax: int
@@ -149,7 +149,7 @@ class ReferenceMetadata:
             specular_position_px=tuple(
                 float(v) for v in data["specular_position_px"]
             ),
-            voltage_kv=float(data["voltage_kv"]),
+            energy_kev=float(data["energy_kev"]),
             theta_deg=float(data["theta_deg"]),
             phi_deg=float(data["phi_deg"]),
             hmax=int(data["hmax"]),
@@ -203,7 +203,7 @@ class ReferenceMetadata:
             "detector_pixel_pitch_mm": list(self.detector_pixel_pitch_mm),
             "beam_center_px": list(self.beam_center_px),
             "specular_position_px": list(self.specular_position_px),
-            "voltage_kv": self.voltage_kv,
+            "energy_kev": self.energy_kev,
             "theta_deg": self.theta_deg,
             "phi_deg": self.phi_deg,
             "hmax": self.hmax,

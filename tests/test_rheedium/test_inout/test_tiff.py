@@ -394,7 +394,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=2.0,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             detector_distance_mm=350.0,
         )
         self.assertIsInstance(img, RHEEDImage)
@@ -406,7 +406,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=2.0,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             detector_distance_mm=350.0,
         )
         chex.assert_shape(img.img_array, (H, W))
@@ -418,7 +418,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=2.0,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             detector_distance_mm=350.0,
         )
         chex.assert_trees_all_close(
@@ -433,7 +433,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=2.0,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             detector_distance_mm=350.0,
             background=bg,
         )
@@ -459,7 +459,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "multi.tif",
             incoming_angle_deg=2.0,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             detector_distance_mm=350.0,
         )
         chex.assert_trees_all_close(
@@ -475,7 +475,7 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         img: Any = load_tiff_as_rheed_image(
             self.tmp_path / "frame.tif",
             incoming_angle_deg=3.5,
-            voltage_kv=15.0,
+            energy_kev=15.0,
             detector_distance_mm=400.0,
             calibration=0.05,
         )

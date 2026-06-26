@@ -179,7 +179,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         )
         keyword: Complex[Array, "H W"] = build_transmission_function(
             projected_potential_volt_angstrom=v,
-            voltage_kv=voltage,
+            energy_kev=voltage,
         )
         chex.assert_trees_all_close(positional, keyword, atol=1e-12)
 
@@ -368,12 +368,12 @@ class TestMultisliceAmplitude(chex.TestCase):
 
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
         exit_wave: Complex[Array, "8 8"] = multislice_propagate(
             potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -388,7 +388,7 @@ class TestMultisliceAmplitude(chex.TestCase):
         potential: PotentialSlices = _make_potential_slices(scale=0.01)
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -404,7 +404,7 @@ class TestMultisliceAmplitude(chex.TestCase):
             potential: PotentialSlices = _make_potential_slices(scale=scale)
             amplitude: Complex[Array, "8 8"] = multislice_amplitude(
                 potential,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
             )
             return jnp.sum(jnp.abs(amplitude) ** 2).real

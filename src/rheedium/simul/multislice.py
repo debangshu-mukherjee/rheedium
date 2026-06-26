@@ -46,7 +46,7 @@ from rheedium.types import scalar_float
 @jaxtyped(typechecker=beartype)
 def build_transmission_function(
     projected_potential_volt_angstrom: Complex[Array, "H W"],
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
 ) -> Complex[Array, "H W"]:
     r"""Construct the transmission function for one multislice slice.
 
@@ -58,7 +58,7 @@ def build_transmission_function(
         Complex projected potential V_real + i*V_abs in V*Angstrom
         units, e.g. from
         :func:`rheedium.simul.crystal_projected_potential`.
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kV. Used to compute the relativistic
         interaction constant sigma.
 
@@ -84,11 +84,11 @@ def build_transmission_function(
     the imaginary part of V is non-negative (absorption never
     increases amplitude).
     """
-    voltage_kv_arr: Float[Array, ""] = jnp.asarray(
-        voltage_kv, dtype=jnp.float64
+    energy_kev_arr: Float[Array, ""] = jnp.asarray(
+        energy_kev, dtype=jnp.float64
     )
-    wavelength: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
-    sigma: Float[Array, ""] = interaction_constant(voltage_kv_arr, wavelength)
+    wavelength: Float[Array, ""] = wavelength_ang(energy_kev_arr)
+    sigma: Float[Array, ""] = interaction_constant(energy_kev_arr, wavelength)
     phase_arg: Complex[Array, "H W"] = (
         1j * sigma * projected_potential_volt_angstrom
     )
@@ -100,7 +100,7 @@ def build_transmission_function(
 def fresnel_propagator(
     grid_shape: Tuple[int, int],
     cell_dimensions_angstrom: Float[Array, "2"],
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     slice_thickness_angstrom: scalar_float,
 ) -> Complex[Array, "H W"]:
     r"""Construct the reciprocal-space Fresnel free-space propagator.
@@ -113,7 +113,7 @@ def fresnel_propagator(
         Real-space grid dimensions (H, W).
     cell_dimensions_angstrom : Float[Array, "2"]
         Physical cell dimensions [Lx, Ly] in Angstroms.
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kV.
     slice_thickness_angstrom : scalar_float
         Slice thickness dz in Angstroms.
@@ -137,8 +137,8 @@ def fresnel_propagator(
     The propagator is unitary: ``|P(qx, qy)| = 1`` everywhere because
     free-space propagation conserves probability.
     """
-    voltage_kv_arr: Float[Array, ""] = jnp.asarray(
-        voltage_kv, dtype=jnp.float64
+    energy_kev_arr: Float[Array, ""] = jnp.asarray(
+        energy_kev, dtype=jnp.float64
     )
     slice_thickness_arr: Float[Array, ""] = jnp.asarray(
         slice_thickness_angstrom, dtype=jnp.float64
@@ -149,7 +149,7 @@ def fresnel_propagator(
     ly: Float[Array, ""] = cell_dimensions_angstrom[1]
     dx: Float[Array, ""] = lx / n_x
     dy: Float[Array, ""] = ly / n_y
-    wavelength: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
+    wavelength: Float[Array, ""] = wavelength_ang(energy_kev_arr)
     qx: Float[Array, "H"] = jnp.fft.fftfreq(n_x, dx)
     qy: Float[Array, "W"] = jnp.fft.fftfreq(n_y, dy)
     qx_grid: Float[Array, "H W"]

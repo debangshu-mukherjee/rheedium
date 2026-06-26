@@ -519,7 +519,7 @@ def check_friedel_law_structure_factor(
 
 @beartype
 def check_elastic_closure_ewald(
-    voltage_kv: scalar_float = 20.0,
+    energy_kev: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
     hmax: scalar_int = 3,
     kmax: scalar_int = 3,
@@ -549,7 +549,7 @@ def check_elastic_closure_ewald(
 
     Parameters
     ----------
-    voltage_kv : scalar_float, optional
+    energy_kev : scalar_float, optional
         Beam voltage in kV.
     theta_deg : scalar_float, optional
         Grazing angle of incidence in degrees.
@@ -589,13 +589,13 @@ def check_elastic_closure_ewald(
 
     pattern = ewald_simulator(
         crystal=crystal,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         hmax=hmax,
         kmax=kmax,
     )
 
-    lam = float(wavelength_ang(voltage_kv))
+    lam = float(wavelength_ang(energy_kev))
     k_in = incident_wavevector(lam, theta_deg)
     k_in_magnitude = float(jnp.linalg.norm(k_in))
 
@@ -626,7 +626,7 @@ def check_elastic_closure_ewald(
         detail=(
             "worst (||k_out|| - ||k_in||) / ||k_in|| over all valid "
             f"ewald_simulator reflections from a cubic test crystal "
-            f"at V={voltage_kv} kV"
+            f"at V={energy_kev} kV"
         ),
     )
 

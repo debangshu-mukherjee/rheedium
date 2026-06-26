@@ -14,9 +14,6 @@ Routine Listings
     Calculate kinematic intensities with CTR contributions.
 :func:`detector_extent_mm`
     Convert detector pixel calibration and beam centre to imshow extent.
-:func:`ewald_simulator_with_orientation_distribution`
-    Simulate and incoherently combine an orientation distribution of
-    Ewald patterns.
 :func:`ewald_simulator`
     Simulate RHEED using exact Ewald sphere-CTR intersection.
 :func:`find_kinematic_reflections`
@@ -59,7 +56,6 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Any, Callable, Final, Tuple
-from jax.core import Tracer
 from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
@@ -97,8 +93,6 @@ from rheedium.types import (
     detector_image_shape_px,
     detector_pixel_size_mm,
     detector_psf_sigma_pixels,
-    discretize_orientation,
-    discretize_orientation_static,
     identify_surface_atoms,
     orientation_to_distribution,
     scalar_float,
@@ -682,7 +676,7 @@ def find_ctr_ewald_intersection(
 @jaxtyped(typechecker=beartype)
 def ewald_simulator(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -709,7 +703,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     ----------
     crystal : CrystalStructure
         Crystal structure with atomic positions and cell parameters.
-    voltage_kv : scalar_num, optional
+    energy_kev : scalar_num, optional
         Electron beam energy in kiloelectron volts. Default: 20.0
     theta_deg : scalar_num, optional
         Grazing angle of incidence in degrees (angle from surface).
@@ -796,7 +790,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     """
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
-    voltage_kv: Float[Array, ""] = jnp.asarray(voltage_kv)
+    energy_kev: Float[Array, ""] = jnp.asarray(energy_kev)
     theta_deg: Float[Array, ""] = jnp.asarray(theta_deg)
     phi_deg: Float[Array, ""] = jnp.asarray(phi_deg)
     # Keep hmax/kmax as Python ints for static array sizing in JIT
@@ -804,7 +798,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     kmax_int: int = int(kmax)
 
     # Compute incident wavevector
-    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
+    lam_ang: Float[Array, ""] = wavelength_ang(energy_kev)
     k_in: Float[Array, "3"] = incident_wavevector(lam_ang, theta_deg, phi_deg)
 
     # Get reciprocal lattice vectors
@@ -966,7 +960,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
 @jaxtyped(typechecker=beartype)
 def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -983,13 +977,13 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     """Return sparse Ewald pattern plus complex per-reflection amplitudes."""
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
-    voltage_kv_arr: Float[Array, ""] = jnp.asarray(voltage_kv)
+    energy_kev_arr: Float[Array, ""] = jnp.asarray(energy_kev)
     theta_deg_arr: Float[Array, ""] = jnp.asarray(theta_deg)
     phi_deg_arr: Float[Array, ""] = jnp.asarray(phi_deg)
     hmax_int: int = int(hmax)
     kmax_int: int = int(kmax)
 
-    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
+    lam_ang: Float[Array, ""] = wavelength_ang(energy_kev_arr)
     k_in: Float[Array, "3"] = incident_wavevector(
         lam_ang,
         theta_deg_arr,
@@ -1149,144 +1143,6 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
 
 
 @jaxtyped(typechecker=beartype)
-def _discretize_orientation_for_sparse_pattern(
-    orientation_distribution: OrientationDistribution,
-    n_mosaic_points: scalar_int,
-) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
-    """Discretize orientations while keeping eager sparse patterns compact."""
-    if isinstance(orientation_distribution.mosaic_fwhm_deg, Tracer):
-        return discretize_orientation(
-            orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-        )
-    return discretize_orientation_static(
-        orientation_distribution,
-        n_mosaic_points=n_mosaic_points,
-    )
-
-
-@jaxtyped(typechecker=beartype)
-def _incoherent_pattern_union(
-    pattern_bank: RHEEDPattern,
-    weights: Float[Array, "N_orientations"],
-) -> RHEEDPattern:
-    """Flatten a weighted bank of sparse patterns into one pattern."""
-    weighted_intensities: Float[Array, "N_orientations N_reflections"] = (
-        pattern_bank.intensities * weights[:, None]
-    )
-    return create_rheed_pattern(
-        g_indices=pattern_bank.G_indices.reshape(-1),
-        k_out=pattern_bank.k_out.reshape(-1, 3),
-        detector_points=pattern_bank.detector_points.reshape(-1, 2),
-        intensities=weighted_intensities.reshape(-1),
-    )
-
-
-@jaxtyped(typechecker=beartype)
-def ewald_simulator_with_orientation_distribution(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    orientation_distribution: OrientationDistribution,
-    voltage_kv: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    parameterization: str = "lobato",
-    surface_config: SurfaceConfig | None = None,
-    n_mosaic_points: scalar_int = 7,
-) -> RHEEDPattern:
-    r"""Simulate a weighted union of Ewald patterns over orientations.
-
-    This wrapper promotes :class:`~rheedium.types.OrientationDistribution`
-    to a first-class simulator input. The azimuthal support is discretized,
-    :func:`ewald_simulator` is evaluated at each quadrature angle, and the
-    resulting sparse spot patterns are combined as an incoherent detector
-    intensity sum.
-
-    Parameters
-    ----------
-    crystal : CrystalStructure
-        Crystal structure with atomic positions and cell parameters.
-    orientation_distribution : OrientationDistribution
-        Probability distribution over azimuthal orientations in degrees.
-    voltage_kv : scalar_num, optional
-        Electron beam energy in kiloelectron volts. Default: 20.0
-    theta_deg : scalar_num, optional
-        Grazing angle of incidence in degrees. Default: 2.0
-    hmax : scalar_int, optional
-        Maximum h Miller index for CTR grid. Default: 5
-    kmax : scalar_int, optional
-        Maximum k Miller index for CTR grid. Default: 5
-    detector_distance : scalar_float, optional
-        Distance from sample to detector plane in mm. Default: 1000.0
-    temperature : scalar_float, optional
-        Temperature in Kelvin for Debye-Waller factors. Default: 300.0
-    surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms for CTR damping. Default: 0.0
-    ctr_regularization : scalar_float, optional
-        Additive regularization in the sparse CTR intensity factor.
-        Default: 0.01
-    ctr_power : scalar_float, optional
-        Exponent applied to the CTR modulation term. Default: 1.0
-    roughness_power : scalar_float, optional
-        Exponent applied to the roughness damping term. Default: 0.25
-    parameterization : str, optional
-        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
-    surface_config : SurfaceConfig | None, optional
-        Configuration for surface atom identification. Default: None
-    n_mosaic_points : scalar_int, optional
-        Quadrature points per orientation peak for mosaic broadening.
-        Default: 7. For purely discrete variants, ``1`` gives the most
-        compact sparse output.
-
-    Returns
-    -------
-    pattern : RHEEDPattern
-        Sparse detector pattern containing the weighted union of all
-        orientation-specific reflections. Intensities add incoherently.
-
-    Notes
-    -----
-    The output keeps one detector spot entry per simulated orientation sample.
-    Reflections from different orientations are not merged by Miller index,
-    because their detector coordinates generally differ. Downstream detector
-    rendering should therefore sum the returned spot intensities directly.
-    """
-    angles_deg: Float[Array, "N"]
-    weights: Float[Array, "N"]
-    angles_deg, weights = _discretize_orientation_for_sparse_pattern(
-        orientation_distribution,
-        n_mosaic_points=n_mosaic_points,
-    )
-
-    def _simulate_at_orientation(phi_deg: scalar_float) -> RHEEDPattern:
-        return ewald_simulator(
-            crystal=crystal,
-            voltage_kv=voltage_kv,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance=detector_distance,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            parameterization=parameterization,
-            surface_config=surface_config,
-        )
-
-    pattern_bank: RHEEDPattern = jax.vmap(_simulate_at_orientation)(angles_deg)
-    return _incoherent_pattern_union(pattern_bank, weights)
-
-
-@jaxtyped(typechecker=beartype)
 def render_pattern_to_image(
     pattern: RHEEDPattern,
     geometry: DetectorGeometry,
@@ -1428,7 +1284,7 @@ def render_amplitude_to_field(
 @jaxtyped(typechecker=beartype)
 def kinematic_amplitude(  # noqa: PLR0913
     crystal: CrystalStructure,
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -1455,7 +1311,7 @@ def kinematic_amplitude(  # noqa: PLR0913
     ----------
     crystal : CrystalStructure
         Crystal structure to simulate.
-    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+    energy_kev, theta_deg, phi_deg : scalar_num, optional
         Beam energy and incidence geometry.
     hmax, kmax : scalar_int, optional
         In-plane CTR grid bounds.
@@ -1504,7 +1360,7 @@ def kinematic_amplitude(  # noqa: PLR0913
     amplitudes: Complex[Array, "N"]
     sparse_pattern, amplitudes = _ewald_amplitude_pattern(
         crystal=crystal,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         hmax=hmax,
@@ -1542,7 +1398,7 @@ def kinematic_amplitude(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     crystal: CrystalStructure,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num,
     domain_size_angstrom: scalar_float,
@@ -1570,7 +1426,7 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     amplitudes: Complex[Array, "N"]
     sparse_pattern, amplitudes = _ewald_amplitude_pattern(
         crystal=crystal,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         hmax=hmax,
@@ -1591,7 +1447,7 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     domain_extent_ang: Float[Array, "3"] = (
         jnp.asarray(domain_size_angstrom, dtype=jnp.float64) * aspect_ratio
     )
-    lam_ang: Float[Array, ""] = wavelength_ang(voltage_kv)
+    lam_ang: Float[Array, ""] = wavelength_ang(energy_kev)
     k_in: Float[Array, "3"] = incident_wavevector(
         lam_ang,
         theta_deg,
@@ -2002,7 +1858,7 @@ def _apply_domain_envelope_to_potential_slices(
 def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     distributions: tuple[Distribution, ...],
     crystal: CrystalStructure,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num,
     hmax: scalar_int,
@@ -2058,8 +1914,8 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
         sample_crystal: CrystalStructure = crystal
-        sample_voltage_kv: Float[Array, ""] = jnp.asarray(
-            voltage_kv,
+        sample_energy_kev: Float[Array, ""] = jnp.asarray(
+            energy_kev,
             dtype=jnp.float64,
         )
         sample_theta_deg: Float[Array, ""] = jnp.asarray(
@@ -2082,8 +1938,8 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
                 sample_crystal = axis_update.crystal
             if axis_update.domain_size_angstrom is not None:
                 sample_domain_size_angstrom = axis_update.domain_size_angstrom
-            sample_voltage_kv = (
-                sample_voltage_kv + axis_update.voltage_delta_kv
+            sample_energy_kev = (
+                sample_energy_kev + axis_update.energy_delta_kev
             )
             sample_theta_deg = sample_theta_deg + axis_update.theta_delta_deg
             sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
@@ -2092,10 +1948,10 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
             energy_spread_frac: Float[Array, ""] = jnp.asarray(
                 energy_spread_ev,
                 dtype=jnp.float64,
-            ) / jnp.maximum(sample_voltage_kv * 1000.0, 1e-12)
+            ) / jnp.maximum(sample_energy_kev * 1000.0, 1e-12)
             return _kinematic_finite_domain_amplitude(
                 crystal=sample_crystal,
-                voltage_kv=sample_voltage_kv,
+                energy_kev=sample_energy_kev,
                 theta_deg=sample_theta_deg,
                 phi_deg=sample_phi_deg,
                 domain_size_angstrom=sample_domain_size_angstrom,
@@ -2121,7 +1977,7 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
 
         return kinematic_amplitude(
             crystal=sample_crystal,
-            voltage_kv=sample_voltage_kv,
+            energy_kev=sample_energy_kev,
             theta_deg=sample_theta_deg,
             phi_deg=sample_phi_deg,
             hmax=hmax,
@@ -2149,7 +2005,7 @@ def _bind_multislice_distributions(  # noqa: PLR0913
     distributions: tuple[Distribution, ...],
     crystal: CrystalStructure,
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num,
     detector_distance_mm: scalar_float,
@@ -2197,8 +2053,8 @@ def _bind_multislice_distributions(  # noqa: PLR0913
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
         sample_potential_slices: PotentialSlices = potential_slices
-        sample_voltage_kv: Float[Array, ""] = jnp.asarray(
-            voltage_kv,
+        sample_energy_kev: Float[Array, ""] = jnp.asarray(
+            energy_kev,
             dtype=jnp.float64,
         )
         sample_theta_deg: Float[Array, ""] = jnp.asarray(
@@ -2244,15 +2100,15 @@ def _bind_multislice_distributions(  # noqa: PLR0913
                 sample_spot_sigma_px = jnp.sqrt(
                     sample_spot_sigma_px**2 + finite_sigma_px**2
                 )
-            sample_voltage_kv = (
-                sample_voltage_kv + axis_update.voltage_delta_kv
+            sample_energy_kev = (
+                sample_energy_kev + axis_update.energy_delta_kev
             )
             sample_theta_deg = sample_theta_deg + axis_update.theta_delta_deg
             sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
 
         return multislice_detector_amplitude(
             potential_slices=sample_potential_slices,
-            voltage_kv=sample_voltage_kv,
+            energy_kev=sample_energy_kev,
             theta_deg=sample_theta_deg,
             phi_deg=sample_phi_deg,
             detector_distance_mm=detector_distance_mm,
@@ -2396,7 +2252,7 @@ def _detector_image_distributions(  # noqa: PLR0913
 def _apply_kinematic_beam_distribution(  # noqa: PLR0913
     distribution: Distribution,
     crystal: CrystalStructure,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num,
     hmax: scalar_int,
@@ -2419,7 +2275,7 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
     theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
     phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
     voltage_nominal: Float[Array, ""] = jnp.asarray(
-        voltage_kv,
+        energy_kev,
         dtype=jnp.float64,
     )
 
@@ -2430,12 +2286,12 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
             sample[0]
         )
         phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(sample[1])
-        voltage_sample_kv: Float[Array, ""] = (
+        energy_sample_kev: Float[Array, ""] = (
             voltage_nominal + 1.0e-3 * sample[2]
         )
         return kinematic_amplitude(
             crystal=crystal,
-            voltage_kv=voltage_sample_kv,
+            energy_kev=energy_sample_kev,
             theta_deg=theta_sample_deg,
             phi_deg=phi_sample_deg,
             hmax=hmax,
@@ -2464,7 +2320,7 @@ def _apply_kinematic_beam_distribution(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def simulate_detector_image(  # noqa: PLR0913
     crystal: CrystalStructure,
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -2507,7 +2363,7 @@ def simulate_detector_image(  # noqa: PLR0913
     ----------
     crystal : CrystalStructure
         Crystal structure to simulate.
-    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+    energy_kev, theta_deg, phi_deg : scalar_num, optional
         Beam energy and incidence geometry. Defaults are 20 keV, 2°, 0°.
     hmax, kmax : scalar_int, optional
         In-plane CTR grid bounds. Default: 5, 5.
@@ -2636,7 +2492,7 @@ def simulate_detector_image(  # noqa: PLR0913
         bound = _bind_kinematic_distributions(
             distributions=distributions,
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=hmax,
@@ -2671,7 +2527,7 @@ def simulate_detector_image(  # noqa: PLR0913
             distributions=distributions,
             crystal=crystal,
             potential_slices=potential_slices,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             detector_distance_mm=detector_geometry_distance_mm(
@@ -2701,7 +2557,7 @@ def simulate_detector_image(  # noqa: PLR0913
 def simulate_detector_image_instrument(  # noqa: PLR0913
     crystal: CrystalStructure,
     beam_modes: BeamModeDistribution,
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -2734,7 +2590,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
         Crystal structure to simulate.
     beam_modes : BeamModeDistribution
         GSM source parameters defining angular and longitudinal modes.
-    voltage_kv, theta_deg, phi_deg : scalar_num, optional
+    energy_kev, theta_deg, phi_deg : scalar_num, optional
         Nominal beam energy and incidence geometry.
     hmax, kmax : scalar_int, optional
         In-plane CTR grid bounds.
@@ -2796,7 +2652,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
     modal_image: Float[Array, "H W"] = _apply_kinematic_beam_distribution(
         distribution,
         crystal=crystal,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         hmax=hmax,
@@ -2981,7 +2837,7 @@ def sliced_crystal_to_projected_potential_slices(
 @jaxtyped(typechecker=beartype)
 def multislice_propagate(
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     inner_potential_v0: scalar_float = 0.0,
@@ -3007,7 +2863,7 @@ def multislice_propagate(
     ----------
     potential_slices : PotentialSlices
         3D array of projected potentials with shape (nz, nx, ny)
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kilovolts
     theta_deg : scalar_float
         Grazing incidence angle in degrees
@@ -3081,9 +2937,9 @@ def multislice_propagate(
     dy: scalar_float = potential_slices.y_calibration
     nx: int = v_slices.shape[1]
     ny: int = v_slices.shape[2]
-    lam_ang: scalar_float = wavelength_ang(voltage_kv)
+    lam_ang: scalar_float = wavelength_ang(energy_kev)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-    sigma: scalar_float = interaction_constant(voltage_kv, lam_ang)
+    sigma: scalar_float = interaction_constant(energy_kev, lam_ang)
     x: Float[Array, " nx"] = jnp.arange(nx) * dx
     y: Float[Array, " ny"] = jnp.arange(ny) * dy
     kx: Float[Array, " nx"] = jnp.fft.fftfreq(nx, dx)
@@ -3093,7 +2949,7 @@ def multislice_propagate(
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
-    voltage_v: scalar_float = voltage_kv * 1000.0
+    voltage_v: scalar_float = energy_kev * 1000.0
     refraction_index: scalar_float = jnp.sqrt(
         jnp.maximum(1.0 + inner_potential_v0 / voltage_v, 1e-12)
     )
@@ -3147,7 +3003,7 @@ def multislice_propagate(
 @jaxtyped(typechecker=beartype)
 def multislice_amplitude(
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     inner_potential_v0: scalar_float = 0.0,
@@ -3161,7 +3017,7 @@ def multislice_amplitude(
     ----------
     potential_slices : PotentialSlices
         Projected potential slices with shape ``(nz, nx, ny)``.
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kilovolts.
     theta_deg : scalar_float
         Grazing incidence angle in degrees.
@@ -3192,7 +3048,7 @@ def multislice_amplitude(
     """
     exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
         potential_slices=potential_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         inner_potential_v0=inner_potential_v0,
@@ -3205,7 +3061,7 @@ def multislice_amplitude(
 @jaxtyped(typechecker=beartype)
 def _multislice_amplitude_pattern(  # noqa: PLR0913
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     detector_distance_mm: scalar_float = 100.0,
@@ -3215,7 +3071,7 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     """Project multislice reciprocal amplitudes onto detector coordinates."""
     exit_wave_k: Complex[Array, "nx ny"] = multislice_amplitude(
         potential_slices=potential_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         inner_potential_v0=inner_potential_v0,
@@ -3230,7 +3086,7 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     kx_grid: Float[Array, "nx ny"]
     ky_grid: Float[Array, "nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
-    lam_ang: scalar_float = wavelength_ang(voltage_kv)
+    lam_ang: scalar_float = wavelength_ang(energy_kev)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
@@ -3283,7 +3139,7 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def multislice_detector_amplitude(  # noqa: PLR0913
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     detector_distance_mm: scalar_float = 100.0,
@@ -3297,7 +3153,7 @@ def multislice_detector_amplitude(  # noqa: PLR0913
     """Render multislice coherent amplitudes onto a detector field."""
     pattern, amplitudes = _multislice_amplitude_pattern(
         potential_slices=potential_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         detector_distance_mm=detector_distance_mm,
@@ -3321,7 +3177,7 @@ def multislice_detector_amplitude(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def multislice_simulator(
     potential_slices: PotentialSlices,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     theta_deg: scalar_float,
     phi_deg: scalar_float = 0.0,
     detector_distance: scalar_float = 100.0,
@@ -3355,7 +3211,7 @@ def multislice_simulator(
     potential_slices : PotentialSlices
         3D array of projected potentials from
         sliced_crystal_to_projected_potential_slices()
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kilovolts (typically 10-30 keV for RHEED)
     theta_deg : scalar_float
         Grazing incidence angle in degrees (typically 1-5°)
@@ -3421,7 +3277,7 @@ def multislice_simulator(
     """
     exit_wave_k: Complex[Array, "nx ny"] = multislice_amplitude(
         potential_slices=potential_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
         inner_potential_v0=inner_potential_v0,
@@ -3436,7 +3292,7 @@ def multislice_simulator(
     kx_grid: Float[Array, "nx ny"]
     ky_grid: Float[Array, "nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
-    lam_ang: scalar_float = wavelength_ang(voltage_kv)
+    lam_ang: scalar_float = wavelength_ang(energy_kev)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
     theta_rad: scalar_float = jnp.deg2rad(theta_deg)
     phi_rad: scalar_float = jnp.deg2rad(phi_deg)
@@ -3548,7 +3404,6 @@ __all__: list[str] = [
     "checked_simulate_detector_image",
     "compute_kinematic_intensities_with_ctrs",
     "detector_extent_mm",
-    "ewald_simulator_with_orientation_distribution",
     "ewald_simulator",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",

@@ -39,7 +39,7 @@ class TestDistributionBindHelpers(chex.TestCase):
         update = bound(distribution.samples[0])
 
         assert update.crystal is None
-        chex.assert_trees_all_close(update.voltage_delta_kv, 4.0e-3)
+        chex.assert_trees_all_close(update.energy_delta_kev, 4.0e-3)
         chex.assert_trees_all_close(update.theta_delta_deg, jnp.rad2deg(1e-3))
         chex.assert_trees_all_close(update.phi_delta_deg, jnp.rad2deg(-2e-3))
         assert update.domain_size_angstrom is None

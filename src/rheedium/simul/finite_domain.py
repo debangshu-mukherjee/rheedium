@@ -452,7 +452,7 @@ def finite_domain_intensities(
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> ewald = rh.simul.build_ewald_data(
-    ...     crystal, voltage_kv=15.0, hmax=3, kmax=3, lmax=2
+    ...     crystal, energy_kev=15.0, hmax=3, kmax=3, lmax=2
     ... )
     >>> domain = jnp.array([100.0, 100.0, 50.0])
     >>> overlap, intensities = rh.simul.finite_domain_intensities(

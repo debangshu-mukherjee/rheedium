@@ -60,10 +60,16 @@ Each entry summarizes the commits that landed for that version bump in
 - Removed the orphan `coherence_envelope` beam helper from the public surface;
   partial coherence is represented through beam-mode distributions, and
   `SizeDistribution` is consumed by the finite-domain intensity bridge.
-- Began R2 averaging collapse: pattern-space grain/domain mixers and
-  `instrument_broadened_pattern` now build generic `Distribution` axes and
-  reduce through `apply_distributions`, with inventory guards preventing the
-  retired bespoke weighted-sum and nested quadrature bodies from returning.
+- Completed the R2/RG2 averaging collapse: pattern-space grain/domain mixers,
+  `instrument_broadened_pattern`, and `integrate_over_orientation` now build
+  generic `Distribution` axes and reduce through the shared Layer-1 reducers.
+  The standalone `ewald_simulator_with_orientation_distribution` sparse wrapper
+  was removed; route orientation ensembles through
+  `simulate_detector_image(orientation_distribution=...)`.
+- Began W7 naming cleanup: code and tests now use `energy_kev` for beam energy
+  in keV, deleting the old `voltage_kv` name from the checked code surface.
+  Internal `voltage_v` locals remain only where calculations are explicitly in
+  volts.
 
 ## [2026.6.6] - 2026-06-23
 

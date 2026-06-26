@@ -9,6 +9,7 @@ case launches a subprocess that imports rheedium and reports the resolved
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import chex
 
@@ -16,6 +17,7 @@ _PROBE: str = (
     "import os, rheedium; "
     "print('EQX=' + os.environ.get('EQX_ON_ERROR', '<unset>'))"
 )
+_REPO_ROOT: Path = Path(__file__).parents[2]
 
 
 def _resolved_eqx_on_error(**overrides: str) -> str:
@@ -61,3 +63,24 @@ class TestRuntimeCheckToggle(chex.TestCase):
             )
             == "nan"
         )
+
+
+class TestNamingGuards(chex.TestCase):
+    """Tests for public naming consistency."""
+
+    def test_code_uses_energy_kev_not_old_beam_name(self) -> None:
+        """W7: code and tests should use energy_kev for keV beam energy."""
+        old_name = "voltage" + "_kv"
+        offenders: list[str] = []
+        for root_name in ("src", "tests"):
+            root = _REPO_ROOT / root_name
+            for path in root.rglob("*"):
+                if (
+                    path.is_file()
+                    and "__pycache__" not in path.parts
+                    and path.suffix in {".py", ".json"}
+                ):
+                    text = path.read_text(encoding="utf-8")
+                    if old_name in text:
+                        offenders.append(str(path.relative_to(_REPO_ROOT)))
+        self.assertEqual(offenders, [])

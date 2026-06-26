@@ -126,7 +126,7 @@ def _compute_structure_factor_single(
 @jaxtyped(typechecker=beartype)
 def build_ewald_data(
     crystal: CrystalStructure,
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     hmax: scalar_int,
     kmax: scalar_int,
     lmax: scalar_int,
@@ -148,7 +148,7 @@ def build_ewald_data(
         Symmetry-expanded crystal structure with atomic positions and cell
         parameters. Must have complete unit cell (all symmetry-equivalent
         atoms present).
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Electron beam accelerating voltage in kilovolts. Typical RHEED
         values: 10-30 kV.
     hmax : scalar_int
@@ -196,7 +196,7 @@ def build_ewald_data(
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> ewald = rh.simul.build_ewald_data(
     ...     crystal=crystal,
-    ...     voltage_kv=15.0,
+    ...     energy_kev=15.0,
     ...     hmax=3,
     ...     kmax=3,
     ...     lmax=2,
@@ -213,13 +213,13 @@ def build_ewald_data(
     """
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
-    voltage_kv_arr: Float[Array, ""] = jnp.asarray(
-        voltage_kv, dtype=jnp.float64
+    energy_kev_arr: Float[Array, ""] = jnp.asarray(
+        energy_kev, dtype=jnp.float64
     )
     temperature_arr: Float[Array, ""] = jnp.asarray(
         temperature, dtype=jnp.float64
     )
-    wavelength: Float[Array, ""] = wavelength_ang(voltage_kv_arr)
+    wavelength: Float[Array, ""] = wavelength_ang(energy_kev_arr)
     k_mag: Float[Array, ""] = 2.0 * jnp.pi / wavelength
     sphere_rad: Float[Array, ""] = k_mag
     cell_lengths: Float[Array, "3"] = crystal.cell_lengths
@@ -366,7 +366,7 @@ def ewald_allowed_reflections(
     >>> import rheedium as rh
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> ewald = rh.simul.build_ewald_data(crystal,
-                                          voltage_kv=15.0,
+                                          energy_kev=15.0,
                                           hmax=3, kmax=3, lmax=2)
     >>> indices, k_out, intensities = rh.simul.ewald_allowed_reflections(
     ...     ewald=ewald,

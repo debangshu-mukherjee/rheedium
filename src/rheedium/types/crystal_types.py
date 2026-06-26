@@ -248,7 +248,7 @@ class EwaldData(eqx.Module):
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> ewald = rh.ucell.build_ewald_data(
     ...     crystal=crystal,
-    ...     voltage_kv=15.0,
+    ...     energy_kev=15.0,
     ...     hmax=3,
     ...     kmax=3,
     ...     lmax=2,

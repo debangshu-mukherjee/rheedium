@@ -175,7 +175,7 @@ def simple_structure_factor(
 @jaxtyped(typechecker=beartype)
 def kinematic_spot_simulator(
     crystal: CrystalStructure,
-    voltage_kv: scalar_float = 20.0,
+    energy_kev: scalar_float = 20.0,
     theta_deg: scalar_float = 2.0,
     hmax: scalar_int = 3,
     kmax: scalar_int = 3,
@@ -195,7 +195,7 @@ def kinematic_spot_simulator(
     ----------
     crystal : CrystalStructure
         Crystal structure with atomic positions and cell parameters.
-    voltage_kv : scalar_float, optional
+    energy_kev : scalar_float, optional
         Electron beam voltage in kilovolts. Default: 20.0
     theta_deg : scalar_float, optional
         Grazing incidence angle in degrees. Default: 2.0
@@ -241,7 +241,7 @@ def kinematic_spot_simulator(
     >>> crystal = rh.inout.parse_cif("MgO.cif")
     >>> pattern = rh.simul.kinematic_spot_simulator(
     ...     crystal=crystal,
-    ...     voltage_kv=20.0,
+    ...     energy_kev=20.0,
     ...     theta_deg=2.0,
     ...     hmax=3,
     ...     kmax=3,
@@ -260,7 +260,7 @@ def kinematic_spot_simulator(
         lmax=lmax,
         in_degrees=True,
     )
-    wavelength: scalar_float = wavelength_ang(voltage_kv)
+    wavelength: scalar_float = wavelength_ang(energy_kev)
     k_in: Float[Array, "3"] = incident_wavevector(
         wavelength, theta_deg, phi_deg=0.0
     )

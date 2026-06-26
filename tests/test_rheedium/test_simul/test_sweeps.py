@@ -60,7 +60,7 @@ class TestDetectorImageSweeps(chex.TestCase):
         value: scalar_float = (
             kwargs["phi_deg"]
             + 10.0 * kwargs["theta_deg"]
-            + 100.0 * kwargs["voltage_kv"]
+            + 100.0 * kwargs["energy_kev"]
             + 1000.0 * kwargs["surface_roughness"]
         )
         return jnp.full((2, 3), value, dtype=jnp.float64)
@@ -75,7 +75,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                 simulate_detector_image_phi_sweep(
                     crystal=_SI_CRYSTAL_2ATOM,
                     phi_deg_values=jnp.array([0.0, 15.0, 30.0]),
-                    voltage_kv=1.0,
+                    energy_kev=1.0,
                     theta_deg=2.0,
                     surface_roughness=0.0,
                 )
@@ -95,7 +95,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                 simulate_detector_image_orientation_sweep(
                     crystal=_SI_CRYSTAL_2ATOM,
                     orientation_deg_values=jnp.array([0.0, 15.0, 30.0]),
-                    voltage_kv=1.0,
+                    energy_kev=1.0,
                     theta_deg=2.0,
                     surface_roughness=0.0,
                 )
@@ -115,7 +115,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                 simulate_detector_image_theta_sweep(
                     crystal=_SI_CRYSTAL_2ATOM,
                     theta_deg_values=jnp.array([1.0, 2.0, 3.0]),
-                    voltage_kv=1.0,
+                    energy_kev=1.0,
                     phi_deg=5.0,
                     surface_roughness=0.0,
                 )
@@ -134,7 +134,7 @@ class TestDetectorImageSweeps(chex.TestCase):
             image_bank: Float[Array, "..."] = (
                 simulate_detector_image_energy_sweep(
                     crystal=_SI_CRYSTAL_2ATOM,
-                    voltage_kv_values=jnp.array([1.0, 2.0, 3.0]),
+                    energy_kev_values=jnp.array([1.0, 2.0, 3.0]),
                     theta_deg=2.0,
                     phi_deg=5.0,
                     surface_roughness=0.0,
@@ -155,7 +155,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                 simulate_detector_image_roughness_sweep(
                     crystal=_SI_CRYSTAL_2ATOM,
                     surface_roughness_values=jnp.array([0.0, 0.5, 1.0]),
-                    voltage_kv=1.0,
+                    energy_kev=1.0,
                     theta_deg=2.0,
                     phi_deg=5.0,
                 )
@@ -176,7 +176,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                     crystal=_SI_CRYSTAL_2ATOM,
                     phi_deg_values=jnp.array([0.0, 5.0]),
                     theta_deg_values=jnp.array([1.0, 2.0, 3.0]),
-                    voltage_kv_values=jnp.array([1.0, 2.0]),
+                    energy_kev_values=jnp.array([1.0, 2.0]),
                     surface_roughness=0.0,
                 )
             )
@@ -200,7 +200,7 @@ class TestDetectorImageSweeps(chex.TestCase):
                     crystal=_SI_CRYSTAL_2ATOM,
                     orientation_deg_values=jnp.array([0.0, 5.0]),
                     theta_deg_values=jnp.array([1.0, 2.0, 3.0]),
-                    voltage_kv_values=jnp.array([1.0, 2.0]),
+                    energy_kev_values=jnp.array([1.0, 2.0]),
                     surface_roughness=0.0,
                 )
             )
@@ -221,13 +221,13 @@ class TestDetectorImageSweeps(chex.TestCase):
         image_bank: Float[Array, "..."] = (
             simulate_detector_image_orientation_sweep(
                 orientation_deg_values=orientations,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 **kwargs,
             )
         )
         reference: Float[Array, "..."] = simulate_detector_image(
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=orientations[0],
             **kwargs,
@@ -245,12 +245,12 @@ class TestDetectorImageSweeps(chex.TestCase):
 
         image_bank: Float[Array, "..."] = simulate_detector_image_theta_sweep(
             theta_deg_values=theta_values,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             phi_deg=0.0,
             **kwargs,
         )
         reference: Float[Array, "..."] = simulate_detector_image(
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta_values[0],
             phi_deg=0.0,
             **kwargs,
@@ -267,13 +267,13 @@ class TestDetectorImageSweeps(chex.TestCase):
         voltages: Float[Array, "2"] = jnp.array([15.0, 25.0])
 
         image_bank: Float[Array, "..."] = simulate_detector_image_energy_sweep(
-            voltage_kv_values=voltages,
+            energy_kev_values=voltages,
             theta_deg=2.0,
             phi_deg=0.0,
             **kwargs,
         )
         reference: Float[Array, "..."] = simulate_detector_image(
-            voltage_kv=voltages[0],
+            energy_kev=voltages[0],
             theta_deg=2.0,
             phi_deg=0.0,
             **kwargs,

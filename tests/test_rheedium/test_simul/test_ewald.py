@@ -344,7 +344,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test basic EwaldData creation with minimal parameters."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -365,14 +365,14 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that wavelength is correctly computed from voltage."""
         ewald_10kv: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=10.0,
+            energy_kev=10.0,
             hmax=1,
             kmax=1,
             lmax=1,
         )
         ewald_20kv: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=1,
             kmax=1,
             lmax=1,
@@ -391,7 +391,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that k_magnitude = 2*pi / wavelength."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=1,
             kmax=1,
             lmax=1,
@@ -404,7 +404,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that Ewald sphere radius equals k magnitude."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=1,
             kmax=1,
             lmax=1,
@@ -425,7 +425,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that the correct number of G vectors are generated."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=hmax,
             kmax=kmax,
             lmax=lmax,
@@ -441,7 +441,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that intensities = |structure_factors|^2."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -458,7 +458,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that all intensities are non-negative."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -470,7 +470,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that all G magnitudes are non-negative."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -482,7 +482,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that g_magnitudes matches norm of g_vectors."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -499,7 +499,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         """Test that temperature affects structure factors/intensities."""
         ewald_low_t: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -507,7 +507,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         )
         ewald_high_t: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=2,
             kmax=2,
             lmax=1,
@@ -530,7 +530,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         self.crystal: CrystalStructure = self._create_simple_cubic_crystal()
         self.ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             hmax=3,
             kmax=3,
             lmax=2,

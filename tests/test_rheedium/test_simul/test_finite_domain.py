@@ -518,7 +518,7 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         # Build EwaldData
         self.ewald: Any = build_ewald_data(
             crystal=self.crystal,
-            voltage_kv=15.0,
+            energy_kev=15.0,
             hmax=2,
             kmax=2,
             lmax=1,

@@ -43,7 +43,7 @@ class KinematicAxisUpdate(NamedTuple):
     """Kernel-local updates produced by one kinematic axis sample."""
 
     crystal: CrystalStructure | None
-    voltage_delta_kv: Any
+    energy_delta_kev: Any
     theta_delta_deg: Any
     phi_delta_deg: Any
     domain_size_angstrom: Any | None
@@ -53,7 +53,7 @@ class MultisliceAxisUpdate(NamedTuple):
     """Kernel-local updates produced by one multislice axis sample."""
 
     crystal: CrystalStructure | None
-    voltage_delta_kv: Any
+    energy_delta_kev: Any
     theta_delta_deg: Any
     phi_delta_deg: Any
     domain_size_angstrom: Any | None
@@ -114,7 +114,7 @@ def bind_kinematic_axis_distribution(
         if axis_id in BEAM_AXIS_IDS:
             return KinematicAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=1.0e-3 * axis_sample[2],
+                energy_delta_kev=1.0e-3 * axis_sample[2],
                 theta_delta_deg=jnp.rad2deg(axis_sample[0]),
                 phi_delta_deg=jnp.rad2deg(axis_sample[1]),
                 domain_size_angstrom=None,
@@ -122,7 +122,7 @@ def bind_kinematic_axis_distribution(
         if axis_id == "twins":
             return KinematicAxisUpdate(
                 crystal=twin_builder(axis_sample),
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=None,
@@ -130,7 +130,7 @@ def bind_kinematic_axis_distribution(
         if axis_id == "steps":
             return KinematicAxisUpdate(
                 crystal=step_builder(axis_sample),
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=None,
@@ -138,7 +138,7 @@ def bind_kinematic_axis_distribution(
         if axis_id in GRAIN_AXIS_IDS:
             return KinematicAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=axis_sample[0],
                 domain_size_angstrom=axis_sample[1],
@@ -146,14 +146,14 @@ def bind_kinematic_axis_distribution(
         if axis_id in SIZE_AXIS_IDS:
             return KinematicAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=axis_sample[0],
             )
         return KinematicAxisUpdate(
             crystal=None,
-            voltage_delta_kv=0.0,
+            energy_delta_kev=0.0,
             theta_delta_deg=0.0,
             phi_delta_deg=axis_sample[0],
             domain_size_angstrom=None,
@@ -217,7 +217,7 @@ def bind_multislice_axis_distribution(
         if axis_id in BEAM_AXIS_IDS:
             return MultisliceAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=1.0e-3 * axis_sample[2],
+                energy_delta_kev=1.0e-3 * axis_sample[2],
                 theta_delta_deg=jnp.rad2deg(axis_sample[0]),
                 phi_delta_deg=jnp.rad2deg(axis_sample[1]),
                 domain_size_angstrom=None,
@@ -225,7 +225,7 @@ def bind_multislice_axis_distribution(
         if axis_id == "twins":
             return MultisliceAxisUpdate(
                 crystal=twin_builder(axis_sample),
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=None,
@@ -233,7 +233,7 @@ def bind_multislice_axis_distribution(
         if axis_id == "steps":
             return MultisliceAxisUpdate(
                 crystal=step_builder(axis_sample),
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=None,
@@ -241,7 +241,7 @@ def bind_multislice_axis_distribution(
         if axis_id in GRAIN_AXIS_IDS:
             return MultisliceAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=axis_sample[0],
                 domain_size_angstrom=axis_sample[1],
@@ -249,14 +249,14 @@ def bind_multislice_axis_distribution(
         if axis_id in SIZE_AXIS_IDS:
             return MultisliceAxisUpdate(
                 crystal=None,
-                voltage_delta_kv=0.0,
+                energy_delta_kev=0.0,
                 theta_delta_deg=0.0,
                 phi_delta_deg=0.0,
                 domain_size_angstrom=axis_sample[0],
             )
         return MultisliceAxisUpdate(
             crystal=None,
-            voltage_delta_kv=0.0,
+            energy_delta_kev=0.0,
             theta_delta_deg=0.0,
             phi_delta_deg=axis_sample[0],
             domain_size_angstrom=None,

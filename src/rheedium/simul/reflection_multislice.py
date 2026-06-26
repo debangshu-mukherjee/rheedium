@@ -107,7 +107,7 @@ def _bandlimit_mask(
 
 def _flat_step_specular_reflectivity(
     slices: EdgeOnSlices,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
 ) -> tuple[Float[Array, ""], Float[Array, ""]]:
     """Return Fresnel reflectivity and a mask for a uniform potential step."""
@@ -134,7 +134,7 @@ def _flat_step_specular_reflectivity(
         & (vacuum_count > 0)
     )
 
-    voltage_arr = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    voltage_arr = jnp.asarray(energy_kev, dtype=jnp.float64)
     theta_rad = jnp.deg2rad(jnp.asarray(theta_deg, dtype=jnp.float64))
     wavelength = wavelength_ang(voltage_arr)
     k_mag = 2.0 * jnp.pi / wavelength
@@ -292,7 +292,7 @@ def crystal_to_edge_on_slices(
 @jaxtyped(typechecker=beartype)
 def reflection_multislice_propagate(
     slices: EdgeOnSlices,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num = 0.0,
     cap_strength: scalar_float = 50.0,
@@ -306,7 +306,7 @@ def reflection_multislice_propagate(
     ----------
     slices : EdgeOnSlices
         Edge-on projected-potential slices.
-    voltage_kv : scalar_num
+    energy_kev : scalar_num
         Electron beam energy in kilovolts.
     theta_deg : scalar_num
         Grazing incidence angle in degrees.
@@ -334,7 +334,7 @@ def reflection_multislice_propagate(
     reflection_multislice_simulator : Read off reflected beams.
     """
     _require_phi_zero(phi_deg)
-    voltage_arr = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    voltage_arr = jnp.asarray(energy_kev, dtype=jnp.float64)
     theta_rad = jnp.deg2rad(jnp.asarray(theta_deg, dtype=jnp.float64))
     wavelength = wavelength_ang(voltage_arr)
     k_mag = 2.0 * jnp.pi / wavelength
@@ -381,7 +381,7 @@ def reflection_multislice_propagate(
 @jaxtyped(typechecker=beartype)
 def reflection_multislice_simulator(  # noqa: PLR0913
     crystal: CrystalStructure,
-    voltage_kv: scalar_num = 30.0,
+    energy_kev: scalar_num = 30.0,
     theta_deg: scalar_num = 2.5,
     phi_deg: scalar_num = 0.0,
     detector_distance: scalar_float = 80.0,
@@ -400,7 +400,7 @@ def reflection_multislice_simulator(  # noqa: PLR0913
     ----------
     crystal : CrystalStructure
         Surface-oriented slab with ``+z`` pointing into vacuum.
-    voltage_kv : scalar_num, optional
+    energy_kev : scalar_num, optional
         Electron beam energy in kilovolts.
     theta_deg : scalar_num, optional
         Grazing incidence angle in degrees.
@@ -450,14 +450,14 @@ def reflection_multislice_simulator(  # noqa: PLR0913
     )
     wavefield = reflection_multislice_propagate(
         edge_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         phi_deg=phi_deg,
     )
     return _read_reflected_pattern(
         wavefield=wavefield,
         slices=edge_slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
         detector_distance=detector_distance,
     )
@@ -467,12 +467,12 @@ def reflection_multislice_simulator(  # noqa: PLR0913
 def _read_reflected_pattern(
     wavefield: Complex[Array, "ny nz"],
     slices: EdgeOnSlices,
-    voltage_kv: scalar_num,
+    energy_kev: scalar_num,
     theta_deg: scalar_num,
     detector_distance: scalar_float,
 ) -> RHEEDPattern:
     """Project the final vacuum wavefield onto up-going channels."""
-    voltage_arr = jnp.asarray(voltage_kv, dtype=jnp.float64)
+    voltage_arr = jnp.asarray(energy_kev, dtype=jnp.float64)
     theta_rad = jnp.deg2rad(jnp.asarray(theta_deg, dtype=jnp.float64))
     wavelength = wavelength_ang(voltage_arr)
     k_mag = 2.0 * jnp.pi / wavelength
@@ -501,7 +501,7 @@ def _read_reflected_pattern(
     intensities = jnp.where(propagating, jnp.abs(amplitudes) ** 2, 0.0)
     fresnel_reflectivity, flat_step_weight = _flat_step_specular_reflectivity(
         slices=slices,
-        voltage_kv=voltage_kv,
+        energy_kev=energy_kev,
         theta_deg=theta_deg,
     )
     specular_intensity = (

@@ -897,7 +897,7 @@ def plot_rod_broadening(
 
 @beartype
 def plot_ewald_sphere_2d(
-    voltage_kv: float = 15.0,
+    energy_kev: float = 15.0,
     theta_deg: float = 2.0,
     lattice_spacing: float = 4.0,
     n_rods: int = 7,
@@ -911,7 +911,7 @@ def plot_ewald_sphere_2d(
 
     Parameters
     ----------
-    voltage_kv : float, optional
+    energy_kev : float, optional
         Electron beam voltage in kV. Default: 15.0
     theta_deg : float, optional
         Grazing angle in degrees. Default: 2.0
@@ -945,7 +945,7 @@ def plot_ewald_sphere_2d(
     if ax is None:
         fig: Figure
         fig, ax = plt.subplots(figsize=(12, 8))
-    voltage_v: float = voltage_kv * 1000.0
+    voltage_v: float = energy_kev * 1000.0
     wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
         voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
@@ -1002,7 +1002,7 @@ def plot_ewald_sphere_2d(
     ax.set_xlabel("$q_x$ (1/A)", fontsize=12)
     ax.set_ylabel("$q_z$ (1/A)", fontsize=12)
     ax.set_title(
-        f"Ewald Sphere Construction ({voltage_kv:.0f} kV, "
+        f"Ewald Sphere Construction ({energy_kev:.0f} kV, "
         f"$\\theta$ = {theta_deg}$^\\circ$)",
         fontsize=14,
     )
@@ -1016,7 +1016,7 @@ def plot_ewald_sphere_2d(
 
 @beartype
 def plot_ewald_sphere_3d(
-    voltage_kv: float = 15.0,
+    energy_kev: float = 15.0,
     theta_deg: float = 2.0,
     phi_deg: float = 0.0,
     lattice_spacing: float = 4.0,
@@ -1032,7 +1032,7 @@ def plot_ewald_sphere_3d(
 
     Parameters
     ----------
-    voltage_kv : float, optional
+    energy_kev : float, optional
         Electron beam voltage in kV. Default: 15.0
     theta_deg : float, optional
         Grazing angle in degrees. Default: 2.0
@@ -1071,7 +1071,7 @@ def plot_ewald_sphere_3d(
     if ax is None:
         fig: Any = plt.figure(figsize=(10, 8))
         ax: Any = fig.add_subplot(111, projection="3d")
-    voltage_v: float = voltage_kv * 1000.0
+    voltage_v: float = energy_kev * 1000.0
     wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
         voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
@@ -1124,7 +1124,7 @@ def plot_ewald_sphere_3d(
     ax.set_xlabel("$q_x$ (1/A)", fontsize=10)
     ax.set_ylabel("$q_y$ (1/A)", fontsize=10)
     ax.set_zlabel("$q_z$ (1/A)", fontsize=10)
-    ax.set_title(f"3D Ewald Sphere ({voltage_kv:.0f} kV)", fontsize=12)
+    ax.set_title(f"3D Ewald Sphere ({energy_kev:.0f} kV)", fontsize=12)
     ax.view_init(elev=elev, azim=azim)
     return ax
 

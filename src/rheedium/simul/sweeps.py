@@ -31,7 +31,7 @@ from .simulator import simulate_detector_image
 def simulate_detector_image_phi_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
     phi_deg_values: Float[Array, "N"],
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     hmax: scalar_int = 5,
     kmax: scalar_int = 5,
@@ -61,7 +61,7 @@ def simulate_detector_image_phi_sweep(  # noqa: PLR0913
     def _simulate_one(phi_deg: scalar_float) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=hmax,
@@ -94,7 +94,7 @@ def simulate_detector_image_phi_sweep(  # noqa: PLR0913
 def simulate_detector_image_orientation_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
     orientation_deg_values: Float[Array, "N"],
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     hmax: scalar_int = 5,
     kmax: scalar_int = 5,
@@ -124,7 +124,7 @@ def simulate_detector_image_orientation_sweep(  # noqa: PLR0913
     def _simulate_one(orientation_deg: scalar_float) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=orientation_deg,
             hmax=hmax,
@@ -157,7 +157,7 @@ def simulate_detector_image_orientation_sweep(  # noqa: PLR0913
 def simulate_detector_image_theta_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
     theta_deg_values: Float[Array, "N"],
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
     kmax: scalar_int = 5,
@@ -187,7 +187,7 @@ def simulate_detector_image_theta_sweep(  # noqa: PLR0913
     def _simulate_one(theta_deg: scalar_float) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=hmax,
@@ -219,7 +219,7 @@ def simulate_detector_image_theta_sweep(  # noqa: PLR0913
 @jaxtyped(typechecker=beartype)
 def simulate_detector_image_energy_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
-    voltage_kv_values: Float[Array, "N"],
+    energy_kev_values: Float[Array, "N"],
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -245,12 +245,12 @@ def simulate_detector_image_energy_sweep(  # noqa: PLR0913
     render_ctrs_as_streaks: bool = True,
 ) -> Float[Array, "N H W"]:
     """Simulate detector images over beam energy using ``jax.vmap``."""
-    voltage_bank: Float[Array, "N"] = jnp.asarray(voltage_kv_values)
+    energy_bank: Float[Array, "N"] = jnp.asarray(energy_kev_values)
 
-    def _simulate_one(voltage_kv: scalar_float) -> Float[Array, "H W"]:
+    def _simulate_one(energy_kev: scalar_float) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=hmax,
@@ -276,7 +276,7 @@ def simulate_detector_image_energy_sweep(  # noqa: PLR0913
             render_ctrs_as_streaks=render_ctrs_as_streaks,
         )
 
-    return jax.vmap(_simulate_one)(voltage_bank)
+    return jax.vmap(_simulate_one)(energy_bank)
 
 
 @jaxtyped(typechecker=beartype)
@@ -284,7 +284,7 @@ def simulate_detector_image_all_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
     orientation_deg_values: Float[Array, "N_orientation"],
     theta_deg_values: Float[Array, "N_theta"],
-    voltage_kv_values: Float[Array, "N_voltage"],
+    energy_kev_values: Float[Array, "N_voltage"],
     hmax: scalar_int = 5,
     kmax: scalar_int = 5,
     detector_distance_mm: scalar_float = 1000.0,
@@ -312,16 +312,16 @@ def simulate_detector_image_all_sweep(  # noqa: PLR0913
         orientation_deg_values
     )
     theta_bank: Float[Array, "N_theta"] = jnp.asarray(theta_deg_values)
-    voltage_bank: Float[Array, "N_voltage"] = jnp.asarray(voltage_kv_values)
+    energy_bank: Float[Array, "N_voltage"] = jnp.asarray(energy_kev_values)
 
     def _simulate_one(
         orientation_deg: scalar_float,
         theta_deg: scalar_float,
-        voltage_kv: scalar_float,
+        energy_kev: scalar_float,
     ) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=orientation_deg,
             hmax=hmax,
@@ -357,7 +357,7 @@ def simulate_detector_image_all_sweep(  # noqa: PLR0913
                 theta_deg,
                 voltage,
             )
-        )(voltage_bank)
+        )(energy_bank)
 
     def _simulate_theta_axis(
         orientation_deg: scalar_float,
@@ -377,7 +377,7 @@ def simulate_detector_image_parameter_grid(  # noqa: PLR0913
     crystal: CrystalStructure,
     phi_deg_values: Float[Array, "N_phi"],
     theta_deg_values: Float[Array, "N_theta"],
-    voltage_kv_values: Float[Array, "N_voltage"],
+    energy_kev_values: Float[Array, "N_voltage"],
     hmax: scalar_int = 5,
     kmax: scalar_int = 5,
     detector_distance_mm: scalar_float = 1000.0,
@@ -405,7 +405,7 @@ def simulate_detector_image_parameter_grid(  # noqa: PLR0913
         crystal=crystal,
         orientation_deg_values=phi_deg_values,
         theta_deg_values=theta_deg_values,
-        voltage_kv_values=voltage_kv_values,
+        energy_kev_values=energy_kev_values,
         hmax=hmax,
         kmax=kmax,
         detector_distance_mm=detector_distance_mm,
@@ -434,7 +434,7 @@ def simulate_detector_image_parameter_grid(  # noqa: PLR0913
 def simulate_detector_image_roughness_sweep(  # noqa: PLR0913
     crystal: CrystalStructure,
     surface_roughness_values: Float[Array, "N"],
-    voltage_kv: scalar_num = 20.0,
+    energy_kev: scalar_num = 20.0,
     theta_deg: scalar_num = 2.0,
     phi_deg: scalar_num = 0.0,
     hmax: scalar_int = 5,
@@ -464,7 +464,7 @@ def simulate_detector_image_roughness_sweep(  # noqa: PLR0913
     def _simulate_one(surface_roughness: scalar_float) -> Float[Array, "H W"]:
         return simulate_detector_image(
             crystal=crystal,
-            voltage_kv=voltage_kv,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=hmax,

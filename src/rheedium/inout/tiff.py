@@ -543,7 +543,7 @@ def detect_beam_center(
 def load_tiff_as_rheed_image(
     path: Union[str, Path],
     incoming_angle_deg: float,
-    voltage_kv: float,
+    energy_kev: float,
     detector_distance_mm: float,
     calibration: Union[float, Float[Array, "2"]] = 1.0,
     background: Optional[Float[Array, "H W"]] = None,
@@ -567,7 +567,7 @@ def load_tiff_as_rheed_image(
         only the first frame is used.
     incoming_angle_deg : float
         Grazing incidence angle in degrees.
-    voltage_kv : float
+    energy_kev : float
         Accelerating voltage in kilovolts. Used to compute the
         relativistic electron wavelength.
     detector_distance_mm : float
@@ -606,7 +606,7 @@ def load_tiff_as_rheed_image(
     >>> img = rh.inout.load_tiff_as_rheed_image(
     ...     "frame_001.tif",
     ...     incoming_angle_deg=2.0,
-    ...     voltage_kv=20.0,
+    ...     energy_kev=20.0,
     ...     detector_distance_mm=350.0,
     ... )
     >>> img.img_array.shape
@@ -624,7 +624,7 @@ def load_tiff_as_rheed_image(
     if background is not None:
         img_array = jnp.maximum(img_array - background, 0.0)
 
-    voltage_v: float = voltage_kv * 1000.0
+    voltage_v: float = energy_kev * 1000.0
     corrected_voltage: float = voltage_v * (
         1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v
     )

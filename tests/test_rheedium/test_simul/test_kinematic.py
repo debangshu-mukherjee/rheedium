@@ -55,12 +55,12 @@ class TestKinematicWavelength(chex.TestCase):
         ("30kV", 30.0, 0.0698),
     )
     def test_wavelength_values(
-        self, voltage_kv: float, expected_lambda: float
+        self, energy_kev: float, expected_lambda: float
     ) -> None:
         """Test wavelength calculation matches expected values."""
         var_wavelength: Callable[..., Any] = self.variant(kinematic_wavelength)
 
-        wavelength: float = var_wavelength(voltage_kv)
+        wavelength: float = var_wavelength(energy_kev)
 
         # Check within 0.5% of expected
         chex.assert_scalar_positive(float(wavelength))
@@ -313,7 +313,7 @@ class TestKinematicSimulator(chex.TestCase):
         # because G_z must exceed |k_in_z| ≈ k0*sin(2°) ≈ 2.5 1/Å
         pattern: RHEEDPattern = kinematic_spot_simulator(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             hmax=2,
             kmax=2,
@@ -340,7 +340,7 @@ class TestKinematicSimulator(chex.TestCase):
         """Test detector coordinates are reasonable."""
         pattern: RHEEDPattern = kinematic_spot_simulator(
             crystal=self.crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             hmax=2,
             kmax=2,

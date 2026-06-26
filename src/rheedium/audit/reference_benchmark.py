@@ -240,7 +240,7 @@ def simulate_detector_image_from_metadata(
     ) -> Float[NDArray, "H W"]:
         pattern = ewald_simulator(
             crystal=crystal,
-            voltage_kv=energy_kev,
+            energy_kev=energy_kev,
             theta_deg=theta_deg,
             phi_deg=phi_deg,
             hmax=metadata.hmax,
@@ -260,7 +260,7 @@ def simulate_detector_image_from_metadata(
 
     theta_deg = metadata.theta_deg
     phi_deg = metadata.phi_deg
-    energy_kev = metadata.voltage_kv
+    energy_kev = metadata.energy_kev
     divergence_rad = metadata.angular_divergence_mrad * 1e-3
     spread_kev = metadata.energy_spread_ev * 1e-3
 

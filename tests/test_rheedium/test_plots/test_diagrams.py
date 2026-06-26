@@ -176,7 +176,7 @@ class TestDiagramPlots:
     def test_plot_ewald_sphere_2d_custom_params(self) -> None:
         """Test 2D Ewald sphere with custom parameters."""
         ax: Any = plot_ewald_sphere_2d(
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=3.0,
             lattice_spacing=5.0,
             n_rods=5,

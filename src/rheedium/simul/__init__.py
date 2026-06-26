@@ -50,9 +50,6 @@ Routine Listings
     Convert domain extent to reciprocal-space rod widths.
 :func:`ewald_simulator`
     Simulate RHEED using exact Ewald sphere-CTR intersection (recommended).
-:func:`ewald_simulator_with_orientation_distribution`
-    Simulate and incoherently combine an orientation distribution of
-    Ewald patterns.
 :func:`detector_extent_mm`
     Convert detector calibration and beam center to display extent.
 :func:`find_ctr_ewald_intersection`
@@ -199,7 +196,6 @@ from .simulator import (
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
-    ewald_simulator_with_orientation_distribution,
     find_ctr_ewald_intersection,
     find_kinematic_reflections,
     kinematic_amplitude,
@@ -259,7 +255,6 @@ __all__: list[str] = [
     "energy_spread_average",
     "ewald_allowed_reflections",
     "ewald_simulator",
-    "ewald_simulator_with_orientation_distribution",
     "extent_to_rod_sigma",
     "find_ctr_ewald_intersection",
     "find_kinematic_reflections",

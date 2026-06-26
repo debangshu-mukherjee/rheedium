@@ -14,7 +14,6 @@ import ast
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 import chex
 import equinox as eqx
@@ -24,7 +23,7 @@ import numpy as np
 import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
-from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
+from jaxtyping import Array, Bool, Complex, Float, PRNGKeyArray
 from numpy.typing import NDArray
 
 import rheedium.simul as rheedium_simul
@@ -49,7 +48,6 @@ from rheedium.simul.simulator import (
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
-    ewald_simulator_with_orientation_distribution,
     find_kinematic_reflections,
     kinematic_amplitude,
     log_compress_image,
@@ -361,7 +359,7 @@ class TestProjectOnDetectorGeometry(chex.TestCase, parameterized.TestCase):
 
 
 class TestRationalizationGuards(chex.TestCase):
-    """Regression guards for rationalization gates RG1 and RG3."""
+    """Regression guards for rationalization gates RG1, RG2, and RG3."""
 
     repo_root = Path(__file__).parents[3]
 
@@ -437,6 +435,62 @@ class TestRationalizationGuards(chex.TestCase):
             size_distribution_arg.annotation.id,
             "SizeDistribution",
         )
+
+    def test_rg2_orientation_averaging_has_single_reducer_path(self) -> None:
+        """Orientation averaging should route through Layer-1 reducers."""
+        retired_names = {
+            "ewald_simulator_with_orientation_distribution",
+            "_discretize_orientation_for_sparse_pattern",
+            "_incoherent_pattern_union",
+        }
+
+        self.assertFalse(
+            hasattr(
+                rheedium_simul,
+                "ewald_simulator_with_orientation_distribution",
+            )
+        )
+        self.assertNotIn(
+            "ewald_simulator_with_orientation_distribution",
+            rheedium_simul.__all__,
+        )
+
+        simulator = ast.parse(
+            (self.repo_root / "src/rheedium/simul/simulator.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        simulator_defs = {
+            node.name
+            for node in simulator.body
+            if isinstance(node, ast.FunctionDef)
+        }
+        self.assertTrue(retired_names.isdisjoint(simulator_defs))
+
+        distributions_path = (
+            self.repo_root / "src/rheedium/types/distributions.py"
+        )
+        distributions_source = distributions_path.read_text(encoding="utf-8")
+        distributions = ast.parse(distributions_source)
+        integrate_node = next(
+            node
+            for node in distributions.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "integrate_over_orientation"
+        )
+        integrate_source = ast.get_source_segment(
+            distributions_source,
+            integrate_node,
+        )
+        self.assertIsNotNone(integrate_source)
+        call_names = [
+            node.func.id
+            for node in ast.walk(integrate_node)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        ]
+        self.assertEqual(call_names.count("apply_distribution"), 1)
+        self.assertNotIn("jax.vmap", integrate_source)
+        self.assertNotIn("einsum", integrate_source)
 
 
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
@@ -750,7 +804,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -764,7 +818,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -783,7 +837,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=voltage,
+            energy_kev=voltage,
             theta_deg=2.0,
         )
 
@@ -804,7 +858,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta,
         )
 
@@ -822,7 +876,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=phi,
         )
@@ -841,7 +895,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             inner_potential_v0=v0,
         )
@@ -860,7 +914,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             bandwidth_limit=limit,
         )
@@ -883,7 +937,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
         exit_wave: Any = var_propagate(
             zero_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -930,7 +984,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -948,7 +1002,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
@@ -972,7 +1026,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             detector_distance=distance,
         )
@@ -994,7 +1048,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=voltage,
+            energy_kev=voltage,
             theta_deg=2.0,
         )
 
@@ -1015,7 +1069,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta,
         )
 
@@ -1031,13 +1085,13 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
         )
 
         # k_out should have approximately same magnitude as k_in
-        voltage_kv: float = 20.0
-        lam_ang: Any = float(wavelength_ang(voltage_kv))
+        energy_kev: float = 20.0
+        lam_ang: Any = float(wavelength_ang(energy_kev))
         k_mag_expected: scalar_float = 2.0 * jnp.pi / lam_ang
 
         k_out_mags: Float[Array, "..."] = jnp.linalg.norm(
@@ -1359,7 +1413,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Test that ewald_simulator produces a valid RHEED pattern."""
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=3,
@@ -1387,7 +1441,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Only upward-scattered reflections are returned (k_out_z > 0)."""
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             hmax=5,
             kmax=5,
@@ -1404,7 +1458,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     @staticmethod
     def _raw_ctr_detector_points(
         crystal: CrystalStructure,
-        voltage_kv: float,
+        energy_kev: float,
         theta_deg: float,
         phi_deg: float,
         hmax: int,
@@ -1412,7 +1466,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         detector_distance: float,
     ) -> Float[NDArray, "points detector_xy"]:
         """Construct detector intersections directly from both rod branches."""
-        lam_ang: Any = float(wavelength_ang(voltage_kv))
+        lam_ang: Any = float(wavelength_ang(energy_kev))
         k_in: Float[NDArray, "..."] = np.asarray(
             incident_wavevector(lam_ang, theta_deg, phi_deg),
             dtype=np.float64,
@@ -1497,7 +1551,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         kmax: int = 8
         raw_points: Float[Array, "..."] = self._raw_ctr_detector_points(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta_deg,
             phi_deg=0.0,
             hmax=hmax,
@@ -1506,7 +1560,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta_deg,
             phi_deg=0.0,
             hmax=hmax,
@@ -1544,7 +1598,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         kmax: int = 14
         raw_points: Float[Array, "..."] = self._raw_ctr_detector_points(
             crystal=sto_crystal,
-            voltage_kv=18.0,
+            energy_kev=18.0,
             theta_deg=theta_deg,
             phi_deg=0.0,
             hmax=hmax,
@@ -1553,7 +1607,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=sto_crystal,
-            voltage_kv=18.0,
+            energy_kev=18.0,
             theta_deg=theta_deg,
             phi_deg=0.0,
             hmax=hmax,
@@ -1592,7 +1646,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Test that |k_out| = |k_in| (elastic scattering)."""
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             hmax=3,
             kmax=3,
@@ -1618,7 +1672,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Changing phi_deg rotates the pattern."""
         pattern_0: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=3,
@@ -1627,7 +1681,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern_45: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=45.0,
             hmax=3,
@@ -1645,7 +1699,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Higher temperature reduces intensity (Debye-Waller)."""
         pattern_low_T: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             temperature=100.0,
             hmax=3,
@@ -1654,7 +1708,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern_high_T: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             temperature=500.0,
             hmax=3,
@@ -1679,7 +1733,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Surface roughness affects CTR intensity."""
         pattern_smooth: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             surface_roughness=0.1,
             hmax=3,
@@ -1688,7 +1742,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern_rough: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             surface_roughness=2.0,
             hmax=3,
@@ -1713,7 +1767,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Different voltages give different k magnitudes."""
         pattern_10kv: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=10.0,
+            energy_kev=10.0,
             theta_deg=2.0,
             hmax=3,
             kmax=3,
@@ -1721,7 +1775,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern_30kv: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=30.0,
+            energy_kev=30.0,
             theta_deg=2.0,
             hmax=3,
             kmax=3,
@@ -1751,7 +1805,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             static_argnames=("hmax", "kmax"),
         )(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             hmax=2,
             kmax=2,
@@ -1770,7 +1824,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             surface_config=config,
             hmax=3,
@@ -1794,7 +1848,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         """Various grazing angles produce valid patterns."""
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=theta_deg,
             hmax=3,
             kmax=3,
@@ -1805,150 +1859,6 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             int(jnp.sum(valid_mask)),
             0,
             f"Grazing angle {theta_deg} should produce valid reflections",
-        )
-
-    def test_orientation_distribution_matches_manual_incoherent_union(
-        self,
-    ) -> None:
-        """Orientation wrapper matches explicit per-angle pattern union."""
-        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
-            angles_deg=jnp.array([0.0, 45.0]),
-            weights=jnp.array([0.25, 0.75]),
-        )
-
-        def fake_ewald_simulator(  # noqa: PLR0913
-            crystal: CrystalStructure,
-            voltage_kv: float,
-            theta_deg: float,
-            phi_deg: float,
-            hmax: int,
-            kmax: int,
-            detector_distance: float,
-            temperature: float,
-            surface_roughness: float,
-            ctr_regularization: float,
-            ctr_power: float,
-            roughness_power: float,
-            parameterization: str,
-            surface_config: SurfaceConfig,
-        ) -> RHEEDPattern:
-            del (
-                crystal,
-                voltage_kv,
-                theta_deg,
-                hmax,
-                kmax,
-                detector_distance,
-                temperature,
-                surface_roughness,
-                ctr_regularization,
-                ctr_power,
-                roughness_power,
-                parameterization,
-                surface_config,
-            )
-            phi: Float[Array, "..."] = jnp.asarray(phi_deg, dtype=jnp.float64)
-            return RHEEDPattern(
-                G_indices=jnp.array([3, 7], dtype=jnp.int32),
-                k_out=jnp.array(
-                    [
-                        [1.0 + phi, 0.0, 2.0],
-                        [2.0 + phi, 1.0, 3.0],
-                    ],
-                    dtype=jnp.float64,
-                ),
-                detector_points=jnp.array(
-                    [
-                        [phi, phi + 1.0],
-                        [phi + 2.0, phi + 3.0],
-                    ],
-                    dtype=jnp.float64,
-                ),
-                intensities=jnp.array([1.0, phi + 2.0], dtype=jnp.float64),
-            )
-
-        with patch(
-            "rheedium.simul.simulator.ewald_simulator",
-            side_effect=fake_ewald_simulator,
-        ):
-            averaged: Any = ewald_simulator_with_orientation_distribution(
-                crystal=_SI_CRYSTAL_2ATOM,
-                orientation_distribution=orientation_dist,
-                voltage_kv=20.0,
-                theta_deg=2.0,
-                hmax=1,
-                kmax=1,
-                n_mosaic_points=1,
-            )
-
-        expected_g_indices: Integer[Array, "..."] = jnp.array(
-            [3, 7, 3, 7], dtype=jnp.int32
-        )
-        expected_k_out: Float[Array, "..."] = jnp.array(
-            [
-                [1.0, 0.0, 2.0],
-                [2.0, 1.0, 3.0],
-                [46.0, 0.0, 2.0],
-                [47.0, 1.0, 3.0],
-            ],
-            dtype=jnp.float64,
-        )
-        expected_detector_points: Float[Array, "..."] = jnp.array(
-            [
-                [0.0, 1.0],
-                [2.0, 3.0],
-                [45.0, 46.0],
-                [47.0, 48.0],
-            ],
-            dtype=jnp.float64,
-        )
-        expected_intensities: Float[Array, "..."] = jnp.array(
-            [0.25, 0.5, 0.75, 35.25],
-            dtype=jnp.float64,
-        )
-
-        chex.assert_trees_all_close(averaged.G_indices, expected_g_indices)
-        chex.assert_trees_all_close(averaged.k_out, expected_k_out, atol=1e-10)
-        chex.assert_trees_all_close(
-            averaged.detector_points,
-            expected_detector_points,
-            atol=1e-10,
-        )
-        chex.assert_trees_all_close(
-            averaged.intensities,
-            expected_intensities,
-            atol=1e-10,
-        )
-
-    def test_orientation_distribution_wrapper_jits(self) -> None:
-        """Orientation-distribution wrapper should compile under jax.jit."""
-        orientation_dist: Float[Array, "..."] = create_discrete_orientation(
-            angles_deg=jnp.array([0.0, 30.0]),
-            weights=jnp.array([0.4, 0.6]),
-        )
-
-        pattern: Callable[..., Any] = jax.jit(
-            ewald_simulator_with_orientation_distribution,
-            static_argnames=("hmax", "kmax", "n_mosaic_points"),
-        )(
-            crystal=_SI_CRYSTAL_2ATOM,
-            orientation_distribution=orientation_dist,
-            voltage_kv=20.0,
-            theta_deg=2.0,
-            hmax=1,
-            kmax=1,
-            n_mosaic_points=1,
-        )
-
-        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
-        self.assertGreater(
-            int(jnp.sum(valid_mask)),
-            0,
-            "JIT-compiled orientation simulation should produce reflections",
-        )
-        self.assertTrue(
-            jnp.all(pattern.intensities >= 0.0),
-            "Orientation-averaged intensities should be non-negative",
         )
 
 
@@ -2199,7 +2109,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         amplitudes: Complex[Array, "N"]
         sparse_pattern, amplitudes = _ewald_amplitude_pattern(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=1,
@@ -2210,7 +2120,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         field: Complex[Array, "32 32"] = kinematic_amplitude(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=1,
@@ -2259,7 +2169,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
             field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=0.0,
                 hmax=1,
@@ -2294,7 +2204,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Kinematic amplitude uses the sparse Ewald amplitude-render path."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 0,
@@ -2312,7 +2222,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         amplitudes: Complex[Array, "N"]
         sparse_pattern, amplitudes = _ewald_amplitude_pattern(
             crystal=kwargs["crystal"],
-            voltage_kv=kwargs["voltage_kv"],
+            energy_kev=kwargs["energy_kev"],
             theta_deg=kwargs["theta_deg"],
             phi_deg=kwargs["phi_deg"],
             hmax=kwargs["hmax"],
@@ -2338,7 +2248,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Complex Ewald amplitudes preserve the legacy intensity surface."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 1,
@@ -2374,7 +2284,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Trivial distribution turns one coherent amplitude into intensity."""
         amplitude: Complex[Array, "16 24"] = kinematic_amplitude(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=0,
@@ -2485,7 +2395,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Spot-render default delegates to the trivial Layer-1 reducer."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 0,
@@ -2579,14 +2489,14 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             weights=weights,
             reduction=ReductionMode.INCOHERENT,
         )
-        base_voltage_kv: float = 20.0
+        base_energy_kev: float = 20.0
         base_theta_deg: float = 2.0
         base_phi_deg: float = 3.0
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=base_voltage_kv + 1.0e-3 * sample[2],
+                energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
                 phi_deg=base_phi_deg + jnp.rad2deg(sample[1]),
                 hmax=0,
@@ -2607,7 +2517,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
         actual: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=base_voltage_kv,
+            energy_kev=base_energy_kev,
             theta_deg=base_theta_deg,
             phi_deg=base_phi_deg,
             hmax=0,
@@ -2687,14 +2597,14 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             ),
             reduction=ReductionMode.INCOHERENT,
         )
-        base_voltage_kv: float = 20.0
+        base_energy_kev: float = 20.0
         base_theta_deg: float = 2.0
         base_phi_deg: float = 0.0
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "32 24"]:
             return kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=base_voltage_kv + 1.0e-3 * sample[2],
+                energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
                 phi_deg=base_phi_deg + jnp.rad2deg(sample[1]),
                 hmax=0,
@@ -2716,7 +2626,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
         actual: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=base_voltage_kv,
+            energy_kev=base_energy_kev,
             theta_deg=base_theta_deg,
             phi_deg=base_phi_deg,
             hmax=0,
@@ -2744,7 +2654,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Trivial generic distribution preserves the spot-rendered image."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 4.0,
             "hmax": 0,
@@ -2777,7 +2687,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Trivial generic distribution preserves CTR streak rendering."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 0,
@@ -2816,7 +2726,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 3.0,
             "hmax": 0,
@@ -2843,7 +2753,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=base_phi_deg + sample[0],
                 hmax=0,
@@ -2890,7 +2800,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=builder(sample),
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=3.0,
                 hmax=0,
@@ -2915,7 +2825,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
         actual: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=0,
@@ -2961,7 +2871,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=builder(sample),
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=3.0,
                 hmax=0,
@@ -2986,7 +2896,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
         actual: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=0,
@@ -3023,7 +2933,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
             return _kinematic_finite_domain_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=3.0 + sample[0],
                 domain_size_angstrom=sample[1],
@@ -3054,7 +2964,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
         actual: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=0,
@@ -3082,7 +2992,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Compact detector settings for defect distinguishability tests."""
         return {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 3.0,
             "hmax": 1,
@@ -3170,7 +3080,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
 
         base: Float[Array, "16 24"] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=1,
@@ -3189,7 +3099,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         sized: Float[Array, "16 24"] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=1,
@@ -3267,7 +3177,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "potential_slices": potential_slices,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 5.0,
             "phi_deg": 0.0,
             "detector_distance_mm": 20.0,
@@ -3286,7 +3196,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         actual: Float[Array, "32 32"] = simulate_detector_image(**kwargs)
         field: Complex[Array, "32 32"] = multislice_detector_amplitude(
             potential_slices=potential_slices,
-            voltage_kv=kwargs["voltage_kv"],
+            energy_kev=kwargs["energy_kev"],
             theta_deg=kwargs["theta_deg"],
             phi_deg=kwargs["phi_deg"],
             detector_distance_mm=kwargs["detector_distance_mm"],
@@ -3342,7 +3252,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         multislice_pattern: RHEEDPattern
         kinematic_pattern, _ = _ewald_amplitude_pattern(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=5.0,
             phi_deg=0.0,
             hmax=0,
@@ -3351,7 +3261,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         multislice_pattern, _ = _multislice_amplitude_pattern(
             potential_slices=potential_slices,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=5.0,
             phi_deg=0.0,
             detector_distance_mm=detector_distance_mm,
@@ -3386,7 +3296,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         carrier_pattern: RHEEDPattern
         carrier_pattern, _ = _ewald_amplitude_pattern(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=5.0,
             phi_deg=0.0,
             hmax=1,
@@ -3442,7 +3352,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "potential_slices": self._tiny_potential_slices(),
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 5.0,
             "phi_deg": 0.0,
             "detector_distance_mm": 20.0,
@@ -3531,7 +3441,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 2.0,
             "hmax": 0,
@@ -3590,7 +3500,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Coherent beam modes preserve CTR streak rendering."""
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 0,
@@ -3628,7 +3538,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         beam_center_px: tuple[float, float] = (12.0, 2.0)
         reference: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=0,
@@ -3650,7 +3560,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         actual: Float[Array, "..."] = simulate_detector_image_instrument(
             crystal=_SI_CRYSTAL_2ATOM,
             beam_modes=create_coherent_beam(),
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=3.0,
             hmax=0,
@@ -3689,14 +3599,14 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         image_shape_px: tuple[int, int] = (16, 24)
         pixel_size_mm: tuple[float, float] = (6.0, 16.0)
         beam_center_px: tuple[float, float] = (12.0, 2.0)
-        base_voltage_kv: float = 20.0
+        base_energy_kev: float = 20.0
         base_theta_deg: float = 2.0
         base_phi_deg: float = 1.5
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=base_voltage_kv + 1.0e-3 * sample[2],
+                energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
                 phi_deg=base_phi_deg + jnp.rad2deg(sample[1]),
                 hmax=0,
@@ -3718,7 +3628,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         actual: Float[Array, "..."] = simulate_detector_image_instrument(
             crystal=_SI_CRYSTAL_2ATOM,
             beam_modes=beam_modes,
-            voltage_kv=base_voltage_kv,
+            energy_kev=base_energy_kev,
             theta_deg=base_theta_deg,
             phi_deg=base_phi_deg,
             hmax=0,
@@ -3770,7 +3680,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         def _bound(sample: Float[Array, "4"]) -> Complex[Array, "16 24"]:
             return kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0 + 1.0e-3 * sample[2],
+                energy_kev=20.0 + 1.0e-3 * sample[2],
                 theta_deg=2.0 + jnp.rad2deg(sample[0]),
                 phi_deg=1.5 + jnp.rad2deg(sample[1]) + sample[3],
                 hmax=0,
@@ -3793,7 +3703,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             crystal=_SI_CRYSTAL_2ATOM,
             beam_modes=beam_modes,
             orientation_distribution=orientation_dist,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=1.5,
             hmax=0,
@@ -3835,7 +3745,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         """Check dense rendering elongates CTRs vertically on detector."""
         image: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=0,
@@ -3877,7 +3787,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         image: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
             orientation_distribution=orientation_dist,
-            voltage_kv=20.0,
+            energy_kev=20.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=0,
@@ -3922,7 +3832,7 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         """Shared compact detector settings for public grad gates."""
         return {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 3.0,
             "hmax": 1,
@@ -4038,7 +3948,7 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         return {
             "crystal": _SI_CRYSTAL_2ATOM,
             "potential_slices": self._tiny_potential_slices(),
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 5.0,
             "phi_deg": 0.0,
             "detector_distance_mm": 20.0,
@@ -4146,7 +4056,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         """Compute sum of intensities from ewald_simulator."""
         defaults: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "voltage_kv": 20.0,
+            "energy_kev": 20.0,
             "theta_deg": 2.0,
             "phi_deg": 0.0,
             "hmax": 2,
@@ -4191,7 +4101,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         """Gradient w.r.t. beam voltage is finite."""
 
         def loss(voltage: scalar_float) -> scalar_float:
-            return self._ewald_loss(voltage_kv=voltage)
+            return self._ewald_loss(energy_kev=voltage)
 
         g: scalar_float = jax.grad(loss)(jnp.float64(20.0))
         chex.assert_tree_all_finite(g)
@@ -4234,7 +4144,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         def f(temp: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=0.0,
                 hmax=2,
@@ -4252,7 +4162,7 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         def f(roughness: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=0.0,
                 hmax=2,
@@ -4291,7 +4201,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             )
             psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
-                voltage_kv=voltage,
+                energy_kev=voltage,
                 theta_deg=2.0,
             )
             return jnp.sum(jnp.abs(psi_exit) ** 2)
@@ -4322,7 +4232,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             )
             psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
-                voltage_kv=voltage,
+                energy_kev=voltage,
                 theta_deg=2.0,
             )
             return jnp.sum(jnp.abs(psi_exit) ** 2)
@@ -4339,7 +4249,7 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
         def f(temp: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(
                 crystal=_SI_CRYSTAL_2ATOM,
-                voltage_kv=20.0,
+                energy_kev=20.0,
                 theta_deg=2.0,
                 phi_deg=0.0,
                 hmax=2,

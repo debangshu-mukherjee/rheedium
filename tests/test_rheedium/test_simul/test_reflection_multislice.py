@@ -71,16 +71,16 @@ def _flat_step_slices(
 def _fresnel_step_reflectivity(
     theta_deg: float,
     *,
-    voltage_kv: float = 30.0,
+    energy_kev: float = 30.0,
     inner_potential_v: float = 15.0,
 ) -> Float[Array, ""]:
     """Return the analytic electron inner-potential step reflectivity."""
-    wavelength = wavelength_ang(voltage_kv)
+    wavelength = wavelength_ang(energy_kev)
     k_mag = 2.0 * jnp.pi / wavelength
     sin_theta = jnp.sin(jnp.deg2rad(theta_deg))
     k_perp_vac = k_mag * sin_theta
     k_perp_in = k_mag * jnp.sqrt(
-        sin_theta**2 + inner_potential_v / (voltage_kv * 1000.0)
+        sin_theta**2 + inner_potential_v / (energy_kev * 1000.0)
     )
     amplitude = (k_perp_vac - k_perp_in) / (k_perp_vac + k_perp_in)
     return jnp.abs(amplitude) ** 2
@@ -100,14 +100,14 @@ def _read_flat_step_pattern(
     )
     wavefield: Any = reflection_multislice_propagate(
         slices,
-        voltage_kv=30.0,
+        energy_kev=30.0,
         theta_deg=theta_deg,
         cap_strength=5.0,
     )
     return _read_reflected_pattern(
         wavefield=wavefield,
         slices=slices,
-        voltage_kv=30.0,
+        energy_kev=30.0,
         theta_deg=theta_deg,
         detector_distance=80.0,
     )
@@ -243,7 +243,7 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         """Test end-to-end atomic reflection simulation returns valid data."""
         pattern: RHEEDPattern = reflection_multislice_simulator(
             _toy_crystal(),
-            voltage_kv=30.0,
+            energy_kev=30.0,
             theta_deg=2.0,
             detector_distance=80.0,
             dx_slice=1.0,
@@ -266,7 +266,7 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         crystal: CrystalStructure = parse_crystal(BI2SE3_DIR / "intial.xyz")
         reflection: RHEEDPattern = reflection_multislice_simulator(
             crystal,
-            voltage_kv=30.0,
+            energy_kev=30.0,
             theta_deg=2.5,
             detector_distance=80.0,
             dx_slice=4.0,
@@ -277,7 +277,7 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         )
         ewald: RHEEDPattern = ewald_simulator(
             crystal,
-            voltage_kv=30.0,
+            energy_kev=30.0,
             theta_deg=2.5,
             phi_deg=0.0,
             hmax=4,
@@ -309,7 +309,7 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         crystal: CrystalStructure = parse_crystal(BI2SE3_DIR / filename)
         pattern: RHEEDPattern = reflection_multislice_simulator(
             crystal,
-            voltage_kv=30.0,
+            energy_kev=30.0,
             theta_deg=2.5,
             detector_distance=80.0,
             dx_slice=4.0,

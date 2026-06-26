@@ -310,21 +310,24 @@ universal gate. **Closed 2026-06-26.**
 and `instrument_broadened_pattern`'s quadrature → all become "build a
 `Distribution`, call `apply` / `apply_distributions`."
 
-**Progress:** active as of 2026-06-26. The pattern-space grain and surface-domain
-mixers now bind their pattern banks to generic incoherent `Distribution` axes and
-delegate reduction to `apply_distributions`; `apply_misorientation_distribution`
-now rides that same grain adapter. `instrument_broadened_pattern` now builds one
-incoherent quadrature `Distribution` over polar/azimuth/energy samples and uses
-the same reducer before detector PSF convolution. RG2 inventory guards assert
-that these retired bodies call the shared reducer and do not reintroduce the old
-broadcast-weighted pattern sums or nested quadrature/einsum body. Remaining R2
-work: collapse `integrate_over_orientation`,
-`ewald_simulator_with_orientation_distribution`, and any still-public standalone
-legacy quadrature helpers selected for deletion.
+**Progress:** complete as of 2026-06-26. The pattern-space grain and
+surface-domain mixers now bind their pattern banks to generic incoherent
+`Distribution` axes and delegate reduction to `apply_distributions`;
+`apply_misorientation_distribution` now rides that same grain adapter.
+`instrument_broadened_pattern` now builds one incoherent quadrature
+`Distribution` over polar/azimuth/energy samples and uses the same reducer
+before detector PSF convolution. `integrate_over_orientation` now converts
+orientation distributions into the generic contract and calls
+`apply_distribution`; the standalone
+`ewald_simulator_with_orientation_distribution` sparse wrapper and its nested
+orientation `vmap` path were removed in favor of
+`simulate_detector_image(orientation_distribution=...)`. RG2 inventory guards
+assert that these retired bodies call the shared reducer and do not reintroduce
+the old broadcast-weighted pattern sums or nested quadrature/einsum body.
 
 **Gate RG2:** each retired path reproduces its pre-refactor output to tolerance;
 the count of bespoke averaging functions drops to the one reducer (asserted by an
-inventory/grep-guard test); universal gate.
+inventory/grep-guard test); universal gate. **Closed 2026-06-26.**
 
 ### Phase R3 — Retire dangling code  ·  W2
 
@@ -365,6 +368,13 @@ disorder → structure modifier; standardize the `voltage_kv`/`energy_kev` and
 `theta_deg`/`polar_rad` boundary conversions in one place with a **clean cut — the
 old name is deleted, not aliased** (§3), migrated via `CHANGELOG.md`.
 
+**Progress:** W7 energy naming is partially complete as of 2026-06-26. The
+checked code and test surface now standardizes keV beam energy on `energy_kev`;
+`voltage_kv` is deleted from `src/` and `tests/` with no alias, and an inventory
+guard prevents it from returning there. Remaining W7 work: migrate
+docs/tutorials and then address the `theta_deg`/`phi_deg` vs
+polar/azimuth-radian boundary.
+
 **Gate RG5:** every `procs` public function's return type matches the trichotomy
 (documented in each module's `Notes`); one canonical energy/angle unit at the
 public boundary, the old names **deleted, not aliased** (CHANGELOG migration);
@@ -387,10 +397,10 @@ gate.
 |------|----------------------------------------|
 | **R0** | **complete 2026-06-25** — framework complete + green; overlap reconciled enough to start R1 |
 | **RG1** | **complete 2026-06-26** — dense render/extent mapping unified; production projection callers use `DetectorGeometry`; pixelwise flat-projection and stored-reference regressions |
-| **RG2** | **active** — grain/domain pattern mixers and instrument quadrature retired; orientation wrappers still pending |
+| **RG2** | **complete 2026-06-26** — grain/domain pattern mixers, instrument quadrature, `integrate_over_orientation`, and orientation detector ensembles route through Layer-1 reducers; standalone sparse orientation wrapper removed |
 | **RG3** | **complete 2026-06-26** — no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
 | **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deleted in-phase (no dual API); notebooks updated |
-| **RG5** | `procs` trichotomy enforced; one unit at the boundary |
+| **RG5** | **active** — `energy_kev` clean cut complete in code/tests; docs/tutorials and angle boundary still pending |
 | **RG6** | module reorg with unchanged public import paths |
 
 R1–R3 are the structural debt the framework most exposes (do first); R4–R5 are

@@ -72,7 +72,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Any, Callable, Final, Optional, Tuple
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Complex, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
 
@@ -1219,9 +1219,9 @@ def integrate_over_orientation(
 
     def _amplitude_from_orientation(
         sample: Float[Array, "D"],
-    ) -> Float[Array, "H W"]:
+    ) -> Complex[Array, "H W"]:
         intensity: Float[Array, "H W"] = simulate_fn(sample[0])
-        return jnp.sqrt(jnp.maximum(intensity, 0.0))
+        return jnp.sqrt(jnp.maximum(intensity, 0.0)).astype(jnp.complex128)
 
     from rheedium.simul.beam_averaging import apply_distribution
 

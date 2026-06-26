@@ -41,7 +41,7 @@ from rheedium.types import (
 
 @jaxtyped(typechecker=beartype)
 def wavelength_ang(
-    voltage_kv: Union[scalar_num, Num[Array, "..."]],
+    energy_kev: Union[scalar_num, Num[Array, "..."]],
 ) -> Float[Array, "..."]:
     r"""Calculate the relativistic electron wavelength in angstroms.
 
@@ -58,7 +58,7 @@ def wavelength_ang(
 
     Parameters
     ----------
-    voltage_kv : Union[scalar_num, Num[Array, "..."]]
+    energy_kev : Union[scalar_num, Num[Array, "..."]]
         Electron energy in kiloelectron volts.
         Could be either a scalar or an array.
 
@@ -99,7 +99,7 @@ def wavelength_ang(
     """
     # Convert kV to V
     voltage_v: Float[Array, "..."] = (
-        jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+        jnp.asarray(energy_kev, dtype=jnp.float64) * 1000.0
     )
 
     corrected_voltage: Float[Array, "..."] = voltage_v * (
@@ -171,7 +171,7 @@ def incident_wavevector(
 
 @jaxtyped(typechecker=beartype)
 def interaction_constant(
-    voltage_kv: scalar_float,
+    energy_kev: scalar_float,
     wavelength_ang: scalar_float,
 ) -> Float[Array, ""]:
     r"""Relativistic electron interaction constant σ in 1/(V·Å).
@@ -198,7 +198,7 @@ def interaction_constant(
 
     Parameters
     ----------
-    voltage_kv : scalar_float
+    energy_kev : scalar_float
         Accelerating voltage in kilovolts.
     wavelength_ang : scalar_float
         Relativistic electron wavelength in angstroms.
@@ -209,7 +209,7 @@ def interaction_constant(
         Interaction constant σ (1 / (Volt · Ångstrom)).
     """
     voltage_v: Float[Array, ""] = (
-        jnp.asarray(voltage_kv, dtype=jnp.float64) * 1000.0
+        jnp.asarray(energy_kev, dtype=jnp.float64) * 1000.0
     )
     lam_m: Float[Array, ""] = (
         jnp.asarray(wavelength_ang, dtype=jnp.float64) * 1e-10
