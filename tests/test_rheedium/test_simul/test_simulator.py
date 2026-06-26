@@ -10,7 +10,9 @@ Tests the integration of:
 - Detector projection
 """
 
+import ast
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -25,6 +27,7 @@ from jax.test_util import check_grads
 from jaxtyping import Array, Bool, Complex, Float, Integer, PRNGKeyArray
 from numpy.typing import NDArray
 
+import rheedium.simul as rheedium_simul
 from rheedium.procs.grains import grain_population_to_distribution
 from rheedium.procs.surface_modifier import (
     bind_step_edge_distribution,
@@ -53,7 +56,7 @@ from rheedium.simul.simulator import (
     multislice_detector_amplitude,
     multislice_propagate,
     multislice_simulator,
-    project_on_detector,
+    project_on_detector_geometry,
     render_amplitude_to_field,
     render_ctr_amplitude_to_field,
     render_pattern_to_image,
@@ -89,6 +92,7 @@ from rheedium.types.distributions import create_discrete_orientation
 from rheedium.types.rheed_types import (
     RHEEDPattern,
     SurfaceConfig,
+    create_rheed_pattern,
     create_sliced_crystal,
 )
 from rheedium.ucell import reciprocal_lattice_vectors
@@ -283,7 +287,7 @@ class TestCheckedNumericalEntryPoints(chex.TestCase):
             err.throw()
 
 
-class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
+class TestProjectOnDetectorGeometry(chex.TestCase, parameterized.TestCase):
     """Test suite for detector projection functionality."""
 
     def setUp(self) -> None:
@@ -293,7 +297,9 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_basic_projection(self) -> None:
         """Test basic projection onto detector plane."""
-        var_project: Callable[..., Any] = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(
+            project_on_detector_geometry
+        )
 
         k_out: Float[Array, "..."] = jnp.array(
             [
@@ -302,9 +308,9 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
                 [1.0, 0.0, 0.5],
             ]
         )
-        detector_distance: float = 100.0
+        detector = DetectorGeometry(distance=100.0)
 
-        coords: Float[Array, "..."] = var_project(k_out, detector_distance)
+        coords: Float[Array, "..."] = var_project(k_out, detector)
 
         chex.assert_shape(coords, (3, 2))
         chex.assert_tree_all_finite(coords)
@@ -321,10 +327,14 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     )
     def test_detector_distance_scaling(self, distance: float) -> None:
         """Test that coordinates scale linearly with detector distance."""
-        var_project: Callable[..., Any] = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(
+            project_on_detector_geometry
+        )
 
         k_out: Float[Array, "..."] = jnp.array([[1.0, 0.5, 0.3]])
-        coords: Float[Array, "..."] = var_project(k_out, distance)
+        coords: Float[Array, "..."] = var_project(
+            k_out, DetectorGeometry(distance=distance)
+        )
 
         chex.assert_shape(coords, (1, 2))
         # Verify linear scaling
@@ -337,13 +347,96 @@ class TestProjectOnDetector(chex.TestCase, parameterized.TestCase):
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
         """Test output has correct shape for various inputs."""
-        var_project: Callable[..., Any] = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(
+            project_on_detector_geometry
+        )
 
         n: int
         for n in [1, 5, 10, 50]:
             k_out: Float[Array, "..."] = jnp.ones((n, 3))
-            coords: Float[Array, "..."] = var_project(k_out, 100.0)
+            coords: Float[Array, "..."] = var_project(
+                k_out, DetectorGeometry(distance=100.0)
+            )
             chex.assert_shape(coords, (n, 2))
+
+
+class TestRationalizationGuards(chex.TestCase):
+    """Regression guards for rationalization gates RG1 and RG3."""
+
+    repo_root = Path(__file__).parents[3]
+
+    def test_rg1_projection_callers_use_detector_geometry(self) -> None:
+        """Production projection callers should consume DetectorGeometry."""
+        checked_files = [
+            self.repo_root / "src/rheedium/simul/simulator.py",
+            self.repo_root / "src/rheedium/simul/kinematic.py",
+            self.repo_root / "src/rheedium/simul/reflection_multislice.py",
+        ]
+
+        raw_projection_calls: list[str] = []
+        raw_projection_imports: list[str] = []
+        for path in checked_files:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    func = node.func
+                    if (
+                        isinstance(func, ast.Name)
+                        and func.id == "project_on_detector"
+                    ):
+                        raw_projection_calls.append(
+                            f"{path.name}:{node.lineno}"
+                        )
+                if isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        if alias.name == "project_on_detector":
+                            raw_projection_imports.append(
+                                f"{path.name}:{node.lineno}"
+                            )
+
+        self.assertEqual(raw_projection_calls, [])
+        self.assertEqual(raw_projection_imports, [])
+
+    def test_rg3_touched_public_symbols_have_live_consumers(self) -> None:
+        """Removed or retained public symbols must match live import graph."""
+        self.assertFalse(hasattr(rheedium_simul, "project_on_detector"))
+        self.assertNotIn("project_on_detector", rheedium_simul.__all__)
+
+        beam_averaging = ast.parse(
+            (
+                self.repo_root / "src/rheedium/simul/beam_averaging.py"
+            ).read_text(encoding="utf-8")
+        )
+        beam_public = {
+            node.name
+            for node in beam_averaging.body
+            if isinstance(node, ast.FunctionDef)
+            and not node.name.startswith("_")
+        }
+        self.assertNotIn("coherence_envelope", beam_public)
+
+        finite_domain = ast.parse(
+            (self.repo_root / "src/rheedium/simul/finite_domain.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        finite_domain_consumers = [
+            node
+            for node in finite_domain.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "finite_domain_intensities_for_size_distribution"
+        ]
+        self.assertLen(finite_domain_consumers, 1)
+        size_distribution_arg = next(
+            arg
+            for arg in finite_domain_consumers[0].args.args
+            if arg.arg == "size_distribution"
+        )
+        self.assertIsInstance(size_distribution_arg.annotation, ast.Name)
+        self.assertEqual(
+            size_distribution_arg.annotation.id,
+            "SizeDistribution",
+        )
 
 
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
@@ -1884,8 +1977,61 @@ def _make_si_crystal_2atom() -> CrystalStructure:
 _SI_CRYSTAL_2ATOM = _make_si_crystal_2atom()
 
 
+def _legacy_flat_detector_points(
+    k_out: Float[Array, "N 3"],
+    detector_distance_mm: float,
+) -> Float[Array, "N 2"]:
+    """Return the pre-carrier flat-detector projection formula."""
+    scale: Float[Array, "N"] = detector_distance_mm / (k_out[:, 0] + 1e-10)
+    return jnp.stack((k_out[:, 1] * scale, k_out[:, 2] * scale), axis=-1)
+
+
 class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     """Tests for dense detector-image helpers built on ewald_simulator."""
+
+    @staticmethod
+    def _legacy_render_pattern_to_image(
+        pattern: RHEEDPattern,
+        image_shape_px: tuple[int, int],
+        pixel_size_mm: tuple[float, float],
+        beam_center_px: tuple[float, float],
+        spot_sigma_px: float,
+    ) -> Float[Array, "H W"]:
+        """Mirror the pre-DetectorGeometry dense intensity renderer."""
+        height_px, width_px = image_shape_px
+        x_axis: Float[Array, "W"] = jnp.arange(width_px, dtype=jnp.float64)
+        y_axis: Float[Array, "H"] = jnp.arange(height_px, dtype=jnp.float64)
+        x_grid: Float[Array, "H W"]
+        y_grid: Float[Array, "H W"]
+        x_grid, y_grid = jnp.meshgrid(x_axis, y_axis, indexing="xy")
+        x_pixels: Float[Array, "N"] = (
+            pattern.detector_points[:, 0] / pixel_size_mm[0]
+            + beam_center_px[0]
+        )
+        y_pixels: Float[Array, "N"] = (
+            pattern.detector_points[:, 1] / pixel_size_mm[1]
+            + beam_center_px[1]
+        )
+
+        def _render_one_spot(
+            x0_px: Float[Array, ""],
+            y0_px: Float[Array, ""],
+            intensity: Float[Array, ""],
+        ) -> Float[Array, "H W"]:
+            return intensity * jnp.exp(
+                -((x_grid - x0_px) ** 2 + (y_grid - y0_px) ** 2)
+                / (2.0 * spot_sigma_px**2)
+            )
+
+        image: Float[Array, "H W"] = jnp.sum(
+            jax.vmap(_render_one_spot)(
+                x_pixels,
+                y_pixels,
+                pattern.intensities,
+            ),
+            axis=0,
+        )
+        return image / jnp.maximum(jnp.max(image), 1e-12)
 
     @staticmethod
     def _tiny_potential_slices(scale: float = 0.05) -> PotentialSlices:
@@ -1928,6 +2074,48 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(image)
         chex.assert_trees_all_close(jnp.max(image), 1.0, atol=1e-12)
         self.assertTrue(jnp.all(image >= 0.0))
+
+    def test_render_pattern_to_image_matches_pre_carrier_pixels(self) -> None:
+        """RG1: DetectorGeometry carrier preserves pre-refactor pixels."""
+        pattern: RHEEDPattern = RHEEDPattern(
+            G_indices=jnp.array([0, 1, 2], dtype=jnp.int32),
+            k_out=jnp.array(
+                [
+                    [10.0, 0.0, 1.0],
+                    [10.0, 0.0, 1.0],
+                    [10.0, 0.0, 1.0],
+                ],
+                dtype=jnp.float64,
+            ),
+            detector_points=jnp.array(
+                [[-1.5, 2.0], [2.25, 5.0], [9.0, 0.0]],
+                dtype=jnp.float64,
+            ),
+            intensities=jnp.array([1.0, 0.35, 0.15], dtype=jnp.float64),
+        )
+        image_shape_px: tuple[int, int] = (32, 40)
+        pixel_size_mm: tuple[float, float] = (1.5, 2.5)
+        beam_center_px: tuple[float, float] = (18.0, 6.0)
+        spot_sigma_px: float = 1.25
+
+        actual: Float[Array, "32 40"] = render_pattern_to_image(
+            pattern=pattern,
+            geometry=DetectorGeometry(
+                image_shape_px=image_shape_px,
+                pixel_size_mm=pixel_size_mm,
+                beam_center_px=beam_center_px,
+            ),
+            spot_sigma_px=spot_sigma_px,
+        )
+        expected: Float[Array, "32 40"] = self._legacy_render_pattern_to_image(
+            pattern=pattern,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            spot_sigma_px=spot_sigma_px,
+        )
+
+        chex.assert_trees_all_close(actual, expected, atol=1e-12)
 
     def test_render_amplitude_to_field_matches_single_spot_intensity(
         self,
@@ -3183,6 +3371,57 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 & (points[:, 1] <= ymax)
             )
             assert bool(jnp.any(visible))
+
+    def test_detector_contract_pixelwise_matches_flat_projection_regression(
+        self,
+    ) -> None:
+        """RG1: carrier projection preserves pre-refactor flat pixels."""
+        detector_distance_mm: float = 20.0
+        geometry = DetectorGeometry(
+            distance=detector_distance_mm,
+            image_shape_px=(32, 32),
+            pixel_size_mm=(2.0, 2.0),
+            beam_center_px=(16.0, 16.0),
+        )
+        carrier_pattern: RHEEDPattern
+        carrier_pattern, _ = _ewald_amplitude_pattern(
+            crystal=_SI_CRYSTAL_2ATOM,
+            voltage_kv=20.0,
+            theta_deg=5.0,
+            phi_deg=0.0,
+            hmax=1,
+            kmax=1,
+            detector_distance=detector_distance_mm,
+        )
+        legacy_flat_pattern = create_rheed_pattern(
+            g_indices=carrier_pattern.G_indices,
+            k_out=carrier_pattern.k_out,
+            detector_points=_legacy_flat_detector_points(
+                carrier_pattern.k_out, detector_distance_mm
+            ),
+            intensities=carrier_pattern.intensities,
+        )
+
+        carrier_image = render_pattern_to_image(
+            carrier_pattern,
+            geometry=geometry,
+            spot_sigma_px=1.2,
+        )
+        legacy_image = render_pattern_to_image(
+            legacy_flat_pattern,
+            geometry=geometry,
+            spot_sigma_px=1.2,
+        )
+
+        chex.assert_shape(carrier_image, (32, 32))
+        chex.assert_tree_all_finite(carrier_image)
+        self.assertGreater(float(jnp.max(carrier_image)), 0.0)
+        chex.assert_trees_all_close(
+            carrier_image,
+            legacy_image,
+            atol=1e-12,
+            rtol=1e-12,
+        )
 
     @staticmethod
     def _detector_metric(image: Float[Array, "H W"]) -> scalar_float:

@@ -44,6 +44,26 @@ Each entry summarizes the commits that landed for that version bump in
   )
   extent = rh.simul.detector_extent_mm(detector)
   ```
+- Completed the R1/RG1 detector-projection cleanup: production sparse-pattern
+  call sites now route projection through `DetectorGeometry` and
+  `project_on_detector_geometry`; the raw-distance `project_on_detector`
+  helper was removed with no shim.
+  Migration:
+  ```python
+  # Before
+  points = rh.simul.project_on_detector(k_out, detector_distance)
+
+  # After
+  detector = rh.types.DetectorGeometry(distance=detector_distance)
+  points = rh.simul.project_on_detector_geometry(k_out, detector)
+  ```
+- Removed the orphan `coherence_envelope` beam helper from the public surface;
+  partial coherence is represented through beam-mode distributions, and
+  `SizeDistribution` is consumed by the finite-domain intensity bridge.
+- Began R2 averaging collapse: pattern-space grain/domain mixers and
+  `instrument_broadened_pattern` now build generic `Distribution` axes and
+  reduce through `apply_distributions`, with inventory guards preventing the
+  retired bespoke weighted-sum and nested quadrature bodies from returning.
 
 ## [2026.6.6] - 2026-06-23
 

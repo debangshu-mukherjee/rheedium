@@ -33,6 +33,7 @@ from jaxtyping import Array, Complex, Float, Int, jaxtyped
 from rheedium.tools import interaction_constant, wavelength_ang
 from rheedium.types import (
     CrystalStructure,
+    DetectorGeometry,
     EdgeOnSlices,
     RHEEDPattern,
     create_edge_on_slices,
@@ -42,7 +43,7 @@ from rheedium.types import (
 )
 
 from .form_factors import projected_potential
-from .simulator import project_on_detector
+from .simulator import project_on_detector_geometry
 
 
 def _require_phi_zero(phi_deg: scalar_num) -> None:
@@ -526,7 +527,10 @@ def _read_reflected_pattern(
         ],
         axis=-1,
     )
-    detector_points = project_on_detector(k_out, detector_distance)
+    detector_points = project_on_detector_geometry(
+        k_out,
+        DetectorGeometry(distance=detector_distance),
+    )
     channel_indices = jnp.arange(ny, dtype=jnp.int32)
     g_indices = jnp.where(propagating, channel_indices, -1)
     return create_rheed_pattern(

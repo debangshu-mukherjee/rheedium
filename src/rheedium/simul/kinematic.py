@@ -19,7 +19,8 @@ Notes
 -----
 Key difference from simulator.py:
 - Simplified structure factors (f_j ≈ Z_j instead of tabulated form factors)
-- For detector projection, use :func:`project_on_detector` from simulator
+- For detector projection, use :func:`project_on_detector_geometry` from
+  simulator
 
 References
 ----------
@@ -35,6 +36,7 @@ from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 from rheedium.tools import incident_wavevector, wavelength_ang
 from rheedium.types import (
     CrystalStructure,
+    DetectorGeometry,
     RHEEDPattern,
     create_rheed_pattern,
     scalar_float,
@@ -42,7 +44,7 @@ from rheedium.types import (
 )
 from rheedium.ucell import generate_reciprocal_points
 
-from .simulator import find_kinematic_reflections, project_on_detector
+from .simulator import find_kinematic_reflections, project_on_detector_geometry
 
 
 @jaxtyped(typechecker=beartype)
@@ -276,9 +278,9 @@ def kinematic_spot_simulator(
         allowed_indices
     ]
 
-    detector_coords: Float[Array, "K 2"] = project_on_detector(
+    detector_coords: Float[Array, "K 2"] = project_on_detector_geometry(
         k_out=k_out,
-        detector_distance=detector_distance,
+        geometry=DetectorGeometry(distance=detector_distance),
     )
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(

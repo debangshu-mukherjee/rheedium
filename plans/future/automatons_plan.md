@@ -131,6 +131,107 @@ below serves it.
 
 ---
 
+## Agent-consumer contract — lean agents, heavy backend
+
+The §1 contract makes an automaton *runnable*; this section makes it *ergonomic
+for an LLM-driven agent to choose, call safely, and chain* — the design that keeps
+the agent layer thin. The principle: **the agent only moves bytes and makes
+decisions; `rheedium` owns the heavy lifting — compute, analysis, plotting, and
+serialization.** Everything an agent needs to invoke an automaton *safely,
+composably, and at scale* is **declared by the automaton and enforced once by the
+harness**, never re-implemented in the agent or in the INTERSECT/MCP bridge that
+fronts it. These are extensions to `Param` / `@experiment` / `emit` / `--describe`,
+not new machinery, and they stay stdlib-only (`json`), preserving the
+single-`rheedium`-dependency property (open decision #3).
+
+**A. Symmetric JSON I/O — JSON in, JSON out.**
+`emit()` already returns a JSON result on the final stdout line; the missing half
+is JSON *input*. The harness adds `--params <file | - | json-string>`: a JSON
+object validated against the **same schema `--describe` emits**, populating the
+same args namespace (explicit flags override; the merged result is validated).
+Flat CLI flags stay the human path; JSON is the machine path. This is what lets
+**nested params** (distributions, sweep value lists, config carriers, recipe
+dicts, artifact refs) be expressed at all — flat argparse cannot — and makes a
+slice of one automaton's `emit()` directly feedable as another's `--params`. A
+strict `--json` mode writes *only* the result object to stdout so the last-line
+parse cannot be fooled by stray output.
+
+**B. Self-describing, safe parameters.**
+- **Semantic metadata on `Param`** — `unit`, `bounds=(min, max)`, `choices`,
+  `example`, beyond name/type/default/help. An agent needs
+  `voltage_kv: {min: 5, max: 50, unit: "kV"}` to call sanely, and the harness
+  pre-validates before an expensive run.
+- **A declared result schema** — `returns=` on `@experiment`, surfaced in
+  `--describe`, so the agent knows the metric keys/types/units that come back
+  *without running*; the consuming MCP tool's return type follows from it.
+- **A structured error taxonomy** — the error result carries `error_kind` (a
+  small enum: `InvalidStructure`, `ParamOutOfRange`, `Unsupported`,
+  `ResourceExhausted`, `NumericalFailure`) plus the offending `field`, so the
+  agent branches (ask the user / clamp & retry / downscale / re-init) instead of
+  scraping a traceback. The `beartype` boundary already *detects* these —
+  categorize them.
+- **A pure `--validate` mode** — validate a structure file and params against the
+  schema and return structured errors *without running* the pipeline (distinct
+  from `--smoke`, which runs a tiny one). Fast, precise pre-flight feedback
+  ("XYZ malformed at line N", "theta_deg=12 exceeds max 5").
+
+**C. Results as portable artifacts, never JAX arrays.**
+A `jax.Array` is neither JSON-serializable nor backend-portable, so it must never
+cross the process boundary. The rule: **PNG for eyes, `.npz` for math, JSON for
+metrics.**
+- **Guarantee a rendered image.** Any pattern-producing automaton (`forward_*`,
+  `screen_*`, `rheed_ingest`) *declares* an image artifact in its manifest — not
+  an incidental `save_figure`. Rendering lives in `rheedium` (`rh.plots`), so the
+  agent/UI never plots.
+- **Typed artifact manifest.** Each `artifacts` entry is
+  `{role, mime, path, preview_b64?}` (e.g. `role: "detector_image",
+  mime: "image/png"`) so a consumer renders generically with zero per-automaton
+  code.
+- **Inline `preview_b64`.** A small base64 thumbnail dropped straight into the
+  `emit()` JSON, so an interactive agent shows an image with no
+  write→read→encode round-trip; the full-resolution PNG stays an artifact.
+- **Keep the numeric array** as a serialized `.npz` artifact (on request) for
+  Loop C, residuals, and any quantitative downstream — images for display do not
+  replace arrays for math.
+- **Render controls as params** — `cmap` (e.g. `"phosphor"`), image size,
+  normalization / log-scale — so the agent can request a specific render
+  (`rh.plots.plot_rheed` / `render_pattern_to_image` already exist).
+
+**D. Long-run & scale ergonomics.**
+- **Progress streaming.** For inversions and large sweeps, optional NDJSON
+  progress lines (`{type: "progress", frac, iter, loss}`) before the final result
+  — mirrors INTERSECT snapshot telemetry and the agent's streaming UI. (`--serve`
+  streams one result *per input*; this streams *within* a run.)
+- **Cooperative cancellation / `--deadline`.** Honor a wall-clock ceiling /
+  SIGTERM at checkpoints, emitting a partial `status: "timeout"`. An agent must be
+  able to abort a runaway inversion within a growth-control cadence. (Complements
+  the CI budget assertion at G5 — that is offline; this is runtime.)
+- **Cost estimate (`--estimate`).** Given params, return
+  `{est_wall_s, needs_gpu, est_mem_gb}` without running, so the agent can warn the
+  user or pick CPU vs GPU before launching.
+- **Result cache / idempotency key.** Determinism over
+  `(script, args, seed, rheedium_version)` makes a content-addressed `result_key`
+  derivable; `emit()` includes it and an optional `--cache-results` short-circuits
+  identical requests — important for an MCP server fronting many agents
+  re-requesting the same simulation. (Distinct from the *compilation* cache.)
+
+**E. Composition — chaining without shuttling blobs.**
+- **Structure by value or reference.** Automatons accept structure *content*
+  inline (small) or a path / `artifact://` reference (large), so a remote caller
+  need not stage a temp file and large payloads (CIF/XYZ text, frames, arrays)
+  move by reference, not through the LLM/JSON.
+- **Artifact-reference inputs.** A stable `artifact://<run_id>/<name>` scheme so
+  one automaton's output wires as another's input (`screen_xyz_ensemble` →
+  `match_measured_to_simulated` → `recipe_deviation`) without re-passing data —
+  the composition story that maps directly onto iHub campaigns.
+
+Net: the automaton declares *what it takes, what it returns, what it costs, and
+what can go wrong*; the harness enforces it once; the agent reads `--describe`,
+sends `--params`, and renders the manifest. Heavy code, analysis, and plotting
+stay in `rheedium`; the agent stays lean.
+
+---
+
 ## 2. Placement (decision + rationale)
 
 **Recommended: top-level `automatons/`**, a sibling of `tutorials/`, tracked in git
@@ -316,6 +417,15 @@ scripts stay declarative:
     successive inputs from stdin/a watched path, emitting one result per input.
     This is the real-time escape hatch for Loop A: it amortizes the per-process
     JAX startup that AOT alone cannot remove (see "AOT compilation strategy").
+- **Agent-consumer plumbing (see "Agent-consumer contract"):** `--params`
+  (JSON-in, validated against the `--describe` schema), `--validate`
+  (schema-check without running), `--estimate` (predicted cost), `--deadline`
+  (cooperative cancellation), and a strict `--json` output mode. `Param` gains
+  `unit` / `bounds` / `choices` / `example`; `@experiment` gains `returns=` (the
+  result schema, surfaced in `--describe`); `emit` gains a typed artifact manifest
+  (`role` / `mime` / `preview_b64`), an `error_kind` taxonomy, and a
+  content-addressed `result_key`; plus optional NDJSON progress events. One
+  canonical implementation in the harness, never hand-rolled per script.
 
 Because the harness is in `rheedium`, scripts depend on **only** `rheedium`, and
 the harness itself is covered by the normal test suite.
@@ -494,13 +604,20 @@ mean rewriting every one afterward.
 ### Phase 0 — Contract design (paper, no code)
 
 *Tasks:* freeze the **result-JSON schema** and the **`--describe` param schema**
-as committed artifacts (a `schema/` JSON-Schema file or a versioned note);
-enumerate the exact harness API (`Param`, `experiment`, `ExperimentContext`,
-`emit`) and the CLI flags every automaton inherits (`--outdir`, `--seed`,
-`--smoke`, `--describe`, `--cache`, `--unchecked`).
+as committed artifacts (a `schema/` JSON-Schema file or a versioned note). The
+param schema now carries the **semantic metadata** (unit / bounds / choices /
+example) and **doubles as the `--params` JSON-input schema**; the result schema
+includes the **`returns` block**, the **typed artifact manifest**
+(`role`/`mime`/`preview_b64`), and the **`error_kind` taxonomy** (see
+"Agent-consumer contract"). Enumerate the exact harness API (`Param`,
+`experiment`, `ExperimentContext`, `emit`) and the CLI flags every automaton
+inherits (`--outdir`, `--seed`, `--smoke`, `--describe`, `--cache`, `--unchecked`,
+plus `--params`, `--validate`, `--estimate`, `--deadline`, `--json`).
 
-**Gate G0:** both JSON schemas exist as committed files and are reviewed; all
-later phases *validate against* them rather than redefining them.
+**Gate G0:** both JSON schemas exist as committed files and are reviewed; the
+param schema validates a sample `--params` document and the result schema
+validates a sample `emit()` with artifact manifest + error taxonomy; all later
+phases *validate against* them rather than redefining them.
 
 ### Phase 1 — Harness (the foundation)
 
@@ -691,7 +808,8 @@ holds the mission loops can be reordered or parallelized.
 
 | Path | Change |
 |---|---|
-| `src/rheedium/harness/__init__.py` | new subpackage: `Param`, `experiment`, `ExperimentContext`, `emit`, runtime-knob setup, AOT plumbing (`--export` via `tools.export_forward`, warm `--serve` mode); exports + Routine Listings |
+| `src/rheedium/harness/__init__.py` | new subpackage: `Param`, `experiment`, `ExperimentContext`, `emit`, runtime-knob setup, AOT plumbing (`--export` via `tools.export_forward`, warm `--serve` mode); **agent-consumer plumbing** (`--params`/`--validate`/`--estimate`/`--deadline`/`--json`; semantic `Param`; `returns=` schema; typed artifact manifest + `preview_b64`; `error_kind`; `result_key`; NDJSON progress); exports + Routine Listings |
+| `schema/automaton_params.schema.json`, `schema/automaton_result.schema.json` | committed JSON-Schema files frozen at G0; `--describe`/`emit` and `--params` validate against them |
 | `src/rheedium/__init__.py` | add `harness` to the submodule imports + `__all__` + Routine Listings |
 | `automatons/forward_kinematic.py` | Phase-2 exemplar PEP 723 script |
 | `automatons/README.md`, `automatons/INDEX.md` | usage, dev override, experiment index |
@@ -731,3 +849,14 @@ agent-parseable experiments whose sole declared dependency is `rheedium` itself.
    speed levers it defaults to (compilation cache on, AOT-exported kernel,
    unchecked fast path). Recommendation: set a concrete budget at G5 and assert
    it; default the cache on and the checks off for inversion runs.
+7. **Structure passing** (agent-consumer) — inline content vs filesystem path vs
+   `artifact://` reference. Recommendation: accept all three; small structures
+   inline, large payloads (frames, arrays, big `.xyz`) by reference, never routed
+   through the LLM/JSON.
+8. **`--params` precedence** — JSON document as the base with explicit CLI flags
+   overriding (recommended) vs mutually exclusive JSON-or-flags. Recommendation:
+   merge then validate against the schema.
+9. **Inline `preview_b64`** — always emit a small thumbnail (recommended for
+   interactive agents; full-res PNG remains an artifact) vs only under an opt-in
+   `--preview`. Recommendation: always, capped to a small size to bound result
+   size.

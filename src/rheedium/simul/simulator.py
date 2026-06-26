@@ -35,8 +35,6 @@ Routine Listings
 :func:`multislice_simulator`
     Simulate RHEED pattern from potential slices using multislice
     (dynamical).
-:func:`project_on_detector`
-    Project wavevectors onto detector plane.
 :func:`project_on_detector_geometry`
     Project wavevectors with full detector geometry support.
 :func:`render_pattern_to_image`
@@ -174,62 +172,14 @@ def _compose_ewald_intensity(
 
 
 @jaxtyped(typechecker=beartype)
-def project_on_detector(
-    k_out: Float[Array, "N 3"],
-    detector_distance: scalar_float,
-) -> Float[Array, "N 2"]:
-    r"""Project output wavevectors onto detector plane.
-
-    Uses ray-tracing projection to a vertical detector screen at distance d.
-    The scale factor is computed as d/k_x (with small epsilon to avoid
-    division by zero), then multiplied by k_y and k_z to get horizontal
-    and vertical detector coordinates.
-
-    :see: :class:`~.test_simulator.TestProjectOnDetector`
-
-    Parameters
-    ----------
-    k_out : Float[Array, "N 3"]
-        Output wavevectors.
-    detector_distance : scalar_float
-        Distance from sample to detector in mm.
-
-    Returns
-    -------
-    detector_coords : Float[Array, "N 2"]
-        [horizontal, vertical] coordinates on detector in mm.
-
-    Notes
-    -----
-    1. **Scale factor** --
-       :math:`s = d / (k_x + \\epsilon)` for each
-       wavevector.
-    2. **Detector coordinates** --
-       :math:`(k_y \\times s,\\; k_z \\times s)`.
-
-    See Also
-    --------
-    project_on_detector_geometry : Projection with tilt and curvature support.
-    """
-    scale: Float[Array, "N"] = detector_distance / (k_out[:, 0] + 1e-10)
-    detector_h: Float[Array, "N"] = k_out[:, 1] * scale
-    detector_v: Float[Array, "N"] = k_out[:, 2] * scale
-    detector_coords: Float[Array, "N 2"] = jnp.stack(
-        [detector_h, detector_v], axis=-1
-    )
-    return detector_coords
-
-
-@jaxtyped(typechecker=beartype)
 def project_on_detector_geometry(
     k_out: Float[Array, "N 3"],
     geometry: DetectorGeometry,
 ) -> Float[Array, "N 2"]:
     """Project output wavevectors onto detector with full geometry support.
 
-    This function extends the basic projection to support tilted and curved
-    detector screens. For a flat, untilted detector at the default distance,
-    this is equivalent to `project_on_detector`.
+    This function supports flat, tilted, and curved detector screens through
+    the shared detector-geometry carrier.
 
     Parameters
     ----------
@@ -246,9 +196,8 @@ def project_on_detector_geometry(
 
     Notes
     -----
-    For small tilt angles and infinite curvature, this reduces
-    to the simple ray-tracing formula in
-    :func:`project_on_detector`.
+    For zero tilt and infinite curvature, this reduces to the simple
+    ray-tracing formula :math:`(k_y d/k_x, k_z d/k_x)`.
 
     1. **Ray-plane intersection** --
        Compute intersection parameter :math:`t` for each
@@ -263,7 +212,7 @@ def project_on_detector_geometry(
 
     See Also
     --------
-    project_on_detector : Simple projection for flat, untilted detectors.
+    DetectorGeometry : Shared detector carrier for projection and rendering.
     """
     distance: float = geometry.distance
     tilt_rad: Float[Array, ""] = jnp.deg2rad(geometry.tilt_angle)
@@ -997,8 +946,9 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     intensities: Float[Array, "K"] = intensities / max_intensity
 
     # Project onto detector
-    detector_points: Float[Array, "K 2"] = project_on_detector(
-        k_out, detector_distance
+    detector_points: Float[Array, "K 2"] = project_on_detector_geometry(
+        k_out,
+        DetectorGeometry(distance=detector_distance),
     )
 
     # Create pattern
@@ -3607,7 +3557,6 @@ __all__: list[str] = [
     "multislice_amplitude",
     "multislice_propagate",
     "multislice_simulator",
-    "project_on_detector",
     "project_on_detector_geometry",
     "render_amplitude_to_field",
     "render_ctr_amplitude_to_field",

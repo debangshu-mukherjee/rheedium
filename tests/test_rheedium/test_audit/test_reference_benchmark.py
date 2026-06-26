@@ -87,6 +87,18 @@ def test_simulate_detector_image_from_metadata_matches_shape() -> None:
     assert float(np.max(_SIMULATED_IMAGE)) == pytest.approx(1.0, abs=1e-12)
 
 
+def test_rg1_pixelwise_reference_images_match_pre_refactor_fixtures() -> None:
+    """RG1: regenerated detector images match stored pre-refactor pixels."""
+    assert _REFERENCE_CASES is not None
+    case: ReferenceCase
+    for case in _REFERENCE_CASES:
+        simulated = simulate_detector_image_from_metadata(
+            case.metadata,
+            repo_root=_REPO_ROOT,
+        )
+        np.testing.assert_allclose(simulated, case.image, atol=1e-12, rtol=0.0)
+
+
 def test_benchmark_reference_case_matches_synthetic_fixture() -> None:
     """Synthetic fixtures benchmark back to a near-perfect match."""
     assert _REFERENCE_CASE is not None

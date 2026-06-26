@@ -18,9 +18,9 @@ Status: **partial implementation active** — moved from `plans/future/` to
 `plans/partial/` on 2026-06-25 because implementation has started. Entry gate
 **R0 is satisfied**: the distribution-framework plan has landed, the framework's
 six phases are present, and `simulate_detector_image` is the Layer-1 integrator
-with first-class `kernel=` / `distribution=` inputs. The current active phase is
-**R1 Detector unification**, with the first detector-carrier slice landed and
-verified (see §4, Phase R1 progress). **Roadmap position:** second of four —
+with first-class `kernel=` / `distribution=` inputs. **R1 Detector
+unification** and **R3 dangling-code retirement** are now closed (see §4,
+Phase R1/R3 progress). **Roadmap position:** second of four —
 framework → *this* → [recon (inversion)](../future/recon_optimization_plan.md) →
 [automatons](../future/automatons_plan.md). The recon solver and the automatons
 are both written against the rationalized API this plan produces, so neither
@@ -57,15 +57,21 @@ than aspirational.
   `uv run ty check src/rheedium/types src/rheedium/simul/simulator.py tests/test_rheedium/test_types/test_detector.py tests/test_rheedium/test_simul/test_simulator.py`
   → passed.
 
-Remaining R1 work before RG1 closes:
+### 2026-06-26 — R1/RG1 and R3/RG3 closed
 
-- Route the remaining projection entry points and call sites through the shared
-  carrier consistently, including simple `project_on_detector` callers that
-  still pass only a distance.
-- Decide whether `project_on_detector` remains an internal simple helper or is
-  deleted/replaced at the public boundary by `project_on_detector_geometry`.
-- Add/confirm pixelwise regression coverage against pre-refactor images for the
-  full R1 surface, not only renderer equivalence and detector-contract tests.
+- Remaining production sparse-pattern projection callers now route through
+  `project_on_detector_geometry` with a `DetectorGeometry` carrier, including
+  kinematic, exact-Ewald, and reflection-multislice paths.
+- The raw-distance `project_on_detector` helper was removed with no shim; the
+  test suite keeps a local flat-projection formula only as a pre-refactor
+  regression oracle.
+- RG1 now has an import/AST guard for production projection callers, a
+  pixelwise regression comparing the carrier route against the pre-refactor
+  flat-projection image, and a stored-reference pixelwise regression against the
+  synthetic pre-refactor fixture images.
+- RG3 now has an import/AST guard confirming `coherence_envelope` is absent from
+  the touched public surface and `SizeDistribution` has a live finite-domain
+  consumer via `finite_domain_intensities_for_size_distribution`.
 
 ---
 
@@ -283,19 +289,18 @@ The §5 guardrails, as pass/fail commands:
 through one `DetectorGeometry` carrier (the `types/detector.py` the framework
 slot-defined); intensity and amplitude render variants share one coordinate map.
 
-**Progress:** partially complete as of 2026-06-25. `DetectorGeometry` now carries
+**Progress:** complete as of 2026-06-26. `DetectorGeometry` now carries
 `image_shape_px`, `pixel_size_mm`, and `beam_center_px`; the sparse intensity,
 amplitude, CTR-streak renderers, and `detector_extent_mm` consume that carrier.
 Tutorials/notebooks/sweep exporters were migrated in the same slice, and the
-public break is documented in `CHANGELOG.md` with no shim.
-
-**Remaining:** finish projection unification by routing/deleting the remaining
-raw-distance `project_on_detector` path and its call sites, then add/confirm the
-full pixelwise R1 regression coverage.
+public break is documented in `CHANGELOG.md` with no shim. Remaining production
+projection callers now route through `project_on_detector_geometry` with
+`DetectorGeometry`; the raw-distance `project_on_detector` helper was removed
+with no shim.
 
 **Gate RG1:** kinematic and (future) multislice paths assert *identical* detector
 extents from the shared carrier; pixelwise regression vs pre-refactor images;
-universal gate.
+universal gate. **Closed 2026-06-26.**
 
 ### Phase R2 — Collapse the ensemble integrators (highest payoff)  ·  W1
 
@@ -303,7 +308,19 @@ universal gate.
 `apply_misorientation_distribution`, `surface_modifier.incoherent_domain_average`,
 `ewald_simulator_with_orientation_distribution` + the nested orientation `vmap`s,
 and `instrument_broadened_pattern`'s quadrature → all become "build a
-`Distribution`, call `apply` / `apply_all`."
+`Distribution`, call `apply` / `apply_distributions`."
+
+**Progress:** active as of 2026-06-26. The pattern-space grain and surface-domain
+mixers now bind their pattern banks to generic incoherent `Distribution` axes and
+delegate reduction to `apply_distributions`; `apply_misorientation_distribution`
+now rides that same grain adapter. `instrument_broadened_pattern` now builds one
+incoherent quadrature `Distribution` over polar/azimuth/energy samples and uses
+the same reducer before detector PSF convolution. RG2 inventory guards assert
+that these retired bodies call the shared reducer and do not reintroduce the old
+broadcast-weighted pattern sums or nested quadrature/einsum body. Remaining R2
+work: collapse `integrate_over_orientation`,
+`ewald_simulator_with_orientation_distribution`, and any still-public standalone
+legacy quadrature helpers selected for deletion.
 
 **Gate RG2:** each retired path reproduces its pre-refactor output to tolerance;
 the count of bespoke averaging functions drops to the one reducer (asserted by an
@@ -316,9 +333,13 @@ shortcut), closing the double-counting risk; confirm `SizeDistribution` is fully
 consumed by the framework's `finite_domain` producer and delete any residual dead
 path.
 
+**Progress:** complete as of 2026-06-26. `coherence_envelope` is removed from
+the code/export surface, and `SizeDistribution` is consumed by
+`finite_domain_intensities_for_size_distribution`.
+
 **Gate RG3:** no unreferenced public symbol remains in the touched modules
 (import-graph check); every removal is a **hard deletion — no shim, no alias**
-(§3), migrated via `CHANGELOG.md`; universal gate.
+(§3), migrated via `CHANGELOG.md`; universal gate. **Closed 2026-06-26.**
 
 ### Phase R4 — Parameter-object rationalization + sweeps collapse  ·  W3 (finish) + W6
 
@@ -365,9 +386,9 @@ gate.
 | Gate | Pass condition (+ the universal gate) |
 |------|----------------------------------------|
 | **R0** | **complete 2026-06-25** — framework complete + green; overlap reconciled enough to start R1 |
-| **RG1** | **partial** — dense render/extent mapping unified; remaining projection unification + full pixelwise regression |
-| **RG2** | ~5 averaging paths → 1 reducer; per-path regression |
-| **RG3** | no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
+| **RG1** | **complete 2026-06-26** — dense render/extent mapping unified; production projection callers use `DetectorGeometry`; pixelwise flat-projection and stored-reference regressions |
+| **RG2** | **active** — grain/domain pattern mixers and instrument quadrature retired; orientation wrappers still pending |
+| **RG3** | **complete 2026-06-26** — no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
 | **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deleted in-phase (no dual API); notebooks updated |
 | **RG5** | `procs` trichotomy enforced; one unit at the boundary |
 | **RG6** | module reorg with unchanged public import paths |

@@ -26,7 +26,7 @@ from rheedium.simul.simulator import (
     find_kinematic_reflections as kinematic_ewald_sphere,
 )
 from rheedium.simul.simulator import (
-    project_on_detector,
+    project_on_detector_geometry,
 )
 from rheedium.tools import (
     incident_wavevector as kinematic_incident_wavevector,
@@ -37,6 +37,7 @@ from rheedium.types.crystal_types import (
     create_crystal_structure,
 )
 from rheedium.types.custom_types import scalar_float
+from rheedium.types.detector import DetectorGeometry
 from rheedium.types.rheed_types import RHEEDPattern
 from rheedium.ucell.unitcell import (
     miller_to_reciprocal,
@@ -181,7 +182,9 @@ class TestDetectorProjection(chex.TestCase):
         The simplified projection uses:
         x_d = k_y * d / k_x, y_d = k_z * d / k_x
         """
-        var_project: Callable[..., Any] = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(
+            project_on_detector_geometry
+        )
 
         # Setup: typical RHEED parameters
         wavelength: float = 0.0859  # ~20 keV electrons
@@ -192,7 +195,9 @@ class TestDetectorProjection(chex.TestCase):
         d: float = 100.0
 
         # Get detector coordinates
-        coords: Float[Array, "..."] = var_project(k_out, d)
+        coords: Float[Array, "..."] = var_project(
+            k_out, DetectorGeometry(distance=d)
+        )
         x_d: tuple[Any, ...]
         y_d: tuple[Any, ...]
         x_d, y_d = coords[0, 0], coords[0, 1]
@@ -210,7 +215,9 @@ class TestDetectorProjection(chex.TestCase):
 
         Specular: k_out_z ≈ |k_in_z| but positive (upward).
         """
-        var_project: Callable[..., Any] = self.variant(project_on_detector)
+        var_project: Callable[..., Any] = self.variant(
+            project_on_detector_geometry
+        )
 
         theta_deg: float = 2.0
         theta_rad: scalar_float = jnp.deg2rad(theta_deg)
@@ -223,7 +230,9 @@ class TestDetectorProjection(chex.TestCase):
         )
         d: float = 100.0
 
-        coords: Float[Array, "..."] = var_project(k_out, d)
+        coords: Float[Array, "..."] = var_project(
+            k_out, DetectorGeometry(distance=d)
+        )
 
         # Specular should be close to x_d = 0 (no horizontal deflection)
         chex.assert_trees_all_close(coords[0, 0], 0.0, atol=0.1)

@@ -1,6 +1,8 @@
 """Test suite for procs/grains.py."""
 
+import ast
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import chex
@@ -18,6 +20,64 @@ from rheedium.procs.grains import (
 from rheedium.simul.beam_averaging import apply_distribution
 from rheedium.types import Distribution, ReductionMode
 from rheedium.types.custom_types import scalar_float
+
+
+def _public_function(path: Path, name: str) -> ast.FunctionDef:
+    """Return a public function AST node by name."""
+    module = ast.parse(path.read_text(encoding="utf-8"))
+    for node in module.body:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node
+    raise AssertionError(f"{name} not found in {path}")
+
+
+class TestR2InventoryGuards(chex.TestCase):
+    """Guards for retired pattern-space averaging bodies."""
+
+    repo_root = Path(__file__).parents[3]
+
+    def test_retired_pattern_mixers_use_shared_reducer(self) -> None:
+        """R2 retired pattern mixers should call the one reducer."""
+        retired_mixers = {
+            "src/rheedium/procs/grains.py": (
+                "grain_distribution_average",
+                "apply_misorientation_distribution",
+            ),
+            "src/rheedium/procs/surface_modifier.py": (
+                "incoherent_domain_average",
+            ),
+        }
+        reducer_calls: list[str] = []
+        forbidden_weighted_broadcasts: list[str] = []
+        for rel_path, function_names in retired_mixers.items():
+            path = self.repo_root / rel_path
+            source = path.read_text(encoding="utf-8")
+            for function_name in function_names:
+                function = _public_function(path, function_name)
+                for node in ast.walk(function):
+                    if isinstance(node, ast.Call):
+                        func = node.func
+                        if (
+                            isinstance(func, ast.Name)
+                            and func.id == "apply_distributions"
+                        ):
+                            reducer_calls.append(f"{rel_path}:{function_name}")
+                function_source = (
+                    ast.get_source_segment(source, function) or ""
+                )
+                if "[:, None, None]" in function_source:
+                    forbidden_weighted_broadcasts.append(
+                        f"{rel_path}:{function_name}"
+                    )
+
+        self.assertEqual(
+            reducer_calls,
+            [
+                "src/rheedium/procs/grains.py:grain_distribution_average",
+                "src/rheedium/procs/surface_modifier.py:incoherent_domain_average",
+            ],
+        )
+        self.assertEqual(forbidden_weighted_broadcasts, [])
 
 
 class TestGrainDistributionAverage(chex.TestCase):

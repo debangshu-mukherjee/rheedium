@@ -105,8 +105,6 @@ Routine Listings
     Return reciprocal-space multislice amplitude before modulus-squared.
 :func:`multislice_simulator`
     Simulate RHEED pattern from potential slices using multislice (dynamical).
-:func:`project_on_detector`
-    Project reciprocal lattice points onto detector screen.
 :func:`project_on_detector_geometry`
     Project reciprocal lattice points with full detector geometry support.
 :func:`render_pattern_to_image`
@@ -209,7 +207,6 @@ from .simulator import (
     multislice_amplitude,
     multislice_propagate,
     multislice_simulator,
-    project_on_detector,
     project_on_detector_geometry,
     render_amplitude_to_field,
     render_ctr_amplitude_to_field,
@@ -285,7 +282,6 @@ __all__: list[str] = [
     "multislice_propagate",
     "multislice_amplitude",
     "multislice_simulator",
-    "project_on_detector",
     "project_on_detector_geometry",
     "rod_profile_function",
     "roughness_damping",

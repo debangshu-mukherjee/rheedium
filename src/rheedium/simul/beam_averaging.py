@@ -41,10 +41,10 @@ polynomials up to degree :math:`2n - 1`. For smooth RHEED intensity
 profiles, 5--9 quadrature points give integration errors below
 :math:`10^{-10}`.
 
-Coherence envelopes act as multiplicative Gaussian damping in
-reciprocal space. The PSF convolution uses FFT for
-:math:`O(HW \log HW)` complexity and is fully differentiable
-through ``jnp.fft``.
+The detector PSF convolution uses FFT for :math:`O(HW \log HW)` complexity and
+is fully differentiable through ``jnp.fft``. Partial coherence is represented
+through explicit beam-mode distributions rather than a separate multiplicative
+coherence envelope.
 """
 
 import jax
@@ -770,18 +770,15 @@ def instrument_broadened_pattern(
 
     Notes
     -----
-    1. **Build quadrature grids** --
-       Gauss-Hermite nodes and weights for angular and energy
-       broadening.
-    2. **Joint simulation** --
-       Evaluate ``simulate_fn(alpha_i, phi_0, E_j)`` on the tensor
-       product of the angular and energy nodes.
-    3. **Weighted sum** --
-       Integrate the joint intensity distribution with a product
-       quadrature weight and normalize by :math:`\pi`.
-    4. **PSF convolution** --
+    1. **Build a Distribution** --
+       Convert angular and energy quadrature grids to one incoherent
+       distribution over ``[polar_angle_rad, azimuth_angle_rad, energy_kev]``.
+    2. **Shared reduction** --
+       Evaluate the bound coherent amplitude through
+       :func:`apply_distributions`.
+    3. **PSF convolution** --
        Apply :func:`detector_psf_convolve` to the combined pattern.
-    5. **Clip** --
+    4. **Clip** --
        Ensure non-negative output.
 
     Examples
@@ -813,40 +810,53 @@ def instrument_broadened_pattern(
     energy_nodes, energy_weights = gauss_hermite_nodes_weights(
         n_energy_samples
     )
-    angle_samples: Float[Array, " N_a"] = (
+    angle_samples: Float[Array, "N_a"] = (
         nominal_polar_angle_rad + jnp.sqrt(2.0) * divergence_rad * angle_nodes
     )
-    azimuth_samples: Float[Array, " N_a"] = jnp.full_like(
-        angle_samples, nominal_azimuth_angle_rad
-    )
-    energy_samples: Float[Array, " N_e"] = (
+    energy_samples: Float[Array, "N_e"] = (
         nominal_energy_kev + jnp.sqrt(2.0) * spread_kev * energy_nodes
     )
-
-    def _simulate_at_angle(
-        polar_angle_rad: scalar_float,
-        azimuth_angle_rad: scalar_float,
-    ) -> Float[Array, "N_e H W"]:
-        return jax.vmap(
-            lambda energy_kev: simulate_fn(
-                polar_angle_rad,
-                azimuth_angle_rad,
-                energy_kev,
-            )
-        )(energy_samples)
-
-    patterns: Float[Array, "N_a N_e H W"] = jax.vmap(_simulate_at_angle)(
+    polar_grid: Float[Array, "N_a N_e"]
+    energy_grid: Float[Array, "N_a N_e"]
+    polar_grid, energy_grid = jnp.meshgrid(
         angle_samples,
-        azimuth_samples,
+        energy_samples,
+        indexing="ij",
     )
-    combined: Float[Array, "H W"] = (
-        jnp.einsum(
-            "i,j,ijhw->hw",
-            angle_weights,
-            energy_weights,
-            patterns,
+    azimuth_grid: Float[Array, "N_a N_e"] = jnp.full_like(
+        polar_grid,
+        nominal_azimuth_angle_rad,
+    )
+    weight_grid: Float[Array, "N_a N_e"] = (
+        angle_weights[:, None] * energy_weights[None, :]
+    )
+    distribution: Distribution = create_distribution(
+        samples=jnp.stack(
+            [
+                polar_grid.ravel(),
+                azimuth_grid.ravel(),
+                energy_grid.ravel(),
+            ],
+            axis=-1,
+        ),
+        weights=weight_grid.ravel(),
+        reduction=ReductionMode.INCOHERENT,
+        axis_id="instrument_quadrature",
+    )
+
+    def _instrument_amplitude(
+        sample: Float[Array, "3"],
+    ) -> Complex[Array, "H W"]:
+        intensity: Float[Array, "H W"] = simulate_fn(
+            sample[0],
+            sample[1],
+            sample[2],
         )
-        / jnp.pi
+        return jnp.sqrt(jnp.maximum(intensity, 0.0)).astype(jnp.complex128)
+
+    combined: Float[Array, "H W"] = apply_distributions(
+        (distribution,),
+        _instrument_amplitude,
     )
     final_pattern: Float[Array, "H W"] = detector_psf_convolve(
         detector_image=combined,

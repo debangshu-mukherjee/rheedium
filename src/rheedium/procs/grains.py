@@ -30,7 +30,7 @@ inverse-facing contract.
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Complex, Float, Int, jaxtyped
 
 from rheedium.types import (
     Distribution,
@@ -152,26 +152,50 @@ def grain_distribution_average(
 
     Notes
     -----
-    1. **Clip fractions** --
-       Negative grain fractions are set to zero.
-    2. **Normalize** --
-       Divide by the total weight so the fractions sum to one whenever
-       any weight is present.
-    3. **Average intensities** --
-       Compute the weighted sum over the grain axis.
-
-    This is an intensity-space mixture model, so intensities add
+    The pattern bank is bound to an incoherent generic
+    :class:`~rheedium.types.Distribution` and reduced by the shared Layer-1
+    reducer. This is an intensity-space mixture model, so intensities add
     incoherently rather than amplitudes.
     """
     clipped_fractions: Float[Array, "N_grains"] = jnp.clip(
         jnp.asarray(grain_volume_fractions, dtype=jnp.float64), 0.0, None
     )
-    normalization: Float[Array, ""] = jnp.sum(clipped_fractions)
-    normalized_fractions: Float[Array, "N_grains"] = clipped_fractions / (
-        normalization + 1e-10
+    fraction_sum: Float[Array, ""] = jnp.sum(clipped_fractions)
+    has_positive_weight: Float[Array, ""] = jnp.where(
+        fraction_sum > 0.0,
+        1.0,
+        0.0,
     )
-    weights: Float[Array, "N_grains 1 1"] = normalized_fractions[:, None, None]
-    return jnp.sum(weights * domain_patterns, axis=0)
+    safe_fractions: Float[Array, "N_grains"] = jnp.where(
+        fraction_sum > 0.0,
+        clipped_fractions,
+        jnp.ones_like(clipped_fractions),
+    )
+    sample_indices: Float[Array, "N_grains 1"] = jnp.arange(
+        domain_patterns.shape[0],
+        dtype=jnp.float64,
+    )[:, None]
+    distribution: Distribution = create_distribution(
+        samples=sample_indices,
+        weights=safe_fractions,
+        reduction=ReductionMode.INCOHERENT,
+        axis_id="grain_pattern",
+    )
+
+    def _domain_amplitude(
+        sample: Float[Array, "1"],
+    ) -> Complex[Array, "H W"]:
+        pattern_index: Int[Array, ""] = sample[0].astype(jnp.int32)
+        pattern: Float[Array, "H W"] = domain_patterns[pattern_index]
+        return jnp.sqrt(jnp.maximum(pattern, 0.0)).astype(jnp.complex128)
+
+    from rheedium.simul.beam_averaging import apply_distributions
+
+    mixed_pattern: Float[Array, "H W"] = apply_distributions(
+        (distribution,),
+        _domain_amplitude,
+    )
+    return has_positive_weight * mixed_pattern
 
 
 @jaxtyped(typechecker=beartype)

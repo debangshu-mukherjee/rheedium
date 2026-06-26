@@ -142,6 +142,21 @@ def simulate_pattern(
   `beartype.typing.Tuple[...]`.
 - Annotate intermediate variables inside function bodies too — e.g.
   `alpha_rad: Float[Array, ""] = jnp.deg2rad(alpha)`.
+- **Assign before returning.** Bind a function's result to a type-annotated
+  variable and return that name, rather than returning a bare expression — so the
+  returned value carries an explicit type at its definition site:
+
+  ```python
+  # ❌ Avoid - bare expression in the return
+  def add(a: int, b: int) -> int:
+      return a + b
+
+
+  # ✅ Prefer - annotated result, then return the name
+  def add(a: int, b: int) -> int:
+      c: int = a + b
+      return c
+  ```
 - Use descriptive dimension names in shape specs: `Num[Array, "N 4"]`,
   `Float[Array, " n 3"]`, scalars as `Float[Array, ""]`.
 - Prefer the scalar aliases from `rheedium.types` (`scalar_float`,

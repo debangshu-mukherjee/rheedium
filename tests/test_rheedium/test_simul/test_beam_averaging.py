@@ -6,7 +6,9 @@ Includes gradient tests to ensure end-to-end differentiability through
 all beam averaging operations.
 """
 
+import ast
 from collections.abc import Callable
+from pathlib import Path
 from typing import TypedDict
 
 import chex
@@ -35,6 +37,39 @@ from rheedium.types.custom_types import scalar_float
 
 H: int = 32
 W: int = 32
+
+
+def _public_function(path: Path, name: str) -> ast.FunctionDef:
+    """Return a public function AST node by name."""
+    module = ast.parse(path.read_text(encoding="utf-8"))
+    for node in module.body:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node
+    raise AssertionError(f"{name} not found in {path}")
+
+
+class TestR2InventoryGuards(chex.TestCase):
+    """Guards for retired instrument averaging bodies."""
+
+    repo_root = Path(__file__).parents[3]
+
+    def test_instrument_broadened_pattern_uses_shared_reducer(self) -> None:
+        """R2 instrument quadrature should route through the one reducer."""
+        path = self.repo_root / "src/rheedium/simul/beam_averaging.py"
+        source = path.read_text(encoding="utf-8")
+        function = _public_function(path, "instrument_broadened_pattern")
+        function_source = ast.get_source_segment(source, function) or ""
+        reducer_calls = [
+            node
+            for node in ast.walk(function)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "apply_distributions"
+        ]
+
+        self.assertLen(reducer_calls, 1)
+        self.assertNotIn("patterns:", function_source)
+        self.assertNotIn("jnp.einsum", function_source)
 
 
 def _linear_complex_field(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
