@@ -47,7 +47,10 @@ def _true_distribution() -> OrientationDistribution:
 
 
 class TestOrientationLoss(chex.TestCase):
-    """Tests for the forward loss used in orientation fitting."""
+    """Tests for the forward loss used in orientation fitting.
+
+    :see: :func:`~rheedium.recon.orientation_loss`
+    """
 
     def test_orientation_loss_is_zero_for_matching_distribution(self) -> None:
         """The loss should vanish when the trial distribution matches data."""
@@ -70,7 +73,10 @@ class TestOrientationLoss(chex.TestCase):
 
 
 class TestOrientationFitting(chex.TestCase):
-    """Tests for weight recovery on a fixed orientation support."""
+    """Tests for weight recovery on a fixed orientation support.
+
+    :see: :func:`~rheedium.recon.fit_orientation_weights`
+    """
 
     def test_fit_orientation_weights_recovers_synthetic_weights(self) -> None:
         """The inverse fit should recover the synthetic mixture weights."""
@@ -109,7 +115,11 @@ class TestOrientationFitting(chex.TestCase):
 
 
 class TestOrientationUncertainty(chex.TestCase):
-    """Tests for Fisher-based orientation uncertainty estimates."""
+    """Tests for Fisher-based orientation uncertainty estimates.
+
+    :see: :func:`~rheedium.recon.compute_fisher_information`
+    :see: :func:`~rheedium.recon.estimate_weight_uncertainty`
+    """
 
     def test_fisher_information_tracks_discrete_weight_count(self) -> None:
         """Fisher shape should depend on discrete weights, not quadrature."""

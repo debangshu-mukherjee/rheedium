@@ -261,7 +261,11 @@ def _build_sample_pytrees() -> dict[str, object]:
 
 
 class TestHdf5RoundTrip(chex.TestCase):
-    """Round-trip tests for rheedium HDF5 serialization."""
+    """Round-trip tests for rheedium HDF5 serialization.
+
+    :see: :func:`~rheedium.inout.load_from_h5`
+    :see: :func:`~rheedium.inout.save_to_h5`
+    """
 
     def test_save_and_load_all_supported_pytrees(self) -> None:
         """Every public rheedium PyTree should survive an HDF5 round-trip."""

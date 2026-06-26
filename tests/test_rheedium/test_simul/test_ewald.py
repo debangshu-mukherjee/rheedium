@@ -26,7 +26,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
-    """Test suite for _compute_structure_factor_single internal function."""
+    """Test suite for _compute_structure_factor_single internal function.
+
+    :see: :func:`~rheedium.simul.ewald._compute_structure_factor_single`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures with simple crystal structures."""
@@ -82,10 +85,10 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     def test_single_atom_at_origin_nonzero_g(
         self, g_vector: Float[Array, "3"]
     ) -> None:
-        """Test structure factor for single atom at origin with nonzero G.
+        r"""Test structure factor for single atom at origin with nonzero G.
 
         For atom at origin, phase factor is always 1 regardless of G,
-        so the structure factor is just f(|G|) * DW(|G|).
+        so the structure factor is just f(\|G\|) * DW(\|G\|).
         """
         sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
@@ -101,10 +104,10 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.real(sf)))
 
     def test_structure_factor_decreases_with_g_magnitude(self) -> None:
-        """Test that |F(G)| decreases with increasing |G|.
+        r"""Test that \|F(G)\| decreases with increasing \|G\|.
 
         Due to the form factor and Debye-Waller factor both decreasing
-        with |G|, the structure factor magnitude should decrease.
+        with \|G\|, the structure factor magnitude should decrease.
         """
         g_vectors: Float[Array, "4 3"] = jnp.array(
             [
@@ -184,9 +187,9 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         ("high_temp", 600.0),
     )
     def test_temperature_dependence(self, temperature: float) -> None:
-        """Test that structure factor depends on temperature.
+        r"""Test that structure factor depends on temperature.
 
-        Higher temperature increases Debye-Waller damping, reducing |F(G)|.
+        Higher temperature increases Debye-Waller damping, reducing \|F(G)\|.
         """
         g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
@@ -201,7 +204,7 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.abs(sf)))
 
     def test_temperature_ordering(self) -> None:
-        """Test that higher temperature gives lower |F(G)| for G != 0."""
+        r"""Test that higher temperature gives lower \|F(G)\| for G != 0."""
         g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
         sf_low: Complex[Array, ""] = _compute_structure_factor_single(
@@ -311,7 +314,10 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
 
 class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
-    """Test suite for build_ewald_data public function."""
+    """Test suite for build_ewald_data public function.
+
+    :see: :func:`~rheedium.simul.build_ewald_data`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures with a simple crystal structure."""
@@ -438,7 +444,7 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(ewald.intensities, (expected_n,))
 
     def test_intensities_are_squared_magnitudes(self) -> None:
-        """Test that intensities = |structure_factors|^2."""
+        r"""Test that intensities = \|structure_factors\|^2."""
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -522,7 +528,10 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
 
 
 class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
-    """Test suite for ewald_allowed_reflections function."""
+    """Test suite for ewald_allowed_reflections function.
+
+    :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures with pre-computed EwaldData."""

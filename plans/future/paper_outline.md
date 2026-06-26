@@ -11,14 +11,14 @@ is gated on roadmap milestones that have not all landed yet (see
 target, not a claim that the results exist today.
 
 Source plans:
-[distribution framework](plans/implemented/distribution_framework_plan.md) ·
-[recon (inversion)](plans/future/recon_optimization_plan.md) ·
-[rationalization](plans/partial/rationalization_refactor_plan.md) ·
-[defect diffraction fidelity](plans/future/defect_diffraction_fidelity_plan.md) ·
-[audit/formal verification](plans/future/audit_formal_verification_plan.md) ·
-[hypothesis testing](plans/future/hypothesis_testing_plan.md) ·
-[parallel sweeps](plans/implemented/parallel_sweeps_plan.md) ·
-[multislice](plans/implemented/reflection_multislice_plan.md)
+[distribution framework](../implemented/distribution_framework_plan.md) ·
+[recon (inversion)](recon_optimization_plan.md) ·
+[rationalization](../partial/rationalization_refactor_plan.md) ·
+[defect diffraction fidelity](defect_diffraction_fidelity_plan.md) ·
+[audit/formal verification](audit_formal_verification_plan.md) ·
+[hypothesis testing](hypothesis_testing_plan.md) ·
+[parallel sweeps](../implemented/parallel_sweeps_plan.md) ·
+[multislice](../implemented/reflection_multislice_plan.md)
 
 ---
 
@@ -102,7 +102,7 @@ gradient-based fit rather than a bespoke optimizer.
    recovery of known structure/orientation/beam/distributions from synthetic ground
    truth; throughput sufficient for high-volume and near-real-time use. [results]
 8. **(Conditional — defect diffraction fine structure.)** *If* the
-   [defect diffraction fidelity](plans/future/defect_diffraction_fidelity_plan.md)
+   [defect diffraction fidelity](defect_diffraction_fidelity_plan.md)
    track lands in time: the *characteristic* signatures of defects — **fine-twin
    satellites** at `G ± n·q_twin` and **vicinal step-splitting** of streaks — not a
    blended change, all through the same differentiable `Distribution` contract.
@@ -114,9 +114,9 @@ gradient-based fit rather than a bespoke optimizer.
 PyTree + bind contract, AOT/compilation-cache engineering, the typing/validation
 discipline, and the proof-vs-sampled rigor ladder) are the **means** to the above
 and are documented in the **Supplementary Information**, summarized in Methods —
-see [framework §1–§4](plans/implemented/distribution_framework_plan.md), recon K6,
-[audit](plans/future/audit_formal_verification_plan.md), and
-[hypothesis](plans/future/hypothesis_testing_plan.md).*
+see [framework §1–§4](../implemented/distribution_framework_plan.md), recon K6,
+[audit](audit_formal_verification_plan.md), and
+[hypothesis](hypothesis_testing_plan.md).*
 
 ## Figures — 10 main + 10–20 supplementary
 
@@ -151,7 +151,7 @@ see [framework §1–§4](plans/implemented/distribution_framework_plan.md), rec
     determine.
 
 *Conditional main figure (defect fine structure).* If the
-[defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) track lands,
+[defect fidelity](defect_diffraction_fidelity_plan.md) track lands,
 a panel of **fine-twin satellites + vicinal step-splitting** (observed vs analytic
 positions/intensities) upgrades Fig 5 from a regime *map* to a regime map **with
 the measured fine structure** — or is promoted to an 11th main figure if space
@@ -247,7 +247,7 @@ allows. Its quantitative validation lives in SI (S19–S20 below).
   (`invariants.py` / `reference_types.py` / `metrics.py` / `reference_benchmark.py`):
   physical-law invariant checks that *label each result* proof vs
   sampled-within-tolerance (the rigor ladder, per
-  [audit/formal verification](plans/future/audit_formal_verification_plan.md));
+  [audit/formal verification](audit_formal_verification_plan.md));
   the jaxtyping + beartype typing/validation discipline; property-based
   (`hypothesis`) round-trip/invariant tests; convergence; the reproducibility repo.
   *(Figs S13–S18)*
@@ -262,7 +262,7 @@ allows. Its quantitative validation lives in SI (S19–S20 below).
 | **Inverse half** | `recon` K0–KG6: solver, distribution reconstruction, identifiability, UQ on synthetic ground truth | specified, **not built** (gated after rationalization) |
 | **Rigor** | `audit` proof/sampled labelling + `hypothesis` round-trip/invariant tests | planned |
 | **Evidence** | ≥1 experimental RHEED dataset inverted end-to-end | to source |
-| **Defect fine structure** *(optional enhancer, not a prerequisite)* | [defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) DG1–DG3: satellites, step-splitting, fringes | proposed, **off the critical path** — adds contribution 8 + Fig 5 upgrade + S19–S20 if it lands; paper ships without it otherwise |
+| **Defect fine structure** *(optional enhancer, not a prerequisite)* | [defect fidelity](defect_diffraction_fidelity_plan.md) DG1–DG3: satellites, step-splitting, fringes | proposed, **off the critical path** — adds contribution 8 + Fig 5 upgrade + S19–S20 if it lands; paper ships without it otherwise |
 
 **Recommended writing order**
 
@@ -334,7 +334,7 @@ rheedium_paper/
 **Relationship to the rest of the ecosystem**
 
 - Same PEP 723 / single-`rheedium`-dependency contract as
-  [automatons](plans/future/automatons_plan.md); a figure script may simply *be* a
+  [automatons](automatons_plan.md); a figure script may simply *be* a
   thin caller of the public API (or reuse an automaton's emitted result JSON /
   artifacts), so figure code and experiment code don't diverge.
 - Pins to the **same release** the paper cites, so the figures and the claimed
@@ -376,7 +376,7 @@ release / GitHub tag, and the archived paper repo) rather than a promise.
    (novel, distinctive) vs treat it as one result among several — affects title
    and abstract framing.
 5. **Defect fine structure — wait or ship without.** Hold submission for the
-   [defect fidelity](plans/future/defect_diffraction_fidelity_plan.md) track (adds
+   [defect fidelity](defect_diffraction_fidelity_plan.md) track (adds
    a distinctive physics result — satellites + step-splitting — that referees value)
    vs ship the kinematic + smooth-defect paper now and treat fidelity as a
    follow-up. It is **off the critical path**, so the default is *ship without and

@@ -35,8 +35,8 @@ descent — the same code powers both simulation and reconstruction.
 > **New here? Read this README top to bottom first.** The
 > [Mental model](#mental-model) and [Repository map](#repository-map) sections
 > are enough to know *where* any piece of functionality lives and *why* it is
-> shaped the way it is. Then jump to a [tutorial](#tutorials) for a worked
-> example.
+> shaped the way it is. Then jump to
+> [Tests, tutorials, and docs](#tests-tutorials-and-docs) for a worked example.
 
 ## Install
 
@@ -139,8 +139,8 @@ package layout becomes obvious:
   `Float[Array, "n 3"]`) and enforced by `beartype` during tests. A wrong-shape
   array fails loudly at the call site instead of producing silent garbage.
 - **64-bit by default.** `jax_enable_x64` is set at import (in
-  [src/rheedium/__init__.py](src/rheedium/__init__.py)) — diffraction geometry
-  needs the precision.
+  [src/rheedium/__init__.py](https://github.com/debangshu-mukherjee/rheedium/blob/main/src/rheedium/__init__.py)) — diffraction
+  geometry needs the precision.
 - **Namespace sub-packages, flat public API.** Access everything as
   `rh.<subpackage>.<function>` (e.g. `rh.inout.parse_crystal`). Each
   subpackage's `__init__.py` defines its public surface via `__all__`.
@@ -274,12 +274,15 @@ rh.audit.run_default_invariants()
 
 ## Tests, tutorials, and docs
 
-- **Tutorials** — runnable, narrated examples in [tutorials/](tutorials/) (paired
-  `.ipynb` + jupytext `.py`), e.g.
+- **Tutorials** — runnable, narrated examples in
+  [tutorials/](https://github.com/debangshu-mukherjee/rheedium/tree/main/tutorials)
+  (paired `.ipynb` + jupytext `.py`), e.g.
   [01_kinematic_SrTiO3.py](tutorials/01_kinematic_SrTiO3.py). Start here for a
   worked end-to-end run. Also rendered in the
   [online tutorials](https://rheedium.readthedocs.io/en/latest/tutorials/index.html).
-- **Tests** — [tests/](tests/) mirrors `src/` one-to-one
+- **Tests** —
+  [tests/](https://github.com/debangshu-mukherjee/rheedium/tree/main/tests)
+  mirrors `src/` one-to-one
   (`tests/test_rheedium/test_<subpkg>/test_<module>.py`). To understand any
   function's contract, read its test. Property-based tests use `hypothesis`;
   shape contracts are enforced via `jaxtyping` + `beartype`.
@@ -304,9 +307,10 @@ uv run ty check src                  # static type check
 uv run pytest -v                     # tests (pytest-xdist runs them in parallel)
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions (numpydoc docstrings,
-jaxtyping idioms, the tests-mirror-src layout, and the type-checker
-configuration rationale).
+See
+[CONTRIBUTING.md](https://github.com/debangshu-mukherjee/rheedium/blob/main/CONTRIBUTING.md)
+for conventions (numpydoc docstrings, jaxtyping idioms, the tests-mirror-src
+layout, and the type-checker configuration rationale).
 
 ## License
 

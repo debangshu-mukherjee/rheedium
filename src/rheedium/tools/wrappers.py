@@ -11,8 +11,7 @@ inputs from tools that produce numpy arrays instead of JAX arrays
 Routine Listings
 ----------------
 :func:`jax_safe`
-    Wrap a function to convert all positional arguments to JAX
-    arrays before calling.
+    Wrap a function to convert positional args to JAX arrays.
 
 Notes
 -----
@@ -22,16 +21,18 @@ function.
 """
 
 from collections.abc import Callable
-from typing import Any
 
 import jax.numpy as jnp
 from beartype import beartype
+from beartype.typing import Any
 from jaxtyping import jaxtyped
 
 
 @jaxtyped(typechecker=beartype)
 def jax_safe(fn: Callable[..., Any]) -> Callable[..., Any]:
     """Wrap a function to convert positional args to JAX arrays.
+
+    :see: :class:`~.test_wrappers.TestJaxSafe`
 
     Parameters
     ----------
@@ -61,9 +62,13 @@ def jax_safe(fn: Callable[..., Any]) -> Callable[..., Any]:
     """
 
     def wrapper(*args: Any) -> Any:
-        return fn(*(jnp.asarray(a) for a in args))
+        """Call the wrapped function after converting positional args."""
+        converted_args: tuple[Any, ...] = tuple(jnp.asarray(a) for a in args)
+        result: Any = fn(*converted_args)
+        return result
 
-    return wrapper
+    wrapped: Callable[..., Any] = wrapper
+    return wrapped
 
 
 __all__: list[str] = [

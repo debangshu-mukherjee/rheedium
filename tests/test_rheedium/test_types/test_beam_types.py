@@ -16,7 +16,11 @@ from ..._assertions import assert_rejects
 
 
 class TestElectronBeam(chex.TestCase):
-    """Comprehensive test suite for ElectronBeam PyTree."""
+    """Comprehensive test suite for ElectronBeam PyTree.
+
+    :see: :class:`~rheedium.types.ElectronBeam`
+    :see: :func:`~rheedium.types.create_electron_beam`
+    """
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_electron_beam_defaults(self) -> None:

@@ -44,6 +44,7 @@ Rheedium
    :hidden:
 
    api/index
+   tests/index
 
 Indices and tables
 ==================

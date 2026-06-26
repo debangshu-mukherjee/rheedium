@@ -19,7 +19,10 @@ from rheedium.types.crystal_types import CrystalStructure
 
 
 class TestParsePoscarHeader(chex.TestCase):
-    """Test POSCAR header parsing."""
+    """Test POSCAR header parsing.
+
+    :see: :func:`~rheedium.inout.poscar._parse_poscar_header`
+    """
 
     def test_simple_cubic(self) -> None:
         """Parse simple cubic Si header."""
@@ -136,7 +139,10 @@ class TestParsePoscarHeader(chex.TestCase):
 
 
 class TestParsePoscarPositions(chex.TestCase):
-    """Test POSCAR position parsing."""
+    """Test POSCAR position parsing.
+
+    :see: :func:`~rheedium.inout.poscar._parse_poscar_positions`
+    """
 
     def test_direct_coordinates(self) -> None:
         """Parse Direct (fractional) coordinates."""
@@ -204,7 +210,10 @@ class TestParsePoscarPositions(chex.TestCase):
 
 
 class TestParsePoscar(chex.TestCase):
-    """Test complete POSCAR file parsing."""
+    """Test complete POSCAR file parsing.
+
+    :see: :func:`~rheedium.inout.parse_poscar`
+    """
 
     def test_simple_cubic_si(self) -> None:
         """Parse simple cubic Si POSCAR."""

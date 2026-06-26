@@ -63,7 +63,10 @@ else:
 
 
 def test_load_reference_cases_returns_typed_cases() -> None:
-    """Reference cases load as typed metadata-plus-image objects."""
+    """Reference cases load as typed metadata-plus-image objects.
+
+    :see: :func:`~rheedium.audit.load_reference_cases`
+    """
     assert _REFERENCE_CASES is not None
     assert len(_REFERENCE_CASES) >= 2
     case: Any
@@ -76,7 +79,10 @@ def test_load_reference_cases_returns_typed_cases() -> None:
 
 
 def test_simulate_detector_image_from_metadata_matches_shape() -> None:
-    """Regenerated images preserve the stored detector grid shape."""
+    """Regenerated images preserve the stored detector grid shape.
+
+    :see: :func:`~rheedium.audit.simulate_detector_image_from_metadata`
+    """
     assert _SIMULATED_IMAGE is not None
     assert _REFERENCE_CASE is not None
     assert (
@@ -100,7 +106,11 @@ def test_rg1_pixelwise_reference_images_match_pre_refactor_fixtures() -> None:
 
 
 def test_benchmark_reference_case_matches_synthetic_fixture() -> None:
-    """Synthetic fixtures benchmark back to a near-perfect match."""
+    """Synthetic fixtures benchmark back to a near-perfect match.
+
+    :see: :class:`~rheedium.audit.BenchmarkCaseResult`
+    :see: :func:`~rheedium.audit.benchmark_reference_case`
+    """
     assert _REFERENCE_CASE is not None
     assert isinstance(_CASE_RESULT, BenchmarkCaseResult)
     assert _CASE_RESULT.reference_id == _REFERENCE_CASE.metadata.reference_id
@@ -116,7 +126,11 @@ def test_benchmark_reference_case_matches_synthetic_fixture() -> None:
 
 
 def test_benchmark_reference_suite_writes_json_summary() -> None:
-    """The suite runner writes a JSON summary with one entry per case."""
+    """The suite runner writes a JSON summary with one entry per case.
+
+    :see: :class:`~rheedium.audit.BenchmarkSuiteResult`
+    :see: :func:`~rheedium.audit.benchmark_reference_suite`
+    """
     assert _SUMMARY_OUTPUT_PATH is not None
     assert _SUITE_PAYLOAD is not None
     assert isinstance(_SUITE_SUMMARY, BenchmarkSuiteResult)

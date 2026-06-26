@@ -392,7 +392,10 @@ def reciprocal_unitcell(
 - Open with a single imperative summary line.
 - Add a `:see:` Sphinx cross-reference linking the object to its test class
   (e.g. `:see: :class:`~.test_unitcell.TestReciprocalUnitcell``). This is used
-  throughout `src/` to tie each public symbol to its tests.
+  throughout `src/` to tie each public symbol to its tests. The test class carries
+  the matching **back-reference** to this symbol (see *Test Code Conventions*), so
+  the `:see:` link is **bidirectional** in the rendered Read the Docs — source →
+  test and test → source.
 - `Parameters` and `Returns` repeat the type and describe each item. Name the
   return values (numpydoc `name : type` form) so `pydoclint` is satisfied — and
   since functions **return a type-annotated variable rather than a bare
@@ -511,10 +514,27 @@ import rheedium as rh
 
 
 class TestWavelength(chex.TestCase):
-    """Tests for electron wavelength calculation."""
+    """Validate :func:`~rheedium.ucell.wavelength_ang`.
+
+    Covers the relativistic electron-wavelength relation across the RHEED
+    accelerating-voltage range: known-value accuracy, positivity, and shape.
+
+    :see: :func:`~rheedium.ucell.wavelength_ang`
+    """
 
     def test_known_values(self) -> None:
-        """Wavelength at 10 kV should match the analytic value."""
+        """Wavelength at 10/20/30 kV matches the analytic de Broglie value.
+
+        Confirms ``wavelength_ang`` reproduces the relativistic electron
+        wavelength: the result must be positive, finite, shaped ``(3,)``, and the
+        10 kV entry must equal the textbook 0.1226 Angstrom (the *what*).
+
+        Notes
+        -----
+        Evaluates ``wavelength_ang`` on a 3-vector of accelerating voltages and
+        asserts shape, finiteness, positivity, and ``rtol=1e-3`` closeness to the
+        analytic reference (the *how*).
+        """
         energies: Float[Array, "3"] = jnp.array([10.0, 20.0, 30.0])
         wavelengths: Float[Array, "3"] = rh.ucell.wavelength_ang(energies)
 
@@ -524,12 +544,73 @@ class TestWavelength(chex.TestCase):
         chex.assert_trees_all_close(wavelengths[0], 0.1226, rtol=1e-3)
 ```
 
+### Test Code Conventions
+
+Tests are first-class source: `tests/**/*.py` is in **both** the Ruff and `ty`
+scope and runs under live jaxtyping/beartype checking, so the same style
+discipline as `src/` applies — with a few test-specific adaptations:
+
+- **Type-hint test bodies and helpers exactly as in `src/`.** Every test method is
+  `def test_*(self) -> None:`; annotate intermediate variables
+  (`wavelengths: Float[Array, "3"] = rh.ucell.wavelength_ang(...)`); and the
+  **assign-before-returning** rule applies to any helper that returns data — bind a
+  type-annotated variable and return that name. Private/shared helpers carry full
+  `jaxtyping` annotations (and `@jaxtyped(typechecker=beartype)` where arrays flow,
+  as `_factories.make_*` / `_assertions.assert_*` do).
+- **Document *what* and *how* on every test, class, and module (numpydoc).** A
+  test's docstring is its specification, not a label. Open with the imperative
+  summary line, then an `Extended Summary` paragraph stating **what** is verified
+  (the property, invariant, or expected value — with units and tolerances), and a
+  `Notes` section describing **how** (the inputs/fixtures, the assertion strategy,
+  and the `jit`/`grad`/`vmap` variant exercised). The **module** docstring
+  summarises that file's coverage; each **`Test<Symbol>` class** docstring names
+  the symbol under test and the scope of its cases (see the `TestWavelength`
+  example above). Stick to numpydoc sections — no ad-hoc headers, same as `src/`.
+  Private helpers may keep a one-line summary.
+- **Test docstrings are published to Read the Docs.** The test suite is rendered
+  as a *Testing / Validation* reference in the Sphinx docs (autosummary over the
+  `tests` package), so these docstrings are user-facing documentation of *what the
+  library guarantees and how each guarantee is checked* — not private notes. Write
+  them as reader-facing prose and keep them current; the `:see:` cross-reference
+  makes the source ↔ test link navigable in **both** directions in the rendered
+  docs.
+- **Mirror the source layout, and make the `:see:` cross-reference
+  bidirectional.** One `test_<module>.py` per source module; a `Test<Symbol>`
+  class (a `chex.TestCase`) per public symbol; `test_*` methods. The link runs
+  **both ways**:
+  - the **source** symbol carries `:see: :class:`~.test_<module>.Test<Symbol>``
+    pointing *forward* to its test class, **and**
+  - the **test class** carries the counterpart `:see: :func:`~rheedium...``
+    (or `:class:` / `:obj:`) pointing *back* to the symbol under test
+    (see `TestWavelength` above).
+
+  Once the test API is rendered in the docs (above), **both** references resolve
+  in Read the Docs, so a reader navigates source → test *and* test → source. The
+  two are a matched pair: add the back-reference whenever you add the forward one,
+  and renaming either side means updating both.
+- **No `__all__` or `Routine Listings` in test modules.** Tests are *not* a public
+  API, so the three-places listing rule does **not** apply. A test module needs
+  only a one-line summary + extended-summary docstring (no `Routine Listings`, no
+  `__all__`).
+- **Private helpers are `_`-prefixed and local; reused fixtures go in the shared
+  helpers.** A helper used by one file is a `_`-prefixed function in it; anything
+  reused across files lives in `tests/_factories.py` / `_assertions.py` /
+  `_types.py`, not copy-pasted.
+
 ## Tutorial Notebooks
 
 Tutorials live in `tutorials/` as Jupyter notebooks. Most notebooks are paired
 with Jupytext percent scripts (`.ipynb` plus `.py`) so they can be edited in VS
 Code/Jupyter while keeping reviewable source diffs (`[tool.jupytext]` sets
 `formats = "ipynb,py:percent"`).
+
+**Explanation lives in markdown cells, not code comments.** In `tutorials/`, do
+**not** use inline `#` comments to explain what the code does — narrative,
+motivation, and the physics belong in **markdown cells** (`# %% [markdown]` blocks
+in the paired `.py`), which render in the docs and are strongly encouraged. Keep
+code cells comment-free; the prose between them carries the teaching. This is the
+notebook counterpart of the `src/` rule that explanations go in docstrings rather
+than inline comments — here they go in markdown.
 
 For remote development, open `tutorials/<notebook>.ipynb` through VS Code
 Remote-SSH and select the project kernel. After editing a paired notebook, run:

@@ -58,7 +58,10 @@ def _make_simple_crystal(n_atoms: int = 8) -> CrystalStructure:
 
 
 class TestBulkToSlice(chex.TestCase):
-    """Tests for bulk_to_slice function."""
+    """Tests for bulk_to_slice function.
+
+    :see: :func:`~rheedium.ucell.bulk_to_slice`
+    """
 
     def test_returns_sliced_crystal(self) -> None:
         """Should return a SlicedCrystal instance."""
@@ -193,7 +196,10 @@ class TestBulkToSlice(chex.TestCase):
 
 
 class TestAtomScraper(chex.TestCase, parameterized.TestCase):
-    """Test atom_scraper function."""
+    """Test atom_scraper function.
+
+    :see: :func:`~rheedium.ucell.atom_scraper`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -564,7 +570,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
 
 
 class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
-    """Test reciprocal_unitcell function."""
+    """Test reciprocal_unitcell function.
+
+    :see: :func:`~rheedium.ucell.reciprocal_unitcell`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -825,7 +834,10 @@ class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):
 
 
 class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
-    """Test get_unit_cell_matrix function."""
+    """Test get_unit_cell_matrix function.
+
+    :see: :func:`~rheedium.ucell.get_unit_cell_matrix`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -941,7 +953,10 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
 
 
 class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
-    """Test build_cell_vectors function."""
+    """Test build_cell_vectors function.
+
+    :see: :func:`~rheedium.ucell.build_cell_vectors`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1097,7 +1112,10 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
 
 
 class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
-    """Test compute_lengths_angles function."""
+    """Test compute_lengths_angles function.
+
+    :see: :func:`~rheedium.ucell.compute_lengths_angles`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1225,7 +1243,10 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
 
 
 class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
-    """Test reciprocal_lattice_vectors function."""
+    """Test reciprocal_lattice_vectors function.
+
+    :see: :func:`~rheedium.ucell.reciprocal_lattice_vectors`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1385,7 +1406,10 @@ class TestReciprocalLatticeVectors(chex.TestCase, parameterized.TestCase):
 
 
 class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
-    """Test miller_to_reciprocal function."""
+    """Test miller_to_reciprocal function.
+
+    :see: :func:`~rheedium.ucell.miller_to_reciprocal`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1502,7 +1526,10 @@ class TestMillerToReciprocal(chex.TestCase, parameterized.TestCase):
 
 
 class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
-    """Test generate_reciprocal_points function."""
+    """Test generate_reciprocal_points function.
+
+    :see: :func:`~rheedium.ucell.generate_reciprocal_points`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""

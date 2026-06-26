@@ -24,6 +24,9 @@ The fourth column of the ``CrystalStructure`` position arrays is used as
 an effective atomic number or scattering weight. This lets vacancy,
 interstitial, and antisite models stay differentiable without requiring
 hard atom deletion or discrete species swaps.
+
+R5 return type: these APIs are sub-coherence structure modifiers. They return a
+modified ``CrystalStructure`` directly, not a statistical ``Distribution``.
 """
 
 import jax.numpy as jnp

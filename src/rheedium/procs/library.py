@@ -30,6 +30,10 @@ Each library function returns a ``CrystalStructure`` that can be
 passed directly to ``ewald_simulator`` or ``multislice_simulator``.
 Lattice parameters default to literature values at 300 K but can be
 overridden for thermal expansion studies or optimization.
+
+R5 return type: every public library function is a structure builder and
+returns ``CrystalStructure``. Statistical populations and sub-coherence bind
+closures live in the dedicated producer/modifier modules.
 """
 
 import jax.numpy as jnp

@@ -31,7 +31,15 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestFormFactors(chex.TestCase, parameterized.TestCase):
-    """Tests for atomic form-factor calculations."""
+    """Tests for atomic form-factor calculations.
+
+    :see: :func:`~rheedium.simul.atomic_scattering_factor`
+    :see: :func:`~rheedium.simul.debye_waller_factor`
+    :see: :func:`~rheedium.simul.form_factors.load_kirkland_parameters`
+    :see: :func:`~rheedium.simul.get_mean_square_displacement`
+    :see: :func:`~rheedium.simul.kirkland_form_factor`
+    :see: :func:`~rheedium.simul.kirkland_projected_potential`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures with common test parameters.
@@ -495,15 +503,15 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_atomic_scattering_factor(
         self, atomic_number: int, temperature: float, is_surface: bool
     ) -> None:
-        """Test combined atomic scattering factor.
+        r"""Test combined atomic scattering factor.
 
         Tests the complete atomic scattering factor calculation that
         combines the Kirkland form factor with Debye-Waller thermal damping.
         Validates for different elements (Si, Au, H), temperatures (100K,
         300K, 600K), and surface vs bulk atoms. Verifies that the combined
         factor is positive, finite, and generally decreases with increasing
-        |q| due to both the form factor falloff and thermal damping effects.
-        The 3D q-vectors test that the calculation depends only on |q|,
+        \|q\| due to both the form factor falloff and thermal damping effects.
+        The 3D q-vectors test that the calculation depends only on \|q\|,
         not direction.
         """
         var_scattering: Callable[..., Any] = self.variant(
@@ -761,13 +769,13 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_q_vector_invariance(
         self, q_vectors: Float[Array, "... 3"]
     ) -> None:
-        """Test that scattering depends only on |q|, not direction.
+        r"""Test that scattering depends only on \|q\|, not direction.
 
         Validates the fundamental isotropy of atomic scattering - the
         scattering factor depends only on the magnitude of momentum transfer
-        |q|, not its direction. Tests with various q-vectors including zero
+        \|q\|, not its direction. Tests with various q-vectors including zero
         vector, unit vectors along different axes, random vectors, and
-        large magnitude vectors. Creates rotated versions with the same |q|
+        large magnitude vectors. Creates rotated versions with the same \|q\|
         but different directions and verifies identical scattering factors.
         This isotropy arises from the spherical symmetry of atomic electron
         density distributions.

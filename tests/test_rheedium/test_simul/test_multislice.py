@@ -82,7 +82,10 @@ def _make_potential_slices(
 
 
 class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
-    """Tests for build_transmission_function."""
+    """Tests for build_transmission_function.
+
+    :see: :func:`~rheedium.simul.build_transmission_function`
+    """
 
     def test_zero_potential_gives_unity(self) -> None:
         """T = 1 everywhere when V = 0."""
@@ -99,7 +102,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         )
 
     def test_modulus_bounded_by_one(self) -> None:
-        """|T| <= 1 everywhere (absorption only removes amplitude)."""
+        r"""\|T\| <= 1 everywhere (absorption only removes amplitude)."""
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -111,7 +114,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(modulus)) <= 1.0 + 1e-6
 
     def test_real_potential_gives_unit_modulus(self) -> None:
-        """Pure-real V (no absorption) gives |T| = 1 everywhere."""
+        r"""Pure-real V (no absorption) gives \|T\| = 1 everywhere."""
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -125,7 +128,7 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-6)
 
     def test_absorption_reduces_modulus(self) -> None:
-        """Higher absorption fraction lowers |T|."""
+        r"""Higher absorption fraction lowers \|T\|."""
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -185,10 +188,13 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
 
 
 class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
-    """Tests for fresnel_propagator."""
+    """Tests for fresnel_propagator.
+
+    :see: :func:`~rheedium.simul.multislice.fresnel_propagator`
+    """
 
     def test_unitarity(self) -> None:
-        """|P(qx, qy)| = 1 everywhere — propagation is unitary."""
+        r"""\|P(qx, qy)\| = 1 everywhere — propagation is unitary."""
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -233,10 +239,13 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
 
 
 class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
-    """Tests for multislice_one_step."""
+    """Tests for multislice_one_step.
+
+    :see: :func:`~rheedium.simul.multislice.multislice_one_step`
+    """
 
     def test_vacuum_preserves_norm(self) -> None:
-        """Zero potential leaves |psi| unchanged (free propagation)."""
+        r"""Zero potential leaves \|psi\| unchanged (free propagation)."""
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -360,10 +369,13 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
 
 
 class TestMultisliceAmplitude(chex.TestCase):
-    """Tests for the Layer-0 multislice amplitude slot."""
+    """Tests for the Layer-0 multislice amplitude slot.
+
+    :see: :func:`~rheedium.simul.multislice_amplitude`
+    """
 
     def test_matches_fft_of_exit_wave(self) -> None:
-        """Amplitude is the reciprocal-space exit wave before |.|^2."""
+        r"""Amplitude is the reciprocal-space exit wave before \|.\|^2."""
         potential: PotentialSlices = _make_potential_slices(scale=0.0)
 
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
@@ -384,7 +396,7 @@ class TestMultisliceAmplitude(chex.TestCase):
         )
 
     def test_modulus_squared_is_finite_intensity(self) -> None:
-        """Taking |amplitude|^2 gives a finite diffraction intensity grid."""
+        r"""\|amplitude\|^2 gives a finite diffraction-intensity grid."""
         potential: PotentialSlices = _make_potential_slices(scale=0.01)
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
@@ -414,7 +426,10 @@ class TestMultisliceAmplitude(chex.TestCase):
 
 
 class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
-    """Tests for crystal_projected_potential."""
+    """Tests for crystal_projected_potential.
+
+    :see: :func:`~rheedium.simul.crystal_projected_potential`
+    """
 
     def test_output_shape(self) -> None:
         """Output shape matches grid_shape."""

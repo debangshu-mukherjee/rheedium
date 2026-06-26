@@ -21,7 +21,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestAngleInDegrees(chex.TestCase):
-    """Test angle_in_degrees function."""
+    """Test angle_in_degrees function.
+
+    :see: :func:`~rheedium.ucell.angle_in_degrees`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -123,7 +126,10 @@ class TestAngleInDegrees(chex.TestCase):
 
 
 class TestComputeLengthsAngles(chex.TestCase):
-    """Test compute_lengths_angles function."""
+    """Test compute_lengths_angles function.
+
+    :see: :func:`~rheedium.ucell.compute_lengths_angles`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -239,7 +245,10 @@ class TestComputeLengthsAngles(chex.TestCase):
 
 
 class TestParseCifAndScrape(chex.TestCase):
-    """Test parse_cif_and_scrape function."""
+    """Test parse_cif_and_scrape function.
+
+    :see: :func:`~rheedium.ucell.parse_cif_and_scrape`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""

@@ -1,4 +1,10 @@
-"""Typed Chex assertion helpers for tests."""
+"""Typed Chex assertion helpers for tests.
+
+Extended Summary
+----------------
+Provides shared assertion helpers for arrays, pytrees, and validation paths
+used across mirrored source-layout test modules.
+"""
 
 from collections.abc import Callable
 

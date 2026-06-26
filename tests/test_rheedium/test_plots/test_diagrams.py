@@ -48,7 +48,21 @@ from rheedium.types.crystal_types import create_crystal_structure
 
 
 class TestDiagramPlots:
-    """Smoke tests for diagram plotting functions."""
+    """Smoke tests for diagram plotting functions.
+
+    :see: :func:`~rheedium.plots.plot_crystal_structure_3d`
+    :see: :func:`~rheedium.plots.plot_ctr_profile`
+    :see: :func:`~rheedium.plots.plot_debye_waller`
+    :see: :func:`~rheedium.plots.plot_ewald_sphere_2d`
+    :see: :func:`~rheedium.plots.plot_ewald_sphere_3d`
+    :see: :func:`~rheedium.plots.plot_form_factors`
+    :see: :func:`~rheedium.plots.plot_grazing_incidence_geometry`
+    :see: :func:`~rheedium.plots.plot_rod_broadening`
+    :see: :func:`~rheedium.plots.plot_roughness_damping`
+    :see: :func:`~rheedium.plots.plot_structure_factor_phases`
+    :see: :func:`~rheedium.plots.plot_unit_cell_3d`
+    :see: :func:`~rheedium.plots.plot_wavelength_curve`
+    """
 
     def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
@@ -58,13 +72,13 @@ class TestDiagramPlots:
         """Test wavelength curve plot with default parameters."""
         ax: Any = plot_wavelength_curve()
         assert isinstance(ax, Axes)
-        assert ax.get_xlabel() == "Accelerating Voltage (kV)"
+        assert ax.get_xlabel() == "Beam Energy (keV)"
         assert ax.get_ylabel() == "Wavelength (A)"
 
     def test_plot_wavelength_curve_custom_range(self) -> None:
-        """Test wavelength curve with custom voltage range."""
+        """Test wavelength curve with custom energy range."""
         ax: Any = plot_wavelength_curve(
-            voltage_range_kv=(10.0, 50.0),
+            energy_range_kev=(10.0, 50.0),
             n_points=50,
             show_comparison=False,
         )
@@ -503,7 +517,10 @@ def _make_layered_crystal() -> CrystalStructure:
 
 
 class TestViewAtoms:
-    """Tests for view_atoms function."""
+    """Tests for view_atoms function.
+
+    :see: :func:`~rheedium.plots.view_atoms`
+    """
 
     def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""

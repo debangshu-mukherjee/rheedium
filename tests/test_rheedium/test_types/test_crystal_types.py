@@ -50,7 +50,11 @@ class EwaldKwargs(TypedDict):
 
 
 class TestCrystalStructure(chex.TestCase):
-    """Comprehensive test suite for CrystalStructure PyTree."""
+    """Comprehensive test suite for CrystalStructure PyTree.
+
+    :see: :class:`~rheedium.types.CrystalStructure`
+    :see: :func:`~rheedium.types.create_crystal_structure`
+    """
 
     def setUp(self) -> None:
         """Initialize the random key for each test."""
@@ -308,7 +312,11 @@ class TestCrystalStructure(chex.TestCase):
 
 
 class TestEwaldData(chex.TestCase, parameterized.TestCase):
-    """Test suite for EwaldData PyTree and create_ewald_data validation."""
+    """Test suite for EwaldData PyTree and create_ewald_data validation.
+
+    :see: :class:`~rheedium.types.EwaldData`
+    :see: :func:`~rheedium.types.create_ewald_data`
+    """
 
     def _make_valid_ewald_kwargs(self, n_points: int = 7) -> EwaldKwargs:
         """Build valid keyword arguments for create_ewald_data."""
@@ -510,7 +518,11 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
 
 class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
-    """Comprehensive test suite for PotentialSlices PyTree."""
+    """Comprehensive test suite for PotentialSlices PyTree.
+
+    :see: :class:`~rheedium.types.PotentialSlices`
+    :see: :func:`~rheedium.types.create_potential_slices`
+    """
 
     def setUp(self) -> None:
         """Initialize the random key for each test."""
@@ -660,7 +672,11 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
 
 class TestXYZData(chex.TestCase, parameterized.TestCase):
-    """Comprehensive test suite for XYZData PyTree."""
+    """Comprehensive test suite for XYZData PyTree.
+
+    :see: :class:`~rheedium.types.XYZData`
+    :see: :func:`~rheedium.types.create_xyz_data`
+    """
 
     def setUp(self) -> None:
         """Initialize the random key for each test."""

@@ -451,10 +451,13 @@ _ax.set_title(
     f"Bi2Se3 sweep: {bi2se3_sweep_title_prefix} = "
     f"{bi2se3_sweep_parameter_values[bi2se3_sweep_index]:.3f}"
 )
+bi2se3_sweep_energy_kev = float(
+    bi2se3_sweep_metadata.get("energy_kev", settings["energy_kev"])
+)
 bi2se3_sweep_summary = "\n".join(
     [
         f"**theta:** `{float(bi2se3_sweep_metadata['theta_deg']):.1f} deg`",
-        f"**voltage:** `{float(bi2se3_sweep_metadata['energy_kev']):.1f} keV`",
+        f"**voltage:** `{bi2se3_sweep_energy_kev:.1f} keV`",
         "**dynamic range floor:** "
         f"`{float(bi2se3_sweep_metadata['dynamic_range_floor']):.3e}`",
         f"**phi:** `{float(bi2se3_sweep_metadata.get('phi_deg', 0.0)):.1f} deg`",

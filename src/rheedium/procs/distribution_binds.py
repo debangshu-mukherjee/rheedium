@@ -16,6 +16,13 @@ Routine Listings
     Bind one Distribution axis to kinematic sample-update semantics.
 :func:`bind_multislice_axis_distribution`
     Bind one Distribution axis to multislice sample-update semantics.
+
+Notes
+-----
+This module is the one `procs` boundary that returns kernel-local bind
+closures instead of a structure or ``Distribution``. It also owns conversion
+from beam-mode samples in internal radians/eV to public detector-kernel deltas
+in degrees/keV.
 """
 
 from typing import Any, NamedTuple
@@ -57,6 +64,19 @@ class MultisliceAxisUpdate(NamedTuple):
     theta_delta_deg: Any
     phi_delta_deg: Any
     domain_size_angstrom: Any | None
+
+
+def _beam_axis_sample_to_public_deltas(
+    axis_sample: Float[Array, "3"],
+) -> tuple[Any, Any, Any]:
+    """Convert beam sample ``[dtheta_rad, dphi_rad, dE_eV]``.
+
+    The returned deltas use public detector-kernel units: degrees and keV.
+    """
+    energy_delta_kev: Any = 1.0e-3 * axis_sample[2]
+    theta_delta_deg: Any = jnp.rad2deg(axis_sample[0])
+    phi_delta_deg: Any = jnp.rad2deg(axis_sample[1])
+    return energy_delta_kev, theta_delta_deg, phi_delta_deg
 
 
 @beartype
@@ -112,11 +132,19 @@ def bind_kinematic_axis_distribution(
         axis_sample: Float[Array, "D_axis"],
     ) -> KinematicAxisUpdate:
         if axis_id in BEAM_AXIS_IDS:
+            energy_delta_kev: Any
+            theta_delta_deg: Any
+            phi_delta_deg: Any
+            (
+                energy_delta_kev,
+                theta_delta_deg,
+                phi_delta_deg,
+            ) = _beam_axis_sample_to_public_deltas(axis_sample)
             return KinematicAxisUpdate(
                 crystal=None,
-                energy_delta_kev=1.0e-3 * axis_sample[2],
-                theta_delta_deg=jnp.rad2deg(axis_sample[0]),
-                phi_delta_deg=jnp.rad2deg(axis_sample[1]),
+                energy_delta_kev=energy_delta_kev,
+                theta_delta_deg=theta_delta_deg,
+                phi_delta_deg=phi_delta_deg,
                 domain_size_angstrom=None,
             )
         if axis_id == "twins":
@@ -215,11 +243,19 @@ def bind_multislice_axis_distribution(
         axis_sample: Float[Array, "D_axis"],
     ) -> MultisliceAxisUpdate:
         if axis_id in BEAM_AXIS_IDS:
+            energy_delta_kev: Any
+            theta_delta_deg: Any
+            phi_delta_deg: Any
+            (
+                energy_delta_kev,
+                theta_delta_deg,
+                phi_delta_deg,
+            ) = _beam_axis_sample_to_public_deltas(axis_sample)
             return MultisliceAxisUpdate(
                 crystal=None,
-                energy_delta_kev=1.0e-3 * axis_sample[2],
-                theta_delta_deg=jnp.rad2deg(axis_sample[0]),
-                phi_delta_deg=jnp.rad2deg(axis_sample[1]),
+                energy_delta_kev=energy_delta_kev,
+                theta_delta_deg=theta_delta_deg,
+                phi_delta_deg=phi_delta_deg,
                 domain_size_angstrom=None,
             )
         if axis_id == "twins":

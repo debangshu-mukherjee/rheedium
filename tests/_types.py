@@ -1,7 +1,12 @@
-"""Shared type aliases for typed JAX/NumPy tests."""
+"""Shared type aliases for typed JAX/NumPy tests.
 
-from typing import TypeAlias
+Extended Summary
+----------------
+Collects the shape-aware jaxtyping aliases used by shared factories,
+assertions, and individual test modules.
+"""
 
+from beartype.typing import TypeAlias
 from jax import Array
 from jaxtyping import Bool, Float, Float32, Int, PRNGKeyArray, PyTree
 from numpy.typing import NDArray

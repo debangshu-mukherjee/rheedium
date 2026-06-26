@@ -218,7 +218,7 @@ def compute_shell_sigma(
     Parameters
     ----------
     k_magnitude : Float[Array, ""]
-        Wavevector magnitude |k| = 2π/λ in 1/Ångstroms.
+        Wavevector magnitude :math:`|k| = 2π/λ` in 1/Ångstroms.
     energy_spread_frac : scalar_float, optional
         Fractional energy spread ΔE/E. Default: 1e-4 (0.01%), typical
         for thermionic electron guns.
@@ -309,7 +309,7 @@ def rod_ewald_overlap(
     k_in : Float[Array, "3"]
         Incident wavevector in 1/Ångstroms.
     k_magnitude : Float[Array, ""]
-        Wavevector magnitude |k| = 2π/λ in 1/Ångstroms.
+        Wavevector magnitude :math:`|k| = 2π/λ` in 1/Ångstroms.
     rod_sigma : Float[Array, "2"]
         Rod Gaussian widths [σx, σy] in 1/Ångstroms.
     shell_sigma : Float[Array, ""]
@@ -503,7 +503,7 @@ def finite_domain_intensities_for_size_distribution(
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     r"""Average finite-domain intensities over a domain-size distribution.
 
-    :see: :class:`~.test_finite_domain.TestSizeDistributionFiniteDomain`
+    :see: :class:`~.test_finite_domain.TestFiniteDomainIntensities`
 
     Parameters
     ----------

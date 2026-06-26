@@ -27,7 +27,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestLoadLobatoPotentials(chex.TestCase):
-    """Test CSV loading and parameter extraction."""
+    """Test CSV loading and parameter extraction.
+
+    :see: :func:`~rheedium.simul.load_lobato_parameters`
+    """
 
     def test_csv_shape(self) -> None:
         """Lobato CSV loads as (103, 10) array."""
@@ -64,7 +67,10 @@ class TestLoadLobatoPotentials(chex.TestCase):
 
 
 class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
-    """Test lobato_form_factor physical constraints."""
+    """Test lobato_form_factor physical constraints.
+
+    :see: :func:`~rheedium.simul.lobato_form_factor`
+    """
 
     @parameterized.named_parameters(
         ("H", 1),
@@ -158,7 +164,10 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
 
 
 class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
-    """Test lobato_projected_potential physical constraints."""
+    """Test lobato_projected_potential physical constraints.
+
+    :see: :func:`~rheedium.simul.lobato_projected_potential`
+    """
 
     @parameterized.named_parameters(
         ("H", 1),
@@ -246,7 +255,10 @@ class TestParameterizationSwitch(chex.TestCase):
 
 
 class TestProjectedPotentialDispatch(chex.TestCase):
-    """Test the projected_potential dispatcher."""
+    """Test the projected_potential dispatcher.
+
+    :see: :func:`~rheedium.simul.projected_potential`
+    """
 
     def test_lobato_default(self) -> None:
         """Default parameterization is Lobato."""

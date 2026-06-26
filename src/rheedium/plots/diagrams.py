@@ -451,12 +451,12 @@ def _view_atoms_x3d(
 
 @beartype
 def plot_wavelength_curve(
-    voltage_range_kv: Tuple[float, float] = (5.0, 30.0),
+    energy_range_kev: Tuple[float, float] = (5.0, 30.0),
     n_points: int = 100,
     show_comparison: bool = True,
     ax: Optional[Axes] = None,
 ) -> Axes:
-    """Plot electron wavelength vs accelerating voltage.
+    """Plot electron wavelength vs beam energy.
 
     Shows the relativistic wavelength formula lambda = 12.2643 / sqrt(V * (1 +
     0.978476e-6 * V)) and optionally compares with the non-relativistic
@@ -466,8 +466,8 @@ def plot_wavelength_curve(
 
     Parameters
     ----------
-    voltage_range_kv : Tuple[float, float], optional
-        Range of voltages to plot in kV. Default: (5.0, 30.0)
+    energy_range_kev : Tuple[float, float], optional
+        Range of beam energies to plot in keV. Default: (5.0, 30.0)
     n_points : int, optional
         Number of points to plot. Default: 100
     show_comparison : bool, optional
@@ -484,7 +484,7 @@ def plot_wavelength_curve(
     -----
     1. **Compute Relativistic Wavelength** --
        Evaluate lambda = 12.2643 / sqrt(V * (1 + 0.978476e-6
-       * V)) over the requested voltage range.
+       * V)) over the requested energy range.
     2. **Optional Non-relativistic Curve** --
        When show_comparison is True, overlay the classical
        approximation and annotate the percentage difference.
@@ -495,20 +495,26 @@ def plot_wavelength_curve(
         fig: Figure
         fig: Figure
         fig, ax = plt.subplots(figsize=(8, 6))
-    voltages: Float[NDArray, "N"] = np.linspace(
-        voltage_range_kv[0], voltage_range_kv[1], n_points
+    energies_kev: Float[NDArray, "N"] = np.linspace(
+        energy_range_kev[0], energy_range_kev[1], n_points
     )
-    voltage_v: Float[NDArray, "N"] = voltages * 1000.0
+    voltage_v: Float[NDArray, "N"] = energies_kev * 1000.0
     wavelength_rel: Float[NDArray, "N"] = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
         voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
     )
-    ax.plot(voltages, wavelength_rel, "b-", linewidth=2, label="Relativistic")
+    ax.plot(
+        energies_kev,
+        wavelength_rel,
+        "b-",
+        linewidth=2,
+        label="Relativistic",
+    )
     if show_comparison:
         wavelength_nonrel: Float[NDArray, "N"] = (
             H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(voltage_v)
         )
         ax.plot(
-            voltages,
+            energies_kev,
             wavelength_nonrel,
             "r--",
             linewidth=1.5,
@@ -520,18 +526,18 @@ def plot_wavelength_curve(
             * 100
         )
         ax.annotate(
-            f"{rel_diff:.1f}% difference\nat {voltages[-1]:.0f} kV",
-            xy=(voltages[-1], wavelength_nonrel[-1]),
-            xytext=(voltages[-1] - 5, wavelength_nonrel[-1] + 0.005),
+            f"{rel_diff:.1f}% difference\nat {energies_kev[-1]:.0f} keV",
+            xy=(energies_kev[-1], wavelength_nonrel[-1]),
+            xytext=(energies_kev[-1] - 5, wavelength_nonrel[-1] + 0.005),
             fontsize=9,
             arrowprops={"arrowstyle": "->", "color": "gray"},
         )
-    ax.set_xlabel("Accelerating Voltage (kV)", fontsize=12)
+    ax.set_xlabel("Beam Energy (keV)", fontsize=12)
     ax.set_ylabel("Wavelength (A)", fontsize=12)
-    ax.set_title("Electron Wavelength vs Voltage", fontsize=14)
+    ax.set_title("Electron Wavelength vs Energy", fontsize=14)
     ax.legend(loc="upper right", fontsize=10)
     ax.grid(True, alpha=0.3)
-    ax.set_xlim(voltage_range_kv)
+    ax.set_xlim(energy_range_kev)
     return ax
 
 

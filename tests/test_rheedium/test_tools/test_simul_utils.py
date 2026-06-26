@@ -16,6 +16,7 @@ from jax.test_util import check_grads
 from jaxtyping import Array, Float
 
 from rheedium.tools.simul_utils import (
+    incidence_angles_to_radians,
     incident_wavevector,
     interaction_constant,
     wavelength_ang,
@@ -25,7 +26,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
-    """Tests for relativistic electron wavelength calculation."""
+    """Tests for relativistic electron wavelength calculation.
+
+    :see: :func:`~rheedium.tools.wavelength_ang`
+    """
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_voltages(self) -> None:
@@ -79,8 +83,58 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(wavelengths)
 
 
+class TestIncidenceAnglesToRadians(chex.TestCase, parameterized.TestCase):
+    """Tests for public-to-internal incidence angle conversion.
+
+    :see: :func:`~rheedium.tools.incidence_angles_to_radians`
+    """
+
+    @chex.all_variants(without_device=False, with_pmap=False)
+    def test_converts_public_degrees_to_internal_radians(self) -> None:
+        """Convert theta/phi degree inputs to polar/azimuth radians."""
+        var_angles: Callable[..., Any] = self.variant(
+            incidence_angles_to_radians
+        )
+
+        polar_angle_rad: Float[Array, ""]
+        azimuth_angle_rad: Float[Array, ""]
+        polar_angle_rad, azimuth_angle_rad = var_angles(
+            jnp.float64(2.0),
+            jnp.float64(45.0),
+        )
+
+        chex.assert_trees_all_close(
+            polar_angle_rad,
+            jnp.deg2rad(jnp.float64(2.0)),
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            azimuth_angle_rad,
+            jnp.deg2rad(jnp.float64(45.0)),
+            atol=1e-12,
+        )
+
+    def test_default_phi_converts_to_zero_azimuth(self) -> None:
+        """Default phi produces a zero internal azimuth angle."""
+        polar_angle_rad: Float[Array, ""]
+        azimuth_angle_rad: Float[Array, ""]
+        polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+            jnp.float64(3.0)
+        )
+
+        chex.assert_trees_all_close(
+            polar_angle_rad,
+            jnp.deg2rad(jnp.float64(3.0)),
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(azimuth_angle_rad, 0.0, atol=1e-12)
+
+
 class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
-    """Tests for incident wavevector calculation."""
+    """Tests for incident wavevector calculation.
+
+    :see: :func:`~rheedium.tools.incident_wavevector`
+    """
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
@@ -124,7 +178,7 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_grazing_angle_controls_z(self) -> None:
-        """Steeper grazing angle gives larger |k_z|."""
+        r"""Steeper grazing angle gives larger \|k_z\|."""
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
@@ -190,7 +244,10 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
 
 class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
-    """Tests for relativistic interaction constant."""
+    """Tests for relativistic interaction constant.
+
+    :see: :func:`~rheedium.tools.interaction_constant`
+    """
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_values(self) -> None:

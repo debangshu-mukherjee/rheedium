@@ -72,7 +72,7 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_magnitude(self) -> None:
-        """Test |k_in| = 2π/λ."""
+        r"""Test \|k_in\| = 2π/λ."""
         var_k_in: Callable[..., Any] = self.variant(
             kinematic_incident_wavevector
         )
@@ -121,7 +121,7 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_elastic_scattering(self) -> None:
-        """Test that all k_out satisfy |k_out| ≈ |k_in|."""
+        r"""Test that all k_out satisfy \|k_out\| ≈ \|k_in\|."""
         var_ewald: Callable[..., Any] = self.variant(kinematic_ewald_sphere)
 
         # Setup: incident beam at grazing incidence
@@ -164,12 +164,15 @@ class TestKinematicEwaldSphere(chex.TestCase):
 class TestDetectorProjection(chex.TestCase):
     """Test detector projection implementing inverse of paper's Equations 5-6.
 
-    Paper's Equations 5-6 map detector → reciprocal space:
+    Paper's Equations 5-6 map detector → reciprocal space::
+
         x = k₀ · x_d / R                    [Eq. 5]
         y = k₀ · (-d/R + cos θ)             [Eq. 6]
+
     where R = √(d² + x_d² + y_d²)
 
-    Our implementation inverts this to map reciprocal → detector:
+    Our implementation inverts this to map reciprocal → detector::
+
         R = d / (cos θ - y/k₀)
         x_d = x · R / k₀
         y_d = √(R² - d² - x_d²)
@@ -211,9 +214,9 @@ class TestDetectorProjection(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_detector_projection_specular(self) -> None:
-        """Test projection for near-specular reflection.
+        r"""Test projection for near-specular reflection.
 
-        Specular: k_out_z ≈ |k_in_z| but positive (upward).
+        Specular: k_out_z ≈ \|k_in_z\| but positive (upward).
         """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
@@ -241,7 +244,10 @@ class TestDetectorProjection(chex.TestCase):
 
 
 class TestKinematicStructureFactor(chex.TestCase):
-    """Test structure factor calculation."""
+    """Test structure factor calculation.
+
+    :see: :func:`~rheedium.simul.kinematic.simple_structure_factor`
+    """
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_single_atom(self) -> None:
@@ -285,7 +291,10 @@ class TestKinematicStructureFactor(chex.TestCase):
 
 
 class TestKinematicSimulator(chex.TestCase):
-    """Test complete kinematic simulator."""
+    """Test complete kinematic simulator.
+
+    :see: :func:`~rheedium.simul.kinematic_spot_simulator`
+    """
 
     def setUp(self) -> None:
         """Set up test crystal."""
@@ -358,7 +367,10 @@ class TestKinematicSimulator(chex.TestCase):
 
 
 class TestMakeEwaldSphere(chex.TestCase):
-    """Test Ewald sphere generation."""
+    """Test Ewald sphere generation.
+
+    :see: :func:`~rheedium.simul.make_ewald_sphere`
+    """
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_geometry(self) -> None:
@@ -517,13 +529,13 @@ class TestMgOExtinctionRules(chex.TestCase):
             )
 
     def test_mgo_origin_reflection(self) -> None:
-        """Test that (0,0,0) reflection gives expected intensity.
+        r"""Test that (0,0,0) reflection gives expected intensity.
 
         F(0,0,0) = sum of all atomic scattering factors
         For simplified f_j = Z_j: F = Z_Mg + Z_O = 12 + 8 = 20 per formula unit
         With 8 atoms in conventional cell (4 Mg + 4 O):
         F = 4*12 + 4*8 = 48 + 32 = 80
-        I = |F|² = 6400
+        I = \|F\|² = 6400
         """
         intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
         # 8 atoms total: 4 Mg (Z=12) + 4 O (Z=8)
@@ -589,12 +601,12 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         return float(intensity)
 
     def test_sto_origin_reflection(self) -> None:
-        """Test that (0,0,0) reflection gives expected intensity.
+        r"""Test that (0,0,0) reflection gives expected intensity.
 
         F(0,0,0) = sum of all atomic scattering factors
         For simplified f_j = Z_j:
         F = Z_Sr + Z_Ti + 3*Z_O = 38 + 22 + 3*8 = 84
-        I = |F|² = 7056
+        I = \|F\|² = 7056
         """
         intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
         expected_f: Float[Array, "..."] = 38 + 22 + 3 * 8  # = 84
@@ -625,13 +637,13 @@ class TestSrTiO3StructureFactor(chex.TestCase):
     def test_sto_110_reflection(self) -> None:
         """Test (1,1,0) reflection intensity.
 
-        For (1,1,0):
-        - Sr at (0.5, 0.5, 0.5): phase = exp(i*2*pi*0.5)
-          * exp(i*2*pi*0.5) = exp(i*2*pi) = 1
-        - Ti at (0, 0, 0): phase = 1
-        - O at (0, 0, 0.5): phase = 1
-        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
-        - O at (0, 0.5, 0): phase = exp(i*pi) = -1
+        For (1,1,0), the phase contributions are::
+
+            Sr at (0.5, 0.5, 0.5): exp(i*2*pi) = 1
+            Ti at (0, 0, 0): 1
+            O at (0, 0, 0.5): 1
+            O at (0.5, 0, 0): exp(i*pi) = -1
+            O at (0, 0.5, 0): exp(i*pi) = -1
 
         F = 38 + 22 + 8 - 8 - 8 = 52
         I = 2704

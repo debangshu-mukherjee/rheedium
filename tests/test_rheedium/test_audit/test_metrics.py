@@ -65,7 +65,11 @@ def _synthetic_three_peak_image(
 
 
 class TestReferenceMetadata(chex.TestCase):
-    """Tests for the stored audit benchmark metadata bundle."""
+    """Tests for the stored audit benchmark metadata bundle.
+
+    :see: :class:`~rheedium.audit.ReferenceCase`
+    :see: :class:`~rheedium.audit.ReferenceMetadata`
+    """
 
     def test_reference_metadata_complete(self) -> None:
         """Each stored reference case has the required metadata fields."""
@@ -105,7 +109,17 @@ class TestReferenceMetadata(chex.TestCase):
 
 
 class TestAuditMetrics(chex.TestCase):
-    """Tests for pixel-space realism metrics."""
+    """Tests for pixel-space realism metrics.
+
+    :see: :func:`~rheedium.audit.dominant_peak_positions`
+    :see: :func:`~rheedium.audit.extract_streak_profile`
+    :see: :func:`~rheedium.audit.normalized_cross_correlation`
+    :see: :func:`~rheedium.audit.peak_centroid_error_px`
+    :see: :func:`~rheedium.audit.peak_centroid`
+    :see: :func:`~rheedium.audit.rod_spacing_error_px`
+    :see: :func:`~rheedium.audit.specular_offset_px`
+    :see: :func:`~rheedium.audit.streak_fwhm_px`
+    """
 
     def test_metrics_translation_invariant(self) -> None:
         """Spacing and width metrics ignore rigid image translations."""

@@ -683,7 +683,7 @@ class EdgeOnSlices(eqx.Module):
     an in-plane beam axis. Each slice is projected along ``x`` and resolved on
     the transverse ``(y, z)`` plane, where ``z`` is the surface normal.
 
-    :see: :class:`~.test_reflection_multislice.TestEdgeOnSlices`
+    :see: :class:`~.test_reflection_multislice.TestReflectionMultislice`
 
     Attributes
     ----------
@@ -728,7 +728,7 @@ def create_edge_on_slices(
 ) -> EdgeOnSlices:
     """Create an EdgeOnSlices PyTree with data validation.
 
-    :see: :class:`~.test_reflection_multislice.TestEdgeOnSlices`
+    :see: :class:`~.test_reflection_multislice.TestReflectionMultislice`
 
     Parameters
     ----------

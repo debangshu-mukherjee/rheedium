@@ -27,7 +27,10 @@ W: int = 32
 
 
 class TestSoftThresholdMask(chex.TestCase):
-    """Tests for soft_threshold_mask."""
+    """Tests for soft_threshold_mask.
+
+    :see: :func:`~rheedium.procs.soft_threshold_mask`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape matches distance field shape."""
@@ -85,7 +88,10 @@ class TestSoftThresholdMask(chex.TestCase):
 
 
 class TestSubtractBackground(chex.TestCase):
-    """Tests for subtract_background."""
+    """Tests for subtract_background.
+
+    :see: :func:`~rheedium.procs.subtract_background`
+    """
 
     def test_correct_subtraction(self) -> None:
         """Background is correctly subtracted."""
@@ -111,7 +117,10 @@ class TestSubtractBackground(chex.TestCase):
 
 
 class TestLogIntensityTransform(chex.TestCase):
-    """Tests for log_intensity_transform."""
+    """Tests for log_intensity_transform.
+
+    :see: :func:`~rheedium.procs.log_intensity_transform`
+    """
 
     def test_zero_input_is_zero(self) -> None:
         """log(1 + 0/eps) = 0 for zero input."""
@@ -149,7 +158,10 @@ class TestLogIntensityTransform(chex.TestCase):
 
 
 class TestNormalizeImage(chex.TestCase):
-    """Tests for normalize_image."""
+    """Tests for normalize_image.
+
+    :see: :func:`~rheedium.procs.normalize_image`
+    """
 
     def test_output_range(self) -> None:
         """Output min is 0 and max is 1."""
@@ -182,7 +194,10 @@ class TestNormalizeImage(chex.TestCase):
 
 
 class TestPreprocessExperimental(chex.TestCase):
-    """Tests for the full preprocessing pipeline."""
+    """Tests for the full preprocessing pipeline.
+
+    :see: :func:`~rheedium.procs.preprocess_experimental`
+    """
 
     def test_minimal_call(self) -> None:
         """Pipeline works with only raw_image (no optional args)."""

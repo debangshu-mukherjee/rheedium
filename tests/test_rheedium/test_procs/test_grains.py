@@ -81,7 +81,10 @@ class TestR2InventoryGuards(chex.TestCase):
 
 
 class TestGrainDistributionAverage(chex.TestCase):
-    """Tests for grain_distribution_average."""
+    """Tests for grain_distribution_average.
+
+    :see: :func:`~rheedium.procs.grain_distribution_average`
+    """
 
     def test_computes_weighted_intensity_average(self) -> None:
         """Verify patterns are averaged weighted by grain fractions."""
@@ -187,7 +190,10 @@ class TestGrainDistributionAverage(chex.TestCase):
 
 
 class TestGrainPopulationToDistribution(chex.TestCase):
-    """Tests for grain_population_to_distribution."""
+    """Tests for grain_population_to_distribution.
+
+    :see: :func:`~rheedium.procs.grain_population_to_distribution`
+    """
 
     def test_builds_incoherent_orientation_size_samples(self) -> None:
         """Verify grain metadata becomes an incoherent latent distribution."""
@@ -229,15 +235,17 @@ class TestGrainPopulationToDistribution(chex.TestCase):
         def _domain_pattern(
             sample: Float[Array, "2"],
         ) -> Float[Array, "2 2"]:
+            """Construct one expected domain-intensity pattern."""
             angle_deg: Float[Array, ""] = sample[0]
             size_angstrom: Float[Array, ""] = sample[1]
-            return jnp.array(
+            pattern: Float[Array, "2 2"] = jnp.array(
                 [
                     [angle_deg + 0.01 * size_angstrom, angle_deg**2],
                     [0.001 * size_angstrom, 2.0 + 0.1 * angle_deg],
                 ],
                 dtype=jnp.float64,
             )
+            return pattern
 
         domain_patterns: Float[Array, "3 2 2"] = jax.vmap(_domain_pattern)(
             distribution.samples
@@ -250,7 +258,11 @@ class TestGrainPopulationToDistribution(chex.TestCase):
         def _bound_amplitude(
             sample: Float[Array, "2"],
         ) -> Complex[Array, "2 2"]:
-            return jnp.sqrt(_domain_pattern(sample)).astype(jnp.complex128)
+            """Construct one coherent domain amplitude sample."""
+            amplitude: Complex[Array, "2 2"] = jnp.sqrt(
+                _domain_pattern(sample)
+            ).astype(jnp.complex128)
+            return amplitude
 
         actual: Float[Array, "2 2"] = apply_distribution(
             distribution,
@@ -270,7 +282,10 @@ class TestGrainPopulationToDistribution(chex.TestCase):
 
 
 class TestApplyMisorientationDistribution(chex.TestCase):
-    """Tests for apply_misorientation_distribution."""
+    """Tests for apply_misorientation_distribution.
+
+    :see: :func:`~rheedium.procs.apply_misorientation_distribution`
+    """
 
     def test_selects_patterns_near_distribution_center(self) -> None:
         """Verify a narrow width selects the centered pattern."""

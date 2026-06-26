@@ -64,7 +64,10 @@ def _write_single_frame_tiffs(
 
 
 class TestLoadTiffSequence(chex.TestCase):
-    """Tests for load_tiff_sequence."""
+    """Tests for load_tiff_sequence.
+
+    :see: :func:`~rheedium.inout.load_tiff_sequence`
+    """
 
     def setUp(self) -> None:
         """Create temporary directory for test files."""
@@ -181,7 +184,10 @@ class TestLoadTiffSequence(chex.TestCase):
 
 
 class TestExtractFrameMetadata(chex.TestCase):
-    """Tests for extract_frame_metadata."""
+    """Tests for extract_frame_metadata.
+
+    :see: :func:`~rheedium.inout.extract_frame_metadata`
+    """
 
     def setUp(self) -> None:
         """Create temporary directory for test files."""
@@ -219,7 +225,10 @@ class TestExtractFrameMetadata(chex.TestCase):
 
 
 class TestNormalizeSequence(chex.TestCase):
-    """Tests for normalize_sequence."""
+    """Tests for normalize_sequence.
+
+    :see: :func:`~rheedium.inout.normalize_sequence`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape matches input shape."""
@@ -293,7 +302,10 @@ class TestNormalizeSequence(chex.TestCase):
 
 
 class TestDetectBeamCenter(chex.TestCase):
-    """Tests for detect_beam_center."""
+    """Tests for detect_beam_center.
+
+    :see: :func:`~rheedium.inout.detect_beam_center`
+    """
 
     def test_shape(self) -> None:
         """Output is a 2-element array."""
@@ -372,7 +384,10 @@ class TestDetectBeamCenter(chex.TestCase):
 
 
 class TestLoadTiffAsRheedImage(chex.TestCase):
-    """Tests for load_tiff_as_rheed_image."""
+    """Tests for load_tiff_as_rheed_image.
+
+    :see: :func:`~rheedium.inout.load_tiff_as_rheed_image`
+    """
 
     def setUp(self) -> None:
         """Create temporary directory for test files."""

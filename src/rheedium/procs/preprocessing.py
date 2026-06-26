@@ -38,6 +38,10 @@ All functions are compatible with ``jax.jit``, ``jax.vmap``, and
 ``jax.grad``. The ``preprocess_experimental`` pipeline is the
 recommended entry point for preparing experimental data before
 computing a loss against simulated patterns.
+
+R5 return type: preprocessing is intentionally outside the
+structure/distribution/modifier trichotomy. Public functions return detector
+image arrays and do not create ``CrystalStructure`` or ``Distribution`` values.
 """
 
 import jax

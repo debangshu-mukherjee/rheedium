@@ -9,7 +9,10 @@ from rheedium.inout.lattice import lattice_to_cell_params
 
 
 class TestLatticeToCellParams(chex.TestCase):
-    """Test lattice vector to cell parameter conversion."""
+    """Test lattice vector to cell parameter conversion.
+
+    :see: :func:`~rheedium.inout.lattice_to_cell_params`
+    """
 
     def test_cubic_lattice(self) -> None:
         """Cubic: a=b=c, alpha=beta=gamma=90 deg."""

@@ -80,6 +80,16 @@ Notes
 ``rheedium.procs`` is the forward tool chest for differentiable data and
 structure processing. This namespace is intentionally broader than the
 inverse-facing :mod:`rheedium.recon` package.
+
+Public return types follow the R5 trichotomy:
+
+1. Structure builders return ``CrystalStructure``.
+2. Statistical or defect population producers return ``Distribution``.
+3. Sub-coherence disorder is applied as a structure modifier; bind helpers
+   return closures that produce per-sample structure updates for Layer 1.
+
+Image preprocessing functions are outside this structure/distribution split and
+return detector-image arrays.
 """
 
 from .crystal_defects import (

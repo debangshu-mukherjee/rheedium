@@ -29,7 +29,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestBesselK0(chex.TestCase, parameterized.TestCase):
-    """Test bessel_k0 against scipy reference values."""
+    """Test bessel_k0 against scipy reference values.
+
+    :see: :func:`~rheedium.tools.bessel_k0`
+    """
 
     @parameterized.named_parameters(
         ("x_0p1", 0.1, 2.4270690247),
@@ -103,7 +106,10 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselK1(chex.TestCase, parameterized.TestCase):
-    """Test bessel_k1 against scipy reference values."""
+    """Test bessel_k1 against scipy reference values.
+
+    :see: :func:`~rheedium.tools.bessel_k1`
+    """
 
     @parameterized.named_parameters(
         ("x_0p1", 0.1, 9.8538447809),
@@ -175,7 +181,10 @@ class TestBesselBranchTransition(chex.TestCase):
 
 
 class TestBesselIvSeries(chex.TestCase):
-    """Test _bessel_iv_series function."""
+    """Test _bessel_iv_series function.
+
+    :see: :func:`~rheedium.tools.special._bessel_iv_series`
+    """
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5),
@@ -229,7 +238,10 @@ class TestBesselIvSeries(chex.TestCase):
 
 
 class TestBesselK0Series(chex.TestCase):
-    """Test _bessel_k0_series function."""
+    """Test _bessel_k0_series function.
+
+    :see: :func:`~rheedium.tools.special._bessel_k0_series`
+    """
 
     @parameterized.named_parameters(
         ("x0p5", 0.5, 0.9244190712276656),
@@ -272,7 +284,10 @@ class TestBesselK0Series(chex.TestCase):
 
 
 class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
-    """Test _bessel_kn_recurrence function."""
+    """Test _bessel_kn_recurrence function.
+
+    :see: :func:`~rheedium.tools.special._bessel_kn_recurrence`
+    """
 
     def test_kn_recurrence_n0(self) -> None:
         """n=0 returns K_0."""
@@ -346,7 +361,10 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
-    """Test _bessel_kv_small_non_integer function."""
+    """Test _bessel_kv_small_non_integer function.
+
+    :see: :func:`~rheedium.tools.special._bessel_kv_small_non_integer`
+    """
 
     @parameterized.named_parameters(
         ("v0p25_x0p5", 0.25, 0.5, 0.9603163249318826),
@@ -379,7 +397,10 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
-    """Test _bessel_kv_small_integer function."""
+    """Test _bessel_kv_small_integer function.
+
+    :see: :func:`~rheedium.tools.special._bessel_kv_small_integer`
+    """
 
     @parameterized.named_parameters(
         ("v0_x0p5", 0.0, 0.5, 0.9244190712276656),
@@ -410,7 +431,10 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
-    """Test _bessel_kv_large function."""
+    """Test _bessel_kv_large function.
+
+    :see: :func:`~rheedium.tools.special._bessel_kv_large`
+    """
 
     @parameterized.named_parameters(
         ("v0_x5", 0.0, 5.0, 0.0036910983340425942),
@@ -449,7 +473,10 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
-    """Test _bessel_k_half function."""
+    """Test _bessel_k_half function.
+
+    :see: :func:`~rheedium.tools.special._bessel_k_half`
+    """
 
     @parameterized.named_parameters(
         ("x0p5", 0.5, 1.0750476034999203),
@@ -488,7 +515,10 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
 
 
 class TestBesselKv(chex.TestCase, parameterized.TestCase):
-    """Test bessel_kv main function."""
+    """Test bessel_kv main function.
+
+    :see: :func:`~rheedium.tools.bessel_kv`
+    """
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(

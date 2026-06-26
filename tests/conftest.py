@@ -30,13 +30,6 @@ Manages JAX memory during test runs by:
    ``MEM_LEAK_THRESHOLD_GB``, the test is failed with a diagnostic
    message.
 
-Routine Listings
-----------------
-:func:`pytest_xdist_auto_num_workers`
-    Compute xdist worker count from available system memory.
-:func:`manage_jax_memory`
-    Autouse fixture that clears JIT caches and detects leaks.
-
 Notes
 -----
 Memory detection is cross-platform (Linux, macOS, Windows). On
@@ -101,8 +94,10 @@ def _available_ram_gb() -> float:
         with open("/proc/meminfo") as f:
             for line in f:
                 if line.startswith("MemAvailable:"):
-                    return int(line.split()[1]) / 1024**2
-        return float(MEM_PER_WORKER_GB)
+                    linux_available_gb: float = int(line.split()[1]) / 1024**2
+                    return linux_available_gb
+        linux_fallback_gb: float = float(MEM_PER_WORKER_GB)
+        return linux_fallback_gb
     if system == "Darwin":
         import subprocess  # noqa: PLC0415
 
@@ -128,7 +123,8 @@ def _available_ram_gb() -> float:
         available_bytes: int = (
             pages_free + pages_inactive + pages_purgeable
         ) * page_size
-        return available_bytes / 1024**3
+        macos_available_gb: float = available_bytes / 1024**3
+        return macos_available_gb
     if system == "Windows":
         import ctypes  # noqa: PLC0415
 
@@ -148,8 +144,10 @@ def _available_ram_gb() -> float:
         mem: MEMORYSTATUSEX = MEMORYSTATUSEX()
         mem.dwLength = ctypes.sizeof(mem)
         ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(mem))
-        return mem.ullAvailPhys / 1024**3
-    return float(MEM_PER_WORKER_GB)
+        windows_available_gb: float = mem.ullAvailPhys / 1024**3
+        return windows_available_gb
+    fallback_available_gb: float = float(MEM_PER_WORKER_GB)
+    return fallback_available_gb
 
 
 def _worker_rss_gb() -> float:
@@ -180,8 +178,10 @@ def _worker_rss_gb() -> float:
         with open(f"/proc/{pid}/status") as f:
             for line in f:
                 if line.startswith("VmRSS:"):
-                    return int(line.split()[1]) / 1024**2
-        return 0.0
+                    linux_rss_gb: float = int(line.split()[1]) / 1024**2
+                    return linux_rss_gb
+        linux_fallback_rss_gb: float = 0.0
+        return linux_fallback_rss_gb
     if system == "Darwin":
         import subprocess  # noqa: PLC0415
 
@@ -191,7 +191,8 @@ def _worker_rss_gb() -> float:
             text=True,
             check=True,
         )
-        return int(result.stdout.strip()) / 1024**2
+        macos_rss_gb: float = int(result.stdout.strip()) / 1024**2
+        return macos_rss_gb
     if system == "Windows":
         import ctypes  # noqa: PLC0415
         from ctypes import wintypes  # noqa: PLC0415
@@ -217,8 +218,10 @@ def _worker_rss_gb() -> float:
         ctypes.windll.psapi.GetProcessMemoryInfo(
             process, ctypes.byref(pmc), pmc.cb
         )
-        return pmc.WorkingSetSize / 1024**3
-    return 0.0
+        windows_rss_gb: float = pmc.WorkingSetSize / 1024**3
+        return windows_rss_gb
+    fallback_rss_gb: float = 0.0
+    return fallback_rss_gb
 
 
 def pytest_xdist_auto_num_workers() -> int:
@@ -246,7 +249,8 @@ def pytest_xdist_auto_num_workers() -> int:
     ``MEM_PER_WORKER_GB`` should be tuned as the test suite grows.
     """
     available_gb: float = _available_ram_gb() * AVAILABLE_MEM_FRACTION
-    return max(1, int(available_gb // MEM_PER_WORKER_GB))
+    n_workers: int = max(1, int(available_gb // MEM_PER_WORKER_GB))
+    return n_workers
 
 
 @pytest.fixture(autouse=True)

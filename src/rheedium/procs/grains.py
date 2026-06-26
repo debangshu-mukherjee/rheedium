@@ -25,6 +25,11 @@ These functions deliberately model grain populations in pattern space
 first. Exact atomistic grain-boundary builders can be layered on top of
 this later, but continuous orientation populations are the first public
 inverse-facing contract.
+
+R5 return type: ``grain_population_to_distribution`` is the statistical
+producer and returns ``Distribution``. The pattern-space averaging helpers
+return detector-image arrays because they are compatibility front ends over the
+shared Layer-1 reducer, not structure builders.
 """
 
 import equinox as eqx

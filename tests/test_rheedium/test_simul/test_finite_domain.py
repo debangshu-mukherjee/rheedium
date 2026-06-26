@@ -156,7 +156,10 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
 
 class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
-    """Test suite for extent_to_rod_sigma function."""
+    """Test suite for extent_to_rod_sigma function.
+
+    :see: :func:`~rheedium.simul.extent_to_rod_sigma`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for rod sigma calculations.
@@ -239,7 +242,10 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
 
 class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
-    """Test suite for compute_shell_sigma function."""
+    """Test suite for compute_shell_sigma function.
+
+    :see: :func:`~rheedium.simul.compute_shell_sigma`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for shell sigma calculations.
@@ -313,7 +319,10 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
 
 class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
-    """Test suite for rod_ewald_overlap function."""
+    """Test suite for rod_ewald_overlap function.
+
+    :see: :func:`~rheedium.simul.finite_domain.rod_ewald_overlap`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for overlap calculations.
@@ -390,9 +399,9 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_specular_reflection_high_overlap(self) -> None:
-        """Test that specular reflection (G=0) has high overlap.
+        r"""Test that specular reflection (G=0) has high overlap.
 
-        For G=0, k_out = k_in, so |k_out| = |k_in| exactly.
+        For G=0, k_out = k_in, so \|k_out\| = \|k_in\| exactly.
         Overlap should be 1.0.
         """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
@@ -480,7 +489,10 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
 
 class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
-    """Test suite for finite_domain_intensities function."""
+    """Test suite for finite_domain_intensities function.
+
+    :see: :func:`~rheedium.simul.finite_domain_intensities`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for intensity calculations.
@@ -726,12 +738,16 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         def _manual_size_sample(
             sample: Float[Array, "1"],
         ) -> tuple[Float[Array, "N"], Float[Array, "N"]]:
-            return finite_domain_intensities(
-                ewald=self.ewald,
-                theta_deg=2.0,
-                phi_deg=0.0,
-                domain_extent_ang=sample[0] * aspect_array,
+            """Evaluate finite-domain intensities for one size sample."""
+            intensities: tuple[Float[Array, "N"], Float[Array, "N"]] = (
+                finite_domain_intensities(
+                    ewald=self.ewald,
+                    theta_deg=2.0,
+                    phi_deg=0.0,
+                    domain_extent_ang=sample[0] * aspect_array,
+                )
             )
+            return intensities
 
         overlap_bank: Float[Array, "S N"]
         intensity_bank: Float[Array, "S N"]

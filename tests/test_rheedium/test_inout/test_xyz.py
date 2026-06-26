@@ -21,7 +21,10 @@ from rheedium.types.crystal_types import XYZData
 
 
 class TestAtomicSymbol(chex.TestCase):
-    """Test atomic symbol to number conversion."""
+    """Test atomic symbol to number conversion.
+
+    :see: :func:`~rheedium.inout.atomic_symbol`
+    """
 
     @parameterized.named_parameters(
         ("hydrogen", "H", 1),
@@ -63,7 +66,10 @@ class TestAtomicSymbol(chex.TestCase):
 
 
 class TestKirklandPotentials(chex.TestCase):
-    """Test Kirkland potential loading."""
+    """Test Kirkland potential loading.
+
+    :see: :func:`~rheedium.inout.kirkland_potentials`
+    """
 
     def test_returns_array(self) -> None:
         """Should return JAX array."""
@@ -88,7 +94,10 @@ class TestKirklandPotentials(chex.TestCase):
 
 
 class TestParseXyzMetadata(chex.TestCase):
-    """Test XYZ metadata parsing."""
+    """Test XYZ metadata parsing.
+
+    :see: :func:`~rheedium.inout.xyz._parse_xyz_metadata`
+    """
 
     def test_lattice_extraction(self) -> None:
         """Extract lattice from extended XYZ format."""
@@ -157,7 +166,10 @@ class TestParseXyzMetadata(chex.TestCase):
 
 
 class TestParseAtomLine(chex.TestCase):
-    """Test single atom line parsing."""
+    """Test single atom line parsing.
+
+    :see: :func:`~rheedium.inout.xyz._parse_atom_line`
+    """
 
     def test_standard_format(self) -> None:
         """Parse standard 4-column XYZ line."""
@@ -199,7 +211,10 @@ class TestParseAtomLine(chex.TestCase):
 
 
 class TestParseXyz(chex.TestCase):
-    """Test complete XYZ file parsing."""
+    """Test complete XYZ file parsing.
+
+    :see: :func:`~rheedium.inout.parse_xyz`
+    """
 
     def test_simple_xyz(self) -> None:
         """Parse simple XYZ file."""

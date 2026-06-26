@@ -8,7 +8,10 @@ from rheedium.tools.quadrature import gauss_hermite_nodes_weights
 
 
 class TestGaussHermiteNodesWeights(chex.TestCase):
-    """Tests for Gauss-Hermite quadrature computation."""
+    """Tests for Gauss-Hermite quadrature computation.
+
+    :see: :func:`~rheedium.tools.gauss_hermite_nodes_weights`
+    """
 
     def test_correct_count(self) -> None:
         """Returned arrays have the requested number of points."""

@@ -136,7 +136,14 @@ def _toy_crystal() -> CrystalStructure:
 
 
 class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
-    """Tests for edge-on reflection multislice routines."""
+    """Tests for edge-on reflection multislice routines.
+
+    :see: :class:`~rheedium.types.EdgeOnSlices`
+    :see: :func:`~rheedium.simul.crystal_to_edge_on_slices`
+    :see: :func:`~rheedium.simul.reflection_multislice_propagate`
+    :see: :func:`~rheedium.simul.reflection_multislice_simulator`
+    :see: :func:`~rheedium.types.create_edge_on_slices`
+    """
 
     def test_crystal_to_edge_on_slices_shapes(self) -> None:
         """Test crystal slabs convert to finite edge-on slices."""

@@ -43,7 +43,10 @@ def _make_bulk_crystal() -> CrystalStructure:
 
 
 class TestApplyVacancyField(chex.TestCase):
-    """Tests for apply_vacancy_field."""
+    """Tests for apply_vacancy_field.
+
+    :see: :func:`~rheedium.procs.apply_vacancy_field`
+    """
 
     def test_applies_continuous_site_occupancies(self) -> None:
         """Verify occupancies scale atomic numbers continuously."""
@@ -131,7 +134,10 @@ class TestApplyVacancyField(chex.TestCase):
 
 
 class TestApplyInterstitialField(chex.TestCase):
-    """Tests for apply_interstitial_field."""
+    """Tests for apply_interstitial_field.
+
+    :see: :func:`~rheedium.procs.apply_interstitial_field`
+    """
 
     def test_appends_weighted_interstitial_sites(self) -> None:
         """Verify occupancy-weighted interstitial sites are appended."""
@@ -232,7 +238,10 @@ class TestApplyInterstitialField(chex.TestCase):
 
 
 class TestApplyAntisiteField(chex.TestCase):
-    """Tests for apply_antisite_field."""
+    """Tests for apply_antisite_field.
+
+    :see: :func:`~rheedium.procs.apply_antisite_field`
+    """
 
     def test_blends_host_and_substitute_species(self) -> None:
         """Verify host and substitute species are blended by fraction."""

@@ -146,7 +146,7 @@ def simulate_detector_image(  # noqa: PLR0913
     finite_domain_aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 0.5),
 ) -> Float[Array, "H W"]:
     """Test-local adapter from legacy fixtures to carrier API."""
-    return _simulate_detector_image(
+    image: Float[Array, "H W"] = _simulate_detector_image(
         crystal=crystal,
         beam=BeamSpec(
             energy_kev=energy_kev,
@@ -195,6 +195,7 @@ def simulate_detector_image(  # noqa: PLR0913
             distribution=distribution,
         ),
     )
+    return image
 
 
 def simulate_detector_image_instrument(  # noqa: PLR0913
@@ -224,7 +225,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
     kernel: str = "kinematic",
 ) -> Float[Array, "H W"]:
     """Test-local adapter for the carrier-shaped instrument wrapper."""
-    return _simulate_detector_image_instrument(
+    image: Float[Array, "H W"] = _simulate_detector_image_instrument(
         crystal=crystal,
         beam=BeamSpec(
             energy_kev=energy_kev,
@@ -259,6 +260,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
             kernel=kernel,
         ),
     )
+    return image
 
 
 class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
@@ -725,6 +727,137 @@ class TestRationalizationGuards(chex.TestCase):
             },
         )
 
+    def test_rg5_angle_units_convert_at_single_boundary(self) -> None:
+        """Public degree angles should convert to internal radians once."""
+        simulator_path = self.repo_root / "src/rheedium/simul/simulator.py"
+        simulator = ast.parse(simulator_path.read_text(encoding="utf-8"))
+        tools_path = self.repo_root / "src/rheedium/tools/simul_utils.py"
+        tools = ast.parse(tools_path.read_text(encoding="utf-8"))
+        helper_name = "incidence_angles_to_radians"
+        helper = next(
+            node
+            for node in tools.body
+            if isinstance(node, ast.FunctionDef) and node.name == helper_name
+        )
+        helper_call_count = 0
+        misplaced_conversions: list[str] = []
+        checked_modules = {
+            "simulator.py": simulator,
+            "simul_utils.py": tools,
+        }
+        helper_nodes = set(ast.walk(helper))
+        for module_name, module in checked_modules.items():
+            for node in ast.walk(module):
+                if isinstance(node, ast.Call):
+                    func = node.func
+                    if isinstance(func, ast.Name) and func.id == helper_name:
+                        helper_call_count += 1
+                    if (
+                        isinstance(func, ast.Attribute)
+                        and func.attr == "deg2rad"
+                        and node.args
+                    ):
+                        arg_source = ast.unparse(node.args[0])
+                        if (
+                            "theta_deg" in arg_source
+                            or "phi_deg" in arg_source
+                        ) and node not in helper_nodes:
+                            misplaced_conversions.append(
+                                f"{module_name}:{node.lineno}:{arg_source}"
+                            )
+
+        self.assertEqual(misplaced_conversions, [])
+        self.assertGreaterEqual(helper_call_count, 4)
+
+    def test_rg5_procs_public_returns_follow_trichotomy(self) -> None:
+        """Public procs functions should declare the R5 return contract."""
+        expected_categories = {
+            "src/rheedium/procs/crystal_defects.py": {
+                "apply_antisite_field": "CrystalStructure",
+                "apply_interstitial_field": "CrystalStructure",
+                "apply_vacancy_field": "CrystalStructure",
+            },
+            "src/rheedium/procs/distribution_binds.py": {
+                "bind_kinematic_axis_distribution": "Callable",
+                "bind_multislice_axis_distribution": "Callable",
+                "validate_kinematic_axis": "None",
+                "validate_multislice_axis": "None",
+            },
+            "src/rheedium/procs/grains.py": {
+                "apply_misorientation_distribution": "Float",
+                "grain_distribution_average": "Float",
+                "grain_population_to_distribution": "Distribution",
+            },
+            "src/rheedium/procs/library.py": {
+                "gaas001_2x4": "CrystalStructure",
+                "mgo001_bulk_terminated": "CrystalStructure",
+                "si100_2x1": "CrystalStructure",
+                "si111_1x1": "CrystalStructure",
+                "si111_7x7": "CrystalStructure",
+                "srtio3_001_2x1": "CrystalStructure",
+            },
+            "src/rheedium/procs/preprocessing.py": {
+                "log_intensity_transform": "Float",
+                "normalize_image": "Float",
+                "preprocess_experimental": "Float",
+                "soft_threshold_mask": "Float",
+                "subtract_background": "Float",
+            },
+            "src/rheedium/procs/surface_builder.py": {
+                "add_adsorbate_layer": "CrystalStructure",
+                "apply_surface_reconstruction": "CrystalStructure",
+                "create_surface_slab": "CrystalStructure",
+            },
+            "src/rheedium/procs/surface_modifier.py": {
+                "apply_step_edge_field": "CrystalStructure",
+                "apply_surface_displacement_field": "CrystalStructure",
+                "apply_surface_occupancy_field": "CrystalStructure",
+                "apply_twin_wall_field": "CrystalStructure",
+                "bind_step_edge_distribution": "Callable",
+                "bind_twin_wall_distribution": "Callable",
+                "incoherent_domain_average": "Float",
+                "step_edge_to_distribution": "Distribution",
+                "twin_wall_to_distribution": "Distribution",
+                "vicinal_surface_step_splitting": "Float",
+            },
+        }
+
+        missing_annotations: list[str] = []
+        category_mismatches: list[str] = []
+        extra_public_functions: list[str] = []
+        for rel_path, expected in expected_categories.items():
+            module = ast.parse(
+                (self.repo_root / rel_path).read_text(encoding="utf-8")
+            )
+            public_functions = {
+                node.name: node
+                for node in module.body
+                if isinstance(node, ast.FunctionDef)
+                and not node.name.startswith("_")
+            }
+            extra_public_functions.extend(
+                f"{rel_path}:{name}"
+                for name in sorted(set(public_functions) - set(expected))
+            )
+            for function_name, category in expected.items():
+                function = public_functions[function_name]
+                if function.returns is None:
+                    missing_annotations.append(f"{rel_path}:{function_name}")
+                    continue
+                annotation = ast.unparse(function.returns)
+                if category == "None":
+                    matched = annotation == "None"
+                else:
+                    matched = category in annotation
+                if not matched:
+                    category_mismatches.append(
+                        f"{rel_path}:{function_name}:{annotation}"
+                    )
+
+        self.assertEqual(extra_public_functions, [])
+        self.assertEqual(missing_annotations, [])
+        self.assertEqual(category_mismatches, [])
+
     def test_rg6_layering_modules_preserve_public_imports(self) -> None:
         """Package splits should leave public import paths unchanged."""
         distributions_path = (
@@ -763,7 +896,10 @@ class TestRationalizationGuards(chex.TestCase):
 
 
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
-    """Test suite for kinematic reflection finding."""
+    """Test suite for kinematic reflection finding.
+
+    :see: :func:`~rheedium.simul.find_kinematic_reflections`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -772,7 +908,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_elastic_scattering_constraint(self) -> None:
-        """Test that output wavevectors satisfy |k_out| ≈ |k_in|."""
+        r"""Test that output wavevectors satisfy \|k_out\| ≈ \|k_in\|."""
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
@@ -887,7 +1023,10 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 class TestSlicedCrystalToProjectedPotentialSlices(
     chex.TestCase, parameterized.TestCase
 ):
-    """Tests for converting sliced crystals to potential slices."""
+    """Tests for converting sliced crystals to potential slices.
+
+    :see: :func:`~rheedium.simul.sliced_crystal_to_projected_potential_slices`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1041,7 +1180,10 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
 
 class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
-    """Test suite for multislice wave propagation."""
+    """Test suite for multislice wave propagation.
+
+    :see: :func:`~rheedium.simul.multislice_propagate`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1217,7 +1359,10 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
 
 class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
-    """Test suite for complete multislice RHEED simulation."""
+    """Test suite for complete multislice RHEED simulation.
+
+    :see: :func:`~rheedium.simul.multislice_simulator`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1383,7 +1528,10 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 class TestComputeKinematicIntensitiesExtended(
     chex.TestCase, parameterized.TestCase
 ):
-    """Extended tests for kinematic intensity calculation with CTRs."""
+    """Extended tests for kinematic intensity calculation with CTRs.
+
+    :see: :func:`~rheedium.simul.compute_kinematic_intensities_with_ctrs`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1605,7 +1753,7 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_gating_uses_explicit_hkl(self) -> None:
-        """Explicit hkl should enable CTR when |G| misses tolerance."""
+        r"""Explicit hkl should enable CTR when \|G\| misses tolerance."""
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -1643,7 +1791,10 @@ class TestComputeKinematicIntensitiesExtended(
 
 
 class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
-    """Test suite for ewald_simulator with exact Ewald-CTR intersection."""
+    """Test suite for ewald_simulator with exact Ewald-CTR intersection.
+
+    :see: :func:`~rheedium.simul.ewald_simulator`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures."""
@@ -1912,7 +2063,7 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_elastic_scattering_constraint(self) -> None:
-        """Test that |k_out| = |k_in| (elastic scattering)."""
+        r"""Test that \|k_out\| = \|k_in\| (elastic scattering)."""
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2166,7 +2317,12 @@ def _legacy_flat_detector_points(
 
 
 class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
-    """Tests for dense detector-image helpers built on ewald_simulator."""
+    """Tests for dense detector-image helpers built on ewald_simulator.
+
+    :see: :func:`~rheedium.simul.kinematic_amplitude`
+    :see: :func:`~rheedium.simul.render_amplitude_to_field`
+    :see: :func:`~rheedium.simul.render_ctr_amplitude_to_field`
+    """
 
     @staticmethod
     def _legacy_render_pattern_to_image(
@@ -2197,10 +2353,12 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             y0_px: Float[Array, ""],
             intensity: Float[Array, ""],
         ) -> Float[Array, "H W"]:
-            return intensity * jnp.exp(
+            """Render one detector spot into the legacy image grid."""
+            spot: Float[Array, "H W"] = intensity * jnp.exp(
                 -((x_grid - x0_px) ** 2 + (y_grid - y0_px) ** 2)
                 / (2.0 * spot_sigma_px**2)
             )
+            return spot
 
         image: Float[Array, "H W"] = jnp.sum(
             jax.vmap(_render_one_spot)(
@@ -2436,6 +2594,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
+            """Apply one coherent phase sample to the kinematic field."""
             field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=20.0,
@@ -2455,7 +2614,10 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 spot_sigma_px=1.2,
                 render_ctrs_as_streaks=False,
             )
-            return jnp.exp(1j * sample[0]) * field
+            phased_field: Complex[Array, "16 24"] = (
+                jnp.exp(1j * sample[0]) * field
+            )
+            return phased_field
 
         coherent: Float[Array, "16 24"] = apply_distribution(
             distribution_coherent,
@@ -2566,6 +2728,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(_sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
+            """Return the precomputed amplitude for the trivial sample."""
             return amplitude
 
         reduced: Float[Array, "16 24"] = apply_distribution(
@@ -2763,7 +2926,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         base_phi_deg: float = 3.0
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate the kinematic field for one beam sample."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
@@ -2778,6 +2942,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 beam_center_px=beam_center_px,
                 spot_sigma_px=1.2,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -2871,7 +3036,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         base_phi_deg: float = 0.0
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "32 24"]:
-            return kinematic_amplitude(
+            """Evaluate the CTR-streak field for one beam sample."""
+            field: Complex[Array, "32 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
@@ -2887,6 +3053,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 spot_sigma_px=1.2,
                 render_ctrs_as_streaks=True,
             )
+            return field
 
         expected: Float[Array, "32 24"] = apply_distribution(
             distribution,
@@ -3020,7 +3187,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         beam_center_px: tuple[float, float] = (12.0, 2.0)
 
         def _bound(sample: Float[Array, "1"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate one detector field for a distribution sample."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=20.0,
                 theta_deg=2.0,
@@ -3035,6 +3203,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 beam_center_px=beam_center_px,
                 spot_sigma_px=1.2,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -3067,7 +3236,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate a twin-bound crystal sample as a detector field."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=builder(sample),
                 energy_kev=20.0,
                 theta_deg=2.0,
@@ -3086,6 +3256,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 spot_sigma_px=1.2,
                 render_ctrs_as_streaks=False,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -3138,7 +3309,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate a step-bound crystal sample as a detector field."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=builder(sample),
                 energy_kev=20.0,
                 theta_deg=2.0,
@@ -3157,6 +3329,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 spot_sigma_px=1.2,
                 render_ctrs_as_streaks=False,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -3200,31 +3373,35 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "16 24"]:
-            return _kinematic_finite_domain_amplitude(
-                crystal=_SI_CRYSTAL_2ATOM,
-                energy_kev=20.0,
-                theta_deg=2.0,
-                phi_deg=3.0 + sample[0],
-                domain_size_angstrom=sample[1],
-                domain_aspect_ratio=(1.0, 1.0, 0.5),
-                hmax=0,
-                kmax=0,
-                detector_distance_mm=1000.0,
-                temperature=300.0,
-                surface_roughness=0.5,
-                ctr_regularization=0.01,
-                ctr_power=1.0,
-                roughness_power=0.25,
-                image_shape_px=(16, 24),
-                pixel_size_mm=(6.0, 16.0),
-                beam_center_px=(12.0, 2.0),
-                spot_sigma_px=1.2,
-                render_ctrs_as_streaks=False,
-                parameterization="lobato",
-                surface_config=None,
-                energy_spread_frac=0.0,
-                beam_divergence_rad=0.0,
+            """Evaluate one grain finite-domain amplitude sample."""
+            amplitude: Complex[Array, "16 24"] = (
+                _kinematic_finite_domain_amplitude(
+                    crystal=_SI_CRYSTAL_2ATOM,
+                    energy_kev=20.0,
+                    theta_deg=2.0,
+                    phi_deg=3.0 + sample[0],
+                    domain_size_angstrom=sample[1],
+                    domain_aspect_ratio=(1.0, 1.0, 0.5),
+                    hmax=0,
+                    kmax=0,
+                    detector_distance_mm=1000.0,
+                    temperature=300.0,
+                    surface_roughness=0.5,
+                    ctr_regularization=0.01,
+                    ctr_power=1.0,
+                    roughness_power=0.25,
+                    image_shape_px=(16, 24),
+                    pixel_size_mm=(6.0, 16.0),
+                    beam_center_px=(12.0, 2.0),
+                    spot_sigma_px=1.2,
+                    render_ctrs_as_streaks=False,
+                    parameterization="lobato",
+                    surface_config=None,
+                    energy_spread_frac=0.0,
+                    beam_divergence_rad=0.0,
+                )
             )
+            return amplitude
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -3873,7 +4050,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         base_phi_deg: float = 1.5
 
         def _bound(sample: Float[Array, "3"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate the instrument field for one beam sample."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=base_energy_kev + 1.0e-3 * sample[2],
                 theta_deg=base_theta_deg + jnp.rad2deg(sample[0]),
@@ -3888,6 +4066,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 beam_center_px=beam_center_px,
                 spot_sigma_px=1.2,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distribution(
             distribution,
@@ -3947,7 +4126,8 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         beam_center_px: tuple[float, float] = (12.0, 2.0)
 
         def _bound(sample: Float[Array, "4"]) -> Complex[Array, "16 24"]:
-            return kinematic_amplitude(
+            """Evaluate the field for one beam-orientation sample."""
+            field: Complex[Array, "16 24"] = kinematic_amplitude(
                 crystal=_SI_CRYSTAL_2ATOM,
                 energy_kev=20.0 + 1.0e-3 * sample[2],
                 theta_deg=2.0 + jnp.rad2deg(sample[0]),
@@ -3962,6 +4142,7 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 beam_center_px=beam_center_px,
                 spot_sigma_px=1.2,
             )
+            return field
 
         expected: Float[Array, "16 24"] = apply_distributions(
             [beam_distribution, orientation_distribution],

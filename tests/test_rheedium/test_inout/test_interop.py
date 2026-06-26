@@ -44,7 +44,11 @@ def _make_simple_crystal() -> CrystalStructure:
 
 
 class TestAseInterop(chex.TestCase):
-    """Test ASE interoperability."""
+    """Test ASE interoperability.
+
+    :see: :func:`~rheedium.inout.from_ase`
+    :see: :func:`~rheedium.inout.to_ase`
+    """
 
     @pytest.fixture(autouse=True)
     def check_ase_available(self) -> None:
@@ -163,7 +167,11 @@ class TestAseInterop(chex.TestCase):
 
 
 class TestPymatgenInterop(chex.TestCase):
-    """Test pymatgen interoperability."""
+    """Test pymatgen interoperability.
+
+    :see: :func:`~rheedium.inout.from_pymatgen`
+    :see: :func:`~rheedium.inout.to_pymatgen`
+    """
 
     @pytest.fixture(autouse=True)
     def check_pymatgen_available(self) -> None:

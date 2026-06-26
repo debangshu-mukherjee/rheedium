@@ -379,17 +379,19 @@ disorder → structure modifier; standardize the `voltage_kv`/`energy_kev` and
 `theta_deg`/`polar_rad` boundary conversions in one place with a **clean cut — the
 old name is deleted, not aliased** (§3), migrated via `CHANGELOG.md`.
 
-**Progress:** W7 energy naming is partially complete as of 2026-06-26. The
-checked code and test surface now standardizes keV beam energy on `energy_kev`;
-`voltage_kv` is deleted from `src/` and `tests/` with no alias, and an inventory
-guard prevents it from returning there. Tutorials and source docs now use
-`energy_kev`; remaining W7 work is the generated guide-figure scripts and the
-`theta_deg`/`phi_deg` vs polar/azimuth-radian boundary.
+**Progress:** complete as of 2026-06-26. The checked code, tests, tutorials,
+source docs, and generated guide-figure scripts now standardize keV beam energy
+on `energy_kev`; `voltage_kv` / `voltage_range_kv` are deleted with no alias.
+Public incidence remains `theta_deg` / `phi_deg`, and the detector kernels
+convert to internal polar/azimuth radians through one boundary helper. Each
+`procs` module documents the structure-builder / distribution-producer /
+sub-coherence-modifier split, and RG5 guards assert both return annotations and
+angle/naming inventories.
 
 **Gate RG5:** every `procs` public function's return type matches the trichotomy
 (documented in each module's `Notes`); one canonical energy/angle unit at the
 public boundary, the old names **deleted, not aliased** (CHANGELOG migration);
-universal gate.
+universal gate. **Closed 2026-06-26.**
 
 ### Phase R6 — Module reorganization (mechanical, low-risk)  ·  W8
 
@@ -418,7 +420,7 @@ gate. **Closed 2026-06-26.**
 | **RG2** | **complete 2026-06-26** — grain/domain pattern mixers, instrument quadrature, `integrate_over_orientation`, and orientation detector ensembles route through Layer-1 reducers; standalone sparse orientation wrapper removed |
 | **RG3** | **complete 2026-06-26** — no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
 | **RG4** | **complete 2026-06-26** — detector-image carrier signature, two generic sweep helpers, old kwargs removed, tutorials/notebooks/generator scripts migrated |
-| **RG5** | **active** — `energy_kev` clean cut complete in code/tests/tutorials/source docs; generated guide figures and angle boundary still pending |
+| **RG5** | **complete 2026-06-26** — `energy_kev` clean cut, generated guide figures migrated, angle conversion centralized, `procs` return trichotomy documented and asserted |
 | **RG6** | **complete 2026-06-26** — `types.distributions` subpackage and explicit `simul.layer0`/`simul.layer1` boundaries with public import parity |
 
 R1–R3 are the structural debt the framework most exposes (do first); R4–R5 are

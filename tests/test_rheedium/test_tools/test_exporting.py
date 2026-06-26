@@ -23,7 +23,11 @@ def _sum_of_squares(x: Float[Array, " n"]) -> Float[Array, ""]:
 
 
 class TestExportForward(chex.TestCase):
-    """Tests for :func:`export_forward`."""
+    """Tests for :func:`export_forward`.
+
+    :see: :class:`~rheedium.tools.ExportError`
+    :see: :func:`~rheedium.tools.export_forward`
+    """
 
     def test_symbolic_axis_round_trips(self) -> None:
         """One artifact serves several sizes of a symbolic leading axis."""
@@ -81,7 +85,11 @@ class TestExportForward(chex.TestCase):
 
 
 class TestSerializeRoundTrip(chex.TestCase):
-    """Tests for :func:`serialize_exported` / :func:`deserialize_exported`."""
+    """Tests for :func:`serialize_exported` / :func:`deserialize_exported`.
+
+    :see: :func:`~rheedium.tools.deserialize_exported`
+    :see: :func:`~rheedium.tools.serialize_exported`
+    """
 
     def test_serialize_then_deserialize(self) -> None:
         """A serialized artifact reloads and computes identical results."""
@@ -99,7 +107,10 @@ class TestSerializeRoundTrip(chex.TestCase):
 
 
 class TestBucketizeGrid(chex.TestCase):
-    """Tests for :func:`bucketize_grid`."""
+    """Tests for :func:`bucketize_grid`.
+
+    :see: :func:`~rheedium.tools.bucketize_grid`
+    """
 
     @parameterized.parameters(
         ((200, 200), (256, 256)),

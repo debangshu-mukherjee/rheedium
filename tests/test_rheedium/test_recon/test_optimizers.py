@@ -55,7 +55,11 @@ def _initial_params() -> dict[str, scalar_float]:
 
 
 class TestGaussNewtonReconstruction(chex.TestCase):
-    """Tests for Gauss-Newton-based reconstruction."""
+    """Tests for Gauss-Newton-based reconstruction.
+
+    :see: :func:`~rheedium.recon.gauss_newton_least_squares`
+    :see: :func:`~rheedium.recon.gauss_newton_reconstruction`
+    """
 
     def test_gauss_newton_reconstruction_recovers_linear_parameters(
         self,
@@ -120,7 +124,11 @@ class TestGaussNewtonReconstruction(chex.TestCase):
 
 
 class TestAdaptiveGradientReconstruction(chex.TestCase):
-    """Tests for Adam- and Adagrad-based reconstruction."""
+    """Tests for Adam- and Adagrad-based reconstruction.
+
+    :see: :func:`~rheedium.recon.adagrad_reconstruction`
+    :see: :func:`~rheedium.recon.adam_reconstruction`
+    """
 
     def test_adam_reconstruction_reduces_loss(self) -> None:
         """Adam should substantially reduce the image-matching loss."""

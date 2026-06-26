@@ -31,7 +31,16 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
-    """Tests for surface crystal-truncation-rod calculations."""
+    """Tests for surface crystal-truncation-rod calculations.
+
+    :see: :func:`~rheedium.simul.calculate_ctr_intensity`
+    :see: :func:`~rheedium.simul.gaussian_rod_profile`
+    :see: :func:`~rheedium.simul.integrated_rod_intensity`
+    :see: :func:`~rheedium.simul.lorentzian_rod_profile`
+    :see: :func:`~rheedium.simul.rod_profile_function`
+    :see: :func:`~rheedium.simul.roughness_damping`
+    :see: :func:`~rheedium.simul.surface_structure_factor`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for surface rod calculations.
@@ -305,7 +314,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     def test_surface_structure_factor(
         self, temperature: float, is_surface: bool
     ) -> None:
-        """Test surface structure factor calculation.
+        r"""Test surface structure factor calculation.
 
         Tests the calculation of the complex structure factor F(q) =
         Σf_j exp(iq·r_j) for the surface unit cell. Tests various q-vectors
@@ -314,7 +323,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         and surface atoms. Verifies that the structure factor is a finite
         complex scalar with non-negative magnitude. The structure factor
         determines the intensity distribution in the RHEED pattern through
-        |F(q)|².
+        \|F(q)\|².
         """
         var_structure_factor: Callable[..., Any] = self.variant(
             surface_structure_factor
@@ -411,9 +420,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     def test_calculate_ctr_intensity(
         self, hk_index: list[int], roughness: float
     ) -> None:
-        """Test CTR intensity calculation for different rods.
+        r"""Test CTR intensity calculation for different rods.
 
-        Tests crystal truncation rod intensity I(h,k,q_z) = |F(h,k,q_z)|²
+        Tests crystal truncation rod intensity I(h,k,q_z) = \|F(h,k,q_z)\|²
         × D(q_z) for various rods: specular (0,0), first-order (1,0),
         diagonal (1,1), and high-order (2,0). Tests with roughness values
         from 0.5 to 2.0 Å. Verifies that intensities are non-negative,
@@ -707,10 +716,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_physical_consistency(self) -> None:
-        """Test physical consistency of CTR calculations.
+        r"""Test physical consistency of CTR calculations.
 
         Validates that CTR intensity calculation correctly implements the
-        physical relationship: I(h,k,q_z) = |F(h,k,q_z)|² × exp(-q_z²σ²).
+        physical relationship: I(h,k,q_z) = \|F(h,k,q_z)\|² × exp(-q_z²σ²).
         Tests the decomposition by calculating structure factor and
         roughness damping separately, then verifying their product matches
         the combined CTR intensity. Tests multiple rods (0,0), (1,0), (2,0)

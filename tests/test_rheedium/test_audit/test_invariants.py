@@ -32,7 +32,10 @@ def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
 
 
 def test_form_factor_positivity_both_parameterizations() -> None:
-    """Both Kirkland and Lobato form factors stay positive."""
+    """Both Kirkland and Lobato form factors stay positive.
+
+    :see: :func:`~rheedium.audit.check_form_factor_positivity`
+    """
     kirkland_result: Float[Array, "..."]
     lobato_result: Float[Array, "..."]
     kirkland_result, lobato_result = check_form_factor_positivity()
@@ -48,7 +51,10 @@ def test_form_factor_positivity_both_parameterizations() -> None:
 
 
 def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
-    """Both Kirkland and Lobato form factors decrease monotonically."""
+    """Both Kirkland and Lobato form factors decrease monotonically.
+
+    :see: :func:`~rheedium.audit.check_form_factor_monotonic_decrease`
+    """
     kirkland_result: Float[Array, "..."]
     lobato_result: Float[Array, "..."]
     kirkland_result, lobato_result = check_form_factor_monotonic_decrease()
@@ -63,7 +69,10 @@ def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
 
 
 def test_wavelength_relativistic_consistency() -> None:
-    """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie."""
+    """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie.
+
+    :see: :func:`~rheedium.audit.check_wavelength_relativistic_consistency`
+    """
     result: Float[Array, "..."] = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
     assert result.passed, (
@@ -72,7 +81,10 @@ def test_wavelength_relativistic_consistency() -> None:
 
 
 def test_friedel_law_structure_factor() -> None:
-    """I(G) = I(-G) for a non-centrosymmetric three-atom basis."""
+    """I(G) = I(-G) for a non-centrosymmetric three-atom basis.
+
+    :see: :func:`~rheedium.audit.check_friedel_law_structure_factor`
+    """
     result: Float[Array, "..."] = check_friedel_law_structure_factor()
     _assert_well_formed(result, "friedel_law_structure_factor")
     assert result.passed, (
@@ -81,7 +93,10 @@ def test_friedel_law_structure_factor() -> None:
 
 
 def test_elastic_closure_ewald_simulator() -> None:
-    """ewald_simulator reflections lie exactly on the Ewald sphere."""
+    """ewald_simulator reflections lie exactly on the Ewald sphere.
+
+    :see: :func:`~rheedium.audit.check_elastic_closure_ewald`
+    """
     result: Float[Array, "..."] = check_elastic_closure_ewald()
     _assert_well_formed(result, "elastic_closure_ewald")
     assert result.passed, (
@@ -90,7 +105,10 @@ def test_elastic_closure_ewald_simulator() -> None:
 
 
 def test_run_default_invariants_returns_full_suite() -> None:
-    """The default runner emits one well-formed result per check."""
+    """The default runner emits one well-formed result per check.
+
+    :see: :func:`~rheedium.audit.run_default_invariants`
+    """
     expected_names: Float[Array, "..."] = {
         "form_factor_positivity_kirkland",
         "form_factor_positivity_lobato",
@@ -116,7 +134,10 @@ def test_run_default_invariants_returns_full_suite() -> None:
 
 
 def test_invariant_result_is_immutable() -> None:
-    """InvariantResult is a frozen dataclass and cannot be mutated."""
+    """InvariantResult is a frozen dataclass and cannot be mutated.
+
+    :see: :class:`~rheedium.audit.InvariantResult`
+    """
     result: Float[Array, "..."] = check_friedel_law_structure_factor()
     with pytest.raises((AttributeError, TypeError)):
         result.passed = not result.passed

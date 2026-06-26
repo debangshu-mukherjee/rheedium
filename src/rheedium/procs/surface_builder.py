@@ -25,6 +25,11 @@ All functions return ``CrystalStructure`` PyTrees and are compatible
 with JAX transformations. Coordinate transformations use Rodrigues'
 rotation formula implemented with pure JAX operations to maintain
 differentiability of continuous parameters (displacements, coverage).
+
+R5 return type: all public functions in this module are structure builders or
+sub-coherence structure modifiers and therefore return ``CrystalStructure``.
+Statistical surface populations are represented separately as ``Distribution``
+producers in :mod:`rheedium.procs.surface_modifier`.
 """
 
 import jax.numpy as jnp

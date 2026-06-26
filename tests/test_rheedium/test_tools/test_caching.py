@@ -16,7 +16,10 @@ _CACHE_KEYS: tuple[str, ...] = (
 
 
 class TestEnableCompilationCache(chex.TestCase):
-    """Tests for :func:`enable_compilation_cache`."""
+    """Tests for :func:`enable_compilation_cache`.
+
+    :see: :func:`~rheedium.tools.enable_compilation_cache`
+    """
 
     def setUp(self) -> None:
         """Snapshot the cache-related JAX config before each test."""

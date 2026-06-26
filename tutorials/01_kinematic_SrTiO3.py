@@ -485,9 +485,12 @@ _ax.set_title(
     f"SrTiO3 sweep: {sweep_title_prefix} = "
     f"{sweep_parameter_values[sweep_index]:.3f}"
 )
+sweep_energy_kev = float(
+    sweep_metadata.get("energy_kev", settings["energy_kev"])
+)
 sweep_summary_lines = [
     f"**theta:** `{float(sweep_metadata['theta_deg']):.1f} deg`",
-    f"**voltage:** `{float(sweep_metadata['energy_kev']):.1f} keV`",
+    f"**voltage:** `{sweep_energy_kev:.1f} keV`",
     "**dynamic range floor:** "
     f"`{float(sweep_metadata['dynamic_range_floor']):.3e}`",
 ]

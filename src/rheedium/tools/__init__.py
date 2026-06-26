@@ -40,12 +40,13 @@ Routine Listings
     averaging integrals.
 :func:`incident_wavevector`
     Calculate incident electron wavevector from beam parameters.
+:func:`incidence_angles_to_radians`
+    Convert public grazing/azimuth degrees to internal radian angles.
 :func:`interaction_constant`
     Relativistic electron interaction constant for multislice
     calculations.
 :func:`jax_safe`
-    Wrap a function to convert positional arguments to JAX arrays
-    before dispatch.
+    Wrap a function to convert positional args to JAX arrays.
 :func:`shard_array`
     Shard an array across devices for parallel processing.
 :func:`wavelength_ang`
@@ -61,9 +62,9 @@ potential, which is expressed analytically in terms of
 :math:`K_0` and :math:`K_1`.
 
 The electron-beam utilities (:func:`wavelength_ang`,
-:func:`incident_wavevector`, :func:`interaction_constant`) live here
-rather than in :mod:`rheedium.simul` to break circular import chains
-between simulation sub-modules.
+:func:`incidence_angles_to_radians`, :func:`incident_wavevector`,
+:func:`interaction_constant`) live here rather than in :mod:`rheedium.simul`
+to break circular import chains between simulation sub-modules.
 """
 
 from .caching import enable_compilation_cache
@@ -77,6 +78,7 @@ from .exporting import (
 from .parallel import distribute_batched, shard_array
 from .quadrature import gauss_hermite_nodes_weights
 from .simul_utils import (
+    incidence_angles_to_radians,
     incident_wavevector,
     interaction_constant,
     wavelength_ang,
@@ -95,6 +97,7 @@ __all__: list[str] = [
     "enable_compilation_cache",
     "export_forward",
     "gauss_hermite_nodes_weights",
+    "incidence_angles_to_radians",
     "incident_wavevector",
     "interaction_constant",
     "jax_safe",

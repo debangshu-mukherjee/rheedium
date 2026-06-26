@@ -423,10 +423,13 @@ _ax.set_title(
     f"MgO sweep: {mgo_sweep_title_prefix} = "
     f"{mgo_sweep_parameter_values[mgo_sweep_index]:.3f}"
 )
+mgo_sweep_energy_kev = float(
+    mgo_sweep_metadata.get("energy_kev", settings["energy_kev"])
+)
 mgo_sweep_summary = "\n".join(
     [
         f"**theta:** `{float(mgo_sweep_metadata['theta_deg']):.1f} deg`",
-        f"**voltage:** `{float(mgo_sweep_metadata['energy_kev']):.1f} keV`",
+        f"**voltage:** `{mgo_sweep_energy_kev:.1f} keV`",
         "**dynamic range floor:** "
         f"`{float(mgo_sweep_metadata['dynamic_range_floor']):.3e}`",
         f"**phi:** `{float(mgo_sweep_metadata.get('phi_deg', 0.0)):.1f} deg`",

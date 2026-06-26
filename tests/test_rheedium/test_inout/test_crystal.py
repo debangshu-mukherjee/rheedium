@@ -19,7 +19,10 @@ from rheedium.types.crystal_types import CrystalStructure, create_xyz_data
 
 
 class TestInferLatticeFromPositions(chex.TestCase):
-    """Test lattice inference from atomic positions."""
+    """Test lattice inference from atomic positions.
+
+    :see: :func:`~rheedium.inout.crystal._infer_lattice_from_positions`
+    """
 
     def test_single_atom(self) -> None:
         """Single atom should create minimum extent cell."""
@@ -82,7 +85,10 @@ class TestInferLatticeFromPositions(chex.TestCase):
 
 
 class TestXyzToCrystal(chex.TestCase):
-    """Test XYZ to CrystalStructure conversion."""
+    """Test XYZ to CrystalStructure conversion.
+
+    :see: :func:`~rheedium.inout.xyz_to_crystal`
+    """
 
     def test_with_explicit_lattice(self) -> None:
         """XYZData with explicit cell_vectors override."""
@@ -235,7 +241,10 @@ class TestXyzToCrystal(chex.TestCase):
 
 
 class TestParseCrystal(chex.TestCase):
-    """Test unified crystal parser."""
+    """Test unified crystal parser.
+
+    :see: :func:`~rheedium.inout.parse_crystal`
+    """
 
     def test_parse_cif(self) -> None:
         """Parse CIF file via parse_crystal."""

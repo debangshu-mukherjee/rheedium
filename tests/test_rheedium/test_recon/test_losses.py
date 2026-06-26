@@ -22,7 +22,11 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestWeightedLosses(chex.TestCase):
-    """Tests for weighted residual and loss builders."""
+    """Tests for weighted residual and loss builders.
+
+    :see: :func:`~rheedium.recon.weighted_image_residual`
+    :see: :func:`~rheedium.recon.weighted_mean_squared_error`
+    """
 
     def test_weighted_image_residual_scales_by_sqrt_weights(self) -> None:
         """Residual weights should enter as square roots."""

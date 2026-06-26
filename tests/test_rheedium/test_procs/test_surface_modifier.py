@@ -59,7 +59,10 @@ def _make_test_slab() -> CrystalStructure:
 
 
 class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
-    """Tests for vicinal_surface_step_splitting function."""
+    """Tests for vicinal_surface_step_splitting function.
+
+    :see: :func:`~rheedium.procs.vicinal_surface_step_splitting`
+    """
 
     def test_output_shape_matches_input(self) -> None:
         """Output should have same shape as q_z input."""
@@ -152,7 +155,10 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
 
 
 class TestApplySurfaceOccupancyField(chex.TestCase):
-    """Tests for apply_surface_occupancy_field."""
+    """Tests for apply_surface_occupancy_field.
+
+    :see: :func:`~rheedium.procs.apply_surface_occupancy_field`
+    """
 
     def test_scales_only_surface_region_atomic_numbers(self) -> None:
         """Verify only surface-region atomic numbers are scaled."""
@@ -245,7 +251,10 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
 
 class TestApplySurfaceDisplacementField(chex.TestCase):
-    """Tests for apply_surface_displacement_field."""
+    """Tests for apply_surface_displacement_field.
+
+    :see: :func:`~rheedium.procs.apply_surface_displacement_field`
+    """
 
     def test_applies_displacements_only_near_surface(self) -> None:
         """Verify displacements are applied only near the surface."""
@@ -366,7 +375,10 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
 
 
 class TestApplyStepEdgeField(chex.TestCase):
-    """Tests for apply_step_edge_field."""
+    """Tests for apply_step_edge_field.
+
+    :see: :func:`~rheedium.procs.apply_step_edge_field`
+    """
 
     def test_modulates_surface_heights_with_periodic_steps(self) -> None:
         """Verify surface heights are modulated by periodic steps."""
@@ -457,7 +469,10 @@ class TestApplyStepEdgeField(chex.TestCase):
 
 
 class TestApplyTwinWallField(chex.TestCase):
-    """Tests for apply_twin_wall_field."""
+    """Tests for apply_twin_wall_field.
+
+    :see: :func:`~rheedium.procs.apply_twin_wall_field`
+    """
 
     def test_rotates_surface_atoms_smoothly_across_wall(self) -> None:
         """Twin wall should move top-surface in-plane coordinates."""
@@ -522,7 +537,10 @@ class TestApplyTwinWallField(chex.TestCase):
 
 
 class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
-    """Tests for incoherent_domain_average function."""
+    """Tests for incoherent_domain_average function.
+
+    :see: :func:`~rheedium.procs.incoherent_domain_average`
+    """
 
     def test_single_domain_unchanged(self) -> None:
         """Single domain with f=1 should return pattern unchanged."""
@@ -614,7 +632,10 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
 
 
 class TestTwinWallToDistribution(chex.TestCase):
-    """Tests for twin-wall Distribution producer."""
+    """Tests for twin-wall Distribution producer.
+
+    :see: :func:`~rheedium.procs.twin_wall_to_distribution`
+    """
 
     def test_sub_coherence_twins_reduce_coherently(self) -> None:
         """Fine twin spacing selects coherent amplitude reduction."""
@@ -653,7 +674,10 @@ class TestTwinWallToDistribution(chex.TestCase):
 
 
 class TestStepEdgeToDistribution(chex.TestCase):
-    """Tests for step-edge Distribution producer."""
+    """Tests for step-edge Distribution producer.
+
+    :see: :func:`~rheedium.procs.step_edge_to_distribution`
+    """
 
     def test_regular_sub_coherence_steps_reduce_coherently(self) -> None:
         """Regular terrace arrays can interfere coherently."""
@@ -695,7 +719,10 @@ class TestStepEdgeToDistribution(chex.TestCase):
 
 
 class TestBindTwinWallDistribution(chex.TestCase):
-    """Tests for twin-wall sample-to-structure binding."""
+    """Tests for twin-wall sample-to-structure binding.
+
+    :see: :func:`~rheedium.procs.bind_twin_wall_distribution`
+    """
 
     def test_builder_matches_direct_twin_wall_modifier(self) -> None:
         """Bound twin samples should call the structure modifier."""
@@ -759,7 +786,10 @@ class TestBindTwinWallDistribution(chex.TestCase):
 
 
 class TestBindStepEdgeDistribution(chex.TestCase):
-    """Tests for step-edge sample-to-structure binding."""
+    """Tests for step-edge sample-to-structure binding.
+
+    :see: :func:`~rheedium.procs.bind_step_edge_distribution`
+    """
 
     def test_builder_matches_direct_step_modifier(self) -> None:
         """Bound step samples should call the structure modifier."""

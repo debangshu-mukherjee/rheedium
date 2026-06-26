@@ -71,6 +71,7 @@ from rheedium.procs.surface_modifier import (
 )
 from rheedium.tools import (
     gauss_hermite_nodes_weights,
+    incidence_angles_to_radians,
     incident_wavevector,
     interaction_constant,
     wavelength_ang,
@@ -293,9 +294,9 @@ def find_kinematic_reflections(
     """Find kinematically allowed reflections.
 
     Computes k_out = k_in + G for all reciprocal lattice vectors G, then
-    filters based on elastic scattering condition |k_out| ≈ |k_in| and
-    z-direction constraint. Returns fixed-size arrays for JIT compatibility,
-    with -1 marking invalid entries.
+    filters based on elastic scattering condition
+    :math:`|k_out| ≈ |k_in|` and z-direction constraint. Returns fixed-size
+    arrays for JIT compatibility, with -1 marking invalid entries.
 
     :see: :class:`~.test_simulator.TestFindKinematicReflections`
 
@@ -430,7 +431,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
         Default: 1.0
     hk_tolerance : scalar_float, optional
         Tolerance for validating near-integer h,k indices. CTR is only
-        applied when |h - round(h)| < tolerance and same for k.
+        applied when :math:`|h - round(h)| < tolerance` and same for k.
         Default: 0.1
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
@@ -2687,20 +2688,28 @@ def multislice_propagate(
     kx_grid: Float[Array, " nx ny"]
     ky_grid: Float[Array, " nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
-    theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-    phi_rad: scalar_float = jnp.deg2rad(phi_deg)
+    polar_angle_rad: scalar_float
+    azimuth_angle_rad: scalar_float
+    polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+        theta_deg,
+        phi_deg,
+    )
     voltage_v: scalar_float = energy_kev * 1000.0
     refraction_index: scalar_float = jnp.sqrt(
         jnp.maximum(1.0 + inner_potential_v0 / voltage_v, 1e-12)
     )
     cos_theta_crystal: scalar_float = jnp.clip(
-        jnp.cos(theta_rad) / refraction_index,
+        jnp.cos(polar_angle_rad) / refraction_index,
         -1.0,
         1.0,
     )
     theta_crystal: scalar_float = jnp.arccos(cos_theta_crystal)
-    k_in_x: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.cos(phi_rad)
-    k_in_y: scalar_float = k_mag * jnp.cos(theta_crystal) * jnp.sin(phi_rad)
+    k_in_x: scalar_float = (
+        k_mag * jnp.cos(theta_crystal) * jnp.cos(azimuth_angle_rad)
+    )
+    k_in_y: scalar_float = (
+        k_mag * jnp.cos(theta_crystal) * jnp.sin(azimuth_angle_rad)
+    )
     x_grid: Float[Array, " nx ny"]
     y_grid: Float[Array, " nx ny"]
     x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
@@ -2828,13 +2837,17 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     lam_ang: scalar_float = wavelength_ang(energy_kev)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-    theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-    phi_rad: scalar_float = jnp.deg2rad(phi_deg)
+    polar_angle_rad: scalar_float
+    azimuth_angle_rad: scalar_float
+    polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+        theta_deg,
+        phi_deg,
+    )
     k_in: Float[Array, "3"] = k_mag * jnp.array(
         [
-            jnp.cos(theta_rad) * jnp.cos(phi_rad),
-            jnp.cos(theta_rad) * jnp.sin(phi_rad),
-            jnp.sin(theta_rad),
+            jnp.cos(polar_angle_rad) * jnp.cos(azimuth_angle_rad),
+            jnp.cos(polar_angle_rad) * jnp.sin(azimuth_angle_rad),
+            jnp.sin(polar_angle_rad),
         ]
     )
     k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid
@@ -3034,13 +3047,17 @@ def multislice_simulator(
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
     lam_ang: scalar_float = wavelength_ang(energy_kev)
     k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
-    theta_rad: scalar_float = jnp.deg2rad(theta_deg)
-    phi_rad: scalar_float = jnp.deg2rad(phi_deg)
+    polar_angle_rad: scalar_float
+    azimuth_angle_rad: scalar_float
+    polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+        theta_deg,
+        phi_deg,
+    )
     k_in: Float[Array, "3"] = k_mag * jnp.array(
         [
-            jnp.cos(theta_rad) * jnp.cos(phi_rad),
-            jnp.cos(theta_rad) * jnp.sin(phi_rad),
-            jnp.sin(theta_rad),
+            jnp.cos(polar_angle_rad) * jnp.cos(azimuth_angle_rad),
+            jnp.cos(polar_angle_rad) * jnp.sin(azimuth_angle_rad),
+            jnp.sin(polar_angle_rad),
         ]
     )
     k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid

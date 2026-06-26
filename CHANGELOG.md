@@ -72,6 +72,12 @@ Each entry summarizes the commits that landed for that version bump in
   The detector sweep API collapsed to `simulate_detector_image_sweep` and
   `simulate_detector_image_grid`, and affected tutorials/notebooks/generator
   scripts were migrated.
+- Completed the R5/RG5 naming and procs-contract cut: public beam energy names
+  use `energy_kev`, generated guide-figure scripts no longer call the retired
+  `voltage_kv`/`voltage_range_kv` keywords, and degree-to-radian incidence
+  conversion is centralized at the detector-kernel boundary. The `procs`
+  modules now document the structure-builder / distribution-producer /
+  sub-coherence-modifier return split.
 - Completed the R6/RG6 module reorganization: `types.distributions` is now a
   subpackage split into base, beam, orientation, and size modules with the old
   public import path preserved, and `rheedium.simul.layer0` /

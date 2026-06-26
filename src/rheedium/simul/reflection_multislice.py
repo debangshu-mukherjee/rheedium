@@ -164,7 +164,7 @@ def crystal_to_edge_on_slices(
 ) -> EdgeOnSlices:
     """Convert a crystal slab to edge-on projected-potential slices.
 
-    :see: :class:`~.test_reflection_multislice.TestCrystalToEdgeOnSlices`
+    :see: :class:`~.test_reflection_multislice.TestReflectionMultislice`
 
     Parameters
     ----------
@@ -300,7 +300,7 @@ def reflection_multislice_propagate(
 ) -> Complex[Array, "ny nz"]:
     """Propagate an edge-on RHEED wavefield through potential slices.
 
-    :see: :class:`~.test_reflection_multislice.TestReflectionPropagate`
+    :see: :class:`~.test_reflection_multislice.TestReflectionMultislice`
 
     Parameters
     ----------
@@ -394,7 +394,7 @@ def reflection_multislice_simulator(  # noqa: PLR0913
 ) -> RHEEDPattern:
     """Simulate a reflected sparse RHEED pattern by edge-on multislice.
 
-    :see: :class:`~.test_reflection_multislice.TestReflectionSimulator`
+    :see: :class:`~.test_reflection_multislice.TestReflectionMultislice`
 
     Parameters
     ----------

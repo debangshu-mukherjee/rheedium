@@ -147,7 +147,10 @@ TRAJECTORY_VASPXML = """<?xml version="1.0" encoding="ISO-8859-1"?>
 
 
 class TestGetSpeciesList(chex.TestCase):
-    """Test species list extraction from atominfo."""
+    """Test species list extraction from atominfo.
+
+    :see: :func:`~rheedium.inout.vaspxml._get_species_list`
+    """
 
     def test_simple_species(self) -> None:
         """Extract species from simple atominfo."""
@@ -166,7 +169,10 @@ class TestGetSpeciesList(chex.TestCase):
 
 
 class TestExtractStructureBlock(chex.TestCase):
-    """Test structure block extraction."""
+    """Test structure block extraction.
+
+    :see: :func:`~rheedium.inout.vaspxml._extract_structure_block`
+    """
 
     def test_extract_lattice_positions(self) -> None:
         """Extract lattice and positions from structure element."""
@@ -189,7 +195,10 @@ class TestExtractStructureBlock(chex.TestCase):
 
 
 class TestExtractForces(chex.TestCase):
-    """Test forces extraction."""
+    """Test forces extraction.
+
+    :see: :func:`~rheedium.inout.vaspxml._extract_forces`
+    """
 
     def test_extract_forces(self) -> None:
         """Extract forces from calculation element."""
@@ -214,7 +223,10 @@ class TestExtractForces(chex.TestCase):
 
 
 class TestExtractStress(chex.TestCase):
-    """Test stress tensor extraction."""
+    """Test stress tensor extraction.
+
+    :see: :func:`~rheedium.inout.vaspxml._extract_stress`
+    """
 
     def test_extract_stress(self) -> None:
         """Extract stress tensor from calculation element."""
@@ -242,7 +254,10 @@ class TestExtractStress(chex.TestCase):
 
 
 class TestExtractEnergy(chex.TestCase):
-    """Test energy extraction."""
+    """Test energy extraction.
+
+    :see: :func:`~rheedium.inout.vaspxml._extract_energy`
+    """
 
     def test_extract_energy(self) -> None:
         """Extract energy from calculation element."""
@@ -263,7 +278,10 @@ class TestExtractEnergy(chex.TestCase):
 
 
 class TestParseVaspxml(chex.TestCase):
-    """Test complete vasprun.xml parsing."""
+    """Test complete vasprun.xml parsing.
+
+    :see: :func:`~rheedium.inout.parse_vaspxml`
+    """
 
     def test_parse_crystal_structure(self) -> None:
         """Parse vasprun.xml to CrystalStructure."""
@@ -369,7 +387,10 @@ class TestParseVaspxml(chex.TestCase):
 
 
 class TestParseVaspxmlTrajectory(chex.TestCase):
-    """Test trajectory parsing from vasprun.xml."""
+    """Test trajectory parsing from vasprun.xml.
+
+    :see: :func:`~rheedium.inout.parse_vaspxml_trajectory`
+    """
 
     def test_parse_trajectory(self) -> None:
         """Parse full trajectory from vasprun.xml."""

@@ -27,7 +27,10 @@ from rheedium.types.crystal_types import (
 
 
 class TestExtractCellParams(chex.TestCase):
-    """Test cell parameter extraction from CIF text."""
+    """Test cell parameter extraction from CIF text.
+
+    :see: :func:`~rheedium.inout.cif._extract_cell_params`
+    """
 
     def test_standard_cif_params(self) -> None:
         """Extract standard cell parameters."""
@@ -89,7 +92,10 @@ _cell_angle_alpha 90
 
 
 class TestParseAtomPositions(chex.TestCase):
-    """Test atomic position parsing from CIF lines."""
+    """Test atomic position parsing from CIF lines.
+
+    :see: :func:`~rheedium.inout.cif._parse_atom_positions`
+    """
 
     def test_standard_atom_loop(self) -> None:
         """Parse standard atom site loop."""
@@ -141,7 +147,10 @@ class TestParseAtomPositions(chex.TestCase):
 
 
 class TestParseSymmetryOps(chex.TestCase):
-    """Test symmetry operation parsing."""
+    """Test symmetry operation parsing.
+
+    :see: :func:`~rheedium.inout.cif._parse_symmetry_ops`
+    """
 
     def test_quoted_symmetry_ops(self) -> None:
         """Parse quoted symmetry operations."""
@@ -167,7 +176,10 @@ class TestParseSymmetryOps(chex.TestCase):
 
 
 class TestExtractSymOpFromLine(chex.TestCase):
-    """Test symmetry operation extraction from single line."""
+    """Test symmetry operation extraction from single line.
+
+    :see: :func:`~rheedium.inout.cif._extract_sym_op_from_line`
+    """
 
     def test_single_quoted(self) -> None:
         """Extract from single-quoted line."""
@@ -193,7 +205,10 @@ class TestExtractSymOpFromLine(chex.TestCase):
 
 
 class TestParseSymOp(chex.TestCase):
-    """Test symmetry operation parsing into callable."""
+    """Test symmetry operation parsing into callable.
+
+    :see: :func:`~rheedium.inout.cif._parse_sym_op`
+    """
 
     def test_identity(self) -> None:
         """Identity operation x,y,z."""
@@ -235,7 +250,10 @@ class TestParseSymOp(chex.TestCase):
 
 
 class TestDeduplicatePositions(chex.TestCase):
-    """Test position deduplication."""
+    """Test position deduplication.
+
+    :see: :func:`~rheedium.inout.cif._deduplicate_positions`
+    """
 
     def test_removes_duplicates(self) -> None:
         """Duplicate positions within tolerance are removed."""
@@ -265,7 +283,10 @@ class TestDeduplicatePositions(chex.TestCase):
 
 
 class TestSymmetryExpansion(chex.TestCase):
-    """Test symmetry expansion of crystal structures."""
+    """Test symmetry expansion of crystal structures.
+
+    :see: :func:`~rheedium.inout.symmetry_expansion`
+    """
 
     def test_identity_expansion(self) -> None:
         """Identity operation should not change structure."""
@@ -343,7 +364,10 @@ class TestSymmetryExpansion(chex.TestCase):
 
 
 class TestParseCif(chex.TestCase):
-    """Test complete CIF file parsing."""
+    """Test complete CIF file parsing.
+
+    :see: :func:`~rheedium.inout.parse_cif`
+    """
 
     def test_simple_cif(self) -> None:
         """Parse simple cubic CIF file."""

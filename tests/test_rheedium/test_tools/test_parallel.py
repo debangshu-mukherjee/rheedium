@@ -30,7 +30,10 @@ from ..._factories import make_si_crystal_2atom
 
 
 class TestShardArray(chex.TestCase):
-    """Core shard_array tests with 8-device-divisible shapes."""
+    """Core shard_array tests with 8-device-divisible shapes.
+
+    :see: :func:`~rheedium.tools.shard_array`
+    """
 
     def test_output_shape_matches_input(self) -> None:
         """Sharded array must preserve the original shape."""
@@ -271,7 +274,10 @@ def _batched_outer(x: Float[Array, "N"]) -> Float[Array, "N 2 3"]:
 
 
 class TestDistributeBatched(chex.TestCase):
-    """Tests for data-parallel execution of batched callables."""
+    """Tests for data-parallel execution of batched callables.
+
+    :see: :func:`~rheedium.tools.distribute_batched`
+    """
 
     def test_matches_serial_divisible(self) -> None:
         """Divisible batch must match the serial vmap result exactly."""
@@ -363,11 +369,13 @@ class TestDistributeBatched(chex.TestCase):
         }
 
         def _run_phi_sweep(bank: Float[Array, "N"]) -> Float[Array, "N H W"]:
-            return simulate_detector_image_sweep(
+            """Run one phi-angle detector sweep for a bank of samples."""
+            images: Float[Array, "N H W"] = simulate_detector_image_sweep(
                 crystal=crystal,
                 axis=("phi_deg", bank),
                 **sweep_kwargs,
             )
+            return images
 
         distributed: Float[Array, "N H W"] = distribute_batched(
             _run_phi_sweep, phi_bank

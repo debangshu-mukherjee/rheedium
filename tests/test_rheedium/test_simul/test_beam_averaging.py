@@ -110,7 +110,11 @@ def _weighted_variance(
 
 
 class TestBeamModeDecomposition(chex.TestCase):
-    """Tests for Gaussian Schell-model beam-mode decomposition."""
+    """Tests for Gaussian Schell-model beam-mode decomposition.
+
+    :see: :func:`~rheedium.simul.decompose_beam_modes_static`
+    :see: :func:`~rheedium.simul.decompose_beam_modes`
+    """
 
     def test_decompose_beam_modes_normalizes_product_weights(self) -> None:
         """Beam modes flatten transverse and longitudinal products."""
@@ -216,7 +220,11 @@ class TestBeamModeDecomposition(chex.TestCase):
 
 
 class TestDistributionApply(chex.TestCase):
-    """Tests for generic coherent/incoherent distribution reducers."""
+    """Tests for generic coherent/incoherent distribution reducers.
+
+    :see: :func:`~rheedium.simul.apply_distribution`
+    :see: :func:`~rheedium.simul.apply_distributions`
+    """
 
     def test_apply_distribution_incoherent_matches_manual(self) -> None:
         """Incoherent reduction weights per-sample intensities."""
@@ -300,10 +308,14 @@ class TestDistributionApply(chex.TestCase):
         )
 
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "2 2"]:
-            return (sample[0] + 0.1 * sample[1]) * jnp.ones(
+            """Return a constant field for one composed beam sample."""
+            field: Complex[Array, "2 2"] = (
+                sample[0] + 0.1 * sample[1]
+            ) * jnp.ones(
                 (2, 2),
                 dtype=jnp.complex128,
             )
+            return field
 
         actual: Float[Array, "2 2"] = apply_distributions(
             [coherent, incoherent],
@@ -376,7 +388,10 @@ def _dummy_joint_sim(
 
 
 class TestAngularDivergenceAverage(chex.TestCase):
-    """Tests for angular divergence averaging."""
+    """Tests for angular divergence averaging.
+
+    :see: :func:`~rheedium.simul.angular_divergence_average`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape matches single-pattern shape."""
@@ -446,7 +461,10 @@ class TestAngularDivergenceAverage(chex.TestCase):
 
 
 class TestEnergySpreadAverage(chex.TestCase):
-    """Tests for energy spread averaging."""
+    """Tests for energy spread averaging.
+
+    :see: :func:`~rheedium.simul.energy_spread_average`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape matches single-energy pattern shape."""
@@ -498,7 +516,10 @@ class TestEnergySpreadAverage(chex.TestCase):
 
 
 class TestDetectorPsfConvolve(chex.TestCase):
-    """Tests for detector PSF convolution."""
+    """Tests for detector PSF convolution.
+
+    :see: :func:`~rheedium.simul.detector_psf_convolve`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape equals input shape."""
@@ -557,7 +578,10 @@ class TestDetectorPsfConvolve(chex.TestCase):
 
 
 class TestInstrumentBroadenedPattern(chex.TestCase):
-    """Tests for the full instrument-broadened pipeline."""
+    """Tests for the full instrument-broadened pipeline.
+
+    :see: :func:`~rheedium.simul.instrument_broadened_pattern`
+    """
 
     def test_shape_preserved(self) -> None:
         """Output shape matches pattern shape."""

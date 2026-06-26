@@ -24,11 +24,14 @@ from rheedium.types.custom_types import (
 
 
 def _accepts(value: object, hint: Any) -> object:
+    """Return a value that satisfies the provided beartype hint."""
     die_if_unbearable(value, hint)
-    return value
+    accepted: object = value
+    return accepted
 
 
 def _assert_rejected(value: object, hint: Any) -> None:
+    """Assert that a value violates the provided beartype hint."""
     with pytest.raises(BeartypeDoorHintViolation):
         die_if_unbearable(value, hint)
 

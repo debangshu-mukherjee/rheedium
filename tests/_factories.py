@@ -1,4 +1,10 @@
-"""Typed factories for test data."""
+"""Typed factories for test data.
+
+Extended Summary
+----------------
+Provides shared, typed fixture builders used by multiple test modules so
+array construction stays consistent with the runtime jaxtyping checks.
+"""
 
 import jax
 import jax.numpy as jnp
@@ -22,13 +28,15 @@ from ._types import (
 
 def make_key(seed: int = 0) -> Key:
     """Create a deterministic JAX random key."""
-    return jax.random.key(seed)
+    key: Key = jax.random.key(seed)
+    return key
 
 
 @jaxtyped(typechecker=beartype)
 def make_jax_f32_vector(length: int, *, fill: float = 0.0) -> JaxF32Vector:
     """Create a float32 JAX vector with the requested length."""
-    return jnp.full((length,), fill, dtype=jnp.float32)
+    vector: JaxF32Vector = jnp.full((length,), fill, dtype=jnp.float32)
+    return vector
 
 
 @jaxtyped(typechecker=beartype)
@@ -39,7 +47,8 @@ def make_jax_f32_matrix(
     fill: float = 0.0,
 ) -> JaxF32Matrix:
     """Create a float32 JAX matrix with the requested shape."""
-    return jnp.full((rows, cols), fill, dtype=jnp.float32)
+    matrix: JaxF32Matrix = jnp.full((rows, cols), fill, dtype=jnp.float32)
+    return matrix
 
 
 @jaxtyped(typechecker=beartype)
@@ -51,13 +60,15 @@ def make_jax_f32_tensor3(
     fill: float = 0.0,
 ) -> JaxF32Tensor3:
     """Create a float32 JAX rank-3 tensor with the requested shape."""
-    return jnp.full((x, y, z), fill, dtype=jnp.float32)
+    tensor: JaxF32Tensor3 = jnp.full((x, y, z), fill, dtype=jnp.float32)
+    return tensor
 
 
 @jaxtyped(typechecker=beartype)
 def make_np_f32_vector(length: int, *, fill: float = 0.0) -> NpF32Vector:
     """Create a float32 NumPy vector with the requested length."""
-    return np.full((length,), fill, dtype=np.float32)
+    vector: NpF32Vector = np.full((length,), fill, dtype=np.float32)
+    return vector
 
 
 @jaxtyped(typechecker=beartype)
@@ -68,7 +79,8 @@ def make_np_f32_matrix(
     fill: float = 0.0,
 ) -> NpF32Matrix:
     """Create a float32 NumPy matrix with the requested shape."""
-    return np.full((rows, cols), fill, dtype=np.float32)
+    matrix: NpF32Matrix = np.full((rows, cols), fill, dtype=np.float32)
+    return matrix
 
 
 @jaxtyped(typechecker=beartype)
@@ -80,7 +92,8 @@ def make_np_f32_tensor3(
     fill: float = 0.0,
 ) -> NpF32Tensor3:
     """Create a float32 NumPy rank-3 tensor with the requested shape."""
-    return np.full((x, y, z), fill, dtype=np.float32)
+    tensor: NpF32Tensor3 = np.full((x, y, z), fill, dtype=np.float32)
+    return tensor
 
 
 def make_si_crystal_2atom() -> CrystalStructure:
@@ -106,9 +119,10 @@ def make_si_crystal_2atom() -> CrystalStructure:
         [90.0, 90.0, 90.0],
         dtype=jnp.float32,
     )
-    return create_crystal_structure(
+    crystal: CrystalStructure = create_crystal_structure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
     )
+    return crystal

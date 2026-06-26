@@ -39,6 +39,13 @@ All public APIs are implemented with pure JAX operations. The
 structure-space modifiers keep the cell fixed and update only the
 position or effective-occupancy fields in the returned
 ``CrystalStructure``.
+
+R5 return type: structure-space modifiers return ``CrystalStructure``;
+statistical step/twin population producers return ``Distribution``; bind
+helpers return closures that apply sub-coherence disorder to a per-sample
+structure before the Layer-1 reducer evaluates the detector kernel.
+Pattern-space averaging helpers return detector-image arrays as compatibility
+front ends over the shared reducer.
 """
 
 import jax

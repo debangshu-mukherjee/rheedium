@@ -111,9 +111,9 @@ def generate_kinematic_figures() -> None:
 
     from rheedium.plots import plot_form_factors, plot_wavelength_curve
 
-    # 1. Wavelength vs voltage
+    # 1. Wavelength vs energy
     plt.figure(figsize=FIGSIZE)
-    plot_wavelength_curve(voltage_range_kv=(5.0, 30.0), show_comparison=True)
+    plot_wavelength_curve(energy_range_kev=(5.0, 30.0), show_comparison=True)
     save_fig("wavelength_vs_voltage.png")
 
     # 2. Form factor curves for common elements
@@ -153,14 +153,14 @@ def generate_ewald_figures() -> None:
 
     # 1. 2D cross-section
     plt.figure(figsize=FIGSIZE_WIDE)
-    plot_ewald_sphere_2d(voltage_kv=15.0, theta_deg=2.0, n_rods=7)
+    plot_ewald_sphere_2d(energy_kev=15.0, theta_deg=2.0, n_rods=7)
     save_fig("ewald_sphere_2d.png")
 
     # 2. 3D front view (elev=0, azim=0)
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
     plot_ewald_sphere_3d(
-        voltage_kv=15.0, theta_deg=2.0, elev=0.0, azim=0.0, ax=ax
+        energy_kev=15.0, theta_deg=2.0, elev=0.0, azim=0.0, ax=ax
     )
     save_fig("ewald_sphere_3d_front.png")
 
@@ -168,7 +168,7 @@ def generate_ewald_figures() -> None:
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
     plot_ewald_sphere_3d(
-        voltage_kv=15.0, theta_deg=2.0, elev=20.0, azim=45.0, ax=ax
+        energy_kev=15.0, theta_deg=2.0, elev=20.0, azim=45.0, ax=ax
     )
     save_fig("ewald_sphere_3d_perspective.png")
 
@@ -176,7 +176,7 @@ def generate_ewald_figures() -> None:
     fig = plt.figure(figsize=FIGSIZE_TALL)
     ax = fig.add_subplot(111, projection="3d")
     plot_ewald_sphere_3d(
-        voltage_kv=15.0, theta_deg=2.0, elev=90.0, azim=0.0, ax=ax
+        energy_kev=15.0, theta_deg=2.0, elev=90.0, azim=0.0, ax=ax
     )
     save_fig("ewald_sphere_3d_top.png")
 
@@ -824,7 +824,7 @@ def generate_rheed_pattern_figures() -> None:
     mgo_crystal = parse_cif(str(mgo_cif))
     mgo_pattern = ewald_simulator(
         mgo_crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,
@@ -847,7 +847,7 @@ def generate_rheed_pattern_figures() -> None:
     srtio3_crystal = parse_cif(str(srtio3_cif))
     srtio3_pattern = ewald_simulator(
         srtio3_crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,
@@ -889,7 +889,7 @@ def generate_rheed_pattern_figures() -> None:
     for ax, frac in zip(axes, fractions):
         pattern = ewald_simulator(
             srtio3_crystal,
-            voltage_kv=15.0,
+            energy_kev=15.0,
             theta_deg=2.0,
             phi_deg=0.0,
             hmax=5,
@@ -922,7 +922,7 @@ def generate_rheed_pattern_figures() -> None:
     # Default selection with ewald_simulator
     pattern_height = ewald_simulator(
         srtio3_crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,
@@ -943,7 +943,7 @@ def generate_rheed_pattern_figures() -> None:
     config = SurfaceConfig(method="layers", n_layers=2)
     pattern_layers = ewald_simulator(
         srtio3_crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5,

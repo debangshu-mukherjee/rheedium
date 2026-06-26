@@ -37,7 +37,11 @@ from ..._assertions import assert_rejects
 
 
 class TestRHEEDPattern(chex.TestCase):
-    """Comprehensive test suite for RHEEDPattern PyTree."""
+    """Comprehensive test suite for RHEEDPattern PyTree.
+
+    :see: :class:`~rheedium.types.RHEEDPattern`
+    :see: :func:`~rheedium.types.create_rheed_pattern`
+    """
 
     def setUp(self) -> None:
         """Initialize the random key for each test."""
@@ -229,7 +233,11 @@ class TestRHEEDPattern(chex.TestCase):
 
 
 class TestRHEEDImage(chex.TestCase):
-    """Comprehensive test suite for RHEEDImage PyTree."""
+    """Comprehensive test suite for RHEEDImage PyTree.
+
+    :see: :class:`~rheedium.types.RHEEDImage`
+    :see: :func:`~rheedium.types.create_rheed_image`
+    """
 
     def setUp(self) -> None:
         """Initialize the random key for each test."""
@@ -657,7 +665,11 @@ class TestRHEEDImageValidation(chex.TestCase):
 
 
 class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
-    """Comprehensive test suite for SlicedCrystal PyTree."""
+    """Comprehensive test suite for SlicedCrystal PyTree.
+
+    :see: :class:`~rheedium.types.SlicedCrystal`
+    :see: :func:`~rheedium.types.create_sliced_crystal`
+    """
 
     def _make_valid_sliced_kwargs(self, n_atoms: int = 10) -> dict[str, Any]:
         """Build valid keyword arguments for create_sliced_crystal."""
@@ -947,7 +959,10 @@ class TestRHEEDIntegration(chex.TestCase):
 
 
 class TestIdentifySurfaceAtoms(chex.TestCase):
-    """Tests for identify_surface_atoms with all four methods."""
+    """Tests for identify_surface_atoms with all four methods.
+
+    :see: :func:`~rheedium.types.identify_surface_atoms`
+    """
 
     def test_height_method_default(self) -> None:
         """Height method with default 30% fraction."""
@@ -1066,7 +1081,10 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
 
 
 class TestSurfaceConfig(chex.TestCase):
-    """Tests for SurfaceConfig NamedTuple."""
+    """Tests for SurfaceConfig NamedTuple.
+
+    :see: :class:`~rheedium.types.SurfaceConfig`
+    """
 
     def test_default_values(self) -> None:
         """Default config should use height method at 30%."""
@@ -1098,7 +1116,10 @@ class TestSurfaceConfig(chex.TestCase):
 
 
 class TestDetectorGeometry(chex.TestCase):
-    """Tests for DetectorGeometry NamedTuple."""
+    """Tests for DetectorGeometry NamedTuple.
+
+    :see: :class:`~rheedium.types.DetectorGeometry`
+    """
 
     def test_default_values(self) -> None:
         """Default geometry should have standard RHEED values."""

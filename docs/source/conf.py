@@ -85,10 +85,15 @@ myst_enable_extensions = [
     "amsmath",  # Enable LaTeX math environments like \begin{equation}
     "colon_fence",  # Enable ::: and ```{directive} fenced directives
 ]
-suppress_warnings = ["myst.mathjax"]
+# "autodoc": silence the non-actionable "error while formatting signature"
+# warnings emitted when sphinx_autodoc_typehints introspects @chex.all_variants
+# test methods (the generated ``test_*__with_jit`` / ``__without_jit`` variants
+# have no resolvable signature). See plans/exposing_tests_in_docs.md.
+suppress_warnings = ["myst.mathjax", "autodoc"]
 
 # Ensure MyST parses all dollar-delimited math correctly
 myst_dmath_double_inline = True
+myst_heading_anchors = 3
 
 # Tutorial notebooks are committed output-stripped, while the documentation
 # build renders pre-executed outputs from the MyST-NB/Jupyter cache populated by
@@ -300,7 +305,7 @@ def process_signature(
     """
     Process signatures to handle jaxtyping annotations.
     """
-    if signature:
+    if isinstance(signature, str) and signature:
         signature = signature.replace('Float[Array, " ', "FloatArray[")
         signature = signature.replace('Int[Array, " ', "IntArray[")
         signature = signature.replace('Bool[Array, " ', "BoolArray[")

@@ -10,6 +10,8 @@ Routine Listings
 ----------------
 :func:`incident_wavevector`
     Calculate incident electron wavevector from beam parameters.
+:func:`incidence_angles_to_radians`
+    Convert public grazing/azimuth degrees to internal radian angles.
 :func:`wavelength_ang`
     Calculate relativistic electron wavelength in angstroms.
 :func:`interaction_constant`
@@ -113,6 +115,44 @@ def wavelength_ang(
 
 
 @jaxtyped(typechecker=beartype)
+def incidence_angles_to_radians(
+    theta_deg: scalar_float,
+    phi_deg: scalar_float = 0.0,
+) -> tuple[Float[Array, ""], Float[Array, ""]]:
+    """Convert public grazing/azimuth degrees to internal radian angles.
+
+    :see: :class:`~.test_simul_utils.TestIncidenceAnglesToRadians`
+
+    Parameters
+    ----------
+    theta_deg : scalar_float
+        Public grazing angle in degrees.
+    phi_deg : scalar_float, optional
+        Public azimuthal angle in degrees. Default: 0.0
+
+    Returns
+    -------
+    polar_angle_rad : Float[Array, ""]
+        Internal grazing/polar angle in radians.
+    azimuth_angle_rad : Float[Array, ""]
+        Internal azimuthal angle in radians.
+
+    Notes
+    -----
+    1. Convert the public grazing angle ``theta_deg`` to radians.
+    2. Convert the public azimuthal angle ``phi_deg`` to radians.
+    3. Return the internal polar/azimuth pair used by detector kernels.
+    """
+    polar_angle_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(theta_deg, dtype=jnp.float64)
+    )
+    azimuth_angle_rad: Float[Array, ""] = jnp.deg2rad(
+        jnp.asarray(phi_deg, dtype=jnp.float64)
+    )
+    return polar_angle_rad, azimuth_angle_rad
+
+
+@jaxtyped(typechecker=beartype)
 def incident_wavevector(
     lam_ang: scalar_float,
     theta_deg: scalar_float,
@@ -154,16 +194,20 @@ def incident_wavevector(
        trigonometric projection.
     """
     k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
-    theta_rad: Float[Array, ""] = jnp.deg2rad(theta_deg)
-    phi_rad: Float[Array, ""] = jnp.deg2rad(phi_deg)
+    polar_angle_rad: Float[Array, ""]
+    azimuth_angle_rad: Float[Array, ""]
+    polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+        theta_deg,
+        phi_deg,
+    )
 
     # In-plane component magnitude
-    k_parallel: Float[Array, ""] = k_magnitude * jnp.cos(theta_rad)
+    k_parallel: Float[Array, ""] = k_magnitude * jnp.cos(polar_angle_rad)
 
     # Split in-plane component into x and y based on azimuthal angle
-    k_x: Float[Array, ""] = k_parallel * jnp.cos(phi_rad)
-    k_y: Float[Array, ""] = k_parallel * jnp.sin(phi_rad)
-    k_z: Float[Array, ""] = -k_magnitude * jnp.sin(theta_rad)
+    k_x: Float[Array, ""] = k_parallel * jnp.cos(azimuth_angle_rad)
+    k_y: Float[Array, ""] = k_parallel * jnp.sin(azimuth_angle_rad)
+    k_z: Float[Array, ""] = -k_magnitude * jnp.sin(polar_angle_rad)
 
     k_in: Float[Array, "3"] = jnp.array([k_x, k_y, k_z])
     return k_in
@@ -232,6 +276,7 @@ def interaction_constant(
 
 
 __all__: list[str] = [
+    "incidence_angles_to_radians",
     "incident_wavevector",
     "interaction_constant",
     "wavelength_ang",

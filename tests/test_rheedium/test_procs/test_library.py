@@ -22,7 +22,10 @@ def _load(name: str) -> dict[str, Float[NDArray, "..."]]:
 
 
 class TestSi111_1x1(chex.TestCase):  # noqa: N801
-    """Tests for si111_1x1 library function."""
+    """Tests for si111_1x1 library function.
+
+    :see: :func:`~rheedium.procs.si111_1x1`
+    """
 
     def test_has_silicon_atoms(self) -> None:
         """Slab should contain Si atoms (Z=14)."""
@@ -51,7 +54,10 @@ class TestSi111_1x1(chex.TestCase):  # noqa: N801
 
 
 class TestSi111_7x7(chex.TestCase):  # noqa: N801
-    """Tests for si111_7x7 library function."""
+    """Tests for si111_7x7 library function.
+
+    :see: :func:`~rheedium.procs.si111_7x7`
+    """
 
     def test_more_atoms_than_1x1(self) -> None:
         """7x7 slab should have more atoms than 1x1."""
@@ -73,7 +79,10 @@ class TestSi111_7x7(chex.TestCase):  # noqa: N801
 
 
 class TestSi100_2x1(chex.TestCase):  # noqa: N801
-    """Tests for si100_2x1 library function."""
+    """Tests for si100_2x1 library function.
+
+    :see: :func:`~rheedium.procs.si100_2x1`
+    """
 
     def test_has_atoms(self) -> None:
         """Slab should have atoms."""
@@ -87,7 +96,10 @@ class TestSi100_2x1(chex.TestCase):  # noqa: N801
 
 
 class TestGaAs001_2x4(chex.TestCase):  # noqa: N801
-    """Tests for gaas001_2x4 library function."""
+    """Tests for gaas001_2x4 library function.
+
+    :see: :func:`~rheedium.procs.gaas001_2x4`
+    """
 
     def test_has_ga_and_as(self) -> None:
         """Slab should contain both Ga (31) and As (33)."""
@@ -104,7 +116,10 @@ class TestGaAs001_2x4(chex.TestCase):  # noqa: N801
 
 
 class TestMgO001BulkTerminated(chex.TestCase):
-    """Tests for mgo001_bulk_terminated library function."""
+    """Tests for mgo001_bulk_terminated library function.
+
+    :see: :func:`~rheedium.procs.mgo001_bulk_terminated`
+    """
 
     def test_has_mg_and_o(self) -> None:
         """Slab should contain both Mg (12) and O (8)."""
@@ -131,7 +146,10 @@ class TestMgO001BulkTerminated(chex.TestCase):
 
 
 class TestSrTiO3_001_2x1(chex.TestCase):  # noqa: N801
-    """Tests for srtio3_001_2x1 library function."""
+    """Tests for srtio3_001_2x1 library function.
+
+    :see: :func:`~rheedium.procs.srtio3_001_2x1`
+    """
 
     def test_has_sr_ti_o(self) -> None:
         """Slab should contain Sr (38), Ti (22), and O (8)."""

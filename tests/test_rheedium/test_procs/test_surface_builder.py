@@ -230,7 +230,10 @@ class TestSurfaceBuilderDirect(chex.TestCase):
 
 
 class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
-    """Tests for create_surface_slab (validated via fixtures)."""
+    """Tests for create_surface_slab (validated via fixtures).
+
+    :see: :func:`~rheedium.procs.create_surface_slab`
+    """
 
     def test_returns_four_columns(self) -> None:
         """Cart positions should have 4 columns [x,y,z,Z]."""
@@ -308,7 +311,10 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
 
 
 class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
-    """Tests for apply_surface_reconstruction (via fixtures)."""
+    """Tests for apply_surface_reconstruction (via fixtures).
+
+    :see: :func:`~rheedium.procs.apply_surface_reconstruction`
+    """
 
     def test_reconstruction_has_atoms(self) -> None:
         """Reconstructed slab should have atoms."""
@@ -355,7 +361,10 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
 
 
 class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
-    """Tests for add_adsorbate_layer (via fixtures)."""
+    """Tests for add_adsorbate_layer (via fixtures).
+
+    :see: :func:`~rheedium.procs.add_adsorbate_layer`
+    """
 
     def test_adsorbate_increases_atom_count(self) -> None:
         """Adding adsorbates should increase total atom count."""

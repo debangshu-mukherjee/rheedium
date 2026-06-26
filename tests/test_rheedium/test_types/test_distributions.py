@@ -42,7 +42,13 @@ from ..._assertions import assert_rejects
 
 
 class TestDistributionFactories(chex.TestCase):
-    """Tests for generic Distribution factory helpers."""
+    """Tests for generic Distribution factory helpers.
+
+    :see: :class:`~rheedium.types.Distribution`
+    :see: :class:`~rheedium.types.ReductionMode`
+    :see: :func:`~rheedium.types.create_distribution`
+    :see: :func:`~rheedium.types.create_trivial_distribution`
+    """
 
     def test_create_distribution_normalizes_weights(self) -> None:
         """Generic distribution weights are normalized."""
@@ -139,12 +145,18 @@ class TestDistributionFactories(chex.TestCase):
         def _binder(
             distribution: Distribution,
         ) -> Callable[[Float[Array, "D"]], Float[Array, "D"]]:
+            """Bind a test distribution to a sample-shifting closure."""
             assert distribution.axis_id == "test_axis"
 
             def _bound(sample: Float[Array, "D"]) -> Float[Array, "D"]:
-                return sample + distribution.samples[0]
+                """Shift a sample by the bound distribution sample."""
+                shifted_sample: Float[Array, "D"] = (
+                    sample + distribution.samples[0]
+                )
+                return shifted_sample
 
-            return _bound
+            bound: Callable[[Float[Array, "D"]], Float[Array, "D"]] = _bound
+            return bound
 
         bound = dist.bind(_binder)
 
@@ -155,7 +167,10 @@ class TestDistributionFactories(chex.TestCase):
 
 
 class TestCoherenceReduction(chex.TestCase):
-    """Tests for coherence-length reduction selection."""
+    """Tests for coherence-length reduction selection.
+
+    :see: :func:`~rheedium.types.reduction_mode_from_coherence_length`
+    """
 
     def test_sub_coherence_feature_is_coherent(self) -> None:
         """Features inside the coherent footprint reduce coherently."""
@@ -186,7 +201,15 @@ class TestCoherenceReduction(chex.TestCase):
 
 
 class TestBeamModeDistributionFactories(chex.TestCase):
-    """Tests for Gaussian Schell-model beam producer factories."""
+    """Tests for Gaussian Schell-model beam producer factories.
+
+    :see: :class:`~rheedium.types.BeamModeDistribution`
+    :see: :func:`~rheedium.types.beam_modes_from_electron_beam`
+    :see: :func:`~rheedium.types.create_coherent_beam`
+    :see: :func:`~rheedium.types.create_field_emission_beam`
+    :see: :func:`~rheedium.types.create_gaussian_schell_beam`
+    :see: :func:`~rheedium.types.create_thermionic_beam`
+    """
 
     def test_create_gaussian_schell_beam_validates_parameters(self) -> None:
         """GSM beam parameters are stored as scalar JAX arrays."""
@@ -305,7 +328,13 @@ class TestBeamModeDistributionFactories(chex.TestCase):
 
 
 class TestOrientationDistributionFactories(chex.TestCase):
-    """Tests for OrientationDistribution factory helpers."""
+    """Tests for OrientationDistribution factory helpers.
+
+    :see: :class:`~rheedium.types.OrientationDistribution`
+    :see: :func:`~rheedium.types.create_discrete_orientation`
+    :see: :func:`~rheedium.types.create_gaussian_orientation`
+    :see: :func:`~rheedium.types.create_mixed_orientation`
+    """
 
     def test_create_discrete_orientation_defaults_equal_weights(self) -> None:
         """Discrete variants default to equal probability weights."""
@@ -466,7 +495,11 @@ class TestSizeDistributionFactories(chex.TestCase):
 
 
 class TestOrientationDiscretization(chex.TestCase):
-    """Tests for discretizing orientation probability distributions."""
+    """Tests for discretizing orientation probability distributions.
+
+    :see: :func:`~rheedium.types.discretize_orientation_static`
+    :see: :func:`~rheedium.types.discretize_orientation`
+    """
 
     def test_discretize_orientation_returns_normalized_weights(self) -> None:
         """Quadrature weights remain a proper probability distribution."""
@@ -533,7 +566,10 @@ class TestOrientationDiscretization(chex.TestCase):
 
 
 class TestOrientationProducer(chex.TestCase):
-    """Tests for converting orientation distributions to generic producers."""
+    """Tests for converting orientation distributions to generic producers.
+
+    :see: :func:`~rheedium.types.orientation_to_distribution`
+    """
 
     def test_orientation_to_distribution_matches_static_support(self) -> None:
         """Sharp orientations map directly to one-column phi samples."""
@@ -583,7 +619,11 @@ class TestOrientationProducer(chex.TestCase):
 
 
 class TestSizeProducer(chex.TestCase):
-    """Tests for converting size distributions to generic producers."""
+    """Tests for converting size distributions to generic producers.
+
+    :see: :func:`~rheedium.types.discretize_size_distribution`
+    :see: :func:`~rheedium.types.size_to_distribution`
+    """
 
     def test_discretize_size_distribution_returns_normalized_weights(
         self,
@@ -667,10 +707,14 @@ class TestProducerComposition(chex.TestCase):
         )
 
         def _bound(sample: Float[Array, "2"]) -> Complex[Array, "2 2"]:
+            """Return a constant amplitude for one orientation-size sample."""
             phi_deg: Float[Array, ""] = sample[0]
             size_ang: Float[Array, ""] = sample[1]
             amplitude: Float[Array, ""] = phi_deg + 0.01 * size_ang
-            return jnp.ones((2, 2), dtype=jnp.complex128) * amplitude
+            field: Complex[Array, "2 2"] = (
+                jnp.ones((2, 2), dtype=jnp.complex128) * amplitude
+            )
+            return field
 
         actual: Float[Array, "2 2"] = apply_distributions(
             [orientation, size],
@@ -695,7 +739,10 @@ class TestProducerComposition(chex.TestCase):
 
 
 class TestOrientationIntegration(chex.TestCase):
-    """Tests for orientation-driven incoherent pattern integration."""
+    """Tests for orientation-driven incoherent pattern integration.
+
+    :see: :func:`~rheedium.types.integrate_over_orientation`
+    """
 
     def test_integrate_over_orientation_computes_incoherent_sum(self) -> None:
         """The final pattern is the weighted intensity sum over variants."""

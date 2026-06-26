@@ -45,7 +45,10 @@ def _make_test_pattern(n: int = 20) -> RHEEDPattern:
 
 
 class TestCreatePhosphorColormap:
-    """Tests for create_phosphor_colormap."""
+    """Tests for create_phosphor_colormap.
+
+    :see: :func:`~rheedium.plots.create_phosphor_colormap`
+    """
 
     def test_returns_colormap(self) -> None:
         """Should return a LinearSegmentedColormap."""
@@ -105,7 +108,10 @@ class TestCreatePhosphorColormap:
 
 
 class TestPlotRheed:
-    """Tests for plot_rheed function."""
+    """Tests for plot_rheed function.
+
+    :see: :func:`~rheedium.plots.plot_rheed`
+    """
 
     def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
