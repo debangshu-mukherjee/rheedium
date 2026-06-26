@@ -56,10 +56,27 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         self.temperature: float = 300.0
 
     def test_single_atom_at_origin_g_zero(self) -> None:
-        """Test structure factor for single atom at origin with G=0.
+        r"""Test structure factor for single atom at origin with G=0.
 
-        For a single atom at the origin, the phase factor exp(i*G*r) = 1
-        when G=0, so F(0) equals the atomic form factor times DW factor.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        for single atom at origin with G=0. Existing context from the original
+        test prose: For a single atom at the origin, the phase factor
+        exp(i*G*r) = 1 when G=0, so F(0) equals the atomic form factor times DW
+        factor.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         g_vector: Float[Array, "3"] = jnp.array([0.0, 0.0, 0.0])
 
@@ -87,8 +104,28 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     ) -> None:
         r"""Test structure factor for single atom at origin with nonzero G.
 
-        For atom at origin, phase factor is always 1 regardless of G,
-        so the structure factor is just f(\|G\|) * DW(\|G\|).
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        for single atom at origin with nonzero G. Existing context from the
+        original test prose: For atom at origin, phase factor is always 1
+        regardless of G, so the structure factor is just f(\|G\|) * DW(\|G\|).
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``g_vector``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         sf: Complex[Array, ""] = _compute_structure_factor_single(
             g_vector=g_vector,
@@ -106,8 +143,24 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     def test_structure_factor_decreases_with_g_magnitude(self) -> None:
         r"""Test that \|F(G)\| decreases with increasing \|G\|.
 
-        Due to the form factor and Debye-Waller factor both decreasing
-        with \|G\|, the structure factor magnitude should decrease.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|F(G)\| decreases
+        with increasing \|G\|. Existing context from the original test prose:
+        Due to the form factor and Debye-Waller factor both decreasing with
+        \|G\|, the structure factor magnitude should decrease.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         g_vectors: Float[Array, "4 3"] = jnp.array(
             [
@@ -134,11 +187,27 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(differences <= 0), True)
 
     def test_two_atom_interference(self) -> None:
-        """Test interference effects between two atoms.
+        r"""Test interference effects between two atoms.
 
-        For two atoms separated by distance d along x, G = (2*pi/d, 0, 0)
-        should give constructive interference (phase = 2*pi), while
-        G = (pi/d, 0, 0) gives destructive interference (phase = pi).
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: interference
+        effects between two atoms. Existing context from the original test
+        prose: For two atoms separated by distance d along x, G = (2*pi/d, 0,
+        0) should give constructive interference (phase = 2*pi), while G =
+        (pi/d, 0, 0) gives destructive interference (phase = pi).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         # Constructive interference when G times d equals two pi.
         g_constructive: Float[Array, "3"] = jnp.array([jnp.pi, 0.0, 0.0])
@@ -164,9 +233,26 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         )
 
     def test_multi_element_structure(self) -> None:
-        """Test structure factor with multiple element types.
+        r"""Test structure factor with multiple element types.
 
-        Different atomic numbers should contribute different form factors.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        with multiple element types. Existing context from the original test
+        prose: Different atomic numbers should contribute different form
+        factors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         g_vector: Float[Array, "3"] = jnp.array([1.0, 0.0, 0.0])
 
@@ -189,7 +275,27 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
     def test_temperature_dependence(self, temperature: float) -> None:
         r"""Test that structure factor depends on temperature.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        depends on temperature. Existing context from the original test prose:
         Higher temperature increases Debye-Waller damping, reducing \|F(G)\|.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``temperature``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
@@ -204,7 +310,25 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.abs(sf)))
 
     def test_temperature_ordering(self) -> None:
-        r"""Test that higher temperature gives lower \|F(G)\| for G != 0."""
+        r"""Test that higher temperature gives lower \|F(G)\| for G != 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: higher temperature
+        gives lower \|F(G)\| for G != 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         g_vector: Float[Array, "3"] = jnp.array([2.0, 0.0, 0.0])
 
         sf_low: Complex[Array, ""] = _compute_structure_factor_single(
@@ -224,9 +348,25 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.abs(sf_low) - jnp.abs(sf_high)))
 
     def test_complex_phase_correctness(self) -> None:
-        """Test that phase is computed correctly for off-origin atoms.
+        r"""Test that phase is computed correctly for off-origin atoms.
 
-        For an atom at position r, the phase contribution is exp(i*G*r).
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: phase is computed
+        correctly for off-origin atoms. Existing context from the original test
+        prose: For an atom at position r, the phase contribution is exp(i*G*r).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         # Single atom at (1, 0, 0)
         atom_pos: Float[Array, "1 3"] = jnp.array([[1.0, 0.0, 0.0]])
@@ -247,7 +387,29 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_jit_compatibility(self) -> None:
-        """Test that _compute_structure_factor_single works with JIT."""
+        r"""Test that _compute_structure_factor_single works with JIT.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        _compute_structure_factor_single works with JIT.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         var_compute_sf: Callable[..., Complex[Array, ""]] = self.variant(
             _compute_structure_factor_single
         )
@@ -265,7 +427,28 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(jnp.abs(sf)))
 
     def test_vmap_over_g_vectors(self) -> None:
-        """Test vmapping _compute_structure_factor_single over G vectors."""
+        r"""Test vmapping _compute_structure_factor_single over G vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: vmapping
+        _compute_structure_factor_single over G vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         g_vectors: Float[Array, "5 3"] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
@@ -293,7 +476,28 @@ class TestComputeStructureFactorSingle(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(sfs)
 
     def test_gradient_flow(self) -> None:
-        """Test that gradients flow through structure factor calculation."""
+        r"""Test that gradients flow through structure factor calculation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: gradients flow
+        through structure factor calculation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss_fn(temperature: scalar_float) -> scalar_float:
             g_vector: Float[Array, "3"] = jnp.array([1.0, 0.0, 0.0])
@@ -347,7 +551,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_basic_ewald_data_creation(self) -> None:
-        """Test basic EwaldData creation with minimal parameters."""
+        r"""Test basic EwaldData creation with minimal parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: basic EwaldData
+        creation with minimal parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -368,7 +590,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(ewald.intensities)
 
     def test_wavelength_calculation(self) -> None:
-        """Test that wavelength is correctly computed from voltage."""
+        r"""Test that wavelength is correctly computed from voltage.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: wavelength is
+        correctly computed from voltage.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald_10kv: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=10.0,
@@ -394,7 +634,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         self.assertLess(float(ewald_10kv.wavelength_ang), 0.15)
 
     def test_k_magnitude_relation(self) -> None:
-        """Test that k_magnitude = 2*pi / wavelength."""
+        r"""Test that k_magnitude = 2*pi / wavelength.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: k_magnitude = 2*pi
+        / wavelength.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -407,7 +665,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ewald.k_magnitude, expected_k, rtol=1e-10)
 
     def test_sphere_radius_equals_k_magnitude(self) -> None:
-        """Test that Ewald sphere radius equals k magnitude."""
+        r"""Test that Ewald sphere radius equals k magnitude.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Ewald sphere
+        radius equals k magnitude.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -428,7 +704,29 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
     def test_grid_size(
         self, hmax: int, kmax: int, lmax: int, expected_n: int
     ) -> None:
-        """Test that the correct number of G vectors are generated."""
+        r"""Test that the correct number of G vectors are generated.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the correct number
+        of G vectors are generated.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``hmax``,
+        ``kmax``, ``lmax``, ``expected_n``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -444,7 +742,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(ewald.intensities, (expected_n,))
 
     def test_intensities_are_squared_magnitudes(self) -> None:
-        r"""Test that intensities = \|structure_factors\|^2."""
+        r"""Test that intensities = \|structure_factors\|^2.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: intensities =
+        \|structure_factors\|^2.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -461,7 +777,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_intensities_nonnegative(self) -> None:
-        """Test that all intensities are non-negative."""
+        r"""Test that all intensities are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all intensities
+        are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -473,7 +807,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(ewald.intensities >= 0), True)
 
     def test_g_magnitudes_nonnegative(self) -> None:
-        """Test that all G magnitudes are non-negative."""
+        r"""Test that all G magnitudes are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all G magnitudes
+        are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -485,7 +837,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(ewald.g_magnitudes >= 0), True)
 
     def test_g_magnitude_consistency(self) -> None:
-        """Test that g_magnitudes matches norm of g_vectors."""
+        r"""Test that g_magnitudes matches norm of g_vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: g_magnitudes
+        matches norm of g_vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -502,7 +872,25 @@ class TestBuildEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_temperature_affects_intensities(self) -> None:
-        """Test that temperature affects structure factors/intensities."""
+        r"""Test that temperature affects structure factors/intensities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: temperature
+        affects structure factors/intensities.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ewald_low_t: EwaldData = build_ewald_data(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -561,7 +949,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         )
 
     def test_basic_reflection_finding(self) -> None:
-        """Test basic reflection finding with default parameters."""
+        r"""Test basic reflection finding with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: basic reflection
+        finding with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices: Int[Array, "N"]
         k_out: Float[Array, "N 3"]
         intensities: Float[Array, "N"]
@@ -577,7 +983,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(intensities, (n,))
 
     def test_upward_scattering_only(self) -> None:
-        """Test that only upward scattering reflections are returned."""
+        r"""Test that only upward scattering reflections are returned.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: only upward
+        scattering reflections are returned.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices: Int[Array, "N"]
         k_out: Float[Array, "N 3"]
         intensities: Float[Array, "N"]
@@ -595,7 +1019,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
             chex.assert_trees_all_equal(jnp.all(valid_k_out[:, 2] > 0), True)
 
     def test_intensities_nonnegative(self) -> None:
-        """Test that all returned intensities are non-negative."""
+        r"""Test that all returned intensities are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all returned
+        intensities are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices: Int[Array, "N"]
         k_out: Float[Array, "N 3"]
         intensities: Float[Array, "N"]
@@ -616,7 +1058,29 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("theta_5", 5.0),
     )
     def test_different_theta_angles(self, theta_deg: float) -> None:
-        """Test reflection finding at different incidence angles."""
+        r"""Test reflection finding at different incidence angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: reflection finding
+        at different incidence angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices: Int[Array, "N"]
         k_out: Float[Array, "N 3"]
         intensities: Float[Array, "N"]
@@ -635,7 +1099,29 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         ("phi_90", 90.0),
     )
     def test_different_phi_angles(self, phi_deg: float) -> None:
-        """Test reflection finding at different azimuthal angles."""
+        r"""Test reflection finding at different azimuthal angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: reflection finding
+        at different azimuthal angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``phi_deg``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices: Any
         k_out: Float[Array, "..."]
         intensities: Float[Array, "..."]
@@ -649,7 +1135,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities)
 
     def test_tolerance_effect(self) -> None:
-        """Test that larger tolerance allows more reflections."""
+        r"""Test that larger tolerance allows more reflections.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: larger tolerance
+        allows more reflections.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         indices_tight: Int[Array, "N"]
         k_out_tight: Float[Array, "N 3"]
         intensities_tight: Float[Array, "N"]
@@ -680,7 +1184,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         self.assertGreaterEqual(int(n_loose), int(n_tight))
 
     def test_finite_domain_mode(self) -> None:
-        """Test finite domain mode with domain_extent_ang parameter."""
+        r"""Test finite domain mode with domain_extent_ang parameter.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: finite domain mode
+        with domain_extent_ang parameter.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         domain: Float[Array, "3"] = jnp.array([100.0, 100.0, 50.0])
 
         indices: Int[Array, "N"]
@@ -698,7 +1220,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
     def test_finite_domain_overlap_weighting(self) -> None:
-        """Test that finite domain mode applies overlap weighting."""
+        r"""Test that finite domain mode applies overlap weighting.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: finite domain mode
+        applies overlap weighting.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         domain: Float[Array, "3"] = jnp.array([50.0, 50.0, 25.0])
 
         indices_binary: Int[Array, "N"]
@@ -730,7 +1270,25 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities_finite)
 
     def test_k_out_is_k_in_plus_g(self) -> None:
-        """Test that k_out = k_in + G for allowed reflections."""
+        r"""Test that k_out = k_in + G for allowed reflections.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: k_out = k_in + G
+        for allowed reflections.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         theta_deg: float = 2.0
         phi_deg: float = 0.0
 

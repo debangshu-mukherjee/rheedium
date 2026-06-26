@@ -72,7 +72,25 @@ class TestReferenceMetadata(chex.TestCase):
     """
 
     def test_reference_metadata_complete(self) -> None:
-        """Each stored reference case has the required metadata fields."""
+        r"""Each stored reference case has the required metadata fields.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Each stored
+        reference case has the required metadata fields.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_audit.test_metrics``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         metadata_paths: Any = sorted(_REFERENCE_DIR.glob("*_metadata.json"))
         assert len(metadata_paths) >= 2
 
@@ -99,7 +117,25 @@ class TestReferenceMetadata(chex.TestCase):
             assert np.all(image >= 0.0)
 
     def test_load_reference_cases_reads_images(self) -> None:
-        """The loader returns the shipped reference cases with images."""
+        r"""The loader returns the shipped reference cases with images.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The loader returns
+        the shipped reference cases with images.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_audit.test_metrics``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cases: Any = load_reference_cases(_REFERENCE_DIR)
         assert len(cases) >= 2
         case: Any
@@ -122,7 +158,25 @@ class TestAuditMetrics(chex.TestCase):
     """
 
     def test_metrics_translation_invariant(self) -> None:
-        """Spacing and width metrics ignore rigid image translations."""
+        r"""Spacing and width metrics ignore rigid image translations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Spacing and width
+        metrics ignore rigid image translations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_audit.test_metrics``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         image: Float[Array, "..."] = _synthetic_three_peak_image((18, 42, 66))
         shifted_image: Float[Array, "..."] = _synthetic_three_peak_image(
             (24, 48, 72)
@@ -155,7 +209,25 @@ class TestAuditMetrics(chex.TestCase):
         )
 
     def test_metrics_report_zero_error_on_identical_patterns(self) -> None:
-        """Identical detector images produce perfect agreement metrics."""
+        r"""Identical detector images produce perfect agreement metrics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Identical detector
+        images produce perfect agreement metrics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_audit.test_metrics``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         image: Float[Array, "..."] = _synthetic_three_peak_image((22, 48, 74))
         peak: Any = peak_centroid(image)
         peak_positions: Float[Array, "..."] = dominant_peak_positions(

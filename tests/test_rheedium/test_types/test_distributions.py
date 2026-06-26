@@ -51,7 +51,25 @@ class TestDistributionFactories(chex.TestCase):
     """
 
     def test_create_distribution_normalizes_weights(self) -> None:
-        """Generic distribution weights are normalized."""
+        r"""Generic distribution weights are normalized.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Generic
+        distribution weights are normalized.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = create_distribution(
             samples=jnp.array([[0.0], [1.0]]),
             weights=jnp.array([1.0, 3.0]),
@@ -69,7 +87,25 @@ class TestDistributionFactories(chex.TestCase):
         assert dist.axis_id == "beam"
 
     def test_create_distribution_accepts_string_reduction(self) -> None:
-        """String reductions are canonicalized to ReductionMode."""
+        r"""String reductions are canonicalized to ReductionMode.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: String reductions
+        are canonicalized to ReductionMode.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = create_distribution(
             samples=jnp.array([[0.0], [1.0]]),
             weights=jnp.array([0.5, 0.5]),
@@ -79,7 +115,25 @@ class TestDistributionFactories(chex.TestCase):
         assert dist.reduction is ReductionMode.COHERENT
 
     def test_create_distribution_rejects_negative_weights(self) -> None:
-        """Generic distribution weights must be non-negative."""
+        r"""Generic distribution weights must be non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Generic
+        distribution weights must be non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_distribution,
             samples=jnp.array([[0.0], [1.0]]),
@@ -88,7 +142,25 @@ class TestDistributionFactories(chex.TestCase):
         )
 
     def test_create_distribution_rejects_shape_mismatch(self) -> None:
-        """Samples and weights must share a leading dimension."""
+        r"""Samples and weights must share a leading dimension.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Samples and
+        weights must share a leading dimension.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_distribution,
             samples=jnp.array([[0.0], [1.0]]),
@@ -97,7 +169,25 @@ class TestDistributionFactories(chex.TestCase):
         )
 
     def test_create_trivial_distribution_identity_sample(self) -> None:
-        """Trivial distribution contains one zero sample with unit weight."""
+        r"""Trivial distribution contains one zero sample with unit weight.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Trivial
+        distribution contains one zero sample with unit weight.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = create_trivial_distribution(sample_dim=2)
 
         chex.assert_shape(dist.samples, (1, 2))
@@ -106,7 +196,25 @@ class TestDistributionFactories(chex.TestCase):
         assert dist.reduction is ReductionMode.INCOHERENT
 
     def test_trivial_distribution_constant(self) -> None:
-        """Module-level trivial distribution is the identity axis."""
+        r"""Module-level trivial distribution is the identity axis.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Module-level
+        trivial distribution is the identity axis.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         chex.assert_shape(TRIVIAL_DISTRIBUTION.samples, (1, 1))
         chex.assert_trees_all_close(
             TRIVIAL_DISTRIBUTION.weights,
@@ -114,7 +222,25 @@ class TestDistributionFactories(chex.TestCase):
         )
 
     def test_distribution_is_pytree(self) -> None:
-        """Generic Distribution should flatten and unflatten cleanly."""
+        r"""Generic Distribution should flatten and unflatten cleanly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Generic
+        Distribution should flatten and unflatten cleanly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = create_distribution(
             samples=jnp.array([[1.0], [2.0]]),
             weights=jnp.array([0.4, 0.6]),
@@ -134,7 +260,25 @@ class TestDistributionFactories(chex.TestCase):
         assert reconstructed.axis_id == "coherent_axis"
 
     def test_distribution_bind_delegates_to_kernel_binder(self) -> None:
-        """Distribution exposes the public producer-bind contract."""
+        r"""Distribution exposes the public producer-bind contract.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Distribution
+        exposes the public producer-bind contract.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = create_distribution(
             samples=jnp.array([[1.0, 2.0]]),
             weights=jnp.array([1.0]),
@@ -173,7 +317,25 @@ class TestCoherenceReduction(chex.TestCase):
     """
 
     def test_sub_coherence_feature_is_coherent(self) -> None:
-        """Features inside the coherent footprint reduce coherently."""
+        r"""Features inside the coherent footprint reduce coherently.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Features inside
+        the coherent footprint reduce coherently.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         mode: ReductionMode = reduction_mode_from_coherence_length(
             feature_length_angstrom=50.0,
             coherence_length_angstrom=100.0,
@@ -182,7 +344,25 @@ class TestCoherenceReduction(chex.TestCase):
         assert mode is ReductionMode.COHERENT
 
     def test_super_coherence_feature_is_incoherent(self) -> None:
-        """Features larger than the coherent footprint reduce incoherently."""
+        r"""Features larger than the coherent footprint reduce incoherently.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Features larger
+        than the coherent footprint reduce incoherently.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         mode: ReductionMode = reduction_mode_from_coherence_length(
             feature_length_angstrom=150.0,
             coherence_length_angstrom=100.0,
@@ -191,7 +371,25 @@ class TestCoherenceReduction(chex.TestCase):
         assert mode is ReductionMode.INCOHERENT
 
     def test_rejects_non_positive_feature_length(self) -> None:
-        """Feature length must be positive."""
+        r"""Feature length must be positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Feature length
+        must be positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             reduction_mode_from_coherence_length,
             feature_length_angstrom=0.0,
@@ -212,7 +410,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
     """
 
     def test_create_gaussian_schell_beam_validates_parameters(self) -> None:
-        """GSM beam parameters are stored as scalar JAX arrays."""
+        r"""GSM beam parameters are stored as scalar JAX arrays.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: GSM beam
+        parameters are stored as scalar JAX arrays.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: BeamModeDistribution = create_gaussian_schell_beam(
             beta_in_plane=0.25,
             beta_out_of_plane=0.5,
@@ -239,7 +455,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
         assert beam.distribution_id == "schottky"
 
     def test_create_coherent_beam_collapses_transverse_spread(self) -> None:
-        """Coherent beam factory creates a sharp transverse source."""
+        r"""Coherent beam factory creates a sharp transverse source.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coherent beam
+        factory creates a sharp transverse source.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: BeamModeDistribution = create_coherent_beam()
 
         chex.assert_trees_all_close(beam.beta_in_plane, 0.0, atol=1e-12)
@@ -257,7 +491,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
         assert beam.distribution_id == "coherent_beam"
 
     def test_create_gaussian_schell_beam_rejects_invalid_beta(self) -> None:
-        """GSM beta values must be in the half-open unit interval."""
+        r"""GSM beta values must be in the half-open unit interval.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: GSM beta values
+        must be in the half-open unit interval.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_gaussian_schell_beam,
             beta_in_plane=1.0,
@@ -265,7 +517,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
         )
 
     def test_create_gaussian_schell_beam_rejects_negative_spread(self) -> None:
-        """Beam divergences and energy spread are non-negative."""
+        r"""Beam divergences and energy spread are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam divergences
+        and energy spread are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_gaussian_schell_beam,
             divergence_out_of_plane_rad=-1.0e-4,
@@ -275,7 +545,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
     def test_beam_modes_from_electron_beam_projects_grazing_footprint(
         self,
     ) -> None:
-        """ElectronBeam bridge maps grazing footprint to anisotropic beta."""
+        r"""ElectronBeam bridge maps grazing footprint to anisotropic beta.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ElectronBeam
+        bridge maps grazing footprint to anisotropic beta.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam = create_electron_beam(
             energy_spread_ev=0.4,
             angular_divergence_mrad=0.3,
@@ -307,7 +595,25 @@ class TestBeamModeDistributionFactories(chex.TestCase):
         assert modes.distribution_id == "bridge"
 
     def test_beam_mode_presets_rank_source_coherence(self) -> None:
-        """Thermionic preset is broader and more mixed than field emission."""
+        r"""Thermionic preset is broader and more mixed than field emission.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Thermionic preset
+        is broader and more mixed than field emission.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         field_emission: BeamModeDistribution = create_field_emission_beam()
         thermionic: BeamModeDistribution = create_thermionic_beam()
 
@@ -337,7 +643,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
     """
 
     def test_create_discrete_orientation_defaults_equal_weights(self) -> None:
-        """Discrete variants default to equal probability weights."""
+        r"""Discrete variants default to equal probability weights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Discrete variants
+        default to equal probability weights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             jnp.array([33.7, -33.7])
         )
@@ -351,7 +675,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.0, atol=1e-12)
 
     def test_create_mixed_orientation_rejects_negative_weights(self) -> None:
-        """Factory weights must be valid probabilities."""
+        r"""Factory weights must be valid probabilities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory weights
+        must be valid probabilities.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_mixed_orientation,
             match="weights must be non-negative",
@@ -361,7 +703,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
 
     def test_create_mixed_orientation_normalizes_weights(self) -> None:
-        """Factory weights are normalized when valid."""
+        r"""Factory weights are normalized when valid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory weights
+        are normalized when valid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_mixed_orientation(
             angles_deg=jnp.array([0.0, 90.0, 180.0]),
             weights=jnp.array([1.0, 2.0, 1.0]),
@@ -376,7 +736,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.3, atol=1e-12)
 
     def test_create_gaussian_orientation_builds_single_peak(self) -> None:
-        """Gaussian orientation uses one center peak plus mosaic width."""
+        r"""Gaussian orientation uses one center peak plus mosaic width.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gaussian
+        orientation uses one center peak plus mosaic width.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_gaussian_orientation(
             center_deg=12.5, fwhm_deg=0.8
         )
@@ -394,7 +772,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(dist.mosaic_fwhm_deg, 0.8, atol=1e-12)
 
     def test_orientation_distribution_is_pytree(self) -> None:
-        """OrientationDistribution should flatten and unflatten cleanly."""
+        r"""OrientationDistribution should flatten and unflatten cleanly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        OrientationDistribution should flatten and unflatten cleanly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([10.0, -10.0]),
             weights=jnp.array([0.25, 0.75]),
@@ -425,7 +821,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         assert reconstructed.distribution_id == "twins"
 
     def test_create_discrete_orientation_rejects_nan_angle(self) -> None:
-        """Factory angles must be finite."""
+        r"""Factory angles must be finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory angles
+        must be finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_discrete_orientation,
             jnp.array([0.0, jnp.nan]),
@@ -433,7 +847,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
 
     def test_create_gaussian_orientation_rejects_negative_fwhm(self) -> None:
-        """Mosaic FWHM must be non-negative."""
+        r"""Mosaic FWHM must be non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mosaic FWHM must
+        be non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_gaussian_orientation,
             fwhm_deg=-0.1,
@@ -441,7 +873,25 @@ class TestOrientationDistributionFactories(chex.TestCase):
         )
 
     def test_create_mixed_orientation_rejects_zero_weight_sum(self) -> None:
-        """Factory weights must have positive total probability."""
+        r"""Factory weights must have positive total probability.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory weights
+        must have positive total probability.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_mixed_orientation,
             angles_deg=jnp.array([0.0, 90.0]),
@@ -454,7 +904,25 @@ class TestSizeDistributionFactories(chex.TestCase):
     """Tests for size-distribution factory helpers."""
 
     def test_create_lognormal_size_valid(self) -> None:
-        """Valid lognormal size parameters should be preserved."""
+        r"""Valid lognormal size parameters should be preserved.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Valid lognormal
+        size parameters should be preserved.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: SizeDistribution = create_lognormal_size(
             mean_ang=100.0,
             sigma_ang=30.0,
@@ -469,7 +937,25 @@ class TestSizeDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(dist.max_size_ang, 500.0)
 
     def test_create_lognormal_size_rejects_negative_mean(self) -> None:
-        """Mean domain size must be positive."""
+        r"""Mean domain size must be positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mean domain size
+        must be positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_lognormal_size,
             mean_ang=-1.0,
@@ -477,7 +963,25 @@ class TestSizeDistributionFactories(chex.TestCase):
         )
 
     def test_create_lognormal_size_rejects_negative_sigma(self) -> None:
-        """Size spread must be non-negative."""
+        r"""Size spread must be non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Size spread must
+        be non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_lognormal_size,
             sigma_ang=-1.0,
@@ -485,7 +989,25 @@ class TestSizeDistributionFactories(chex.TestCase):
         )
 
     def test_create_lognormal_size_rejects_invalid_bounds(self) -> None:
-        """Maximum size must exceed minimum size."""
+        r"""Maximum size must exceed minimum size.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Maximum size must
+        exceed minimum size.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_lognormal_size,
             min_size_ang=100.0,
@@ -502,7 +1024,25 @@ class TestOrientationDiscretization(chex.TestCase):
     """
 
     def test_discretize_orientation_returns_normalized_weights(self) -> None:
-        """Quadrature weights remain a proper probability distribution."""
+        r"""Quadrature weights remain a proper probability distribution.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Quadrature weights
+        remain a proper probability distribution.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
             weights=jnp.array([0.25, 0.75]),
@@ -520,7 +1060,25 @@ class TestOrientationDiscretization(chex.TestCase):
     def test_discretize_orientation_static_returns_discrete_support(
         self,
     ) -> None:
-        """Avoid redundant quadrature for sharp discrete peaks."""
+        r"""Avoid redundant quadrature for sharp discrete peaks.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Avoid redundant
+        quadrature for sharp discrete peaks.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([15.0, -15.0]),
             weights=jnp.array([0.6, 0.4]),
@@ -547,7 +1105,25 @@ class TestOrientationDiscretization(chex.TestCase):
     def test_discretize_orientation_static_normalizes_manual_weights(
         self,
     ) -> None:
-        """Normalize manual OrientationDistribution weights."""
+        r"""Normalize manual OrientationDistribution weights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Normalize manual
+        OrientationDistribution weights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = OrientationDistribution(
             discrete_angles_deg=jnp.array([0.0, 90.0]),
             discrete_weights=jnp.array([0.0, 0.0]),
@@ -572,7 +1148,25 @@ class TestOrientationProducer(chex.TestCase):
     """
 
     def test_orientation_to_distribution_matches_static_support(self) -> None:
-        """Sharp orientations map directly to one-column phi samples."""
+        r"""Sharp orientations map directly to one-column phi samples.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharp orientations
+        map directly to one-column phi samples.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([15.0, -15.0]),
             weights=jnp.array([0.6, 0.4]),
@@ -600,7 +1194,25 @@ class TestOrientationProducer(chex.TestCase):
         assert produced.axis_id == "twins"
 
     def test_orientation_to_distribution_matches_quadrature(self) -> None:
-        """Mosaic orientation producer matches discretize_orientation."""
+        r"""Mosaic orientation producer matches discretize_orientation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mosaic orientation
+        producer matches discretize_orientation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_gaussian_orientation(
             center_deg=1.5,
             fwhm_deg=0.2,
@@ -628,7 +1240,25 @@ class TestSizeProducer(chex.TestCase):
     def test_discretize_size_distribution_returns_normalized_weights(
         self,
     ) -> None:
-        """Size quadrature weights remain normalized and positive."""
+        r"""Size quadrature weights remain normalized and positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Size quadrature
+        weights remain normalized and positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: SizeDistribution = create_lognormal_size(
             mean_ang=100.0,
             sigma_ang=30.0,
@@ -650,7 +1280,25 @@ class TestSizeProducer(chex.TestCase):
     def test_size_to_distribution_is_incoherent_one_column_samples(
         self,
     ) -> None:
-        """Size producer emits one-column incoherent size samples."""
+        r"""Size producer emits one-column incoherent size samples.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Size producer
+        emits one-column incoherent size samples.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: SizeDistribution = create_lognormal_size(
             mean_ang=100.0,
             sigma_ang=20.0,
@@ -667,7 +1315,25 @@ class TestSizeProducer(chex.TestCase):
         assert produced.axis_id == "size"
 
     def test_delta_size_distribution_collapses_to_one_sample(self) -> None:
-        """Static delta size distributions keep one exact support point."""
+        r"""Static delta size distributions keep one exact support point.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Static delta size
+        distributions keep one exact support point.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist = SizeDistribution(
             distribution_type="delta",
             mean_ang=jnp.array(75.0),
@@ -688,7 +1354,25 @@ class TestProducerComposition(chex.TestCase):
     """Tests for composing real producer distributions."""
 
     def test_orientation_size_composition_matches_manual_sum(self) -> None:
-        """Orientation and size producers compose as nested incoherent axes."""
+        r"""Orientation and size producers compose as nested incoherent axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation and
+        size producers compose as nested incoherent axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orientation = orientation_to_distribution(
             create_discrete_orientation(
                 angles_deg=jnp.array([0.0, 10.0]),
@@ -745,7 +1429,25 @@ class TestOrientationIntegration(chex.TestCase):
     """
 
     def test_integrate_over_orientation_computes_incoherent_sum(self) -> None:
-        """The final pattern is the weighted intensity sum over variants."""
+        r"""The final pattern is the weighted intensity sum over variants.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The final pattern
+        is the weighted intensity sum over variants.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
             weights=jnp.array([0.25, 0.75]),
@@ -760,7 +1462,28 @@ class TestOrientationIntegration(chex.TestCase):
         chex.assert_trees_all_close(pattern, 75.0, atol=1e-6)
 
     def test_grad_flows_through_orientation_angle(self) -> None:
-        """Orientation integration remains differentiable in angle space."""
+        r"""Orientation integration remains differentiable in angle space.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation
+        integration remains differentiable in angle space.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(angle_deg: scalar_float) -> scalar_float:
             dist: OrientationDistribution = create_discrete_orientation(
@@ -779,7 +1502,25 @@ class TestOrientationIntegration(chex.TestCase):
         chex.assert_trees_all_close(grad_value, 16.0, atol=1e-6)
 
     def test_jit_compiles_orientation_integration(self) -> None:
-        """Orientation integration should compile under jax.jit."""
+        r"""Orientation integration should compile under jax.jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation
+        integration should compile under jax.jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_distributions``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         @jax.jit
         def run(center_deg: scalar_float) -> Float[Array, "3 3"]:

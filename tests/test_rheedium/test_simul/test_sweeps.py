@@ -31,7 +31,25 @@ class TestDetectorImageSweeps(chex.TestCase):
     """Tests for dense detector-image sweep utilities."""
 
     def test_shared_si_crystal_fixture_valid(self) -> None:
-        """Shared typed crystal factory returns valid sweep test data."""
+        r"""Shared typed crystal factory returns valid sweep test data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Shared typed
+        crystal factory returns valid sweep test data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         assert_crystal_structure_arrays(_SI_CRYSTAL_2ATOM, n_atoms=2)
 
     def _small_detector_config(self) -> dict[str, Any]:
@@ -80,7 +98,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         return jnp.full((2, 3), value, dtype=jnp.float64)
 
     def test_phi_sweep_maps_phi_axis(self) -> None:
-        """Phi sweep evaluates one detector image per azimuth."""
+        r"""Phi sweep evaluates one detector image per azimuth.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Phi sweep
+        evaluates one detector image per azimuth.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -97,7 +133,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[:, 0, 0], expected)
 
     def test_orientation_sweep_maps_phi_axis(self) -> None:
-        """Orientation sweep evaluates one detector image per orientation."""
+        r"""Orientation sweep evaluates one detector image per orientation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation sweep
+        evaluates one detector image per orientation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -114,7 +168,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[:, 0, 0], expected)
 
     def test_theta_sweep_maps_angle_axis(self) -> None:
-        """Theta sweep evaluates one detector image per incidence angle."""
+        r"""Theta sweep evaluates one detector image per incidence angle.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Theta sweep
+        evaluates one detector image per incidence angle.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -131,7 +203,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[:, 0, 0], expected)
 
     def test_energy_sweep_maps_voltage_axis(self) -> None:
-        """Energy sweep evaluates one detector image per beam voltage."""
+        r"""Energy sweep evaluates one detector image per beam voltage.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy sweep
+        evaluates one detector image per beam voltage.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -148,7 +238,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[:, 0, 0], expected)
 
     def test_roughness_sweep_maps_roughness_axis(self) -> None:
-        """Roughness sweep evaluates one detector image per roughness value."""
+        r"""Roughness sweep evaluates one detector image per roughness value.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Roughness sweep
+        evaluates one detector image per roughness value.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -167,7 +275,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[:, 0, 0], expected)
 
     def test_parameter_grid_orders_axes(self) -> None:
-        """Combined grid axes are phi, theta, voltage, height, width."""
+        r"""Combined grid axes are phi, theta, voltage, height, width.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Combined grid axes
+        are phi, theta, voltage, height, width.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -191,7 +317,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_grid[..., 0, 0], expected)
 
     def test_all_sweep_orders_axes(self) -> None:
-        """All-sweep axes are orientation, theta, voltage, height, width."""
+        r"""All-sweep axes are orientation, theta, voltage, height, width.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All-sweep axes are
+        orientation, theta, voltage, height, width.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with patch(
             "rheedium.simul.sweeps.simulate_detector_image",
             side_effect=self._encoded_detector_image,
@@ -215,7 +359,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_grid[..., 0, 0], expected)
 
     def test_orientation_sweep_matches_single_images(self) -> None:
-        """Orientation sweep batches detector images over phi angles."""
+        r"""Orientation sweep batches detector images over phi angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation sweep
+        batches detector images over phi angles.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         kwargs: dict[str, Any] = self._small_detector_config()
         orientations: Float[Array, "2"] = jnp.array([0.0, 15.0])
 
@@ -243,7 +405,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[0], reference, atol=1e-10)
 
     def test_theta_sweep_matches_single_images(self) -> None:
-        """Theta sweep batches detector images over grazing angles."""
+        r"""Theta sweep batches detector images over grazing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Theta sweep
+        batches detector images over grazing angles.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         kwargs: dict[str, Any] = self._small_detector_config()
         theta_values: Float[Array, "2"] = jnp.array([1.5, 2.5])
 
@@ -271,7 +451,25 @@ class TestDetectorImageSweeps(chex.TestCase):
         chex.assert_trees_all_close(image_bank[0], reference, atol=1e-10)
 
     def test_energy_sweep_matches_single_images(self) -> None:
-        """Energy sweep batches detector images over beam voltages."""
+        r"""Energy sweep batches detector images over beam voltages.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy sweep
+        batches detector images over beam voltages.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_sweeps``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         kwargs: dict[str, Any] = self._small_detector_config()
         voltages: Float[Array, "2"] = jnp.array([15.0, 25.0])
 

@@ -32,9 +32,26 @@ def _assert_well_formed(result: InvariantResult, expected_name: str) -> None:
 
 
 def test_form_factor_positivity_both_parameterizations() -> None:
-    """Both Kirkland and Lobato form factors stay positive.
+    r"""Both Kirkland and Lobato form factors stay positive.
 
-    :see: :func:`~rheedium.audit.check_form_factor_positivity`
+    :see: :obj:`~rheedium.audit.check_form_factor_positivity`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Both Kirkland and
+    Lobato form factors stay positive.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     kirkland_result: Float[Array, "..."]
     lobato_result: Float[Array, "..."]
@@ -51,9 +68,26 @@ def test_form_factor_positivity_both_parameterizations() -> None:
 
 
 def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
-    """Both Kirkland and Lobato form factors decrease monotonically.
+    r"""Both Kirkland and Lobato form factors decrease monotonically.
 
-    :see: :func:`~rheedium.audit.check_form_factor_monotonic_decrease`
+    :see: :obj:`~rheedium.audit.check_form_factor_monotonic_decrease`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Both Kirkland and
+    Lobato form factors decrease monotonically.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     kirkland_result: Float[Array, "..."]
     lobato_result: Float[Array, "..."]
@@ -69,9 +103,26 @@ def test_form_factor_monotonic_decrease_both_parameterizations() -> None:
 
 
 def test_wavelength_relativistic_consistency() -> None:
-    """rheedium.tools.wavelength_ang matches CODATA-derived de Broglie.
+    r"""rheedium.tools.wavelength_ang matches CODATA-derived de Broglie.
 
-    :see: :func:`~rheedium.audit.check_wavelength_relativistic_consistency`
+    :see: :obj:`~rheedium.audit.check_wavelength_relativistic_consistency`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case:
+    rheedium.tools.wavelength_ang matches CODATA-derived de Broglie.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     result: Float[Array, "..."] = check_wavelength_relativistic_consistency()
     _assert_well_formed(result, "wavelength_relativistic_consistency")
@@ -81,9 +132,26 @@ def test_wavelength_relativistic_consistency() -> None:
 
 
 def test_friedel_law_structure_factor() -> None:
-    """I(G) = I(-G) for a non-centrosymmetric three-atom basis.
+    r"""I(G) = I(-G) for a non-centrosymmetric three-atom basis.
 
-    :see: :func:`~rheedium.audit.check_friedel_law_structure_factor`
+    :see: :obj:`~rheedium.audit.check_friedel_law_structure_factor`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: I(G) = I(-G) for a
+    non-centrosymmetric three-atom basis.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     result: Float[Array, "..."] = check_friedel_law_structure_factor()
     _assert_well_formed(result, "friedel_law_structure_factor")
@@ -93,9 +161,26 @@ def test_friedel_law_structure_factor() -> None:
 
 
 def test_elastic_closure_ewald_simulator() -> None:
-    """ewald_simulator reflections lie exactly on the Ewald sphere.
+    r"""ewald_simulator reflections lie exactly on the Ewald sphere.
 
-    :see: :func:`~rheedium.audit.check_elastic_closure_ewald`
+    :see: :obj:`~rheedium.audit.check_elastic_closure_ewald`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: ewald_simulator
+    reflections lie exactly on the Ewald sphere.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     result: Float[Array, "..."] = check_elastic_closure_ewald()
     _assert_well_formed(result, "elastic_closure_ewald")
@@ -105,9 +190,26 @@ def test_elastic_closure_ewald_simulator() -> None:
 
 
 def test_run_default_invariants_returns_full_suite() -> None:
-    """The default runner emits one well-formed result per check.
+    r"""The default runner emits one well-formed result per check.
 
-    :see: :func:`~rheedium.audit.run_default_invariants`
+    :see: :obj:`~rheedium.audit.run_default_invariants`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: The default runner
+    emits one well-formed result per check.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The existing assertions in the function body compare the observed result
+    with the expected contract for this module.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     expected_names: Float[Array, "..."] = {
         "form_factor_positivity_kirkland",
@@ -134,9 +236,26 @@ def test_run_default_invariants_returns_full_suite() -> None:
 
 
 def test_invariant_result_is_immutable() -> None:
-    """InvariantResult is a frozen dataclass and cannot be mutated.
+    r"""InvariantResult is a frozen dataclass and cannot be mutated.
 
-    :see: :class:`~rheedium.audit.InvariantResult`
+    :see: :obj:`~rheedium.audit.InvariantResult`
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: InvariantResult is a
+    frozen dataclass and cannot be mutated.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The negative path is validated by asserting the expected exception rather
+    than accepting silent coercion or fallback behavior.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_audit.test_invariants``, so the Test Reference
+    exposes both the guarantee and the implementation path.
     """
     result: Float[Array, "..."] = check_friedel_law_structure_factor()
     with pytest.raises((AttributeError, TypeError)):

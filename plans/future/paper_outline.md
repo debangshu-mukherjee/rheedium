@@ -13,7 +13,7 @@ target, not a claim that the results exist today.
 Source plans:
 [distribution framework](../implemented/distribution_framework_plan.md) ·
 [recon (inversion)](recon_optimization_plan.md) ·
-[rationalization](../partial/rationalization_refactor_plan.md) ·
+[rationalization](../implemented/rationalization_refactor_plan.md) ·
 [defect diffraction fidelity](defect_diffraction_fidelity_plan.md) ·
 [audit/formal verification](audit_formal_verification_plan.md) ·
 [hypothesis testing](hypothesis_testing_plan.md) ·

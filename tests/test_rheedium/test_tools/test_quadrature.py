@@ -14,7 +14,25 @@ class TestGaussHermiteNodesWeights(chex.TestCase):
     """
 
     def test_correct_count(self) -> None:
-        """Returned arrays have the requested number of points."""
+        r"""Returned arrays have the requested number of points.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Returned arrays
+        have the requested number of points.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_quadrature``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n: int
         for n in [3, 5, 7, 9]:
             nodes: Float[Array, "..."]
@@ -24,13 +42,49 @@ class TestGaussHermiteNodesWeights(chex.TestCase):
             chex.assert_shape(weights, (n,))
 
     def test_weights_positive(self) -> None:
-        """All Gauss-Hermite weights are positive."""
+        r"""All Gauss-Hermite weights are positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All Gauss-Hermite
+        weights are positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_quadrature``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         weights: Float[Array, "..."]
         _, weights = gauss_hermite_nodes_weights(7)
         assert jnp.all(weights > 0.0)
 
     def test_nodes_symmetric(self) -> None:
-        """Nodes are symmetric about zero."""
+        r"""Nodes are symmetric about zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Nodes are
+        symmetric about zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_quadrature``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         nodes: Float[Array, "..."]
         nodes, _ = gauss_hermite_nodes_weights(7)
         sorted_nodes: Float[Array, "..."] = jnp.sort(nodes)
@@ -41,7 +95,25 @@ class TestGaussHermiteNodesWeights(chex.TestCase):
         )
 
     def test_weights_sum(self) -> None:
-        """Weights sum to sqrt(pi)."""
+        r"""Weights sum to sqrt(pi).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Weights sum to
+        sqrt(pi).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_quadrature``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         weights: Float[Array, "..."]
         _, weights = gauss_hermite_nodes_weights(7)
         chex.assert_trees_all_close(

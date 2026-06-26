@@ -52,6 +52,14 @@ jobs:
     - name: Validate README figures (absolute URLs + committed PNG cache)
       run: uv run python docs/check_readme_figures.py
 
+    - name: Validate testing documentation contracts
+      run: |
+        uv run pytest \
+          tests/test_rheedium/test_see_bidirectional.py \
+          tests/test_rheedium/test_testing_documentation.py \
+          -q
+        uv run interrogate tests
+
     - name: Debug - Check environment
       run: |
         echo "Current directory:"
@@ -69,8 +77,8 @@ jobs:
     - name: Build documentation
       run: |
         cd docs
-        echo "Building documentation..."
-        uv run make html
+        echo "Building documentation with warnings as errors..."
+        uv run make html SPHINXOPTS="-a -E -W"
 
     - name: Check for broken links
       run: |

@@ -17,7 +17,25 @@ class TestDetectorModule(chex.TestCase):
     """Detector geometry should live outside rheed_types."""
 
     def test_detector_geometry_helpers_extract_public_fields(self) -> None:
-        """Extract distance and PSF values from the shared carrier."""
+        r"""Extract distance and PSF values from the shared carrier.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract distance
+        and PSF values from the shared carrier.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_detector``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         geometry = DetectorGeometry(
             distance=250.0,
             image_shape_px=(100, 200),

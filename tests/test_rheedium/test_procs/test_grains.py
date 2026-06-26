@@ -37,7 +37,25 @@ class TestR2InventoryGuards(chex.TestCase):
     repo_root = Path(__file__).parents[3]
 
     def test_retired_pattern_mixers_use_shared_reducer(self) -> None:
-        """R2 retired pattern mixers should call the one reducer."""
+        r"""R2 retired pattern mixers should call the one reducer.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: R2 retired pattern
+        mixers should call the one reducer.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         retired_mixers = {
             "src/rheedium/procs/grains.py": (
                 "grain_distribution_average",
@@ -87,7 +105,25 @@ class TestGrainDistributionAverage(chex.TestCase):
     """
 
     def test_computes_weighted_intensity_average(self) -> None:
-        """Verify patterns are averaged weighted by grain fractions."""
+        r"""Verify patterns are averaged weighted by grain fractions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: patterns are
+        averaged weighted by grain fractions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -104,7 +140,25 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 3.6, atol=1e-6)
 
     def test_clips_negative_grain_weights(self) -> None:
-        """Verify negative grain weights are clipped to zero."""
+        r"""Verify negative grain weights are clipped to zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: negative grain
+        weights are clipped to zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -121,7 +175,28 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 3.0, atol=1e-6)
 
     def test_grad_flows_through_grain_fraction(self) -> None:
-        """Check gradients flow through the grain fraction weights."""
+        r"""Check gradients flow through the grain fraction weights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the grain fraction weights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -146,7 +221,28 @@ class TestGrainDistributionAverage(chex.TestCase):
         )
 
     def test_jit_compiles(self) -> None:
-        """Verify grain_distribution_average compiles under jit."""
+        r"""Verify grain_distribution_average compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        grain_distribution_average compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -162,7 +258,28 @@ class TestGrainDistributionAverage(chex.TestCase):
         chex.assert_trees_all_close(result, 2.5, atol=1e-6)
 
     def test_vmap_supports_batched_fraction_vectors(self) -> None:
-        """Check the average maps over batched fraction vectors."""
+        r"""Check the average maps over batched fraction vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check the average
+        maps over batched fraction vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "2 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -196,7 +313,25 @@ class TestGrainPopulationToDistribution(chex.TestCase):
     """
 
     def test_builds_incoherent_orientation_size_samples(self) -> None:
-        """Verify grain metadata becomes an incoherent latent distribution."""
+        r"""Verify grain metadata becomes an incoherent latent distribution.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: grain metadata
+        becomes an incoherent latent distribution.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = grain_population_to_distribution(
             orientation_angles_deg=jnp.array([-1.0, 2.0, 5.0]),
             grain_sizes_angstrom=jnp.array([80.0, 120.0, 160.0]),
@@ -225,7 +360,28 @@ class TestGrainPopulationToDistribution(chex.TestCase):
         assert distribution.axis_id == "test_grains"
 
     def test_matches_pattern_space_grain_average(self) -> None:
-        """Verify generic Layer-1 reduction matches grain intensity mixing."""
+        r"""Verify generic Layer-1 reduction matches grain intensity mixing.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: generic Layer-1
+        reduction matches grain intensity mixing.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = grain_population_to_distribution(
             orientation_angles_deg=jnp.array([1.0, 3.0, 5.0]),
             grain_sizes_angstrom=jnp.array([50.0, 100.0, 150.0]),
@@ -272,7 +428,25 @@ class TestGrainPopulationToDistribution(chex.TestCase):
         chex.assert_trees_all_close(actual, expected, atol=1e-12)
 
     def test_rejects_mismatched_grain_metadata_lengths(self) -> None:
-        """Verify one-to-one grain metadata is required."""
+        r"""Verify one-to-one grain metadata is required.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: one-to-one grain
+        metadata is required.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="share length"):
             grain_population_to_distribution(
                 orientation_angles_deg=jnp.array([0.0, 1.0]),
@@ -288,7 +462,25 @@ class TestApplyMisorientationDistribution(chex.TestCase):
     """
 
     def test_selects_patterns_near_distribution_center(self) -> None:
-        """Verify a narrow width selects the centered pattern."""
+        r"""Verify a narrow width selects the centered pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a narrow width
+        selects the centered pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -308,7 +500,25 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         chex.assert_trees_all_close(result, 4.0, atol=1e-3)
 
     def test_broad_width_recovers_nearly_uniform_average(self) -> None:
-        """Verify a broad width yields a near-uniform average."""
+        r"""Verify a broad width yields a near-uniform average.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a broad width
+        yields a near-uniform average.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -328,7 +538,28 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         chex.assert_trees_all_close(result, 14.0 / 3.0, atol=1e-4)
 
     def test_grad_flows_through_distribution_center(self) -> None:
-        """Check gradients flow through the distribution center."""
+        r"""Check gradients flow through the distribution center.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the distribution center.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -354,7 +585,28 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         assert float(grad_value) > 0.0
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_misorientation_distribution compiles under jit."""
+        r"""Verify apply_misorientation_distribution compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_misorientation_distribution compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,
@@ -378,7 +630,28 @@ class TestApplyMisorientationDistribution(chex.TestCase):
         assert np.all(np.isfinite(np.asarray(result)))
 
     def test_vmap_supports_batched_distribution_centers(self) -> None:
-        """Check the average maps over batched distribution centers."""
+        r"""Check the average maps over batched distribution centers.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check the average
+        maps over batched distribution centers.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_grains``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "3 2 2"] = jnp.stack(
             [
                 jnp.ones((2, 2)) * 1.0,

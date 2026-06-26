@@ -86,7 +86,25 @@ class TestSurfaceBuilderDirect(chex.TestCase):
     """Direct unit tests for branch-heavy geometry builders."""
 
     def test_create_surface_slab_handles_aligned_surface_normal(self) -> None:
-        """(001) cuts should keep the in-plane cubic metric."""
+        r"""(001) cuts should keep the in-plane cubic metric.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (001) cuts should
+        keep the in-plane cubic metric.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: Integer[Array, "..."] = create_surface_slab(
             _make_cubic_bulk(),
             jnp.array([0, 0, 1], dtype=jnp.int32),
@@ -110,7 +128,25 @@ class TestSurfaceBuilderDirect(chex.TestCase):
     def test_create_surface_slab_rotates_non_aligned_surface_normal(
         self,
     ) -> None:
-        """Non-(001) cuts should still yield a finite, bounded slab."""
+        r"""Non-(001) cuts should still yield a finite, bounded slab.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-(001) cuts
+        should still yield a finite, bounded slab.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: Integer[Array, "..."] = create_surface_slab(
             _make_cubic_bulk(),
             jnp.array([1, 1, 0], dtype=jnp.int32),
@@ -130,7 +166,25 @@ class TestSurfaceBuilderDirect(chex.TestCase):
     def test_apply_surface_reconstruction_moves_only_requested_surface_atoms(
         self,
     ) -> None:
-        """Only the first n displaced surface atoms should be updated."""
+        r"""Only the first n displaced surface atoms should be updated.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Only the first n
+        displaced surface atoms should be updated.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         reconstructed: Integer[Array, "..."] = apply_surface_reconstruction(
             _make_test_slab(),
             jnp.array([[1, 0], [0, 1]], dtype=jnp.int32),
@@ -163,7 +217,25 @@ class TestSurfaceBuilderDirect(chex.TestCase):
     def test_apply_surface_reconstruction_shears_the_in_plane_cell(
         self,
     ) -> None:
-        """Off-diagonal reconstruction matrices should shear the cell."""
+        r"""Off-diagonal reconstruction matrices should shear the cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Off-diagonal
+        reconstruction matrices should shear the cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         reconstructed: Integer[Array, "..."] = apply_surface_reconstruction(
             _make_test_slab(),
             jnp.array([[1, 1], [0, 1]], dtype=jnp.int32),
@@ -191,7 +263,25 @@ class TestSurfaceBuilderDirect(chex.TestCase):
     def test_add_adsorbate_layer_appends_weighted_cartesian_positions(
         self,
     ) -> None:
-        """Adsorbates should be appended in both coordinate systems."""
+        r"""Adsorbates should be appended in both coordinate systems.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Adsorbates should
+        be appended in both coordinate systems.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: Any = _make_test_slab()
         decorated: Float[Array, "..."] = add_adsorbate_layer(
             slab,
@@ -236,30 +326,120 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
     """
 
     def test_returns_four_columns(self) -> None:
-        """Cart positions should have 4 columns [x,y,z,Z]."""
+        r"""Cart positions should have 4 columns [x,y,z,Z].
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cart positions
+        should have 4 columns [x,y,z,Z].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         assert d["cart_positions"].shape[1] == 4
 
     def test_slab_c_equals_thickness_plus_vacuum(self) -> None:
-        """Cell c parameter should equal slab + vacuum thickness."""
+        r"""Cell c parameter should equal slab + vacuum thickness.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cell c parameter
+        should equal slab + vacuum thickness.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         c: float = float(d["cell_lengths"][2])
         chex.assert_trees_all_close(c, 25.0, atol=1e-6)
 
     def test_slab_has_atoms(self) -> None:
-        """Slab should contain at least one atom."""
+        r"""Slab should contain at least one atom.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Slab should
+        contain at least one atom.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         assert d["cart_positions"].shape[0] > 0
 
     def test_atoms_within_slab_thickness(self) -> None:
-        """All atom z-coordinates should be within [0, thickness]."""
+        r"""All atom z-coordinates should be within [0, thickness].
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All atom
+        z-coordinates should be within [0, thickness].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         z: Any = d["cart_positions"][:, 2]
         assert float(z.min()) >= -0.1
         assert float(z.max()) <= 10.1
 
     def test_atomic_numbers_preserved(self) -> None:
-        """Slab atoms should have same Z as bulk crystal."""
+        r"""Slab atoms should have same Z as bulk crystal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Slab atoms should
+        have same Z as bulk crystal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         bulk: Any = _load("cubic_crystal.npz")
         slab: Any = _load("slab_001.npz")
         bulk_z: Any = set(bulk["cart_positions"][:, 3])
@@ -267,7 +447,25 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         assert slab_z.issubset(bulk_z)
 
     def test_stoichiometry_preserved_mgo(self) -> None:
-        """MgO slab should have Mg:O ratio close to 1:1."""
+        r"""MgO slab should have Mg:O ratio close to 1:1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: MgO slab should
+        have Mg:O ratio close to 1:1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("mgo_slab.npz")
         z_nums: Any = d["cart_positions"][:, 3]
         n_mg: int = int(np.sum(np.abs(z_nums - 12.0) < 0.5))
@@ -278,7 +476,25 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         assert 0.5 < ratio < 2.0
 
     def test_cell_angles_valid(self) -> None:
-        """All output cell angles should be in (0, 180)."""
+        r"""All output cell angles should be in (0, 180).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All output cell
+        angles should be in (0, 180).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         angle: scalar_float
         for angle in d["cell_angles"]:
@@ -290,13 +506,53 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         ("111", "slab_111.npz"),
     )
     def test_various_orientations(self, fname: str) -> None:
-        """Slabs for various Miller indices should have atoms."""
+        r"""Slabs for various Miller indices should have atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Slabs for various
+        Miller indices should have atoms.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``fname``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load(fname)
         assert d["cart_positions"].shape[0] > 0
         assert d["cart_positions"].shape[1] == 4
 
     def test_thicker_slab_has_more_atoms(self) -> None:
-        """A thicker slab should contain more atoms."""
+        r"""A thicker slab should contain more atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A thicker slab
+        should contain more atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         thin: Any = _load("thin_slab.npz")
         thick: Any = _load("slab_001.npz")
         assert (
@@ -305,7 +561,25 @@ class TestCreateSurfaceSlab(chex.TestCase, parameterized.TestCase):
         )
 
     def test_frac_and_cart_shapes_match(self) -> None:
-        """Fractional and Cartesian arrays should match shape."""
+        r"""Fractional and Cartesian arrays should match shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fractional and
+        Cartesian arrays should match shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("slab_001.npz")
         assert d["frac_positions"].shape == d["cart_positions"].shape
 
@@ -317,12 +591,48 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
     """
 
     def test_reconstruction_has_atoms(self) -> None:
-        """Reconstructed slab should have atoms."""
+        r"""Reconstructed slab should have atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reconstructed slab
+        should have atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         d: Any = _load("recon_2x2.npz")
         assert d["cart_positions"].shape[0] > 0
 
     def test_2x2_expands_cell(self) -> None:
-        """2x2 reconstruction should roughly double a and b."""
+        r"""2x2 reconstruction should roughly double a and b.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2x2 reconstruction
+        should roughly double a and b.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         recon: Any = _load("recon_2x2.npz")
         chex.assert_trees_all_close(
@@ -337,7 +647,25 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
         )
 
     def test_atom_count_scales(self) -> None:
-        """2x2 recon should have more atoms than 1x1."""
+        r"""2x2 recon should have more atoms than 1x1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2x2 recon should
+        have more atoms than 1x1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         recon: Any = _load("recon_2x2.npz")
         assert (
@@ -346,7 +674,25 @@ class TestApplySurfaceReconstruction(chex.TestCase, parameterized.TestCase):
         )
 
     def test_displacement_moves_atoms(self) -> None:
-        """Non-zero displacement should change positions."""
+        r"""Non-zero displacement should change positions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-zero
+        displacement should change positions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         no_disp: Any = _load("recon_no_disp.npz")
         with_disp: Any = _load("recon_with_disp.npz")
         diff: Any = float(
@@ -367,7 +713,25 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
     """
 
     def test_adsorbate_increases_atom_count(self) -> None:
-        """Adding adsorbates should increase total atom count."""
+        r"""Adding adsorbates should increase total atom count.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Adding adsorbates
+        should increase total atom count.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         ads: Any = _load("ads_full.npz")
         assert ads["cart_positions"].shape[0] == (
@@ -375,7 +739,25 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         )
 
     def test_coverage_weights_atomic_number(self) -> None:
-        """Coverage 0.5 should halve the adsorbate Z value."""
+        r"""Coverage 0.5 should halve the adsorbate Z value.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coverage 0.5
+        should halve the adsorbate Z value.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         ads: Any = _load("ads_half.npz")
         n_orig: int = orig["cart_positions"].shape[0]
@@ -383,14 +765,50 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ads_z, 4.0, atol=1e-6)
 
     def test_cell_parameters_unchanged(self) -> None:
-        """Adsorbates should not change cell parameters."""
+        r"""Adsorbates should not change cell parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Adsorbates should
+        not change cell parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         ads: Any = _load("ads_full.npz")
         np.testing.assert_allclose(ads["cell_lengths"], orig["cell_lengths"])
         np.testing.assert_allclose(ads["cell_angles"], orig["cell_angles"])
 
     def test_multiple_adsorbates(self) -> None:
-        """Should handle multiple adsorbate atoms."""
+        r"""Should handle multiple adsorbate atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should handle
+        multiple adsorbate atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         ads: Any = _load("ads_multi.npz")
         assert ads["cart_positions"].shape[0] == (
@@ -398,7 +816,25 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         )
 
     def test_zero_coverage_zeroes_z(self) -> None:
-        """Coverage 0.0 should produce zero effective Z."""
+        r"""Coverage 0.0 should produce zero effective Z.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coverage 0.0
+        should produce zero effective Z.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_builder``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orig: Any = _load("slab_001.npz")
         ads: Any = _load("ads_zero.npz")
         n_orig: int = orig["cart_positions"].shape[0]

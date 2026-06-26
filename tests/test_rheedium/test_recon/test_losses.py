@@ -29,7 +29,25 @@ class TestWeightedLosses(chex.TestCase):
     """
 
     def test_weighted_image_residual_scales_by_sqrt_weights(self) -> None:
-        """Residual weights should enter as square roots."""
+        r"""Residual weights should enter as square roots.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Residual weights
+        should enter as square roots.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_losses``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         simulated: Float[Array, "rows cols"] = jnp.array(
             [[3.0, 4.0], [5.0, 6.0]]
         )
@@ -52,7 +70,25 @@ class TestWeightedLosses(chex.TestCase):
     def test_weighted_mean_squared_error_normalizes_by_weight_sum(
         self,
     ) -> None:
-        """Weighted MSE should divide by the sum of retained weights."""
+        r"""Weighted MSE should divide by the sum of retained weights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Weighted MSE
+        should divide by the sum of retained weights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_losses``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         simulated: Float[Array, "rows cols"] = jnp.array(
             [[2.0, 3.0], [4.0, 5.0]]
         )
@@ -76,7 +112,28 @@ class TestCheckedWeightedLosses(chex.TestCase):
     """Tests for opt-in checkified reconstruction losses."""
 
     def test_checked_weighted_image_residual_valid(self) -> None:
-        """Checked residual should allow finite outputs under JIT."""
+        r"""Checked residual should allow finite outputs under JIT.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Checked residual
+        should allow finite outputs under JIT.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_losses``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         simulated: Float[Array, "rows cols"] = jnp.array(
             [[3.0, 4.0], [5.0, 6.0]]
         )
@@ -96,7 +153,28 @@ class TestCheckedWeightedLosses(chex.TestCase):
         chex.assert_trees_all_close(residual, expected, atol=1e-12)
 
     def test_checked_weighted_mean_squared_error_rejects_nan(self) -> None:
-        """Checked MSE should report NaN-producing inputs under JIT."""
+        r"""Checked MSE should report NaN-producing inputs under JIT.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Checked MSE should
+        report NaN-producing inputs under JIT.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_losses``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         simulated: Float[Array, "rows cols"] = jnp.array(
             [[jnp.nan, 2.0], [3.0, 4.0]]
         )

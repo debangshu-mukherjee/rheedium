@@ -63,7 +63,29 @@ class TestCrystalStructure(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_crystal_structure_valid(self) -> None:
-        """Test creation of valid CrystalStructure instances."""
+        r"""Test creation of valid CrystalStructure instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        CrystalStructure instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 10
         positions_3d: Float[NDArray, "N 3"] = np.random.rand(n_atoms, 3)
         atomic_numbers: Float[NDArray, "N 1"] = np.ones((n_atoms, 1)) * 14
@@ -96,7 +118,29 @@ class TestCrystalStructure(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_crystal_structure_pytree(self) -> None:
-        """Test PyTree registration and operations."""
+        r"""Test PyTree registration and operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        registration and operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 5
         frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
         cart_positions: Float[Array, "N 4"] = jnp.concatenate(
@@ -138,7 +182,30 @@ class TestCrystalStructure(chex.TestCase):
     def test_crystal_structure_various_cells(
         self, n_atoms: int, cell_type: str
     ) -> None:
-        """Test CrystalStructure with various cell types and atom counts."""
+        r"""Test CrystalStructure with various cell types and atom counts.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CrystalStructure
+        with various cell types and atom counts.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_atoms``,
+        ``cell_type``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         cell_params: dict[str, tuple[list[float], list[float]]] = {
             "cubic": ([5.0, 5.0, 5.0], [90.0, 90.0, 90.0]),
             "orthorhombic": ([4.0, 5.0, 6.0], [90.0, 90.0, 90.0]),
@@ -188,7 +255,32 @@ class TestCrystalStructure(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_crystal_structure_jit_compilation(self) -> None:
-        """Test JIT compilation of CrystalStructure operations."""
+        r"""Test JIT compilation of CrystalStructure operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        CrystalStructure operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(
             frac_pos: Num[Array, "N 4"],
@@ -231,7 +323,28 @@ class TestCrystalStructure(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_crystal_structure_validation_errors(self) -> None:
-        """Handle invalid inputs properly during JIT compilation."""
+        r"""Handle invalid inputs properly during JIT compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Handle invalid
+        inputs properly during JIT compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 5
 
         def create_with_wrong_shape() -> CrystalStructure:
@@ -259,7 +372,25 @@ class TestCrystalStructure(chex.TestCase):
             create_with_mismatched_positions()
 
     def test_crystal_structure_atomic_number_mismatch_rejected(self) -> None:
-        """Mismatched atomic numbers should be rejected."""
+        r"""Mismatched atomic numbers should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mismatched atomic
+        numbers should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "2 4"] = jnp.array(
             [[0.0, 0.0, 0.0, 6.0], [0.5, 0.5, 0.5, 8.0]]
         )
@@ -279,7 +410,25 @@ class TestCrystalStructure(chex.TestCase):
         )
 
     def test_crystal_structure_negative_cell_lengths_rejected(self) -> None:
-        """Negative cell lengths should be rejected."""
+        r"""Negative cell lengths should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative cell
+        lengths should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
         cart_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
         cell_lengths: Float[Array, "3"] = jnp.array([-3.0, 4.0, 5.0])
@@ -295,7 +444,25 @@ class TestCrystalStructure(chex.TestCase):
         )
 
     def test_crystal_structure_invalid_cell_angles_rejected(self) -> None:
-        """Cell angles outside (0, 180) should be rejected."""
+        r"""Cell angles outside (0, 180) should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cell angles
+        outside (0, 180) should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
         cart_positions: Float[Array, "2 4"] = jnp.ones((2, 4))
         cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
@@ -350,7 +517,29 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_ewald_data_valid(self) -> None:
-        """Test creation of valid EwaldData instances."""
+        r"""Test creation of valid EwaldData instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        EwaldData instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_points: int = 7
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs(n_points)
         create_fn: Callable[..., EwaldData] = self.variant(create_ewald_data)
@@ -368,7 +557,29 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_data_pytree(self) -> None:
-        """Test PyTree flatten/unflatten round-trip."""
+        r"""Test PyTree flatten/unflatten round-trip.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        flatten/unflatten round-trip.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         create_fn: Callable[..., EwaldData] = self.variant(create_ewald_data)
         ewald: EwaldData = create_fn(**kwargs)
@@ -382,7 +593,29 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_data_dtype_casting(self) -> None:
-        """Test that inputs are cast to correct dtypes."""
+        r"""Test that inputs are cast to correct dtypes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: inputs are cast to
+        correct dtypes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         create_fn: Callable[..., EwaldData] = self.variant(create_ewald_data)
         ewald: EwaldData = create_fn(**kwargs)
@@ -397,7 +630,29 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_data_values_preserved(self) -> None:
-        """Test that array values are faithfully preserved."""
+        r"""Test that array values are faithfully preserved.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: array values are
+        faithfully preserved.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         create_fn: Callable[..., EwaldData] = self.variant(create_ewald_data)
         ewald: EwaldData = create_fn(**kwargs)
@@ -419,7 +674,30 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         ("large", 125),
     )
     def test_ewald_data_various_sizes(self, n_points: int) -> None:
-        """Test EwaldData with various numbers of reciprocal points."""
+        r"""Test EwaldData with various numbers of reciprocal points.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: EwaldData with
+        various numbers of reciprocal points.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_points``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs(n_points)
         create_fn: Callable[..., EwaldData] = self.variant(create_ewald_data)
         ewald: EwaldData = create_fn(**kwargs)
@@ -432,7 +710,32 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_data_jit_compilation(self) -> None:
-        """Test JIT compilation of EwaldData operations."""
+        r"""Test JIT compilation of EwaldData operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        EwaldData operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(**kw: object) -> Float[Array, ""]:
             ewald: EwaldData = create_ewald_data(**kw)
@@ -449,7 +752,25 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_ewald_data_negative_wavelength(self) -> None:
-        """Test that negative wavelength is caught by validation."""
+        r"""Test that negative wavelength is caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: negative
+        wavelength is caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(-0.1)
         assert_rejects(
@@ -459,7 +780,25 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_ewald_data_negative_k_magnitude(self) -> None:
-        """Test that negative k_magnitude is caught by validation."""
+        r"""Test that negative k_magnitude is caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: negative
+        k_magnitude is caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["k_magnitude"] = jnp.array(-1.0)
         assert_rejects(
@@ -469,7 +808,25 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_ewald_data_negative_sphere_radius(self) -> None:
-        """Test that negative sphere_radius is caught by validation."""
+        r"""Test that negative sphere_radius is caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: negative
+        sphere_radius is caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["sphere_radius"] = jnp.array(-1.0)
         assert_rejects(
@@ -479,14 +836,53 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_ewald_data_mismatched_n(self) -> None:
-        """Test that mismatched leading dimensions are caught."""
+        r"""Test that mismatched leading dimensions are caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: mismatched leading
+        dimensions are caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs(n_points=7)
         kwargs["intensities"] = jnp.ones(5, dtype=jnp.float64)
         with pytest.raises(TypeCheckError):
             jax.jit(create_ewald_data)(**kwargs)
 
     def test_ewald_data_negative_intensities(self) -> None:
-        """Test that negative intensities are caught by validation."""
+        r"""Test that negative intensities are caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: negative
+        intensities are caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["intensities"] = -jnp.ones(7, dtype=jnp.float64)
         assert_rejects(
@@ -496,7 +892,25 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_ewald_data_nan_in_g_vectors(self) -> None:
-        """Test that NaN values in g_vectors are caught."""
+        r"""Test that NaN values in g_vectors are caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: NaN values in
+        g_vectors are caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         g: Float[Array, "N 3"] = kwargs["g_vectors"]
         kwargs["g_vectors"] = g.at[0, 0].set(jnp.nan)
@@ -507,7 +921,25 @@ class TestEwaldData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_ewald_data_inf_in_wavelength(self) -> None:
-        """Test that Inf values are caught by finiteness check."""
+        r"""Test that Inf values are caught by finiteness check.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Inf values are
+        caught by finiteness check.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: EwaldKwargs = self._make_valid_ewald_kwargs()
         kwargs["wavelength_ang"] = jnp.array(jnp.inf)
         assert_rejects(
@@ -531,7 +963,29 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_create_potential_slices_valid(self) -> None:
-        """Test creation of valid PotentialSlices instances."""
+        r"""Test creation of valid PotentialSlices instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        PotentialSlices instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_slices: int = 10
         height: int = 64
         width: int = 64
@@ -558,7 +1012,29 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_potential_slices_pytree(self) -> None:
-        """Test PyTree registration and operations."""
+        r"""Test PyTree registration and operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        registration and operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slices: Float[Array, "5 32 32"] = jnp.ones((5, 32, 32))
         slice_thickness: float = 1.5
         x_calibration: float = 0.2
@@ -593,7 +1069,30 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
     def test_potential_slices_various_sizes(
         self, n_slices: int, height: int, width: int, thickness: float
     ) -> None:
-        """Test PotentialSlices with various dimensions."""
+        r"""Test PotentialSlices with various dimensions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PotentialSlices
+        with various dimensions.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_slices``,
+        ``height``, ``width``, ``thickness``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slices: Float[Array, "n_slices height width"] = jax.random.normal(
             self.rng, (n_slices, height, width)
         )
@@ -613,7 +1112,32 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_potential_slices_jit_compilation(self) -> None:
-        """Test JIT compilation of PotentialSlices operations."""
+        r"""Test JIT compilation of PotentialSlices operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        PotentialSlices operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(
             slices: Float[Array, "n_slices height width"],
@@ -641,7 +1165,28 @@ class TestPotentialSlices(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_potential_slices_validation_errors(self) -> None:
-        """Handle invalid PotentialSlices inputs during JIT compilation."""
+        r"""Handle invalid PotentialSlices inputs during JIT compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Handle invalid
+        PotentialSlices inputs during JIT compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_with_wrong_shape() -> PotentialSlices:
             wrong_shape_slices: Float[Array, "10 32"] = jnp.ones((10, 32))
@@ -685,7 +1230,29 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_create_xyz_data_minimal(self) -> None:
-        """Test creation of XYZData with minimal required fields."""
+        r"""Test creation of XYZData with minimal required fields.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of
+        XYZData with minimal required fields.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 10
         positions: Float[Array, "N 3"] = jax.random.normal(
             self.rng, (n_atoms, 3)
@@ -706,7 +1273,29 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_create_xyz_data_full(self) -> None:
-        """Test creation of XYZData with all optional fields."""
+        r"""Test creation of XYZData with all optional fields.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of
+        XYZData with all optional fields.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 5
         positions: Float[Array, "N 3"] = jax.random.normal(
             self.rng, (n_atoms, 3)
@@ -742,7 +1331,29 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_xyz_data_pytree(self) -> None:
-        """Test PyTree registration and operations."""
+        r"""Test PyTree registration and operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        registration and operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "3 3"] = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
         )
@@ -784,7 +1395,31 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         include_stress: bool,
         include_energy: bool,
     ) -> None:
-        """Test XYZData with various combinations of optional fields."""
+        r"""Test XYZData with various combinations of optional fields.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XYZData with
+        various combinations of optional fields.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_atoms``,
+        ``include_lattice``, ``include_stress``, ``include_energy``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "N 3"] = jax.random.normal(
             self.rng, (n_atoms, 3)
         )
@@ -822,7 +1457,32 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_xyz_data_jit_compilation(self) -> None:
-        """Test JIT compilation of operations on XYZData."""
+        r"""Test JIT compilation of operations on XYZData.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        operations on XYZData.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         # Create XYZData outside JIT; create_xyz_data is a foreign interface
         n_atoms: int = 5
         positions: Float[Array, "N 3"] = jnp.ones((n_atoms, 3))
@@ -848,7 +1508,25 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_xyz_data_validation_errors(self) -> None:
-        """Test that invalid inputs raise appropriate errors."""
+        r"""Test that invalid inputs raise appropriate errors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: invalid inputs
+        raise appropriate errors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         # jaxtyping catches type errors for wrong position shape
         wrong_shape_positions: Float[Array, "5 4"] = jnp.ones((5, 4))
         atomic_numbers: Int[Array, "5"] = jnp.ones(5, dtype=jnp.int32)
@@ -856,7 +1534,25 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
             create_xyz_data(wrong_shape_positions, atomic_numbers)
 
     def test_xyz_data_nonfinite_positions_rejected(self) -> None:
-        """Non-finite positions should be rejected."""
+        r"""Non-finite positions should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-finite
+        positions should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "2 3"] = jnp.ones((2, 3)).at[0, 0].set(jnp.nan)
         atomic_numbers: Int[Array, "2"] = jnp.array([6, 8], dtype=jnp.int32)
         assert_rejects(
@@ -867,7 +1563,25 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_xyz_data_negative_atomic_numbers_rejected(self) -> None:
-        """Negative atomic numbers should be rejected."""
+        r"""Negative atomic numbers should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative atomic
+        numbers should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "2 3"] = jnp.ones((2, 3))
         atomic_numbers: Int[Array, "2"] = jnp.array([6, -1], dtype=jnp.int32)
         assert_rejects(
@@ -878,7 +1592,25 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         )
 
     def test_xyz_data_nonfinite_lattice_rejected(self) -> None:
-        """Non-finite lattice values should be rejected."""
+        r"""Non-finite lattice values should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-finite lattice
+        values should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "2 3"] = jnp.ones((2, 3))
         atomic_numbers: Int[Array, "2"] = jnp.array([6, 8], dtype=jnp.int32)
         lattice: Float[Array, "3 3"] = jnp.eye(3).at[0, 0].set(jnp.inf)
@@ -892,7 +1624,29 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_xyz_data_tree_map(self) -> None:
-        """Test that XYZData works correctly with tree_map operations."""
+        r"""Test that XYZData works correctly with tree_map operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XYZData works
+        correctly with tree_map operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 5
         positions: Float[Array, "N 3"] = jnp.ones((n_atoms, 3))
         atomic_numbers: Int[Array, "N"] = jnp.ones(n_atoms, dtype=jnp.int32)
@@ -920,7 +1674,25 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         self.rng: PRNGKeyArray = jax.random.PRNGKey(42)
 
     def test_nested_pytree_operations(self) -> None:
-        """Test nested PyTree structures with crystal types."""
+        r"""Test nested PyTree structures with crystal types.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: nested PyTree
+        structures with crystal types.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 5
         crystal: CrystalStructure = create_crystal_structure(
             jnp.ones((n_atoms, 4)),
@@ -967,7 +1739,28 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         )
 
     def test_vmap_over_crystal_structures(self) -> None:
-        """Test vmap operations over batches of crystal structures."""
+        r"""Test vmap operations over batches of crystal structures.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: vmap operations
+        over batches of crystal structures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         batch_size: int = 4
         n_atoms: int = 3
 

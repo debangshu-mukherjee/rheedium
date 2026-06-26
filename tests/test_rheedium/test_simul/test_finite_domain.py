@@ -73,10 +73,30 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_single_atom_minimum_extent(self) -> None:
-        """Test that single atom returns minimum extent (1.0 Å).
+        r"""Test that single atom returns minimum extent (1.0 Å).
 
-        A single atom has zero extent, but minimum enforcement should
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: single atom
+        returns minimum extent (1.0 Å). Existing context from the original test
+        prose: A single atom has zero extent, but minimum enforcement should
         return [1.0, 1.0, 1.0] to avoid numerical issues.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
@@ -92,9 +112,29 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_cube_extent(self) -> None:
-        """Test extent calculation for cubic arrangement.
+        r"""Test extent calculation for cubic arrangement.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: extent calculation
+        for cubic arrangement. Existing context from the original test prose:
         Atoms at corners of 10×10×10 Å cube should give extent [10, 10, 10].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
@@ -109,9 +149,29 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_slab_extent(self) -> None:
-        """Test extent calculation for rectangular slab.
+        r"""Test extent calculation for rectangular slab.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: extent calculation
+        for rectangular slab. Existing context from the original test prose:
         Atoms in 20×15×5 Å slab should give corresponding extent.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
 
@@ -131,9 +191,30 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
         ("large_padding", 10.0),
     )
     def test_padding_applied_correctly(self, padding: float) -> None:
-        """Test that padding is added correctly (2×padding per dimension).
+        r"""Test that padding is added correctly (2×padding per dimension).
 
-        Padding should be applied symmetrically on both sides.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: padding is added
+        correctly (2×padding per dimension). Existing context from the original
+        test prose: Padding should be applied symmetrically on both sides.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``padding``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
         extent_no_pad: Float[Array, "..."] = var_compute(
@@ -147,7 +228,29 @@ class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_is_positive(self) -> None:
-        """Test that extent is always positive."""
+        r"""Test that extent is always positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: extent is always
+        positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(compute_domain_extent)
         extent: Float[Array, "..."] = var_compute(
             self.single_atom, padding_ang=0.0
@@ -178,7 +281,29 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape(self) -> None:
-        """Test that output has shape (2,) for x,y rod widths."""
+        r"""Test that output has shape (2,) for x,y rod widths.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output has shape
+        (2,) for x,y rod widths.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
         sigma: Float[Array, "..."] = var_sigma(self.medium_extent)
@@ -187,9 +312,29 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_inverse_scaling(self) -> None:
-        """Test that rod sigma scales inversely with domain size.
+        r"""Test that rod sigma scales inversely with domain size.
 
-        σ_rod ∝ 1/L, so doubling L should halve σ.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod sigma scales
+        inversely with domain size. Existing context from the original test
+        prose: σ_rod ∝ 1/L, so doubling L should halve σ.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
@@ -206,9 +351,29 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_numerical_value_100A(self) -> None:  # noqa: N802
-        """Test numerical value for 100 Å domain.
+        r"""Test numerical value for 100 Å domain.
 
-        σ = 2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: numerical value
+        for 100 Å domain. Existing context from the original test prose: σ =
+        2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
@@ -223,7 +388,29 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_positive_output(self) -> None:
-        """Test that rod sigma is always positive."""
+        r"""Test that rod sigma is always positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod sigma is
+        always positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
         sigma: Float[Array, "..."] = var_sigma(self.small_extent)
@@ -232,7 +419,29 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_tiny_extent_no_nan(self) -> None:
-        """Test that tiny extent gives no NaN via minimum enforcement."""
+        r"""Test that tiny extent gives no NaN via minimum enforcement.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: tiny extent gives
+        no NaN via minimum enforcement.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
         tiny_extent: Float[Array, "..."] = jnp.array([0.1, 0.1, 0.1])
@@ -261,7 +470,29 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_is_scalar(self) -> None:
-        """Test that output is a scalar."""
+        r"""Test that output is a scalar.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output is a
+        scalar.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
         sigma: Float[Array, "..."] = var_shell(self.k_20kv)
@@ -270,10 +501,30 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_default_parameters(self) -> None:
-        """Test shell sigma with default beam parameters.
+        r"""Test shell sigma with default beam parameters.
 
-        At 20 kV (k≈73), with ΔE/E=1e-4 and Δθ=1e-3:
-        σ_shell = 73 × √[(5e-5)² + (1e-3)²] ≈ 73 × 1e-3 ≈ 0.073 Å⁻¹
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: shell sigma with
+        default beam parameters. Existing context from the original test prose:
+        At 20 kV (k≈73), with ΔE/E=1e-4 and Δθ=1e-3: σ_shell = 73 × √[(5e-5)² +
+        (1e-3)²] ≈ 73 × 1e-3 ≈ 0.073 Å⁻¹
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
@@ -284,7 +535,29 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_zero_divergence_energy_only(self) -> None:
-        """Test shell sigma with only energy spread (zero divergence)."""
+        r"""Test shell sigma with only energy spread (zero divergence).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: shell sigma with
+        only energy spread (zero divergence).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
         sigma: Float[Array, "..."] = var_shell(
@@ -297,7 +570,29 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_scaling_with_k(self) -> None:
-        """Test that shell sigma scales linearly with k."""
+        r"""Test that shell sigma scales linearly with k.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: shell sigma scales
+        linearly with k.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
         sigma_15: Float[Array, "..."] = var_shell(self.k_15kv)
@@ -310,7 +605,29 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_positive_output(self) -> None:
-        """Test that shell sigma is always positive."""
+        r"""Test that shell sigma is always positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: shell sigma is
+        always positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
         sigma: Float[Array, "..."] = var_shell(self.k_20kv)
@@ -369,7 +686,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape_single(self) -> None:
-        """Test output shape for single G vector."""
+        r"""Test output shape for single G vector.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output shape for
+        single G vector.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap: Any = var_overlap(
@@ -384,7 +723,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape_batch(self) -> None:
-        """Test output shape for batch of G vectors."""
+        r"""Test output shape for batch of G vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output shape for
+        batch of G vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap: Any = var_overlap(
@@ -401,8 +762,28 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
     def test_specular_reflection_high_overlap(self) -> None:
         r"""Test that specular reflection (G=0) has high overlap.
 
-        For G=0, k_out = k_in, so \|k_out\| = \|k_in\| exactly.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: specular
+        reflection (G=0) has high overlap. Existing context from the original
+        test prose: For G=0, k_out = k_in, so \|k_out\| = \|k_in\| exactly.
         Overlap should be 1.0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
@@ -419,7 +800,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_far_from_sphere_low_overlap(self) -> None:
-        """Test that G vectors far from Ewald sphere have low overlap."""
+        r"""Test that G vectors far from Ewald sphere have low overlap.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: G vectors far from
+        Ewald sphere have low overlap.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap: Any = var_overlap(
@@ -435,7 +838,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_overlap_bounded_zero_one(self) -> None:
-        """Test that overlap values are bounded between 0 and 1."""
+        r"""Test that overlap values are bounded between 0 and 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: overlap values are
+        bounded between 0 and 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap: Any = var_overlap(
@@ -451,7 +876,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_larger_sigma_broader_overlap(self) -> None:
-        """Test that larger σ gives broader (more uniform) overlap."""
+        r"""Test that larger σ gives broader (more uniform) overlap.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: larger σ gives
+        broader (more uniform) overlap.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap_small: Any = var_overlap(
@@ -474,7 +921,29 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_finite(self) -> None:
-        """Test that output contains no NaN or Inf."""
+        r"""Test that output contains no NaN or Inf.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output contains no
+        NaN or Inf.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 
         overlap: Any = var_overlap(
@@ -545,7 +1014,29 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shapes(self) -> None:
-        """Test that output shapes match EwaldData.intensities."""
+        r"""Test that output shapes match EwaldData.intensities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output shapes
+        match EwaldData.intensities.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
         )
@@ -564,7 +1055,29 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_overlap_bounded(self) -> None:
-        """Test that overlap factors are in [0, 1]."""
+        r"""Test that overlap factors are in [0, 1].
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: overlap factors
+        are in [0, 1].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
         )
@@ -582,7 +1095,29 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_modified_intensities_bounded(self) -> None:
-        """Test that modified intensities ≤ original intensities."""
+        r"""Test that modified intensities ≤ original intensities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: modified
+        intensities ≤ original intensities.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
         )
@@ -602,12 +1137,32 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_large_domain_preserves_intensities(self) -> None:
-        """Test that large domain gives overlap ≈ 1 for allowed reflections.
+        r"""Test that large domain gives overlap ≈ 1 for allowed reflections.
 
-        For a very large domain (1000 Å), the rod width is very small,
-        and only reflections exactly on the Ewald sphere should have
-        significant overlap. The specular (0,0,0) should always have
-        overlap = 1.0.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: large domain gives
+        overlap ≈ 1 for allowed reflections. Existing context from the original
+        test prose: For a very large domain (1000 Å), the rod width is very
+        small, and only reflections exactly on the Ewald sphere should have
+        significant overlap. The specular (0,0,0) should always have overlap =
+        1.0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
@@ -628,10 +1183,31 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_small_domain_broader_distribution(self) -> None:
-        """Test that small domain gives more uniform overlap distribution.
+        r"""Test that small domain gives more uniform overlap distribution.
 
-        Smaller domains have broader rods, so more reflections contribute.
-        The overlap distribution should be "flatter" than for large domains.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: small domain gives
+        more uniform overlap distribution. Existing context from the original
+        test prose: Smaller domains have broader rods, so more reflections
+        contribute. The overlap distribution should be "flatter" than for large
+        domains.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
@@ -661,7 +1237,29 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_finite(self) -> None:
-        """Test that output contains no NaN or Inf."""
+        r"""Test that output contains no NaN or Inf.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output contains no
+        NaN or Inf.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
         )
@@ -681,7 +1279,25 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
     def test_size_distribution_delta_matches_single_domain_extent(
         self,
     ) -> None:
-        """Delta size distribution reproduces one finite-domain evaluation."""
+        r"""Delta size distribution reproduces one finite-domain evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Delta size
+        distribution reproduces one finite-domain evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         size_dist: SizeDistribution = SizeDistribution(
             distribution_type="delta",
             mean_ang=jnp.asarray(40.0, dtype=jnp.float64),
@@ -724,7 +1340,28 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         )
 
     def test_size_distribution_matches_manual_weighted_sum(self) -> None:
-        """SizeDistribution bridge equals explicit incoherent averaging."""
+        r"""SizeDistribution bridge equals explicit incoherent averaging.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: SizeDistribution
+        bridge equals explicit incoherent averaging.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         size_dist: SizeDistribution = create_lognormal_size(
             mean_ang=80.0,
             sigma_ang=12.0,
@@ -795,7 +1432,30 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         ("theta_5deg", 5.0),
     )
     def test_different_angles(self, theta: float) -> None:
-        """Test that function works for various incidence angles."""
+        r"""Test that function works for various incidence angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: function works for
+        various incidence angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``theta``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_intensities: Callable[..., Any] = self.variant(
             finite_domain_intensities
         )
@@ -825,12 +1485,30 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rod_sigma_formula(self) -> None:
-        """Test that rod sigma formula is correct.
+        r"""Test that rod sigma formula is correct.
 
-        σ_q = 2π / (L × √(2π))
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod sigma formula
+        is correct. Existing context from the original test prose: σ_q = 2π /
+        (L × √(2π)) For L = 100 Å: σ_q = 2π / (100 × 2.5066) = 6.283 / 250.66 ≈
+        0.0251 Å⁻¹
 
-        For L = 100 Å:
-        σ_q = 2π / (100 × 2.5066) = 6.283 / 250.66 ≈ 0.0251 Å⁻¹
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_sigma: Callable[..., Any] = self.variant(extent_to_rod_sigma)
 
@@ -842,15 +1520,31 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_shell_sigma_formula(self) -> None:
-        """Test that shell sigma formula is correct.
+        r"""Test that shell sigma formula is correct.
 
-        σ_shell = k × √[(ΔE/2E)² + Δθ²]
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: shell sigma
+        formula is correct. Existing context from the original test prose:
+        σ_shell = k × √[(ΔE/2E)² + Δθ²] For k = 73 Å⁻¹, ΔE/E = 1e-4, Δθ = 1e-3:
+        σ_shell = 73 × √[(5e-5)² + (1e-3)²] = 73 × √[2.5e-9 + 1e-6] = 73 ×
+        √[1.0025e-6] ≈ 73 × 1.001e-3 ≈ 0.073 Å⁻¹
 
-        For k = 73 Å⁻¹, ΔE/E = 1e-4, Δθ = 1e-3:
-        σ_shell = 73 × √[(5e-5)² + (1e-3)²]
-               = 73 × √[2.5e-9 + 1e-6]
-               = 73 × √[1.0025e-6]
-               ≈ 73 × 1.001e-3 ≈ 0.073 Å⁻¹
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_shell: Callable[..., Any] = self.variant(compute_shell_sigma)
 
@@ -867,10 +1561,29 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_gaussian_overlap_formula(self) -> None:
-        """Test that overlap follows Gaussian formula.
+        r"""Test that overlap follows Gaussian formula.
 
-        overlap = exp(-d²/(2σ_eff²))
-        where σ_eff² = σ_rod² + σ_shell²
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: overlap follows
+        Gaussian formula. Existing context from the original test prose:
+        overlap = exp(-d²/(2σ_eff²)) where σ_eff² = σ_rod² + σ_shell²
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
 

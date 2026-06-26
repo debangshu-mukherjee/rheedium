@@ -49,7 +49,25 @@ class TestApplyVacancyField(chex.TestCase):
     """
 
     def test_applies_continuous_site_occupancies(self) -> None:
-        """Verify occupancies scale atomic numbers continuously."""
+        r"""Verify occupancies scale atomic numbers continuously.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: occupancies scale
+        atomic numbers continuously.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_vacancy_field(
             crystal, jnp.array([1.0, 0.25])
@@ -67,7 +85,25 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_clips_unphysical_occupancies(self) -> None:
-        """Verify occupancies are clipped to the physical range."""
+        r"""Verify occupancies are clipped to the physical range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: occupancies are
+        clipped to the physical range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_vacancy_field(
             crystal, jnp.array([-1.0, 2.0])
@@ -80,7 +116,28 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_grad_flows_through_occupancy(self) -> None:
-        """Check gradients flow through the occupancy parameter."""
+        r"""Check gradients flow through the occupancy parameter.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the occupancy parameter.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def objective(occupancy: scalar_float) -> scalar_float:
@@ -95,7 +152,28 @@ class TestApplyVacancyField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 8.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_vacancy_field compiles under jit."""
+        r"""Verify apply_vacancy_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_vacancy_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         compiled: Callable[..., Any] = jax.jit(
             lambda occupancies: apply_vacancy_field(
@@ -112,7 +190,28 @@ class TestApplyVacancyField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_occupancies(self) -> None:
-        """Check apply_vacancy_field maps over batched occupancies."""
+        r"""Check apply_vacancy_field maps over batched occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check
+        apply_vacancy_field maps over batched occupancies.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def summed_intensity(occupancy: scalar_float) -> scalar_float:
@@ -140,7 +239,25 @@ class TestApplyInterstitialField(chex.TestCase):
     """
 
     def test_appends_weighted_interstitial_sites(self) -> None:
-        """Verify occupancy-weighted interstitial sites are appended."""
+        r"""Verify occupancy-weighted interstitial sites are appended.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: occupancy-weighted
+        interstitial sites are appended.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_interstitial_field(
             crystal,
@@ -162,7 +279,25 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_empty_interstitial_bank_leaves_crystal_unchanged(self) -> None:
-        """Verify an empty interstitial bank leaves the crystal as is."""
+        r"""Verify an empty interstitial bank leaves the crystal as is.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: an empty
+        interstitial bank leaves the crystal as is.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_interstitial_field(
             crystal,
@@ -178,7 +313,28 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_grad_flows_through_interstitial_occupancy(self) -> None:
-        """Check gradients flow through interstitial occupancy."""
+        r"""Check gradients flow through interstitial occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through interstitial occupancy.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def objective(occupancy: scalar_float) -> scalar_float:
@@ -195,7 +351,28 @@ class TestApplyInterstitialField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 12.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_interstitial_field compiles under jit."""
+        r"""Verify apply_interstitial_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_interstitial_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         compiled: Callable[..., Any] = jax.jit(
             lambda occupancy: apply_interstitial_field(
@@ -214,7 +391,28 @@ class TestApplyInterstitialField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_occupancies(self) -> None:
-        """Check apply_interstitial_field maps over batched occupancies."""
+        r"""Check apply_interstitial_field maps over batched occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check
+        apply_interstitial_field maps over batched occupancies.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def summed_intensity(occupancy: scalar_float) -> scalar_float:
@@ -244,7 +442,25 @@ class TestApplyAntisiteField(chex.TestCase):
     """
 
     def test_blends_host_and_substitute_species(self) -> None:
-        """Verify host and substitute species are blended by fraction."""
+        r"""Verify host and substitute species are blended by fraction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: host and
+        substitute species are blended by fraction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_antisite_field(
             crystal,
@@ -259,7 +475,25 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_clips_mixing_fraction_to_physical_range(self) -> None:
-        """Verify the mixing fraction is clipped to a physical range."""
+        r"""Verify the mixing fraction is clipped to a physical range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the mixing
+        fraction is clipped to a physical range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         modified: CrystalStructure = apply_antisite_field(
             crystal,
@@ -274,7 +508,28 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_grad_flows_through_mixing_fraction(self) -> None:
-        """Check gradients flow through the mixing fraction."""
+        r"""Check gradients flow through the mixing fraction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the mixing fraction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def objective(mixing_fraction: scalar_float) -> scalar_float:
@@ -290,7 +545,28 @@ class TestApplyAntisiteField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 12.0, atol=1e-6)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_antisite_field compiles under jit."""
+        r"""Verify apply_antisite_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_antisite_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
         compiled: Callable[..., Any] = jax.jit(
             lambda mixing_fraction: apply_antisite_field(
@@ -308,7 +584,28 @@ class TestApplyAntisiteField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_mixing_fraction(self) -> None:
-        """Check apply_antisite_field maps over batched fractions."""
+        r"""Check apply_antisite_field maps over batched fractions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check
+        apply_antisite_field maps over batched fractions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_crystal_defects``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_bulk_crystal()
 
         def summed_intensity(mixing_fraction: scalar_float) -> scalar_float:

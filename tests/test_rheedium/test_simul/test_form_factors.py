@@ -89,14 +89,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         ("uranium", 92),
     )
     def test_load_kirkland_parameters(self, atomic_number: int) -> None:
-        """Test loading Kirkland parameters for various elements.
+        r"""Test loading Kirkland parameters for various elements.
 
-        Verifies that Kirkland parameterization coefficients are loaded
-        correctly for different atomic numbers. Checks that both a and b
-        coefficient arrays have the expected shape (6 coefficients each),
-        are finite values, and that b coefficients (width parameters) are
-        positive. Also validates that the sum of a coefficients is positive,
-        which is physically meaningful for scattering.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: loading Kirkland
+        parameters for various elements. Existing context from the original
+        test prose: Verifies that Kirkland parameterization coefficients are
+        loaded correctly for different atomic numbers. Checks that both a and b
+        coefficient arrays have the expected shape (6 coefficients each), are
+        finite values, and that b coefficients (width parameters) are positive.
+        Also validates that the sum of a coefficients is positive, which is
+        physically meaningful for scattering.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``atomic_number``, so the documented behavior is checked across the
+        cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_load_params: Callable[..., Any] = self.variant(
             load_kirkland_parameters
@@ -129,14 +150,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_load_kirkland_parameters_edge_cases(self) -> None:
-        """Test parameter loading with edge cases.
+        r"""Test parameter loading with edge cases.
 
-        Tests boundary conditions for atomic number inputs, verifying
-        correct behavior at minimum (Z=1, hydrogen) and maximum (Z=103,
-        lawrencium) atomic numbers. Also tests that out-of-range atomic
-        numbers are properly clipped: values below 1 are clipped to 1,
-        and values above 103 are clipped to 103, ensuring the function
-        handles invalid inputs gracefully.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: parameter loading
+        with edge cases. Existing context from the original test prose: Tests
+        boundary conditions for atomic number inputs, verifying correct
+        behavior at minimum (Z=1, hydrogen) and maximum (Z=103, lawrencium)
+        atomic numbers. Also tests that out-of-range atomic numbers are
+        properly clipped: values below 1 are clipped to 1, and values above 103
+        are clipped to 103, ensuring the function handles invalid inputs
+        gracefully.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_load_params: Callable[..., Any] = self.variant(
             load_kirkland_parameters
@@ -185,15 +226,36 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_kirkland_form_factor_single(
         self, atomic_number: int, q_mag: float
     ) -> None:
-        """Test Kirkland form factor for single q values.
+        r"""Test Kirkland form factor for single q values.
 
-        Validates the Kirkland electron scattering form factor calculation
-        for individual momentum transfer values. Tests various q magnitudes
-        (0.1, 1.0, 10.0 Å⁻¹) for different elements. Verifies that the
-        form factor returns a scalar value that is finite and positive.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Kirkland form
+        factor for single q values. Existing context from the original test
+        prose: Validates the Kirkland electron scattering form factor
+        calculation for individual momentum transfer values. Tests various q
+        magnitudes (0.1, 1.0, 10.0 Å⁻¹) for different elements. Verifies that
+        the form factor returns a scalar value that is finite and positive.
         Note that for electron scattering (Kirkland formulation), the form
         factor at q=0 does not equal the atomic number Z, unlike X-ray
         scattering.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``atomic_number``, ``q_mag``, so the documented behavior is checked
+        across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_form_factor: Callable[..., Any] = self.variant(
             kirkland_form_factor
@@ -214,14 +276,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_kirkland_form_factor_decreasing(self) -> None:
-        """Test that form factor decreases with increasing q.
+        r"""Test that form factor decreases with increasing q.
 
-        Verifies the fundamental physical property that atomic form factors
-        decrease monotonically with increasing momentum transfer q. Tests
-        this for multiple elements (H, C, Si, Cu, Au) across q values from
-        0 to 8 Å⁻¹. The decrease reflects the finite extent of the atomic
-        electron density distribution - higher q probes smaller length
-        scales where less electron density contributes to scattering.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: form factor
+        decreases with increasing q. Existing context from the original test
+        prose: Verifies the fundamental physical property that atomic form
+        factors decrease monotonically with increasing momentum transfer q.
+        Tests this for multiple elements (H, C, Si, Cu, Au) across q values
+        from 0 to 8 Å⁻¹. The decrease reflects the finite extent of the atomic
+        electron density distribution - higher q probes smaller length scales
+        where less electron density contributes to scattering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_form_factor: Callable[..., Any] = self.variant(
             kirkland_form_factor
@@ -239,14 +321,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_kirkland_form_factor_batched(self) -> None:
-        """Test form factor with batched q values.
+        r"""Test form factor with batched q values.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: form factor with
+        batched q values. Existing context from the original test prose:
         Verifies that the form factor function correctly handles vectorized
         operations on multi-dimensional arrays of q values. Tests 2D batches
         (6x5 array) and 3D batches (6x3x4 array) to ensure the function
-        broadcasts properly and maintains output shape matching the input.
-        This is critical for efficient computation in RHEED simulations where
-        many q points are evaluated simultaneously.
+        broadcasts properly and maintains output shape matching the input. This
+        is critical for efficient computation in RHEED simulations where many q
+        points are evaluated simultaneously.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_form_factor: Callable[..., Any] = self.variant(
             kirkland_form_factor
@@ -266,7 +368,29 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_kirkland_form_factor_matches_tabulated_formula(self) -> None:
-        """Kirkland form factor matches the mixed Lorentz/Gauss fit."""
+        r"""Kirkland form factor matches the mixed Lorentz/Gauss fit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Kirkland form
+        factor matches the mixed Lorentz/Gauss fit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_form_factor: Callable[..., Any] = self.variant(
             kirkland_form_factor
         )
@@ -293,7 +417,29 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_kirkland_projected_potential_matches_tabulated_formula(
         self,
     ) -> None:
-        """Check projected potential matches Kirkland real-space form."""
+        r"""Check projected potential matches Kirkland real-space form.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check projected
+        potential matches Kirkland real-space form.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_projected_potential: Callable[..., Any] = self.variant(
             kirkland_projected_potential
         )
@@ -330,15 +476,37 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_get_mean_square_displacement(
         self, atomic_number: int, temperature: float, is_surface: bool
     ) -> None:
-        """Test mean square displacement calculation.
+        r"""Test mean square displacement calculation.
 
-        Validates the calculation of atomic mean square displacement (MSD)
-        due to thermal vibrations. Tests various combinations of atomic
-        number (1, 14, 79), temperature (100K, 300K, 600K), and surface vs
-        bulk atoms. Verifies that MSD is a positive scalar value and that
-        surface atoms have larger MSD than bulk atoms due to reduced
-        coordination, reflecting their greater vibrational amplitude from
-        fewer constraining bonds.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: mean square
+        displacement calculation. Existing context from the original test
+        prose: Validates the calculation of atomic mean square displacement
+        (MSD) due to thermal vibrations. Tests various combinations of atomic
+        number (1, 14, 79), temperature (100K, 300K, 600K), and surface vs bulk
+        atoms. Verifies that MSD is a positive scalar value and that surface
+        atoms have larger MSD than bulk atoms due to reduced coordination,
+        reflecting their greater vibrational amplitude from fewer constraining
+        bonds.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``atomic_number``, ``temperature``, ``is_surface``, so the documented
+        behavior is checked across the cases supplied by pytest, Chex,
+        Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_get_msd: Callable[..., Any] = self.variant(
             get_mean_square_displacement
@@ -356,23 +524,40 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_mean_square_displacement_scaling(self) -> None:
-        """Test MSD scaling with temperature and atomic number.
+        r"""Test MSD scaling with temperature and atomic number.
 
-        Verifies the physical scaling relationships of mean square
-        displacement:
-        1. MSD increases with temperature (100K < 300K < 600K for Si) due
-           to increased thermal energy and vibrational amplitude.
-        2. For elements with similar Debye temperatures, MSD decreases
-           with atomic mass (Al > Fe at 300K) since heavier atoms vibrate
-           with smaller amplitude for the same thermal energy.
-        3. Surface enhancement factor is consistent (exactly 2.0) across
-           different elements, reflecting the systematic reduction in
-           coordination number at surfaces.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: MSD scaling with
+        temperature and atomic number. Existing context from the original test
+        prose: Verifies the physical scaling relationships of mean square
+        displacement: 1. MSD increases with temperature (100K < 300K < 600K for
+        Si) due to increased thermal energy and vibrational amplitude. 2. For
+        elements with similar Debye temperatures, MSD decreases with atomic
+        mass (Al > Fe at 300K) since heavier atoms vibrate with smaller
+        amplitude for the same thermal energy. 3. Surface enhancement factor is
+        consistent (exactly 2.0) across different elements, reflecting the
+        systematic reduction in coordination number at surfaces. Note: With
+        element-specific Debye temperatures, the simple mass ordering (lighter
+        = larger MSD) doesn't always hold. For example, carbon (Θ_D=2230K, very
+        stiff diamond bonds) has smaller MSD than gold (Θ_D=165K, soft metallic
+        bonds) despite being lighter.
 
-        Note: With element-specific Debye temperatures, the simple mass
-        ordering (lighter = larger MSD) doesn't always hold. For example,
-        carbon (Θ_D=2230K, very stiff diamond bonds) has smaller MSD than
-        gold (Θ_D=165K, soft metallic bonds) despite being lighter.
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_get_msd: Callable[..., Any] = self.variant(
             get_mean_square_displacement
@@ -410,15 +595,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     def test_debye_waller_factor_single(
         self, msd: float, q_mag: float
     ) -> None:
-        """Test Debye-Waller factor for single values.
+        r"""Test Debye-Waller factor for single values.
 
-        Validates the Debye-Waller factor calculation which accounts for
-        thermal damping of scattering intensity. Tests various combinations
-        of mean square displacement (0.001 to 0.1 Ų) and momentum transfer
-        (0 to 5 Å⁻¹). Verifies that the factor is bounded between 0 and 1,
-        representing the reduction in coherent scattering due to thermal
-        vibrations. At q=0, the factor equals 1 (no damping) since there's
-        no momentum transfer.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Debye-Waller
+        factor for single values. Existing context from the original test
+        prose: Validates the Debye-Waller factor calculation which accounts for
+        thermal damping of scattering intensity. Tests various combinations of
+        mean square displacement (0.001 to 0.1 Ų) and momentum transfer (0 to 5
+        Å⁻¹). Verifies that the factor is bounded between 0 and 1, representing
+        the reduction in coherent scattering due to thermal vibrations. At q=0,
+        the factor equals 1 (no damping) since there's no momentum transfer.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``msd``,
+        ``q_mag``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
@@ -436,14 +641,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_debye_waller_factor_batched(self) -> None:
-        """Test Debye-Waller factor with batched q values.
+        r"""Test Debye-Waller factor with batched q values.
 
-        Verifies vectorized computation of Debye-Waller factors for arrays
-        of q values. Tests 1D arrays (6 values) and 2D arrays (6x10 values)
-        to ensure proper broadcasting. Also validates that the factor
-        decreases monotonically with increasing q, reflecting stronger
-        thermal damping at higher momentum transfers where atomic positions
-        are more precisely probed.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Debye-Waller
+        factor with batched q values. Existing context from the original test
+        prose: Verifies vectorized computation of Debye-Waller factors for
+        arrays of q values. Tests 1D arrays (6 values) and 2D arrays (6x10
+        values) to ensure proper broadcasting. Also validates that the factor
+        decreases monotonically with increasing q, reflecting stronger thermal
+        damping at higher momentum transfers where atomic positions are more
+        precisely probed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
@@ -461,17 +686,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_debye_waller_edge_cases(self) -> None:
-        """Test Debye-Waller factor with edge cases.
+        r"""Test Debye-Waller factor with edge cases.
 
-        Tests boundary conditions and special cases:
-        1. Zero MSD (no thermal vibration) should give factor of 1 (no
-           damping) for all q values, representing a perfectly rigid
-           lattice.
-        2. Very large MSD (10 Ų) should give near-zero factors for q > 0,
-           representing complete loss of coherent scattering.
-        3. Negative MSD (physically invalid) should be handled gracefully
-           by clipping to a small positive value, preventing numerical
-           errors.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Debye-Waller
+        factor with edge cases. Existing context from the original test prose:
+        Tests boundary conditions and special cases: 1. Zero MSD (no thermal
+        vibration) should give factor of 1 (no damping) for all q values,
+        representing a perfectly rigid lattice. 2. Very large MSD (10 Ų) should
+        give near-zero factors for q > 0, representing complete loss of
+        coherent scattering. 3. Negative MSD (physically invalid) should be
+        handled gracefully by clipping to a small positive value, preventing
+        numerical errors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
 
@@ -505,14 +748,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     ) -> None:
         r"""Test combined atomic scattering factor.
 
-        Tests the complete atomic scattering factor calculation that
-        combines the Kirkland form factor with Debye-Waller thermal damping.
-        Validates for different elements (Si, Au, H), temperatures (100K,
-        300K, 600K), and surface vs bulk atoms. Verifies that the combined
-        factor is positive, finite, and generally decreases with increasing
-        \|q\| due to both the form factor falloff and thermal damping effects.
-        The 3D q-vectors test that the calculation depends only on \|q\|,
-        not direction.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: combined atomic
+        scattering factor. Existing context from the original test prose: Tests
+        the complete atomic scattering factor calculation that combines the
+        Kirkland form factor with Debye-Waller thermal damping. Validates for
+        different elements (Si, Au, H), temperatures (100K, 300K, 600K), and
+        surface vs bulk atoms. Verifies that the combined factor is positive,
+        finite, and generally decreases with increasing \|q\| due to both the
+        form factor falloff and thermal damping effects. The 3D q-vectors test
+        that the calculation depends only on \|q\|, not direction.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``atomic_number``, ``temperature``, ``is_surface``, so the documented
+        behavior is checked across the cases supplied by pytest, Chex,
+        Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_scattering: Callable[..., Any] = self.variant(
             atomic_scattering_factor
@@ -538,15 +802,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_atomic_scattering_factor_batched(self) -> None:
-        """Test atomic scattering factor with batched inputs.
+        r"""Test atomic scattering factor with batched inputs.
 
-        Verifies that the atomic scattering factor function correctly
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: atomic scattering
+        factor with batched inputs. Existing context from the original test
+        prose: Verifies that the atomic scattering factor function correctly
         handles batched 3D q-vector inputs for efficient vectorized
-        computation. Tests 2D batching (5 independent sets of 6 q-vectors
-        each) and 3D batching (3x4 grid of sets, each with 6 q-vectors).
-        This batching capability is essential for efficient RHEED pattern
+        computation. Tests 2D batching (5 independent sets of 6 q-vectors each)
+        and 3D batching (3x4 grid of sets, each with 6 q-vectors). This
+        batching capability is essential for efficient RHEED pattern
         calculations where multiple detector positions or time steps are
         computed simultaneously.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_scattering: Callable[..., Any] = self.variant(
             atomic_scattering_factor
@@ -565,7 +849,25 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(f_batch_3d, (3, 4, len(self.q_vectors_3d)))
 
     def test_atomic_scattering_factor_defaults_to_lobato(self) -> None:
-        """Test atomic_scattering_factor uses Lobato by default."""
+        r"""Test atomic_scattering_factor uses Lobato by default.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        atomic_scattering_factor uses Lobato by default.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_vector: Float[Array, "3"] = jnp.array([0.5, 0.0, 0.0])
         default_value: Any = atomic_scattering_factor(
             14,
@@ -599,15 +901,34 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_surface_vs_bulk_comparison(self) -> None:
-        """Test that surface atoms have stronger thermal damping.
+        r"""Test that surface atoms have stronger thermal damping.
 
-        Validates that surface atoms exhibit stronger thermal damping than
-        bulk atoms at the same temperature. Tests for multiple elements
-        (C, Si, Cu) at q values of 2 and 4 Å⁻¹. Surface atoms have larger
-        mean square displacement due to reduced coordination, leading to
-        stronger Debye-Waller damping and thus lower scattering factors
-        for q > 0. This effect is crucial for accurate RHEED simulations
-        of surface structures.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface atoms have
+        stronger thermal damping. Existing context from the original test
+        prose: Validates that surface atoms exhibit stronger thermal damping
+        than bulk atoms at the same temperature. Tests for multiple elements
+        (C, Si, Cu) at q values of 2 and 4 Å⁻¹. Surface atoms have larger mean
+        square displacement due to reduced coordination, leading to stronger
+        Debye-Waller damping and thus lower scattering factors for q > 0. This
+        effect is crucial for accurate RHEED simulations of surface structures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_scattering: Callable[..., Any] = self.variant(
             atomic_scattering_factor
@@ -626,19 +947,40 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_jax_transformations_form_factor(self) -> None:
-        """Test JAX transformations on form factor calculations.
+        r"""Test JAX transformations on form factor calculations.
 
-        Validates that form factor calculations are compatible with JAX's
-        functional transformations:
-        1. JIT compilation: Ensures the function can be compiled for
-           performance, verifying identical results between compiled and
-           uncompiled versions.
-        2. vmap: Tests vectorization over atomic numbers, enabling
-           efficient calculation for multiple elements simultaneously.
-        3. grad: Verifies automatic differentiation with respect to q,
-           confirming the gradient is negative (form factor decreases
-           with q), which is essential for optimization and fitting
-           procedures.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JAX
+        transformations on form factor calculations. Existing context from the
+        original test prose: Validates that form factor calculations are
+        compatible with JAX's functional transformations: 1. JIT compilation:
+        Ensures the function can be compiled for performance, verifying
+        identical results between compiled and uncompiled versions. 2. vmap:
+        Tests vectorization over atomic numbers, enabling efficient calculation
+        for multiple elements simultaneously. 3. grad: Verifies automatic
+        differentiation with respect to q, confirming the gradient is negative
+        (form factor decreases with q), which is essential for optimization and
+        fitting procedures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, JIT compilation,
+        vectorization, protecting JAX transform compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_form_factor: Callable[..., Any] = self.variant(
             kirkland_form_factor
@@ -675,19 +1017,40 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_jax_transformations_scattering(self) -> None:
-        """Test JAX transformations on atomic scattering factor.
+        r"""Test JAX transformations on atomic scattering factor.
 
-        Tests advanced JAX transformations on the combined atomic scattering
-        factor:
-        1. vmap over temperatures: Vectorizes calculation across multiple
-           temperatures (100K, 300K, 600K) for the same atom, verifying
-           that higher temperatures produce lower scattering factors due
-           to increased thermal damping.
-        2. Nested vmap: Tests double vectorization over both atomic numbers
-           (C, Si, Cu) and temperatures simultaneously, creating a 3x3
-           grid of calculations. This demonstrates the composability of
-           JAX transformations for complex parameter sweeps in RHEED
-           simulations.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JAX
+        transformations on atomic scattering factor. Existing context from the
+        original test prose: Tests advanced JAX transformations on the combined
+        atomic scattering factor: 1. vmap over temperatures: Vectorizes
+        calculation across multiple temperatures (100K, 300K, 600K) for the
+        same atom, verifying that higher temperatures produce lower scattering
+        factors due to increased thermal damping. 2. Nested vmap: Tests double
+        vectorization over both atomic numbers (C, Si, Cu) and temperatures
+        simultaneously, creating a 3x3 grid of calculations. This demonstrates
+        the composability of JAX transformations for complex parameter sweeps
+        in RHEED simulations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_scattering: Callable[..., Any] = self.variant(
             atomic_scattering_factor
@@ -725,16 +1088,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_physical_consistency(self) -> None:
-        """Test physical consistency of calculations.
+        r"""Test physical consistency of calculations.
 
-        Validates that the combined atomic scattering factor correctly
-        implements the physical relationship: f_total = f_lobato ×
-        exp(-B·q²), where B is related to the mean square displacement.
-        Tests that calculating the components separately (Lobato form
-        factor, MSD, Debye-Waller factor) and multiplying them gives the
-        same result as the combined function. This ensures internal
-        consistency and correct implementation of the thermal damping
-        model in electron scattering.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: physical
+        consistency of calculations. Existing context from the original test
+        prose: Validates that the combined atomic scattering factor correctly
+        implements the physical relationship: f_total = f_lobato × exp(-B·q²),
+        where B is related to the mean square displacement. Tests that
+        calculating the components separately (Lobato form factor, MSD,
+        Debye-Waller factor) and multiplying them gives the same result as the
+        combined function. This ensures internal consistency and correct
+        implementation of the thermal damping model in electron scattering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_form_factor: Callable[..., Any] = self.variant(lobato_form_factor)
         var_dw_factor: Callable[..., Any] = self.variant(debye_waller_factor)
@@ -771,14 +1153,35 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
     ) -> None:
         r"""Test that scattering depends only on \|q\|, not direction.
 
-        Validates the fundamental isotropy of atomic scattering - the
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: scattering depends
+        only on \|q\|, not direction. Existing context from the original test
+        prose: Validates the fundamental isotropy of atomic scattering - the
         scattering factor depends only on the magnitude of momentum transfer
         \|q\|, not its direction. Tests with various q-vectors including zero
-        vector, unit vectors along different axes, random vectors, and
-        large magnitude vectors. Creates rotated versions with the same \|q\|
-        but different directions and verifies identical scattering factors.
-        This isotropy arises from the spherical symmetry of atomic electron
-        density distributions.
+        vector, unit vectors along different axes, random vectors, and large
+        magnitude vectors. Creates rotated versions with the same \|q\| but
+        different directions and verifies identical scattering factors. This
+        isotropy arises from the spherical symmetry of atomic electron density
+        distributions.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``q_vectors``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_scattering: Callable[..., Any] = self.variant(
             atomic_scattering_factor
@@ -807,7 +1210,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
     """Gradient existence and correctness for form factor functions."""
 
     def test_form_factor_grad_q(self) -> None:
-        """Kirkland form factor gradient w.r.t. q is finite and smooth."""
+        r"""Kirkland form factor gradient w.r.t. q is finite and smooth.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Kirkland form
+        factor gradient w.r.t. q is finite and smooth.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
@@ -821,7 +1245,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
             assert jnp.abs(g) > 1e-12
 
     def test_debye_waller_grad_temperature(self) -> None:
-        """DW factor gradient w.r.t. temperature is negative."""
+        r"""DW factor gradient w.r.t. temperature is negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: DW factor gradient
+        w.r.t. temperature is negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def dw_at_temp(temp: scalar_float) -> scalar_float:
             msd: scalar_float = get_mean_square_displacement(
@@ -837,7 +1282,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
         assert g < 0
 
     def test_msd_grad_temperature(self) -> None:
-        """MSD gradient w.r.t. temperature is positive."""
+        r"""MSD gradient w.r.t. temperature is positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: MSD gradient
+        w.r.t. temperature is positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def msd_fn(temp: scalar_float) -> scalar_float:
             return get_mean_square_displacement(
@@ -849,7 +1315,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
         assert g > 0
 
     def test_form_factor_grad_correct(self) -> None:
-        """Kirkland form factor analytical grad matches finite diff."""
+        r"""Kirkland form factor analytical grad matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Kirkland form
+        factor analytical grad matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
@@ -857,7 +1344,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
         check_grads(jax_safe(f), (jnp.float64(2.0),), order=1, atol=1e-3)
 
     def test_debye_waller_grad_correct(self) -> None:
-        """DW factor analytical grad matches finite diff."""
+        r"""DW factor analytical grad matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: DW factor
+        analytical grad matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(temp: scalar_float) -> scalar_float:
             msd: scalar_float = get_mean_square_displacement(
@@ -871,7 +1379,28 @@ class TestFormFactorGradients(chex.TestCase, parameterized.TestCase):
         check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-3)
 
     def test_msd_grad_correct(self) -> None:
-        """MSD analytical grad matches finite diff."""
+        r"""MSD analytical grad matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: MSD analytical
+        grad matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(temp: scalar_float) -> scalar_float:
             return get_mean_square_displacement(
@@ -885,7 +1414,28 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential evaluation for form factors."""
 
     def test_form_factor_vmap_consistent(self) -> None:
-        """Batched form factor matches sequential per-element result."""
+        r"""Batched form factor matches sequential per-element result.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Batched form
+        factor matches sequential per-element result.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(q: scalar_float) -> scalar_float:
             return jnp.squeeze(kirkland_form_factor(14, q))
@@ -896,7 +1446,28 @@ class TestFormFactorVmapConsistency(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)
 
     def test_debye_waller_vmap_consistent(self) -> None:
-        """Batched DW factor matches sequential evaluation."""
+        r"""Batched DW factor matches sequential evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Batched DW factor
+        matches sequential evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_form_factors``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(temp: scalar_float) -> scalar_float:
             msd: scalar_float = get_mean_square_displacement(

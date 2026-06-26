@@ -83,7 +83,25 @@ class TestLoadTiffSequence(chex.TestCase):
         super().tearDown()
 
     def test_multipage_shape(self) -> None:
-        """Multi-page TIFF loads with correct shape."""
+        r"""Multi-page TIFF loads with correct shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multi-page TIFF
+        loads with correct shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         n_frames: int = 5
         _write_multipage_tiff(self.tmp_path / "stack.tif", n_frames)
         seq: Any
@@ -93,14 +111,50 @@ class TestLoadTiffSequence(chex.TestCase):
         self.assertEqual(len(meta), n_frames)
 
     def test_multipage_dtype(self) -> None:
-        """Loaded data is float64 JAX array."""
+        r"""Loaded data is float64 JAX array.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Loaded data is
+        float64 JAX array.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         _write_multipage_tiff(self.tmp_path / "stack.tif", 3)
         seq: Any
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
         self.assertEqual(seq.dtype, jnp.float64)
 
     def test_multipage_values(self) -> None:
-        """Loaded values match written data."""
+        r"""Loaded values match written data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Loaded values
+        match written data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         expected: Float[Array, "..."] = _write_multipage_tiff(
             self.tmp_path / "stack.tif", 3
         )
@@ -111,7 +165,25 @@ class TestLoadTiffSequence(chex.TestCase):
         )
 
     def test_directory_shape(self) -> None:
-        """Directory of TIFFs loads with correct shape."""
+        r"""Directory of TIFFs loads with correct shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Directory of TIFFs
+        loads with correct shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         n_frames: int = 4
         _write_single_frame_tiffs(self.tmp_path / "frames", n_frames)
         seq: Any
@@ -121,7 +193,25 @@ class TestLoadTiffSequence(chex.TestCase):
         self.assertEqual(len(meta), n_frames)
 
     def test_directory_values(self) -> None:
-        """Directory values match written data."""
+        r"""Directory values match written data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Directory values
+        match written data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         expected: Float[Array, "..."] = _write_single_frame_tiffs(
             self.tmp_path / "frames", 3
         )
@@ -132,7 +222,25 @@ class TestLoadTiffSequence(chex.TestCase):
         )
 
     def test_metadata_indices(self) -> None:
-        """Frame indices are sequential starting from 0."""
+        r"""Frame indices are sequential starting from 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Frame indices are
+        sequential starting from 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         n_frames: int = 4
         _write_multipage_tiff(self.tmp_path / "stack.tif", n_frames)
         meta: Any
@@ -141,7 +249,25 @@ class TestLoadTiffSequence(chex.TestCase):
         self.assertEqual(indices, list(range(n_frames)))
 
     def test_single_frame_file(self) -> None:
-        """Single-frame TIFF loads as (1, H, W)."""
+        r"""Single-frame TIFF loads as (1, H, W).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Single-frame TIFF
+        loads as (1, H, W).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 42.0
         tifffile.imwrite(str(self.tmp_path / "single.tif"), data)
         seq: Any
@@ -151,32 +277,122 @@ class TestLoadTiffSequence(chex.TestCase):
         self.assertEqual(len(meta), 1)
 
     def test_file_not_found(self) -> None:
-        """Raises FileNotFoundError for missing path."""
+        r"""Raises FileNotFoundError for missing path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Raises
+        FileNotFoundError for missing path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError):
             load_tiff_sequence("/nonexistent/path.tif")
 
     def test_empty_directory(self) -> None:
-        """Raises ValueError for directory with no TIFFs."""
+        r"""Raises ValueError for directory with no TIFFs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Raises ValueError
+        for directory with no TIFFs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         empty_dir: Any = self.tmp_path / "empty"
         empty_dir.mkdir()
         with pytest.raises(ValueError, match="No TIFF files found"):
             load_tiff_sequence(empty_dir)
 
     def test_invalid_sort_by(self) -> None:
-        """Raises ValueError for invalid sort_by."""
+        r"""Raises ValueError for invalid sort_by.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Raises ValueError
+        for invalid sort_by.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         _write_multipage_tiff(self.tmp_path / "stack.tif", 2)
         with pytest.raises(ValueError, match="sort_by must be"):
             load_tiff_sequence(self.tmp_path / "stack.tif", sort_by="invalid")
 
     def test_corrupt_file_raises_runtime_error(self) -> None:
-        """A present but undecodable TIFF file raises RuntimeError."""
+        r"""A present but undecodable TIFF file raises RuntimeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A present but
+        undecodable TIFF file raises RuntimeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         corrupt: Any = self.tmp_path / "corrupt.tif"
         corrupt.write_bytes(b"not a real tiff payload")
         with pytest.raises(RuntimeError, match="Failed to decode TIFF"):
             load_tiff_sequence(corrupt)
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in loaded data."""
+        r"""No NaN or Inf in loaded data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        loaded data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         _write_multipage_tiff(self.tmp_path / "stack.tif", 3)
         seq: Any
         seq, _ = load_tiff_sequence(self.tmp_path / "stack.tif")
@@ -203,7 +419,25 @@ class TestExtractFrameMetadata(chex.TestCase):
         super().tearDown()
 
     def test_returns_named_tuple(self) -> None:
-        """Returns a FrameMetadata instance."""
+        r"""Returns a FrameMetadata instance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Returns a
+        FrameMetadata instance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         fpath: Path = self.tmp_path / "meta.tif"
         tifffile.imwrite(str(fpath), data)
@@ -214,7 +448,25 @@ class TestExtractFrameMetadata(chex.TestCase):
         self.assertEqual(meta.frame_index, 7)
 
     def test_description_string(self) -> None:
-        """Description is a string (possibly empty)."""
+        r"""Description is a string (possibly empty).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Description is a
+        string (possibly empty).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         fpath: Path = self.tmp_path / "desc.tif"
         tifffile.imwrite(str(fpath), data)
@@ -231,13 +483,49 @@ class TestNormalizeSequence(chex.TestCase):
     """
 
     def test_shape_preserved(self) -> None:
-        """Output shape matches input shape."""
+        r"""Output shape matches input shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches input shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         seq: Float[Array, "..."] = jnp.ones((5, H, W)) * 500.0
         result: Float[Array, "..."] = normalize_sequence(seq)
         chex.assert_shape(result, (5, H, W))
 
     def test_output_range(self) -> None:
-        """Each frame is normalized to [0, 1]."""
+        r"""Each frame is normalized to [0, 1].
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Each frame is
+        normalized to [0, 1].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         rng: np.random.Generator = np.random.default_rng(99)
         np_data: Float[NDArray, "frames height width"] = rng.uniform(
             10.0, 1000.0, size=(5, H, W)
@@ -251,7 +539,25 @@ class TestNormalizeSequence(chex.TestCase):
             chex.assert_trees_all_close(jnp.max(frame), 1.0, atol=1e-10)
 
     def test_with_background(self) -> None:
-        """Background subtraction reduces values."""
+        r"""Background subtraction reduces values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Background
+        subtraction reduces values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         seq: Float[Array, "..."] = jnp.ones((3, H, W)) * 500.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 200.0
         result: Float[Array, "..."] = normalize_sequence(seq, background=bg)
@@ -259,7 +565,25 @@ class TestNormalizeSequence(chex.TestCase):
         chex.assert_tree_all_finite(result)
 
     def test_with_flat_field(self) -> None:
-        """Flat-field correction applied without errors."""
+        r"""Flat-field correction applied without errors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Flat-field
+        correction applied without errors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         rng: np.random.Generator = np.random.default_rng(99)
         np_data: Float[NDArray, "frames height width"] = rng.uniform(
             10.0, 1000.0, size=(3, H, W)
@@ -271,7 +595,25 @@ class TestNormalizeSequence(chex.TestCase):
         chex.assert_tree_all_finite(result)
 
     def test_with_all_corrections(self) -> None:
-        """Full correction pipeline works."""
+        r"""Full correction pipeline works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Full correction
+        pipeline works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         rng: np.random.Generator = np.random.default_rng(99)
         np_data: Float[NDArray, "frames height width"] = rng.uniform(
             100.0, 1000.0, size=(3, H, W)
@@ -288,14 +630,50 @@ class TestNormalizeSequence(chex.TestCase):
         self.assertTrue(jnp.all(result <= 1.0))
 
     def test_nonnegative(self) -> None:
-        """Output is non-negative even when background exceeds signal."""
+        r"""Output is non-negative even when background exceeds signal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output is
+        non-negative even when background exceeds signal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         seq: Float[Array, "..."] = jnp.ones((2, H, W)) * 10.0
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 100.0
         result: Float[Array, "..."] = normalize_sequence(seq, background=bg)
         self.assertTrue(jnp.all(result >= 0.0))
 
     def test_uniform_frames(self) -> None:
-        """Uniform frames normalize to zero (no range)."""
+        r"""Uniform frames normalize to zero (no range).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Uniform frames
+        normalize to zero (no range).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         seq: Float[Array, "..."] = jnp.ones((3, H, W)) * 42.0
         result: Float[Array, "..."] = normalize_sequence(seq)
         chex.assert_trees_all_close(result, jnp.zeros((3, H, W)), atol=1e-6)
@@ -308,14 +686,50 @@ class TestDetectBeamCenter(chex.TestCase):
     """
 
     def test_shape(self) -> None:
-        """Output is a 2-element array."""
+        r"""Output is a 2-element array.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output is a
+        2-element array.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1000.0)
         center: Float[Array, "..."] = detect_beam_center(img)
         chex.assert_shape(center, (2,))
 
     def test_centered_spot(self) -> None:
-        """Detects a centered spot correctly."""
+        r"""Detects a centered spot correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Detects a centered
+        spot correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         row_center: Float[Array, "..."] = H // 2
         col_center: Float[Array, "..."] = W // 2
         y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
@@ -334,7 +748,25 @@ class TestDetectBeamCenter(chex.TestCase):
         )
 
     def test_offset_spot(self) -> None:
-        """Detects an off-center spot correctly."""
+        r"""Detects an off-center spot correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Detects an
+        off-center spot correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         row_center: Float[Array, "..."] = H // 4
         col_center: Float[Array, "..."] = 3 * W // 4
         y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
@@ -353,13 +785,49 @@ class TestDetectBeamCenter(chex.TestCase):
         )
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in output."""
+        r"""No NaN or Inf in output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.ones((H, W)) * 50.0
         center: Float[Array, "..."] = detect_beam_center(img)
         chex.assert_tree_all_finite(center)
 
     def test_noisy_spot(self) -> None:
-        """Detects spot in noisy image."""
+        r"""Detects spot in noisy image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Detects spot in
+        noisy image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         row_center: Float[Array, "..."] = H // 2
         col_center: Float[Array, "..."] = W // 2
         y: Float[Array, "..."] = jnp.arange(H, dtype=jnp.float64)
@@ -403,7 +871,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         super().tearDown()
 
     def test_returns_rheed_image(self) -> None:
-        """Returns a RHEEDImage instance."""
+        r"""Returns a RHEEDImage instance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Returns a
+        RHEEDImage instance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: Any = load_tiff_as_rheed_image(
@@ -415,7 +901,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         self.assertIsInstance(img, RHEEDImage)
 
     def test_image_shape(self) -> None:
-        """Image array has correct shape."""
+        r"""Image array has correct shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Image array has
+        correct shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: Any = load_tiff_as_rheed_image(
@@ -427,7 +931,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         chex.assert_shape(img.img_array, (H, W))
 
     def test_wavelength_correct(self) -> None:
-        """Electron wavelength is physically reasonable for 20 keV."""
+        r"""Electron wavelength is physically reasonable for 20 keV.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Electron
+        wavelength is physically reasonable for 20 keV.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: Any = load_tiff_as_rheed_image(
@@ -441,7 +963,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         )
 
     def test_with_background(self) -> None:
-        """Background subtraction is applied."""
+        r"""Background subtraction is applied.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Background
+        subtraction is applied.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32) * 500.0
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         bg: Float[Array, "..."] = jnp.ones((H, W)) * 200.0
@@ -459,7 +999,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         )
 
     def test_multipage_takes_first(self) -> None:
-        """Multi-page TIFF uses only the first frame."""
+        r"""Multi-page TIFF uses only the first frame.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multi-page TIFF
+        uses only the first frame.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.stack(
             [
                 np.ones((H, W), dtype=np.float32) * 100.0,
@@ -484,7 +1042,25 @@ class TestLoadTiffAsRheedImage(chex.TestCase):
         )
 
     def test_parameters_stored(self) -> None:
-        """Beam and detector parameters are stored correctly."""
+        r"""Beam and detector parameters are stored correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam and detector
+        parameters are stored correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         data: Float[NDArray, "..."] = np.ones((H, W), dtype=np.float32)
         tifffile.imwrite(str(self.tmp_path / "frame.tif"), data)
         img: Any = load_tiff_as_rheed_image(
@@ -503,7 +1079,28 @@ class TestGradients(chex.TestCase):
     """Gradient tests for tiff functions."""
 
     def test_grad_through_normalize(self) -> None:
-        """jax.grad flows through normalize_sequence."""
+        r"""jax.grad flows through normalize_sequence.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad flows
+        through normalize_sequence.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss(scale: scalar_float) -> scalar_float:
             seq: Float[Array, "3 H W"] = (
@@ -516,7 +1113,28 @@ class TestGradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_detect_beam_center(self) -> None:
-        """jax.grad flows through detect_beam_center."""
+        r"""jax.grad flows through detect_beam_center.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad flows
+        through detect_beam_center.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss(peak_row: scalar_float) -> scalar_float:
             y: Float[Array, "H"] = jnp.arange(H, dtype=jnp.float64)

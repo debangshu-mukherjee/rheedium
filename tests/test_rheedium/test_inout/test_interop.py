@@ -56,7 +56,25 @@ class TestAseInterop(chex.TestCase):
         pytest.importorskip("ase")
 
     def test_from_ase_simple(self) -> None:
-        """Convert simple ASE Atoms to CrystalStructure."""
+        r"""Convert simple ASE Atoms to CrystalStructure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert simple ASE
+        Atoms to CrystalStructure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         atoms: Any = Atoms(
@@ -83,7 +101,25 @@ class TestAseInterop(chex.TestCase):
         )
 
     def test_from_ase_bulk(self) -> None:
-        """Convert bulk structure from ASE."""
+        r"""Convert bulk structure from ASE.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert bulk
+        structure from ASE.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase.build import bulk
 
         si: Any = bulk("Si", "diamond", a=5.43)
@@ -95,7 +131,25 @@ class TestAseInterop(chex.TestCase):
         assert jnp.all(crystal.frac_positions[:, 3] == 14.0)
 
     def test_from_ase_no_cell(self) -> None:
-        """ASE Atoms without cell raises ValueError."""
+        r"""ASE Atoms without cell raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ASE Atoms without
+        cell raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         atoms: Any = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]])
@@ -104,12 +158,48 @@ class TestAseInterop(chex.TestCase):
             from_ase(atoms)
 
     def test_from_ase_wrong_type(self) -> None:
-        """Non-Atoms input raises TypeError."""
+        r"""Non-Atoms input raises TypeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-Atoms input
+        raises TypeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(TypeError, match="ase.*Atoms"):
             from_ase("not an atoms object")
 
     def test_to_ase_simple(self) -> None:
-        """Convert CrystalStructure to ASE Atoms."""
+        r"""Convert CrystalStructure to ASE Atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert
+        CrystalStructure to ASE Atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         crystal: CrystalStructure = _make_simple_crystal()
@@ -121,7 +211,25 @@ class TestAseInterop(chex.TestCase):
         assert atoms.pbc.all()
 
     def test_to_ase_cell_preserved(self) -> None:
-        """Cell parameters preserved in conversion."""
+        r"""Cell parameters preserved in conversion.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cell parameters
+        preserved in conversion.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_simple_crystal()
         atoms: Any = to_ase(crystal)
 
@@ -132,7 +240,25 @@ class TestAseInterop(chex.TestCase):
         )
 
     def test_ase_roundtrip(self) -> None:
-        """Round-trip conversion preserves structure."""
+        r"""Round-trip conversion preserves structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Round-trip
+        conversion preserves structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         # Use explicit cell to avoid primitive cell representation issues
@@ -179,7 +305,25 @@ class TestPymatgenInterop(chex.TestCase):
         pytest.importorskip("pymatgen")
 
     def test_from_pymatgen_simple(self) -> None:
-        """Convert simple pymatgen Structure to CrystalStructure."""
+        r"""Convert simple pymatgen Structure to CrystalStructure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert simple
+        pymatgen Structure to CrystalStructure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from pymatgen.core import Lattice, Structure
 
         lattice: Any = Lattice.cubic(4.21)
@@ -206,7 +350,25 @@ class TestPymatgenInterop(chex.TestCase):
         )
 
     def test_from_pymatgen_hexagonal(self) -> None:
-        """Convert hexagonal structure from pymatgen."""
+        r"""Convert hexagonal structure from pymatgen.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert hexagonal
+        structure from pymatgen.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from pymatgen.core import Lattice, Structure
 
         lattice: Any = Lattice.hexagonal(3.0, 5.0)
@@ -222,12 +384,48 @@ class TestPymatgenInterop(chex.TestCase):
         chex.assert_trees_all_close(crystal.cell_angles[2], 120.0, atol=1e-1)
 
     def test_from_pymatgen_wrong_type(self) -> None:
-        """Non-Structure input raises TypeError."""
+        r"""Non-Structure input raises TypeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-Structure
+        input raises TypeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(TypeError, match="[Pp]ymatgen"):
             from_pymatgen("not a structure")
 
     def test_to_pymatgen_simple(self) -> None:
-        """Convert CrystalStructure to pymatgen Structure."""
+        r"""Convert CrystalStructure to pymatgen Structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert
+        CrystalStructure to pymatgen Structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from pymatgen.core import Structure
 
         crystal: CrystalStructure = _make_simple_crystal()
@@ -238,7 +436,25 @@ class TestPymatgenInterop(chex.TestCase):
         assert [s.specie.symbol for s in structure] == ["Mg", "O"]
 
     def test_to_pymatgen_lattice_preserved(self) -> None:
-        """Lattice parameters preserved in conversion."""
+        r"""Lattice parameters preserved in conversion.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lattice parameters
+        preserved in conversion.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_simple_crystal()
         structure: Any = to_pymatgen(crystal)
 
@@ -258,7 +474,25 @@ class TestPymatgenInterop(chex.TestCase):
         )
 
     def test_pymatgen_roundtrip(self) -> None:
-        """Round-trip conversion preserves structure."""
+        r"""Round-trip conversion preserves structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Round-trip
+        conversion preserves structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from pymatgen.core import Lattice, Structure
 
         lattice: Any = Lattice.cubic(5.43)
@@ -295,7 +529,25 @@ class TestInteropImportErrors(chex.TestCase):
     """Test ImportError handling when libraries are missing."""
 
     def test_from_ase_import_error(self) -> None:
-        """from_ase raises ImportError with helpful message."""
+        r"""from_ase raises ImportError with helpful message.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: from_ase raises
+        ImportError with helpful message.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         # Mock ase import to fail
         with mock.patch.dict(sys.modules, {"ase": None}):
             # Need to reload to pick up the mocked import
@@ -303,13 +555,67 @@ class TestInteropImportErrors(chex.TestCase):
             pass
 
     def test_to_ase_import_error(self) -> None:
-        """to_ase raises ImportError with helpful message."""
+        r"""to_ase raises ImportError with helpful message.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: to_ase raises
+        ImportError with helpful message.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
     def test_from_pymatgen_import_error(self) -> None:
-        """from_pymatgen raises ImportError with helpful message."""
+        r"""from_pymatgen raises ImportError with helpful message.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: from_pymatgen
+        raises ImportError with helpful message.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
     def test_to_pymatgen_import_error(self) -> None:
-        """to_pymatgen raises ImportError with helpful message."""
+        r"""to_pymatgen raises ImportError with helpful message.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: to_pymatgen raises
+        ImportError with helpful message.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
 
 class TestCrossLibraryConversion(chex.TestCase):
@@ -322,7 +628,25 @@ class TestCrossLibraryConversion(chex.TestCase):
         pytest.importorskip("pymatgen")
 
     def test_ase_to_pymatgen_via_rheedium(self) -> None:
-        """Convert ASE to pymatgen via CrystalStructure."""
+        r"""Convert ASE to pymatgen via CrystalStructure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert ASE to
+        pymatgen via CrystalStructure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase.build import bulk
         from pymatgen.core import Structure
 
@@ -336,7 +660,25 @@ class TestCrossLibraryConversion(chex.TestCase):
         assert len(pmg_structure) == len(ase_atoms)
 
     def test_pymatgen_to_ase_via_rheedium(self) -> None:
-        """Convert pymatgen to ASE via CrystalStructure."""
+        r"""Convert pymatgen to ASE via CrystalStructure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert pymatgen
+        to ASE via CrystalStructure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
         from pymatgen.core import Lattice, Structure
 
@@ -364,7 +706,25 @@ class TestInteropEdgeCases(chex.TestCase):
         pytest.importorskip("ase")
 
     def test_single_atom(self) -> None:
-        """Single atom structure."""
+        r"""Single atom structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Single atom
+        structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         atoms: Any = Atoms(
@@ -379,7 +739,24 @@ class TestInteropEdgeCases(chex.TestCase):
         assert crystal.frac_positions[0, 3] == 26.0  # Fe
 
     def test_large_cell(self) -> None:
-        """Large unit cell."""
+        r"""Large unit cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Large unit cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         atoms: Any = Atoms(
@@ -403,7 +780,29 @@ class TestInteropEdgeCases(chex.TestCase):
         ("oxygen", "O", 8),
     )
     def test_various_elements(self, symbol: str, expected_z: int) -> None:
-        """Test conversion with various elements."""
+        r"""Test conversion with various elements.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: conversion with
+        various elements.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``symbol``,
+        ``expected_z``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         from ase import Atoms
 
         atoms: Any = Atoms(

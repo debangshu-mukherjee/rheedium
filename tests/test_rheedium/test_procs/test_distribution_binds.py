@@ -21,7 +21,25 @@ class TestDistributionBindHelpers(chex.TestCase):
     """Producer-owned bind semantics for generic Distribution axes."""
 
     def test_kinematic_beam_axis_maps_sample_to_geometry_deltas(self) -> None:
-        """Beam-like axes perturb theta, phi, and voltage."""
+        r"""Beam-like axes perturb theta, phi, and voltage.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam-like axes
+        perturb theta, phi, and voltage.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_distribution_binds``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution = create_distribution(
             samples=jnp.array([[1.0e-3, -2.0e-3, 4.0]]),
             weights=jnp.array([1.0]),
@@ -45,7 +63,25 @@ class TestDistributionBindHelpers(chex.TestCase):
         assert update.domain_size_angstrom is None
 
     def test_kinematic_grain_axis_carries_orientation_and_size(self) -> None:
-        """Grain axes expose both orientation and finite-domain size."""
+        r"""Grain axes expose both orientation and finite-domain size.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Grain axes expose
+        both orientation and finite-domain size.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_distribution_binds``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution = create_distribution(
             samples=jnp.array([[5.0, 80.0]]),
             weights=jnp.array([1.0]),
@@ -66,7 +102,25 @@ class TestDistributionBindHelpers(chex.TestCase):
         chex.assert_trees_all_close(update.domain_size_angstrom, 80.0)
 
     def test_multislice_size_axis_carries_domain_size(self) -> None:
-        """Multislice size axes request a PotentialSlices domain envelope."""
+        r"""Multislice size axes request a PotentialSlices domain envelope.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multislice size
+        axes request a PotentialSlices domain envelope.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_distribution_binds``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution = create_distribution(
             samples=jnp.array([[40.0]]),
             weights=jnp.array([1.0]),
@@ -87,7 +141,25 @@ class TestDistributionBindHelpers(chex.TestCase):
         chex.assert_trees_all_close(update.domain_size_angstrom, 40.0)
 
     def test_multislice_unknown_axis_still_fails_loudly(self) -> None:
-        """Unregistered multislice axes still fail before binding."""
+        r"""Unregistered multislice axes still fail before binding.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Unregistered
+        multislice axes still fail before binding.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_distribution_binds``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution = create_distribution(
             samples=jnp.array([[40.0]]),
             weights=jnp.array([1.0]),

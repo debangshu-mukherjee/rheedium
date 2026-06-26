@@ -30,7 +30,25 @@ class TestExportForward(chex.TestCase):
     """
 
     def test_symbolic_axis_round_trips(self) -> None:
-        """One artifact serves several sizes of a symbolic leading axis."""
+        r"""One artifact serves several sizes of a symbolic leading axis.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: One artifact
+        serves several sizes of a symbolic leading axis.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         (n,) = jax.export.symbolic_shape("n")
         exported: jax.export.Exported = export_forward(
             _sum_of_squares, jax.ShapeDtypeStruct((n,), jnp.float64)
@@ -42,11 +60,28 @@ class TestExportForward(chex.TestCase):
             chex.assert_trees_all_close(result, jnp.sum(values**2))
 
     def test_host_callback_raises_export_error(self) -> None:
-        """Equinox runtime checks (host callbacks) raise ``ExportError``.
+        r"""Equinox runtime checks (host callbacks) raise ``ExportError``.
 
-        Mirrors the ``checked_*`` simulators: the check operates on a
-        concrete-shaped quantity, so export reaches the unserializable
-        host-callback rather than a symbolic-shape lowering error.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Equinox runtime
+        checks (host callbacks) raise ``ExportError``. Existing context from
+        the original test prose: Mirrors the ``checked_*`` simulators: the
+        check operates on a concrete-shaped quantity, so export reaches the
+        unserializable host-callback rather than a symbolic-shape lowering
+        error.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
 
         def checked(x: Float[Array, "4"]) -> Float[Array, "4"]:
@@ -57,7 +92,25 @@ class TestExportForward(chex.TestCase):
             export_forward(checked, jax.ShapeDtypeStruct((4,), jnp.float64))
 
     def test_symbolic_fft_raises_export_error(self) -> None:
-        """A symbolic FFT transform size raises ``ExportError``."""
+        r"""A symbolic FFT transform size raises ``ExportError``.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A symbolic FFT
+        transform size raises ``ExportError``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def fft_forward(x: Float[Array, "h w"]) -> Float[Array, "h w"]:
             return jnp.abs(jnp.fft.fft2(x))
@@ -69,7 +122,25 @@ class TestExportForward(chex.TestCase):
             )
 
     def test_concrete_fft_exports(self) -> None:
-        """A concrete FFT grid exports and runs (the bucketing path)."""
+        r"""A concrete FFT grid exports and runs (the bucketing path).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A concrete FFT
+        grid exports and runs (the bucketing path).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def fft_forward(x: Float[Array, "h w"]) -> Float[Array, "h w"]:
             return jnp.abs(jnp.fft.fft2(x))
@@ -92,7 +163,25 @@ class TestSerializeRoundTrip(chex.TestCase):
     """
 
     def test_serialize_then_deserialize(self) -> None:
-        """A serialized artifact reloads and computes identical results."""
+        r"""A serialized artifact reloads and computes identical results.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A serialized
+        artifact reloads and computes identical results.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         (n,) = jax.export.symbolic_shape("n")
         exported: jax.export.Exported = export_forward(
             _sum_of_squares, jax.ShapeDtypeStruct((n,), jnp.float64)
@@ -123,15 +212,73 @@ class TestBucketizeGrid(chex.TestCase):
         request_hw: tuple[int, int],
         expected: tuple[int, int],
     ) -> None:
-        """Each dimension snaps to the smallest bucket that fits it."""
+        r"""Each dimension snaps to the smallest bucket that fits it.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Each dimension
+        snaps to the smallest bucket that fits it.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``request_hw``, ``expected``, so the documented behavior is checked
+        across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert bucketize_grid(*request_hw, (1024, 256, 512)) == expected
 
     def test_exceeds_largest_bucket_raises(self) -> None:
-        """A request larger than every bucket raises ``ValueError``."""
+        r"""A request larger than every bucket raises ``ValueError``.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A request larger
+        than every bucket raises ``ValueError``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="exceeds the largest bucket"):
             bucketize_grid(2048, 256, (256, 512, 1024))
 
     def test_empty_buckets_raises(self) -> None:
-        """An empty bucket list raises ``ValueError``."""
+        r"""An empty bucket list raises ``ValueError``.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: An empty bucket
+        list raises ``ValueError``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_exporting``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="must be non-empty"):
             bucketize_grid(256, 256, ())

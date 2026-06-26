@@ -43,40 +43,158 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         ("x_10p0", 10.0, 0.0000177801),
     )
     def test_known_values(self, x_val: float, expected: float) -> None:
-        """K_0 matches scipy.special.k0 at representative points."""
+        r"""K_0 matches scipy.special.k0 at representative points.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0 matches
+        scipy.special.k0 at representative points.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``x_val``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = bessel_k0(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
 
     def test_positive_output(self) -> None:
-        """K_0(x) > 0 for all x > 0."""
+        r"""K_0(x) > 0 for all x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) > 0 for all
+        x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
         result: Float[Array, "..."] = bessel_k0(x)
         chex.assert_tree_all_finite(result)
         assert jnp.all(result > 0)
 
     def test_monotone_decreasing(self) -> None:
-        """K_0(x) is strictly decreasing for x > 0."""
+        r"""K_0(x) is strictly decreasing for x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) is strictly
+        decreasing for x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
         result: Float[Array, "..."] = bessel_k0(x)
         diffs: Float[Array, "..."] = jnp.diff(result)
         assert jnp.all(diffs < 0)
 
     def test_batch_shapes(self) -> None:
-        """Preserves arbitrary batch dimensions."""
+        r"""Preserves arbitrary batch dimensions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Preserves
+        arbitrary batch dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_1d: Float[Array, "..."] = jnp.linspace(0.1, 5.0, 50)
         x_2d: Float[Array, "..."] = jnp.ones((8, 16)) * 2.0
         chex.assert_shape(bessel_k0(x_1d), (50,))
         chex.assert_shape(bessel_k0(x_2d), (8, 16))
 
     def test_jit_matches_eager(self) -> None:
-        """JIT-compiled output matches eager evaluation."""
+        r"""JIT-compiled output matches eager evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT-compiled
+        output matches eager evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.array([0.5, 1.0, 2.0, 5.0])
         eager: Any = bessel_k0(x)
         jitted: Callable[..., Any] = jax.jit(bessel_k0)(x)
         chex.assert_trees_all_close(eager, jitted, rtol=1e-12)
 
     def test_gradient_finite(self) -> None:
-        """Gradient of K_0 w.r.t. x is finite and non-zero."""
+        r"""Gradient of K_0 w.r.t. x is finite and non-zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient of K_0
+        w.r.t. x is finite and non-zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(
             lambda x: jnp.sum(bessel_k0(x))
         )
@@ -85,7 +203,27 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         assert jnp.abs(grad_val) > 0
 
     def test_gradient_equals_negative_k1(self) -> None:
-        """dK_0/dx = -K_1(x)."""
+        r"""dK_0/dx = -K_1(x).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: dK_0/dx = -K_1(x).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, vectorization, protecting
+        JAX transform compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.array([0.5, 1.0, 2.0, 5.0])
         grad_fn: Callable[[Float[Array, "points"]], Float[Array, "points"]] = (
             jax.vmap(jax.grad(lambda xi: bessel_k0(xi[None])[0]))
@@ -95,7 +233,28 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(grad_vals, neg_k1_vals, rtol=1e-4)
 
     def test_vmap(self) -> None:
-        """Vmap over batch dimension works correctly."""
+        r"""Vmap over batch dimension works correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vmap over batch
+        dimension works correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.array([0.5, 1.0, 2.0, 5.0])
         vmapped: Callable[[Float[Array, "points"]], Float[Array, "points"]] = (
             jax.vmap(lambda xi: bessel_k0(xi[None])[0])
@@ -120,33 +279,130 @@ class TestBesselK1(chex.TestCase, parameterized.TestCase):
         ("x_10p0", 10.0, 0.0000186488),
     )
     def test_known_values(self, x_val: float, expected: float) -> None:
-        """K_1 matches scipy.special.k1 at representative points."""
+        r"""K_1 matches scipy.special.k1 at representative points.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_1 matches
+        scipy.special.k1 at representative points.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``x_val``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = bessel_k1(jnp.array(x_val))
         chex.assert_trees_all_close(result, expected, rtol=1e-5)
 
     def test_positive_output(self) -> None:
-        """K_1(x) > 0 for all x > 0."""
+        r"""K_1(x) > 0 for all x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_1(x) > 0 for all
+        x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
         result: Float[Array, "..."] = bessel_k1(x)
         chex.assert_tree_all_finite(result)
         assert jnp.all(result > 0)
 
     def test_monotone_decreasing(self) -> None:
-        """K_1(x) is strictly decreasing for x > 0."""
+        r"""K_1(x) is strictly decreasing for x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_1(x) is strictly
+        decreasing for x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.linspace(0.01, 20.0, 200)
         result: Float[Array, "..."] = bessel_k1(x)
         diffs: Float[Array, "..."] = jnp.diff(result)
         assert jnp.all(diffs < 0)
 
     def test_batch_shapes(self) -> None:
-        """Preserves arbitrary batch dimensions."""
+        r"""Preserves arbitrary batch dimensions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Preserves
+        arbitrary batch dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_1d: Float[Array, "..."] = jnp.linspace(0.1, 5.0, 50)
         x_2d: Float[Array, "..."] = jnp.ones((8, 16)) * 2.0
         chex.assert_shape(bessel_k1(x_1d), (50,))
         chex.assert_shape(bessel_k1(x_2d), (8, 16))
 
     def test_gradient_finite(self) -> None:
-        """Gradient of K_1 w.r.t. x is finite and non-zero."""
+        r"""Gradient of K_1 w.r.t. x is finite and non-zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient of K_1
+        w.r.t. x is finite and non-zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         grad_fn: Callable[[scalar_float], scalar_float] = jax.grad(
             lambda x: jnp.sum(bessel_k1(x))
         )
@@ -155,7 +411,25 @@ class TestBesselK1(chex.TestCase, parameterized.TestCase):
         assert jnp.abs(grad_val) > 0
 
     def test_k1_greater_than_k0(self) -> None:
-        """K_1(x) > K_0(x) for all x > 0."""
+        r"""K_1(x) > K_0(x) for all x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_1(x) > K_0(x)
+        for all x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.linspace(0.01, 10.0, 100)
         assert jnp.all(bessel_k1(x) > bessel_k0(x))
 
@@ -164,7 +438,25 @@ class TestBesselBranchTransition(chex.TestCase):
     """Test continuity at x=2 where polynomial branches switch."""
 
     def test_k0_continuity_at_branch(self) -> None:
-        """K_0 is continuous across the x=2 branch point."""
+        r"""K_0 is continuous across the x=2 branch point.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0 is continuous
+        across the x=2 branch point.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_below: scalar_float = jnp.array(1.999)
         x_above: scalar_float = jnp.array(2.001)
         k0_below: Any = bessel_k0(x_below)
@@ -172,7 +464,25 @@ class TestBesselBranchTransition(chex.TestCase):
         chex.assert_trees_all_close(k0_below, k0_above, rtol=5e-3)
 
     def test_k1_continuity_at_branch(self) -> None:
-        """K_1 is continuous across the x=2 branch point."""
+        r"""K_1 is continuous across the x=2 branch point.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_1 is continuous
+        across the x=2 branch point.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_below: scalar_float = jnp.array(1.999)
         x_above: scalar_float = jnp.array(2.001)
         k1_below: Any = bessel_k1(x_below)
@@ -198,14 +508,54 @@ class TestBesselIvSeries(chex.TestCase):
         ("v0p25_x0p5", 0.25, 0.5),
     )
     def test_iv_series_against_scipy(self, v: float, x: float) -> None:
-        """I_v(x) series expansion matches scipy."""
+        r"""I_v(x) series expansion matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: I_v(x) series
+        expansion matches scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_iv_series(v, x_arr, x_arr.dtype)
         expected: Float[Array, "..."] = scipy_iv(v, x)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
 
     def test_iv_series_vectorized(self) -> None:
-        """I_v(x) supports vectorized input."""
+        r"""I_v(x) supports vectorized input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: I_v(x) supports
+        vectorized input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5, 2.0], dtype=jnp.float64
         )
@@ -218,7 +568,25 @@ class TestBesselIvSeries(chex.TestCase):
         chex.assert_trees_all_close(result, expected, rtol=1e-6)
 
     def test_iv_series_negative_order(self) -> None:
-        """Negative orders work for the K_v path."""
+        r"""Negative orders work for the K_v path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative orders
+        work for the K_v path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_iv_series(
             -0.5, x_arr, x_arr.dtype
@@ -227,7 +595,25 @@ class TestBesselIvSeries(chex.TestCase):
         chex.assert_trees_all_close(result[0], expected, rtol=1e-5)
 
     def test_iv_series_output_shape(self) -> None:
-        """Output shape matches input shape."""
+        r"""Output shape matches input shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches input shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64
         )
@@ -250,13 +636,53 @@ class TestBesselK0Series(chex.TestCase):
         ("x2", 2.0, 0.11389387274953341),
     )
     def test_k0_series_against_scipy(self, x: float, expected: float) -> None:
-        """K_0(x) series expansion matches scipy."""
+        r"""K_0(x) series expansion matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) series
+        expansion matches scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_k0_series(x_arr, x_arr.dtype)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_k0_series_vectorized(self) -> None:
-        """K_0(x) supports vectorized input."""
+        r"""K_0(x) supports vectorized input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) supports
+        vectorized input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5, 2.0], dtype=jnp.float64
         )
@@ -267,7 +693,25 @@ class TestBesselK0Series(chex.TestCase):
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_k0_series_output_shape(self) -> None:
-        """Output shape matches input shape."""
+        r"""Output shape matches input shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches input shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [1.5, 2.0]], dtype=jnp.float64
         )
@@ -275,7 +719,25 @@ class TestBesselK0Series(chex.TestCase):
         chex.assert_shape(result, (2, 2))
 
     def test_k0_series_positive_values(self) -> None:
-        """K_0(x) stays positive for x > 0."""
+        r"""K_0(x) stays positive for x > 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) stays
+        positive for x > 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.1, 0.5, 1.0, 2.0], dtype=jnp.float64
         )
@@ -290,7 +752,24 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
     """
 
     def test_kn_recurrence_n0(self) -> None:
-        """n=0 returns K_0."""
+        r"""n=0 returns K_0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: n=0 returns K_0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
         k0: Float[Array, "..."] = jnp.array(
             [0.42102443824070834], dtype=jnp.float64
@@ -304,7 +783,24 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, k0, atol=1e-10)
 
     def test_kn_recurrence_n1(self) -> None:
-        """n=1 returns K_1."""
+        r"""n=1 returns K_1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: n=1 returns K_1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
         k0: Float[Array, "..."] = jnp.array(
             [0.42102443824070834], dtype=jnp.float64
@@ -327,7 +823,29 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
     def test_kn_recurrence_higher_orders(
         self, n: int, x: float, expected: float
     ) -> None:
-        """Higher-order recurrence matches scipy."""
+        r"""Higher-order recurrence matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher-order
+        recurrence matches scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         k0: Float[Array, "..."] = jnp.array(
             [scipy_kv(0, x)], dtype=jnp.float64
@@ -341,7 +859,25 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_kn_recurrence_vectorized(self) -> None:
-        """Vectorized x input works."""
+        r"""Vectorized x input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vectorized x input
+        works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0], dtype=jnp.float64
         )
@@ -375,7 +911,29 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
     def test_kv_small_non_integer(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Small-x non-integer branch matches scipy."""
+        r"""Small-x non-integer branch matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Small-x
+        non-integer branch matches scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_kv_small_non_integer(
             v, x_arr, x_arr.dtype
@@ -383,7 +941,25 @@ class TestBesselKvSmallNonInteger(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     def test_kv_small_non_integer_vectorized(self) -> None:
-        """Vectorized non-integer input works."""
+        r"""Vectorized non-integer input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vectorized
+        non-integer input works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5], dtype=jnp.float64
         )
@@ -410,7 +986,29 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
     def test_kv_small_integer_v0(
         self, v: float, x: float, expected: float
     ) -> None:
-        """K_0(x) is the most accurate small-x integer branch."""
+        r"""K_0(x) is the most accurate small-x integer branch.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) is the most
+        accurate small-x integer branch.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_kv_small_integer(
             jnp.array(v, dtype=jnp.float64), x_arr, x_arr.dtype
@@ -418,7 +1016,25 @@ class TestBesselKvSmallInteger(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     def test_kv_small_integer_positive(self) -> None:
-        """K_v stays positive on the tested domain."""
+        r"""K_v stays positive on the tested domain.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_v stays positive
+        on the tested domain.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 1.5], dtype=jnp.float64
         )
@@ -445,13 +1061,53 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
         ("v0p5_x5", 0.5, 5.0, 0.0037766133746428825),
     )
     def test_kv_large_x(self, v: float, x: float, expected: float) -> None:
-        """Asymptotic branch matches scipy at large x."""
+        r"""Asymptotic branch matches scipy at large x.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Asymptotic branch
+        matches scipy at large x.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_kv_large(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-4)
 
     def test_kv_large_vectorized(self) -> None:
-        """Vectorized large-x input works."""
+        r"""Vectorized large-x input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vectorized large-x
+        input works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [5.0, 10.0, 15.0], dtype=jnp.float64
         )
@@ -462,7 +1118,25 @@ class TestBesselKvLarge(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected, rtol=1e-4)
 
     def test_kv_large_decays_exponentially(self) -> None:
-        """Large-x branch decays monotonically."""
+        r"""Large-x branch decays monotonically.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Large-x branch
+        decays monotonically.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [5.0, 10.0, 20.0, 50.0], dtype=jnp.float64
         )
@@ -485,13 +1159,53 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
         ("x5", 5.0, 0.0037766133746428825),
     )
     def test_k_half_against_scipy(self, x: float, expected: float) -> None:
-        """K_{1/2}(x) matches scipy."""
+        r"""K_{1/2}(x) matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_{1/2}(x) matches
+        scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Float[Array, "..."] = _bessel_k_half(x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-10)
 
     def test_k_half_formula(self) -> None:
-        """Closed form matches the direct expression."""
+        r"""Closed form matches the direct expression.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Closed form
+        matches the direct expression.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0], dtype=jnp.float64
         )
@@ -502,7 +1216,25 @@ class TestBesselKHalf(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected, atol=1e-14)
 
     def test_k_half_vectorized(self) -> None:
-        """Vectorized input works."""
+        r"""Vectorized input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vectorized input
+        works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [[0.5, 1.0], [2.0, 5.0]], dtype=jnp.float64
         )
@@ -532,7 +1264,30 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     def test_bessel_kv_integer_orders(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Integer-order K_v(x) matches scipy."""
+        r"""Integer-order K_v(x) matches scipy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Integer-order
+        K_v(x) matches scipy.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
@@ -547,7 +1302,30 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     def test_bessel_kv_half_order(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Half-order special case works."""
+        r"""Half-order special case works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Half-order special
+        case works.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-6)
@@ -564,14 +1342,59 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
     def test_bessel_kv_non_integer_orders(
         self, v: float, x: float, expected: float
     ) -> None:
-        """Non-integer K_v(x) matches scipy within approximation tolerance."""
+        r"""Non-integer K_v(x) matches scipy within approximation tolerance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-integer K_v(x)
+        matches scipy within approximation tolerance.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v``, ``x``,
+        ``expected``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-2)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_vectorized(self) -> None:
-        """Vectorized x input works."""
+        r"""Vectorized x input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vectorized x input
+        works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0], dtype=jnp.float64
         )
@@ -583,7 +1406,29 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_2d_input(self) -> None:
-        """2D array input works."""
+        r"""2D array input works.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2D array input
+        works.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [[2.0, 3.0], [5.0, 10.0]], dtype=jnp.float64
         )
@@ -596,7 +1441,29 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_positive_values(self) -> None:
-        """K_v(x) stays positive for positive x."""
+        r"""K_v(x) stays positive for positive x.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_v(x) stays
+        positive for positive x.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.1, 0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64
         )
@@ -607,7 +1474,29 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_monotonic_decay(self) -> None:
-        """K_v(x) decays monotonically for fixed v."""
+        r"""K_v(x) decays monotonically for fixed v.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_v(x) decays
+        monotonically for fixed v.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array(
             [0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float64
         )
@@ -620,14 +1509,57 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_order_relation(self) -> None:
-        """K_0(x) < K_1(x) at small x."""
+        r"""K_0(x) < K_1(x) at small x.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0(x) < K_1(x) at
+        small x.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([0.5], dtype=jnp.float64)
         k0: Callable[..., Any] = self.variant(bessel_kv)(0.0, x_arr)[0]
         k1: Callable[..., Any] = self.variant(bessel_kv)(1.0, x_arr)[0]
         assert k0 < k1
 
     def test_bessel_kv_jit_compilation(self) -> None:
-        """bessel_kv can be JIT compiled."""
+        r"""bessel_kv can be JIT compiled.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: bessel_kv can be
+        JIT compiled.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([1.0], dtype=jnp.float64)
         result: Callable[..., Any] = jax.jit(bessel_kv, static_argnums=(0,))(
             0.0, x_arr
@@ -636,7 +1568,28 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
 
     def test_bessel_kv_jit_works(self) -> None:
-        """JIT works across representative orders."""
+        r"""JIT works across representative orders.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT works across
+        representative orders.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([5.0, 10.0], dtype=jnp.float64)
         jit_bessel: Callable[..., Any] = jax.jit(
             bessel_kv, static_argnums=(0,)
@@ -654,7 +1607,25 @@ class TestBesselKvEdgeCases(chex.TestCase):
     """Test edge cases and numerical stability."""
 
     def test_bessel_kv_small_x_boundary(self) -> None:
-        """Behavior near the small/large branch boundary stays stable."""
+        r"""Behavior near the small/large branch boundary stays stable.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Behavior near the
+        small/large branch boundary stays stable.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_near_boundary: Float[Array, "..."] = jnp.array(
             [1.9, 2.0, 2.1], dtype=jnp.float64
         )
@@ -665,7 +1636,25 @@ class TestBesselKvEdgeCases(chex.TestCase):
         chex.assert_trees_all_close(result, expected, rtol=5e-3)
 
     def test_bessel_kv_large_x(self) -> None:
-        """Behavior for large x values stays accurate."""
+        r"""Behavior for large x values stays accurate.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Behavior for large
+        x values stays accurate.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_large: Float[Array, "..."] = jnp.array(
             [10.0, 20.0, 50.0], dtype=jnp.float64
         )
@@ -676,7 +1665,25 @@ class TestBesselKvEdgeCases(chex.TestCase):
         chex.assert_trees_all_close(result, expected, rtol=1e-3)
 
     def test_bessel_kv_higher_integer_order(self) -> None:
-        """Higher integer orders work in the large-x regime."""
+        r"""Higher integer orders work in the large-x regime.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher integer
+        orders work in the large-x regime.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         x_arr: Float[Array, "..."] = jnp.array([5.0, 10.0], dtype=jnp.float64)
         n: int
         for n in [3, 4, 5]:

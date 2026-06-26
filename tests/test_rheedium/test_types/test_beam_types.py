@@ -24,7 +24,29 @@ class TestElectronBeam(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_electron_beam_defaults(self) -> None:
-        """Default beam should have standard RHEED gun values."""
+        r"""Default beam should have standard RHEED gun values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default beam
+        should have standard RHEED gun values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_create: Callable[..., ElectronBeam] = self.variant(
             create_electron_beam
         )
@@ -45,7 +67,25 @@ class TestElectronBeam(chex.TestCase):
         )
 
     def test_create_electron_beam_custom(self) -> None:
-        """Custom values should be preserved."""
+        r"""Custom values should be preserved.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Custom values
+        should be preserved.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(
             energy_kev=15.0,
             energy_spread_ev=0.2,
@@ -68,7 +108,25 @@ class TestElectronBeam(chex.TestCase):
         )
 
     def test_electron_beam_pytree(self) -> None:
-        """ElectronBeam should flatten and unflatten as a PyTree."""
+        r"""ElectronBeam should flatten and unflatten as a PyTree.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ElectronBeam
+        should flatten and unflatten as a PyTree.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam()
         flat: list[object]
         treedef: object
@@ -80,7 +138,25 @@ class TestElectronBeam(chex.TestCase):
         chex.assert_trees_all_close(beam, reconstructed)
 
     def test_electron_beam_jit(self) -> None:
-        """ElectronBeam should be creatable inside jit."""
+        r"""ElectronBeam should be creatable inside jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ElectronBeam
+        should be creatable inside jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         @jax.jit
         def make_beam(energy: scalar_float) -> ElectronBeam:
@@ -90,7 +166,28 @@ class TestElectronBeam(chex.TestCase):
         chex.assert_trees_all_close(beam.energy_kev, 25.0)
 
     def test_electron_beam_vmap(self) -> None:
-        """Vmap over energy should produce batched beams."""
+        r"""Vmap over energy should produce batched beams.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Vmap over energy
+        should produce batched beams.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def make_beam(energy: scalar_float) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(energy_kev=energy)
@@ -102,14 +199,50 @@ class TestElectronBeam(chex.TestCase):
         chex.assert_trees_all_close(result, energies)
 
     def test_electron_beam_tree_map(self) -> None:
-        """tree_map should apply to all leaves."""
+        r"""tree_map should apply to all leaves.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: tree_map should
+        apply to all leaves.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(energy_kev=20.0)
         doubled: ElectronBeam = jax.tree.map(lambda x: x * 2.0, beam)
         chex.assert_trees_all_close(doubled.energy_kev, 40.0)
         chex.assert_trees_all_close(doubled.energy_spread_ev, 1.0)
 
     def test_dtypes_are_float64(self) -> None:
-        """All fields should be float64."""
+        r"""All fields should be float64.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All fields should
+        be float64.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam()
         assert beam.energy_kev.dtype == jnp.float64
         assert beam.energy_spread_ev.dtype == jnp.float64
@@ -123,7 +256,25 @@ class TestElectronBeamValidation(chex.TestCase):
     """Validation tests for create_electron_beam."""
 
     def test_energy_too_low(self) -> None:
-        """Energy below 5 keV should be rejected."""
+        r"""Energy below 5 keV should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy below 5 keV
+        should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="energy_kev must be in",
@@ -131,7 +282,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_energy_too_high(self) -> None:
-        """Energy above 100 keV should be rejected."""
+        r"""Energy above 100 keV should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy above 100
+        keV should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="energy_kev must be in",
@@ -139,17 +308,71 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_energy_boundary_low(self) -> None:
-        """Energy at exactly 5 keV should be valid."""
+        r"""Energy at exactly 5 keV should be valid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy at exactly
+        5 keV should be valid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(energy_kev=5.0)
         chex.assert_trees_all_close(beam.energy_kev, 5.0)
 
     def test_energy_boundary_high(self) -> None:
-        """Energy at exactly 100 keV should be valid."""
+        r"""Energy at exactly 100 keV should be valid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energy at exactly
+        100 keV should be valid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(energy_kev=100.0)
         chex.assert_trees_all_close(beam.energy_kev, 100.0)
 
     def test_negative_energy_spread(self) -> None:
-        """Negative energy spread should be rejected."""
+        r"""Negative energy spread should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative energy
+        spread should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="energy_spread_ev must be non-negative",
@@ -157,12 +380,48 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_zero_energy_spread(self) -> None:
-        """Zero energy spread should be valid (ideal source)."""
+        r"""Zero energy spread should be valid (ideal source).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero energy spread
+        should be valid (ideal source).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(energy_spread_ev=0.0)
         chex.assert_trees_all_close(beam.energy_spread_ev, 0.0)
 
     def test_negative_divergence(self) -> None:
-        """Negative angular divergence should be rejected."""
+        r"""Negative angular divergence should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative angular
+        divergence should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="angular_divergence_mrad must be non-negative",
@@ -170,12 +429,48 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_zero_divergence(self) -> None:
-        """Zero divergence should be valid (perfect collimation)."""
+        r"""Zero divergence should be valid (perfect collimation).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero divergence
+        should be valid (perfect collimation).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam: ElectronBeam = create_electron_beam(angular_divergence_mrad=0.0)
         chex.assert_trees_all_close(beam.angular_divergence_mrad, 0.0)
 
     def test_negative_transverse_coherence(self) -> None:
-        """Negative transverse coherence length should be rejected."""
+        r"""Negative transverse coherence length should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative
+        transverse coherence length should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="coherence_length_transverse_angstrom must be positive",
@@ -183,7 +478,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_zero_transverse_coherence(self) -> None:
-        """Zero transverse coherence length should be rejected."""
+        r"""Zero transverse coherence length should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero transverse
+        coherence length should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="coherence_length_transverse_angstrom must be positive",
@@ -191,7 +504,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_negative_longitudinal_coherence(self) -> None:
-        """Negative longitudinal coherence length should be rejected."""
+        r"""Negative longitudinal coherence length should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative
+        longitudinal coherence length should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="coherence_length_longitudinal_angstrom must be positive",
@@ -199,7 +530,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_zero_longitudinal_coherence(self) -> None:
-        """Zero longitudinal coherence length should be rejected."""
+        r"""Zero longitudinal coherence length should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero longitudinal
+        coherence length should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="coherence_length_longitudinal_angstrom must be positive",
@@ -207,7 +556,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_negative_spot_size(self) -> None:
-        """Negative spot size should be rejected."""
+        r"""Negative spot size should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative spot size
+        should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="spot_size_um components must be positive",
@@ -215,7 +582,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_zero_spot_size(self) -> None:
-        """Zero spot size should be rejected."""
+        r"""Zero spot size should be rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero spot size
+        should be rejected.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="spot_size_um components must be positive",
@@ -223,7 +608,25 @@ class TestElectronBeamValidation(chex.TestCase):
         )
 
     def test_valid_fields_unaffected_by_invalid(self) -> None:
-        """Invalid energy should reject instead of corrupting fields."""
+        r"""Invalid energy should reject instead of corrupting fields.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid energy
+        should reject instead of corrupting fields.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert_rejects(
             create_electron_beam,
             match="energy_kev must be in",
@@ -236,7 +639,28 @@ class TestElectronBeamGradients(chex.TestCase):
     """Gradient tests for ElectronBeam through create_electron_beam."""
 
     def test_grad_energy(self) -> None:
-        """Gradient should flow through energy_kev."""
+        r"""Gradient should flow through energy_kev.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient should
+        flow through energy_kev.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(energy: scalar_float) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(energy_kev=energy)
@@ -247,7 +671,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(g, 40.0)
 
     def test_filter_jit_grad_matches_eager_grad(self) -> None:
-        """Jitted gradients should match eager gradients on valid input."""
+        r"""Jitted gradients should match eager gradients on valid input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Jitted gradients
+        should match eager gradients on valid input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, JIT compilation, protecting
+        JAX transform compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(params: Float[Array, "2"]) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(
@@ -264,7 +709,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(jitted_grad, eager_grad)
 
     def test_grad_energy_spread(self) -> None:
-        """Gradient should flow through energy_spread_ev."""
+        r"""Gradient should flow through energy_spread_ev.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient should
+        flow through energy_spread_ev.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(spread: scalar_float) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(energy_spread_ev=spread)
@@ -275,7 +741,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(g, 1.0)
 
     def test_grad_divergence(self) -> None:
-        """Gradient should flow through angular_divergence_mrad."""
+        r"""Gradient should flow through angular_divergence_mrad.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient should
+        flow through angular_divergence_mrad.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(div: scalar_float) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(
@@ -288,7 +775,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(g, 1.0)
 
     def test_grad_coherence_lengths(self) -> None:
-        """Gradient should flow through both coherence lengths."""
+        r"""Gradient should flow through both coherence lengths.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient should
+        flow through both coherence lengths.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(lt: scalar_float, ll: scalar_float) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(
@@ -311,7 +819,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(gl, 1.0)
 
     def test_grad_spot_size(self) -> None:
-        """Gradient should flow through spot_size_um."""
+        r"""Gradient should flow through spot_size_um.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient should
+        flow through spot_size_um.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(spot: Float[Array, "2"]) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(spot_size_um=spot)
@@ -323,7 +852,28 @@ class TestElectronBeamGradients(chex.TestCase):
         chex.assert_trees_all_close(g, jnp.array([200.0, 100.0]))
 
     def test_jacrev_multi_param(self) -> None:
-        """Jacrev over (energy, spread) produces correct Jacobian."""
+        r"""Jacrev over (energy, spread) produces correct Jacobian.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Jacrev over
+        (energy, spread) produces correct Jacobian.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_beam_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(params: Float[Array, "2"]) -> scalar_float:
             beam: ElectronBeam = create_electron_beam(

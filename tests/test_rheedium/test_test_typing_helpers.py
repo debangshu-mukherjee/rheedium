@@ -36,7 +36,25 @@ from .._types import (
 
 
 def test_typed_array_factories_and_assertions() -> None:
-    """Typed factories return arrays accepted by typed Chex helpers."""
+    r"""Typed factories return arrays accepted by typed Chex helpers.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Typed factories return
+    arrays accepted by typed Chex helpers.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    Numerical expectations are checked with tolerance-aware closeness
+    assertions, which is appropriate for floating-point JAX arrays.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_test_typing_helpers``, so the Test Reference
+    exposes both the guarantee and the implementation path.
+    """
     key: Key = make_key(123)
     jax_vector: JaxF32Vector = make_jax_f32_vector(4, fill=1.0)
     jax_matrix: JaxF32Matrix = make_jax_f32_matrix(2, 3, fill=2.0)
@@ -56,7 +74,25 @@ def test_typed_array_factories_and_assertions() -> None:
 
 
 def test_typed_crystal_factory_and_assertion() -> None:
-    """Project-specific typed factories produce valid crystal structures."""
+    r"""Project-specific typed factories produce valid crystal structures.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Project-specific typed
+    factories produce valid crystal structures.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body, keeping the
+    fixture and assertion path local to the documented case.
+
+    The result is checked with direct unittest or Chex assertions against the
+    expected contract.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_test_typing_helpers``, so the Test Reference
+    exposes both the guarantee and the implementation path.
+    """
     crystal: CrystalStructure = make_si_crystal_2atom()
 
     assert_crystal_structure_arrays(crystal, n_atoms=2)

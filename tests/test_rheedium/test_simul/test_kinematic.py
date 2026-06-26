@@ -57,7 +57,30 @@ class TestKinematicWavelength(chex.TestCase):
     def test_wavelength_values(
         self, energy_kev: float, expected_lambda: float
     ) -> None:
-        """Test wavelength calculation matches expected values."""
+        r"""Test wavelength calculation matches expected values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: wavelength
+        calculation matches expected values.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``energy_kev``, ``expected_lambda``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_wavelength: Callable[..., Any] = self.variant(kinematic_wavelength)
 
         wavelength: float = var_wavelength(energy_kev)
@@ -72,7 +95,28 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_magnitude(self) -> None:
-        r"""Test \|k_in\| = 2π/λ."""
+        r"""Test \|k_in\| = 2π/λ.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|k_in\| = 2π/λ.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k_in: Callable[..., Any] = self.variant(
             kinematic_incident_wavevector
         )
@@ -90,7 +134,29 @@ class TestKinematicIncidentWavevector(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_incident_wavevector_components(self) -> None:
-        """Test k_in = k·[cos(θ), 0, -sin(θ)] (beam going into surface)."""
+        r"""Test k_in = k·[cos(θ), 0, -sin(θ)] (beam going into surface).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: k_in = k·[cos(θ),
+        0, -sin(θ)] (beam going into surface).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k_in: Callable[..., Any] = self.variant(
             kinematic_incident_wavevector
         )
@@ -121,7 +187,29 @@ class TestKinematicEwaldSphere(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_elastic_scattering(self) -> None:
-        r"""Test that all k_out satisfy \|k_out\| ≈ \|k_in\|."""
+        r"""Test that all k_out satisfy \|k_out\| ≈ \|k_in\|.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all k_out satisfy
+        \|k_out\| ≈ \|k_in\|.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_ewald: Callable[..., Any] = self.variant(kinematic_ewald_sphere)
 
         # Setup: incident beam at grazing incidence
@@ -180,10 +268,30 @@ class TestDetectorProjection(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_detector_projection_roundtrip(self) -> None:
-        """Test that ray-tracing projection gives reasonable coordinates.
+        r"""Test that ray-tracing projection gives reasonable coordinates.
 
-        The simplified projection uses:
-        x_d = k_y * d / k_x, y_d = k_z * d / k_x
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ray-tracing
+        projection gives reasonable coordinates. Existing context from the
+        original test prose: The simplified projection uses: x_d = k_y * d /
+        k_x, y_d = k_z * d / k_x
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
@@ -216,7 +324,27 @@ class TestDetectorProjection(chex.TestCase):
     def test_detector_projection_specular(self) -> None:
         r"""Test projection for near-specular reflection.
 
-        Specular: k_out_z ≈ \|k_in_z\| but positive (upward).
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: projection for
+        near-specular reflection. Existing context from the original test
+        prose: Specular: k_out_z ≈ \|k_in_z\| but positive (upward).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
@@ -251,7 +379,29 @@ class TestKinematicStructureFactor(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_single_atom(self) -> None:
-        """Test structure factor for single atom at origin."""
+        r"""Test structure factor for single atom at origin.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        for single atom at origin.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sf: Callable[..., Any] = self.variant(kinematic_structure_factor)
 
         G: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
@@ -267,7 +417,29 @@ class TestKinematicStructureFactor(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_systematic_absence(self) -> None:
-        """Test that (100) is forbidden for diamond structure."""
+        r"""Test that (100) is forbidden for diamond structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (100) is forbidden
+        for diamond structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sf: Callable[..., Any] = self.variant(kinematic_structure_factor)
 
         # Simple cubic with two atoms (like diamond basis)
@@ -317,7 +489,25 @@ class TestKinematicSimulator(chex.TestCase):
         )
 
     def test_kinematic_spot_simulator_runs(self) -> None:
-        """Test that simulator runs without errors."""
+        r"""Test that simulator runs without errors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: simulator runs
+        without errors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         # Note: lmax=5 needed to get upward scattering at θ=2° grazing angle
         # because G_z must exceed |k_in_z| ≈ k0*sin(2°) ≈ 2.5 1/Å
         pattern: RHEEDPattern = kinematic_spot_simulator(
@@ -346,7 +536,25 @@ class TestKinematicSimulator(chex.TestCase):
         assert jnp.all(pattern.intensities >= 0.0)
 
     def test_kinematic_spot_simulator_detector_coords(self) -> None:
-        """Test detector coordinates are reasonable."""
+        r"""Test detector coordinates are reasonable.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: detector
+        coordinates are reasonable.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = kinematic_spot_simulator(
             crystal=self.crystal,
             energy_kev=20.0,
@@ -374,7 +582,29 @@ class TestMakeEwaldSphere(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ewald_sphere_geometry(self) -> None:
-        """Test center and radius calculation."""
+        r"""Test center and radius calculation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: center and radius
+        calculation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_make_sphere: Callable[..., Any] = self.variant(make_ewald_sphere)
 
         # Setup
@@ -453,10 +683,26 @@ class TestMgOExtinctionRules(chex.TestCase):
         return float(intensity)
 
     def test_mgo_allowed_reflections_nonzero(self) -> None:
-        """Test that allowed FCC reflections have non-zero intensity.
+        r"""Test that allowed FCC reflections have non-zero intensity.
 
-        For FCC: (h,k,l) all even or all odd => allowed
-        Examples: (1,1,1), (2,0,0), (2,2,0), (2,2,2)
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: allowed FCC
+        reflections have non-zero intensity. Existing context from the original
+        test prose: For FCC: (h,k,l) all even or all odd => allowed Examples:
+        (1,1,1), (2,0,0), (2,2,0), (2,2,2)
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         # All odd indices - should be allowed
         all_odd_cases: list[Any] = [
@@ -489,13 +735,28 @@ class TestMgOExtinctionRules(chex.TestCase):
             )
 
     def test_mgo_forbidden_reflections_zero(self) -> None:
-        """Test that forbidden FCC reflections have zero intensity.
+        r"""Test that forbidden FCC reflections have zero intensity.
 
-        For FCC: mixed indices (not all even, not all odd) => forbidden
-        Examples: (1,0,0), (1,1,0), (2,1,0), (2,1,1)
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: forbidden FCC
+        reflections have zero intensity. Existing context from the original
+        test prose: For FCC: mixed indices (not all even, not all odd) =>
+        forbidden Examples: (1,0,0), (1,1,0), (2,1,0), (2,1,1) This is the
+        CRITICAL test - if (1,0,0) shows non-zero intensity, the structure
+        factor calculation is fundamentally wrong.
 
-        This is the CRITICAL test - if (1,0,0) shows non-zero intensity,
-        the structure factor calculation is fundamentally wrong.
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         forbidden_cases: list[Any] = [
             (1, 0, 0),  # Paper explicitly shows this is missing
@@ -531,11 +792,26 @@ class TestMgOExtinctionRules(chex.TestCase):
     def test_mgo_origin_reflection(self) -> None:
         r"""Test that (0,0,0) reflection gives expected intensity.
 
-        F(0,0,0) = sum of all atomic scattering factors
-        For simplified f_j = Z_j: F = Z_Mg + Z_O = 12 + 8 = 20 per formula unit
-        With 8 atoms in conventional cell (4 Mg + 4 O):
-        F = 4*12 + 4*8 = 48 + 32 = 80
-        I = \|F\|² = 6400
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (0,0,0) reflection
+        gives expected intensity. Existing context from the original test
+        prose: F(0,0,0) = sum of all atomic scattering factors For simplified
+        f_j = Z_j: F = Z_Mg + Z_O = 12 + 8 = 20 per formula unit With 8 atoms
+        in conventional cell (4 Mg + 4 O): F = 4*12 + 4*8 = 48 + 32 = 80 I =
+        \|F\|² = 6400
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
         # 8 atoms total: 4 Mg (Z=12) + 4 O (Z=8)
@@ -603,10 +879,25 @@ class TestSrTiO3StructureFactor(chex.TestCase):
     def test_sto_origin_reflection(self) -> None:
         r"""Test that (0,0,0) reflection gives expected intensity.
 
-        F(0,0,0) = sum of all atomic scattering factors
-        For simplified f_j = Z_j:
-        F = Z_Sr + Z_Ti + 3*Z_O = 38 + 22 + 3*8 = 84
-        I = \|F\|² = 7056
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (0,0,0) reflection
+        gives expected intensity. Existing context from the original test
+        prose: F(0,0,0) = sum of all atomic scattering factors For simplified
+        f_j = Z_j: F = Z_Sr + Z_Ti + 3*Z_O = 38 + 22 + 3*8 = 84 I = \|F\|² =
+        7056
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         intensity: Any = self._get_structure_factor_intensity(0, 0, 0)
         expected_f: Float[Array, "..."] = 38 + 22 + 3 * 8  # = 84
@@ -615,17 +906,28 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
     def test_sto_100_reflection(self) -> None:
-        """Test (1,0,0) reflection intensity.
+        r"""Test (1,0,0) reflection intensity.
 
-        For perovskite with:
-        - Sr at (0.5, 0.5, 0.5): phase = exp(i*pi) = -1
-        - Ti at (0, 0, 0): phase = exp(0) = 1
-        - O at (0, 0, 0.5): phase = exp(0) = 1
-        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
-        - O at (0, 0.5, 0): phase = exp(0) = 1
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (1,0,0) reflection
+        intensity. Existing context from the original test prose: For
+        perovskite with: Sr at (0.5, 0.5, 0.5): phase = exp(i*pi) = -1 Ti at
+        (0, 0, 0): phase = exp(0) = 1 O at (0, 0, 0.5): phase = exp(0) = 1 O at
+        (0.5, 0, 0): phase = exp(i*pi) = -1 O at (0, 0.5, 0): phase = exp(0) =
+        1 F = -38 + 22 + 8 - 8 + 8 = -8 I = 64
 
-        F = -38 + 22 + 8 - 8 + 8 = -8
-        I = 64
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         intensity: Any = self._get_structure_factor_intensity(1, 0, 0)
         # F = -Z_Sr + Z_Ti + Z_O - Z_O + Z_O = -38 + 22 + 8 - 8 + 8 = -8
@@ -635,18 +937,27 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
     def test_sto_110_reflection(self) -> None:
-        """Test (1,1,0) reflection intensity.
+        r"""Test (1,1,0) reflection intensity.
 
-        For (1,1,0), the phase contributions are::
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (1,1,0) reflection
+        intensity. Existing context from the original test prose: For (1,1,0),
+        the phase contributions are:: Sr at (0.5, 0.5, 0.5): exp(i*2*pi) = 1 Ti
+        at (0, 0, 0): 1 O at (0, 0, 0.5): 1 O at (0.5, 0, 0): exp(i*pi) = -1 O
+        at (0, 0.5, 0): exp(i*pi) = -1 F = 38 + 22 + 8 - 8 - 8 = 52 I = 2704
 
-            Sr at (0.5, 0.5, 0.5): exp(i*2*pi) = 1
-            Ti at (0, 0, 0): 1
-            O at (0, 0, 0.5): 1
-            O at (0.5, 0, 0): exp(i*pi) = -1
-            O at (0, 0.5, 0): exp(i*pi) = -1
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
 
-        F = 38 + 22 + 8 - 8 - 8 = 52
-        I = 2704
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         intensity: Any = self._get_structure_factor_intensity(1, 1, 0)
         expected_f: Float[Array, "..."] = 38 + 22 + 8 - 8 - 8  # = 52
@@ -655,17 +966,28 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
     def test_sto_111_reflection(self) -> None:
-        """Test (1,1,1) reflection intensity.
+        r"""Test (1,1,1) reflection intensity.
 
-        For (1,1,1):
-        - Sr at (0.5, 0.5, 0.5): phase = exp(i*3*pi) = -1
-        - Ti at (0, 0, 0): phase = 1
-        - O at (0, 0, 0.5): phase = exp(i*pi) = -1
-        - O at (0.5, 0, 0): phase = exp(i*pi) = -1
-        - O at (0, 0.5, 0): phase = exp(i*pi) = -1
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: (1,1,1) reflection
+        intensity. Existing context from the original test prose: For (1,1,1):
+        Sr at (0.5, 0.5, 0.5): phase = exp(i*3*pi) = -1 Ti at (0, 0, 0): phase
+        = 1 O at (0, 0, 0.5): phase = exp(i*pi) = -1 O at (0.5, 0, 0): phase =
+        exp(i*pi) = -1 O at (0, 0.5, 0): phase = exp(i*pi) = -1 F = -38 + 22 -
+        8 - 8 - 8 = -40 I = 1600
 
-        F = -38 + 22 - 8 - 8 - 8 = -40
-        I = 1600
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         intensity: Any = self._get_structure_factor_intensity(1, 1, 1)
         expected_f: Float[Array, "..."] = -38 + 22 - 8 - 8 - 8  # = -40
@@ -674,11 +996,27 @@ class TestSrTiO3StructureFactor(chex.TestCase):
         chex.assert_trees_all_close(intensity, expected_intensity, rtol=0.01)
 
     def test_sto_all_reflections_nonzero(self) -> None:
-        """Test that various reflections have non-zero intensity.
+        r"""Test that various reflections have non-zero intensity.
 
-        Unlike FCC, perovskite has no systematic extinctions from the lattice.
-        All reflections should have some intensity (though values vary
-        based on the atomic basis phases).
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: various
+        reflections have non-zero intensity. Existing context from the original
+        test prose: Unlike FCC, perovskite has no systematic extinctions from
+        the lattice. All reflections should have some intensity (though values
+        vary based on the atomic basis phases).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         test_cases: list[Any] = [
             (1, 0, 0),

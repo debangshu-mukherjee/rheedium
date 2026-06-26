@@ -54,7 +54,25 @@ class TestR2InventoryGuards(chex.TestCase):
     repo_root = Path(__file__).parents[3]
 
     def test_instrument_broadened_pattern_uses_shared_reducer(self) -> None:
-        """R2 instrument quadrature should route through the one reducer."""
+        r"""R2 instrument quadrature should route through the one reducer.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: R2 instrument
+        quadrature should route through the one reducer.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         path = self.repo_root / "src/rheedium/simul/beam_averaging.py"
         source = path.read_text(encoding="utf-8")
         function = _public_function(path, "instrument_broadened_pattern")
@@ -117,7 +135,25 @@ class TestBeamModeDecomposition(chex.TestCase):
     """
 
     def test_decompose_beam_modes_normalizes_product_weights(self) -> None:
-        """Beam modes flatten transverse and longitudinal products."""
+        r"""Beam modes flatten transverse and longitudinal products.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam modes flatten
+        transverse and longitudinal products.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam = create_gaussian_schell_beam(
             beta_in_plane=0.25,
             beta_out_of_plane=0.5,
@@ -140,7 +176,25 @@ class TestBeamModeDecomposition(chex.TestCase):
         assert dist.axis_id == "beam_test"
 
     def test_decompose_beam_modes_matches_requested_variances(self) -> None:
-        """Occupation-weighted spreads match the physical beam parameters."""
+        r"""Occupation-weighted spreads match the physical beam parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        Occupation-weighted spreads match the physical beam parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         theta_sigma: float = 3.0e-4
         phi_sigma: float = 6.0e-4
         energy_sigma: float = 0.4
@@ -181,7 +235,25 @@ class TestBeamModeDecomposition(chex.TestCase):
     def test_decompose_beam_modes_static_collapses_coherent_limit(
         self,
     ) -> None:
-        """Static decomposition prunes a sharp coherent beam to one mode."""
+        r"""Static decomposition prunes a sharp coherent beam to one mode.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Static
+        decomposition prunes a sharp coherent beam to one mode.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam = create_coherent_beam()
 
         dist: Distribution = decompose_beam_modes_static(
@@ -195,7 +267,25 @@ class TestBeamModeDecomposition(chex.TestCase):
         chex.assert_trees_all_close(dist.weights, jnp.ones((1,)))
 
     def test_decompose_beam_modes_preserves_anisotropy(self) -> None:
-        """Different axis divergences produce anisotropic sample variance."""
+        r"""Different axis divergences produce anisotropic sample variance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Different axis
+        divergences produce anisotropic sample variance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam = create_gaussian_schell_beam(
             beta_in_plane=0.4,
             beta_out_of_plane=0.4,
@@ -227,7 +317,28 @@ class TestDistributionApply(chex.TestCase):
     """
 
     def test_apply_distribution_incoherent_matches_manual(self) -> None:
-        """Incoherent reduction weights per-sample intensities."""
+        r"""Incoherent reduction weights per-sample intensities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Incoherent
+        reduction weights per-sample intensities.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist = create_distribution(
             samples=jnp.array([[1.0], [2.0]]),
             weights=jnp.array([0.25, 0.75]),
@@ -250,7 +361,28 @@ class TestDistributionApply(chex.TestCase):
         chex.assert_trees_all_close(actual, expected, atol=1e-12)
 
     def test_apply_distribution_coherent_matches_manual(self) -> None:
-        """Coherent reduction sums amplitudes before modulus squared."""
+        r"""Coherent reduction sums amplitudes before modulus squared.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coherent reduction
+        sums amplitudes before modulus squared.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist = create_distribution(
             samples=jnp.array([[1.0], [2.0]]),
             weights=jnp.array([0.25, 0.75]),
@@ -271,7 +403,25 @@ class TestDistributionApply(chex.TestCase):
         chex.assert_trees_all_close(actual, expected, atol=1e-12)
 
     def test_single_sample_reductions_coincide(self) -> None:
-        """Coherent and incoherent reductions agree for one sample."""
+        r"""Coherent and incoherent reductions agree for one sample.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coherent and
+        incoherent reductions agree for one sample.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         coherent = create_distribution(
             samples=jnp.array([[2.0]]),
             weights=jnp.array([1.0]),
@@ -295,7 +445,25 @@ class TestDistributionApply(chex.TestCase):
         chex.assert_trees_all_close(coherent_image, incoherent_image)
 
     def test_apply_distributions_matches_manual_nested_reduction(self) -> None:
-        """Composed axes use coherent reduction inside incoherent averaging."""
+        r"""Composed axes use coherent reduction inside incoherent averaging.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Composed axes use
+        coherent reduction inside incoherent averaging.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         coherent = create_distribution(
             samples=jnp.array([[1.0], [2.0]]),
             weights=jnp.array([0.4, 0.6]),
@@ -394,7 +562,25 @@ class TestAngularDivergenceAverage(chex.TestCase):
     """
 
     def test_shape_preserved(self) -> None:
-        """Output shape matches single-pattern shape."""
+        r"""Output shape matches single-pattern shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches single-pattern shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -405,7 +591,25 @@ class TestAngularDivergenceAverage(chex.TestCase):
         chex.assert_shape(avg, (H, W))
 
     def test_nonnegative(self) -> None:
-        """All pixels in the averaged pattern are non-negative."""
+        r"""All pixels in the averaged pattern are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All pixels in the
+        averaged pattern are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -416,7 +620,25 @@ class TestAngularDivergenceAverage(chex.TestCase):
         self.assertTrue(jnp.all(avg >= 0.0))
 
     def test_broader_than_single(self) -> None:
-        """Averaged pattern is broader than single-angle pattern."""
+        r"""Averaged pattern is broader than single-angle pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Averaged pattern
+        is broader than single-angle pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         single: Float[Array, "H W"] = _dummy_angle_sim(
             jnp.float64(0.035), jnp.float64(0.0)
         )
@@ -436,7 +658,25 @@ class TestAngularDivergenceAverage(chex.TestCase):
         self.assertGreaterEqual(avg_fwhm, single_fwhm)
 
     def test_zero_divergence_matches_single(self) -> None:
-        """Zero divergence reproduces the single-angle pattern."""
+        r"""Zero divergence reproduces the single-angle pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero divergence
+        reproduces the single-angle pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         single: Float[Array, "H W"] = _dummy_angle_sim(
             jnp.float64(0.035), jnp.float64(0.0)
         )
@@ -450,7 +690,25 @@ class TestAngularDivergenceAverage(chex.TestCase):
         chex.assert_trees_all_close(avg, single, atol=1e-10)
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in output."""
+        r"""No NaN or Inf in output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = angular_divergence_average(
             simulate_fn=_dummy_angle_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -467,7 +725,25 @@ class TestEnergySpreadAverage(chex.TestCase):
     """
 
     def test_shape_preserved(self) -> None:
-        """Output shape matches single-energy pattern shape."""
+        r"""Output shape matches single-energy pattern shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches single-energy pattern shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
@@ -477,7 +753,25 @@ class TestEnergySpreadAverage(chex.TestCase):
         chex.assert_shape(avg, (H, W))
 
     def test_nonnegative(self) -> None:
-        """All pixels in the averaged pattern are non-negative."""
+        r"""All pixels in the averaged pattern are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All pixels in the
+        averaged pattern are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
@@ -486,7 +780,25 @@ class TestEnergySpreadAverage(chex.TestCase):
         self.assertTrue(jnp.all(avg >= 0.0))
 
     def test_shifts_streaks(self) -> None:
-        """Different energies produce slightly different patterns."""
+        r"""Different energies produce slightly different patterns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Different energies
+        produce slightly different patterns.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern_low: Float[Array, "H W"] = _dummy_energy_sim(jnp.float64(19.5))
         pattern_high: Float[Array, "H W"] = _dummy_energy_sim(
             jnp.float64(20.5)
@@ -495,7 +807,25 @@ class TestEnergySpreadAverage(chex.TestCase):
         self.assertTrue(diff > 1e-6)
 
     def test_zero_spread_matches_single(self) -> None:
-        """Zero energy spread reproduces the single-energy pattern."""
+        r"""Zero energy spread reproduces the single-energy pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero energy spread
+        reproduces the single-energy pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         single: Float[Array, "H W"] = _dummy_energy_sim(jnp.float64(20.0))
         avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
@@ -506,7 +836,25 @@ class TestEnergySpreadAverage(chex.TestCase):
         chex.assert_trees_all_close(avg, single, atol=1e-10)
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in output."""
+        r"""No NaN or Inf in output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         avg: Float[Array, "H W"] = energy_spread_average(
             simulate_fn=_dummy_energy_sim,
             nominal_energy_kev=jnp.float64(20.0),
@@ -522,7 +870,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
     """
 
     def test_shape_preserved(self) -> None:
-        """Output shape equals input shape."""
+        r"""Output shape equals input shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        equals input shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.ones((H, W))
         blurred: Float[Array, "H W"] = detector_psf_convolve(
             img, jnp.float64(1.0)
@@ -530,7 +896,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
         chex.assert_shape(blurred, (H, W))
 
     def test_zero_sigma_unchanged(self) -> None:
-        """Zero PSF sigma leaves image unchanged."""
+        r"""Zero PSF sigma leaves image unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero PSF sigma
+        leaves image unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.eye(H, W)
         blurred: Float[Array, "H W"] = detector_psf_convolve(
             img, jnp.float64(0.0)
@@ -538,7 +922,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
         chex.assert_trees_all_close(blurred, img, atol=1e-12)
 
     def test_energy_conserved(self) -> None:
-        """Total intensity is preserved to within 1%."""
+        r"""Total intensity is preserved to within 1%.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Total intensity is
+        preserved to within 1%.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.eye(H, W) * 100.0
         blurred: Float[Array, "H W"] = detector_psf_convolve(
             img, jnp.float64(1.5)
@@ -551,7 +953,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
         self.assertTrue(relative_error < 0.01)
 
     def test_nonnegative(self) -> None:
-        """Output is non-negative."""
+        r"""Output is non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output is
+        non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.ones((H, W))
         blurred: Float[Array, "H W"] = detector_psf_convolve(
             img, jnp.float64(2.0)
@@ -559,7 +979,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
         self.assertTrue(jnp.all(blurred >= 0.0))
 
     def test_blurs_delta(self) -> None:
-        """PSF spreads a delta function into a wider peak."""
+        r"""PSF spreads a delta function into a wider peak.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PSF spreads a
+        delta function into a wider peak.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.zeros((H, W))
         img = img.at[H // 2, W // 2].set(1.0)
         blurred: Float[Array, "H W"] = detector_psf_convolve(
@@ -569,7 +1007,25 @@ class TestDetectorPsfConvolve(chex.TestCase):
         self.assertTrue(blurred[H // 2 + 1, W // 2] > 0.0)
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in output."""
+        r"""No NaN or Inf in output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "H W"] = jnp.ones((H, W)) * 50.0
         blurred: Float[Array, "H W"] = detector_psf_convolve(
             img, jnp.float64(1.0)
@@ -584,7 +1040,25 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
     """
 
     def test_shape_preserved(self) -> None:
-        """Output shape matches pattern shape."""
+        r"""Output shape matches pattern shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches pattern shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -597,7 +1071,25 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         chex.assert_shape(pattern, (H, W))
 
     def test_finite_values(self) -> None:
-        """No NaN or Inf in final output."""
+        r"""No NaN or Inf in final output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No NaN or Inf in
+        final output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -610,7 +1102,25 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         chex.assert_tree_all_finite(pattern)
 
     def test_nonnegative(self) -> None:
-        """All pixels in the final pattern are non-negative."""
+        r"""All pixels in the final pattern are non-negative.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All pixels in the
+        final pattern are non-negative.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "H W"] = instrument_broadened_pattern(
             simulate_fn=_dummy_joint_sim,
             nominal_polar_angle_rad=jnp.float64(0.035),
@@ -623,7 +1133,28 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
         self.assertTrue(jnp.all(pattern >= 0.0))
 
     def test_jit_agrees(self) -> None:
-        """JIT and non-JIT results agree to 1e-4."""
+        r"""JIT and non-JIT results agree to 1e-4.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT and non-JIT
+        results agree to 1e-4.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: InstrumentBroadenedPatternKwargs = {
             "simulate_fn": _dummy_joint_sim,
             "nominal_polar_angle_rad": jnp.float64(0.035),
@@ -651,7 +1182,28 @@ class TestGradients(chex.TestCase):
     """Gradient tests for beam averaging functions."""
 
     def test_grad_through_angular_average(self) -> None:
-        """jax.grad of sum(averaged_pattern) w.r.t. divergence is finite."""
+        r"""jax.grad of sum(averaged_pattern) w.r.t. divergence is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad of
+        sum(averaged_pattern) w.r.t. divergence is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(divergence: scalar_float) -> scalar_float:
             pattern: Float[Array, "H W"] = angular_divergence_average(
@@ -667,7 +1219,28 @@ class TestGradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_energy_average(self) -> None:
-        """jax.grad of sum(averaged_pattern) w.r.t. spread is finite."""
+        r"""jax.grad of sum(averaged_pattern) w.r.t. spread is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad of
+        sum(averaged_pattern) w.r.t. spread is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(spread: scalar_float) -> scalar_float:
             pattern: Float[Array, "H W"] = energy_spread_average(
@@ -682,7 +1255,28 @@ class TestGradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_psf_convolve(self) -> None:
-        """jax.grad of sum(convolved) w.r.t. psf_sigma is finite."""
+        r"""jax.grad of sum(convolved) w.r.t. psf_sigma is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad of
+        sum(convolved) w.r.t. psf_sigma is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(sigma: scalar_float) -> scalar_float:
             img: Float[Array, "H W"] = jnp.ones((H, W))
@@ -693,7 +1287,28 @@ class TestGradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_grad_through_full_pipeline(self) -> None:
-        """jax.grad flows through the full instrument pipeline."""
+        r"""jax.grad flows through the full instrument pipeline.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad flows
+        through the full instrument pipeline.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_beam_averaging``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(divergence: scalar_float) -> scalar_float:
             pattern: Float[Array, "H W"] = instrument_broadened_pattern(

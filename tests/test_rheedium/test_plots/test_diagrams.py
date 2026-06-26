@@ -69,14 +69,50 @@ class TestDiagramPlots:
         plt.close("all")
 
     def test_plot_wavelength_curve_default(self) -> None:
-        """Test wavelength curve plot with default parameters."""
+        r"""Test wavelength curve plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: wavelength curve
+        plot with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_wavelength_curve()
         assert isinstance(ax, Axes)
         assert ax.get_xlabel() == "Beam Energy (keV)"
         assert ax.get_ylabel() == "Wavelength (A)"
 
     def test_plot_wavelength_curve_custom_range(self) -> None:
-        """Test wavelength curve with custom energy range."""
+        r"""Test wavelength curve with custom energy range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: wavelength curve
+        with custom energy range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_wavelength_curve(
             energy_range_kev=(10.0, 50.0),
             n_points=50,
@@ -88,7 +124,25 @@ class TestDiagramPlots:
         assert xlim[1] <= 50.0
 
     def test_plot_wavelength_curve_with_provided_ax(self) -> None:
-        """Test wavelength curve with user-provided axes."""
+        r"""Test wavelength curve with user-provided axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: wavelength curve
+        with user-provided axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fig: Any
         ax: Any
         fig, ax = plt.subplots()
@@ -96,20 +150,74 @@ class TestDiagramPlots:
         assert returned_ax is ax
 
     def test_plot_form_factors_single_element(self) -> None:
-        """Test form factor plot for single element."""
+        r"""Test form factor plot for single element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: form factor plot
+        for single element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_form_factors(atomic_numbers=[14])  # Silicon
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 1
 
     def test_plot_form_factors_multiple_elements(self) -> None:
-        """Test form factor plot for multiple elements."""
+        r"""Test form factor plot for multiple elements.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: form factor plot
+        for multiple elements.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_form_factors(atomic_numbers=[14, 8, 38, 22])
         assert isinstance(ax, Axes)
         # Should have one line per element
         assert len(ax.get_lines()) >= 4
 
     def test_plot_form_factors_custom_range(self) -> None:
-        """Test form factor plot with custom q range."""
+        r"""Test form factor plot with custom q range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: form factor plot
+        with custom q range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_form_factors(
             atomic_numbers=[14],
             q_range=(0.0, 5.0),
@@ -121,7 +229,25 @@ class TestDiagramPlots:
         assert xlim[1] <= 5.0
 
     def test_plot_debye_waller_default(self) -> None:
-        """Test Debye-Waller plot with default parameters."""
+        r"""Test Debye-Waller plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Debye-Waller plot
+        with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_debye_waller(
             atomic_number=14,
             temperatures=[100.0, 300.0, 600.0],
@@ -130,7 +256,25 @@ class TestDiagramPlots:
         assert len(ax.get_lines()) >= 3
 
     def test_plot_debye_waller_single_temp(self) -> None:
-        """Test Debye-Waller plot with single temperature."""
+        r"""Test Debye-Waller plot with single temperature.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Debye-Waller plot
+        with single temperature.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_debye_waller(
             atomic_number=79,  # Gold
             temperatures=[300.0],
@@ -138,14 +282,50 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
 
     def test_plot_ctr_profile_default(self) -> None:
-        """Test CTR profile plot with default parameters."""
+        r"""Test CTR profile plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR profile plot
+        with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ctr_profile()
         assert isinstance(ax, Axes)
         # Should be log scale on y-axis
         assert ax.get_yscale() == "log"
 
     def test_plot_ctr_profile_custom_range(self) -> None:
-        """Test CTR profile with custom l range."""
+        r"""Test CTR profile with custom l range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR profile with
+        custom l range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ctr_profile(
             l_range=(-2.0, 2.0),
             n_points=200,
@@ -153,14 +333,50 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
 
     def test_plot_roughness_damping_default(self) -> None:
-        """Test roughness damping plot with default parameters."""
+        r"""Test roughness damping plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: roughness damping
+        plot with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_roughness_damping()
         assert isinstance(ax, Axes)
         # Should have lines for each sigma value
         assert len(ax.get_lines()) >= 4
 
     def test_plot_roughness_damping_custom_sigma(self) -> None:
-        """Test roughness damping with custom sigma values."""
+        r"""Test roughness damping with custom sigma values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: roughness damping
+        with custom sigma values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_roughness_damping(
             q_z_range=(0.0, 3.0),
             sigma_values=[0.0, 1.0, 3.0],
@@ -169,13 +385,49 @@ class TestDiagramPlots:
         assert len(ax.get_lines()) >= 3
 
     def test_plot_rod_broadening_default(self) -> None:
-        """Test rod broadening plot with default parameters."""
+        r"""Test rod broadening plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod broadening
+        plot with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_rod_broadening()
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 4
 
     def test_plot_rod_broadening_custom_lengths(self) -> None:
-        """Test rod broadening with custom correlation lengths."""
+        r"""Test rod broadening with custom correlation lengths.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod broadening
+        with custom correlation lengths.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_rod_broadening(
             q_perp_range=(-0.5, 0.5),
             correlation_lengths=[20.0, 100.0],
@@ -183,12 +435,48 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
 
     def test_plot_ewald_sphere_2d_default(self) -> None:
-        """Test 2D Ewald sphere plot with default parameters."""
+        r"""Test 2D Ewald sphere plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2D Ewald sphere
+        plot with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ewald_sphere_2d()
         assert isinstance(ax, Axes)
 
     def test_plot_ewald_sphere_2d_custom_params(self) -> None:
-        """Test 2D Ewald sphere with custom parameters."""
+        r"""Test 2D Ewald sphere with custom parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2D Ewald sphere
+        with custom parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ewald_sphere_2d(
             energy_kev=20.0,
             theta_deg=3.0,
@@ -198,12 +486,48 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
 
     def test_plot_ewald_sphere_3d_default(self) -> None:
-        """Test 3D Ewald sphere plot with default parameters."""
+        r"""Test 3D Ewald sphere plot with default parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D Ewald sphere
+        plot with default parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ewald_sphere_3d()
         assert isinstance(ax, Axes3D)
 
     def test_plot_ewald_sphere_3d_different_views(self) -> None:
-        """Test 3D Ewald sphere with different viewing angles."""
+        r"""Test 3D Ewald sphere with different viewing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D Ewald sphere
+        with different viewing angles.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         # Front view
         ax1: Any = plot_ewald_sphere_3d(elev=0.0, azim=0.0)
         assert isinstance(ax1, Axes3D)
@@ -219,7 +543,25 @@ class TestDiagramPlots:
         assert isinstance(ax3, Axes3D)
 
     def test_plot_unit_cell_3d_cubic(self) -> None:
-        """Test 3D unit cell plot for cubic cell."""
+        r"""Test 3D unit cell plot for cubic cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D unit cell plot
+        for cubic cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_unit_cell_3d(
             cell_lengths=(4.0, 4.0, 4.0),
             cell_angles=(90.0, 90.0, 90.0),
@@ -227,7 +569,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes3D)
 
     def test_plot_unit_cell_3d_orthorhombic(self) -> None:
-        """Test 3D unit cell plot for orthorhombic cell."""
+        r"""Test 3D unit cell plot for orthorhombic cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D unit cell plot
+        for orthorhombic cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_unit_cell_3d(
             cell_lengths=(3.0, 4.0, 5.0),
             cell_angles=(90.0, 90.0, 90.0),
@@ -235,7 +595,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes3D)
 
     def test_plot_unit_cell_3d_triclinic(self) -> None:
-        """Test 3D unit cell plot for triclinic cell."""
+        r"""Test 3D unit cell plot for triclinic cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D unit cell plot
+        for triclinic cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_unit_cell_3d(
             cell_lengths=(3.0, 4.0, 5.0),
             cell_angles=(80.0, 85.0, 75.0),
@@ -243,7 +621,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes3D)
 
     def test_plot_crystal_structure_3d_simple(self) -> None:
-        """Test 3D crystal structure plot with simple structure."""
+        r"""Test 3D crystal structure plot with simple structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D crystal
+        structure plot with simple structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
@@ -261,7 +657,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes3D)
 
     def test_plot_crystal_structure_3d_with_cell(self) -> None:
-        """Test 3D crystal structure with unit cell outline."""
+        r"""Test 3D crystal structure with unit cell outline.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D crystal
+        structure with unit cell outline.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
@@ -283,7 +697,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes3D)
 
     def test_plot_crystal_structure_3d_multiple_elements(self) -> None:
-        """Test 3D crystal structure with multiple element types."""
+        r"""Test 3D crystal structure with multiple element types.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D crystal
+        structure with multiple element types.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[NDArray, "..."] = np.array(
             [
                 [0.0, 0.0, 0.0],
@@ -307,17 +739,71 @@ class TestDiagramPlots:
         assert len(legend.get_texts()) == 4
 
     def test_plot_grazing_incidence_geometry_default(self) -> None:
-        """Test grazing incidence geometry diagram."""
+        r"""Test grazing incidence geometry diagram.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: grazing incidence
+        geometry diagram.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_grazing_incidence_geometry()
         assert isinstance(ax, Axes)
 
     def test_plot_grazing_incidence_geometry_custom_angle(self) -> None:
-        """Test grazing incidence geometry with custom angle."""
+        r"""Test grazing incidence geometry with custom angle.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: grazing incidence
+        geometry with custom angle.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_grazing_incidence_geometry(theta_deg=5.0)
         assert isinstance(ax, Axes)
 
     def test_plot_structure_factor_phases_simple(self) -> None:
-        """Test structure factor phases diagram with simple structure."""
+        r"""Test structure factor phases diagram with simple structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        phases diagram with simple structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         atom_positions: list[Any] = [(0.0, 0.0), (0.5, 0.5)]
         ax: Any = plot_structure_factor_phases(
             atom_positions_2d=atom_positions,
@@ -326,7 +812,25 @@ class TestDiagramPlots:
         assert isinstance(ax, Axes)
 
     def test_plot_structure_factor_phases_multiple_atoms(self) -> None:
-        """Test structure factor phases with multiple atoms."""
+        r"""Test structure factor phases with multiple atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        phases with multiple atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         atom_positions: list[Any] = [
             (0.0, 0.0),
             (0.25, 0.25),
@@ -348,7 +852,25 @@ class TestDiagramPlotsWithProvidedAxes:
         plt.close("all")
 
     def test_2d_plots_with_provided_ax(self) -> None:
-        """Test 2D plotting functions with user-provided axes."""
+        r"""Test 2D plotting functions with user-provided axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 2D plotting
+        functions with user-provided axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fig: Any
         axes: Any
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
@@ -375,7 +897,25 @@ class TestDiagramPlotsWithProvidedAxes:
         assert ax6 is axes[1, 2]
 
     def test_3d_plots_with_provided_ax(self) -> None:
-        """Test 3D plotting functions with user-provided axes."""
+        r"""Test 3D plotting functions with user-provided axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 3D plotting
+        functions with user-provided axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fig: Any = plt.figure(figsize=(15, 5))
 
         ax1: Any = fig.add_subplot(131, projection="3d")
@@ -419,7 +959,26 @@ class TestDiagramViewingAngles:
     def test_ewald_sphere_3d_viewing_angles(
         self, elev: float, azim: float
     ) -> None:
-        """Test Ewald sphere 3D with various viewing angles."""
+        r"""Test Ewald sphere 3D with various viewing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Ewald sphere 3D
+        with various viewing angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``elev``,
+        ``azim``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_ewald_sphere_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
 
@@ -434,7 +993,26 @@ class TestDiagramViewingAngles:
     def test_unit_cell_3d_viewing_angles(
         self, elev: float, azim: float
     ) -> None:
-        """Test unit cell 3D with various viewing angles."""
+        r"""Test unit cell 3D with various viewing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: unit cell 3D with
+        various viewing angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``elev``,
+        ``azim``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         ax: Any = plot_unit_cell_3d(elev=elev, azim=azim)
         assert isinstance(ax, Axes3D)
 
@@ -449,7 +1027,26 @@ class TestDiagramViewingAngles:
     def test_crystal_structure_3d_viewing_angles(
         self, elev: float, azim: float
     ) -> None:
-        """Test crystal structure 3D with various viewing angles."""
+        r"""Test crystal structure 3D with various viewing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: crystal structure
+        3D with various viewing angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``elev``,
+        ``azim``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[NDArray, "..."] = np.array(
             [[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]]
         )
@@ -527,43 +1124,169 @@ class TestViewAtoms:
         plt.close("all")
 
     def test_view_atoms_returns_axes3d(self) -> None:
-        """Should return an Axes3D instance."""
+        r"""Should return an Axes3D instance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should return an
+        Axes3D instance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal)
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_with_unit_cell(self) -> None:
-        """Should render unit cell wireframe when enabled."""
+        r"""Should render unit cell wireframe when enabled.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should render unit
+        cell wireframe when enabled.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal, show_unit_cell=True)
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_without_unit_cell(self) -> None:
-        """Should work without unit cell wireframe."""
+        r"""Should work without unit cell wireframe.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should work
+        without unit cell wireframe.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal, show_unit_cell=False)
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_custom_angles(self) -> None:
-        """Should accept custom viewing angles."""
+        r"""Should accept custom viewing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should accept
+        custom viewing angles.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal, elev=60.0, azim=120.0)
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_custom_scale(self) -> None:
-        """Should accept custom atom_scale."""
+        r"""Should accept custom atom_scale.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should accept
+        custom atom_scale.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal, atom_scale=2.0)
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_custom_figsize(self) -> None:
-        """Should accept custom figsize."""
+        r"""Should accept custom figsize.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should accept
+        custom figsize.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         ax: Any = view_atoms(crystal, figsize=(12, 10))
         assert isinstance(ax, Axes3D)
 
     def test_view_atoms_with_provided_ax(self) -> None:
-        """Should use user-provided axes."""
+        r"""Should use user-provided axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should use
+        user-provided axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         fig: Any = plt.figure()
         ax: Any = fig.add_subplot(111, projection="3d")
@@ -571,7 +1294,25 @@ class TestViewAtoms:
         assert returned_ax is ax
 
     def test_view_atoms_legend_entries(self) -> None:
-        """Should have a legend entry per unique element."""
+        r"""Should have a legend entry per unique element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should have a
+        legend entry per unique element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal(n_atoms=4)
         ax: Any = view_atoms(crystal)
         legend: Any = ax.get_legend()
@@ -579,7 +1320,25 @@ class TestViewAtoms:
         assert len(legend.get_texts()) == 4
 
     def test_view_atoms_single_element(self) -> None:
-        """Should work with a single element type."""
+        r"""Should work with a single element type.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should work with a
+        single element type.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal(n_atoms=1)
         ax: Any = view_atoms(crystal)
         assert isinstance(ax, Axes3D)
@@ -589,7 +1348,25 @@ class TestViewAtomsInteractive:
     """Tests for ASE-backed interactive atom viewing."""
 
     def test_prepare_atoms_supercell_scales_atom_count(self) -> None:
-        """Prepared ASE atoms should repeat according to supercell."""
+        r"""Prepared ASE atoms should repeat according to supercell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Prepared ASE atoms
+        should repeat according to supercell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         atoms: Any
         surface_mask: Any
@@ -606,7 +1383,25 @@ class TestViewAtomsInteractive:
         )
 
     def test_prepare_atoms_surface_mask_matches_simulator(self) -> None:
-        """Surface mask should match identify_surface_atoms."""
+        r"""Surface mask should match identify_surface_atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Surface mask
+        should match identify_surface_atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_layered_crystal()
         config: SurfaceConfig = SurfaceConfig(
             method="height",
@@ -636,7 +1431,25 @@ class TestViewAtomsInteractive:
         )
 
     def test_x3d_backend_returns_html_with_metadata(self) -> None:
-        """x3d backend should work headlessly via IPython HTML."""
+        r"""x3d backend should work headlessly via IPython HTML.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: x3d backend should
+        work headlessly via IPython HTML.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         handle: Any = view_atoms_interactive(
             crystal,
@@ -651,7 +1464,25 @@ class TestViewAtomsInteractive:
         assert handle.rheedium_surface_mask is not None
 
     def test_x3d_backend_validates_beam_direction(self) -> None:
-        """Invalid beam directions should raise before rendering."""
+        r"""Invalid beam directions should raise before rendering.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid beam
+        directions should raise before rendering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = _make_crystal()
         with pytest.raises(ValueError, match="nonzero"):
             view_atoms_interactive(
@@ -661,7 +1492,25 @@ class TestViewAtomsInteractive:
             )
 
     def test_ngl_backend_returns_widget_with_metadata(self) -> None:
-        """The ngl backend should work when nglview is installed."""
+        r"""The ngl backend should work when nglview is installed.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The ngl backend
+        should work when nglview is installed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         pytest.importorskip("nglview")
         crystal: CrystalStructure = _make_crystal()
         handle: Any = view_atoms_interactive(
@@ -677,19 +1526,73 @@ class TestViewAtomsInteractive:
         assert _resolve_interactive_backend("auto") == "ngl"
 
     def test_invalid_backend_raises_value_error(self) -> None:
-        """Backend selection should reject unknown values."""
+        r"""Backend selection should reject unknown values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Backend selection
+        should reject unknown values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="backend"):
             _resolve_interactive_backend("plotly")  # type: ignore[arg-type]
 
     def test_ngl_backend_requires_nglview(self) -> None:
-        """Explicit ngl backend should give an optional-dep error."""
+        r"""Explicit ngl backend should give an optional-dep error.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit ngl
+        backend should give an optional-dep error.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         if _resolve_interactive_backend("auto") == "ngl":
             pytest.skip("nglview is installed in this environment")
         with pytest.raises(ImportError, match="nglview"):
             _resolve_interactive_backend("ngl")
 
     def test_public_plots_export(self) -> None:
-        """view_atoms_interactive should be available from rheedium.plots."""
+        r"""view_atoms_interactive should be available from rheedium.plots.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        view_atoms_interactive should be available from rheedium.plots.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         import rheedium as rh
 
         assert rh.plots.view_atoms_interactive is view_atoms_interactive

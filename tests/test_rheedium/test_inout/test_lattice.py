@@ -15,7 +15,25 @@ class TestLatticeToCellParams(chex.TestCase):
     """
 
     def test_cubic_lattice(self) -> None:
-        """Cubic: a=b=c, alpha=beta=gamma=90 deg."""
+        r"""Cubic: a=b=c, alpha=beta=gamma=90 deg.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cubic: a=b=c,
+        alpha=beta=gamma=90 deg.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: float = 4.0
         lattice: Float[Array, "..."] = jnp.array(
             [[a, 0, 0], [0, a, 0], [0, 0, a]]
@@ -30,7 +48,25 @@ class TestLatticeToCellParams(chex.TestCase):
         )
 
     def test_orthorhombic_lattice(self) -> None:
-        """Orthorhombic: a != b != c, alpha=beta=gamma=90 deg."""
+        r"""Orthorhombic: a != b != c, alpha=beta=gamma=90 deg.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orthorhombic: a !=
+        b != c, alpha=beta=gamma=90 deg.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lattice: Float[Array, "..."] = jnp.array(
             [[3.0, 0, 0], [0, 4.0, 0], [0, 0, 5.0]]
         )
@@ -46,7 +82,25 @@ class TestLatticeToCellParams(chex.TestCase):
         )
 
     def test_hexagonal_lattice(self) -> None:
-        """Hexagonal: a=b != c, alpha=beta=90 deg, gamma=120 deg."""
+        r"""Hexagonal: a=b != c, alpha=beta=90 deg, gamma=120 deg.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Hexagonal: a=b !=
+        c, alpha=beta=90 deg, gamma=120 deg.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: float = 3.0
         c: float = 5.0
         lattice: Float[Array, "..."] = jnp.array(
@@ -62,7 +116,25 @@ class TestLatticeToCellParams(chex.TestCase):
         )
 
     def test_triclinic_lattice(self) -> None:
-        """Triclinic: all angles and lengths different."""
+        r"""Triclinic: all angles and lengths different.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Triclinic: all
+        angles and lengths different.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lattice: Float[Array, "..."] = jnp.array(
             [[5.0, 0.0, 0.0], [1.0, 4.0, 0.0], [0.5, 0.5, 6.0]]
         )
@@ -81,7 +153,25 @@ class TestLatticeToCellParams(chex.TestCase):
         assert not jnp.allclose(angles[2], 90.0)
 
     def test_tetragonal_lattice(self) -> None:
-        """Tetragonal: a=b != c, alpha=beta=gamma=90 deg."""
+        r"""Tetragonal: a=b != c, alpha=beta=gamma=90 deg.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Tetragonal: a=b !=
+        c, alpha=beta=gamma=90 deg.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: float = 4.0
         c: float = 6.0
         lattice: Float[Array, "..."] = jnp.array(
@@ -102,7 +192,29 @@ class TestLatticeToCellParams(chex.TestCase):
         ("large_cubic", 10.0),
     )
     def test_various_cell_sizes(self, a: float) -> None:
-        """Test with various cell sizes."""
+        r"""Test with various cell sizes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with various cell
+        sizes.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``a``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_lattice``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lattice: Float[Array, "..."] = jnp.eye(3) * a
         lengths: Float[Array, "..."]
         angles: Float[Array, "..."]

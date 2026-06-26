@@ -40,20 +40,92 @@ class TestScalarFloat:
     """Tests for the scalar_float type alias."""
 
     def test_accepts_python_float(self) -> None:
-        """Accept a Python float for scalar_float."""
+        r"""Accept a Python float for scalar_float.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        float for scalar_float.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(3.14, scalar_float) == 3.14
 
     def test_accepts_jax_scalar(self) -> None:
-        """Accept a JAX float scalar for scalar_float."""
+        r"""Accept a JAX float scalar for scalar_float.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a JAX float
+        scalar for scalar_float.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = _accepts(jnp.float64(2.5), scalar_float)
         assert float(result) == 2.5
 
     def test_rejects_string(self) -> None:
-        """Reject a string for scalar_float."""
+        r"""Reject a string for scalar_float.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a string
+        for scalar_float.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         _assert_rejected("hello", scalar_float)
 
     def test_rejects_list(self) -> None:
-        """Reject a list for scalar_float."""
+        r"""Reject a list for scalar_float.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a list for
+        scalar_float.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         _assert_rejected([1.0, 2.0], scalar_float)
 
 
@@ -61,16 +133,70 @@ class TestScalarInt:
     """Tests for the scalar_int type alias."""
 
     def test_accepts_python_int(self) -> None:
-        """Accept a Python int for scalar_int."""
+        r"""Accept a Python int for scalar_int.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        int for scalar_int.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(42, scalar_int) == 42
 
     def test_accepts_jax_int_scalar(self) -> None:
-        """Accept a JAX int scalar for scalar_int."""
+        r"""Accept a JAX int scalar for scalar_int.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a JAX int
+        scalar for scalar_int.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = _accepts(jnp.int32(7), scalar_int)
         assert int(result) == 7
 
     def test_rejects_string(self) -> None:
-        """Reject a string for scalar_int."""
+        r"""Reject a string for scalar_int.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a string
+        for scalar_int.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         _assert_rejected("hello", scalar_int)
 
 
@@ -78,12 +204,48 @@ class TestScalarBool:
     """Tests for the scalar_bool type alias."""
 
     def test_accepts_python_bool(self) -> None:
-        """Accept Python bool values for scalar_bool."""
+        r"""Accept Python bool values for scalar_bool.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept Python bool
+        values for scalar_bool.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(True, scalar_bool) is True
         assert _accepts(False, scalar_bool) is False
 
     def test_accepts_jax_bool_scalar(self) -> None:
-        """Accept a JAX bool scalar for scalar_bool."""
+        r"""Accept a JAX bool scalar for scalar_bool.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a JAX bool
+        scalar for scalar_bool.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = _accepts(jnp.bool_(True), scalar_bool)
         assert bool(result) is True
 
@@ -92,20 +254,92 @@ class TestScalarNum:
     """Tests for the scalar_num type alias."""
 
     def test_accepts_python_int(self) -> None:
-        """Accept a Python int for scalar_num."""
+        r"""Accept a Python int for scalar_num.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        int for scalar_num.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(5, scalar_num) == 5
 
     def test_accepts_python_float(self) -> None:
-        """Accept a Python float for scalar_num."""
+        r"""Accept a Python float for scalar_num.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        float for scalar_num.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(3.14, scalar_num) == 3.14
 
     def test_accepts_jax_scalar(self) -> None:
-        """Accept a JAX float scalar for scalar_num."""
+        r"""Accept a JAX float scalar for scalar_num.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a JAX float
+        scalar for scalar_num.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         result: Float[Array, "..."] = _accepts(jnp.float64(1.5), scalar_num)
         assert float(result) == 1.5
 
     def test_rejects_string(self) -> None:
-        """Reject a string for scalar_num."""
+        r"""Reject a string for scalar_num.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a string
+        for scalar_num.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         _assert_rejected("hello", scalar_num)
 
 
@@ -113,15 +347,69 @@ class TestNonJaxNumber:
     """Tests for the non_jax_number type alias."""
 
     def test_accepts_python_int(self) -> None:
-        """Accept a Python int for non_jax_number."""
+        r"""Accept a Python int for non_jax_number.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        int for non_jax_number.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(10, non_jax_number) == 10
 
     def test_accepts_python_float(self) -> None:
-        """Accept a Python float for non_jax_number."""
+        r"""Accept a Python float for non_jax_number.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a Python
+        float for non_jax_number.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         assert _accepts(2.5, non_jax_number) == 2.5
 
     def test_rejects_jax_array(self) -> None:
-        """Reject a JAX array for non_jax_number."""
+        r"""Reject a JAX array for non_jax_number.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a JAX array
+        for non_jax_number.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         _assert_rejected(jnp.float64(1.0), non_jax_number)
 
 
@@ -129,24 +417,96 @@ class TestFloatJaxImage:
     """Tests for the float_jax_image type alias."""
 
     def test_accepts_2d_float_array(self) -> None:
-        """Accept a 2D float JAX array for float_jax_image."""
+        r"""Accept a 2D float JAX array for float_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a 2D float
+        JAX array for float_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.ones((64, 128), dtype=jnp.float32)
         result: Float[Array, "..."] = _accepts(img, float_jax_image)
         assert result.shape == (64, 128)
 
     def test_accepts_float64(self) -> None:
-        """Accept a float64 JAX array for float_jax_image."""
+        r"""Accept a float64 JAX array for float_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a float64
+        JAX array for float_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.zeros((32, 32), dtype=jnp.float64)
         result: Float[Array, "..."] = _accepts(img, float_jax_image)
         assert result.shape == (32, 32)
 
     def test_rejects_int_array(self) -> None:
-        """Reject an int JAX array for float_jax_image."""
+        r"""Reject an int JAX array for float_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject an int JAX
+        array for float_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[Array, "..."] = jnp.ones((64, 64), dtype=jnp.int32)
         _assert_rejected(img, float_jax_image)
 
     def test_rejects_3d_array(self) -> None:
-        """Reject a 3D JAX array for float_jax_image."""
+        r"""Reject a 3D JAX array for float_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a 3D JAX
+        array for float_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.ones((3, 64, 64), dtype=jnp.float32)
         _assert_rejected(img, float_jax_image)
 
@@ -155,18 +515,72 @@ class TestIntJaxImage:
     """Tests for the int_jax_image type alias."""
 
     def test_accepts_2d_int_array(self) -> None:
-        """Accept a 2D int JAX array for int_jax_image."""
+        r"""Accept a 2D int JAX array for int_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a 2D int
+        JAX array for int_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[Array, "..."] = jnp.ones((64, 128), dtype=jnp.int32)
         result: Float[Array, "..."] = _accepts(img, int_jax_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
-        """Reject a float JAX array for int_jax_image."""
+        r"""Reject a float JAX array for int_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a float JAX
+        array for int_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[Array, "..."] = jnp.ones((64, 64), dtype=jnp.float32)
         _assert_rejected(img, int_jax_image)
 
     def test_rejects_1d_array(self) -> None:
-        """Reject a 1D JAX array for int_jax_image."""
+        r"""Reject a 1D JAX array for int_jax_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a 1D JAX
+        array for int_jax_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[Array, "..."] = jnp.ones((64,), dtype=jnp.int32)
         _assert_rejected(img, int_jax_image)
 
@@ -175,18 +589,72 @@ class TestFloatNpImage:
     """Tests for the float_np_image type alias."""
 
     def test_accepts_2d_float_array(self) -> None:
-        """Accept a 2D float NumPy array for float_np_image."""
+        r"""Accept a 2D float NumPy array for float_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a 2D float
+        NumPy array for float_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[NDArray, "..."] = np.ones((64, 128), dtype=np.float32)
         result: Float[Array, "..."] = _accepts(img, float_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_int_array(self) -> None:
-        """Reject an int NumPy array for float_np_image."""
+        r"""Reject an int NumPy array for float_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject an int
+        NumPy array for float_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[NDArray, "..."] = np.ones((64, 64), dtype=np.int32)
         _assert_rejected(img, float_np_image)
 
     def test_rejects_3d_array(self) -> None:
-        """Reject a 3D NumPy array for float_np_image."""
+        r"""Reject a 3D NumPy array for float_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a 3D NumPy
+        array for float_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[NDArray, "..."] = np.ones((3, 64, 64), dtype=np.float32)
         _assert_rejected(img, float_np_image)
 
@@ -195,18 +663,72 @@ class TestIntNpImage:
     """Tests for the int_np_image type alias."""
 
     def test_accepts_2d_int_array(self) -> None:
-        """Accept a 2D int NumPy array for int_np_image."""
+        r"""Accept a 2D int NumPy array for int_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept a 2D int
+        NumPy array for int_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[NDArray, "..."] = np.ones((64, 128), dtype=np.int32)
         result: Float[Array, "..."] = _accepts(img, int_np_image)
         assert result.shape == (64, 128)
 
     def test_rejects_float_array(self) -> None:
-        """Reject a float NumPy array for int_np_image."""
+        r"""Reject a float NumPy array for int_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a float
+        NumPy array for int_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Float[NDArray, "..."] = np.ones((64, 64), dtype=np.float32)
         _assert_rejected(img, int_np_image)
 
     def test_rejects_1d_array(self) -> None:
-        """Reject a 1D NumPy array for int_np_image."""
+        r"""Reject a 1D NumPy array for int_np_image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Reject a 1D NumPy
+        array for int_np_image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_custom_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img: Integer[NDArray, "..."] = np.ones((64,), dtype=np.int32)
         _assert_rejected(img, int_np_image)
 

@@ -53,7 +53,25 @@ class TestOrientationLoss(chex.TestCase):
     """
 
     def test_orientation_loss_is_zero_for_matching_distribution(self) -> None:
-        """The loss should vanish when the trial distribution matches data."""
+        r"""The loss should vanish when the trial distribution matches data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The loss should
+        vanish when the trial distribution matches data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_orientation``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: OrientationDistribution = _true_distribution()
         observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
@@ -79,7 +97,25 @@ class TestOrientationFitting(chex.TestCase):
     """
 
     def test_fit_orientation_weights_recovers_synthetic_weights(self) -> None:
-        """The inverse fit should recover the synthetic mixture weights."""
+        r"""The inverse fit should recover the synthetic mixture weights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The inverse fit
+        should recover the synthetic mixture weights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_orientation``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         true_distribution: OrientationDistribution = _true_distribution()
         observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
@@ -122,7 +158,25 @@ class TestOrientationUncertainty(chex.TestCase):
     """
 
     def test_fisher_information_tracks_discrete_weight_count(self) -> None:
-        """Fisher shape should depend on discrete weights, not quadrature."""
+        r"""Fisher shape should depend on discrete weights, not quadrature.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fisher shape
+        should depend on discrete weights, not quadrature.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_orientation``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: OrientationDistribution = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 20.0]),
             weights=jnp.array([0.4, 0.6]),
@@ -144,7 +198,25 @@ class TestOrientationUncertainty(chex.TestCase):
     def test_estimate_weight_uncertainty_returns_one_sigma_per_weight(
         self,
     ) -> None:
-        """Uncertainty output should match the fitted weight dimension."""
+        r"""Uncertainty output should match the fitted weight dimension.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Uncertainty output
+        should match the fitted weight dimension.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_orientation``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: OrientationDistribution = _true_distribution()
         observed: Float[Array, "rows cols"] = integrate_over_orientation(
             _synthetic_pattern,
@@ -177,7 +249,25 @@ class TestReconNamespace(chex.TestCase):
     """Tests for public recon exports."""
 
     def test_namespace_exports_orientation_entry_points(self) -> None:
-        """Orientation APIs should be re-exported from rheedium.recon."""
+        r"""Orientation APIs should be re-exported from rheedium.recon.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation APIs
+        should be re-exported from rheedium.recon.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_recon.test_orientation``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         self.assertIs(recon.orientation_loss, orientation_loss)
         self.assertIs(recon.fit_orientation_weights, fit_orientation_weights)
         self.assertIs(

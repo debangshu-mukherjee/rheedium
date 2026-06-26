@@ -44,18 +44,72 @@ class TestRuntimeCheckToggle(chex.TestCase):
     """Tests for the ``RHEEDIUM_DISABLE_RUNTIME_CHECKS`` import-time knob."""
 
     def test_checks_on_by_default(self) -> None:
-        """Without the opt-in, rheedium leaves ``EQX_ON_ERROR`` unset."""
+        r"""Without the opt-in, rheedium leaves ``EQX_ON_ERROR`` unset.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Without the
+        opt-in, rheedium leaves ``EQX_ON_ERROR`` unset.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_package_init``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         assert _resolved_eqx_on_error() == "<unset>"
 
     def test_opt_in_disables_checks(self) -> None:
-        """The opt-in sets ``EQX_ON_ERROR=off`` before the equinox import."""
+        r"""The opt-in sets ``EQX_ON_ERROR=off`` before the equinox import.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The opt-in sets
+        ``EQX_ON_ERROR=off`` before the equinox import.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_package_init``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         assert (
             _resolved_eqx_on_error(RHEEDIUM_DISABLE_RUNTIME_CHECKS="1")
             == "off"
         )
 
     def test_explicit_value_is_respected(self) -> None:
-        """An explicit ``EQX_ON_ERROR`` wins over the opt-in default."""
+        r"""An explicit ``EQX_ON_ERROR`` wins over the opt-in default.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: An explicit
+        ``EQX_ON_ERROR`` wins over the opt-in default.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_package_init``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         assert (
             _resolved_eqx_on_error(
                 RHEEDIUM_DISABLE_RUNTIME_CHECKS="1",
@@ -69,7 +123,25 @@ class TestNamingGuards(chex.TestCase):
     """Tests for public naming consistency."""
 
     def test_code_uses_energy_kev_not_old_beam_name(self) -> None:
-        """W7: code and tests should use energy_kev for keV beam energy."""
+        r"""W7: code and tests should use energy_kev for keV beam energy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: W7: code and tests
+        should use energy_kev for keV beam energy.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_package_init``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         old_name = "voltage" + "_kv"
         offenders: list[str] = []
         for root_name in ("src", "tests"):

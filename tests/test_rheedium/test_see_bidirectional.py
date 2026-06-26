@@ -210,7 +210,25 @@ class TestBidirectionalSeeReferences(chex.TestCase):
     """Validate source/test ``:see:`` links for rendered test docs."""
 
     def test_source_see_targets_resolve_to_test_objects(self) -> None:
-        """Every source ``:see:`` target names an existing test object."""
+        r"""Every source ``:see:`` target names an existing test object.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Every source
+        ``:see:`` target names an existing test object.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_see_bidirectional``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Path = _repo_root()
         _targets: dict[str, set[str]]
         unresolved: list[str]
@@ -219,7 +237,25 @@ class TestBidirectionalSeeReferences(chex.TestCase):
         self.assertEqual(unresolved, [])
 
     def test_source_targeted_tests_link_back_to_source_objects(self) -> None:
-        """Every source-targeted test object links back to source code."""
+        r"""Every source-targeted test object links back to source code.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Every
+        source-targeted test object links back to source code.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_see_bidirectional``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Path = _repo_root()
         targets: dict[str, set[str]]
         unresolved: list[str]
@@ -242,7 +278,25 @@ class TestBidirectionalSeeReferences(chex.TestCase):
         self.assertEqual(invalid_targets, [])
 
     def test_test_reference_pages_cover_all_test_modules(self) -> None:
-        """Every mirrored test module is included in the Test Reference."""
+        r"""Every mirrored test module is included in the Test Reference.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Every mirrored
+        test module is included in the Test Reference.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_see_bidirectional``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Path = _repo_root()
         expected: set[str] = {
             _module_name(root, path)

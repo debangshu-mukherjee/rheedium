@@ -153,14 +153,50 @@ class TestGetSpeciesList(chex.TestCase):
     """
 
     def test_simple_species(self) -> None:
-        """Extract species from simple atominfo."""
+        r"""Extract species from simple atominfo.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract species
+        from simple atominfo.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Any = ET.fromstring(SIMPLE_VASPXML)
         species: Any = _get_species_list(root)
 
         assert species == ["Mg", "O"]
 
     def test_missing_atominfo(self) -> None:
-        """Missing atominfo raises ValueError."""
+        r"""Missing atominfo raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing atominfo
+        raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xml_content: str = """<modeling></modeling>"""
         root: Any = ET.fromstring(xml_content)
 
@@ -175,7 +211,25 @@ class TestExtractStructureBlock(chex.TestCase):
     """
 
     def test_extract_lattice_positions(self) -> None:
-        """Extract lattice and positions from structure element."""
+        r"""Extract lattice and positions from structure element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract lattice
+        and positions from structure element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Any = ET.fromstring(SIMPLE_VASPXML)
         structure: Any = root.find(".//structure[@name='initialpos']")
         lattice: Any
@@ -201,7 +255,25 @@ class TestExtractForces(chex.TestCase):
     """
 
     def test_extract_forces(self) -> None:
-        """Extract forces from calculation element."""
+        r"""Extract forces from calculation element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract forces
+        from calculation element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Any = ET.fromstring(SIMPLE_VASPXML)
         calculation: Any = root.find(".//calculation")
         forces: Any = _extract_forces(calculation)
@@ -214,7 +286,25 @@ class TestExtractForces(chex.TestCase):
         )
 
     def test_missing_forces(self) -> None:
-        """Missing forces returns None."""
+        r"""Missing forces returns None.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing forces
+        returns None.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xml_content: str = """<calculation></calculation>"""
         calculation: Any = ET.fromstring(xml_content)
         forces: Any = _extract_forces(calculation)
@@ -229,7 +319,25 @@ class TestExtractStress(chex.TestCase):
     """
 
     def test_extract_stress(self) -> None:
-        """Extract stress tensor from calculation element."""
+        r"""Extract stress tensor from calculation element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract stress
+        tensor from calculation element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Any = ET.fromstring(SIMPLE_VASPXML)
         calculation: Any = root.find(".//calculation")
         stress: Any = _extract_stress(calculation)
@@ -245,7 +353,25 @@ class TestExtractStress(chex.TestCase):
         chex.assert_trees_all_close(stress, expected, atol=1e-10)
 
     def test_missing_stress(self) -> None:
-        """Missing stress returns None."""
+        r"""Missing stress returns None.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing stress
+        returns None.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xml_content: str = """<calculation></calculation>"""
         calculation: Any = ET.fromstring(xml_content)
         stress: Any = _extract_stress(calculation)
@@ -260,7 +386,25 @@ class TestExtractEnergy(chex.TestCase):
     """
 
     def test_extract_energy(self) -> None:
-        """Extract energy from calculation element."""
+        r"""Extract energy from calculation element.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract energy
+        from calculation element.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         root: Any = ET.fromstring(SIMPLE_VASPXML)
         calculation: Any = root.find(".//calculation")
         energy: Any = _extract_energy(calculation)
@@ -269,7 +413,25 @@ class TestExtractEnergy(chex.TestCase):
         chex.assert_trees_all_close(energy, -12.34567890, atol=1e-6)
 
     def test_missing_energy(self) -> None:
-        """Missing energy returns None."""
+        r"""Missing energy returns None.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing energy
+        returns None.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xml_content: str = """<calculation></calculation>"""
         calculation: Any = ET.fromstring(xml_content)
         energy: Any = _extract_energy(calculation)
@@ -284,7 +446,25 @@ class TestParseVaspxml(chex.TestCase):
     """
 
     def test_parse_crystal_structure(self) -> None:
-        """Parse vasprun.xml to CrystalStructure."""
+        r"""Parse vasprun.xml to CrystalStructure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse vasprun.xml
+        to CrystalStructure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -312,7 +492,25 @@ class TestParseVaspxml(chex.TestCase):
             )
 
     def test_parse_with_forces(self) -> None:
-        """Parse vasprun.xml to XYZData with forces."""
+        r"""Parse vasprun.xml to XYZData with forces.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse vasprun.xml
+        to XYZData with forces.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -330,7 +528,25 @@ class TestParseVaspxml(chex.TestCase):
             assert xyz_data.lattice is not None
 
     def test_parse_specific_step(self) -> None:
-        """Parse specific ionic step."""
+        r"""Parse specific ionic step.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse specific
+        ionic step.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -351,7 +567,25 @@ class TestParseVaspxml(chex.TestCase):
             chex.assert_trees_all_close(xyz_last.energy, -12.0, atol=1e-6)
 
     def test_step_out_of_range(self) -> None:
-        """Out of range step raises ValueError."""
+        r"""Out of range step raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Out of range step
+        raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -361,12 +595,48 @@ class TestParseVaspxml(chex.TestCase):
                 parse_vaspxml(xml_file, step=100)
 
     def test_file_not_found(self) -> None:
-        """Missing file raises FileNotFoundError."""
+        r"""Missing file raises FileNotFoundError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing file
+        raises FileNotFoundError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError):
             parse_vaspxml("/nonexistent/vasprun.xml")
 
     def test_invalid_xml(self) -> None:
-        """Invalid XML raises ValueError."""
+        r"""Invalid XML raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid XML raises
+        ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -376,7 +646,25 @@ class TestParseVaspxml(chex.TestCase):
                 parse_vaspxml(xml_file)
 
     def test_string_path(self) -> None:
-        """Accept string path as well as Path object."""
+        r"""Accept string path as well as Path object.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept string path
+        as well as Path object.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -393,7 +681,25 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
     """
 
     def test_parse_trajectory(self) -> None:
-        """Parse full trajectory from vasprun.xml."""
+        r"""Parse full trajectory from vasprun.xml.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse full
+        trajectory from vasprun.xml.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -405,7 +711,25 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             assert all(isinstance(xyz, XYZData) for xyz in trajectory)
 
     def test_trajectory_energies(self) -> None:
-        """Energies are extracted for each step."""
+        r"""Energies are extracted for each step.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Energies are
+        extracted for each step.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -421,7 +745,25 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             )
 
     def test_trajectory_lattice_changes(self) -> None:
-        """Lattice can change during relaxation."""
+        r"""Lattice can change during relaxation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lattice can change
+        during relaxation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -440,7 +782,25 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             assert cell_a_0 > cell_a_2  # Cell shrinks
 
     def test_trajectory_without_forces(self) -> None:
-        """Trajectory without forces has None for metadata."""
+        r"""Trajectory without forces has None for metadata.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Trajectory without
+        forces has None for metadata.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -454,12 +814,48 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
             assert all(xyz.energy is None for xyz in trajectory)
 
     def test_trajectory_file_not_found(self) -> None:
-        """Missing file raises FileNotFoundError."""
+        r"""Missing file raises FileNotFoundError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing file
+        raises FileNotFoundError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError):
             parse_vaspxml_trajectory("/nonexistent/vasprun.xml")
 
     def test_no_calculation_steps(self) -> None:
-        """XML without calculation steps raises ValueError."""
+        r"""XML without calculation steps raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XML without
+        calculation steps raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xml_content: str = """<?xml version="1.0"?>
 <modeling>
   <atominfo>
@@ -478,7 +874,25 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
                 parse_vaspxml_trajectory(xml_file)
 
     def test_atomic_numbers_preserved(self) -> None:
-        """Atomic numbers are consistent across trajectory."""
+        r"""Atomic numbers are consistent across trajectory.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atomic numbers are
+        consistent across trajectory.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -500,7 +914,25 @@ class TestVaspxmlRoundtrip(chex.TestCase):
     """Test vasprun.xml parsing consistency."""
 
     def test_frac_cart_consistency(self) -> None:
-        """Fractional and Cartesian positions should be consistent."""
+        r"""Fractional and Cartesian positions should be consistent.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fractional and
+        Cartesian positions should be consistent.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"
@@ -519,7 +951,25 @@ class TestVaspxmlRoundtrip(chex.TestCase):
             )
 
     def test_xyz_lattice_matches_crystal(self) -> None:
-        """XYZData lattice should match CrystalStructure cell."""
+        r"""XYZData lattice should match CrystalStructure cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XYZData lattice
+        should match CrystalStructure cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             xml_file: Path = Path(tmp_dir) / "vasprun.xml"

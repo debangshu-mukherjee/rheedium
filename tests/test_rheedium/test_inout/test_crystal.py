@@ -25,7 +25,25 @@ class TestInferLatticeFromPositions(chex.TestCase):
     """
 
     def test_single_atom(self) -> None:
-        """Single atom should create minimum extent cell."""
+        r"""Single atom should create minimum extent cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Single atom should
+        create minimum extent cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         lattice: Any = _infer_lattice_from_positions(
             positions, padding_ang=2.0
@@ -37,7 +55,25 @@ class TestInferLatticeFromPositions(chex.TestCase):
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_atoms_with_extent(self) -> None:
-        """Atoms spanning 0-10 A in each direction."""
+        r"""Atoms spanning 0-10 A in each direction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atoms spanning
+        0-10 A in each direction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
@@ -55,7 +91,25 @@ class TestInferLatticeFromPositions(chex.TestCase):
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_asymmetric_extent(self) -> None:
-        """Atoms with different extents in each direction."""
+        r"""Atoms with different extents in each direction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atoms with
+        different extents in each direction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0],
@@ -71,7 +125,25 @@ class TestInferLatticeFromPositions(chex.TestCase):
         chex.assert_trees_all_close(lattice, expected, atol=1e-10)
 
     def test_minimum_extent_enforced(self) -> None:
-        """Minimum extent of 1 A should be enforced."""
+        r"""Minimum extent of 1 A should be enforced.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Minimum extent of
+        1 A should be enforced.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 5.0]]
         )  # Single atom
@@ -91,7 +163,25 @@ class TestXyzToCrystal(chex.TestCase):
     """
 
     def test_with_explicit_lattice(self) -> None:
-        """XYZData with explicit cell_vectors override."""
+        r"""XYZData with explicit cell_vectors override.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XYZData with
+        explicit cell_vectors override.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0], [2.1, 2.1, 2.1]]
         )
@@ -128,7 +218,25 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
     def test_with_cell_vectors_override(self) -> None:
-        """Test explicit cell_vectors parameter overrides xyz_data.lattice."""
+        r"""Test explicit cell_vectors parameter overrides xyz_data.lattice.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: explicit
+        cell_vectors parameter overrides xyz_data.lattice.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         atomic_numbers: Integer[Array, "..."] = jnp.array([14])  # Si
         xyz_lattice: Float[Array, "..."] = jnp.eye(3) * 5.43
@@ -150,7 +258,25 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
     def test_non_orthorhombic_lattice(self) -> None:
-        """XYZ with non-orthorhombic (hexagonal) lattice."""
+        r"""XYZ with non-orthorhombic (hexagonal) lattice.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: XYZ with
+        non-orthorhombic (hexagonal) lattice.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: float = 3.2
         c: float = 5.2
         # Hexagonal lattice vectors
@@ -178,7 +304,25 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
     def test_preserves_atomic_numbers(self) -> None:
-        """Atomic numbers correctly transferred to 4th column."""
+        r"""Atomic numbers correctly transferred to 4th column.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atomic numbers
+        correctly transferred to 4th column.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
         )
@@ -204,7 +348,25 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
     def test_cartesian_positions_preserved(self) -> None:
-        """Cartesian positions should be preserved exactly."""
+        r"""Cartesian positions should be preserved exactly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cartesian
+        positions should be preserved exactly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[1.5, 2.5, 3.5], [4.0, 5.0, 6.0]]
         )
@@ -224,7 +386,25 @@ class TestXyzToCrystal(chex.TestCase):
         )
 
     def test_returns_crystal_structure(self) -> None:
-        """Should return CrystalStructure instance."""
+        r"""Should return CrystalStructure instance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Should return
+        CrystalStructure instance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         atomic_numbers: Integer[Array, "..."] = jnp.array([1])
         lattice: Float[Array, "..."] = jnp.eye(3) * 5.0
@@ -247,7 +427,25 @@ class TestParseCrystal(chex.TestCase):
     """
 
     def test_parse_cif(self) -> None:
-        """Parse CIF file via parse_crystal."""
+        r"""Parse CIF file via parse_crystal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse CIF file via
+        parse_crystal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_MgO
 _cell_length_a 4.212
@@ -279,7 +477,25 @@ O  0.5 0.5 0.5
             )
 
     def test_parse_xyz(self) -> None:
-        """Parse XYZ file via parse_crystal."""
+        r"""Parse XYZ file via parse_crystal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse XYZ file via
+        parse_crystal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         xyz_content: str = """2
 Lattice="4.2 0.0 0.0 0.0 4.2 0.0 0.0 0.0 4.2"
 Mg 0.0 0.0 0.0
@@ -301,7 +517,25 @@ O  2.1 2.1 2.1
             )
 
     def test_unsupported_format(self) -> None:
-        """Raise ValueError for unsupported format."""
+        r"""Raise ValueError for unsupported format.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Raise ValueError
+        for unsupported format.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             bad_file: Path = Path(tmp_dir) / "test.pdb"
@@ -311,12 +545,48 @@ O  2.1 2.1 2.1
                 parse_crystal(bad_file)
 
     def test_file_not_found(self) -> None:
-        """Raise FileNotFoundError for missing file."""
+        r"""Raise FileNotFoundError for missing file.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Raise
+        FileNotFoundError for missing file.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError):
             parse_crystal("/nonexistent/path.cif")
 
     def test_cif_xyz_equivalence(self) -> None:
-        """Same structure from CIF and XYZ should give similar results."""
+        r"""Same structure from CIF and XYZ should give similar results.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Same structure
+        from CIF and XYZ should give similar results.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         # Simple cubic MgO
         cif_content: str = """
 data_MgO
@@ -366,7 +636,24 @@ O  2.106 2.106 2.106
             )
 
     def test_path_as_string(self) -> None:
-        """Test that string paths work."""
+        r"""Test that string paths work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: string paths work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_test
 _cell_length_a 5.0
@@ -397,7 +684,25 @@ class TestCrystalRoundtrip(chex.TestCase):
     """Test consistency between lattice and cell parameter conversions."""
 
     def test_orthorhombic_roundtrip(self) -> None:
-        """Orthorhombic lattice survives roundtrip conversion."""
+        r"""Orthorhombic lattice survives roundtrip conversion.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orthorhombic
+        lattice survives roundtrip conversion.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: tuple[Any, ...]
         b: tuple[Any, ...]
         c: tuple[Any, ...]
@@ -419,7 +724,25 @@ class TestCrystalRoundtrip(chex.TestCase):
         )
 
     def test_xyz_to_crystal_fractional_consistency(self) -> None:
-        """Fractional coords times lattice should give Cartesian coords."""
+        r"""Fractional coords times lattice should give Cartesian coords.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fractional coords
+        times lattice should give Cartesian coords.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
         )

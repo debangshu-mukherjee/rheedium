@@ -268,7 +268,25 @@ class TestHdf5RoundTrip(chex.TestCase):
     """
 
     def test_save_and_load_all_supported_pytrees(self) -> None:
-        """Every public rheedium PyTree should survive an HDF5 round-trip."""
+        r"""Every public rheedium PyTree should survive an HDF5 round-trip.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Every public
+        rheedium PyTree should survive an HDF5 round-trip.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_hdf5``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         payload: Any = _build_sample_pytrees()
 
         tmpdir: str
@@ -285,7 +303,25 @@ class TestHdf5RoundTrip(chex.TestCase):
             _assert_round_trip_equal(loaded[key], expected)
 
     def test_load_single_named_object(self) -> None:
-        """A single group can be loaded by name."""
+        r"""A single group can be loaded by name.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A single group can
+        be loaded by name.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_hdf5``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         payload: Any = _build_sample_pytrees()
 
         tmpdir: str
@@ -298,7 +334,25 @@ class TestHdf5RoundTrip(chex.TestCase):
         _assert_round_trip_equal(loaded, payload["reconstruction"])
 
     def test_missing_file_raises_file_not_found(self) -> None:
-        """A non-existent path raises FileNotFoundError."""
+        r"""A non-existent path raises FileNotFoundError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A non-existent
+        path raises FileNotFoundError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_hdf5``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmpdir: str
         with TemporaryDirectory() as tmpdir:
             path: Path = Path(tmpdir) / "missing.h5"
@@ -306,7 +360,25 @@ class TestHdf5RoundTrip(chex.TestCase):
                 rh.inout.load_from_h5(path)
 
     def test_corrupt_file_raises_runtime_error(self) -> None:
-        """A present but non-HDF5 file raises RuntimeError."""
+        r"""A present but non-HDF5 file raises RuntimeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A present but
+        non-HDF5 file raises RuntimeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_hdf5``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmpdir: str
         with TemporaryDirectory() as tmpdir:
             path: Path = Path(tmpdir) / "corrupt.h5"

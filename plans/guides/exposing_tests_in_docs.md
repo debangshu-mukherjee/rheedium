@@ -17,7 +17,7 @@ Companion docs:
 
 - Conventions (the rules): [CONTRIBUTING.md](../../CONTRIBUTING.md) → *Test Code
   Conventions*.
-- Gated rollout (the work plan): [testing_docs.md](../partial/testing_docs.md).
+- Gated rollout (the work plan): [testing_docs.md](../implemented/testing_docs.md).
 
 This guide is the operational reference: the structure, the build, and the rST
 gotchas you hit when autodoc starts rendering test docstrings.
@@ -209,8 +209,8 @@ grep -rnE '"""[^"]*[^\\]\|[A-Za-z]' tests/test_rheedium/
   autodoc pages; the chex-variant warnings suppressed; the `|x|` substitution
   errors escaped. The `nb_execution_mode=off` build succeeds with the test docs
   rendered (≈10 warnings, down from ≈990).
-- **Outstanding (tracked in [testing_docs.md](../partial/testing_docs.md)):** the
+- **Implemented by [testing_docs.md](../implemented/testing_docs.md):** the
   full `what`/`how` docstring enrichment pass (T3), the bidirectional `:see:`
-  back-reference sweep across all test classes (T2), the bidirectionality guard
-  test + `-W` link-clean CI (T4), and fixing the tutorial-notebook execution so
-  the production `make html` is green.
+  back-reference sweep across source-targeted test objects (T2), the
+  bidirectionality guard test + `-W` link-clean CI (T4), and fixing the
+  tutorial-notebook execution so the production `make html` is green.

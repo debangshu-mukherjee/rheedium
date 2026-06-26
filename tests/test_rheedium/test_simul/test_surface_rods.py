@@ -109,15 +109,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("large_roughness", 2.0),
     )
     def test_roughness_damping_single(self, sigma: float) -> None:
-        """Test roughness damping for single q_z values.
+        r"""Test roughness damping for single q_z values.
 
-        Tests the surface roughness damping factor exp(-q_z²σ²/2) for
-        various roughness values (0, 0.5, 1.0, 2.0 Å). Verifies that
-        damping values are properly bounded between 0 and 1, equal to 1
-        at q_z=0 (no damping for zero momentum transfer), and decrease
-        monotonically with increasing q_z. The damping represents the loss
-        of coherent scattering intensity due to random height variations
-        at the crystal surface.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: roughness damping
+        for single q_z values. Existing context from the original test prose:
+        Tests the surface roughness damping factor exp(-q_z²σ²/2) for various
+        roughness values (0, 0.5, 1.0, 2.0 Å). Verifies that damping values are
+        properly bounded between 0 and 1, equal to 1 at q_z=0 (no damping for
+        zero momentum transfer), and decrease monotonically with increasing
+        q_z. The damping represents the loss of coherent scattering intensity
+        due to random height variations at the crystal surface.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``sigma``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
@@ -137,15 +157,34 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_roughness_damping_batched(self) -> None:
-        """Test roughness damping with batched q_z arrays.
+        r"""Test roughness damping with batched q_z arrays.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: roughness damping
+        with batched q_z arrays. Existing context from the original test prose:
         Verifies that the roughness damping function correctly handles
-        vectorized operations on multi-dimensional q_z arrays. Tests 2D
-        batches (20x5 array) and 3D batches (20x3x4 array) to ensure
-        proper broadcasting. This batching capability is essential for
-        efficient CTR calculations where multiple q_z points and detector
-        positions are evaluated simultaneously in RHEED pattern
-        simulations.
+        vectorized operations on multi-dimensional q_z arrays. Tests 2D batches
+        (20x5 array) and 3D batches (20x3x4 array) to ensure proper
+        broadcasting. This batching capability is essential for efficient CTR
+        calculations where multiple q_z points and detector positions are
+        evaluated simultaneously in RHEED pattern simulations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
@@ -165,13 +204,33 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_zero_roughness_no_damping(self) -> None:
-        """Test that zero roughness gives no damping.
+        r"""Test that zero roughness gives no damping.
 
-        Validates that a perfectly smooth surface (σ=0) produces no
-        damping (factor=1) for all q_z values. This represents an ideally
-        flat crystal termination with no height variations, resulting in
-        perfect coherent scattering along the crystal truncation rod
-        without intensity reduction from surface disorder.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: zero roughness
+        gives no damping. Existing context from the original test prose:
+        Validates that a perfectly smooth surface (σ=0) produces no damping
+        (factor=1) for all q_z values. This represents an ideally flat crystal
+        termination with no height variations, resulting in perfect coherent
+        scattering along the crystal truncation rod without intensity reduction
+        from surface disorder.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
@@ -189,16 +248,37 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("very_large_corr", 500.0),
     )
     def test_gaussian_rod_profile(self, correlation_length: float) -> None:
-        """Test Gaussian rod profile for different correlation lengths.
+        r"""Test Gaussian rod profile for different correlation lengths.
 
-        Tests the Gaussian profile function exp(-q_perp²ξ²/2) that
-        describes the lateral width of crystal truncation rods. Tests
-        correlation lengths from 10 to 500 Å representing different
-        degrees of lateral coherence. Verifies that the profile is
-        normalized (peak=1 at q_perp=0), bounded between 0 and 1, and
-        decreases monotonically away from the rod center. Larger
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gaussian rod
+        profile for different correlation lengths. Existing context from the
+        original test prose: Tests the Gaussian profile function
+        exp(-q_perp²ξ²/2) that describes the lateral width of crystal
+        truncation rods. Tests correlation lengths from 10 to 500 Å
+        representing different degrees of lateral coherence. Verifies that the
+        profile is normalized (peak=1 at q_perp=0), bounded between 0 and 1,
+        and decreases monotonically away from the rod center. Larger
         correlation lengths produce narrower rods in reciprocal space,
         reflecting better lateral ordering.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``correlation_length``, so the documented behavior is checked across
+        the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
 
@@ -224,15 +304,36 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("very_large_corr", 500.0),
     )
     def test_lorentzian_rod_profile(self, correlation_length: float) -> None:
-        """Test Lorentzian rod profile for different correlation lengths.
+        r"""Test Lorentzian rod profile for different correlation lengths.
 
-        Tests the Lorentzian profile function 1/(1 + (q_perpξ)²) that
-        describes CTR width with power-law tails. Tests correlation lengths
-        from 10 to 500 Å. Verifies normalization (peak=1 at q_perp=0),
-        bounded values [0,1], and monotonic decrease away from center.
-        Lorentzian profiles have heavier tails than Gaussian, representing
-        surfaces with longer-range disorder or step distributions following
-        power-law decay.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lorentzian rod
+        profile for different correlation lengths. Existing context from the
+        original test prose: Tests the Lorentzian profile function 1/(1 +
+        (q_perpξ)²) that describes CTR width with power-law tails. Tests
+        correlation lengths from 10 to 500 Å. Verifies normalization (peak=1 at
+        q_perp=0), bounded values [0,1], and monotonic decrease away from
+        center. Lorentzian profiles have heavier tails than Gaussian,
+        representing surfaces with longer-range disorder or step distributions
+        following power-law decay.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``correlation_length``, so the documented behavior is checked across
+        the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_lorentzian: Callable[..., Any] = self.variant(
             lorentzian_rod_profile
@@ -257,15 +358,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         ("lorentzian", "lorentzian"),
     )
     def test_rod_profile_function_selector(self, profile_type: str) -> None:
-        """Test rod profile function selector without JIT.
+        r"""Test rod profile function selector without JIT.
 
-        Tests the dynamic selection between Gaussian and Lorentzian rod
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod profile
+        function selector without JIT. Existing context from the original test
+        prose: Tests the dynamic selection between Gaussian and Lorentzian rod
         profiles based on a string parameter. This selector function allows
-        users to choose the appropriate profile for their surface
-        morphology: Gaussian for surfaces with random height distributions,
-        Lorentzian for surfaces with power-law step distributions. Verifies
-        that both profile types produce valid, normalized results with
-        correct monotonic behavior.
+        users to choose the appropriate profile for their surface morphology:
+        Gaussian for surfaces with random height distributions, Lorentzian for
+        surfaces with power-law step distributions. Verifies that both profile
+        types produce valid, normalized results with correct monotonic
+        behavior.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``profile_type``, so the documented behavior is checked across the
+        cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         correlation_length: float = 50.0
 
@@ -286,15 +407,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rod_profile_width_scaling(self) -> None:
-        """Test that rod width scales inversely with correlation length.
+        r"""Test that rod width scales inversely with correlation length.
 
-        Verifies the inverse relationship between real-space correlation
-        length and reciprocal-space rod width. At a fixed q_perp value,
-        smaller correlation lengths (10 Å) produce broader rods with higher
-        intensity away from center, while larger correlation lengths
-        (100 Å) produce narrower, more sharply peaked rods. This reflects
-        the Fourier transform relationship between real-space disorder and
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: rod width scales
+        inversely with correlation length. Existing context from the original
+        test prose: Verifies the inverse relationship between real-space
+        correlation length and reciprocal-space rod width. At a fixed q_perp
+        value, smaller correlation lengths (10 Å) produce broader rods with
+        higher intensity away from center, while larger correlation lengths
+        (100 Å) produce narrower, more sharply peaked rods. This reflects the
+        Fourier transform relationship between real-space disorder and
         reciprocal-space broadening.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
         q_test: scalar_float = jnp.array(0.1)
@@ -316,14 +457,34 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     ) -> None:
         r"""Test surface structure factor calculation.
 
-        Tests the calculation of the complex structure factor F(q) =
-        Σf_j exp(iq·r_j) for the surface unit cell. Tests various q-vectors
-        including forward scattering (0,0,0) and different reciprocal
-        lattice points, at temperatures from 100K to 600K, for both bulk
-        and surface atoms. Verifies that the structure factor is a finite
-        complex scalar with non-negative magnitude. The structure factor
-        determines the intensity distribution in the RHEED pattern through
-        \|F(q)\|².
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface structure
+        factor calculation. Existing context from the original test prose:
+        Tests the calculation of the complex structure factor F(q) = Σf_j
+        exp(iq·r_j) for the surface unit cell. Tests various q-vectors
+        including forward scattering (0,0,0) and different reciprocal lattice
+        points, at temperatures from 100K to 600K, for both bulk and surface
+        atoms. Verifies that the structure factor is a finite complex scalar
+        with non-negative magnitude. The structure factor determines the
+        intensity distribution in the RHEED pattern through \|F(q)\|².
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``temperature``, ``is_surface``, so the documented behavior is checked
+        across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_structure_factor: Callable[..., Any] = self.variant(
             surface_structure_factor
@@ -365,15 +526,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_structure_factor_symmetry(self) -> None:
-        """Test structure factor respects Friedel's law: F(-q) = F*(q).
+        r"""Test structure factor respects Friedel's law: F(-q) = F*(q).
 
-        Validates Friedel's law (centrosymmetry in reciprocal space) which
-        states that F(-q) = F*(q) for real atomic scattering factors. This
-        fundamental symmetry arises from the fact that the electron density
-        is real in real space. Tests with an arbitrary q-vector and
-        verifies that reversing q gives the complex conjugate of the
-        structure factor. This symmetry is crucial for understanding
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: structure factor
+        respects Friedel's law: F(-q) = F*(q). Existing context from the
+        original test prose: Validates Friedel's law (centrosymmetry in
+        reciprocal space) which states that F(-q) = F*(q) for real atomic
+        scattering factors. This fundamental symmetry arises from the fact that
+        the electron density is real in real space. Tests with an arbitrary
+        q-vector and verifies that reversing q gives the complex conjugate of
+        the structure factor. This symmetry is crucial for understanding
         diffraction pattern symmetries.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_structure_factor: Callable[..., Any] = self.variant(
             surface_structure_factor
@@ -422,13 +603,34 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     ) -> None:
         r"""Test CTR intensity calculation for different rods.
 
-        Tests crystal truncation rod intensity I(h,k,q_z) = \|F(h,k,q_z)\|²
-        × D(q_z) for various rods: specular (0,0), first-order (1,0),
-        diagonal (1,1), and high-order (2,0). Tests with roughness values
-        from 0.5 to 2.0 Å. Verifies that intensities are non-negative,
-        finite, and generally decrease with q_z due to roughness damping.
-        The CTR intensity profile along q_z contains information about
-        surface structure, roughness, and relaxation.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR intensity
+        calculation for different rods. Existing context from the original test
+        prose: Tests crystal truncation rod intensity I(h,k,q_z) =
+        \|F(h,k,q_z)\|² × D(q_z) for various rods: specular (0,0), first-order
+        (1,0), diagonal (1,1), and high-order (2,0). Tests with roughness
+        values from 0.5 to 2.0 Å. Verifies that intensities are non-negative,
+        finite, and generally decrease with q_z due to roughness damping. The
+        CTR intensity profile along q_z contains information about surface
+        structure, roughness, and relaxation.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``hk_index``,
+        ``roughness``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
@@ -465,16 +667,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_ctr_intensity_multiple_rods(self) -> None:
-        """Test CTR calculation for multiple rods simultaneously.
+        r"""Test CTR calculation for multiple rods simultaneously.
 
-        Tests vectorized calculation of multiple crystal truncation rods
-        in parallel: (0,0) specular, (1,0) first-order, (1,1) diagonal,
-        and (2,0) second-order. Verifies that the function correctly
-        computes a 2D array of intensities (N_rods × N_q_z), all values
-        are physically valid (non-negative, finite), and different rods
-        show distinct intensity patterns reflecting their unique structure
-        factors. This parallelization is crucial for efficient RHEED
-        pattern calculation.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR calculation
+        for multiple rods simultaneously. Existing context from the original
+        test prose: Tests vectorized calculation of multiple crystal truncation
+        rods in parallel: (0,0) specular, (1,0) first-order, (1,1) diagonal,
+        and (2,0) second-order. Verifies that the function correctly computes a
+        2D array of intensities (N_rods × N_q_z), all values are physically
+        valid (non-negative, finite), and different rods show distinct
+        intensity patterns reflecting their unique structure factors. This
+        parallelization is crucial for efficient RHEED pattern calculation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
@@ -500,18 +721,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_roughness_effect_on_ctr(self) -> None:
-        """Test that roughness reduces CTR intensity at high q_z.
+        r"""Test that roughness reduces CTR intensity at high q_z.
 
-        Compares CTR intensities for smooth (σ=0.1 Å) vs rough (σ=2.0 Å)
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: roughness reduces
+        CTR intensity at high q_z. Existing context from the original test
+        prose: Compares CTR intensities for smooth (σ=0.1 Å) vs rough (σ=2.0 Å)
         surfaces. Verifies that roughness increasingly damps intensity at
-        higher q_z values according to exp(-q_z²σ²). Tests the (1,0) rod
-        and checks that:
-        1. Smooth surface maintains higher intensity at large q_z
-        2. Rough surface shows stronger damping, especially at high q_z
-        3. The relative reduction is significant (measurable
-           experimentally)
-        This damping effect allows roughness determination from CTR
-        measurements.
+        higher q_z values according to exp(-q_z²σ²). Tests the (1,0) rod and
+        checks that: 1. Smooth surface maintains higher intensity at large q_z
+        2. Rough surface shows stronger damping, especially at high q_z 3. The
+        relative reduction is significant (measurable experimentally) This
+        damping effect allows roughness determination from CTR measurements.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
@@ -556,20 +794,38 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         q_z_range: tuple[float, float],
         detector_acceptance: float,
     ) -> None:
-        """Test integrated CTR intensity over detector acceptance.
+        r"""Test integrated CTR intensity over detector acceptance.
 
-        Tests numerical integration of CTR intensity over a q_z range,
-        simulating finite detector acceptance. Tests various integration
-        ranges (narrow: 0-1, wide: 0-5, offset: 2-4) and detector
-        acceptances (0.1-0.5 reciprocal units). The integrated intensity
-        represents what a real detector measures, accounting for its finite
-        angular resolution. Verifies that integrated intensity is a positive
-        scalar value, essential for comparing with experimental
-        measurements.
-
-        Note: This function has built-in JIT with static_argnames for
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: integrated CTR
+        intensity over detector acceptance. Existing context from the original
+        test prose: Tests numerical integration of CTR intensity over a q_z
+        range, simulating finite detector acceptance. Tests various integration
+        ranges (narrow: 0-1, wide: 0-5, offset: 2-4) and detector acceptances
+        (0.1-0.5 reciprocal units). The integrated intensity represents what a
+        real detector measures, accounting for its finite angular resolution.
+        Verifies that integrated intensity is a positive scalar value,
+        essential for comparing with experimental measurements. Note: This
+        function has built-in JIT with static_argnames for
         n_integration_points, so we call it directly instead of using
         self.variant() to avoid double-JIT issues.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``q_z_range``, ``detector_acceptance``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         integrated: Integer[Array, "..."] = integrated_rod_intensity(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
@@ -588,15 +844,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_temperature_effect_on_ctr(self) -> None:
-        """Test that higher temperature reduces CTR intensity.
+        r"""Test that higher temperature reduces CTR intensity.
 
-        Compares CTR intensities at low (100K) and high (600K) temperatures
-        for the (1,1) rod. Higher temperatures increase atomic thermal
-        vibrations, leading to larger Debye-Waller factors and reduced
-        coherent scattering. Verifies that the mean intensity decreases
-        with temperature, reflecting the exp(-B·q²) thermal damping where
-        B ∝ T. This temperature dependence is crucial for understanding
-        RHEED patterns at different growth temperatures.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: higher temperature
+        reduces CTR intensity. Existing context from the original test prose:
+        Compares CTR intensities at low (100K) and high (600K) temperatures for
+        the (1,1) rod. Higher temperatures increase atomic thermal vibrations,
+        leading to larger Debye-Waller factors and reduced coherent scattering.
+        Verifies that the mean intensity decreases with temperature, reflecting
+        the exp(-B·q²) thermal damping where B ∝ T. This temperature dependence
+        is crucial for understanding RHEED patterns at different growth
+        temperatures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
@@ -624,16 +900,39 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_jax_transformations_ctr(self) -> None:
-        """Test JAX transformations on CTR calculations.
+        r"""Test JAX transformations on CTR calculations.
 
-        Validates JAX functional transformations on CTR calculations:
-        1. vmap: Vectorizes over roughness values (0, 0.5, 1.0, 2.0 Å) to
-           compute multiple CTR profiles efficiently in parallel, essential
-           for parameter sweeps and fitting procedures.
-        2. grad: Computes the gradient of CTR intensity with respect to
-           roughness, verifying it's negative (more roughness reduces
-           intensity). This gradient is crucial for optimization algorithms
-           that fit CTR data to extract surface parameters.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JAX
+        transformations on CTR calculations. Existing context from the original
+        test prose: Validates JAX functional transformations on CTR
+        calculations: 1. vmap: Vectorizes over roughness values (0, 0.5, 1.0,
+        2.0 Å) to compute multiple CTR profiles efficiently in parallel,
+        essential for parameter sweeps and fitting procedures. 2. grad:
+        Computes the gradient of CTR intensity with respect to roughness,
+        verifying it's negative (more roughness reduces intensity). This
+        gradient is crucial for optimization algorithms that fit CTR data to
+        extract surface parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, vectorization, protecting
+        JAX transform compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
 
@@ -679,15 +978,35 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_profile_comparison(self) -> None:
-        """Test that Gaussian and Lorentzian profiles differ appropriately.
+        r"""Test that Gaussian and Lorentzian profiles differ appropriately.
 
-        Compares Gaussian and Lorentzian rod profiles with the same
-        correlation length (50 Å). Both profiles are normalized (peak=1 at
-        q_perp=0) but differ in their tails: Lorentzian has power-law decay
-        (1/q_perp²) producing heavier tails, while Gaussian has exponential
-        decay (exp(-q_perp²)) producing lighter tails. This difference is
-        important for distinguishing surface morphologies: Gaussian for
-        random roughness, Lorentzian for step-terrace structures.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gaussian and
+        Lorentzian profiles differ appropriately. Existing context from the
+        original test prose: Compares Gaussian and Lorentzian rod profiles with
+        the same correlation length (50 Å). Both profiles are normalized
+        (peak=1 at q_perp=0) but differ in their tails: Lorentzian has
+        power-law decay (1/q_perp²) producing heavier tails, while Gaussian has
+        exponential decay (exp(-q_perp²)) producing lighter tails. This
+        difference is important for distinguishing surface morphologies:
+        Gaussian for random roughness, Lorentzian for step-terrace structures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_gaussian: Callable[..., Any] = self.variant(gaussian_rod_profile)
         var_lorentzian: Callable[..., Any] = self.variant(
@@ -718,14 +1037,34 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     def test_physical_consistency(self) -> None:
         r"""Test physical consistency of CTR calculations.
 
-        Validates that CTR intensity calculation correctly implements the
-        physical relationship: I(h,k,q_z) = \|F(h,k,q_z)\|² × exp(-q_z²σ²).
-        Tests the decomposition by calculating structure factor and
-        roughness damping separately, then verifying their product matches
-        the combined CTR intensity. Tests multiple rods (0,0), (1,0), (2,0)
-        at q_z=1.0 to ensure the formula is consistently applied. This
-        validates the theoretical foundation of CTR analysis for surface
-        structure determination.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: physical
+        consistency of CTR calculations. Existing context from the original
+        test prose: Validates that CTR intensity calculation correctly
+        implements the physical relationship: I(h,k,q_z) = \|F(h,k,q_z)\|² ×
+        exp(-q_z²σ²). Tests the decomposition by calculating structure factor
+        and roughness damping separately, then verifying their product matches
+        the combined CTR intensity. Tests multiple rods (0,0), (1,0), (2,0) at
+        q_z=1.0 to ensure the formula is consistently applied. This validates
+        the theoretical foundation of CTR analysis for surface structure
+        determination.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_ctr: Callable[..., Any] = self.variant(calculate_ctr_intensity)
         var_damping: Callable[..., Any] = self.variant(roughness_damping)
@@ -805,7 +1144,28 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
     """Gradient existence and correctness for CTR intensity."""
 
     def test_ctr_intensity_grad_roughness(self) -> None:
-        """CTR intensity gradient w.r.t. roughness is finite."""
+        r"""CTR intensity gradient w.r.t. roughness is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR intensity
+        gradient w.r.t. roughness is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
         q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
@@ -825,7 +1185,28 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         assert jnp.abs(g) > 1e-12
 
     def test_ctr_intensity_grad_temperature(self) -> None:
-        """CTR intensity gradient w.r.t. temperature is finite."""
+        r"""CTR intensity gradient w.r.t. temperature is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR intensity
+        gradient w.r.t. temperature is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
         q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
@@ -844,7 +1225,28 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
 
     def test_ctr_intensity_grad_roughness_correct(self) -> None:
-        """CTR intensity grad w.r.t. roughness matches finite diff."""
+        r"""CTR intensity grad w.r.t. roughness matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR intensity grad
+        w.r.t. roughness matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
         q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
@@ -862,7 +1264,28 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         check_grads(jax_safe(f), (jnp.float64(0.5),), order=1, atol=1e-3)
 
     def test_ctr_intensity_grad_temperature_correct(self) -> None:
-        """CTR intensity grad w.r.t. temperature matches finite diff."""
+        r"""CTR intensity grad w.r.t. temperature matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR intensity grad
+        w.r.t. temperature matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
         q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
@@ -884,7 +1307,28 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential evaluation for CTR intensity."""
 
     def test_ctr_intensity_vmap_consistent(self) -> None:
-        """Batched CTR intensity matches sequential evaluation."""
+        r"""Batched CTR intensity matches sequential evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Batched CTR
+        intensity matches sequential evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
         q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 

@@ -24,7 +24,25 @@ class TestJaxSafe(chex.TestCase):
     """
 
     def test_converts_numpy_scalar_to_jax_scalar(self) -> None:
-        """Wrapped functions accept NumPy scalar inputs as JAX scalars."""
+        r"""Wrapped functions accept NumPy scalar inputs as JAX scalars.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wrapped functions
+        accept NumPy scalar inputs as JAX scalars.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_wrappers``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         @jaxtyped(typechecker=beartype)
         def _double_scalar(value: Float[Array, ""]) -> Float[Array, ""]:

@@ -87,6 +87,7 @@ dev = [
     "pyright>=1.1.390",
     "pygount>=3.1.0",
     "pre-commit>=4.5.1",
+    "interrogate>=1.7.0",
 ]
 dev_cuda = [
     "rheedium[dev,cuda]",
@@ -330,6 +331,6 @@ reportAttributeAccessIssue = "none"
 [tool.interrogate]
 fail-under = 90
 style = "sphinx"
-exclude = ["tests", "build", "dist"]
+exclude = ["build", "dist"]
 ignore-init-module = true
 quiet = true

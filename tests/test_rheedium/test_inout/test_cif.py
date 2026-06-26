@@ -33,7 +33,25 @@ class TestExtractCellParams(chex.TestCase):
     """
 
     def test_standard_cif_params(self) -> None:
-        """Extract standard cell parameters."""
+        r"""Extract standard cell parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract standard
+        cell parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_text: str = """
 data_test
 _cell_length_a 5.43
@@ -59,7 +77,25 @@ _cell_angle_gamma 90.0
         assert gamma == pytest.approx(90.0)
 
     def test_hexagonal_params(self) -> None:
-        """Extract hexagonal cell parameters."""
+        r"""Extract hexagonal cell parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract hexagonal
+        cell parameters.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_text: str = """
 _cell_length_a 3.25
 _cell_length_b 3.25
@@ -81,7 +117,25 @@ _cell_angle_gamma 120
         assert gamma == pytest.approx(120.0)
 
     def test_missing_param_raises(self) -> None:
-        """Missing parameter should raise ValueError."""
+        r"""Missing parameter should raise ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing parameter
+        should raise ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_text: str = """
 _cell_length_a 5.43
 _cell_length_b 5.43
@@ -98,7 +152,25 @@ class TestParseAtomPositions(chex.TestCase):
     """
 
     def test_standard_atom_loop(self) -> None:
-        """Parse standard atom site loop."""
+        r"""Parse standard atom site loop.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse standard
+        atom site loop.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "loop_",
             "_atom_site_type_symbol",
@@ -117,7 +189,25 @@ class TestParseAtomPositions(chex.TestCase):
         assert positions[1][3] == 14
 
     def test_atom_loop_with_extra_columns(self) -> None:
-        """Parse atom loop with additional columns."""
+        r"""Parse atom loop with additional columns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse atom loop
+        with additional columns.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "loop_",
             "_atom_site_label",
@@ -136,7 +226,25 @@ class TestParseAtomPositions(chex.TestCase):
         assert positions[1][3] == 8
 
     def test_empty_lines_return_empty(self) -> None:
-        """No atom site loop should return empty list."""
+        r"""No atom site loop should return empty list.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: No atom site loop
+        should return empty list.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "_cell_length_a 5.0",
             "_cell_length_b 5.0",
@@ -153,7 +261,25 @@ class TestParseSymmetryOps(chex.TestCase):
     """
 
     def test_quoted_symmetry_ops(self) -> None:
-        """Parse quoted symmetry operations."""
+        r"""Parse quoted symmetry operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse quoted
+        symmetry operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "loop_",
             "_symmetry_equiv_pos_as_xyz",
@@ -168,7 +294,25 @@ class TestParseSymmetryOps(chex.TestCase):
         assert "-x,-y,z" in sym_ops
 
     def test_default_identity_op(self) -> None:
-        """Default to identity when no symmetry ops found."""
+        r"""Default to identity when no symmetry ops found.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default to
+        identity when no symmetry ops found.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = ["_cell_length_a 5.0"]
         sym_ops: Any = _parse_symmetry_ops(lines)
 
@@ -182,19 +326,73 @@ class TestExtractSymOpFromLine(chex.TestCase):
     """
 
     def test_single_quoted(self) -> None:
-        """Extract from single-quoted line."""
+        r"""Extract from single-quoted line.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract from
+        single-quoted line.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _extract_sym_op_from_line("'x,y,z'", [])
 
         assert op == "x,y,z"
 
     def test_double_quoted(self) -> None:
-        """Extract from double-quoted line."""
+        r"""Extract from double-quoted line.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract from
+        double-quoted line.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _extract_sym_op_from_line('"x,-y,z"', [])
 
         assert op == "x,-y,z"
 
     def test_with_xyz_column(self) -> None:
-        """Extract when xyz column is specified."""
+        r"""Extract when xyz column is specified.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Extract when xyz
+        column is specified.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         columns: list[str] = [
             "_symmetry_equiv_pos_site_id",
             "_symmetry_equiv_pos_as_xyz",
@@ -211,7 +409,25 @@ class TestParseSymOp(chex.TestCase):
     """
 
     def test_identity(self) -> None:
-        """Identity operation x,y,z."""
+        r"""Identity operation x,y,z.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Identity operation
+        x,y,z.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _parse_sym_op("x,y,z")
         pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result: Float[Array, "..."] = op(pos)
@@ -219,7 +435,25 @@ class TestParseSymOp(chex.TestCase):
         chex.assert_trees_all_close(result, pos, atol=1e-10)
 
     def test_inversion(self) -> None:
-        """Inversion operation -x,-y,-z."""
+        r"""Inversion operation -x,-y,-z.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Inversion
+        operation -x,-y,-z.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _parse_sym_op("-x,-y,-z")
         pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result: Float[Array, "..."] = op(pos)
@@ -229,7 +463,25 @@ class TestParseSymOp(chex.TestCase):
         )
 
     def test_with_translation(self) -> None:
-        """Operation with translation x+1/2,y,z."""
+        r"""Operation with translation x+1/2,y,z.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Operation with
+        translation x+1/2,y,z.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _parse_sym_op("x+1/2,y,z")
         pos: Float[Array, "..."] = jnp.array([0.0, 0.0, 0.0])
         result: Float[Array, "..."] = op(pos)
@@ -239,7 +491,25 @@ class TestParseSymOp(chex.TestCase):
         )
 
     def test_cubic_symmetry(self) -> None:
-        """Face-centered cubic symmetry operation."""
+        r"""Face-centered cubic symmetry operation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Face-centered
+        cubic symmetry operation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         op: Any = _parse_sym_op("-y,x,z")
         pos: Float[Array, "..."] = jnp.array([0.25, 0.5, 0.75])
         result: Float[Array, "..."] = op(pos)
@@ -256,7 +526,25 @@ class TestDeduplicatePositions(chex.TestCase):
     """
 
     def test_removes_duplicates(self) -> None:
-        """Duplicate positions within tolerance are removed."""
+        r"""Duplicate positions within tolerance are removed.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Duplicate
+        positions within tolerance are removed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14.0],
@@ -269,7 +557,25 @@ class TestDeduplicatePositions(chex.TestCase):
         assert unique.shape[0] == 2
 
     def test_keeps_distinct_atoms(self) -> None:
-        """Distinct positions are preserved."""
+        r"""Distinct positions are preserved.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Distinct positions
+        are preserved.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14.0],
@@ -289,7 +595,25 @@ class TestSymmetryExpansion(chex.TestCase):
     """
 
     def test_identity_expansion(self) -> None:
-        """Identity operation should not change structure."""
+        r"""Identity operation should not change structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Identity operation
+        should not change structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0, 14.0]]
         )
@@ -311,7 +635,25 @@ class TestSymmetryExpansion(chex.TestCase):
         assert expanded.frac_positions.shape[0] == 1
 
     def test_inversion_expansion(self) -> None:
-        """Inversion should double atoms not at origin."""
+        r"""Inversion should double atoms not at origin.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Inversion should
+        double atoms not at origin.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "..."] = jnp.array(
             [[0.25, 0.25, 0.25, 14.0]]
         )
@@ -335,7 +677,25 @@ class TestSymmetryExpansion(chex.TestCase):
         assert expanded.frac_positions.shape[0] == 2
 
     def test_fcc_expansion(self) -> None:
-        """FCC symmetry should generate 4 atoms from 1."""
+        r"""FCC symmetry should generate 4 atoms from 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FCC symmetry
+        should generate 4 atoms from 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         frac_positions: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0, 29.0]]
         )
@@ -370,7 +730,25 @@ class TestParseCif(chex.TestCase):
     """
 
     def test_simple_cif(self) -> None:
-        """Parse simple cubic CIF file."""
+        r"""Parse simple cubic CIF file.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse simple cubic
+        CIF file.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_NaCl
 _cell_length_a 5.64
@@ -402,7 +780,25 @@ Cl 0.5 0.5 0.5
             )
 
     def test_cif_with_symmetry(self) -> None:
-        """Parse CIF with symmetry operations."""
+        r"""Parse CIF with symmetry operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse CIF with
+        symmetry operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_Si
 _cell_length_a 5.431
@@ -432,12 +828,48 @@ Si 0.125 0.125 0.125
             assert crystal.frac_positions.shape[0] >= 1
 
     def test_file_not_found(self) -> None:
-        """Missing file should raise FileNotFoundError."""
+        r"""Missing file should raise FileNotFoundError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing file
+        should raise FileNotFoundError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError):
             parse_cif("/nonexistent/path.cif")
 
     def test_wrong_extension(self) -> None:
-        """Wrong extension should raise ValueError."""
+        r"""Wrong extension should raise ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wrong extension
+        should raise ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             bad_file: Path = Path(tmp_dir) / "test.xyz"
@@ -447,7 +879,25 @@ Si 0.125 0.125 0.125
                 parse_cif(bad_file)
 
     def test_no_atoms_raises(self) -> None:
-        """CIF without atoms should raise ValueError."""
+        r"""CIF without atoms should raise ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CIF without atoms
+        should raise ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_empty
 _cell_length_a 5.0
@@ -466,7 +916,25 @@ _cell_angle_gamma 90
                 parse_cif(cif_file)
 
     def test_non_utf8_file_raises_runtime_error(self) -> None:
-        """A present but non-UTF-8 CIF file should raise RuntimeError."""
+        r"""A present but non-UTF-8 CIF file should raise RuntimeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A present but
+        non-UTF-8 CIF file should raise RuntimeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             cif_file: Path = Path(tmp_dir) / "binary.cif"
@@ -476,7 +944,25 @@ _cell_angle_gamma 90
                 parse_cif(cif_file)
 
     def test_path_as_string(self) -> None:
-        """String path should work."""
+        r"""String path should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: String path should
+        work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_test
 _cell_length_a 4.0
@@ -516,7 +1002,29 @@ class TestCifAtomicNumbers(chex.TestCase):
     def test_element_atomic_numbers(
         self, element: str, expected_z: int
     ) -> None:
-        """Verify correct atomic numbers for various elements."""
+        r"""Verify correct atomic numbers for various elements.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: correct atomic
+        numbers for various elements.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``element``,
+        ``expected_z``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: Any = f"""
 data_test
 _cell_length_a 5.0

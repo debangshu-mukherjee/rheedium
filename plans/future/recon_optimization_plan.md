@@ -18,7 +18,7 @@ of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
 
 Status: **proposed** — gated. **Roadmap position:** third of four —
 [framework](plans/implemented/distribution_framework_plan.md) →
-[rationalization](plans/partial/rationalization_refactor_plan.md) → *this* →
+[rationalization](plans/implemented/rationalization_refactor_plan.md) → *this* →
 [automatons](plans/future/automatons_plan.md). Entry gate **K0**: the
 rationalization refactor is complete (⇒ the forward model differentiates
 end-to-end against a clean, stable API). It **supersedes** the framework's
@@ -228,7 +228,7 @@ of conditions that must all hold before the next phase starts.
 
 ### Entry — Gate K0 (precondition for *any* work below)
 
-The [rationalization refactor](plans/partial/rationalization_refactor_plan.md) is
+The [rationalization refactor](plans/implemented/rationalization_refactor_plan.md) is
 **complete** (its R0–R6 done), so the forward model (`simulate_detector_image` /
 `apply`) differentiates end-to-end against the rationalized API (config carriers,
 one reduction). A `jax.grad` of a forward pattern w.r.t. a producer's latent

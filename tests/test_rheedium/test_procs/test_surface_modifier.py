@@ -65,7 +65,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
     """
 
     def test_output_shape_matches_input(self) -> None:
-        """Output should have same shape as q_z input."""
+        r"""Output should have same shape as q_z input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output should have
+        same shape as q_z input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_z: Float[Array, "100"] = jnp.linspace(0.0, 10.0, 100)
         result: Float[Array, "100"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
@@ -76,7 +94,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(result, (100,))
 
     def test_output_nonnegative(self) -> None:
-        """All intensity values should be >= 0."""
+        r"""All intensity values should be >= 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All intensity
+        values should be >= 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
         result: Float[Array, "200"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
@@ -87,7 +123,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         assert float(jnp.min(result)) >= -1e-10
 
     def test_output_bounded_by_one(self) -> None:
-        """Normalized intensity should not exceed 1."""
+        r"""Normalized intensity should not exceed 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Normalized
+        intensity should not exceed 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
         result: Float[Array, "200"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
@@ -98,7 +152,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(result)) <= 1.0 + 1e-10
 
     def test_antiphase_condition_dip(self) -> None:
-        """At q_z * d = pi, intensity should show a minimum."""
+        r"""At q_z * d = pi, intensity should show a minimum.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: At q_z * d = pi,
+        intensity should show a minimum.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         step_height: float = 2.0
         q_at_pi: scalar_float = jnp.pi / step_height
         q_z: Float[Array, "2"] = jnp.array([0.0, q_at_pi])
@@ -111,7 +183,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         assert float(result[1]) < float(result[0])
 
     def test_in_phase_condition_peak(self) -> None:
-        """At q_z * d = 2*pi, intensity should be at maximum."""
+        r"""At q_z * d = 2*pi, intensity should be at maximum.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: At q_z * d = 2*pi,
+        intensity should be at maximum.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         step_height: float = 2.0
         q_at_2pi: scalar_float = 2.0 * jnp.pi / step_height
         q_z: Float[Array, "1"] = jnp.array([q_at_2pi])
@@ -124,7 +214,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(float(result[0]), 1.0, atol=1e-6)
 
     def test_wider_terraces_sharper_peaks(self) -> None:
-        """Wider terraces should produce sharper (narrower) peaks."""
+        r"""Wider terraces should produce sharper (narrower) peaks.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wider terraces
+        should produce sharper (narrower) peaks.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_z: Float[Array, "1000"] = jnp.linspace(0.0, 10.0, 1000)
         narrow: Float[Array, "1000"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([1, 0], dtype=jnp.int32),
@@ -143,7 +251,25 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         assert wide_mean < narrow_mean
 
     def test_no_nan_or_inf(self) -> None:
-        """Output should be finite everywhere."""
+        r"""Output should be finite everywhere.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output should be
+        finite everywhere.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         q_z: Float[Array, "500"] = jnp.linspace(0.0, 20.0, 500)
         result: Float[Array, "500"] = vicinal_surface_step_splitting(
             hk_index=jnp.array([0, 0], dtype=jnp.int32),
@@ -161,7 +287,25 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
     """
 
     def test_scales_only_surface_region_atomic_numbers(self) -> None:
-        """Verify only surface-region atomic numbers are scaled."""
+        r"""Verify only surface-region atomic numbers are scaled.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: only
+        surface-region atomic numbers are scaled.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_surface_occupancy_field(
             slab,
@@ -181,7 +325,25 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_clips_surface_occupancies(self) -> None:
-        """Verify surface occupancies are clipped to a physical range."""
+        r"""Verify surface occupancies are clipped to a physical range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface
+        occupancies are clipped to a physical range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_surface_occupancy_field(
             slab,
@@ -196,7 +358,28 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_grad_flows_through_surface_occupancy(self) -> None:
-        """Check gradients flow through the surface occupancy."""
+        r"""Check gradients flow through the surface occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the surface occupancy.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def objective(occupancy: scalar_float) -> scalar_float:
@@ -212,7 +395,28 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 14.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_surface_occupancy_field compiles under jit."""
+        r"""Verify apply_surface_occupancy_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_surface_occupancy_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         compiled: Callable[..., Any] = jax.jit(
             lambda occupancy: apply_surface_occupancy_field(
@@ -230,7 +434,28 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_surface_occupancies(self) -> None:
-        """Check the field maps over batched surface occupancies."""
+        r"""Check the field maps over batched surface occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check the field
+        maps over batched surface occupancies.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def top_layer_weight(occupancy: scalar_float) -> scalar_float:
@@ -257,7 +482,25 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
     """
 
     def test_applies_displacements_only_near_surface(self) -> None:
-        """Verify displacements are applied only near the surface."""
+        r"""Verify displacements are applied only near the surface.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: displacements are
+        applied only near the surface.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_surface_displacement_field(
             slab,
@@ -289,7 +532,25 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_zero_displacement_field_is_identity(self) -> None:
-        """Verify a zero displacement field leaves the slab unchanged."""
+        r"""Verify a zero displacement field leaves the slab unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a zero
+        displacement field leaves the slab unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_surface_displacement_field(
             slab,
@@ -304,7 +565,28 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_grad_flows_through_surface_displacement(self) -> None:
-        """Check gradients flow through the surface displacement."""
+        r"""Check gradients flow through the surface displacement.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the surface displacement.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def objective(delta_z: scalar_float) -> scalar_float:
@@ -324,7 +606,28 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 1.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_surface_displacement_field compiles under jit."""
+        r"""Verify apply_surface_displacement_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_surface_displacement_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         compiled: Callable[..., Any] = jax.jit(
             lambda scale: apply_surface_displacement_field(
@@ -348,7 +651,28 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_displacement_scales(self) -> None:
-        """Check the field maps over batched displacement scales."""
+        r"""Check the field maps over batched displacement scales.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check the field
+        maps over batched displacement scales.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def top_atom_z(scale: scalar_float) -> scalar_float:
@@ -381,7 +705,25 @@ class TestApplyStepEdgeField(chex.TestCase):
     """
 
     def test_modulates_surface_heights_with_periodic_steps(self) -> None:
-        """Verify surface heights are modulated by periodic steps."""
+        r"""Verify surface heights are modulated by periodic steps.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface heights
+        are modulated by periodic steps.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_step_edge_field(
             slab,
@@ -397,7 +739,25 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_zero_step_height_is_identity(self) -> None:
-        """Verify a zero step height leaves the slab unchanged."""
+        r"""Verify a zero step height leaves the slab unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a zero step height
+        leaves the slab unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_step_edge_field(
             slab,
@@ -413,7 +773,28 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_grad_flows_through_step_height(self) -> None:
-        """Check gradients flow through the step height."""
+        r"""Check gradients flow through the step height.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check gradients
+        flow through the step height.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def objective(step_height: scalar_float) -> scalar_float:
@@ -428,7 +809,28 @@ class TestApplyStepEdgeField(chex.TestCase):
         chex.assert_trees_all_close(float(grad_value), 0.5, atol=1e-3)
 
     def test_jit_compiles(self) -> None:
-        """Verify apply_step_edge_field compiles under jit."""
+        r"""Verify apply_step_edge_field compiles under jit.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        apply_step_edge_field compiles under jit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         compiled: Callable[..., Any] = jax.jit(
             lambda step_height: apply_step_edge_field(
@@ -447,7 +849,28 @@ class TestApplyStepEdgeField(chex.TestCase):
         )
 
     def test_vmap_supports_batched_step_heights(self) -> None:
-        """Check the step edge field maps over batched step heights."""
+        r"""Check the step edge field maps over batched step heights.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check the step
+        edge field maps over batched step heights.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def top_atom_z(step_height: scalar_float) -> scalar_float:
@@ -475,7 +898,25 @@ class TestApplyTwinWallField(chex.TestCase):
     """
 
     def test_rotates_surface_atoms_smoothly_across_wall(self) -> None:
-        """Twin wall should move top-surface in-plane coordinates."""
+        r"""Twin wall should move top-surface in-plane coordinates.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Twin wall should
+        move top-surface in-plane coordinates.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_twin_wall_field(
             slab=slab,
@@ -503,7 +944,25 @@ class TestApplyTwinWallField(chex.TestCase):
         )
 
     def test_zero_angle_is_identity(self) -> None:
-        """Zero twin angle preserves coordinates."""
+        r"""Zero twin angle preserves coordinates.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero twin angle
+        preserves coordinates.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         modified: CrystalStructure = apply_twin_wall_field(
             slab=slab,
@@ -519,7 +978,28 @@ class TestApplyTwinWallField(chex.TestCase):
         )
 
     def test_grad_flows_through_twin_angle(self) -> None:
-        """Twin-wall structure builder remains differentiable."""
+        r"""Twin-wall structure builder remains differentiable.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Twin-wall
+        structure builder remains differentiable.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
 
         def objective(angle: scalar_float) -> scalar_float:
@@ -543,7 +1023,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
     """
 
     def test_single_domain_unchanged(self) -> None:
-        """Single domain with f=1 should return pattern unchanged."""
+        r"""Single domain with f=1 should return pattern unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Single domain with
+        f=1 should return pattern unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "..."] = jnp.ones((1, 8, 8)) * 5.0
         fractions: Float[Array, "..."] = jnp.array([1.0])
         result: Float[Array, "..."] = incoherent_domain_average(
@@ -554,7 +1052,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, 5.0, atol=1e-6)
 
     def test_two_equal_domains_average(self) -> None:
-        """50/50 mix should be the average of two patterns."""
+        r"""50/50 mix should be the average of two patterns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: 50/50 mix should
+        be the average of two patterns.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         p1: Float[Array, "..."] = jnp.ones((8, 8)) * 2.0
         p2: Float[Array, "..."] = jnp.ones((8, 8)) * 6.0
         patterns: Float[Array, "..."] = jnp.stack([p1, p2], axis=0)
@@ -567,7 +1083,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected, atol=1e-6)
 
     def test_output_shape(self) -> None:
-        """Output should be (H, W) regardless of number of domains."""
+        r"""Output should be (H, W) regardless of number of domains.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output should be
+        (H, W) regardless of number of domains.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         patterns: Float[Array, "..."] = jnp.ones((3, 16, 32))
         fractions: Float[Array, "..."] = jnp.array([0.5, 0.3, 0.2])
         result: Float[Array, "..."] = incoherent_domain_average(
@@ -577,7 +1111,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(result, (16, 32))
 
     def test_output_nonnegative(self) -> None:
-        """Result should be non-negative for non-negative inputs."""
+        r"""Result should be non-negative for non-negative inputs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Result should be
+        non-negative for non-negative inputs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         rng: np.random.Generator = np.random.default_rng(42)
         patterns: Float[Array, "domains height width"] = jnp.array(
             rng.uniform(0, 10, size=(4, 8, 8))
@@ -590,7 +1142,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         assert float(jnp.min(result)) >= -1e-10
 
     def test_weighted_sum_correct(self) -> None:
-        """Weighted sum should equal manual calculation."""
+        r"""Weighted sum should equal manual calculation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Weighted sum
+        should equal manual calculation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         p1: Float[Array, "..."] = jnp.ones((4, 4)) * 10.0
         p2: Float[Array, "..."] = jnp.ones((4, 4)) * 20.0
         patterns: Float[Array, "..."] = jnp.stack([p1, p2], axis=0)
@@ -607,7 +1177,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         )
 
     def test_fractions_auto_normalized(self) -> None:
-        """Non-unit fractions should be auto-normalized."""
+        r"""Non-unit fractions should be auto-normalized.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-unit fractions
+        should be auto-normalized.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         p1: Float[Array, "..."] = jnp.ones((4, 4)) * 10.0
         patterns: Float[Array, "..."] = jnp.expand_dims(p1, axis=0)
         fractions: Float[Array, "..."] = jnp.array([2.0])
@@ -618,7 +1206,25 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, 10.0, atol=1e-6)
 
     def test_no_nan_or_inf(self) -> None:
-        """Output should be finite."""
+        r"""Output should be finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output should be
+        finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         rng: np.random.Generator = np.random.default_rng(0)
         patterns: Float[Array, "domains height width"] = jnp.array(
             rng.uniform(0, 100, size=(5, 8, 8))
@@ -638,7 +1244,25 @@ class TestTwinWallToDistribution(chex.TestCase):
     """
 
     def test_sub_coherence_twins_reduce_coherently(self) -> None:
-        """Fine twin spacing selects coherent amplitude reduction."""
+        r"""Fine twin spacing selects coherent amplitude reduction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fine twin spacing
+        selects coherent amplitude reduction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([-1.0, 1.0]),
             wall_positions_angstrom=jnp.array([0.0, 20.0]),
@@ -653,7 +1277,25 @@ class TestTwinWallToDistribution(chex.TestCase):
         assert dist.axis_id == "twins"
 
     def test_coherent_reduction_matches_manual_amplitude_sum(self) -> None:
-        """Twin producer composes with the Layer-1 coherent reducer."""
+        r"""Twin producer composes with the Layer-1 coherent reducer.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Twin producer
+        composes with the Layer-1 coherent reducer.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([0.0, 2.0]),
             wall_positions_angstrom=jnp.array([0.0, 1.0]),
@@ -680,7 +1322,25 @@ class TestStepEdgeToDistribution(chex.TestCase):
     """
 
     def test_regular_sub_coherence_steps_reduce_coherently(self) -> None:
-        """Regular terrace arrays can interfere coherently."""
+        r"""Regular terrace arrays can interfere coherently.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Regular terrace
+        arrays can interfere coherently.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([1.0, 2.0]),
             terrace_widths_angstrom=jnp.array([20.0, 30.0]),
@@ -695,7 +1355,25 @@ class TestStepEdgeToDistribution(chex.TestCase):
         assert dist.reduction is ReductionMode.COHERENT
 
     def test_random_steps_reduce_incoherently(self) -> None:
-        """Random step populations remain intensity mixtures."""
+        r"""Random step populations remain intensity mixtures.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Random step
+        populations remain intensity mixtures.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         dist: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([1.0, 3.0]),
             terrace_widths_angstrom=jnp.array([20.0, 30.0]),
@@ -725,7 +1403,25 @@ class TestBindTwinWallDistribution(chex.TestCase):
     """
 
     def test_builder_matches_direct_twin_wall_modifier(self) -> None:
-        """Bound twin samples should call the structure modifier."""
+        r"""Bound twin samples should call the structure modifier.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Bound twin samples
+        should call the structure modifier.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         builder: Callable[[Float[Array, "2"]], CrystalStructure] = (
             bind_twin_wall_distribution(
@@ -751,7 +1447,25 @@ class TestBindTwinWallDistribution(chex.TestCase):
         )
 
     def test_layer1_reduction_can_use_bound_twin_structures(self) -> None:
-        """A twin Distribution can build structures inside Layer 1."""
+        r"""A twin Distribution can build structures inside Layer 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A twin
+        Distribution can build structures inside Layer 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         dist: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([0.0, 6.0]),
@@ -792,7 +1506,25 @@ class TestBindStepEdgeDistribution(chex.TestCase):
     """
 
     def test_builder_matches_direct_step_modifier(self) -> None:
-        """Bound step samples should call the structure modifier."""
+        r"""Bound step samples should call the structure modifier.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Bound step samples
+        should call the structure modifier.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         builder: Callable[[Float[Array, "3"]], CrystalStructure] = (
             bind_step_edge_distribution(
@@ -817,7 +1549,25 @@ class TestBindStepEdgeDistribution(chex.TestCase):
         )
 
     def test_layer1_reduction_can_use_bound_step_structures(self) -> None:
-        """A step Distribution can build structures inside Layer 1."""
+        r"""A step Distribution can build structures inside Layer 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A step
+        Distribution can build structures inside Layer 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         slab: CrystalStructure = _make_test_slab()
         dist: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([1.0, 3.0]),

@@ -330,7 +330,31 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         surface_roughness: float,
         surface_fraction: float,
     ) -> None:
-        """Test intensity calculation with CTR contributions."""
+        r"""Test intensity calculation with CTR contributions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: intensity
+        calculation with CTR contributions.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``temperature``, ``surface_roughness``, ``surface_fraction``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -369,7 +393,29 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_surface_enhancement_effect(self) -> None:
-        """Test that surface atoms have enhanced thermal motion."""
+        r"""Test that surface atoms have enhanced thermal motion.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface atoms have
+        enhanced thermal motion.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -410,7 +456,28 @@ class TestCheckedNumericalEntryPoints(chex.TestCase):
     """Tests for opt-in checkified numerical entry points."""
 
     def test_checked_multislice_propagate_valid(self) -> None:
-        """Checked multislice propagation should allow finite outputs."""
+        r"""Checked multislice propagation should allow finite outputs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Checked multislice
+        propagation should allow finite outputs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential: PotentialSlices = create_potential_slices(
             slices=jnp.ones((2, 8, 8)),
             slice_thickness=1.0,
@@ -431,7 +498,28 @@ class TestCheckedNumericalEntryPoints(chex.TestCase):
         chex.assert_tree_all_finite(exit_wave)
 
     def test_checked_multislice_propagate_rejects_nan(self) -> None:
-        """Checked multislice propagation should report NaN outputs."""
+        r"""Checked multislice propagation should report NaN outputs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Checked multislice
+        propagation should report NaN outputs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential: PotentialSlices = PotentialSlices(
             slices=jnp.ones((2, 8, 8)).at[0, 0, 0].set(jnp.nan),
             slice_thickness=jnp.asarray(1.0),
@@ -461,7 +549,29 @@ class TestProjectOnDetectorGeometry(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_basic_projection(self) -> None:
-        """Test basic projection onto detector plane."""
+        r"""Test basic projection onto detector plane.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: basic projection
+        onto detector plane.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
         )
@@ -491,7 +601,30 @@ class TestProjectOnDetectorGeometry(chex.TestCase, parameterized.TestCase):
         ("far", 500.0),
     )
     def test_detector_distance_scaling(self, distance: float) -> None:
-        """Test that coordinates scale linearly with detector distance."""
+        r"""Test that coordinates scale linearly with detector distance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: coordinates scale
+        linearly with detector distance.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``distance``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
         )
@@ -511,7 +644,29 @@ class TestProjectOnDetectorGeometry(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
-        """Test output has correct shape for various inputs."""
+        r"""Test output has correct shape for various inputs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output has correct
+        shape for various inputs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_project: Callable[..., Any] = self.variant(
             project_on_detector_geometry
         )
@@ -531,7 +686,25 @@ class TestRationalizationGuards(chex.TestCase):
     repo_root = Path(__file__).parents[3]
 
     def test_rg1_projection_callers_use_detector_geometry(self) -> None:
-        """Production projection callers should consume DetectorGeometry."""
+        r"""Production projection callers should consume DetectorGeometry.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Production
+        projection callers should consume DetectorGeometry.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         checked_files = [
             self.repo_root / "src/rheedium/simul/simulator.py",
             self.repo_root / "src/rheedium/simul/kinematic.py",
@@ -563,7 +736,25 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertEqual(raw_projection_imports, [])
 
     def test_rg3_touched_public_symbols_have_live_consumers(self) -> None:
-        """Removed or retained public symbols must match live import graph."""
+        r"""Removed or retained public symbols must match live import graph.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Removed or
+        retained public symbols must match live import graph.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         self.assertFalse(hasattr(rheedium_simul, "project_on_detector"))
         self.assertNotIn("project_on_detector", rheedium_simul.__all__)
 
@@ -604,7 +795,25 @@ class TestRationalizationGuards(chex.TestCase):
         )
 
     def test_rg2_orientation_averaging_has_single_reducer_path(self) -> None:
-        """Orientation averaging should route through Layer-1 reducers."""
+        r"""Orientation averaging should route through Layer-1 reducers.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Orientation
+        averaging should route through Layer-1 reducers.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         retired_names = {
             "ewald_simulator_with_orientation_distribution",
             "_discretize_orientation_for_sparse_pattern",
@@ -660,7 +869,25 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertNotIn("einsum", integrate_source)
 
     def test_rg4_detector_api_uses_carriers_and_generic_sweeps(self) -> None:
-        """Detector images should expose carrier and generic sweep APIs."""
+        r"""Detector images should expose carrier and generic sweep APIs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Detector images
+        should expose carrier and generic sweep APIs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         signature = inspect.signature(rheedium_simul.simulate_detector_image)
         positional_or_keyword = [
             parameter
@@ -728,7 +955,25 @@ class TestRationalizationGuards(chex.TestCase):
         )
 
     def test_rg5_angle_units_convert_at_single_boundary(self) -> None:
-        """Public degree angles should convert to internal radians once."""
+        r"""Public degree angles should convert to internal radians once.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Public degree
+        angles should convert to internal radians once.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         simulator_path = self.repo_root / "src/rheedium/simul/simulator.py"
         simulator = ast.parse(simulator_path.read_text(encoding="utf-8"))
         tools_path = self.repo_root / "src/rheedium/tools/simul_utils.py"
@@ -770,7 +1015,25 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertGreaterEqual(helper_call_count, 4)
 
     def test_rg5_procs_public_returns_follow_trichotomy(self) -> None:
-        """Public procs functions should declare the R5 return contract."""
+        r"""Public procs functions should declare the R5 return contract.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Public procs
+        functions should declare the R5 return contract.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         expected_categories = {
             "src/rheedium/procs/crystal_defects.py": {
                 "apply_antisite_field": "CrystalStructure",
@@ -859,7 +1122,25 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertEqual(category_mismatches, [])
 
     def test_rg6_layering_modules_preserve_public_imports(self) -> None:
-        """Package splits should leave public import paths unchanged."""
+        r"""Package splits should leave public import paths unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Package splits
+        should leave public import paths unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distributions_path = (
             self.repo_root / "src/rheedium/types/distributions"
         )
@@ -908,7 +1189,29 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_elastic_scattering_constraint(self) -> None:
-        r"""Test that output wavevectors satisfy \|k_out\| ≈ \|k_in\|."""
+        r"""Test that output wavevectors satisfy \|k_out\| ≈ \|k_in\|.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output wavevectors
+        satisfy \|k_out\| ≈ \|k_in\|.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
@@ -937,7 +1240,30 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         ("loose", 0.2),
     )
     def test_tolerance_variation(self, tolerance: float) -> None:
-        """Test that tighter tolerances allow fewer reflections."""
+        r"""Test that tighter tolerances allow fewer reflections.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: tighter tolerances
+        allow fewer reflections.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``tolerance``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
@@ -966,7 +1292,29 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_positive(self) -> None:
-        """Test filtering with positive z_sign (forward scattering)."""
+        r"""Test filtering with positive z_sign (forward scattering).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: filtering with
+        positive z_sign (forward scattering).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, 2.5])
@@ -986,7 +1334,29 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_z_sign_negative(self) -> None:
-        """Test filtering with negative z_sign (back scattering - RHEED)."""
+        r"""Test filtering with negative z_sign (back scattering - RHEED).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: filtering with
+        negative z_sign (back scattering - RHEED).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
@@ -1006,7 +1376,29 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_empty_g_vectors(self) -> None:
-        """Test handling of single G vector."""
+        r"""Test handling of single G vector.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: handling of single
+        G vector.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
 
         k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
@@ -1055,9 +1447,29 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_output_shape(self) -> None:
-        """Test that output potential has expected shape.
+        r"""Test that output potential has expected shape.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output potential
+        has expected shape. Existing context from the original test prose:
         Note: JIT compilation not supported due to dynamic grid dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
@@ -1082,9 +1494,31 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("thick", 5.0),
     )
     def test_slice_thickness_variation(self, thickness: float) -> None:
-        """Test potential generation with different slice thicknesses.
+        r"""Test potential generation with different slice thicknesses.
 
-        Note: JIT compilation not supported due to dynamic grid dimensions.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: potential
+        generation with different slice thicknesses. Existing context from the
+        original test prose: Note: JIT compilation not supported due to dynamic
+        grid dimensions.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``thickness``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
@@ -1108,9 +1542,31 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("coarse", 1.0),
     )
     def test_pixel_size_variation(self, pixel_size: float) -> None:
-        """Test potential generation with different pixel sizes.
+        r"""Test potential generation with different pixel sizes.
 
-        Note: JIT compilation not supported due to dynamic grid dimensions.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: potential
+        generation with different pixel sizes. Existing context from the
+        original test prose: Note: JIT compilation not supported due to dynamic
+        grid dimensions.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``pixel_size``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
@@ -1135,7 +1591,30 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         ("kirkland", "kirkland"),
     )
     def test_parameterization_variation(self, parameterization: str) -> None:
-        """Projected-potential slices are finite for both models."""
+        r"""Projected-potential slices are finite for both models.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        Projected-potential slices are finite for both models.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``parameterization``, so the documented behavior is checked across the
+        cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
         )
@@ -1151,9 +1630,29 @@ class TestSlicedCrystalToProjectedPotentialSlices(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_calibration_stored(self) -> None:
-        """Test that calibration values are stored correctly.
+        r"""Test that calibration values are stored correctly.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: calibration values
+        are stored correctly. Existing context from the original test prose:
         Note: JIT compilation not supported due to dynamic grid dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_convert: Callable[..., Any] = self.variant(
             sliced_crystal_to_projected_potential_slices
@@ -1210,7 +1709,29 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
-        """Test that exit wave has same shape as input grid."""
+        r"""Test that exit wave has same shape as input grid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: exit wave has same
+        shape as input grid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1224,7 +1745,29 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_exit_wave_nonzero(self) -> None:
-        """Test that exit wave has non-zero amplitude."""
+        r"""Test that exit wave has non-zero amplitude.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: exit wave has
+        non-zero amplitude.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1243,7 +1786,30 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("high", 30.0),
     )
     def test_voltage_variation(self, voltage: float) -> None:
-        """Test propagation at different voltages."""
+        r"""Test propagation at different voltages.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: propagation at
+        different voltages.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``voltage``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1264,7 +1830,30 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("steep", 5.0),
     )
     def test_grazing_angle_variation(self, theta: float) -> None:
-        """Test propagation at different grazing angles."""
+        r"""Test propagation at different grazing angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: propagation at
+        different grazing angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``theta``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1282,7 +1871,30 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("phi_90", 90.0),
     )
     def test_azimuthal_angle_variation(self, phi: float) -> None:
-        """Test propagation at different azimuthal angles."""
+        r"""Test propagation at different azimuthal angles.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: propagation at
+        different azimuthal angles.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``phi``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1301,7 +1913,30 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("large_inner", 20.0),
     )
     def test_inner_potential_variation(self, v0: float) -> None:
-        """Test effect of inner potential on propagation."""
+        r"""Test effect of inner potential on propagation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: effect of inner
+        potential on propagation.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v0``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1320,7 +1955,30 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         ("full", 1.0),
     )
     def test_bandwidth_limit_variation(self, limit: float) -> None:
-        """Test different bandwidth limiting values."""
+        r"""Test different bandwidth limiting values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: different
+        bandwidth limiting values.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``limit``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         exit_wave: Any = var_propagate(
@@ -1334,7 +1992,29 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_zero_potential_propagation(self) -> None:
-        """Test propagation through zero potential (free space)."""
+        r"""Test propagation through zero potential (free space).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: propagation
+        through zero potential (free space).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_propagate: Callable[..., Any] = self.variant(multislice_propagate)
 
         # Zero potential
@@ -1390,9 +2070,29 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_device=True, without_jit=True)
     def test_returns_rheed_pattern(self) -> None:
-        """Test that simulator returns valid RHEEDPattern.
+        r"""Test that simulator returns valid RHEEDPattern.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: simulator returns
+        valid RHEEDPattern. Existing context from the original test prose:
         Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1408,9 +2108,29 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_device=True, without_jit=True)
     def test_pattern_shapes_consistent(self) -> None:
-        """Test that all pattern arrays have consistent shapes.
+        r"""Test that all pattern arrays have consistent shapes.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all pattern arrays
+        have consistent shapes. Existing context from the original test prose:
         Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1432,9 +2152,30 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("far", 500.0),
     )
     def test_detector_distance_variation(self, distance: float) -> None:
-        """Test simulation at different detector distances.
+        r"""Test simulation at different detector distances.
 
-        Note: JIT not supported due to dynamic array sizes.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: simulation at
+        different detector distances. Existing context from the original test
+        prose: Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``distance``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1454,9 +2195,30 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("high", 30.0),
     )
     def test_voltage_variation(self, voltage: float) -> None:
-        """Test simulation at different voltages.
+        r"""Test simulation at different voltages.
 
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: simulation at
+        different voltages. Existing context from the original test prose:
         Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``voltage``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1475,9 +2237,30 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         ("steep", 5.0),
     )
     def test_angle_variation(self, theta: float) -> None:
-        """Test simulation at different grazing angles.
+        r"""Test simulation at different grazing angles.
 
-        Note: JIT not supported due to dynamic array sizes.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: simulation at
+        different grazing angles. Existing context from the original test
+        prose: Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``theta``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1491,9 +2274,29 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ewald_sphere_constraint(self) -> None:
-        """Test that output wavevectors approximately satisfy Ewald sphere.
+        r"""Test that output wavevectors approximately satisfy Ewald sphere.
 
-        Note: JIT not supported due to dynamic array sizes.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: output wavevectors
+        approximately satisfy Ewald sphere. Existing context from the original
+        test prose: Note: JIT not supported due to dynamic array sizes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_simulate: Callable[..., Any] = self.variant(multislice_simulator)
 
@@ -1574,10 +2377,31 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_none(self) -> None:
-        """Test intensity calculation with no CTR contribution.
+        r"""Test intensity calculation with no CTR contribution.
 
-        Note: jittable with ctr_mixing_mode as a static argument; see
-        the JAX Transformability guide and test_ctr_jit_static_mode.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: intensity
+        calculation with no CTR contribution. Existing context from the
+        original test prose: Note: jittable with ctr_mixing_mode as a static
+        argument; see the JAX Transformability guide and
+        test_ctr_jit_static_mode.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -1597,10 +2421,31 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_coherent(self) -> None:
-        """Test intensity calculation with coherent CTR mixing.
+        r"""Test intensity calculation with coherent CTR mixing.
 
-        Note: jittable with ctr_mixing_mode as a static argument; see
-        the JAX Transformability guide and test_ctr_jit_static_mode.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: intensity
+        calculation with coherent CTR mixing. Existing context from the
+        original test prose: Note: jittable with ctr_mixing_mode as a static
+        argument; see the JAX Transformability guide and
+        test_ctr_jit_static_mode.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -1620,10 +2465,31 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_mode_incoherent(self) -> None:
-        """Test intensity calculation with incoherent CTR mixing.
+        r"""Test intensity calculation with incoherent CTR mixing.
 
-        Note: jittable with ctr_mixing_mode as a static argument; see
-        the JAX Transformability guide and test_ctr_jit_static_mode.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: intensity
+        calculation with incoherent CTR mixing. Existing context from the
+        original test prose: Note: jittable with ctr_mixing_mode as a static
+        argument; see the JAX Transformability guide and
+        test_ctr_jit_static_mode.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -1642,13 +2508,32 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
     def test_ctr_jit_static_mode(self) -> None:
-        """Compile the CTR intensity function with the mode held static.
+        r"""Compile the CTR intensity function with the mode held static.
 
-        The only jit blocker is the string ``ctr_mixing_mode``; making it
-        static (here via ``eqx.filter_jit``, equivalently
-        ``jax.jit(..., static_argnames=("ctr_mixing_mode",))``) yields a
-        fully compiled function whose output matches the eager result.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Compile the CTR
+        intensity function with the mode held static. Existing context from the
+        original test prose: The only jit blocker is the string
+        ``ctr_mixing_mode``; making it static (here via ``eqx.filter_jit``,
+        equivalently ``jax.jit(..., static_argnames=("ctr_mixing_mode",))``)
+        yields a fully compiled function whose output matches the eager result.
         See the JAX Transformability guide.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         kwargs: Any = {
             "crystal": self.si_crystal,
@@ -1670,7 +2555,30 @@ class TestComputeKinematicIntensitiesExtended(
         ("full", 1.0),
     )
     def test_ctr_weight_variation(self, weight: float) -> None:
-        """Test effect of CTR weight on intensities."""
+        r"""Test effect of CTR weight on intensities.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: effect of CTR
+        weight on intensities.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``weight``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -1687,9 +2595,29 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_surface_config_height(self) -> None:
-        """Test with height-based surface atom identification.
+        r"""Test with height-based surface atom identification.
 
-        Note: JIT not supported due to SurfaceConfig with string method.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with height-based
+        surface atom identification. Existing context from the original test
+        prose: Note: JIT not supported due to SurfaceConfig with string method.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -1709,9 +2637,29 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_surface_config_layers(self) -> None:
-        """Test with layer-based surface atom identification.
+        r"""Test with layer-based surface atom identification.
 
-        Note: JIT not supported due to SurfaceConfig with string method.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with layer-based
+        surface atom identification. Existing context from the original test
+        prose: Note: JIT not supported due to SurfaceConfig with string method.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -1736,7 +2684,30 @@ class TestComputeKinematicIntensitiesExtended(
         ("loose", 0.5),
     )
     def test_hk_tolerance_variation(self, tolerance: float) -> None:
-        """Test effect of h,k tolerance for CTR application."""
+        r"""Test effect of h,k tolerance for CTR application.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: effect of h,k
+        tolerance for CTR application.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``tolerance``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -1753,7 +2724,29 @@ class TestComputeKinematicIntensitiesExtended(
 
     @chex.variants(with_device=True, without_jit=True)
     def test_ctr_gating_uses_explicit_hkl(self) -> None:
-        r"""Explicit hkl should enable CTR when \|G\| misses tolerance."""
+        r"""Explicit hkl should enable CTR when \|G\| misses tolerance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit hkl
+        should enable CTR when \|G\| misses tolerance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
         )
@@ -1830,7 +2823,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_basic_pattern_generation(self) -> None:
-        """Test that ewald_simulator produces a valid RHEED pattern."""
+        r"""Test that ewald_simulator produces a valid RHEED pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ewald_simulator
+        produces a valid RHEED pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -1858,7 +2869,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_upward_scattering_only(self) -> None:
-        """Only upward-scattered reflections are returned (k_out_z > 0)."""
+        r"""Only upward-scattered reflections are returned (k_out_z > 0).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Only
+        upward-scattered reflections are returned (k_out_z > 0).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -1965,7 +2994,29 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
 
     @parameterized.parameters(1.5, 2.5, 4.0)
     def test_matches_raw_dual_branch_geometry(self, theta_deg: float) -> None:
-        """Sparse Ewald output matches direct two-branch rod geometry."""
+        r"""Sparse Ewald output matches direct two-branch rod geometry.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sparse Ewald
+        output matches direct two-branch rod geometry.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         detector_distance: float = 900.0
         hmax: int = 8
         kmax: int = 8
@@ -2011,7 +3062,29 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
     def test_sto_matches_raw_dual_branch_geometry(
         self, theta_deg: float
     ) -> None:
-        """SrTiO3 sparse Ewald output matches the raw detector geometry."""
+        r"""SrTiO3 sparse Ewald output matches the raw detector geometry.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: SrTiO3 sparse
+        Ewald output matches the raw detector geometry.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         sto_crystal: Any = self._create_sto_crystal()
         detector_distance: float = 900.0
         hmax: int = 14
@@ -2063,7 +3136,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_elastic_scattering_constraint(self) -> None:
-        r"""Test that \|k_out\| = \|k_in\| (elastic scattering)."""
+        r"""Test that \|k_out\| = \|k_in\| (elastic scattering).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|k_out\| =
+        \|k_in\| (elastic scattering).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2089,7 +3180,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_azimuthal_rotation_changes_pattern(self) -> None:
-        """Changing phi_deg rotates the pattern."""
+        r"""Changing phi_deg rotates the pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Changing phi_deg
+        rotates the pattern.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern_0: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2116,7 +3225,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_temperature_affects_intensity(self) -> None:
-        """Higher temperature reduces intensity (Debye-Waller)."""
+        r"""Higher temperature reduces intensity (Debye-Waller).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher temperature
+        reduces intensity (Debye-Waller).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern_low_T: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2150,7 +3277,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_roughness_affects_intensity(self) -> None:
-        """Surface roughness affects CTR intensity."""
+        r"""Surface roughness affects CTR intensity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Surface roughness
+        affects CTR intensity.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern_smooth: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2184,7 +3329,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_voltage_affects_wavevector(self) -> None:
-        """Different voltages give different k magnitudes."""
+        r"""Different voltages give different k magnitudes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Different voltages
+        give different k magnitudes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern_10kv: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=10.0,
@@ -2219,7 +3382,28 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             )
 
     def test_jax_jit_compatible(self) -> None:
-        """ewald_simulator works under JAX JIT compilation."""
+        r"""ewald_simulator works under JAX JIT compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ewald_simulator
+        works under JAX JIT compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Callable[..., Any] = jax.jit(
             ewald_simulator,
             static_argnames=("hmax", "kmax"),
@@ -2239,7 +3423,25 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_surface_config_parameter(self) -> None:
-        """surface_config parameter works correctly."""
+        r"""surface_config parameter works correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: surface_config
+        parameter works correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         config: Any = SurfaceConfig(method="height", height_fraction=0.5)
 
         pattern: Float[Array, "..."] = ewald_simulator(
@@ -2265,7 +3467,29 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         {"theta_deg": 5.0},
     )
     def test_various_grazing_angles(self, theta_deg: float) -> None:
-        """Various grazing angles produce valid patterns."""
+        r"""Various grazing angles produce valid patterns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Various grazing
+        angles produce valid patterns.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: Float[Array, "..."] = ewald_simulator(
             crystal=self.mgo_crystal,
             energy_kev=20.0,
@@ -2384,7 +3608,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_render_pattern_to_image_shape_and_normalization(self) -> None:
-        """Rasterized detector image has requested shape and unit maximum."""
+        r"""Rasterized detector image has requested shape and unit maximum.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Rasterized
+        detector image has requested shape and unit maximum.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
             k_out=jnp.array(
@@ -2413,7 +3655,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self.assertTrue(jnp.all(image >= 0.0))
 
     def test_render_pattern_to_image_matches_pre_carrier_pixels(self) -> None:
-        """RG1: DetectorGeometry carrier preserves pre-refactor pixels."""
+        r"""RG1: DetectorGeometry carrier preserves pre-refactor pixels.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RG1:
+        DetectorGeometry carrier preserves pre-refactor pixels.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0, 1, 2], dtype=jnp.int32),
             k_out=jnp.array(
@@ -2457,7 +3717,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_render_amplitude_to_field_matches_single_spot_intensity(
         self,
     ) -> None:
-        """Squared single-spot amplitude field matches legacy rendering."""
+        r"""Squared single-spot amplitude field matches legacy rendering.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Squared
+        single-spot amplitude field matches legacy rendering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0], dtype=jnp.int32),
             k_out=jnp.array([[10.0, 0.0, 1.0]], dtype=jnp.float64),
@@ -2487,7 +3765,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(intensity, legacy, atol=1e-12)
 
     def test_render_amplitude_to_field_preserves_interference(self) -> None:
-        """Overlapping amplitudes interfere coherently in the dense field."""
+        r"""Overlapping amplitudes interfere coherently in the dense field.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Overlapping
+        amplitudes interfere coherently in the dense field.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0, 1], dtype=jnp.int32),
             k_out=jnp.array(
@@ -2531,7 +3827,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_kinematic_amplitude_carries_nontrivial_phase(self) -> None:
-        """The real kinematic kernel should expose complex reflection phase."""
+        r"""The real kinematic kernel should expose complex reflection phase.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The real kinematic
+        kernel should expose complex reflection phase.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         sparse_pattern: RHEEDPattern
         amplitudes: Complex[Array, "N"]
         sparse_pattern, amplitudes = _ewald_amplitude_pattern(
@@ -2579,7 +3893,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         assert float(relative_phase_signal) > 1e-6
 
     def test_real_kinematic_kernel_coherently_interferes(self) -> None:
-        """Coherent reduction should interfere real kinematic amplitudes."""
+        r"""Coherent reduction should interfere real kinematic amplitudes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coherent reduction
+        should interfere real kinematic amplitudes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution_coherent: Distribution = create_distribution(
             samples=jnp.array([[0.0], [jnp.pi]], dtype=jnp.float64),
             weights=jnp.array([0.5, 0.5], dtype=jnp.float64),
@@ -2632,7 +3964,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(incoherent)) > 1e-3
 
     def test_kinematic_amplitude_matches_explicit_sparse_render(self) -> None:
-        """Kinematic amplitude uses the sparse Ewald amplitude-render path."""
+        r"""Kinematic amplitude uses the sparse Ewald amplitude-render path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Kinematic
+        amplitude uses the sparse Ewald amplitude-render path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -2676,7 +4026,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(amplitude, expected, atol=1e-12)
 
     def test_ewald_amplitude_pattern_matches_intensity_simulator(self) -> None:
-        """Complex Ewald amplitudes preserve the legacy intensity surface."""
+        r"""Complex Ewald amplitudes preserve the legacy intensity surface.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Complex Ewald
+        amplitudes preserve the legacy intensity surface.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -2712,7 +4080,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_trivial_distribution_reduces_kinematic_amplitude_to_intensity(
         self,
     ) -> None:
-        """Trivial distribution turns one coherent amplitude into intensity."""
+        r"""Trivial distribution turns one coherent amplitude into intensity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Trivial
+        distribution turns one coherent amplitude into intensity.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         amplitude: Complex[Array, "16 24"] = kinematic_amplitude(
             crystal=_SI_CRYSTAL_2ATOM,
             energy_kev=20.0,
@@ -2743,7 +4129,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_detector_extent_mm_matches_calibration(self) -> None:
-        """Display extent converts beam centre and pixel pitch correctly."""
+        r"""Display extent converts beam centre and pixel pitch correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Display extent
+        converts beam centre and pixel pitch correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         extent: Float[Array, "..."] = detector_extent_mm(
             DetectorGeometry(
                 image_shape_px=(100, 200),
@@ -2754,7 +4158,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         self.assertEqual(extent, (-120.0, 180.0, -15.0, 285.0))
 
     def test_log_compress_image_preserves_bounds(self) -> None:
-        """Log compression maps a normalized image back into [0, 1]."""
+        r"""Log compression maps a normalized image back into [0, 1].
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Log compression
+        maps a normalized image back into [0, 1].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image: Float[Array, "..."] = jnp.array(
             [[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64
         )
@@ -2767,7 +4189,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(compressed[1, 1], 1.0, atol=1e-12)
 
     def test_log_compress_image_applies_dynamic_range_floor(self) -> None:
-        """Display floor hides weak pixels and rescales the visible range."""
+        r"""Display floor hides weak pixels and rescales the visible range.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Display floor
+        hides weak pixels and rescales the visible range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image: Float[Array, "..."] = jnp.array(
             [[0.0, 0.25], [0.5, 1.0]], dtype=jnp.float64
         )
@@ -2786,7 +4226,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_render_ctr_amplitude_matches_legacy_single_reflection(
         self,
     ) -> None:
-        """Complex CTR renderer reproduces legacy one-reflection intensity."""
+        r"""Complex CTR renderer reproduces legacy one-reflection intensity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Complex CTR
+        renderer reproduces legacy one-reflection intensity.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = RHEEDPattern(
             G_indices=jnp.array([0], dtype=jnp.int32),
             k_out=jnp.array([[10.0, 0.0, 1.0]], dtype=jnp.float64),
@@ -2824,7 +4282,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_uses_layer1_default_when_spot_rendered(
         self,
     ) -> None:
-        """Spot-render default delegates to the trivial Layer-1 reducer."""
+        r"""Spot-render default delegates to the trivial Layer-1 reducer.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Spot-render
+        default delegates to the trivial Layer-1 reducer.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -2868,7 +4344,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_spot_instrument_uses_distribution(
         self,
     ) -> None:
-        """Spot-render instrument widths reduce through Layer-1 mechanics."""
+        r"""Spot-render instrument widths reduce through Layer-1 mechanics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Spot-render
+        instrument widths reduce through Layer-1 mechanics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image_shape_px: tuple[int, int] = (16, 24)
         pixel_size_mm: tuple[float, float] = (6.0, 16.0)
         beam_center_px: tuple[float, float] = (12.0, 2.0)
@@ -2976,7 +4470,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_ctr_instrument_uses_distribution(
         self,
     ) -> None:
-        """CTR-rendered instrument widths reduce through Layer-1 mechanics."""
+        r"""CTR-rendered instrument widths reduce through Layer-1 mechanics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: CTR-rendered
+        instrument widths reduce through Layer-1 mechanics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image_shape_px: tuple[int, int] = (32, 24)
         pixel_size_mm: tuple[float, float] = (6.0, 8.0)
         beam_center_px: tuple[float, float] = (12.0, 2.0)
@@ -3087,7 +4599,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_trivial_distribution_is_identity(
         self,
     ) -> None:
-        """Trivial generic distribution preserves the spot-rendered image."""
+        r"""Trivial generic distribution preserves the spot-rendered image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Trivial generic
+        distribution preserves the spot-rendered image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -3120,7 +4650,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_trivial_distribution_matches_ctr_streaks(
         self,
     ) -> None:
-        """Trivial generic distribution preserves CTR streak rendering."""
+        r"""Trivial generic distribution preserves CTR streak rendering.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Trivial generic
+        distribution preserves CTR streak rendering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -3153,7 +4701,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_distribution_matches_manual_layer1(
         self,
     ) -> None:
-        """Generic distribution delegates reduction to Layer-1 mechanics."""
+        r"""Generic distribution delegates reduction to Layer-1 mechanics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Generic
+        distribution delegates reduction to Layer-1 mechanics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution = create_distribution(
             samples=jnp.array([[0.0], [5.0]], dtype=jnp.float64),
             weights=jnp.array([0.25, 0.75], dtype=jnp.float64),
@@ -3220,7 +4786,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_twin_distribution_binds_structure(
         self,
     ) -> None:
-        """Twin distributions should bind structures in the public path."""
+        r"""Twin distributions should bind structures in the public path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Twin distributions
+        should bind structures in the public path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([0.0, 4.0]),
             wall_positions_angstrom=jnp.array([0.4, 0.4]),
@@ -3292,7 +4876,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_step_distribution_binds_structure(
         self,
     ) -> None:
-        """Step distributions should bind structures in the public path."""
+        r"""Step distributions should bind structures in the public path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Step distributions
+        should bind structures in the public path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([0.0, 0.4]),
             terrace_widths_angstrom=jnp.array([2.0, 2.0]),
@@ -3365,7 +4967,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_grain_distribution_binds_orientation(
         self,
     ) -> None:
-        """Grain distributions should not be interpreted as beam samples."""
+        r"""Grain distributions should not be interpreted as beam samples.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Grain
+        distributions should not be interpreted as beam samples.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = grain_population_to_distribution(
             orientation_angles_deg=jnp.array([-1.0, 2.0]),
             grain_sizes_angstrom=jnp.array([80.0, 120.0]),
@@ -3459,7 +5079,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         }
 
     def test_twin_distribution_changes_detector_image(self) -> None:
-        """Twin producers should change detector output, not only bind."""
+        r"""Twin producers should change detector output, not only bind.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Twin producers
+        should change detector output, not only bind.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = self._defect_image_kwargs()
         base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         twin_dist: Distribution = twin_wall_to_distribution(
@@ -3478,7 +5116,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(jnp.abs(twin_image - base))) > 1e-4
 
     def test_step_distribution_changes_detector_image(self) -> None:
-        """Step producers should change detector output, not only bind."""
+        r"""Step producers should change detector output, not only bind.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Step producers
+        should change detector output, not only bind.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = self._defect_image_kwargs()
         base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         step_dist: Distribution = step_edge_to_distribution(
@@ -3498,7 +5154,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(jnp.abs(step_image - base))) > 1e-3
 
     def test_grain_distribution_changes_detector_image(self) -> None:
-        """Grain producers should change detector output, not only bind."""
+        r"""Grain producers should change detector output, not only bind.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Grain producers
+        should change detector output, not only bind.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = self._defect_image_kwargs()
         base: Float[Array, "16 24"] = simulate_detector_image(**kwargs)
         grain_dist: Distribution = grain_population_to_distribution(
@@ -3516,7 +5190,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_binds_size_distribution(
         self,
     ) -> None:
-        """Size axes bind finite-domain broadening in the public path."""
+        r"""Size axes bind finite-domain broadening in the public path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Size axes bind
+        finite-domain broadening in the public path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = create_distribution(
             samples=jnp.array([[40.0], [80.0]], dtype=jnp.float64),
             weights=jnp.array([0.5, 0.5], dtype=jnp.float64),
@@ -3571,7 +5263,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_rejects_ambiguous_distributions(
         self,
     ) -> None:
-        """Legacy and generic distributions are mutually exclusive inputs."""
+        r"""Legacy and generic distributions are mutually exclusive inputs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Legacy and generic
+        distributions are mutually exclusive inputs.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orientation_dist: Float[Array, "..."] = create_discrete_orientation(
             angles_deg=jnp.array([0.0]),
             weights=jnp.array([1.0]),
@@ -3586,7 +5296,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             )
 
     def test_simulate_detector_image_rejects_unknown_kernel(self) -> None:
-        """Layer-0 kernel selector fails clearly for unsupported names."""
+        r"""Layer-0 kernel selector fails clearly for unsupported names.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Layer-0 kernel
+        selector fails clearly for unsupported names.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="Unsupported kernel"):
             simulate_detector_image(
                 crystal=_SI_CRYSTAL_2ATOM,
@@ -3602,7 +5330,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_rejects_multislice_without_payload(
         self,
     ) -> None:
-        """Multislice selection requires a concrete potential-slice payload."""
+        r"""Multislice selection requires a concrete potential-slice payload.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multislice
+        selection requires a concrete potential-slice payload.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="potential_slices"):
             simulate_detector_image(
                 crystal=_SI_CRYSTAL_2ATOM,
@@ -3618,7 +5364,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_multislice_kernel_matches_bound_field(
         self,
     ) -> None:
-        """Public Layer 1 can select multislice and reduce its field."""
+        r"""Public Layer 1 can select multislice and reduce its field.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Public Layer 1 can
+        select multislice and reduce its field.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential_slices: PotentialSlices = self._tiny_potential_slices()
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
@@ -3662,7 +5426,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_detector_contract_extents_match_kinematic_and_multislice(
         self,
     ) -> None:
-        """FG2: both kernels consume the same detector extent contract."""
+        r"""FG2: both kernels consume the same detector extent contract.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG2: both kernels
+        consume the same detector extent contract.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential_slices: PotentialSlices = self._tiny_potential_slices()
         detector_distance_mm: float = 20.0
         image_shape_px: tuple[int, int] = (32, 32)
@@ -3731,7 +5513,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_detector_contract_pixelwise_matches_flat_projection_regression(
         self,
     ) -> None:
-        """RG1: carrier projection preserves pre-refactor flat pixels."""
+        r"""RG1: carrier projection preserves pre-refactor flat pixels.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RG1: carrier
+        projection preserves pre-refactor flat pixels.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         detector_distance_mm: float = 20.0
         geometry = DetectorGeometry(
             distance=detector_distance_mm,
@@ -3827,7 +5627,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_multislice_twin_axis_changes_image(
         self,
     ) -> None:
-        """FG1: twin axes bind to generated multislice potentials."""
+        r"""FG1: twin axes bind to generated multislice potentials.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: twin axes
+        bind to generated multislice potentials.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = twin_wall_to_distribution(
             twin_angles_deg=jnp.array([0.0, 4.0]),
             wall_positions_angstrom=jnp.array([0.4, 0.4]),
@@ -3840,7 +5658,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_multislice_step_axis_changes_image(
         self,
     ) -> None:
-        """FG1: step axes bind to generated multislice potentials."""
+        r"""FG1: step axes bind to generated multislice potentials.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: step axes
+        bind to generated multislice potentials.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = step_edge_to_distribution(
             step_heights_angstrom=jnp.array([1.0]),
             terrace_widths_angstrom=jnp.array([2.0]),
@@ -3854,7 +5690,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_multislice_grain_axis_changes_image(
         self,
     ) -> None:
-        """FG1: grain axes bind orientation and size under multislice."""
+        r"""FG1: grain axes bind orientation and size under multislice.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: grain axes
+        bind orientation and size under multislice.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = grain_population_to_distribution(
             orientation_angles_deg=jnp.array([5.0]),
             grain_sizes_angstrom=jnp.array([1.0]),
@@ -3865,7 +5719,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_multislice_size_axis_changes_image(
         self,
     ) -> None:
-        """FG1: size axes bind finite-domain multislice envelopes."""
+        r"""FG1: size axes bind finite-domain multislice envelopes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: size axes
+        bind finite-domain multislice envelopes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         distribution: Distribution = create_distribution(
             samples=jnp.array([[1.0]], dtype=jnp.float64),
             weights=jnp.array([1.0], dtype=jnp.float64),
@@ -3877,7 +5749,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_beam_modes_match_instrument_wrapper(
         self,
     ) -> None:
-        """Main simulator accepts explicit beam modes on the Layer-1 path."""
+        r"""Main simulator accepts explicit beam modes on the Layer-1 path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Main simulator
+        accepts explicit beam modes on the Layer-1 path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam_modes = create_gaussian_schell_beam(
             beta_in_plane=0.25,
             beta_out_of_plane=0.1,
@@ -3931,7 +5821,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_rejects_ambiguous_beam_modes(
         self,
     ) -> None:
-        """Explicit beam modes are mutually exclusive with generic axes."""
+        r"""Explicit beam modes are mutually exclusive with generic axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit beam
+        modes are mutually exclusive with generic axes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="beam_modes or distribution"):
             simulate_detector_image(
                 crystal=_SI_CRYSTAL_2ATOM,
@@ -3943,7 +5851,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_beam_modes_match_ctr_streaks(
         self,
     ) -> None:
-        """Coherent beam modes preserve CTR streak rendering."""
+        r"""Coherent beam modes preserve CTR streak rendering.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coherent beam
+        modes preserve CTR streak rendering.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kwargs: Any = {
             "crystal": _SI_CRYSTAL_2ATOM,
             "energy_kev": 20.0,
@@ -3978,7 +5904,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_instrument_coherent_beam_is_identity(
         self,
     ) -> None:
-        """Single coherent beam mode matches the unbroadened spot path."""
+        r"""Single coherent beam mode matches the unbroadened spot path.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Single coherent
+        beam mode matches the unbroadened spot path.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image_shape_px: tuple[int, int] = (16, 24)
         pixel_size_mm: tuple[float, float] = (6.0, 16.0)
         beam_center_px: tuple[float, float] = (12.0, 2.0)
@@ -4028,7 +5972,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_instrument_matches_manual_layer1(
         self,
     ) -> None:
-        """Beam-mode wrapper delegates to generic Layer-1 reduction."""
+        r"""Beam-mode wrapper delegates to generic Layer-1 reduction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam-mode wrapper
+        delegates to generic Layer-1 reduction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam_modes = create_gaussian_schell_beam(
             beta_in_plane=0.35,
             beta_out_of_plane=0.2,
@@ -4099,7 +6061,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_composes_beam_and_orientation(
         self,
     ) -> None:
-        """Beam and orientation producers compose through Layer 1."""
+        r"""Beam and orientation producers compose through Layer 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Beam and
+        orientation producers compose through Layer 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         beam_modes = create_gaussian_schell_beam(
             beta_in_plane=0.2,
             beta_out_of_plane=0.1,
@@ -4178,7 +6158,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_instrument_rejects_unknown_kernel(
         self,
     ) -> None:
-        """Instrument wrapper remains kinematic-only compatibility API."""
+        r"""Instrument wrapper remains kinematic-only compatibility API.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Instrument wrapper
+        remains kinematic-only compatibility API.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(ValueError, match="supports only"):
             simulate_detector_image_instrument(
                 crystal=_SI_CRYSTAL_2ATOM,
@@ -4192,7 +6190,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             )
 
     def test_simulate_detector_image_renders_streaks_by_default(self) -> None:
-        """Check dense rendering elongates CTRs vertically on detector."""
+        r"""Check dense rendering elongates CTRs vertically on detector.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check dense
+        rendering elongates CTRs vertically on detector.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         image: Float[Array, "..."] = simulate_detector_image(
             crystal=_SI_CRYSTAL_2ATOM,
             energy_kev=20.0,
@@ -4229,7 +6245,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     def test_simulate_detector_image_with_orientation_distribution(
         self,
     ) -> None:
-        """Check orientation-distribution yields a valid dense image."""
+        r"""Check orientation-distribution yields a valid dense image.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Check
+        orientation-distribution yields a valid dense image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         orientation_dist: Float[Array, "..."] = create_discrete_orientation(
             angles_deg=jnp.array([0.0, 10.0]),
             weights=jnp.array([0.4, 0.6]),
@@ -4299,7 +6333,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         }
 
     def test_grad_through_public_simulator_beta_is_finite(self) -> None:
-        """jax.grad through simulate_detector_image w.r.t. GSM beta is live."""
+        r"""jax.grad through simulate_detector_image w.r.t. GSM beta is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        simulate_detector_image w.r.t. GSM beta is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(beta: scalar_float) -> scalar_float:
             beam_modes = create_gaussian_schell_beam(
@@ -4325,7 +6380,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
     def test_grad_public_simulator_twin_density_is_finite(
         self,
     ) -> None:
-        """jax.grad through public twin fraction is live."""
+        r"""jax.grad through public twin fraction is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        public twin fraction is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(twin_fraction: scalar_float) -> scalar_float:
             clipped_fraction: scalar_float = jnp.clip(
@@ -4358,7 +6434,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         assert float(jnp.abs(grad_value)) > 1e-4
 
     def test_grad_through_public_simulator_grain_size_is_live(self) -> None:
-        """jax.grad through public grain size is live."""
+        r"""jax.grad through public grain size is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        public grain size is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(grain_size_angstrom: scalar_float) -> scalar_float:
             distribution: Distribution = grain_population_to_distribution(
@@ -4415,7 +6512,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         }
 
     def test_grad_public_multislice_twin_axis_is_live(self) -> None:
-        """FG1: jax.grad through multislice twin samples is live."""
+        r"""FG1: jax.grad through multislice twin samples is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: jax.grad
+        through multislice twin samples is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(twin_angle_deg: scalar_float) -> scalar_float:
             distribution: Distribution = twin_wall_to_distribution(
@@ -4437,7 +6555,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         assert float(jnp.abs(grad_value)) > 1e-8
 
     def test_grad_public_multislice_step_axis_is_live(self) -> None:
-        """FG1: jax.grad through multislice step samples is live."""
+        r"""FG1: jax.grad through multislice step samples is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: jax.grad
+        through multislice step samples is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(step_height_angstrom: scalar_float) -> scalar_float:
             distribution: Distribution = step_edge_to_distribution(
@@ -4460,7 +6599,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         assert float(jnp.abs(grad_value)) > 1e-8
 
     def test_grad_public_multislice_grain_axis_is_live(self) -> None:
-        """FG1: jax.grad through multislice grain size is live."""
+        r"""FG1: jax.grad through multislice grain size is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: jax.grad
+        through multislice grain size is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(grain_size_angstrom: scalar_float) -> scalar_float:
             distribution: Distribution = grain_population_to_distribution(
@@ -4479,7 +6639,28 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         assert float(jnp.abs(grad_value)) > 1e-8
 
     def test_grad_public_multislice_size_axis_is_live(self) -> None:
-        """FG1: jax.grad through multislice size samples is live."""
+        r"""FG1: jax.grad through multislice size samples is live.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FG1: jax.grad
+        through multislice size samples is live.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(size_angstrom: scalar_float) -> scalar_float:
             distribution: Distribution = create_distribution(
@@ -4519,7 +6700,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         return jnp.sum(pattern.intensities)
 
     def test_grad_temperature(self) -> None:
-        """Gradient w.r.t. temperature is finite and non-zero."""
+        r"""Gradient w.r.t. temperature is finite and non-zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient w.r.t.
+        temperature is finite and non-zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(temp: scalar_float) -> scalar_float:
             return self._ewald_loss(temperature=temp)
@@ -4529,7 +6731,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         assert jnp.abs(g) > 1e-12
 
     def test_grad_roughness(self) -> None:
-        """Gradient w.r.t. surface roughness is finite and non-zero."""
+        r"""Gradient w.r.t. surface roughness is finite and non-zero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient w.r.t.
+        surface roughness is finite and non-zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(roughness: scalar_float) -> scalar_float:
             return self._ewald_loss(surface_roughness=roughness)
@@ -4539,7 +6762,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         assert jnp.abs(g) > 1e-12
 
     def test_grad_polar_angle(self) -> None:
-        """Gradient w.r.t. incidence angle is finite."""
+        r"""Gradient w.r.t. incidence angle is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient w.r.t.
+        incidence angle is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(theta: scalar_float) -> scalar_float:
             return self._ewald_loss(theta_deg=theta)
@@ -4548,7 +6792,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
 
     def test_grad_voltage(self) -> None:
-        """Gradient w.r.t. beam voltage is finite."""
+        r"""Gradient w.r.t. beam voltage is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient w.r.t.
+        beam voltage is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(voltage: scalar_float) -> scalar_float:
             return self._ewald_loss(energy_kev=voltage)
@@ -4557,7 +6822,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
 
     def test_vmap_grad(self) -> None:
-        """vmap(grad(loss)) over temperatures produces correct shape."""
+        r"""vmap(grad(loss)) over temperatures produces correct shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: vmap(grad(loss))
+        over temperatures produces correct shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, vectorization, protecting
+        JAX transform compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(temp: scalar_float) -> scalar_float:
             return self._ewald_loss(temperature=temp)
@@ -4572,7 +6858,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(grads)
 
     def test_jacrev(self) -> None:
-        """Jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian."""
+        r"""Jacrev w.r.t. (temperature, roughness) produces (2,) Jacobian.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Jacrev w.r.t.
+        (temperature, roughness) produces (2,) Jacobian.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss(params: Float[Array, "2"]) -> scalar_float:
             return self._ewald_loss(
@@ -4589,7 +6896,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(jac)
 
     def test_ewald_simulator_grad_temperature_correct(self) -> None:
-        """Ewald simulator grad w.r.t. temperature matches finite diff."""
+        r"""Ewald simulator grad w.r.t. temperature matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Ewald simulator
+        grad w.r.t. temperature matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(temp: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(
@@ -4607,7 +6935,28 @@ class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
         check_grads(jax_safe(f), (jnp.float64(300.0),), order=1, atol=1e-2)
 
     def test_ewald_simulator_grad_roughness_correct(self) -> None:
-        """Ewald simulator grad w.r.t. roughness matches finite diff."""
+        r"""Ewald simulator grad w.r.t. roughness matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Ewald simulator
+        grad w.r.t. roughness matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(roughness: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(
@@ -4629,7 +6978,28 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
     """Gradient existence and correctness for multislice forward model."""
 
     def test_multislice_grad_voltage(self) -> None:
-        """Gradient through multislice propagation w.r.t. voltage."""
+        r"""Gradient through multislice propagation w.r.t. voltage.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Gradient through
+        multislice propagation w.r.t. voltage.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         cart_positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
         )
@@ -4660,7 +7030,28 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(g)
 
     def test_multislice_grad_voltage_correct(self) -> None:
-        """Multislice grad w.r.t. voltage matches finite diff."""
+        r"""Multislice grad w.r.t. voltage matches finite diff.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multislice grad
+        w.r.t. voltage matches finite diff.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         cart_positions: Float[Array, "..."] = jnp.array(
             [[5.0, 5.0, 1.0, 14.0], [7.5, 7.5, 3.0, 14.0]]
         )
@@ -4694,7 +7085,28 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential for ewald_simulator."""
 
     def test_ewald_simulator_vmap_temperature_consistent(self) -> None:
-        """Batched ewald_simulator over temps matches sequential."""
+        r"""Batched ewald_simulator over temps matches sequential.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Batched
+        ewald_simulator over temps matches sequential.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(temp: scalar_float) -> scalar_float:
             pattern: Float[Array, "..."] = ewald_simulator(

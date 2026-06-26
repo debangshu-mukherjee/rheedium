@@ -146,7 +146,25 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
     """
 
     def test_crystal_to_edge_on_slices_shapes(self) -> None:
-        """Test crystal slabs convert to finite edge-on slices."""
+        r"""Test crystal slabs convert to finite edge-on slices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: crystal slabs
+        convert to finite edge-on slices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         slices: EdgeOnSlices = crystal_to_edge_on_slices(
             _toy_crystal(),
             dx_slice=1.0,
@@ -168,7 +186,29 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         ("theta_3", 3.0),
     )
     def test_flat_slab_specular_geometry(self, theta_deg: float) -> None:
-        """Test a flat step produces a specular up-going channel."""
+        r"""Test a flat step produces a specular up-going channel.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a flat step
+        produces a specular up-going channel.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = _read_flat_step_pattern(theta_deg)
 
         brightest = int(jnp.argmax(pattern.intensities))
@@ -194,7 +234,29 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         ("theta_3", 3.0),
     )
     def test_flat_slab_fresnel_reflectivity(self, theta_deg: float) -> None:
-        """Test flat-step specular intensity matches Fresnel reflectivity."""
+        r"""Test flat-step specular intensity matches Fresnel reflectivity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: flat-step specular
+        intensity matches Fresnel reflectivity.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``theta_deg``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = _read_flat_step_pattern(theta_deg)
         expected: Float[Array, ""] = _fresnel_step_reflectivity(theta_deg)
 
@@ -206,7 +268,25 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         )
 
     def test_flat_slab_reflectivity_increases_toward_grazing(self) -> None:
-        """Test Fresnel reflectivity increases at smaller incidence angle."""
+        r"""Test Fresnel reflectivity increases at smaller incidence angle.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fresnel
+        reflectivity increases at smaller incidence angle.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         reflectivities: Float[Array, "4"] = jnp.array(
             [
                 _read_flat_step_pattern(theta).intensities[0]
@@ -219,7 +299,25 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         )
 
     def test_cap_and_vacuum_convergence_for_flat_slab(self) -> None:
-        """Test specular result is stable under larger vacuum and CAP."""
+        r"""Test specular result is stable under larger vacuum and CAP.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: specular result is
+        stable under larger vacuum and CAP.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         base: RHEEDPattern = _read_flat_step_pattern(
             2.0,
             vacuum_above=16.0,
@@ -247,7 +345,25 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
     def test_reflection_multislice_simulator_returns_finite_pattern(
         self,
     ) -> None:
-        """Test end-to-end atomic reflection simulation returns valid data."""
+        r"""Test end-to-end atomic reflection simulation returns valid data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: end-to-end atomic
+        reflection simulation returns valid data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         pattern: RHEEDPattern = reflection_multislice_simulator(
             _toy_crystal(),
             energy_kev=30.0,
@@ -269,7 +385,25 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(pattern.intensities >= 0), True)
 
     def test_bi2se3_reflection_ky_channels_match_ewald_rods(self) -> None:
-        """Test strongest Bi2Se3 reflected beams lie on Ewald rod ky values."""
+        r"""Test strongest Bi2Se3 reflected beams lie on Ewald rod ky values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: strongest Bi2Se3
+        reflected beams lie on Ewald rod ky values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = parse_crystal(BI2SE3_DIR / "intial.xyz")
         reflection: RHEEDPattern = reflection_multislice_simulator(
             crystal,
@@ -312,7 +446,29 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         self,
         filename: str,
     ) -> None:
-        """Test all Bi2Se3 XYZ fixtures run with finite normalized output."""
+        r"""Test all Bi2Se3 XYZ fixtures run with finite normalized output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: all Bi2Se3 XYZ
+        fixtures run with finite normalized output.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``filename``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so the
+        Test Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = parse_crystal(BI2SE3_DIR / filename)
         pattern: RHEEDPattern = reflection_multislice_simulator(
             crystal,

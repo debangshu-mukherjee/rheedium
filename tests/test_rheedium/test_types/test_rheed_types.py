@@ -50,7 +50,29 @@ class TestRHEEDPattern(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_rheed_pattern_valid(self) -> None:
-        """Test creation of valid RHEEDPattern instances."""
+        r"""Test creation of valid RHEEDPattern instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        RHEEDPattern instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_reflections: int = 10
         g_indices: Integer[Array, "..."] = jnp.arange(
             n_reflections, dtype=jnp.int32
@@ -80,7 +102,29 @@ class TestRHEEDPattern(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_pattern_pytree(self) -> None:
-        """Test PyTree registration and operations."""
+        r"""Test PyTree registration and operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        registration and operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_reflections: int = 5
         g_indices: Integer[Array, "..."] = jnp.array(
             [0, 1, 2, 3, 4], dtype=jnp.int32
@@ -115,7 +159,30 @@ class TestRHEEDPattern(chex.TestCase):
     def test_rheed_pattern_various_sizes(
         self, n_reflections: int, max_intensity: int
     ) -> None:
-        """Test RHEEDPattern with various numbers of reflections."""
+        r"""Test RHEEDPattern with various numbers of reflections.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RHEEDPattern with
+        various numbers of reflections.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``n_reflections``, ``max_intensity``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         g_indices: Integer[Array, "..."] = jnp.arange(
             n_reflections, dtype=jnp.int32
         )
@@ -148,7 +215,29 @@ class TestRHEEDPattern(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_pattern_jit_compilation(self) -> None:
-        """Test JIT compilation of RHEEDPattern operations."""
+        r"""Test JIT compilation of RHEEDPattern operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        RHEEDPattern operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(
             g_indices: Int[Array, "N"],
@@ -178,7 +267,28 @@ class TestRHEEDPattern(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_rheed_pattern_validation_errors(self) -> None:
-        """Test invalid inputs are handled during JIT compilation."""
+        r"""Test invalid inputs are handled during JIT compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: invalid inputs are
+        handled during JIT compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_reflections: int = 5
 
         # Test wrong k_out shape - jaxtyping catches this
@@ -197,7 +307,32 @@ class TestRHEEDPattern(chex.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_rheed_pattern_vmap(self) -> None:
-        """Test vmap operations over batches of RHEED patterns."""
+        r"""Test vmap operations over batches of RHEED patterns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: vmap operations
+        over batches of RHEED patterns.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         batch_size: int = 4
         n_reflections: int = 5
 
@@ -246,7 +381,29 @@ class TestRHEEDImage(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_rheed_image_valid(self) -> None:
-        """Test creation of valid RHEEDImage instances."""
+        r"""Test creation of valid RHEEDImage instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        RHEEDImage instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         height: tuple[Any, ...]
         width: tuple[Any, ...]
         height, width = 256, 512
@@ -279,7 +436,29 @@ class TestRHEEDImage(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_image_pytree(self) -> None:
-        """Test PyTree registration and operations."""
+        r"""Test PyTree registration and operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        registration and operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img_array: Float[Array, "..."] = jnp.ones((128, 256))
         incoming_angle: float = 1.5
         calibration: Float[Array, "..."] = jnp.array([0.01, 0.015])
@@ -326,7 +505,30 @@ class TestRHEEDImage(chex.TestCase):
     def test_rheed_image_various_params(
         self, height: int, width: int, angle: float, wavelength: float
     ) -> None:
-        """Test RHEEDImage with various image sizes and parameters."""
+        r"""Test RHEEDImage with various image sizes and parameters.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RHEEDImage with
+        various image sizes and parameters.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``height``,
+        ``width``, ``angle``, ``wavelength``, so the documented behavior is
+        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img_array: Float[Array, "height width"] = jax.random.uniform(
             self.rng, (height, width), minval=0, maxval=1000
         )
@@ -354,7 +556,29 @@ class TestRHEEDImage(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_image_calibration_types(self) -> None:
-        """Test RHEEDImage with scalar and array calibration."""
+        r"""Test RHEEDImage with scalar and array calibration.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RHEEDImage with
+        scalar and array calibration.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img_array: Float[Array, "..."] = jnp.ones((128, 128))
         incoming_angle: float = 2.0
         electron_wavelength: float = 0.037
@@ -389,7 +613,29 @@ class TestRHEEDImage(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_image_jit_compilation(self) -> None:
-        """Test JIT compilation of RHEEDImage operations."""
+        r"""Test JIT compilation of RHEEDImage operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        RHEEDImage operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(
             img_array: Float[Array, "H W"],
@@ -420,7 +666,28 @@ class TestRHEEDImage(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_rheed_image_validation_errors(self) -> None:
-        """Test invalid inputs are handled during JIT compilation."""
+        r"""Test invalid inputs are handled during JIT compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: invalid inputs are
+        handled during JIT compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         # Test wrong image shape - jaxtyping catches type errors
         wrong_shape_img: Float[Array, "..."] = jnp.ones((64,))
         with pytest.raises(TypeCheckError):
@@ -430,7 +697,29 @@ class TestRHEEDImage(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_rheed_image_tree_map(self) -> None:
-        """Test that RHEEDImage works correctly with tree_map operations."""
+        r"""Test that RHEEDImage works correctly with tree_map operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: RHEEDImage works
+        correctly with tree_map operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         img_array: Float[Array, "..."] = jnp.ones((128, 256))
         incoming_angle: float = 2.0
         calibration: float = 0.01
@@ -480,7 +769,25 @@ class TestRHEEDPatternValidation(chex.TestCase):
         }
 
     def test_negative_intensities(self) -> None:
-        """Negative intensities should be caught by validation."""
+        r"""Negative intensities should be caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative
+        intensities should be caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs()
         kw["intensities"] = -jnp.ones(5)
         assert_rejects(
@@ -490,7 +797,25 @@ class TestRHEEDPatternValidation(chex.TestCase):
         )
 
     def test_zero_k_out_vectors(self) -> None:
-        """Zero-length k_out vectors should be caught."""
+        r"""Zero-length k_out vectors should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero-length k_out
+        vectors should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs()
         kw["k_out"] = jnp.zeros((5, 3))
         assert_rejects(
@@ -500,7 +825,25 @@ class TestRHEEDPatternValidation(chex.TestCase):
         )
 
     def test_nan_detector_points(self) -> None:
-        """NaN in detector_points should be caught."""
+        r"""NaN in detector_points should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: NaN in
+        detector_points should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.nan)
         assert_rejects(
@@ -510,7 +853,25 @@ class TestRHEEDPatternValidation(chex.TestCase):
         )
 
     def test_inf_detector_points(self) -> None:
-        """Inf in detector_points should be caught."""
+        r"""Inf in detector_points should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Inf in
+        detector_points should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs()
         kw["detector_points"] = kw["detector_points"].at[0, 0].set(jnp.inf)
         assert_rejects(
@@ -520,7 +881,25 @@ class TestRHEEDPatternValidation(chex.TestCase):
         )
 
     def test_mismatched_g_indices_length(self) -> None:
-        """Mismatched g_indices length should be caught."""
+        r"""Mismatched g_indices length should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mismatched
+        g_indices length should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs(n=5)
         kw["g_indices"] = jnp.arange(3, dtype=jnp.int32)
         assert_rejects(
@@ -530,14 +909,53 @@ class TestRHEEDPatternValidation(chex.TestCase):
         )
 
     def test_mismatched_intensities_length(self) -> None:
-        """Mismatched intensities length should be caught."""
+        r"""Mismatched intensities length should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mismatched
+        intensities length should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs(n=5)
         kw["intensities"] = jnp.ones(3)
         with pytest.raises(TypeCheckError):
             jax.jit(create_rheed_pattern)(**kw)
 
     def test_dtypes_are_correct(self) -> None:
-        """Factory should cast to correct dtypes."""
+        r"""Factory should cast to correct dtypes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory should
+        cast to correct dtypes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_pattern_kwargs()
         pattern: RHEEDPattern = create_rheed_pattern(**kw)
         assert pattern.G_indices.dtype == jnp.int32
@@ -561,7 +979,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         }
 
     def test_negative_image_values(self) -> None:
-        """Negative pixel values should be caught."""
+        r"""Negative pixel values should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative pixel
+        values should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = -jnp.ones((64, 64))
         assert_rejects(
@@ -571,7 +1007,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_nan_in_image(self) -> None:
-        """NaN in image should be caught."""
+        r"""NaN in image should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: NaN in image
+        should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["img_array"] = kw["img_array"].at[0, 0].set(jnp.nan)
         assert_rejects(
@@ -581,7 +1035,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_angle_too_large(self) -> None:
-        """Incoming angle > 90 degrees should be caught."""
+        r"""Incoming angle > 90 degrees should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Incoming angle >
+        90 degrees should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 100.0
         assert_rejects(
@@ -591,7 +1063,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_negative_angle(self) -> None:
-        """Negative incoming angle should be caught."""
+        r"""Negative incoming angle should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative incoming
+        angle should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = -1.0
         assert_rejects(
@@ -601,7 +1091,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_negative_wavelength(self) -> None:
-        """Negative electron wavelength should be caught."""
+        r"""Negative electron wavelength should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative electron
+        wavelength should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["electron_wavelength"] = -0.01
         assert_rejects(
@@ -611,7 +1119,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_negative_distance(self) -> None:
-        """Negative detector distance should be caught."""
+        r"""Negative detector distance should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative detector
+        distance should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["detector_distance"] = -100.0
         assert_rejects(
@@ -621,7 +1147,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_negative_calibration(self) -> None:
-        """Negative calibration should be caught."""
+        r"""Negative calibration should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative
+        calibration should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = -0.01
         assert_rejects(
@@ -631,7 +1175,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_array_calibration_negative(self) -> None:
-        """Negative array calibration should be caught."""
+        r"""Negative array calibration should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative array
+        calibration should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["calibration"] = jnp.array([-0.01, 0.01])
         assert_rejects(
@@ -641,7 +1203,25 @@ class TestRHEEDImageValidation(chex.TestCase):
         )
 
     def test_dtypes_are_correct(self) -> None:
-        """Factory should cast to correct dtypes."""
+        r"""Factory should cast to correct dtypes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory should
+        cast to correct dtypes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         image: RHEEDImage = create_rheed_image(**kw)
         assert image.img_array.dtype == jnp.float64
@@ -650,14 +1230,50 @@ class TestRHEEDImageValidation(chex.TestCase):
         assert image.detector_distance.dtype == jnp.float64
 
     def test_boundary_angle_zero(self) -> None:
-        """Incoming angle of exactly 0 should be valid."""
+        r"""Incoming angle of exactly 0 should be valid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Incoming angle of
+        exactly 0 should be valid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 0.0
         image: RHEEDImage = create_rheed_image(**kw)
         chex.assert_trees_all_close(image.incoming_angle, 0.0)
 
     def test_boundary_angle_ninety(self) -> None:
-        """Incoming angle of exactly 90 should be valid."""
+        r"""Incoming angle of exactly 90 should be valid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Incoming angle of
+        exactly 90 should be valid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_image_kwargs()
         kw["incoming_angle"] = 90.0
         image: RHEEDImage = create_rheed_image(**kw)
@@ -693,7 +1309,29 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_create_sliced_crystal_valid(self) -> None:
-        """Test creation of valid SlicedCrystal instances."""
+        r"""Test creation of valid SlicedCrystal instances.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creation of valid
+        SlicedCrystal instances.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_atoms: int = 10
         kw: Any = self._make_valid_sliced_kwargs(n_atoms)
         create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
@@ -706,7 +1344,29 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_pytree(self) -> None:
-        """Test PyTree flatten/unflatten round-trip."""
+        r"""Test PyTree flatten/unflatten round-trip.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: PyTree
+        flatten/unflatten round-trip.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
         sliced: SlicedCrystal = create_fn(**kw)
@@ -720,7 +1380,29 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_values_preserved(self) -> None:
-        """Test that array values are faithfully preserved."""
+        r"""Test that array values are faithfully preserved.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: array values are
+        faithfully preserved.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
         sliced: SlicedCrystal = create_fn(**kw)
@@ -738,7 +1420,30 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         ("large", 500),
     )
     def test_sliced_crystal_various_sizes(self, n_atoms: int) -> None:
-        """Test SlicedCrystal with various atom counts."""
+        r"""Test SlicedCrystal with various atom counts.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: SlicedCrystal with
+        various atom counts.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_atoms``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs(n_atoms)
         create_fn: Callable[..., Any] = self.variant(create_sliced_crystal)
         sliced: SlicedCrystal = create_fn(**kw)
@@ -747,7 +1452,32 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_jit_compilation(self) -> None:
-        """Test JIT compilation of SlicedCrystal operations."""
+        r"""Test JIT compilation of SlicedCrystal operations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT compilation of
+        SlicedCrystal operations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def create_and_process(**kwargs: object) -> Num[Array, ""]:
             sliced: SlicedCrystal = create_sliced_crystal(**kwargs)
@@ -762,7 +1492,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_sliced_crystal_dtypes(self) -> None:
-        """Factory should cast to correct dtypes."""
+        r"""Factory should cast to correct dtypes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Factory should
+        cast to correct dtypes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         sliced: SlicedCrystal = create_sliced_crystal(**kw)
         assert sliced.cart_positions.dtype == jnp.float64
@@ -774,7 +1522,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         assert sliced.y_extent.dtype == jnp.float64
 
     def test_negative_depth(self) -> None:
-        """Negative depth should be caught by validation."""
+        r"""Negative depth should be caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative depth
+        should be caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["depth"] = -5.0
         assert_rejects(
@@ -784,7 +1550,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_negative_x_extent(self) -> None:
-        """Negative x_extent should be caught by validation."""
+        r"""Negative x_extent should be caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative x_extent
+        should be caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["x_extent"] = -100.0
         assert_rejects(
@@ -794,7 +1578,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_negative_y_extent(self) -> None:
-        """Negative y_extent should be caught by validation."""
+        r"""Negative y_extent should be caught by validation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative y_extent
+        should be caught by validation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["y_extent"] = -100.0
         assert_rejects(
@@ -804,7 +1606,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_negative_cell_lengths(self) -> None:
-        """Negative cell lengths should be caught."""
+        r"""Negative cell lengths should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Negative cell
+        lengths should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_lengths"] = jnp.array([-1.0, 5.0, 5.0])
         assert_rejects(
@@ -814,7 +1634,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_invalid_cell_angles(self) -> None:
-        """Cell angles outside (0, 180) should be caught."""
+        r"""Cell angles outside (0, 180) should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Cell angles
+        outside (0, 180) should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cell_angles"] = jnp.array([0.0, 90.0, 90.0])
         assert_rejects(
@@ -824,7 +1662,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_nan_in_positions(self) -> None:
-        """NaN in positions should be caught."""
+        r"""NaN in positions should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: NaN in positions
+        should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 0].set(jnp.nan)
         assert_rejects(
@@ -834,7 +1690,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_invalid_atomic_number_zero(self) -> None:
-        """Atomic number of 0 should be caught."""
+        r"""Atomic number of 0 should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atomic number of 0
+        should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(0.0)
         assert_rejects(
@@ -844,7 +1718,25 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
         )
 
     def test_invalid_atomic_number_too_large(self) -> None:
-        """Atomic number > 118 should be caught."""
+        r"""Atomic number > 118 should be caught.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atomic number >
+        118 should be caught.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         kw: Any = self._make_valid_sliced_kwargs()
         kw["cart_positions"] = kw["cart_positions"].at[0, 3].set(200.0)
         assert_rejects(
@@ -855,7 +1747,32 @@ class TestSlicedCrystal(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_sliced_crystal_gradient_flow(self) -> None:
-        """Test that gradients flow through SlicedCrystal."""
+        r"""Test that gradients flow through SlicedCrystal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: gradients flow
+        through SlicedCrystal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss_fn(positions: Float[Array, "N 4"]) -> Num[Array, ""]:
             kw: Any = self._make_valid_sliced_kwargs()
@@ -882,7 +1799,29 @@ class TestRHEEDIntegration(chex.TestCase):
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_combined_rheed_structures(self) -> None:
-        """Test combining RHEEDPattern and RHEEDImage in a single structure."""
+        r"""Test combining RHEEDPattern and RHEEDImage in a single structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: combining
+        RHEEDPattern and RHEEDImage in a single structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n_reflections: int = 10
         pattern: RHEEDPattern = create_rheed_pattern(
             jnp.arange(n_reflections, dtype=jnp.int32),
@@ -922,7 +1861,32 @@ class TestRHEEDIntegration(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_gradient_flow_rheed_pattern(self) -> None:
-        """Test that gradients flow through RHEEDPattern correctly."""
+        r"""Test that gradients flow through RHEEDPattern correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: gradients flow
+        through RHEEDPattern correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss_fn(intensities: Float[Array, "3"]) -> Num[Array, ""]:
             pattern: RHEEDPattern = create_rheed_pattern(
@@ -942,7 +1906,32 @@ class TestRHEEDIntegration(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_gradient_flow_rheed_image(self) -> None:
-        """Test that gradients flow through RHEEDImage correctly."""
+        r"""Test that gradients flow through RHEEDImage correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: gradients flow
+        through RHEEDImage correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def loss_fn(img_array: Float[Array, "H W"]) -> Num[Array, ""]:
             image: RHEEDImage = create_rheed_image(
@@ -965,7 +1954,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
     """
 
     def test_height_method_default(self) -> None:
-        """Height method with default 30% fraction."""
+        r"""Height method with default 30% fraction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Height method with
+        default 30% fraction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3], [0, 0, 4]],
             dtype=jnp.float64,
@@ -976,7 +1983,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert not bool(mask[0])
 
     def test_height_method_custom_fraction(self) -> None:
-        """Height method with 50% fraction."""
+        r"""Height method with 50% fraction.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Height method with
+        50% fraction.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(10)], dtype=jnp.float64
         )
@@ -986,7 +2011,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert n_surface == 5
 
     def test_height_method_all_surface(self) -> None:
-        """Height fraction of 1.0 marks all atoms as surface."""
+        r"""Height fraction of 1.0 marks all atoms as surface.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Height fraction of
+        1.0 marks all atoms as surface.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(5)], dtype=jnp.float64
         )
@@ -995,7 +2038,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert bool(jnp.all(mask))
 
     def test_coordination_method(self) -> None:
-        """Coordination method identifies under-coordinated atoms."""
+        r"""Coordination method identifies under-coordinated atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Coordination
+        method identifies under-coordinated atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0, 0, 0],
@@ -1017,7 +2078,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert bool(mask[5])
 
     def test_layers_method(self) -> None:
-        """Layers method marks topmost layer."""
+        r"""Layers method marks topmost layer.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Layers method
+        marks topmost layer.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0, 0, 0.0],
@@ -1039,7 +2118,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert not bool(mask[1])
 
     def test_layers_method_two_layers(self) -> None:
-        """Layers method with n_layers=2."""
+        r"""Layers method with n_layers=2.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Layers method with
+        n_layers=2.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, z] for z in [0.0, 0.0, 2.0, 2.0, 4.0, 4.0]],
             dtype=jnp.float64,
@@ -1052,7 +2149,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert n_surface == 4
 
     def test_explicit_method(self) -> None:
-        """Explicit method uses user-provided mask."""
+        r"""Explicit method uses user-provided mask.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit method
+        uses user-provided mask.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.ones((5, 3))
         explicit: Bool[Array, "..."] = jnp.array(
             [True, False, True, False, True]
@@ -1062,7 +2177,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         chex.assert_trees_all_equal(mask, explicit)
 
     def test_explicit_method_no_mask_fallback(self) -> None:
-        """Explicit method without mask falls back to height."""
+        r"""Explicit method without mask falls back to height.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit method
+        without mask falls back to height.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [[0, 0, i] for i in range(5)], dtype=jnp.float64
         )
@@ -1072,7 +2205,25 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
         assert bool(mask[4])
 
     def test_output_shape_matches_input(self) -> None:
-        """Output mask has same length as input positions."""
+        r"""Output mask has same length as input positions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output mask has
+        same length as input positions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         n: int
         for n in [1, 10, 100]:
             positions: Float[Array, "..."] = jnp.zeros((n, 3))
@@ -1087,7 +2238,25 @@ class TestSurfaceConfig(chex.TestCase):
     """
 
     def test_default_values(self) -> None:
-        """Default config should use height method at 30%."""
+        r"""Default config should use height method at 30%.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default config
+        should use height method at 30%.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         config: Any = SurfaceConfig()
         assert config.method == "height"
         assert config.height_fraction == 0.3
@@ -1098,7 +2267,25 @@ class TestSurfaceConfig(chex.TestCase):
         assert config.explicit_mask is None
 
     def test_custom_values(self) -> None:
-        """Custom config should preserve all values."""
+        r"""Custom config should preserve all values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Custom config
+        should preserve all values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         config: Any = SurfaceConfig(
             method="coordination",
             coordination_cutoff=4.0,
@@ -1109,7 +2296,25 @@ class TestSurfaceConfig(chex.TestCase):
         assert config.coordination_threshold == 6
 
     def test_immutable(self) -> None:
-        """SurfaceConfig should be immutable (NamedTuple)."""
+        r"""SurfaceConfig should be immutable (NamedTuple).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: SurfaceConfig
+        should be immutable (NamedTuple).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         config: Any = SurfaceConfig()
         with pytest.raises(AttributeError):
             config.method = "layers"
@@ -1122,7 +2327,25 @@ class TestDetectorGeometry(chex.TestCase):
     """
 
     def test_default_values(self) -> None:
-        """Default geometry should have standard RHEED values."""
+        r"""Default geometry should have standard RHEED values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default geometry
+        should have standard RHEED values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         geom: Any = DetectorGeometry()
         assert geom.distance == 100.0
         assert geom.tilt_angle == 0.0
@@ -1132,7 +2355,25 @@ class TestDetectorGeometry(chex.TestCase):
         assert geom.psf_sigma_pixels == 1.0
 
     def test_custom_values(self) -> None:
-        """Custom geometry should preserve values."""
+        r"""Custom geometry should preserve values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Custom geometry
+        should preserve values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         geom: Any = DetectorGeometry(
             distance=200.0,
             tilt_angle=5.0,
@@ -1149,18 +2390,72 @@ class TestDetectorGeometry(chex.TestCase):
         assert geom.psf_sigma_pixels == 1.5
 
     def test_psf_sigma_zero_disables(self) -> None:
-        """Zero PSF sigma should be valid (disables convolution)."""
+        r"""Zero PSF sigma should be valid (disables convolution).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero PSF sigma
+        should be valid (disables convolution).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         geom: Any = DetectorGeometry(psf_sigma_pixels=0.0)
         assert geom.psf_sigma_pixels == 0.0
 
     def test_immutable(self) -> None:
-        """DetectorGeometry should be immutable (NamedTuple)."""
+        r"""DetectorGeometry should be immutable (NamedTuple).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: DetectorGeometry
+        should be immutable (NamedTuple).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         geom: Any = DetectorGeometry()
         with pytest.raises(AttributeError):
             geom.distance = 200.0
 
     def test_infinite_curvature_is_flat(self) -> None:
-        """Default curvature should indicate a flat detector."""
+        r"""Default curvature should indicate a flat detector.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default curvature
+        should indicate a flat detector.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         geom: Any = DetectorGeometry()
         assert jnp.isinf(geom.curvature_radius)
 

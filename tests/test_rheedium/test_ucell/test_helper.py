@@ -44,7 +44,30 @@ class TestAngleInDegrees(chex.TestCase):
     def test_angle_calculation(
         self, v1: list[float], v2: list[float], expected_angle: float
     ) -> None:
-        """Test angle calculation between various vector pairs."""
+        r"""Test angle calculation between various vector pairs.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: angle calculation
+        between various vector pairs.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``v1``,
+        ``v2``, ``expected_angle``, so the documented behavior is checked
+        across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         v1_array: Float[Array, "coords"] = jnp.array(v1)
         v2_array: Float[Array, "coords"] = jnp.array(v2)
 
@@ -57,7 +80,29 @@ class TestAngleInDegrees(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_random_vectors(self) -> None:
-        """Test angle calculation with random vectors."""
+        r"""Test angle calculation with random vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: angle calculation
+        with random vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         key1: PRNGKeyArray
         key2: PRNGKeyArray
         key1, key2 = jax.random.split(self.rng)
@@ -78,7 +123,29 @@ class TestAngleInDegrees(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_normalization_invariance(self) -> None:
-        """Test that angle is invariant to vector magnitude."""
+        r"""Test that angle is invariant to vector magnitude.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: angle is invariant
+        to vector magnitude.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         v1: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
         v2: Float[Array, "..."] = jnp.array([1.0, 1.0, 0.0])
 
@@ -96,7 +163,29 @@ class TestAngleInDegrees(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_2d_vectors(self) -> None:
-        """Test angle calculation with 2D vectors."""
+        r"""Test angle calculation with 2D vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: angle calculation
+        with 2D vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         v1: Float[Array, "..."] = jnp.array([1.0, 0.0])
         v2: Float[Array, "..."] = jnp.array([0.0, 1.0])
 
@@ -109,7 +198,29 @@ class TestAngleInDegrees(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_angle_high_dimensional(self) -> None:
-        """Test angle calculation with high-dimensional vectors."""
+        r"""Test angle calculation with high-dimensional vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: angle calculation
+        with high-dimensional vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         n_dim: int = 10
         key1: PRNGKeyArray
         key2: PRNGKeyArray
@@ -163,7 +274,31 @@ class TestComputeLengthsAngles(chex.TestCase):
         expected_lengths: list[float],
         expected_angles: list[float],
     ) -> None:
-        """Test length and angle computation for known unit cells."""
+        r"""Test length and angle computation for known unit cells.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: length and angle
+        computation for known unit cells.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``vectors``,
+        ``expected_lengths``, ``expected_angles``, so the documented behavior
+        is checked across the cases supplied by pytest, Chex, Hypothesis, or
+        absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         vectors_array: Float[Array, "vectors coords"] = jnp.array(vectors)
 
         var_compute_lengths_angles: Callable[..., Any] = self.variant(
@@ -182,7 +317,29 @@ class TestComputeLengthsAngles(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_compute_lengths_angles_random(self) -> None:
-        """Test length and angle computation with random vectors."""
+        r"""Test length and angle computation with random vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: length and angle
+        computation with random vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         vectors: Float[Array, "vectors coords"] = jax.random.normal(
             self.rng, (3, 3)
         )
@@ -208,7 +365,29 @@ class TestComputeLengthsAngles(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_compute_lengths_angles_consistency(self) -> None:
-        """Test consistency with individual calculations."""
+        r"""Test consistency with individual calculations.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: consistency with
+        individual calculations.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         vectors: Float[Array, "..."] = jnp.array(
             [[3.0, 1.0, 0.5], [0.5, 4.0, 1.0], [1.0, 0.5, 5.0]]
         )
@@ -295,7 +474,29 @@ Si10 Si 0.5 0.5 0.9
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_basic(self) -> None:
-        """Test basic CIF parsing and atom scraping."""
+        r"""Test basic CIF parsing and atom scraping.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: basic CIF parsing
+        and atom scraping.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness_xyz: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
 
@@ -324,7 +525,30 @@ Si10 Si 0.5 0.5 0.9
     def test_parse_cif_and_scrape_different_axes(
         self, zone_axis: list[float], thickness: list[float]
     ) -> None:
-        """Test scraping along different zone axes."""
+        r"""Test scraping along different zone axes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: scraping along
+        different zone axes.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``zone_axis``, ``thickness``, so the documented behavior is checked
+        across the cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         zone_axis_array: Float[Array, "three"] = jnp.array(zone_axis)
         thickness_array: Float[Array, "three"] = jnp.array(thickness)
 
@@ -352,7 +576,29 @@ Si10 Si 0.5 0.5 0.9
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_multiple_thicknesses(self) -> None:
-        """Test with different thickness values."""
+        r"""Test with different thickness values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with different
+        thickness values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
 
         var_parse_cif_and_scrape: Callable[..., Any] = self.variant(
@@ -386,7 +632,29 @@ Si10 Si 0.5 0.5 0.9
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thin_slice(self) -> None:
-        """Test with thin slice that includes some atoms."""
+        r"""Test with thin slice that includes some atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with thin slice
+        that includes some atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         # Atoms are at z=0,1,2,...,9 Å, center is at 4.5 Å
         # A 2.5 Å slice (half_thickness=1.25) centered at 4.5
@@ -406,7 +674,29 @@ Si10 Si 0.5 0.5 0.9
 
     @chex.variants(without_jit=True, with_jit=False)
     def test_parse_cif_and_scrape_thick_slice(self) -> None:
-        """Test with very thick slice (should include all atoms)."""
+        r"""Test with very thick slice (should include all atoms).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with very thick
+        slice (should include all atoms).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_helper``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
         thickness_xyz: Float[Array, "..."] = jnp.array(
             [10.0, 10.0, 20.0]

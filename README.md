@@ -285,7 +285,9 @@ rh.audit.run_default_invariants()
   mirrors `src/` one-to-one
   (`tests/test_rheedium/test_<subpkg>/test_<module>.py`). To understand any
   function's contract, read its test. Property-based tests use `hypothesis`;
-  shape contracts are enforced via `jaxtyping` + `beartype`.
+  shape contracts are enforced via `jaxtyping` + `beartype`. The suite is also
+  rendered as a
+  [Testing & Validation reference](https://rheedium.readthedocs.io/en/latest/tests/index.html).
 - **Guides & API** — conceptual
   [guides](https://rheedium.readthedocs.io/en/latest/guides/index.html) (Ewald
   sphere, form factors, CTRs, PyTree architecture, …) and the full

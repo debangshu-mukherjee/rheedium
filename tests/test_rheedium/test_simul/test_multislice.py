@@ -88,7 +88,25 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
     """
 
     def test_zero_potential_gives_unity(self) -> None:
-        """T = 1 everywhere when V = 0."""
+        r"""T = 1 everywhere when V = 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: T = 1 everywhere
+        when V = 0.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -102,7 +120,25 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         )
 
     def test_modulus_bounded_by_one(self) -> None:
-        r"""\|T\| <= 1 everywhere (absorption only removes amplitude)."""
+        r"""\|T\| <= 1 everywhere (absorption only removes amplitude).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|T\| <= 1
+        everywhere (absorption only removes amplitude).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -114,7 +150,25 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         assert float(jnp.max(modulus)) <= 1.0 + 1e-6
 
     def test_real_potential_gives_unit_modulus(self) -> None:
-        r"""Pure-real V (no absorption) gives \|T\| = 1 everywhere."""
+        r"""Pure-real V (no absorption) gives \|T\| = 1 everywhere.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pure-real V (no
+        absorption) gives \|T\| = 1 everywhere.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -128,7 +182,25 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-6)
 
     def test_absorption_reduces_modulus(self) -> None:
-        r"""Higher absorption fraction lowers \|T\|."""
+        r"""Higher absorption fraction lowers \|T\|.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher absorption
+        fraction lowers \|T\|.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -149,7 +221,28 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
         assert float(jnp.min(jnp.abs(t_high))) < float(jnp.min(jnp.abs(t_low)))
 
     def test_jit_matches_eager(self) -> None:
-        """JIT-compiled output matches eager output."""
+        r"""JIT-compiled output matches eager output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT-compiled
+        output matches eager output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -170,7 +263,25 @@ class TestBuildTransmissionFunction(chex.TestCase, parameterized.TestCase):
     def test_explicit_projected_potential_keyword_matches_positional(
         self,
     ) -> None:
-        """The explicit projected-potential keyword matches positional use."""
+        r"""The explicit projected-potential keyword matches positional use.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The explicit
+        projected-potential keyword matches positional use.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -194,7 +305,25 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
     """
 
     def test_unitarity(self) -> None:
-        r"""\|P(qx, qy)\| = 1 everywhere — propagation is unitary."""
+        r"""\|P(qx, qy)\| = 1 everywhere — propagation is unitary.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|P(qx, qy)\| = 1
+        everywhere — propagation is unitary.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -205,7 +334,25 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(modulus, jnp.ones(grid), atol=1e-10)
 
     def test_zero_thickness_is_identity(self) -> None:
-        """Dz = 0 gives P = 1 (no propagation)."""
+        r"""Dz = 0 gives P = 1 (no propagation).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Dz = 0 gives P = 1
+        (no propagation).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -217,7 +364,25 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
         )
 
     def test_dc_component_is_unity(self) -> None:
-        """At qx = qy = 0 the propagator equals 1 for any dz."""
+        r"""At qx = qy = 0 the propagator equals 1 for any dz.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: At qx = qy = 0 the
+        propagator equals 1 for any dz.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -228,7 +393,25 @@ class TestFresnelPropagator(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(float(jnp.imag(p[0, 0])), 0.0, atol=1e-12)
 
     def test_shape(self) -> None:
-        """Output shape matches grid."""
+        r"""Output shape matches grid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches grid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -245,7 +428,25 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
     """
 
     def test_vacuum_preserves_norm(self) -> None:
-        r"""Zero potential leaves \|psi\| unchanged (free propagation)."""
+        r"""Zero potential leaves \|psi\| unchanged (free propagation).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero potential
+        leaves \|psi\| unchanged (free propagation).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -261,7 +462,25 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(norm_out, norm_in, rtol=1e-6)
 
     def test_absorption_reduces_norm(self) -> None:
-        """Non-zero absorption reduces wavefunction norm."""
+        r"""Non-zero absorption reduces wavefunction norm.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-zero
+        absorption reduces wavefunction norm.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -279,7 +498,25 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         assert norm_out < norm_in
 
     def test_norm_monotonic_with_depth(self) -> None:
-        """Norm decreases monotonically over many absorbing slices."""
+        r"""Norm decreases monotonically over many absorbing slices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Norm decreases
+        monotonically over many absorbing slices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -300,7 +537,25 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
             assert norms[i + 1] <= norms[i] + 1e-6
 
     def test_output_shape(self) -> None:
-        """Output shape equals input shape."""
+        r"""Output shape equals input shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        equals input shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -314,7 +569,28 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(psi_out, grid)
 
     def test_jit_compilation(self) -> None:
-        """JIT-compiled multislice step matches eager output."""
+        r"""JIT-compiled multislice step matches eager output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT-compiled
+        multislice step matches eager output.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -337,7 +613,28 @@ class TestMultisliceOneStep(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(eager, compiled, atol=1e-10)
 
     def test_grad_flows_through_potential(self) -> None:
-        """jax.grad through multislice w.r.t. absorption is finite."""
+        r"""jax.grad through multislice w.r.t. absorption is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        multislice w.r.t. absorption is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -375,7 +672,25 @@ class TestMultisliceAmplitude(chex.TestCase):
     """
 
     def test_matches_fft_of_exit_wave(self) -> None:
-        r"""Amplitude is the reciprocal-space exit wave before \|.\|^2."""
+        r"""Amplitude is the reciprocal-space exit wave before \|.\|^2.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Amplitude is the
+        reciprocal-space exit wave before \|.\|^2.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential: PotentialSlices = _make_potential_slices(scale=0.0)
 
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
@@ -396,7 +711,25 @@ class TestMultisliceAmplitude(chex.TestCase):
         )
 
     def test_modulus_squared_is_finite_intensity(self) -> None:
-        r"""\|amplitude\|^2 gives a finite diffraction-intensity grid."""
+        r"""\|amplitude\|^2 gives a finite diffraction-intensity grid.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: \|amplitude\|^2
+        gives a finite diffraction-intensity grid.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         potential: PotentialSlices = _make_potential_slices(scale=0.01)
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
@@ -410,7 +743,28 @@ class TestMultisliceAmplitude(chex.TestCase):
         assert float(jnp.sum(intensity)) > 0.0
 
     def test_grad_flows_through_potential_scale(self) -> None:
-        """Layer-0 multislice amplitude remains differentiable."""
+        r"""Layer-0 multislice amplitude remains differentiable.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Layer-0 multislice
+        amplitude remains differentiable.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def objective(scale: float) -> scalar_float:
             potential: PotentialSlices = _make_potential_slices(scale=scale)
@@ -432,7 +786,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
     """
 
     def test_output_shape(self) -> None:
-        """Output shape matches grid_shape."""
+        r"""Output shape matches grid_shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output shape
+        matches grid_shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -442,7 +814,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(v, grid)
 
     def test_output_is_complex(self) -> None:
-        """Output dtype is complex."""
+        r"""Output dtype is complex.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output dtype is
+        complex.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -452,7 +842,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert jnp.iscomplexobj(v)
 
     def test_real_part_nonnegative(self) -> None:
-        """Real part of V is non-negative for all atoms."""
+        r"""Real part of V is non-negative for all atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Real part of V is
+        non-negative for all atoms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -462,7 +870,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert float(jnp.min(jnp.real(v))) >= -1e-6
 
     def test_imag_part_proportional_to_real(self) -> None:
-        """V_abs = absorption_fraction * V_real."""
+        r"""V_abs = absorption_fraction * V_real.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: V_abs =
+        absorption_fraction * V_real.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -476,7 +902,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(v_imag, 0.2 * v_real, atol=1e-6)
 
     def test_zero_absorption_gives_real_potential(self) -> None:
-        """absorption_fraction=0 yields purely real potential."""
+        r"""absorption_fraction=0 yields purely real potential.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case:
+        absorption_fraction=0 yields purely real potential.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -488,7 +932,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(jnp.imag(v), jnp.zeros(grid), atol=1e-12)
 
     def test_higher_z_gives_stronger_potential(self) -> None:
-        """Heavier atom (Z=82) gives higher peak potential than Z=6."""
+        r"""Heavier atom (Z=82) gives higher peak potential than Z=6.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Heavier atom
+        (Z=82) gives higher peak potential than Z=6.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -505,7 +967,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert peak_pb > peak_c
 
     def test_two_atoms_gives_two_peaks(self) -> None:
-        """Two atoms produce two peaks in the potential."""
+        r"""Two atoms produce two peaks in the potential.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Two atoms produce
+        two peaks in the potential.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -532,7 +1012,25 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert float(col_at_y4[3 * grid[0] // 4]) > 0.0
 
     def test_finite_everywhere(self) -> None:
-        """Output is finite (no NaN, no Inf)."""
+        r"""Output is finite (no NaN, no Inf).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Output is finite
+        (no NaN, no Inf).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float
@@ -547,7 +1045,29 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         ("kirkland", "kirkland"),
     )
     def test_parameterization_switch(self, parameterization: str) -> None:
-        """Both parameterizations produce same-shape complex output."""
+        r"""Both parameterizations produce same-shape complex output.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Both
+        parameterizations produce same-shape complex output.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``parameterization``, so the documented behavior is checked across the
+        cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         grid: tuple[int, int]
         cell: Float[Array, "2"]
         voltage: float

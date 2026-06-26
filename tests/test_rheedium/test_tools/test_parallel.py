@@ -36,33 +36,123 @@ class TestShardArray(chex.TestCase):
     """
 
     def test_output_shape_matches_input(self) -> None:
-        """Sharded array must preserve the original shape."""
+        r"""Sharded array must preserve the original shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharded array must
+        preserve the original shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 4))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=0)
         chex.assert_shape(result, (8, 4))
 
     def test_output_values_match_input(self) -> None:
-        """Sharding must not alter array values."""
+        r"""Sharding must not alter array values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding must not
+        alter array values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices coords"] = jnp.arange(24.0).reshape(8, 3)
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=0)
         chex.assert_trees_all_close(result, arr)
 
     def test_single_int_shard_axis(self) -> None:
-        """Passing a single int for shard_axes should work."""
+        r"""Passing a single int for shard_axes should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Passing a single
+        int for shard_axes should work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices coords"] = jnp.ones((8, 3))
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=0)
         assert isinstance(result.sharding, NamedSharding)
         chex.assert_shape(result, (8, 3))
 
     def test_list_shard_axes(self) -> None:
-        """Passing a list of axes should work."""
+        r"""Passing a list of axes should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Passing a list of
+        axes should work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 4))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=[0])
         chex.assert_shape(result, (8, 4))
         chex.assert_trees_all_close(result, arr)
 
     def test_shard_second_axis(self) -> None:
-        """Sharding along axis 1 should produce correct spec."""
+        r"""Sharding along axis 1 should produce correct spec.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding along
+        axis 1 should produce correct spec.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "rows devices"] = jnp.ones((3, 8))
         result: Float[Array, "rows devices"] = shard_array(arr, shard_axes=1)
         spec: Any = result.sharding.spec
@@ -70,7 +160,25 @@ class TestShardArray(chex.TestCase):
         assert spec[1] == "devices"
 
     def test_shard_first_axis_spec(self) -> None:
-        """Sharding along axis 0 should produce correct spec."""
+        r"""Sharding along axis 0 should produce correct spec.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding along
+        axis 0 should produce correct spec.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 4))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=0)
         spec: Any = result.sharding.spec
@@ -78,7 +186,25 @@ class TestShardArray(chex.TestCase):
         assert spec[1] is None
 
     def test_skip_axis_with_minus_one(self) -> None:
-        """Using -1 should skip sharding (all axes None)."""
+        r"""Using -1 should skip sharding (all axes None).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Using -1 should
+        skip sharding (all axes None).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 8))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=-1)
         spec: Any = result.sharding.spec
@@ -86,7 +212,25 @@ class TestShardArray(chex.TestCase):
         assert spec[1] is None
 
     def test_skip_axis_in_list(self) -> None:
-        """A list containing -1 should skip that entry."""
+        r"""A list containing -1 should skip that entry.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A list containing
+        -1 should skip that entry.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 8))
         result: Float[Array, "devices cols"] = shard_array(
             arr, shard_axes=[-1]
@@ -96,7 +240,25 @@ class TestShardArray(chex.TestCase):
         assert spec[1] is None
 
     def test_explicit_devices(self) -> None:
-        """Passing explicit devices should use them."""
+        r"""Passing explicit devices should use them.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Passing explicit
+        devices should use them.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         devices: Any = jax.devices()
         arr: Float[Array, "devices"] = jnp.ones((8,))
         result: Float[Array, "devices"] = shard_array(
@@ -106,14 +268,50 @@ class TestShardArray(chex.TestCase):
         chex.assert_trees_all_close(result, arr)
 
     def test_1d_array(self) -> None:
-        """Sharding a 1D array should work."""
+        r"""Sharding a 1D array should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding a 1D
+        array should work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "points"] = jnp.arange(16.0)
         result: Float[Array, "points"] = shard_array(arr, shard_axes=0)
         chex.assert_shape(result, (16,))
         chex.assert_trees_all_close(result, arr)
 
     def test_3d_array(self) -> None:
-        """Sharding a 3D array along axis 0 should work."""
+        r"""Sharding a 3D array along axis 0 should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding a 3D
+        array along axis 0 should work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices rows cols"] = jnp.ones((8, 3, 2))
         result: Float[Array, "devices rows cols"] = shard_array(
             arr, shard_axes=0
@@ -125,7 +323,25 @@ class TestShardArray(chex.TestCase):
         assert spec[2] is None
 
     def test_axis_beyond_ndim_ignored(self) -> None:
-        """An axis index >= ndim should be silently ignored."""
+        r"""An axis index >= ndim should be silently ignored.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: An axis index >=
+        ndim should be silently ignored.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices coords"] = jnp.ones((8, 3))
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=5)
         spec: Any = result.sharding.spec
@@ -134,14 +350,50 @@ class TestShardArray(chex.TestCase):
         chex.assert_trees_all_close(result, arr)
 
     def test_float64_preserved(self) -> None:
-        """Float64 dtype should be preserved through sharding."""
+        r"""Float64 dtype should be preserved through sharding.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Float64 dtype
+        should be preserved through sharding.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices"] = jnp.arange(8.0, dtype=jnp.float64)
         result: Float[Array, "devices"] = shard_array(arr, shard_axes=0)
         assert result.dtype == jnp.float64
         chex.assert_trees_all_close(result, arr)
 
     def test_complex_dtype(self) -> None:
-        """Complex arrays should shard correctly."""
+        r"""Complex arrays should shard correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Complex arrays
+        should shard correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Complex[Array, "devices"] = jnp.arange(8.0) + 1j * jnp.arange(
             8.0, 16.0
         )
@@ -149,13 +401,49 @@ class TestShardArray(chex.TestCase):
         chex.assert_trees_all_close(result, arr)
 
     def test_integer_array(self) -> None:
-        """Integer arrays should shard correctly."""
+        r"""Integer arrays should shard correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Integer arrays
+        should shard correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Integer[Array, "devices"] = jnp.arange(8, dtype=jnp.int32)
         result: Integer[Array, "devices"] = shard_array(arr, shard_axes=0)
         chex.assert_trees_all_close(result, arr)
 
     def test_sharding_is_named_sharding(self) -> None:
-        """Result should use NamedSharding."""
+        r"""Result should use NamedSharding.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Result should use
+        NamedSharding.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices cols"] = jnp.ones((8, 4))
         result: Float[Array, "devices cols"] = shard_array(arr, shard_axes=0)
         assert isinstance(result.sharding, NamedSharding)
@@ -165,18 +453,72 @@ class TestShardArrayMultiDevice(chex.TestCase):
     """Tests that verify real multi-device distribution."""
 
     def test_eight_devices_available(self) -> None:
-        """Conftest must expose 8 virtual CPU devices."""
+        r"""Conftest must expose 8 virtual CPU devices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Conftest must
+        expose 8 virtual CPU devices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         assert len(jax.devices()) == 8
 
     def test_sharded_across_all_devices(self) -> None:
-        """Array sharded on axis 0 should span all 8 devices."""
+        r"""Array sharded on axis 0 should span all 8 devices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Array sharded on
+        axis 0 should span all 8 devices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices coords"] = jnp.arange(24.0).reshape(8, 3)
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=0)
         device_set: Any = result.sharding.device_set
         assert len(device_set) == 8
 
     def test_subset_devices(self) -> None:
-        """Sharding across a subset of devices should work."""
+        r"""Sharding across a subset of devices should work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Sharding across a
+        subset of devices should work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         devices: Any = jax.devices()[:4]
         arr: Float[Array, "devices coords"] = jnp.arange(12.0).reshape(4, 3)
         result: Float[Array, "devices coords"] = shard_array(
@@ -186,7 +528,25 @@ class TestShardArrayMultiDevice(chex.TestCase):
         chex.assert_trees_all_close(result, arr)
 
     def test_shard_values_roundtrip(self) -> None:
-        """Data gathered from sharded array must match original."""
+        r"""Data gathered from sharded array must match original.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Data gathered from
+        sharded array must match original.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "devices coords"] = jnp.arange(16.0).reshape(8, 2)
         result: Float[Array, "devices coords"] = shard_array(arr, shard_axes=0)
         gathered: Float[Array, "devices coords"] = jax.device_get(result)
@@ -198,7 +558,29 @@ class TestPmapCompatibility(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_jit_on_sharded_array(self) -> None:
-        """JIT-compiled function should work on sharded data."""
+        r"""JIT-compiled function should work on sharded data.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT-compiled
+        function should work on sharded data.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         @self.variant
         def add_one(x: Float[Array, "8"]) -> Float[Array, "8"]:
@@ -211,7 +593,28 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_elementwise(self) -> None:
-        """Pmap should distribute elementwise ops across devices."""
+        r"""Pmap should distribute elementwise ops across devices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pmap should
+        distribute elementwise ops across devices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises parallel mapping, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fn: Callable[
             [Float[Array, "devices cols"]], Float[Array, "devices cols"]
         ] = jax.pmap(lambda x: x**2)
@@ -221,7 +624,28 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_reduction(self) -> None:
-        """Pmap with inner sum should reduce per-device slices."""
+        r"""Pmap with inner sum should reduce per-device slices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pmap with inner
+        sum should reduce per-device slices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises parallel mapping, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fn: Callable[
             [Float[Array, "devices cols"]], Float[Array, "devices"]
         ] = jax.pmap(lambda x: jnp.sum(x))
@@ -231,7 +655,28 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected)
 
     def test_pmap_preserves_dtype(self) -> None:
-        """Pmap should preserve float64 dtype."""
+        r"""Pmap should preserve float64 dtype.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pmap should
+        preserve float64 dtype.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises parallel mapping, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fn: Callable[
             [Float[Array, "devices cols"]], Float[Array, "devices cols"]
         ] = jax.pmap(lambda x: x * 2.0)
@@ -241,7 +686,28 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, arr * 2.0)
 
     def test_pmap_trig_identity(self) -> None:
-        """Pmap should handle sin^2 + cos^2 = 1 across devices."""
+        r"""Pmap should handle sin^2 + cos^2 = 1 across devices.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pmap should handle
+        sin^2 + cos^2 = 1 across devices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises parallel mapping, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fn: Callable[
             [Float[Array, "devices cols"]], Float[Array, "devices cols"]
         ] = jax.pmap(lambda x: jnp.sin(x) ** 2 + jnp.cos(x) ** 2)
@@ -253,7 +719,28 @@ class TestPmapCompatibility(chex.TestCase):
         chex.assert_trees_all_close(result, expected, atol=1e-6)
 
     def test_pmap_with_broadcast(self) -> None:
-        """Pmap should handle scalar broadcast."""
+        r"""Pmap should handle scalar broadcast.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Pmap should handle
+        scalar broadcast.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises parallel mapping, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         fn: Callable[
             [Float[Array, "devices cols"]], Float[Array, "devices cols"]
         ] = jax.pmap(lambda x: x + 10.0)
@@ -280,7 +767,25 @@ class TestDistributeBatched(chex.TestCase):
     """
 
     def test_matches_serial_divisible(self) -> None:
-        """Divisible batch must match the serial vmap result exactly."""
+        r"""Divisible batch must match the serial vmap result exactly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Divisible batch
+        must match the serial vmap result exactly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N D"] = jnp.arange(32.0).reshape(8, 4)
         result: Float[Array, "N D"] = distribute_batched(_batched_double, arr)
         chex.assert_shape(result, (8, 4))
@@ -288,7 +793,29 @@ class TestDistributeBatched(chex.TestCase):
 
     @parameterized.parameters(1, 3, 5, 7, 13)
     def test_non_divisible_batch(self, n_rows: int) -> None:
-        """Non-divisible batch returns the unpadded, correct result."""
+        r"""Non-divisible batch returns the unpadded, correct result.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-divisible
+        batch returns the unpadded, correct result.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``n_rows``,
+        so the documented behavior is checked across the cases supplied by
+        pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N D"] = jnp.arange(float(n_rows * 4)).reshape(
             n_rows, 4
         )
@@ -297,7 +824,25 @@ class TestDistributeBatched(chex.TestCase):
         chex.assert_trees_all_close(result, _batched_double(arr))
 
     def test_padding_value_does_not_leak(self) -> None:
-        """A non-zero pad value must not affect the returned rows."""
+        r"""A non-zero pad value must not affect the returned rows.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A non-zero pad
+        value must not affect the returned rows.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N D"] = jnp.arange(20.0).reshape(5, 4)
         result: Float[Array, "N D"] = distribute_batched(
             _batched_double, arr, pad_value=999.0
@@ -305,21 +850,75 @@ class TestDistributeBatched(chex.TestCase):
         chex.assert_trees_all_close(result, _batched_double(arr))
 
     def test_trailing_batch_dims(self) -> None:
-        """Outputs with extra trailing axes keep their full shape."""
+        r"""Outputs with extra trailing axes keep their full shape.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Outputs with extra
+        trailing axes keep their full shape.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N"] = jnp.arange(6.0)
         result: Float[Array, "N 2 3"] = distribute_batched(_batched_outer, arr)
         chex.assert_shape(result, (6, 2, 3))
         chex.assert_trees_all_close(result, _batched_outer(arr))
 
     def test_divisible_output_sharded_across_devices(self) -> None:
-        """A device-multiple batch stays sharded across the whole mesh."""
+        r"""A device-multiple batch stays sharded across the whole mesh.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A device-multiple
+        batch stays sharded across the whole mesh.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N D"] = jnp.arange(32.0).reshape(8, 4)
         result: Float[Array, "N D"] = distribute_batched(_batched_double, arr)
         assert isinstance(result.sharding, NamedSharding)
         assert len(result.sharding.device_set) == 8
 
     def test_subset_devices(self) -> None:
-        """Distributing across an explicit device subset must work."""
+        r"""Distributing across an explicit device subset must work.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Distributing
+        across an explicit device subset must work.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         devices: Any = jax.devices()[:4]
         arr: Float[Array, "N D"] = jnp.arange(16.0).reshape(4, 4)
         result: Float[Array, "N D"] = distribute_batched(
@@ -329,7 +928,25 @@ class TestDistributeBatched(chex.TestCase):
         assert len(result.sharding.device_set) == 4
 
     def test_single_device(self) -> None:
-        """Distributing across a single device degrades to replication."""
+        r"""Distributing across a single device degrades to replication.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Distributing
+        across a single device degrades to replication.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         devices: Any = jax.devices()[:1]
         arr: Float[Array, "N D"] = jnp.arange(12.0).reshape(3, 4)
         result: Float[Array, "N D"] = distribute_batched(
@@ -338,7 +955,25 @@ class TestDistributeBatched(chex.TestCase):
         chex.assert_trees_all_close(result, _batched_double(arr))
 
     def test_float64_preserved(self) -> None:
-        """Float64 dtype must survive the distribute round-trip."""
+        r"""Float64 dtype must survive the distribute round-trip.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Float64 dtype must
+        survive the distribute round-trip.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         arr: Float[Array, "N D"] = jnp.arange(32.0, dtype=jnp.float64).reshape(
             8, 4
         )
@@ -346,7 +981,25 @@ class TestDistributeBatched(chex.TestCase):
         assert result.dtype == jnp.float64
 
     def test_real_phi_sweep_matches_serial(self) -> None:
-        """Distributing a real phi sweep matches the direct sweep result."""
+        r"""Distributing a real phi sweep matches the direct sweep result.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Distributing a
+        real phi sweep matches the direct sweep result.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_parallel``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         crystal: Any = make_si_crystal_2atom()
         phi_bank: Float[Array, "N"] = jnp.linspace(0.0, 30.0, 6)
         sweep_kwargs: dict[str, Any] = {

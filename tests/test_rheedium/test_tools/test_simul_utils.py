@@ -33,7 +33,32 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_voltages(self) -> None:
-        """Relativistic wavelength matches reference values."""
+        r"""Relativistic wavelength matches reference values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Relativistic
+        wavelength matches reference values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         voltages_kv: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0])
@@ -48,7 +73,29 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_higher_voltage_shorter_wavelength(self) -> None:
-        """Higher voltage produces shorter wavelength."""
+        r"""Higher voltage produces shorter wavelength.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher voltage
+        produces shorter wavelength.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         lam_10: scalar_float = var_wavelength(jnp.float64(10.0))
@@ -58,7 +105,32 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_positive_output(self) -> None:
-        """Wavelength is always positive."""
+        r"""Wavelength is always positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wavelength is
+        always positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_wavelength: Callable[..., Any] = self.variant(wavelength_ang)
 
         voltages: Float[Array, "..."] = jnp.array(
@@ -71,12 +143,48 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_equal(jnp.all(wavelengths > 0), True)
 
     def test_scalar_input(self) -> None:
-        """Accepts scalar float input."""
+        r"""Accepts scalar float input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accepts scalar
+        float input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         lam: scalar_float = wavelength_ang(20.0)
         chex.assert_tree_all_finite(lam)
 
     def test_array_broadcast(self) -> None:
-        """Handles batched array input."""
+        r"""Handles batched array input.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Handles batched
+        array input.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         voltages: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0])
         wavelengths: Float[Array, "voltages"] = wavelength_ang(voltages)
         chex.assert_shape(wavelengths, (3,))
@@ -91,7 +199,29 @@ class TestIncidenceAnglesToRadians(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_converts_public_degrees_to_internal_radians(self) -> None:
-        """Convert theta/phi degree inputs to polar/azimuth radians."""
+        r"""Convert theta/phi degree inputs to polar/azimuth radians.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Convert theta/phi
+        degree inputs to polar/azimuth radians.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_angles: Callable[..., Any] = self.variant(
             incidence_angles_to_radians
         )
@@ -115,7 +245,25 @@ class TestIncidenceAnglesToRadians(chex.TestCase, parameterized.TestCase):
         )
 
     def test_default_phi_converts_to_zero_azimuth(self) -> None:
-        """Default phi produces a zero internal azimuth angle."""
+        r"""Default phi produces a zero internal azimuth angle.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default phi
+        produces a zero internal azimuth angle.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         polar_angle_rad: Float[Array, ""]
         azimuth_angle_rad: Float[Array, ""]
         polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
@@ -138,7 +286,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_output_shape(self) -> None:
-        """Returns a 3-component vector."""
+        r"""Returns a 3-component vector.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Returns a
+        3-component vector.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
@@ -150,7 +320,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_magnitude_equals_2pi_over_lambda(self) -> None:
-        """Wavevector magnitude equals 2*pi/lambda."""
+        r"""Wavevector magnitude equals 2*pi/lambda.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wavevector
+        magnitude equals 2*pi/lambda.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
@@ -166,7 +358,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_negative_z_component(self) -> None:
-        """k_z is negative (beam enters from above the surface)."""
+        r"""k_z is negative (beam enters from above the surface).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: k_z is negative
+        (beam enters from above the surface).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
@@ -178,7 +392,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_grazing_angle_controls_z(self) -> None:
-        r"""Steeper grazing angle gives larger \|k_z\|."""
+        r"""Steeper grazing angle gives larger \|k_z\|.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Steeper grazing
+        angle gives larger \|k_z\|.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
@@ -195,7 +431,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_phi_zero_no_y_component(self) -> None:
-        """At phi=0, k_y should be zero (beam along x)."""
+        r"""At phi=0, k_y should be zero (beam along x).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: At phi=0, k_y
+        should be zero (beam along x).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
@@ -208,7 +466,29 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_phi_90_no_x_component(self) -> None:
-        """At phi=90, k_x should be zero (beam along y)."""
+        r"""At phi=90, k_x should be zero (beam along y).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: At phi=90, k_x
+        should be zero (beam along y).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         k_in: Float[Array, "three"] = var_k(
@@ -227,7 +507,30 @@ class TestIncidentWavevector(chex.TestCase, parameterized.TestCase):
         ("phi_180", 180.0),
     )
     def test_magnitude_invariant_under_phi(self, phi: float) -> None:
-        """Wavevector magnitude is independent of azimuthal angle."""
+        r"""Wavevector magnitude is independent of azimuthal angle.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wavevector
+        magnitude is independent of azimuthal angle.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``phi``, so
+        the documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_k: Callable[..., Any] = self.variant(incident_wavevector)
 
         lam: float = 0.0859
@@ -251,7 +554,32 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_known_values(self) -> None:
-        """Interaction constant matches reference values."""
+        r"""Interaction constant matches reference values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Interaction
+        constant matches reference values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         voltages_kv: Float[Array, "..."] = jnp.array(
@@ -279,7 +607,29 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_positive_output(self) -> None:
-        """Interaction constant is always positive."""
+        r"""Interaction constant is always positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Interaction
+        constant is always positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         lam: scalar_float = wavelength_ang(jnp.float64(20.0))
@@ -289,7 +639,29 @@ class TestInteractionConstant(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     def test_decreases_with_voltage(self) -> None:
-        """Higher voltage gives smaller interaction constant."""
+        r"""Higher voltage gives smaller interaction constant.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Higher voltage
+        gives smaller interaction constant.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         var_sigma: Callable[..., Any] = self.variant(interaction_constant)
 
         lam_10: scalar_float = wavelength_ang(jnp.float64(10.0))
@@ -305,7 +677,28 @@ class TestSimulUtilsGradientCorrectness(chex.TestCase, parameterized.TestCase):
     """Verify analytical gradients match finite differences."""
 
     def test_wavelength_grad_correct(self) -> None:
-        """Relativistic wavelength grad matches finite diff to 2nd order."""
+        r"""Relativistic wavelength grad matches finite diff to 2nd order.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Relativistic
+        wavelength grad matches finite diff to 2nd order.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
 
         def f(voltage: scalar_float) -> scalar_float:
             return wavelength_ang(voltage)
@@ -317,7 +710,28 @@ class TestSimulUtilsVmapConsistency(chex.TestCase, parameterized.TestCase):
     """Verify vmap matches sequential for utility functions."""
 
     def test_wavelength_vmap_consistent(self) -> None:
-        """Batched wavelength matches sequential evaluation."""
+        r"""Batched wavelength matches sequential evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Batched wavelength
+        matches sequential evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises vectorization, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_tools.test_simul_utils``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         voltages: Float[Array, "..."] = jnp.array([10.0, 20.0, 30.0, 50.0])
         batched: Float[Array, "voltages"] = jax.vmap(wavelength_ang)(voltages)
         sequential: Float[Array, "..."] = jnp.stack(

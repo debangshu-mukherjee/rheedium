@@ -15,11 +15,11 @@ and opt-in multislice** —
 `simulate_detector_image` is now the thin Layer-1 integrator (build
 distributions → bind selected kernel → `apply_distributions` → PSF/normalize).
 Remaining work is outside this framework gate: higher-fidelity defect
-diffraction belongs to the fidelity plan, and legacy Gaussian-quadrature cleanup
-belongs to rationalization R2.
+diffraction belongs to the fidelity plan. (The legacy Gaussian-quadrature cleanup
+delegated to rationalization R2 has since landed — rationalization is complete.)
 
 > **Keystone — the critical path.** This is the root of the whole roadmap:
-> [rationalization](plans/partial/rationalization_refactor_plan.md) R0,
+> [rationalization](plans/implemented/rationalization_refactor_plan.md) R0,
 > [recon](plans/future/recon_optimization_plan.md) K0, and
 > [automatons](plans/future/automatons_plan.md) A0 all gate transitively on it.
 > The single load-bearing item is the **Phase 6 end-to-end differentiability
@@ -151,7 +151,7 @@ The final framework gates are now locked:
   rendering is explicitly a future geometry-depth item, not a gate.
 - **Delegated — legacy quadrature.** Retiring `instrument_broadened_pattern` /
   `gauss_hermite_nodes_weights` is owned by
-  [rationalization R2](plans/partial/rationalization_refactor_plan.md); not a
+  [rationalization R2](plans/implemented/rationalization_refactor_plan.md); not a
   framework task.
 
 **Definition of done:** FG1, FG2, and K0 are green. Legacy quadrature retirement
@@ -179,7 +179,7 @@ is delegated to rationalization. Higher-fidelity defect physics is explicitly
 - **Roadmap position** — first of four, each downstream plan gated on this one
   completing:
   1. *this* (distribution framework)
-  2. [rationalization refactor](plans/partial/rationalization_refactor_plan.md)
+  2. [rationalization refactor](plans/implemented/rationalization_refactor_plan.md)
   3. [recon (inversion)](plans/future/recon_optimization_plan.md)
   4. [automatons](plans/future/automatons_plan.md)
 - **Physics-depth follow-up (not a gate)** —

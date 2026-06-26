@@ -17,3 +17,8 @@ Validation tests for package import behavior and test-suite contracts.
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. automodule:: tests.test_rheedium.test_testing_documentation
+   :members:
+   :undoc-members:
+   :show-inheritance:

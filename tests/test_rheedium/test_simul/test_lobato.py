@@ -33,22 +33,94 @@ class TestLoadLobatoPotentials(chex.TestCase):
     """
 
     def test_csv_shape(self) -> None:
-        """Lobato CSV loads as (103, 10) array."""
+        r"""Lobato CSV loads as (103, 10) array.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lobato CSV loads
+        as (103, 10) array.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         params: Float[Array, "103 10"] = lobato_potentials()
         chex.assert_shape(params, (103, 10))
 
     def test_csv_finite(self) -> None:
-        """All parameters are finite."""
+        r"""All parameters are finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All parameters are
+        finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         params: Float[Array, "103 10"] = lobato_potentials()
         chex.assert_tree_all_finite(params)
 
     def test_csv_positive(self) -> None:
-        """All a_i and b_i coefficients are positive."""
+        r"""All a_i and b_i coefficients are positive.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All a_i and b_i
+        coefficients are positive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         params: Float[Array, "103 10"] = lobato_potentials()
         assert jnp.all(params > 0)
 
     def test_load_lobato_parameters_hydrogen(self) -> None:
-        """Hydrogen parameters match CSV row 1."""
+        r"""Hydrogen parameters match CSV row 1.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Hydrogen
+        parameters match CSV row 1.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: Float[Array, "5"]
         b: Float[Array, "5"]
         a, b = load_lobato_parameters(1)
@@ -59,7 +131,25 @@ class TestLoadLobatoPotentials(chex.TestCase):
         chex.assert_trees_all_close(a[0], jnp.array(0.0349), rtol=1e-3)
 
     def test_load_lobato_parameters_silicon(self) -> None:
-        """Silicon (Z=14) parameters match CSV."""
+        r"""Silicon (Z=14) parameters match CSV.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Silicon (Z=14)
+        parameters match CSV.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: Float[Array, "5"]
         _b: Float[Array, "5"]
         a, _b = load_lobato_parameters(14)
@@ -80,7 +170,29 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Au", 79),
     )
     def test_zero_angle_limit(self, z: int) -> None:
-        """f_e(0) = sum_i 2*a_i (Mott-Bethe zero-angle limit)."""
+        r"""f_e(0) = sum_i 2*a_i (Mott-Bethe zero-angle limit).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: f_e(0) = sum_i
+        2*a_i (Mott-Bethe zero-angle limit).
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``z``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: Float[Array, "5"]
         _b: Float[Array, "5"]
         a, _b = load_lobato_parameters(z)
@@ -96,21 +208,79 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Au", 79),
     )
     def test_nonnegative(self, z: int) -> None:
-        """f_e(q) >= 0 for all q >= 0."""
+        r"""f_e(q) >= 0 for all q >= 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: f_e(q) >= 0 for
+        all q >= 0.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``z``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         q: Float[Array, "300"] = jnp.linspace(0.0, 30.0, 300)
         fe: Float[Array, "300"] = lobato_form_factor(z, q)
         chex.assert_tree_all_finite(fe)
         assert jnp.all(fe >= 0)
 
     def test_monotone_decreasing(self) -> None:
-        """f_e(q) is monotonically decreasing for q > 0 (Si)."""
+        r"""f_e(q) is monotonically decreasing for q > 0 (Si).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: f_e(q) is
+        monotonically decreasing for q > 0 (Si).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         q: Float[Array, "300"] = jnp.linspace(0.1, 30.0, 300)
         fe: Float[Array, "300"] = lobato_form_factor(14, q)
         diffs: Float[Array, "299"] = jnp.diff(fe)
         assert jnp.all(diffs <= 0)
 
     def test_high_q_asymptotic(self) -> None:
-        """f_e decays as q^{-2} at large q (Bethe limit)."""
+        r"""f_e decays as q^{-2} at large q (Bethe limit).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: f_e decays as
+        q^{-2} at large q (Bethe limit).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         q_high: Float[Array, "2"] = jnp.array([40.0, 80.0])
         fe: Float[Array, "2"] = lobato_form_factor(14, q_high)
         ratio: scalar_float = fe[1] / fe[0]
@@ -118,7 +288,25 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(ratio, expected_ratio, rtol=0.05)
 
     def test_batch_shapes(self) -> None:
-        """Handles arbitrary batch dimensions."""
+        r"""Handles arbitrary batch dimensions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Handles arbitrary
+        batch dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         q_1d: Float[Array, "50"] = jnp.linspace(0.0, 10.0, 50)
         q_2d: Float[Array, "4 8"] = jnp.ones((4, 8)) * 2.0
         chex.assert_shape(lobato_form_factor(14, q_1d), (50,))
@@ -130,12 +318,32 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         ("Au", 79),
     )
     def test_vs_kirkland_same_order_of_magnitude(self, z: int) -> None:
-        """Lobato and Kirkland f_e(0) within an order of magnitude.
+        r"""Lobato and Kirkland f_e(0) within an order of magnitude.
 
-        The Kirkland implementation in rheedium uses a simplified
-        Gaussian-only parameterization with different parameter
-        conventions, so close agreement is not expected. This test
-        verifies both are in the same ballpark.
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lobato and
+        Kirkland f_e(0) within an order of magnitude. Existing context from the
+        original test prose: The Kirkland implementation in rheedium uses a
+        simplified Gaussian-only parameterization with different parameter
+        conventions, so close agreement is not expected. This test verifies
+        both are in the same ballpark.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``z``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         q_zero: Float[Array, "1"] = jnp.array([0.0])
         fe_lobato: scalar_float = lobato_form_factor(z, q_zero)[0]
@@ -144,7 +352,28 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         assert 0.1 < ratio < 10.0
 
     def test_gradient_finite(self) -> None:
-        """jax.grad through lobato_form_factor is finite."""
+        r"""jax.grad through lobato_form_factor is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        lobato_form_factor is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss(q: Float[Array, "N"]) -> scalar_float:
             return jnp.sum(lobato_form_factor(14, q))
@@ -156,7 +385,25 @@ class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_heavier_element_larger_f0(self) -> None:
-        """Heavier elements have larger f_e(0)."""
+        r"""Heavier elements have larger f_e(0).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Heavier elements
+        have larger f_e(0).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         f0_h: scalar_float = lobato_form_factor(1, jnp.array([0.0]))[0]
         f0_si: scalar_float = lobato_form_factor(14, jnp.array([0.0]))[0]
         f0_au: scalar_float = lobato_form_factor(79, jnp.array([0.0]))[0]
@@ -177,28 +424,107 @@ class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
         ("Au", 79),
     )
     def test_positive_for_r_gt_zero(self, z: int) -> None:
-        """V_z(r) > 0 for r > 0 (attractive potential)."""
+        r"""V_z(r) > 0 for r > 0 (attractive potential).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: V_z(r) > 0 for r >
+        0 (attractive potential).
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``z``, so the
+        documented behavior is checked across the cases supplied by pytest,
+        Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "100"] = jnp.linspace(0.01, 5.0, 100)
         vz: Float[Array, "100"] = lobato_projected_potential(z, r)
         chex.assert_tree_all_finite(vz)
         assert jnp.all(vz > 0)
 
     def test_monotone_decreasing(self) -> None:
-        """V_z(r) is monotonically decreasing with r (Si)."""
+        r"""V_z(r) is monotonically decreasing with r (Si).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: V_z(r) is
+        monotonically decreasing with r (Si).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "200"] = jnp.linspace(0.02, 5.0, 200)
         vz: Float[Array, "200"] = lobato_projected_potential(14, r)
         diffs: Float[Array, "199"] = jnp.diff(vz)
         assert jnp.all(diffs < 0)
 
     def test_batch_shapes(self) -> None:
-        """Handles arbitrary batch dimensions."""
+        r"""Handles arbitrary batch dimensions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Handles arbitrary
+        batch dimensions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r_1d: Float[Array, "50"] = jnp.linspace(0.01, 3.0, 50)
         r_2d: Float[Array, "4 8"] = jnp.ones((4, 8)) * 1.0
         chex.assert_shape(lobato_projected_potential(14, r_1d), (50,))
         chex.assert_shape(lobato_projected_potential(14, r_2d), (4, 8))
 
     def test_gradient_finite(self) -> None:
-        """jax.grad through lobato_projected_potential is finite."""
+        r"""jax.grad through lobato_projected_potential is finite.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad through
+        lobato_projected_potential is finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss(r: Float[Array, "N"]) -> scalar_float:
             return jnp.sum(lobato_projected_potential(14, r))
@@ -210,16 +536,50 @@ class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(grad_val)
 
     def test_silicon_potential_at_1ang(self) -> None:
-        """Si V_z(1 Å) is in the expected physical range.
+        r"""Si V_z(1 Å) is in the expected physical range.
 
-        For Si at r = 1 Å, the projected potential should be on the
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Si V_z(1 Å) is in
+        the expected physical range. Existing context from the original test
+        prose: For Si at r = 1 Å, the projected potential should be on the
         order of tens of V·Å (typical for Z ~ 14 atoms).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
         """
         vz: scalar_float = lobato_projected_potential(14, jnp.array([1.0]))[0]
         assert 1.0 < vz < 500.0
 
     def test_heavier_element_larger_potential(self) -> None:
-        """Heavier elements produce larger projected potential."""
+        r"""Heavier elements produce larger projected potential.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Heavier elements
+        produce larger projected potential.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "1"] = jnp.array([0.5])
         vz_h: scalar_float = lobato_projected_potential(1, r)[0]
         vz_si: scalar_float = lobato_projected_potential(14, r)[0]
@@ -227,7 +587,28 @@ class TestLobatoProjectedPotential(chex.TestCase, parameterized.TestCase):
         assert vz_au > vz_si > vz_h
 
     def test_jit_matches_eager(self) -> None:
-        """JIT-compiled output matches eager evaluation."""
+        r"""JIT-compiled output matches eager evaluation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: JIT-compiled
+        output matches eager evaluation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises JIT compilation, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "20"] = jnp.linspace(0.1, 3.0, 20)
         eager: Float[Array, "20"] = lobato_projected_potential(14, r)
         jitted: Float[Array, "20"] = jax.jit(
@@ -240,14 +621,50 @@ class TestParameterizationSwitch(chex.TestCase):
     """Test that Lobato and Kirkland produce same-shape output."""
 
     def test_form_factor_same_shape(self) -> None:
-        """Both parameterizations produce identical output shapes."""
+        r"""Both parameterizations produce identical output shapes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Both
+        parameterizations produce identical output shapes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         q: Float[Array, "50"] = jnp.linspace(0.0, 10.0, 50)
         fe_l: Float[Array, "50"] = lobato_form_factor(14, q)
         fe_k: Float[Array, "50"] = kirkland_form_factor(14, q)
         chex.assert_shape(fe_l, fe_k.shape)
 
     def test_projected_potential_same_shape(self) -> None:
-        """Both parameterizations produce identical output shapes."""
+        r"""Both parameterizations produce identical output shapes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Both
+        parameterizations produce identical output shapes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "50"] = jnp.linspace(0.01, 3.0, 50)
         vz_l: Float[Array, "50"] = lobato_projected_potential(14, r)
         vz_k: Float[Array, "50"] = kirkland_projected_potential(14, r)
@@ -261,21 +678,75 @@ class TestProjectedPotentialDispatch(chex.TestCase):
     """
 
     def test_lobato_default(self) -> None:
-        """Default parameterization is Lobato."""
+        r"""Default parameterization is Lobato.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Default
+        parameterization is Lobato.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "20"] = jnp.linspace(0.1, 3.0, 20)
         vz_dispatch: Float[Array, "20"] = projected_potential(14, r)
         vz_direct: Float[Array, "20"] = lobato_projected_potential(14, r)
         chex.assert_trees_all_close(vz_dispatch, vz_direct, rtol=1e-12)
 
     def test_lobato_explicit(self) -> None:
-        """Explicit 'lobato' matches direct call."""
+        r"""Explicit 'lobato' matches direct call.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit 'lobato'
+        matches direct call.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "20"] = jnp.linspace(0.1, 3.0, 20)
         vz_dispatch: Float[Array, "20"] = projected_potential(14, r, "lobato")
         vz_direct: Float[Array, "20"] = lobato_projected_potential(14, r)
         chex.assert_trees_all_close(vz_dispatch, vz_direct, rtol=1e-12)
 
     def test_kirkland_explicit(self) -> None:
-        """Explicit 'kirkland' matches direct call."""
+        r"""Explicit 'kirkland' matches direct call.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit
+        'kirkland' matches direct call.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "20"] = jnp.linspace(0.1, 3.0, 20)
         vz_dispatch: Float[Array, "20"] = projected_potential(
             14, r, "kirkland"
@@ -284,7 +755,25 @@ class TestProjectedPotentialDispatch(chex.TestCase):
         chex.assert_trees_all_close(vz_dispatch, vz_direct, rtol=1e-12)
 
     def test_lobato_differs_from_kirkland(self) -> None:
-        """Lobato and Kirkland branches produce different results."""
+        r"""Lobato and Kirkland branches produce different results.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Lobato and
+        Kirkland branches produce different results.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         r: Float[Array, "20"] = jnp.linspace(0.1, 3.0, 20)
         vz_lobato: Float[Array, "20"] = projected_potential(14, r, "lobato")
         vz_kirkland: Float[Array, "20"] = projected_potential(
@@ -293,7 +782,28 @@ class TestProjectedPotentialDispatch(chex.TestCase):
         assert not jnp.allclose(vz_lobato, vz_kirkland)
 
     def test_gradient_through_dispatch(self) -> None:
-        """jax.grad works through the lax.cond dispatch."""
+        r"""jax.grad works through the lax.cond dispatch.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: jax.grad works
+        through the lax.cond dispatch.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_lobato``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
 
         def loss(r: Float[Array, "N"]) -> scalar_float:
             return jnp.sum(projected_potential(14, r, "lobato"))

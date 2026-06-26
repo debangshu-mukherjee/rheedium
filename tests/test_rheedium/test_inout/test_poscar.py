@@ -25,7 +25,25 @@ class TestParsePoscarHeader(chex.TestCase):
     """
 
     def test_simple_cubic(self) -> None:
-        """Parse simple cubic Si header."""
+        r"""Parse simple cubic Si header.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse simple cubic
+        Si header.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "Simple cubic Si",
             "1.0",
@@ -51,7 +69,25 @@ class TestParsePoscarHeader(chex.TestCase):
         assert counts == [1]
 
     def test_multi_species(self) -> None:
-        """Parse multi-species structure (NaCl)."""
+        r"""Parse multi-species structure (NaCl).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse
+        multi-species structure (NaCl).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "NaCl rock salt",
             "1.0",
@@ -71,7 +107,25 @@ class TestParsePoscarHeader(chex.TestCase):
         assert counts == [4, 4]
 
     def test_scaling_factor(self) -> None:
-        """Scaling factor applied to lattice vectors."""
+        r"""Scaling factor applied to lattice vectors.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Scaling factor
+        applied to lattice vectors.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "Scaled Si",
             "2.0",
@@ -96,7 +150,25 @@ class TestParsePoscarHeader(chex.TestCase):
         )
 
     def test_invalid_scaling_factor(self) -> None:
-        """Invalid scaling factor raises ValueError."""
+        r"""Invalid scaling factor raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid scaling
+        factor raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "Invalid",
             "not_a_number",
@@ -110,7 +182,25 @@ class TestParsePoscarHeader(chex.TestCase):
             _parse_poscar_header(lines)
 
     def test_invalid_lattice_vector(self) -> None:
-        """Invalid lattice vector raises ValueError."""
+        r"""Invalid lattice vector raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid lattice
+        vector raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "Invalid",
             "1.0",
@@ -124,7 +214,25 @@ class TestParsePoscarHeader(chex.TestCase):
             _parse_poscar_header(lines)
 
     def test_mismatched_species_counts(self) -> None:
-        """Mismatched species and counts raises ValueError."""
+        r"""Mismatched species and counts raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Mismatched species
+        and counts raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "Mismatch",
             "1.0",
@@ -145,7 +253,25 @@ class TestParsePoscarPositions(chex.TestCase):
     """
 
     def test_direct_coordinates(self) -> None:
-        """Parse Direct (fractional) coordinates."""
+        r"""Parse Direct (fractional) coordinates.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse Direct
+        (fractional) coordinates.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "0.0 0.0 0.0",
             "0.5 0.5 0.5",
@@ -161,7 +287,25 @@ class TestParsePoscarPositions(chex.TestCase):
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_cartesian_coordinates(self) -> None:
-        """Parse Cartesian coordinates and convert to fractional."""
+        r"""Parse Cartesian coordinates and convert to fractional.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse Cartesian
+        coordinates and convert to fractional.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "0.0 0.0 0.0",
             "2.0 2.0 2.0",
@@ -178,7 +322,25 @@ class TestParsePoscarPositions(chex.TestCase):
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_selective_dynamics_ignored(self) -> None:
-        """Selective dynamics flags (T/F) are ignored."""
+        r"""Selective dynamics flags (T/F) are ignored.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Selective dynamics
+        flags (T/F) are ignored.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "0.0 0.0 0.0 T T T",
             "0.5 0.5 0.5 F F F",
@@ -194,7 +356,25 @@ class TestParsePoscarPositions(chex.TestCase):
         chex.assert_trees_all_close(positions, expected, atol=1e-10)
 
     def test_insufficient_atoms(self) -> None:
-        """Requesting more atoms than available raises ValueError."""
+        r"""Requesting more atoms than available raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Requesting more
+        atoms than available raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "0.0 0.0 0.0",
         ]
@@ -216,7 +396,25 @@ class TestParsePoscar(chex.TestCase):
     """
 
     def test_simple_cubic_si(self) -> None:
-        """Parse simple cubic Si POSCAR."""
+        r"""Parse simple cubic Si POSCAR.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse simple cubic
+        Si POSCAR.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Simple cubic Si
 1.0
   5.43  0.00  0.00
@@ -252,7 +450,25 @@ Direct
             )
 
     def test_mgo_rock_salt(self) -> None:
-        """Parse MgO rock salt structure."""
+        r"""Parse MgO rock salt structure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse MgO rock
+        salt structure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """MgO rock salt
 1.0
   4.21  0.00  0.00
@@ -280,7 +496,25 @@ Direct
             )
 
     def test_cartesian_mode(self) -> None:
-        """Parse POSCAR with Cartesian coordinates."""
+        r"""Parse POSCAR with Cartesian coordinates.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse POSCAR with
+        Cartesian coordinates.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Cartesian Si
 1.0
   5.43  0.00  0.00
@@ -307,7 +541,25 @@ Cartesian
             )
 
     def test_selective_dynamics(self) -> None:
-        """Parse POSCAR with selective dynamics."""
+        r"""Parse POSCAR with selective dynamics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse POSCAR with
+        selective dynamics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Selective dynamics Si
 1.0
   5.43  0.00  0.00
@@ -335,7 +587,25 @@ Direct
             )
 
     def test_scaling_factor(self) -> None:
-        """Scaling factor applied correctly."""
+        r"""Scaling factor applied correctly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Scaling factor
+        applied correctly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Scaled Si
 2.0
   2.715  0.00  0.00
@@ -361,7 +631,25 @@ Direct
             )
 
     def test_non_orthogonal_cell(self) -> None:
-        """Parse POSCAR with non-orthogonal (hexagonal) cell."""
+        r"""Parse POSCAR with non-orthogonal (hexagonal) cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Parse POSCAR with
+        non-orthogonal (hexagonal) cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         a: float = 3.0
         c: float = 5.0
         # Hexagonal lattice vectors
@@ -394,12 +682,48 @@ Direct
             )
 
     def test_file_not_found(self) -> None:
-        """Missing file raises FileNotFoundError."""
+        r"""Missing file raises FileNotFoundError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Missing file
+        raises FileNotFoundError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         with pytest.raises(FileNotFoundError, match="not found"):
             parse_poscar("/nonexistent/path/POSCAR")
 
     def test_non_utf8_file_raises_runtime_error(self) -> None:
-        """A present but non-UTF-8 POSCAR file raises RuntimeError."""
+        r"""A present but non-UTF-8 POSCAR file raises RuntimeError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A present but
+        non-UTF-8 POSCAR file raises RuntimeError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         tmp_dir: str
         with tempfile.TemporaryDirectory() as tmp_dir:
             poscar_file: Path = Path(tmp_dir) / "POSCAR"
@@ -409,7 +733,25 @@ Direct
                 parse_poscar(poscar_file)
 
     def test_too_few_lines(self) -> None:
-        """File with too few lines raises ValueError."""
+        r"""File with too few lines raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: File with too few
+        lines raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Short file
 1.0
 5.43 0.0 0.0
@@ -423,7 +765,25 @@ Direct
                 parse_poscar(poscar_file)
 
     def test_invalid_coordinate_mode(self) -> None:
-        """Invalid coordinate mode raises ValueError."""
+        r"""Invalid coordinate mode raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Invalid coordinate
+        mode raises ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Invalid mode
 1.0
   5.43  0.00  0.00
@@ -443,7 +803,25 @@ Invalid
                 parse_poscar(poscar_file)
 
     def test_string_path(self) -> None:
-        """Accept string path as well as Path object."""
+        r"""Accept string path as well as Path object.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Accept string path
+        as well as Path object.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Si
 1.0
   5.43  0.00  0.00
@@ -471,7 +849,29 @@ Direct
         ("gold", "Au", 79),
     )
     def test_various_elements(self, element: str, expected_z: int) -> None:
-        """Test parsing various element types."""
+        r"""Test parsing various element types.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: parsing various
+        element types.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named ``element``,
+        ``expected_z``, so the documented behavior is checked across the cases
+        supplied by pytest, Chex, Hypothesis, or absl.
+
+        It uses the declared parameter table to exercise multiple named
+        examples with the same assertion logic.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: Any = f"""Element test
 1.0
   4.0  0.0  0.0
@@ -499,7 +899,25 @@ class TestPoscarRoundtrip(chex.TestCase):
     """Test POSCAR parsing consistency."""
 
     def test_frac_cart_consistency(self) -> None:
-        """Fractional and Cartesian positions should be consistent."""
+        r"""Fractional and Cartesian positions should be consistent.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fractional and
+        Cartesian positions should be consistent.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """MgO
 1.0
   4.21  0.00  0.00
@@ -528,7 +946,25 @@ Direct
             )
 
     def test_atomic_numbers_preserved(self) -> None:
-        """Atomic numbers match in both frac and cart positions."""
+        r"""Atomic numbers match in both frac and cart positions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Atomic numbers
+        match in both frac and cart positions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         poscar_content: str = """Multi-element
 1.0
   4.0  0.0  0.0

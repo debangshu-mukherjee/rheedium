@@ -1,7 +1,7 @@
 # Codebase Rationalization & Refactor Plan
 
 Scope: `rheedium` — after the
-[distribution_framework_plan.md](../implemented/distribution_framework_plan.md) lands,
+[distribution_framework_plan.md](distribution_framework_plan.md) lands,
 harvest the simplification it makes possible and pay down the structural debt it
 exposes. This is **not** gratuitous churn: every item either deletes redundancy,
 wires a dangling piece, or collapses a duplicated path — and every item must
@@ -14,17 +14,19 @@ superseded, duplicated, or dangling path is **deleted outright**. There are **no
 compatibility shims, no `DeprecationWarning`s, no aliases** — the only migration
 surface is a `CHANGELOG.md` note (§3).
 
-Status: **partial implementation active** — moved from `plans/future/` to
-`plans/partial/` on 2026-06-25 because implementation has started. Entry gate
-**R0 is satisfied**: the distribution-framework plan has landed, the framework's
-six phases are present, and `simulate_detector_image` is the Layer-1 integrator
-with first-class `kernel=` / `distribution=` inputs. **R1 Detector
-unification** and **R3 dangling-code retirement** are now closed (see §4,
-Phase R1/R3 progress). **Roadmap position:** second of four —
+Status: **complete** — all six gated phases **R1–R6 closed on 2026-06-26**.
+Lifecycle: `plans/future/` → `plans/partial/` (2026-06-25, implementation
+started) → `plans/implemented/` on completion. Entry gate **R0** was satisfied by
+the distribution framework, and every workstream **W1–W8 has landed**: detector
+unification (RG1), ensemble-integrator collapse (RG2), dangling-code retirement
+(RG3), the parameter-object carriers + sweeps collapse (RG4), the `procs`
+return-type split + `energy_kev`/angle unit cut (RG5), and the module
+reorganization (RG6) — all under the zero-legacy policy (§3) and asserted by the
+§4 gate matrix. **Roadmap position:** second of four —
 framework → *this* → [recon (inversion)](../future/recon_optimization_plan.md) →
-[automatons](../future/automatons_plan.md). The recon solver and the automatons
-are both written against the rationalized API this plan produces, so neither
-starts until it completes.
+[automatons](../future/automatons_plan.md). With this complete, recon's entry
+gate **K0** (a rationalized, stable API) is now met, so the recon solver may
+start.
 
 Guard on every workstream below: **tests stay green, public results unchanged
 (verified by regression — legacy paths deleted, not shimmed, per §3), and

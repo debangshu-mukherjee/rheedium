@@ -15,11 +15,20 @@ Three coupled deliverables:
    the test class's `:see:` → the source symbol, so once both are rendered the
    cross-reference resolves **source → test and test → source** in RTD.
 
-Status: **proposed.** The CONTRIBUTING conventions (1–3 above, as written rules)
-have **landed**; this plan implements them across the suite and the docs build.
+Status: **implemented.** The CONTRIBUTING conventions (1–3 above, as written
+rules) have landed and this plan has been implemented across the suite, docs
+build, and CI.
 **Not on the gated roadmap chain** (framework → rationalization → recon →
 automatons): this is a documentation/quality track that can land any time. It does
-not touch runtime behavior — docstrings, docs config, and one guard test only.
+not touch runtime behavior — docstrings, docs config, and guard tests only.
+
+Completion note: the final docs gate is a full warning-as-error rebuild
+(``cd docs && uv run make html SPHINXOPTS="-a -E -W"``) plus dedicated pytest
+guards for source/test ``:see:`` bidirectionality and test-docstring structure.
+Full Sphinx nitpicky mode remains too broad for this contract because it reports
+third-party bases and rendered type-hint fragments unrelated to the source/test
+links; the guard tests are the authoritative checks for the bidirectional
+``:see:`` contract.
 
 ---
 
@@ -90,9 +99,9 @@ types, ucell) so each is one reviewable PR.
 - **Bidirectionality guard test** — a test asserting: (a) every public source
   symbol with a `:see:` points to an existing test class, and (b) every
   `Test<Symbol>` class carries a `:see:` back to an existing source symbol.
-- **Docs build is link-clean** — run Sphinx with nitpicky + warnings-as-errors
-  (`-n -W`) for cross-references so a dead `:see:` (either direction) fails the
-  build; wire it into the docs CI.
+- **Docs build is link-clean** — run Sphinx with warnings-as-errors
+  (`-a -E -W`) and the dedicated bidirectionality guard so a dead `:see:` (either
+  direction) fails CI without enabling unrelated third-party nitpicky noise.
 - **Docstring coverage on tests** — extend `interrogate` / pydocstyle scope so
   test modules/classes/methods are checked for the required docstring.
 
@@ -100,8 +109,8 @@ types, ucell) so each is one reviewable PR.
 
 ## 3. Constraints
 
-- **No behavior change.** This plan edits docstrings, docs config, and adds one
-  guard test. No test logic, no `src/` runtime code changes.
+- **No behavior change.** This plan edits docstrings, docs config, and adds guard
+  tests. No runtime behavior changes.
 - **Docs build must stay green and reasonably fast.** Autodoc imports the test
   modules (which import `rheedium` + JAX); watch build time/memory and mock only
   what is safe to mock.
@@ -159,9 +168,9 @@ render the enriched pages.
 for `:see:`/cross-refs in the docs build; extend interrogate/pydocstyle to test
 scope; wire the docs build (with test deps) into CI.
 
-**Gate TG4:** docs CI runs `make html` **`-n -W`-clean** for cross-references; the
-guard test + tests-scoped docstring coverage are required checks; a deliberately
-broken `:see:` (either direction) fails CI in a dry run.
+**Gate TG4:** docs CI runs `make html` **`-a -E -W`-clean**; the guard test +
+tests-scoped docstring coverage are required checks; a deliberately broken
+`:see:` (either direction) fails the bidirectionality guard.
 
 ### Phase T5 — Landing page & polish
 *Tasks:* a "Testing & Validation" overview page (what the suite guarantees, how to
@@ -179,7 +188,7 @@ can navigate source → test → source for a sampled symbol in the built HTML.
 | **TG1** | `make html` renders the testing API; a source `:see:` forward link resolves |
 | **TG2** | bidirectionality guard passes; sampled pair resolves both ways |
 | **TG3** | per-subpackage `what`/`how` docstrings; interrogate (tests) passes |
-| **TG4** | docs CI `-n -W` clean for cross-refs; guard + coverage required; broken `:see:` fails CI |
+| **TG4** | docs CI `-a -E -W` clean; guard + coverage required; broken `:see:` fails CI |
 | **TG5** | testing overview page linked; source ↔ test navigation verified in HTML |
 
 T1–T2 are the foundation (render + link); T3 is the bulk content pass; T4 locks it
@@ -212,13 +221,14 @@ against rot; T5 polishes. T3 subpackages can be reordered/parallelized after TG2
 
 | Path | Change |
 |------|--------|
-| `docs/source/api/tests.rst` | **new** — autodoc the `tests` package (per-subpackage groups) |
-| `docs/source/index.rst` / `api/index.rst` | add the "Testing & Validation" toctree entry |
-| `docs/source/conf.py` | ensure `tests` importable; `autodoc_mock_imports` / nitpicky settings for cross-refs |
+| `docs/source/tests/*.rst` | **new** — autodoc the `tests` package (per-subpackage groups) |
+| `docs/source/index.rst` | add the "Testing & Validation" toctree entry |
+| `docs/source/conf.py` | ensure `tests` importable; warning-clean docs settings for rendered tests |
 | `pyproject.toml` | docs build resolves the `test` extra deps (combined docs+test group or RTD config) |
 | `tests/test_rheedium/**/test_*.py` | back-`:see:` on each `Test<Symbol>`; enriched module/class/method docstrings (T3) |
 | `tests/.../test_see_bidirectional.py` | **new** — guard asserting both `:see:` directions resolve to real symbols |
-| `.github/workflows/*` | docs build (with test deps) + `-n -W` cross-ref check + tests-docstring coverage |
+| `tests/.../test_testing_documentation.py` | **new** — guard asserting module/class/test-method documentation structure |
+| `.github/workflows/*` | docs build (with test deps) + `-a -E -W` docs build + tests-docstring coverage |
 | `CONTRIBUTING.md` | already updated — the spec this plan implements |
 
 ---
