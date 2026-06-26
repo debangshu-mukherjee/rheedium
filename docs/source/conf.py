@@ -222,7 +222,13 @@ typehints_use_signature_return = True
 autodoc_preserve_defaults = True
 autodoc_inherit_docstrings = True
 
-# Disable nitpicky mode to avoid warnings
+# Nitpicky cross-reference checking (-n) is intentionally OFF: it flags many
+# non-:see: refs (jaxtyping/beartype type names autodoc cannot resolve) for little
+# gain. The source<->test :see: contract is enforced instead by the
+# bidirectionality guard test (tests/test_rheedium/test_see_bidirectional.py) plus
+# the warnings-as-errors (-W) docs build in documentation.yml. See
+# plans/implemented/testing_docs.md (T4). The nitpick_ignore list below is staged
+# for if/when strict -n is enabled; it is inert while nitpicky = False.
 nitpicky = False
 
 # Type aliases for jaxtyping annotations
@@ -246,7 +252,8 @@ napoleon_type_aliases = {
 typehints_defaults = "comma"
 typehints_type_aliases = napoleon_type_aliases
 
-# Ignore certain types that cause issues
+# Staged for a future strict-nitpicky (-n) build (inert while nitpicky = False):
+# jaxtyping/beartype type names autodoc cannot resolve as Python classes.
 nitpick_ignore = [
     ("py:class", "Float"),
     ("py:class", "Array"),

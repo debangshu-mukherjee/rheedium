@@ -164,9 +164,11 @@ module have the required docstring; `interrogate` (tests-scoped) passes; docs
 render the enriched pages.
 
 ### Phase T4 — Enforcement + CI  ·  W4
-*Tasks:* land the bidirectionality guard test; turn on nitpicky warnings-as-errors
-for `:see:`/cross-refs in the docs build; extend interrogate/pydocstyle to test
-scope; wire the docs build (with test deps) into CI.
+*Tasks:* land the bidirectionality guard test as the **authoritative** `:see:`
+check; run the docs build warnings-as-errors (`-a -E -W`) — strict Sphinx
+nitpicky (`-n`) stays **off** as too broad (§1), so `nitpick_ignore` is staged but
+inert in `conf.py`; extend interrogate/pydocstyle to test scope; wire the docs
+build (with test deps) into CI.
 
 **Gate TG4:** docs CI runs `make html` **`-a -E -W`-clean**; the guard test +
 tests-scoped docstring coverage are required checks; a deliberately broken
