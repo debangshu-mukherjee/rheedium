@@ -207,7 +207,7 @@ import matplotlib.pyplot as plt
 # 2D cross-section of Ewald sphere with CTR rods
 fig, ax = plt.subplots(figsize=(12, 8))
 plot_ewald_sphere_2d(
-    voltage_kv=20.0,       # 20 keV electrons
+    energy_kev=20.0,       # 20 keV electrons
     theta_deg=2.0,         # 2° grazing angle
     lattice_spacing=5.431, # Si lattice constant
     n_rods=9,              # Show 9 rods
@@ -431,7 +431,7 @@ si_crystal = create_crystal_structure(
 # 2. Run the Ewald simulator
 pattern = ewald_simulator(
     crystal=si_crystal,
-    voltage_kv=20.0,           # 20 keV electrons
+    energy_kev=20.0,           # 20 keV electrons
     theta_deg=2.0,             # 2° grazing incidence
     phi_deg=0.0,               # Beam along [100] azimuth
     hmax=5,                    # h indices from -5 to +5
@@ -526,7 +526,7 @@ import matplotlib.pyplot as plt
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection="3d")
 plot_ewald_sphere_3d(
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
     lattice_spacing=5.431,  # Si
@@ -556,7 +556,7 @@ Rotating $\phi$ changes which in-plane periodicities the beam probes:
 for phi in [0, 15, 30, 45, 60, 75, 90]:
     pattern = ewald_simulator(
         crystal=si_crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=float(phi),
         hmax=5, kmax=5,
@@ -606,7 +606,7 @@ azimuths = [0, 30, 45]
 for ax, phi in zip(axes, azimuths):
     pattern = ewald_simulator(
         crystal=si_crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=float(phi),
         hmax=5, kmax=5,
@@ -653,7 +653,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 for ax, roughness in zip(axes, [0.0, 2.0]):
     pattern = ewald_simulator(
         crystal=si_crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=0.0,
         hmax=5, kmax=5,

@@ -76,8 +76,9 @@ enable_compilation_cache(min_compile_time_secs=1.0)
 The forward models are **embarrassingly parallel over a batch axis** — an
 azimuthal scan, an orientation distribution, a parameter grid. The natural batch
 sources are the [`rheedium.simul`](../api/index.rst) sweep helpers
-(`simulate_detector_image_phi_sweep`, `..._orientation_sweep`,
-`..._parameter_grid`, …), which produce one batched array.
+(`simulate_detector_image_sweep` for one axis and
+`simulate_detector_image_grid` for ordered parameter grids), which produce one
+batched array.
 
 ### `distribute_batched` — data-parallel sweeps
 
@@ -161,7 +162,7 @@ from rheedium.tools import (
 def forward(frac, cart, cell_lengths, cell_angles, voltage, theta, phi):
     crystal = CrystalStructure(frac, cart, cell_lengths, cell_angles)
     return ewald_simulator(
-        crystal, voltage_kv=voltage, theta_deg=theta, phi_deg=phi,
+        crystal, energy_kev=voltage, theta_deg=theta, phi_deg=phi,
         hmax=5, kmax=5, parameterization="lobato",
     ).intensities
 

@@ -17,8 +17,14 @@ from absl.testing import parameterized
 from jax.sharding import NamedSharding
 from jaxtyping import Array, Complex, Float, Integer
 
-from rheedium.simul.sweeps import simulate_detector_image_phi_sweep
+from rheedium.simul.sweeps import simulate_detector_image_sweep
 from rheedium.tools.parallel import distribute_batched, shard_array
+from rheedium.types import (
+    BeamSpec,
+    DetectorGeometry,
+    RenderParams,
+    SurfaceCTRParams,
+)
 
 from ..._factories import make_si_crystal_2atom
 
@@ -338,23 +344,28 @@ class TestDistributeBatched(chex.TestCase):
         crystal: Any = make_si_crystal_2atom()
         phi_bank: Float[Array, "N"] = jnp.linspace(0.0, 30.0, 6)
         sweep_kwargs: dict[str, Any] = {
-            "hmax": 0,
-            "kmax": 0,
-            "image_shape_px": (16, 24),
-            "pixel_size_mm": (6.0, 16.0),
-            "beam_center_px": (12.0, 2.0),
-            "angular_divergence_mrad": 0.0,
-            "energy_spread_ev": 0.0,
-            "psf_sigma_pixels": 0.0,
-            "n_angular_samples": 1,
-            "n_energy_samples": 1,
-            "render_ctrs_as_streaks": False,
+            "beam": BeamSpec(
+                angular_divergence_mrad=0.0,
+                energy_spread_ev=0.0,
+            ),
+            "surface": SurfaceCTRParams(hmax=0, kmax=0),
+            "detector": DetectorGeometry(
+                image_shape_px=(16, 24),
+                pixel_size_mm=(6.0, 16.0),
+                beam_center_px=(12.0, 2.0),
+                psf_sigma_pixels=0.0,
+            ),
+            "render": RenderParams(
+                n_angular_samples=1,
+                n_energy_samples=1,
+                render_ctrs_as_streaks=False,
+            ),
         }
 
         def _run_phi_sweep(bank: Float[Array, "N"]) -> Float[Array, "N H W"]:
-            return simulate_detector_image_phi_sweep(
+            return simulate_detector_image_sweep(
                 crystal=crystal,
-                phi_deg_values=bank,
+                axis=("phi_deg", bank),
                 **sweep_kwargs,
             )
 

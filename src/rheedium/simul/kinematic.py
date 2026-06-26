@@ -44,7 +44,7 @@ from rheedium.types import (
 )
 from rheedium.ucell import generate_reciprocal_points
 
-from .simulator import find_kinematic_reflections, project_on_detector_geometry
+from .layer0 import find_kinematic_reflections, project_on_detector_geometry
 
 
 @jaxtyped(typechecker=beartype)

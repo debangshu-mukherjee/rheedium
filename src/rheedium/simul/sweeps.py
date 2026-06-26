@@ -1,504 +1,142 @@
-"""Vectorized detector-image sweep utilities.
+"""Generic vectorized detector-image sweep utilities."""
 
-Extended Summary
-----------------
-This module contains batched RHEED detector-image helpers built as
-``jax.vmap`` wrappers around
-:func:`rheedium.simul.simulator.simulate_detector_image`.
-The functions keep parameter scans separate from the core simulator while
-preserving the public ``rheedium.simul`` API.
-"""
-
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Tuple
+from beartype.typing import Sequence, Tuple
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.types import (
+    BeamSpec,
     CrystalStructure,
-    OrientationDistribution,
-    SurfaceConfig,
+    DetectorGeometry,
+    RenderParams,
+    SurfaceCTRParams,
     scalar_float,
-    scalar_int,
-    scalar_num,
 )
 
-from .simulator import simulate_detector_image
+from .layer1 import simulate_detector_image
+
+SweepAxis = Tuple[str, Float[Array, "..."]]
+
+_PHI_AXIS: str = "phi_deg"
+_THETA_AXIS: str = "theta_deg"
+_ENERGY_AXIS: str = "energy_kev"
+_ROUGHNESS_AXIS: str = "surface_roughness"
 
 
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image_phi_sweep(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    phi_deg_values: Float[Array, "N"],
-    energy_kev: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N H W"]:
-    """Simulate detector images over azimuthal angle using ``jax.vmap``."""
-    phi_bank: Float[Array, "N"] = jnp.asarray(phi_deg_values)
+def _default_beam(beam: BeamSpec | None) -> BeamSpec:
+    """Return a concrete beam carrier."""
+    if beam is None:
+        return BeamSpec()
+    return beam
 
-    def _simulate_one(phi_deg: scalar_float) -> Float[Array, "H W"]:
-        return simulate_detector_image(
-            crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
+
+def _default_surface(
+    surface: SurfaceCTRParams | None,
+) -> SurfaceCTRParams:
+    """Return a concrete surface carrier."""
+    if surface is None:
+        return SurfaceCTRParams()
+    return surface
+
+
+def _update_axis(
+    axis: str,
+    value: scalar_float,
+    beam: BeamSpec,
+    surface: SurfaceCTRParams,
+) -> tuple[BeamSpec, SurfaceCTRParams]:
+    """Apply one scalar sweep coordinate to the relevant carrier."""
+    if axis == _PHI_AXIS:
+        return eqx.tree_at(lambda spec: spec.phi_deg, beam, value), surface
+    if axis == _THETA_AXIS:
+        return eqx.tree_at(lambda spec: spec.theta_deg, beam, value), surface
+    if axis == _ENERGY_AXIS:
+        return eqx.tree_at(lambda spec: spec.energy_kev, beam, value), surface
+    if axis == _ROUGHNESS_AXIS:
+        return beam, eqx.tree_at(
+            lambda params: params.surface_roughness,
+            surface,
+            value,
         )
-
-    return jax.vmap(_simulate_one)(phi_bank)
-
-
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image_orientation_sweep(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    orientation_deg_values: Float[Array, "N"],
-    energy_kev: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N H W"]:
-    """Simulate detector images over crystal orientation using ``jax.vmap``."""
-    orientation_bank: Float[Array, "N"] = jnp.asarray(orientation_deg_values)
-
-    def _simulate_one(orientation_deg: scalar_float) -> Float[Array, "H W"]:
-        return simulate_detector_image(
-            crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=orientation_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-        )
-
-    return jax.vmap(_simulate_one)(orientation_bank)
-
-
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image_theta_sweep(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    theta_deg_values: Float[Array, "N"],
-    energy_kev: scalar_num = 20.0,
-    phi_deg: scalar_num = 0.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N H W"]:
-    """Simulate detector images over grazing incidence using ``jax.vmap``."""
-    theta_bank: Float[Array, "N"] = jnp.asarray(theta_deg_values)
-
-    def _simulate_one(theta_deg: scalar_float) -> Float[Array, "H W"]:
-        return simulate_detector_image(
-            crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-        )
-
-    return jax.vmap(_simulate_one)(theta_bank)
-
-
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image_energy_sweep(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    energy_kev_values: Float[Array, "N"],
-    theta_deg: scalar_num = 2.0,
-    phi_deg: scalar_num = 0.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N H W"]:
-    """Simulate detector images over beam energy using ``jax.vmap``."""
-    energy_bank: Float[Array, "N"] = jnp.asarray(energy_kev_values)
-
-    def _simulate_one(energy_kev: scalar_float) -> Float[Array, "H W"]:
-        return simulate_detector_image(
-            crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-        )
-
-    return jax.vmap(_simulate_one)(energy_bank)
-
-
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image_all_sweep(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    orientation_deg_values: Float[Array, "N_orientation"],
-    theta_deg_values: Float[Array, "N_theta"],
-    energy_kev_values: Float[Array, "N_voltage"],
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N_orientation N_theta N_voltage H W"]:
-    """Simulate images over orientation, beam angle, and energy using vmaps."""
-    orientation_bank: Float[Array, "N_orientation"] = jnp.asarray(
-        orientation_deg_values
+    raise ValueError(
+        "axis must be one of 'phi_deg', 'theta_deg', 'energy_kev', "
+        "or 'surface_roughness'"
     )
-    theta_bank: Float[Array, "N_theta"] = jnp.asarray(theta_deg_values)
-    energy_bank: Float[Array, "N_voltage"] = jnp.asarray(energy_kev_values)
-
-    def _simulate_one(
-        orientation_deg: scalar_float,
-        theta_deg: scalar_float,
-        energy_kev: scalar_float,
-    ) -> Float[Array, "H W"]:
-        return simulate_detector_image(
-            crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=orientation_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-        )
-
-    def _simulate_voltage_axis(
-        orientation_deg: scalar_float,
-        theta_deg: scalar_float,
-    ) -> Float[Array, "N_voltage H W"]:
-        return jax.vmap(
-            lambda voltage: _simulate_one(
-                orientation_deg,
-                theta_deg,
-                voltage,
-            )
-        )(energy_bank)
-
-    def _simulate_theta_axis(
-        orientation_deg: scalar_float,
-    ) -> Float[Array, "N_theta N_voltage H W"]:
-        return jax.vmap(
-            lambda theta: _simulate_voltage_axis(
-                orientation_deg,
-                theta,
-            )
-        )(theta_bank)
-
-    return jax.vmap(_simulate_theta_axis)(orientation_bank)
 
 
 @jaxtyped(typechecker=beartype)
-def simulate_detector_image_parameter_grid(  # noqa: PLR0913
+def simulate_detector_image_sweep(
     crystal: CrystalStructure,
-    phi_deg_values: Float[Array, "N_phi"],
-    theta_deg_values: Float[Array, "N_theta"],
-    energy_kev_values: Float[Array, "N_voltage"],
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N_phi N_theta N_voltage H W"]:
-    """Simulate images over phi, theta, and voltage using all-sweep vmaps."""
-    return simulate_detector_image_all_sweep(
+    axis: SweepAxis,
+    beam: BeamSpec | None = None,
+    surface: SurfaceCTRParams | None = None,
+    detector: DetectorGeometry | None = None,
+    render: RenderParams | None = None,
+) -> Float[Array, "N H W"]:
+    """Simulate detector images over one named scalar carrier axis."""
+    return simulate_detector_image_grid(
         crystal=crystal,
-        orientation_deg_values=phi_deg_values,
-        theta_deg_values=theta_deg_values,
-        energy_kev_values=energy_kev_values,
-        hmax=hmax,
-        kmax=kmax,
-        detector_distance_mm=detector_distance_mm,
-        temperature=temperature,
-        surface_roughness=surface_roughness,
-        ctr_regularization=ctr_regularization,
-        ctr_power=ctr_power,
-        roughness_power=roughness_power,
-        image_shape_px=image_shape_px,
-        pixel_size_mm=pixel_size_mm,
-        beam_center_px=beam_center_px,
-        spot_sigma_px=spot_sigma_px,
-        angular_divergence_mrad=angular_divergence_mrad,
-        energy_spread_ev=energy_spread_ev,
-        psf_sigma_pixels=psf_sigma_pixels,
-        n_angular_samples=n_angular_samples,
-        n_energy_samples=n_energy_samples,
-        orientation_distribution=orientation_distribution,
-        n_mosaic_points=n_mosaic_points,
-        surface_config=surface_config,
-        render_ctrs_as_streaks=render_ctrs_as_streaks,
+        axes=(axis,),
+        beam=beam,
+        surface=surface,
+        detector=detector,
+        render=render,
     )
 
 
 @jaxtyped(typechecker=beartype)
-def simulate_detector_image_roughness_sweep(  # noqa: PLR0913
+def simulate_detector_image_grid(
     crystal: CrystalStructure,
-    surface_roughness_values: Float[Array, "N"],
-    energy_kev: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    phi_deg: scalar_num = 0.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    n_mosaic_points: scalar_int = 7,
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-) -> Float[Array, "N H W"]:
-    """Simulate detector images over surface roughness using ``jax.vmap``."""
-    roughness_bank: Float[Array, "N"] = jnp.asarray(surface_roughness_values)
+    axes: Sequence[SweepAxis],
+    beam: BeamSpec | None = None,
+    surface: SurfaceCTRParams | None = None,
+    detector: DetectorGeometry | None = None,
+    render: RenderParams | None = None,
+) -> Float[Array, "..."]:
+    """Simulate an ordered Cartesian grid of detector-image sweeps."""
+    beam = _default_beam(beam)
+    surface = _default_surface(surface)
 
-    def _simulate_one(surface_roughness: scalar_float) -> Float[Array, "H W"]:
+    if len(axes) == 0:
         return simulate_detector_image(
             crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            psf_sigma_pixels=psf_sigma_pixels,
-            n_angular_samples=n_angular_samples,
-            n_energy_samples=n_energy_samples,
-            orientation_distribution=orientation_distribution,
-            n_mosaic_points=n_mosaic_points,
-            surface_config=surface_config,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
+            beam=beam,
+            surface=surface,
+            detector=detector,
+            render=render,
         )
 
-    return jax.vmap(_simulate_one)(roughness_bank)
+    axis_name: str
+    axis_values: Float[Array, "..."]
+    axis_name, axis_values = axes[0]
+    axis_bank: Float[Array, "N"] = jnp.asarray(axis_values)
+    remaining_axes: Sequence[SweepAxis] = axes[1:]
+
+    def _simulate_one(value: scalar_float) -> Float[Array, "..."]:
+        sample_beam: BeamSpec
+        sample_surface: SurfaceCTRParams
+        sample_beam, sample_surface = _update_axis(
+            axis_name,
+            value,
+            beam,
+            surface,
+        )
+        return simulate_detector_image_grid(
+            crystal=crystal,
+            axes=remaining_axes,
+            beam=sample_beam,
+            surface=sample_surface,
+            detector=detector,
+            render=render,
+        )
+
+    return jax.vmap(_simulate_one)(axis_bank)
 
 
 __all__: list[str] = [
-    "simulate_detector_image_all_sweep",
-    "simulate_detector_image_energy_sweep",
-    "simulate_detector_image_orientation_sweep",
-    "simulate_detector_image_parameter_grid",
-    "simulate_detector_image_phi_sweep",
-    "simulate_detector_image_roughness_sweep",
-    "simulate_detector_image_theta_sweep",
+    "simulate_detector_image_grid",
+    "simulate_detector_image_sweep",
 ]

@@ -12,6 +12,8 @@ Routine Listings
     JAX-compatible crystal structure with fractional and Cartesian coordinates.
 :class:`BeamModeDistribution`
     Gaussian Schell-model beam-mode source parameters.
+:class:`BeamSpec`
+    Electron beam, incidence geometry, and beam-mode sampling metadata.
 :class:`DetectorGeometry`
     Configuration for RHEED detector geometry (tilt, curvature, offsets).
 :class:`Distribution`
@@ -41,6 +43,10 @@ Routine Listings
     Probability distribution over coherent domain sizes.
 :class:`SurfaceConfig`
     Configuration for surface atom identification method and parameters.
+:class:`SurfaceCTRParams`
+    CTR, roughness, and finite-domain surface parameters.
+:class:`RenderParams`
+    Detector rendering, kernel, and ensemble-integration parameters.
 :class:`XYZData`
     A PyTree for XYZ file data with atomic positions and metadata.
 :func:`create_crystal_structure`
@@ -51,6 +57,8 @@ Routine Listings
     Create a single sharp coherent beam-mode producer.
 :func:`create_electron_beam`
     Factory function to create ElectronBeam instances.
+:func:`create_beam_spec`
+    Factory function to create BeamSpec instances.
 :func:`create_ewald_data`
     Factory function to create EwaldData instances.
 :func:`create_edge_on_slices`
@@ -246,6 +254,12 @@ from .rheed_types import (
     create_sliced_crystal,
     identify_surface_atoms,
 )
+from .simulation_params import (
+    BeamSpec,
+    RenderParams,
+    SurfaceCTRParams,
+    create_beam_spec,
+)
 
 __all__: list[str] = [
     "AMU_TO_KG",
@@ -259,7 +273,9 @@ __all__: list[str] = [
     "RELATIVISTIC_COEFF_PER_V",
     "SPEED_OF_LIGHT_MS",
     "beam_modes_from_electron_beam",
+    "BeamSpec",
     "create_crystal_structure",
+    "create_beam_spec",
     "create_coherent_beam",
     "create_discrete_orientation",
     "create_distribution",
@@ -309,6 +325,7 @@ __all__: list[str] = [
     "RHEEDImage",
     "RHEEDPattern",
     "ReductionMode",
+    "RenderParams",
     "scalar_bool",
     "scalar_float",
     "scalar_int",
@@ -319,6 +336,7 @@ __all__: list[str] = [
     "SlicedCrystal",
     "SizeDistribution",
     "SurfaceConfig",
+    "SurfaceCTRParams",
     "TRIVIAL",
     "TRIVIAL_DISTRIBUTION",
     "XYZData",

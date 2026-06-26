@@ -19,7 +19,7 @@ from rheedium.simul import ewald_simulator
 
 pattern = ewald_simulator(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
 )
@@ -45,7 +45,7 @@ from rheedium.simul import checked_ewald_simulator
 
 err, pattern = eqx.filter_jit(checked_ewald_simulator)(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
 )
@@ -131,10 +131,12 @@ Use the standard version when:
 Example:
 
 ```python
+from rheedium.simul import simulate_detector_image
+from rheedium.types import BeamSpec
+
 image = simulate_detector_image(
     crystal=crystal,
-    voltage_kv=20.0,
-    theta_deg=2.0,
+    beam=BeamSpec(energy_kev=20.0, theta_deg=2.0),
 )
 ```
 

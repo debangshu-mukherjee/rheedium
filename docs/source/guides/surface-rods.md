@@ -355,7 +355,7 @@ from rheedium.simul import (
 # 1. Build Ewald data (angle-independent)
 ewald = build_ewald_data(
     crystal=my_crystal,
-    voltage_kv=15.0,
+    energy_kev=15.0,
     hmax=3, kmax=3, lmax=2,
     temperature=300.0,
 )

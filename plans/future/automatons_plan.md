@@ -417,6 +417,30 @@ scripts stay declarative:
     successive inputs from stdin/a watched path, emitting one result per input.
     This is the real-time escape hatch for Loop A: it amortizes the per-process
     JAX startup that AOT alone cannot remove (see "AOT compilation strategy").
+- **Warmup / first-call JIT latency (`--warmup`, persistent cache on by default).**
+  JAX specializes compilation on *static* shapes (detector `image_shape`,
+  `hmax`/`kmax`, atom-count buckets), so the first call for each new shape pays a
+  full compile — **measured ~160 s for a 192×192 kinematic forward sim on CPU**
+  (rheed_agent INTERSECT capability, Jun 2026). The harness owns the fix so no
+  script hand-rolls it:
+  1. the **persistent compilation cache is on by default**, so each
+     `(computation, shape, backend)` compiles **once ever** and later runs — even
+     fresh `uv run` processes — load the XLA artifact from disk rather than
+     recompiling;
+  2. a **`--warmup`** pass (and an **automatic warmup at `--serve` startup**)
+     compiles the kernel for every shape the automaton will serve — the shapes
+     declared in `--describe` / supplied via `--params` — *before* accepting real
+     requests, so the first request is not slow;
+  3. **`--estimate`** (Agent-consumer contract) reports whether the requested
+     shape is **cache-warm** (fast) or **cold** (first-compile), so the agent can
+     set expectations.
+
+  **Crucial gotcha — warmup is shape-specific.** Warming a 64×64 kernel does
+  **not** cover a 192×192 request (JAX recompiles), so the warmup set must match
+  the shapes actually served, or rely on bucketed concrete grids / an AOT-exported
+  kernel. For fixed-shape, high-rate paths (Loop A), AOT export removes JIT
+  entirely (see "AOT compilation strategy"); for variable interactive shapes, the
+  persistent cache + a declared `--warmup` set is the right tool.
 - **Agent-consumer plumbing (see "Agent-consumer contract"):** `--params`
   (JSON-in, validated against the `--describe` schema), `--validate`
   (schema-check without running), `--estimate` (predicted cost), `--deadline`
@@ -808,7 +832,7 @@ holds the mission loops can be reordered or parallelized.
 
 | Path | Change |
 |---|---|
-| `src/rheedium/harness/__init__.py` | new subpackage: `Param`, `experiment`, `ExperimentContext`, `emit`, runtime-knob setup, AOT plumbing (`--export` via `tools.export_forward`, warm `--serve` mode); **agent-consumer plumbing** (`--params`/`--validate`/`--estimate`/`--deadline`/`--json`; semantic `Param`; `returns=` schema; typed artifact manifest + `preview_b64`; `error_kind`; `result_key`; NDJSON progress); exports + Routine Listings |
+| `src/rheedium/harness/__init__.py` | new subpackage: `Param`, `experiment`, `ExperimentContext`, `emit`, runtime-knob setup, AOT plumbing (`--export` via `tools.export_forward`, warm `--serve` mode); **warmup** (`--warmup` + auto-warm at `--serve` startup; persistent compilation cache on by default; shape-specific); **agent-consumer plumbing** (`--params`/`--validate`/`--estimate`/`--deadline`/`--json`; semantic `Param`; `returns=` schema; typed artifact manifest + `preview_b64`; `error_kind`; `result_key`; NDJSON progress); exports + Routine Listings |
 | `schema/automaton_params.schema.json`, `schema/automaton_result.schema.json` | committed JSON-Schema files frozen at G0; `--describe`/`emit` and `--params` validate against them |
 | `src/rheedium/__init__.py` | add `harness` to the submodule imports + `__all__` + Routine Listings |
 | `automatons/forward_kinematic.py` | Phase-2 exemplar PEP 723 script |

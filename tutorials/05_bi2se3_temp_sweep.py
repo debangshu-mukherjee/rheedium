@@ -101,7 +101,7 @@ for label, fp in structure_files.items():
 
 # %%
 settings = {
-    "voltage_kv": 30.0,
+    "energy_kev": 30.0,
     "theta_deg": 2.5,
     "phi_deg": 0.0,
     # Fix 1 (reach the real rods): on a ~72 A supercell a* ~ 0.087 /A, so the
@@ -138,9 +138,9 @@ image_kw = {
     "render_ctrs_as_streaks": True,
 }
 
-wavelength = rh.tools.wavelength_ang(settings["voltage_kv"])
+wavelength = rh.tools.wavelength_ang(settings["energy_kev"])
 print(
-    f"Electron wavelength: {float(wavelength):.4f} \u00c5 at {settings['voltage_kv']} keV"
+    f"Electron wavelength: {float(wavelength):.4f} \u00c5 at {settings['energy_kev']} keV"
 )
 
 # %% [markdown]
@@ -153,7 +153,7 @@ patterns = {}
 for label, crystal in crystals.items():
     patterns[label] = rh.simul.ewald_simulator(
         crystal=crystal,
-        voltage_kv=settings["voltage_kv"],
+        energy_kev=settings["energy_kev"],
         theta_deg=settings["theta_deg"],
         phi_deg=settings["phi_deg"],
         hmax=settings["hmax"],

@@ -213,7 +213,7 @@ from rheedium.simul import build_ewald_data
 
 ewald = build_ewald_data(
     crystal=my_crystal,        # CrystalStructure
-    voltage_kv=15.0,           # Accelerating voltage
+    energy_kev=15.0,           # Accelerating voltage
     hmax=3, kmax=3, lmax=2,    # Miller index bounds
     temperature=300.0,         # For Debye-Waller factors
     use_debye_waller=True,     # Include thermal damping

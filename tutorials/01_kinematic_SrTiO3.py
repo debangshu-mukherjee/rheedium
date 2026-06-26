@@ -73,7 +73,7 @@ print(f"Loaded SrTiO3 with a = {float(crystal.cell_lengths[0]):.3f} A")
 
 # %%
 settings = {
-    "voltage_kv": 9.0,
+    "energy_kev": 9.0,
     "theta_deg": 4.0,
     "phi_deg": 0.0,
     "hmax": 14,
@@ -117,7 +117,7 @@ Markdown(f"""
 This tutorial intentionally holds almost everything fixed so that the role
 of each parameter is clear.
 
-- Energy: `{settings["voltage_kv"]:.1f}` keV
+- Energy: `{settings["energy_kev"]:.1f}` keV
 - Grazing angle: `{settings["theta_deg"]:.1f}` deg
 - Azimuth: `{settings["phi_deg"]:.1f}` deg
 - CTR grid: `h,k = +/-{settings["hmax"]}`
@@ -156,7 +156,7 @@ person inspecting the frame.
 # %%
 sparse_pattern = rh.simul.ewald_simulator(
     crystal=crystal,
-    voltage_kv=settings["voltage_kv"],
+    energy_kev=settings["energy_kev"],
     theta_deg=settings["theta_deg"],
     phi_deg=settings["phi_deg"],
     hmax=settings["hmax"],
@@ -168,38 +168,45 @@ sparse_pattern = rh.simul.ewald_simulator(
     ctr_power=settings["ctr_power"],
     roughness_power=settings["roughness_power"],
 )
-detector_image = rh.simul.simulate_detector_image(
-    crystal=crystal,
-    voltage_kv=settings["voltage_kv"],
+beam = rh.types.BeamSpec(
+    energy_kev=settings["energy_kev"],
     theta_deg=settings["theta_deg"],
     phi_deg=settings["phi_deg"],
+    angular_divergence_mrad=settings["angular_divergence_mrad"],
+    energy_spread_ev=settings["energy_spread_ev"],
+)
+surface = rh.types.SurfaceCTRParams(
     hmax=settings["hmax"],
     kmax=settings["kmax"],
-    detector_distance_mm=settings["detector_distance_mm"],
     temperature=settings["temperature"],
     surface_roughness=settings["surface_roughness"],
     ctr_regularization=settings["ctr_regularization"],
     ctr_power=settings["ctr_power"],
     roughness_power=settings["roughness_power"],
+)
+detector_geometry = rh.types.DetectorGeometry(
+    distance=settings["detector_distance_mm"],
     image_shape_px=settings["image_shape_px"],
     pixel_size_mm=settings["pixel_size_mm"],
     beam_center_px=settings["beam_center_px"],
-    spot_sigma_px=settings["spot_sigma_px"],
-    angular_divergence_mrad=settings["angular_divergence_mrad"],
-    energy_spread_ev=settings["energy_spread_ev"],
     psf_sigma_pixels=settings["psf_sigma_pixels"],
+)
+render = rh.types.RenderParams(
+    spot_sigma_px=settings["spot_sigma_px"],
     n_angular_samples=settings["n_angular_samples"],
     n_energy_samples=settings["n_energy_samples"],
     render_ctrs_as_streaks=True,
 )
+detector_image = rh.simul.simulate_detector_image(
+    crystal=crystal,
+    beam=beam,
+    surface=surface,
+    detector=detector_geometry,
+    render=render,
+)
 print(f"Sparse intersections: {len(sparse_pattern.intensities)}")
 
 # %%
-detector_geometry = rh.types.DetectorGeometry(
-    image_shape_px=settings["image_shape_px"],
-    pixel_size_mm=settings["pixel_size_mm"],
-    beam_center_px=settings["beam_center_px"],
-)
 sparse_image = rh.simul.render_pattern_to_image(
     pattern=sparse_pattern,
     geometry=detector_geometry,
@@ -350,29 +357,13 @@ the perfect-crystal limit.
 roughness_values = [0.0, 0.25, 0.5, 1.0]
 _extent_mm = rh.simul.detector_extent_mm(detector_geometry)
 _cmap = rh.plots.create_phosphor_colormap()
-image_bank = rh.simul.simulate_detector_image_roughness_sweep(
+image_bank = rh.simul.simulate_detector_image_sweep(
     crystal=crystal,
-    surface_roughness_values=jnp.asarray(roughness_values),
-    voltage_kv=settings["voltage_kv"],
-    theta_deg=settings["theta_deg"],
-    phi_deg=settings["phi_deg"],
-    hmax=settings["hmax"],
-    kmax=settings["kmax"],
-    detector_distance_mm=settings["detector_distance_mm"],
-    temperature=settings["temperature"],
-    ctr_regularization=settings["ctr_regularization"],
-    ctr_power=settings["ctr_power"],
-    roughness_power=settings["roughness_power"],
-    image_shape_px=settings["image_shape_px"],
-    pixel_size_mm=settings["pixel_size_mm"],
-    beam_center_px=settings["beam_center_px"],
-    spot_sigma_px=settings["spot_sigma_px"],
-    angular_divergence_mrad=settings["angular_divergence_mrad"],
-    energy_spread_ev=settings["energy_spread_ev"],
-    psf_sigma_pixels=settings["psf_sigma_pixels"],
-    n_angular_samples=settings["n_angular_samples"],
-    n_energy_samples=settings["n_energy_samples"],
-    render_ctrs_as_streaks=True,
+    axis=("surface_roughness", jnp.asarray(roughness_values)),
+    beam=beam,
+    surface=surface,
+    detector=detector_geometry,
+    render=render,
 )
 
 _fig, _axes = plt.subplots(2, 2, figsize=(12, 9), sharex=True, sharey=True)
@@ -496,7 +487,7 @@ _ax.set_title(
 )
 sweep_summary_lines = [
     f"**theta:** `{float(sweep_metadata['theta_deg']):.1f} deg`",
-    f"**voltage:** `{float(sweep_metadata['voltage_kv']):.1f} keV`",
+    f"**voltage:** `{float(sweep_metadata['energy_kev']):.1f} keV`",
     "**dynamic range floor:** "
     f"`{float(sweep_metadata['dynamic_range_floor']):.3e}`",
 ]

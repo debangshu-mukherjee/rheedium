@@ -274,6 +274,75 @@ Use the correct Sphinx role in `Routine Listings`: `:func:` for functions,
 `:class:` for classes/PyTrees, `:obj:` for type aliases and constants, and
 `:mod:` for submodules.
 
+**Every public object is listed in three places, and all three must agree:**
+
+1. In its own **module**, at the **top** in the docstring's `Routine Listings`
+   (the human- and Sphinx-facing API index), **and**
+2. at the **bottom** in that module's `__all__` (the import-facing public
+   surface), **and**
+3. in the **subpackage `__init__.py`** — which re-exports the submodule's public
+   API — repeated in `__init__.py`'s **own** `Routine Listings` *and* `__all__`,
+   so the package-level docstring and export surface catalogue every public symbol
+   the subpackage exposes.
+
+```python
+# src/rheedium/ucell/unitcell.py
+"""Functions for unit cell calculations and transformations.
+
+...
+
+Routine Listings
+----------------
+:func:`reciprocal_unitcell`
+    Calculate reciprocal unit cell parameters from direct cell parameters.
+:func:`build_cell_vectors`
+    Construct unit cell vectors from lengths and angles.
+"""
+
+# ... implementations ...
+
+__all__ = [
+    "reciprocal_unitcell",
+    "build_cell_vectors",
+]
+```
+
+```python
+# src/rheedium/ucell/__init__.py — re-export + re-list the subpackage API
+"""Unit cell and crystallographic calculations.
+
+...
+
+Routine Listings
+----------------
+:func:`reciprocal_unitcell`
+    Calculate reciprocal unit cell parameters from direct cell parameters.
+:func:`build_cell_vectors`
+    Construct unit cell vectors from lengths and angles.
+"""
+
+from .unitcell import build_cell_vectors, reciprocal_unitcell
+
+__all__ = ["build_cell_vectors", "reciprocal_unitcell"]
+```
+
+A symbol missing from any of the three is a defect: missing from a module's
+`__all__` means it is not re-exported; missing from a `Routine Listings` means it
+is undocumented; missing from the `__init__.py` lists means it is absent from the
+subpackage's public API. When you add, rename, or remove a public function, update
+**all three** (module `Routine Listings` + module `__all__` + the subpackage
+`__init__.py` `Routine Listings` + `__all__`) in the same change.
+
+**Keep the one-line summary identical across both `Routine Listings`.** Each
+function's docstring opens with a single-sentence summary line. That exact
+sentence is the description used under the function's `:func:` entry in **both**
+the module's `Routine Listings` and the subpackage `__init__.py`'s `Routine
+Listings` — the three must read verbatim the same (in the example above,
+*"Calculate reciprocal unit cell parameters from direct cell parameters."*
+appears identically in the function docstring, the module listing, and the
+`__init__.py` listing). When you change a function's summary line, update both
+`Routine Listings` descriptions to match it.
+
 #### Function and Class Docstrings
 
 ```python
@@ -325,7 +394,29 @@ def reciprocal_unitcell(
   (e.g. `:see: :class:`~.test_unitcell.TestReciprocalUnitcell``). This is used
   throughout `src/` to tie each public symbol to its tests.
 - `Parameters` and `Returns` repeat the type and describe each item. Name the
-  return values (numpydoc `name : type` form) so `pydoclint` is satisfied.
+  return values (numpydoc `name : type` form) so `pydoclint` is satisfied — and
+  since functions **return a type-annotated variable rather than a bare
+  expression** (see "Assign before returning"), the `Returns` name **must be that
+  variable's name**, so the docstring, the body, and the signature all agree. For
+  example, a body ending in `reciprocal_lengths: Float[Array, "3"] = ...; return
+  reciprocal_lengths` documents its return as `reciprocal_lengths : Float[Array,
+  "3"]`. For multiple returns, name each entry after the corresponding returned
+  variable.
+- **Mark static (non-traced) parameters.** If an argument is *static* — a
+  compile-time constant excluded from JIT tracing rather than a traced value —
+  its `Parameters` entry must say so, because changing it forces re-tracing /
+  recompilation. This covers arguments passed through
+  `jax.jit(static_argnames=...)` (or `static_argnums`), Python `int`/`str`/`bool`
+  flags that drive shape or control flow, and any value that ends up in an
+  `eqx.field(static=True)`. State it explicitly, e.g.:
+
+  ```
+  Parameters
+  ----------
+  n_modes : int
+      Number of beam modes to expand (**static** — a compile-time constant;
+      changing it triggers retracing/recompilation).
+  ```
 - Use `Notes` (often a numbered list) to describe the algorithm/flow.
 - Use `See Also` to point at related functions.
 - Use `Attributes` for `eqx.Module` fields; `Yields` for generators; `Raises`

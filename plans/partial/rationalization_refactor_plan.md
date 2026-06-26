@@ -103,7 +103,8 @@ isolation.
 
 One reduction operator replaces all hand-rolled incoherent sums:
 
-- `integrate_over_orientation` ([distributions.py](../../src/rheedium/types/distributions.py))
+- `integrate_over_orientation`
+  ([types/distributions/orientation.py](../../src/rheedium/types/distributions/orientation.py))
   → thin wrapper over `apply`.
 - `grains.grain_distribution_average`, `grains.apply_misorientation_distribution`
   ([procs/grains.py](../../src/rheedium/procs/grains.py)) → producers + `apply`.
@@ -126,7 +127,8 @@ Net: ~5 bespoke averaging code paths → 1. Each call site becomes "build a
   — never called; superseded by explicit beam-mode spread. **Delete** (or demote
   to a documented single-mode shortcut). Removing it also closes the
   double-counting risk.
-- `SizeDistribution` ([distributions.py](../../src/rheedium/types/distributions.py))
+- `SizeDistribution`
+  ([types/distributions/size.py](../../src/rheedium/types/distributions/size.py))
   — type with no consumer. **Wire** to `finite_domain` rod broadening as a
   size producer, or delete if the producer subsumes it.
 
@@ -203,9 +205,8 @@ simplify to a config + `distribute_batched` call.
 
 ### W8 — Module reorganization
 
-- `types/distributions.py` (713 lines + the new `Distribution` base + beam
-  modes) → split into a `types/distributions/` subpackage (base, orientation,
-  size, beam, defects) with a re-exporting `__init__`.
+- `types/distributions.py` → split into a `types/distributions/` subpackage
+  (base, orientation, size, beam) with a re-exporting `__init__`.
 - `simul`: separate the amplitude kernels (Layer 0) from the integrator
   (Layer 1) into clearly named modules so the layering is visible in the tree.
 
@@ -355,10 +356,20 @@ migrate call sites, then **remove** the old kwargs before the gate closes — th
 additive step is a migration scaffold consumed inside the phase, not a lasting
 dual API (§3).
 
+**Progress:** complete as of 2026-06-26. `simulate_detector_image` now exposes a
+five-argument carrier boundary (`crystal`, `BeamSpec`, `SurfaceCTRParams`,
+`DetectorGeometry`, `RenderParams`) and the old scalar keyword surface is gone
+with no shim. `simulate_detector_image_instrument` now delegates through the
+same carriers. The named detector sweep clones were removed from the public
+surface and replaced by `simulate_detector_image_sweep` for one axis and
+`simulate_detector_image_grid` for ordered grids; tutorial generator chunking
+routes through the generic sweep helper. RG4 inventory guards assert the public
+arg count, retired kwargs, and the two-function sweep surface.
+
 **Gate RG4:** public signature arg-count drops below the set threshold; the seven
 sweep functions reduce to ≤2; the old kwargs are **removed** within the phase (no
 permanent dual API); every affected notebook / tutorial + `generate_*` script
-updated in the same PR; universal gate.
+updated in the same PR; universal gate. **Closed 2026-06-26.**
 
 ### Phase R5 — `procs` return-type split + naming/units  ·  W5 + W7
 
@@ -371,9 +382,9 @@ old name is deleted, not aliased** (§3), migrated via `CHANGELOG.md`.
 **Progress:** W7 energy naming is partially complete as of 2026-06-26. The
 checked code and test surface now standardizes keV beam energy on `energy_kev`;
 `voltage_kv` is deleted from `src/` and `tests/` with no alias, and an inventory
-guard prevents it from returning there. Remaining W7 work: migrate
-docs/tutorials and then address the `theta_deg`/`phi_deg` vs
-polar/azimuth-radian boundary.
+guard prevents it from returning there. Tutorials and source docs now use
+`energy_kev`; remaining W7 work is the generated guide-figure scripts and the
+`theta_deg`/`phi_deg` vs polar/azimuth-radian boundary.
 
 **Gate RG5:** every `procs` public function's return type matches the trichotomy
 (documented in each module's `Notes`); one canonical energy/angle unit at the
@@ -387,9 +398,16 @@ universal gate.
 the Layer-0 amplitude kernels from the Layer-1 integrator into clearly named
 `simul` modules so the layering is visible in the tree.
 
+**Progress:** complete as of 2026-06-26. `types.distributions` is now a
+subpackage split into `base`, `beam`, `orientation`, and `size` modules with a
+re-exporting `__init__`. `rheedium.simul.layer0` and `rheedium.simul.layer1`
+make the coherent-kernel and detector-integrator boundaries visible while
+preserving the existing `rheedium.simul.*` and `rheedium.simul.simulator`
+imports.
+
 **Gate RG6:** public import paths unchanged (re-exports preserve
 `rheedium.types.*` / `rheedium.simul.*`); a no-op import-parity test; universal
-gate.
+gate. **Closed 2026-06-26.**
 
 ### Gate summary
 
@@ -399,9 +417,9 @@ gate.
 | **RG1** | **complete 2026-06-26** — dense render/extent mapping unified; production projection callers use `DetectorGeometry`; pixelwise flat-projection and stored-reference regressions |
 | **RG2** | **complete 2026-06-26** — grain/domain pattern mixers, instrument quadrature, `integrate_over_orientation`, and orientation detector ensembles route through Layer-1 reducers; standalone sparse orientation wrapper removed |
 | **RG3** | **complete 2026-06-26** — no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
-| **RG4** | ≤6-arg signature, ≤2 sweep fns; old kwargs deleted in-phase (no dual API); notebooks updated |
-| **RG5** | **active** — `energy_kev` clean cut complete in code/tests; docs/tutorials and angle boundary still pending |
-| **RG6** | module reorg with unchanged public import paths |
+| **RG4** | **complete 2026-06-26** — detector-image carrier signature, two generic sweep helpers, old kwargs removed, tutorials/notebooks/generator scripts migrated |
+| **RG5** | **active** — `energy_kev` clean cut complete in code/tests/tutorials/source docs; generated guide figures and angle boundary still pending |
+| **RG6** | **complete 2026-06-26** — `types.distributions` subpackage and explicit `simul.layer0`/`simul.layer1` boundaries with public import parity |
 
 R1–R3 are the structural debt the framework most exposes (do first); R4–R5 are
 the readability/ergonomics wins; R6 is cosmetic and may land any time after R0.

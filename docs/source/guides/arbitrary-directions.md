@@ -67,7 +67,7 @@ crystal = rh.inout.parse_cif("structure.cif")
 # Beam along [100] direction (phi = 0)
 pattern_100 = rh.simul.kinematic_simulator(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
 )
@@ -75,7 +75,7 @@ pattern_100 = rh.simul.kinematic_simulator(
 # Beam along [110] direction (phi = 45 for cubic)
 pattern_110 = rh.simul.kinematic_simulator(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=45.0,
 )
@@ -83,7 +83,7 @@ pattern_110 = rh.simul.kinematic_simulator(
 # Beam along [010] direction (phi = 90)
 pattern_010 = rh.simul.kinematic_simulator(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=90.0,
 )
@@ -113,7 +113,7 @@ patterns = []
 for phi in phi_values:
     pattern = rh.simul.kinematic_simulator(
         crystal=crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=float(phi),
     )
@@ -152,7 +152,7 @@ slab_111 = bulk_to_slice(
 # Simulate RHEED from (111) surface
 pattern_111 = rh.simul.kinematic_simulator(
     crystal=slab_111,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
 )
@@ -182,7 +182,7 @@ slab_110 = bulk_to_slice(
 # phi=0 is along [001] in-plane direction
 pattern_110_001 = rh.simul.kinematic_simulator(
     crystal=slab_110,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=0.0,
 )
@@ -190,7 +190,7 @@ pattern_110_001 = rh.simul.kinematic_simulator(
 # phi=90 is along [1-10] in-plane direction
 pattern_110_1m10 = rh.simul.kinematic_simulator(
     crystal=slab_110,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     phi_deg=90.0,
 )
@@ -219,7 +219,7 @@ patterns = {}
 for phi in azimuths:
     patterns[phi] = rh.simul.kinematic_simulator(
         crystal=slab,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=float(phi),
     )
@@ -241,7 +241,7 @@ import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(12, 8))
 plot_ewald_sphere_2d(
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     lattice_spacing=3.905,
     n_rods=9,
@@ -270,7 +270,7 @@ theta_values = [1.0, 1.5, 2.0, 2.5, 3.0]
 for theta in theta_values:
     pattern = rh.simul.kinematic_simulator(
         crystal=crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=theta,
         phi_deg=0.0,
     )
@@ -304,7 +304,7 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 6))
 for ax, phi in zip(axes, [0, 45, 90]):
     pattern = rh.simul.kinematic_simulator(
         crystal=crystal,
-        voltage_kv=20.0,
+        energy_kev=20.0,
         theta_deg=2.0,
         phi_deg=phi,
     )
@@ -384,7 +384,7 @@ surface_config = SurfaceConfig(method="layers", n_layers=2)
 # 4. Simulate RHEED along [001] azimuth
 pattern = rh.simul.kinematic_simulator(
     crystal=slab,
-    voltage_kv=15.0,
+    energy_kev=15.0,
     theta_deg=2.5,
     phi_deg=0.0,  # [001] in-plane direction
     surface_config=surface_config,

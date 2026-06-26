@@ -36,7 +36,7 @@ crystal = rh.inout.parse_cif("structure.cif")
 
 pattern = rh.simul.kinematic_simulator(
     crystal=crystal,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
     surface_fraction=0.3,  # Top 30% of atoms are "surface"
 )
@@ -213,7 +213,7 @@ slab_111 = bulk_to_slice(
 # Now simulate - the slab has (111) as the surface plane
 pattern = rh.simul.kinematic_simulator(
     crystal=slab_111,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
 )
 ```
@@ -244,7 +244,7 @@ config = SurfaceConfig(method="layers", n_layers=2)
 pattern = rh.simul.kinematic_simulator(
     crystal=filtered_slab,
     surface_config=config,
-    voltage_kv=20.0,
+    energy_kev=20.0,
     theta_deg=2.0,
 )
 ```
@@ -359,7 +359,7 @@ fractions = [0.1, 0.3, 0.5]
 for frac in fractions:
     pattern = rh.simul.kinematic_simulator(
         crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         hmax=5,
         kmax=5,
@@ -387,7 +387,7 @@ crystal = rh.io.parse_cif("SrTiO3.cif")
 # Default selection (uses surface_fraction)
 pattern_default = rh.simul.ewald_simulator(
     crystal,
-    voltage_kv=15.0,
+    energy_kev=15.0,
     theta_deg=2.0,
     hmax=5,
     kmax=5,
@@ -399,7 +399,7 @@ rh.plots.plot_rheed(pattern_default, cmap_name="phosphor")
 config = SurfaceConfig(method="layers", n_layers=2)
 pattern_layers = rh.simul.ewald_simulator(
     crystal,
-    voltage_kv=15.0,
+    energy_kev=15.0,
     theta_deg=2.0,
     hmax=5,
     kmax=5,

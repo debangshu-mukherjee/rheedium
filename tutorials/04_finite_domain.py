@@ -145,12 +145,12 @@ for V in voltages_kv:
 
 # %%
 # Build Ewald data for MgO
-voltage_kv = 15.0
+energy_kev = 15.0
 theta_deg = 2.0  # Grazing angle
 
 ewald = rh.simul.build_ewald_data(
     crystal=crystal,
-    voltage_kv=voltage_kv,
+    energy_kev=energy_kev,
     hmax=3,
     kmax=3,
     lmax=2,

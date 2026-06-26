@@ -58,9 +58,9 @@ Relativistic electron wavelength as a function of accelerating voltage. The dash
 In rheedium, wavelength calculation is in `simul/simul_utils.py`:
 
 ```python
-def wavelength_ang(voltage_kv: float) -> float:
+def wavelength_ang(energy_kev: float) -> float:
     """Relativistic electron wavelength in Angstroms."""
-    voltage_v = voltage_kv * 1000.0
+    voltage_v = energy_kev * 1000.0
     # Relativistic correction factor
     gamma = 1.0 + e * voltage_v / (2.0 * m_e * c**2)
     return h / jnp.sqrt(2.0 * m_e * e * voltage_v * gamma) * 1e10
@@ -219,7 +219,7 @@ The CTR simulator in `simul/kinematic.py` uses `kinematic_ctr_simulator()`:
 ```python
 def kinematic_ctr_simulator(
     crystal: CrystalStructure,
-    voltage_kv: float,
+    energy_kev: float,
     theta_deg: float,
     phi_deg: float = 0.0,
     hmax: int = 3,
@@ -325,7 +325,7 @@ crystal = rh.io.parse_cif("MgO.cif")
 # Simulate at 2° grazing incidence
 pattern = rh.simul.kinematic_simulator(
     crystal,
-    voltage_kv=15.0,
+    energy_kev=15.0,
     theta_deg=2.0,
     phi_deg=0.0,
     hmax=5,
@@ -364,7 +364,7 @@ for cif_file, title in [
     crystal = rh.io.parse_cif(cif_file)
     pattern = rh.simul.kinematic_simulator(
         crystal,
-        voltage_kv=15.0,
+        energy_kev=15.0,
         theta_deg=2.0,
         hmax=5,
         kmax=5,

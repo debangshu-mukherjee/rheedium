@@ -405,7 +405,7 @@ where $M_j$ is atomic mass and $N_A$ is Avogadro's number.
 ┌─────────────────────────────────────────────────────────────────┐
 │                    4. RHEED SIMULATION                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  ewald = build_ewald_data(slab, voltage_kv=15.0, ...)           │
+│  ewald = build_ewald_data(slab, energy_kev=15.0, ...)           │
 │  pattern = kinematic_spot_simulator(slab, ewald, theta=2.0)     │
 └─────────────────────────────────────────────────────────────────┘
 ```

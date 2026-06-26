@@ -65,11 +65,22 @@ Each entry summarizes the commits that landed for that version bump in
   generic `Distribution` axes and reduce through the shared Layer-1 reducers.
   The standalone `ewald_simulator_with_orientation_distribution` sparse wrapper
   was removed; route orientation ensembles through
-  `simulate_detector_image(orientation_distribution=...)`.
+  `simulate_detector_image(render=RenderParams(orientation_distribution=...))`.
+- Completed the R4/RG4 detector-image carrier cut: `simulate_detector_image`
+  now consumes `BeamSpec`, `SurfaceCTRParams`, `DetectorGeometry`, and
+  `RenderParams`; the old scalar keyword surface was removed with no shim.
+  The detector sweep API collapsed to `simulate_detector_image_sweep` and
+  `simulate_detector_image_grid`, and affected tutorials/notebooks/generator
+  scripts were migrated.
+- Completed the R6/RG6 module reorganization: `types.distributions` is now a
+  subpackage split into base, beam, orientation, and size modules with the old
+  public import path preserved, and `rheedium.simul.layer0` /
+  `rheedium.simul.layer1` expose coherent-kernel and detector-integrator
+  boundaries.
 - Began W7 naming cleanup: code and tests now use `energy_kev` for beam energy
   in keV, deleting the old `voltage_kv` name from the checked code surface.
-  Internal `voltage_v` locals remain only where calculations are explicitly in
-  volts.
+  Tutorials and source docs now use the same `energy_kev` spelling; internal
+  `voltage_v` locals remain only where calculations are explicitly in volts.
 
 ## [2026.6.6] - 2026-06-23
 

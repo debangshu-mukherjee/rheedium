@@ -77,15 +77,18 @@ from rheedium.tools import (
 )
 from rheedium.types import (
     BeamModeDistribution,
+    BeamSpec,
     CrystalStructure,
     DetectorGeometry,
     Distribution,
     OrientationDistribution,
     PotentialSlices,
     ReductionMode,
+    RenderParams,
     RHEEDPattern,
     SlicedCrystal,
     SurfaceConfig,
+    SurfaceCTRParams,
     create_distribution,
     create_potential_slices,
     create_rheed_pattern,
@@ -108,7 +111,6 @@ from rheedium.types import (
 from rheedium.ucell import reciprocal_lattice_vectors
 
 from .beam_averaging import (
-    apply_distribution,
     apply_distributions,
     decompose_beam_modes,
     detector_psf_convolve,
@@ -2249,113 +2251,12 @@ def _detector_image_distributions(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
-def _apply_kinematic_beam_distribution(  # noqa: PLR0913
-    distribution: Distribution,
+def simulate_detector_image(
     crystal: CrystalStructure,
-    energy_kev: scalar_num,
-    theta_deg: scalar_num,
-    phi_deg: scalar_num,
-    hmax: scalar_int,
-    kmax: scalar_int,
-    detector_distance_mm: scalar_float,
-    temperature: scalar_float,
-    surface_roughness: scalar_float,
-    ctr_regularization: scalar_float,
-    ctr_power: scalar_float,
-    roughness_power: scalar_float,
-    image_shape_px: Tuple[int, int],
-    pixel_size_mm: Tuple[float, float],
-    beam_center_px: Tuple[float, float],
-    spot_sigma_px: scalar_float,
-    render_ctrs_as_streaks: bool,
-    parameterization: str,
-    surface_config: SurfaceConfig | None,
-) -> Float[Array, "H W"]:
-    """Apply a beam-mode-style distribution to the kinematic kernel."""
-    theta_nominal: Float[Array, ""] = jnp.asarray(theta_deg, dtype=jnp.float64)
-    phi_nominal: Float[Array, ""] = jnp.asarray(phi_deg, dtype=jnp.float64)
-    voltage_nominal: Float[Array, ""] = jnp.asarray(
-        energy_kev,
-        dtype=jnp.float64,
-    )
-
-    def _amplitude_at_beam_sample(
-        sample: Float[Array, "3"],
-    ) -> Complex[Array, "H W"]:
-        theta_sample_deg: Float[Array, ""] = theta_nominal + jnp.rad2deg(
-            sample[0]
-        )
-        phi_sample_deg: Float[Array, ""] = phi_nominal + jnp.rad2deg(sample[1])
-        energy_sample_kev: Float[Array, ""] = (
-            voltage_nominal + 1.0e-3 * sample[2]
-        )
-        return kinematic_amplitude(
-            crystal=crystal,
-            energy_kev=energy_sample_kev,
-            theta_deg=theta_sample_deg,
-            phi_deg=phi_sample_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-            parameterization=parameterization,
-            surface_config=surface_config,
-        )
-
-    return apply_distribution(
-        distribution,
-        _amplitude_at_beam_sample,
-    )
-
-
-@jaxtyped(typechecker=beartype)
-def simulate_detector_image(  # noqa: PLR0913
-    crystal: CrystalStructure,
-    energy_kev: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    phi_deg: scalar_num = 0.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    angular_divergence_mrad: scalar_float = 0.35,
-    energy_spread_ev: scalar_float = 0.35,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_angular_samples: int = 5,
-    n_energy_samples: int = 5,
-    orientation_distribution: OrientationDistribution | None = None,
-    distribution: Distribution | None = None,
-    beam_modes: BeamModeDistribution | None = None,
-    n_beam_modes_per_axis: int = 3,
-    n_beam_modes_out_of_plane: int | None = None,
-    n_beam_energy_points: int = 1,
-    n_mosaic_points: scalar_int = 7,
-    parameterization: str = "lobato",
-    surface_config: SurfaceConfig | None = None,
-    render_ctrs_as_streaks: bool = True,
-    defect_surface_layer_depth_angstrom: scalar_float = 1.0,
-    kernel: str = _KINEMATIC_KERNEL,
-    potential_slices: PotentialSlices | None = None,
-    inner_potential_v0: scalar_float = 0.0,
-    bandwidth_limit: scalar_float = 2.0 / 3.0,
-    finite_domain_aspect_ratio: Tuple[float, float, float] = (1.0, 1.0, 0.5),
+    beam: BeamSpec | None = None,
+    surface: SurfaceCTRParams | None = None,
+    detector: DetectorGeometry | None = None,
+    render: RenderParams | None = None,
 ) -> Float[Array, "H W"]:
     """Simulate a broadened detector image from a Layer-0 amplitude kernel.
 
@@ -2363,88 +2264,14 @@ def simulate_detector_image(  # noqa: PLR0913
     ----------
     crystal : CrystalStructure
         Crystal structure to simulate.
-    energy_kev, theta_deg, phi_deg : scalar_num, optional
-        Beam energy and incidence geometry. Defaults are 20 keV, 2°, 0°.
-    hmax, kmax : scalar_int, optional
-        In-plane CTR grid bounds. Default: 5, 5.
-    detector_distance_mm : scalar_float, optional
-        Sample-to-detector distance in millimetres. Default: 1000.0
-    temperature : scalar_float, optional
-        Temperature in Kelvin for Debye-Waller damping. Default: 300.0
-    surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms. Default: 0.0
-    ctr_regularization : scalar_float, optional
-        Additive regularization in the sparse CTR intensity factor.
-        Default: 0.01
-    ctr_power : scalar_float, optional
-        Exponent applied to the CTR modulation term. Default: 1.0
-    roughness_power : scalar_float, optional
-        Exponent applied to the roughness damping term. Default: 0.25
-    image_shape_px : Tuple[int, int], optional
-        Detector image shape as ``(height_px, width_px)``.
-    pixel_size_mm : Tuple[float, float], optional
-        Detector calibration as ``(x_mm_per_px, y_mm_per_px)``.
-    beam_center_px : Tuple[float, float], optional
-        Pixel coordinate corresponding to detector ``(0 mm, 0 mm)``.
-    spot_sigma_px : scalar_float, optional
-        Sparse-hit rasterization width in pixels. Default: 1.4
-    angular_divergence_mrad : scalar_float, optional
-        Beam angular divergence. Default: 0.35 mrad
-    energy_spread_ev : scalar_float, optional
-        Beam energy spread. Default: 0.35 eV
-    psf_sigma_pixels : scalar_float, optional
-        Detector PSF width in pixels. Default: 1.2
-    n_angular_samples, n_energy_samples : int, optional
-        Gauss-Hermite quadrature sizes for beam broadening.
-    orientation_distribution : OrientationDistribution | None, optional
-        Optional azimuthal orientation distribution. When supplied, its
-        angles are interpreted relative to ``phi_deg``.
-    distribution : Distribution | None, optional
-        Generic Layer-1 latent distribution. The first sample coordinate is
-        interpreted as an azimuthal offset in degrees relative to the current
-        ``phi_deg`` sample.
-    beam_modes : BeamModeDistribution | None, optional
-        Explicit GSM beam-mode producer. When supplied, the amplitude-rendered
-        path uses the generic Layer-1 reducer over
-        ``[delta_theta_rad, delta_phi_rad, delta_energy_ev]`` beam samples.
-        Default: None.
-    n_beam_modes_per_axis : int, optional
-        In-plane transverse GSM mode count when ``beam_modes`` is supplied.
-        Default: 3.
-    n_beam_modes_out_of_plane : int | None, optional
-        Optional out-of-plane transverse GSM mode count. Default: None.
-    n_beam_energy_points : int, optional
-        Longitudinal energy quadrature count when ``beam_modes`` is supplied.
-        Default: 1.
-    n_mosaic_points : scalar_int, optional
-        Orientation quadrature points per peak when
-        ``orientation_distribution`` is supplied. Default: 7
-    parameterization : str, optional
-        Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
-    surface_config : SurfaceConfig | None, optional
-        Surface atom identification configuration. Default: None
-    render_ctrs_as_streaks : bool, optional
-        If True, render each valid crystal truncation rod as a continuous
-        detector streak in the dense image. If False, rasterize only the
-        discrete Ewald intersections as circular spots. Default: True
-    defect_surface_layer_depth_angstrom : scalar_float, optional
-        Surface-layer depth affected by structure-bound defect distributions
-        such as ``axis_id="twins"`` or ``axis_id="steps"``. Default: 1.0
-    kernel : str, optional
-        Layer-0 coherent amplitude kernel selector: ``"kinematic"`` or
-        ``"multislice"``. Default: ``"kinematic"``.
-    potential_slices : PotentialSlices | None, optional
-        Projected potential slices for ``kernel="multislice"``. The
-        kinematic kernel uses ``crystal`` directly. Default: None.
-    inner_potential_v0 : scalar_float, optional
-        Inner potential passed to the multislice kernel. Default: 0.0.
-    bandwidth_limit : scalar_float, optional
-        Fraction of Nyquist frequency retained by multislice propagation.
-        Default: 2/3.
-    finite_domain_aspect_ratio : Tuple[float, float, float], optional
-        Relative mapping from scalar size samples to finite-domain
-        ``[Lx, Ly, Lz]`` extents for kinematic size/grain axes.
-        Default: ``(1.0, 1.0, 0.5)``.
+    beam : BeamSpec, optional
+        Electron beam, incidence geometry, and beam-mode sampling metadata.
+    surface : SurfaceCTRParams, optional
+        CTR bounds, roughness, temperature, and domain-surface controls.
+    detector : DetectorGeometry, optional
+        Detector distance, dense image calibration, and PSF width.
+    render : RenderParams, optional
+        Rendering, kernel, quadrature, and optional ensemble distributions.
 
     Returns
     -------
@@ -2460,63 +2287,70 @@ def simulate_detector_image(  # noqa: PLR0913
     3. Reduce with :func:`apply_distributions`.
     4. Apply detector PSF and normalize.
     """
-    _validate_layer0_kernel(kernel)
-    detector_geometry: DetectorGeometry = DetectorGeometry(
-        distance=detector_distance_mm,
-        image_shape_px=image_shape_px,
-        pixel_size_mm=pixel_size_mm,
-        beam_center_px=beam_center_px,
-        psf_sigma_pixels=psf_sigma_pixels,
-    )
-    if orientation_distribution is not None and distribution is not None:
+    if beam is None:
+        beam = BeamSpec()
+    if surface is None:
+        surface = SurfaceCTRParams()
+    if detector is None:
+        detector = DetectorGeometry(distance=1000.0, psf_sigma_pixels=1.2)
+    if render is None:
+        render = RenderParams()
+
+    _validate_layer0_kernel(render.kernel)
+    if (
+        render.orientation_distribution is not None
+        and render.distribution is not None
+    ):
         raise ValueError(
             "Pass either orientation_distribution or distribution, not both."
         )
-    if beam_modes is not None and distribution is not None:
+    if beam.beam_modes is not None and render.distribution is not None:
         raise ValueError("Pass either beam_modes or distribution, not both.")
     distributions: tuple[Distribution, ...] = _detector_image_distributions(
-        beam_modes=beam_modes,
-        orientation_distribution=orientation_distribution,
-        distribution=distribution,
-        angular_divergence_mrad=angular_divergence_mrad,
-        energy_spread_ev=energy_spread_ev,
-        n_angular_samples=n_angular_samples,
-        n_energy_samples=n_energy_samples,
-        n_beam_modes_per_axis=n_beam_modes_per_axis,
-        n_beam_modes_out_of_plane=n_beam_modes_out_of_plane,
-        n_beam_energy_points=n_beam_energy_points,
-        n_mosaic_points=n_mosaic_points,
+        beam_modes=beam.beam_modes,
+        orientation_distribution=render.orientation_distribution,
+        distribution=render.distribution,
+        angular_divergence_mrad=beam.angular_divergence_mrad,
+        energy_spread_ev=beam.energy_spread_ev,
+        n_angular_samples=render.n_angular_samples,
+        n_energy_samples=render.n_energy_samples,
+        n_beam_modes_per_axis=beam.n_beam_modes_per_axis,
+        n_beam_modes_out_of_plane=beam.n_beam_modes_out_of_plane,
+        n_beam_energy_points=beam.n_beam_energy_points,
+        n_mosaic_points=render.n_mosaic_points,
     )
     bound: Callable[[Float[Array, "D"]], Complex[Array, "H W"]]
-    if kernel == _KINEMATIC_KERNEL:
+    if render.kernel == _KINEMATIC_KERNEL:
         bound = _bind_kinematic_distributions(
             distributions=distributions,
             crystal=crystal,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            hmax=hmax,
-            kmax=kmax,
-            detector_distance_mm=detector_distance_mm,
-            temperature=temperature,
-            surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
-            ctr_power=ctr_power,
-            roughness_power=roughness_power,
-            angular_divergence_mrad=angular_divergence_mrad,
-            energy_spread_ev=energy_spread_ev,
-            domain_aspect_ratio=finite_domain_aspect_ratio,
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            render_ctrs_as_streaks=render_ctrs_as_streaks,
-            parameterization=parameterization,
-            surface_config=surface_config,
-            defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
+            energy_kev=beam.energy_kev,
+            theta_deg=beam.theta_deg,
+            phi_deg=beam.phi_deg,
+            hmax=surface.hmax,
+            kmax=surface.kmax,
+            detector_distance_mm=detector_geometry_distance_mm(detector),
+            temperature=surface.temperature,
+            surface_roughness=surface.surface_roughness,
+            ctr_regularization=surface.ctr_regularization,
+            ctr_power=surface.ctr_power,
+            roughness_power=surface.roughness_power,
+            angular_divergence_mrad=beam.angular_divergence_mrad,
+            energy_spread_ev=beam.energy_spread_ev,
+            domain_aspect_ratio=surface.finite_domain_aspect_ratio,
+            image_shape_px=detector_image_shape_px(detector),
+            pixel_size_mm=detector_pixel_size_mm(detector),
+            beam_center_px=detector_beam_center_px(detector),
+            spot_sigma_px=render.spot_sigma_px,
+            render_ctrs_as_streaks=render.render_ctrs_as_streaks,
+            parameterization=render.parameterization,
+            surface_config=surface.surface_config,
+            defect_surface_layer_depth_angstrom=(
+                surface.defect_surface_layer_depth_angstrom
+            ),
         )
     else:
-        if potential_slices is None:
+        if render.potential_slices is None:
             raise ValueError(
                 "kernel='multislice' requires potential_slices. Convert a "
                 "sliced crystal with "
@@ -2526,22 +2360,22 @@ def simulate_detector_image(  # noqa: PLR0913
         bound = _bind_multislice_distributions(
             distributions=distributions,
             crystal=crystal,
-            potential_slices=potential_slices,
-            energy_kev=energy_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-            detector_distance_mm=detector_geometry_distance_mm(
-                detector_geometry
+            potential_slices=render.potential_slices,
+            energy_kev=beam.energy_kev,
+            theta_deg=beam.theta_deg,
+            phi_deg=beam.phi_deg,
+            detector_distance_mm=detector_geometry_distance_mm(detector),
+            image_shape_px=detector_image_shape_px(detector),
+            pixel_size_mm=detector_pixel_size_mm(detector),
+            beam_center_px=detector_beam_center_px(detector),
+            spot_sigma_px=render.spot_sigma_px,
+            inner_potential_v0=render.inner_potential_v0,
+            bandwidth_limit=render.bandwidth_limit,
+            parameterization=render.parameterization,
+            domain_aspect_ratio=surface.finite_domain_aspect_ratio,
+            defect_surface_layer_depth_angstrom=(
+                surface.defect_surface_layer_depth_angstrom
             ),
-            image_shape_px=image_shape_px,
-            pixel_size_mm=pixel_size_mm,
-            beam_center_px=beam_center_px,
-            spot_sigma_px=spot_sigma_px,
-            inner_potential_v0=inner_potential_v0,
-            bandwidth_limit=bandwidth_limit,
-            parameterization=parameterization,
-            domain_aspect_ratio=finite_domain_aspect_ratio,
-            defect_surface_layer_depth_angstrom=defect_surface_layer_depth_angstrom,
         )
     detector_image: Float[Array, "H W"] = apply_distributions(
         distributions,
@@ -2549,137 +2383,43 @@ def simulate_detector_image(  # noqa: PLR0913
     )
     return _apply_detector_psf_and_normalize(
         detector_image,
-        psf_sigma_pixels=detector_psf_sigma_pixels(detector_geometry),
+        psf_sigma_pixels=detector_psf_sigma_pixels(detector),
     )
 
 
 @jaxtyped(typechecker=beartype)
-def simulate_detector_image_instrument(  # noqa: PLR0913
+def simulate_detector_image_instrument(
     crystal: CrystalStructure,
-    beam_modes: BeamModeDistribution,
-    energy_kev: scalar_num = 20.0,
-    theta_deg: scalar_num = 2.0,
-    phi_deg: scalar_num = 0.0,
-    hmax: scalar_int = 5,
-    kmax: scalar_int = 5,
-    detector_distance_mm: scalar_float = 1000.0,
-    temperature: scalar_float = 300.0,
-    surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
-    ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
-    image_shape_px: Tuple[int, int] = (192, 192),
-    pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
-    beam_center_px: Tuple[float, float] = (96.0, 8.0),
-    spot_sigma_px: scalar_float = 1.4,
-    psf_sigma_pixels: scalar_float = 1.2,
-    n_modes_per_axis: int = 3,
-    n_modes_out_of_plane: int | None = None,
-    n_energy_points: int = 1,
-    parameterization: str = "lobato",
-    surface_config: SurfaceConfig | None = None,
-    kernel: str = _KINEMATIC_KERNEL,
+    beam: BeamSpec,
+    surface: SurfaceCTRParams | None = None,
+    detector: DetectorGeometry | None = None,
+    render: RenderParams | None = None,
 ) -> Float[Array, "H W"]:
-    """Simulate a detector image by incoherently summing beam modes.
-
-    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
-
-    Parameters
-    ----------
-    crystal : CrystalStructure
-        Crystal structure to simulate.
-    beam_modes : BeamModeDistribution
-        GSM source parameters defining angular and longitudinal modes.
-    energy_kev, theta_deg, phi_deg : scalar_num, optional
-        Nominal beam energy and incidence geometry.
-    hmax, kmax : scalar_int, optional
-        In-plane CTR grid bounds.
-    detector_distance_mm : scalar_float, optional
-        Sample-to-detector distance in millimetres.
-    temperature : scalar_float, optional
-        Temperature in Kelvin for Debye-Waller damping.
-    surface_roughness : scalar_float, optional
-        RMS surface roughness in Ångstroms.
-    ctr_regularization, ctr_power, roughness_power : scalar_float, optional
-        CTR and roughness controls passed to :func:`kinematic_amplitude`.
-    image_shape_px, pixel_size_mm, beam_center_px : tuple, optional
-        Detector grid calibration.
-    spot_sigma_px : scalar_float, optional
-        Anti-aliasing spot width in pixels.
-    psf_sigma_pixels : scalar_float, optional
-        Detector PSF width applied after incoherent modal summation.
-    n_modes_per_axis : int, optional
-        In-plane transverse GSM mode count. Default: 3.
-    n_modes_out_of_plane : int | None, optional
-        Optional out-of-plane transverse GSM mode count. Default: None.
-    n_energy_points : int, optional
-        Longitudinal energy quadrature count. Default: 1.
-    parameterization : str, optional
-        Atomic form-factor model.
-    surface_config : SurfaceConfig | None, optional
-        Surface atom identification configuration.
-    kernel : str, optional
-        Layer-0 coherent amplitude kernel selector. This compatibility wrapper
-        currently accepts only ``"kinematic"``; use
-        :func:`simulate_detector_image` with ``potential_slices`` for
-        ``"multislice"``. Default: ``"kinematic"``.
-
-    Returns
-    -------
-    detector_image : Float[Array, "H W"]
-        Dense detector image normalized to unit maximum.
-
-    Notes
-    -----
-    The beam-mode sample contract is
-    ``[delta_theta_rad, delta_phi_rad, delta_energy_ev]``. Each sample is one
-    coherent kinematic amplitude call; samples are reduced incoherently by the
-    generic Layer-1 distribution reducer.
-    """
-    _validate_layer0_kernel(kernel)
-    if kernel != _KINEMATIC_KERNEL:
+    """Simulate a detector image by incoherently summing beam modes."""
+    if surface is None:
+        surface = SurfaceCTRParams()
+    if detector is None:
+        detector = DetectorGeometry(distance=1000.0, psf_sigma_pixels=1.2)
+    if render is None:
+        render = RenderParams(render_ctrs_as_streaks=False)
+    if beam.beam_modes is None:
+        raise ValueError(
+            "simulate_detector_image_instrument requires "
+            "beam.beam_modes to be set."
+        )
+    if render.kernel != _KINEMATIC_KERNEL:
         raise ValueError(
             "simulate_detector_image_instrument currently supports only "
-            "kernel='kinematic'; use simulate_detector_image with "
-            "potential_slices for kernel='multislice'."
+            "render.kernel='kinematic'; use simulate_detector_image with "
+            "render.potential_slices for multislice."
         )
-    distribution: Distribution = decompose_beam_modes(
-        beam_modes,
-        n_modes_per_axis=n_modes_per_axis,
-        n_modes_out_of_plane=n_modes_out_of_plane,
-        n_energy_points=n_energy_points,
-    )
-    modal_image: Float[Array, "H W"] = _apply_kinematic_beam_distribution(
-        distribution,
+    return simulate_detector_image(
         crystal=crystal,
-        energy_kev=energy_kev,
-        theta_deg=theta_deg,
-        phi_deg=phi_deg,
-        hmax=hmax,
-        kmax=kmax,
-        detector_distance_mm=detector_distance_mm,
-        temperature=temperature,
-        surface_roughness=surface_roughness,
-        ctr_regularization=ctr_regularization,
-        ctr_power=ctr_power,
-        roughness_power=roughness_power,
-        image_shape_px=image_shape_px,
-        pixel_size_mm=pixel_size_mm,
-        beam_center_px=beam_center_px,
-        spot_sigma_px=spot_sigma_px,
-        render_ctrs_as_streaks=False,
-        parameterization=parameterization,
-        surface_config=surface_config,
+        beam=beam,
+        surface=surface,
+        detector=detector,
+        render=render,
     )
-    detector_image: Float[Array, "H W"] = detector_psf_convolve(
-        detector_image=modal_image,
-        psf_sigma_pixels=psf_sigma_pixels,
-    )
-    max_intensity: Float[Array, ""] = jnp.maximum(
-        jnp.max(detector_image),
-        1e-12,
-    )
-    return detector_image / max_intensity
 
 
 @jaxtyped(typechecker=beartype)

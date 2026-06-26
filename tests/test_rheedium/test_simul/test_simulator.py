@@ -11,6 +11,8 @@ Tests the integration of:
 """
 
 import ast
+import importlib
+import inspect
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -58,9 +60,13 @@ from rheedium.simul.simulator import (
     render_amplitude_to_field,
     render_ctr_amplitude_to_field,
     render_pattern_to_image,
-    simulate_detector_image,
-    simulate_detector_image_instrument,
     sliced_crystal_to_projected_potential_slices,
+)
+from rheedium.simul.simulator import (
+    simulate_detector_image as _simulate_detector_image,
+)
+from rheedium.simul.simulator import (
+    simulate_detector_image_instrument as _simulate_detector_image_instrument,
 )
 from rheedium.tools import (
     gauss_hermite_nodes_weights,
@@ -70,12 +76,17 @@ from rheedium.tools import (
 from rheedium.tools.wrappers import jax_safe
 from rheedium.types import (
     TRIVIAL_DISTRIBUTION,
+    BeamModeDistribution,
+    BeamSpec,
     CrystalStructure,
     DetectorGeometry,
     Distribution,
     PotentialSlices,
     ReductionMode,
+    RenderParams,
     SlicedCrystal,
+    SurfaceConfig,
+    SurfaceCTRParams,
     create_coherent_beam,
     create_distribution,
     create_gaussian_schell_beam,
@@ -89,11 +100,165 @@ from rheedium.types.custom_types import scalar_float
 from rheedium.types.distributions import create_discrete_orientation
 from rheedium.types.rheed_types import (
     RHEEDPattern,
-    SurfaceConfig,
     create_rheed_pattern,
     create_sliced_crystal,
 )
 from rheedium.ucell import reciprocal_lattice_vectors
+
+
+def simulate_detector_image(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    energy_kev: Any = 20.0,
+    theta_deg: Any = 2.0,
+    phi_deg: Any = 0.0,
+    hmax: int = 5,
+    kmax: int = 5,
+    detector_distance_mm: Any = 1000.0,
+    temperature: Any = 300.0,
+    surface_roughness: Any = 0.0,
+    ctr_regularization: Any = 0.01,
+    ctr_power: Any = 1.0,
+    roughness_power: Any = 0.25,
+    image_shape_px: tuple[int, int] = (192, 192),
+    pixel_size_mm: tuple[float, float] = (1.5, 3.0),
+    beam_center_px: tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: Any = 1.4,
+    angular_divergence_mrad: Any = 0.35,
+    energy_spread_ev: Any = 0.35,
+    psf_sigma_pixels: Any = 1.2,
+    n_angular_samples: int = 5,
+    n_energy_samples: int = 5,
+    orientation_distribution: Any = None,
+    distribution: Distribution | None = None,
+    beam_modes: BeamModeDistribution | None = None,
+    n_beam_modes_per_axis: int = 3,
+    n_beam_modes_out_of_plane: int | None = None,
+    n_beam_energy_points: int = 1,
+    n_mosaic_points: int = 7,
+    parameterization: str = "lobato",
+    surface_config: SurfaceConfig | None = None,
+    render_ctrs_as_streaks: bool = True,
+    defect_surface_layer_depth_angstrom: Any = 1.0,
+    kernel: str = "kinematic",
+    potential_slices: PotentialSlices | None = None,
+    inner_potential_v0: Any = 0.0,
+    bandwidth_limit: Any = 2.0 / 3.0,
+    finite_domain_aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 0.5),
+) -> Float[Array, "H W"]:
+    """Test-local adapter from legacy fixtures to carrier API."""
+    return _simulate_detector_image(
+        crystal=crystal,
+        beam=BeamSpec(
+            energy_kev=energy_kev,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            energy_spread_ev=energy_spread_ev,
+            angular_divergence_mrad=angular_divergence_mrad,
+            beam_modes=beam_modes,
+            n_beam_modes_per_axis=n_beam_modes_per_axis,
+            n_beam_modes_out_of_plane=n_beam_modes_out_of_plane,
+            n_beam_energy_points=n_beam_energy_points,
+        ),
+        surface=SurfaceCTRParams(
+            hmax=hmax,
+            kmax=kmax,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            surface_config=surface_config,
+            defect_surface_layer_depth_angstrom=(
+                defect_surface_layer_depth_angstrom
+            ),
+            finite_domain_aspect_ratio=finite_domain_aspect_ratio,
+        ),
+        detector=DetectorGeometry(
+            distance=detector_distance_mm,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            psf_sigma_pixels=psf_sigma_pixels,
+        ),
+        render=RenderParams(
+            spot_sigma_px=spot_sigma_px,
+            n_angular_samples=n_angular_samples,
+            n_energy_samples=n_energy_samples,
+            n_mosaic_points=n_mosaic_points,
+            parameterization=parameterization,
+            render_ctrs_as_streaks=render_ctrs_as_streaks,
+            kernel=kernel,
+            inner_potential_v0=inner_potential_v0,
+            bandwidth_limit=bandwidth_limit,
+            potential_slices=potential_slices,
+            orientation_distribution=orientation_distribution,
+            distribution=distribution,
+        ),
+    )
+
+
+def simulate_detector_image_instrument(  # noqa: PLR0913
+    crystal: CrystalStructure,
+    beam_modes: BeamModeDistribution,
+    energy_kev: Any = 20.0,
+    theta_deg: Any = 2.0,
+    phi_deg: Any = 0.0,
+    hmax: int = 5,
+    kmax: int = 5,
+    detector_distance_mm: Any = 1000.0,
+    temperature: Any = 300.0,
+    surface_roughness: Any = 0.0,
+    ctr_regularization: Any = 0.01,
+    ctr_power: Any = 1.0,
+    roughness_power: Any = 0.25,
+    image_shape_px: tuple[int, int] = (192, 192),
+    pixel_size_mm: tuple[float, float] = (1.5, 3.0),
+    beam_center_px: tuple[float, float] = (96.0, 8.0),
+    spot_sigma_px: Any = 1.4,
+    psf_sigma_pixels: Any = 1.2,
+    n_modes_per_axis: int = 3,
+    n_modes_out_of_plane: int | None = None,
+    n_energy_points: int = 1,
+    parameterization: str = "lobato",
+    surface_config: SurfaceConfig | None = None,
+    kernel: str = "kinematic",
+) -> Float[Array, "H W"]:
+    """Test-local adapter for the carrier-shaped instrument wrapper."""
+    return _simulate_detector_image_instrument(
+        crystal=crystal,
+        beam=BeamSpec(
+            energy_kev=energy_kev,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+            beam_modes=beam_modes,
+            n_beam_modes_per_axis=n_modes_per_axis,
+            n_beam_modes_out_of_plane=n_modes_out_of_plane,
+            n_beam_energy_points=n_energy_points,
+        ),
+        surface=SurfaceCTRParams(
+            hmax=hmax,
+            kmax=kmax,
+            temperature=temperature,
+            surface_roughness=surface_roughness,
+            ctr_regularization=ctr_regularization,
+            ctr_power=ctr_power,
+            roughness_power=roughness_power,
+            surface_config=surface_config,
+        ),
+        detector=DetectorGeometry(
+            distance=detector_distance_mm,
+            image_shape_px=image_shape_px,
+            pixel_size_mm=pixel_size_mm,
+            beam_center_px=beam_center_px,
+            psf_sigma_pixels=psf_sigma_pixels,
+        ),
+        render=RenderParams(
+            spot_sigma_px=spot_sigma_px,
+            parameterization=parameterization,
+            render_ctrs_as_streaks=False,
+            kernel=kernel,
+        ),
+    )
 
 
 class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
@@ -468,7 +633,7 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertTrue(retired_names.isdisjoint(simulator_defs))
 
         distributions_path = (
-            self.repo_root / "src/rheedium/types/distributions.py"
+            self.repo_root / "src/rheedium/types/distributions/orientation.py"
         )
         distributions_source = distributions_path.read_text(encoding="utf-8")
         distributions = ast.parse(distributions_source)
@@ -491,6 +656,110 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertEqual(call_names.count("apply_distribution"), 1)
         self.assertNotIn("jax.vmap", integrate_source)
         self.assertNotIn("einsum", integrate_source)
+
+    def test_rg4_detector_api_uses_carriers_and_generic_sweeps(self) -> None:
+        """Detector images should expose carrier and generic sweep APIs."""
+        signature = inspect.signature(rheedium_simul.simulate_detector_image)
+        positional_or_keyword = [
+            parameter
+            for parameter in signature.parameters.values()
+            if parameter.kind
+            in {
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            }
+        ]
+        self.assertLessEqual(len(positional_or_keyword), 5)
+        self.assertEqual(
+            set(signature.parameters),
+            {"crystal", "beam", "surface", "detector", "render"},
+        )
+        retired_kwargs = {
+            "energy_kev",
+            "theta_deg",
+            "phi_deg",
+            "hmax",
+            "kmax",
+            "image_shape_px",
+            "pixel_size_mm",
+            "beam_center_px",
+            "spot_sigma_px",
+            "angular_divergence_mrad",
+            "energy_spread_ev",
+            "psf_sigma_pixels",
+            "orientation_distribution",
+            "distribution",
+        }
+        self.assertTrue(retired_kwargs.isdisjoint(signature.parameters))
+
+        sweep_exports = {
+            name
+            for name in rheedium_simul.__all__
+            if name.startswith("simulate_detector_image_")
+            and name.endswith(("_sweep", "_grid"))
+        }
+        self.assertEqual(
+            sweep_exports,
+            {
+                "simulate_detector_image_grid",
+                "simulate_detector_image_sweep",
+            },
+        )
+
+        sweeps = ast.parse(
+            (self.repo_root / "src/rheedium/simul/sweeps.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        public_sweep_defs = {
+            node.name
+            for node in sweeps.body
+            if isinstance(node, ast.FunctionDef)
+            and not node.name.startswith("_")
+        }
+        self.assertEqual(
+            public_sweep_defs,
+            {
+                "simulate_detector_image_grid",
+                "simulate_detector_image_sweep",
+            },
+        )
+
+    def test_rg6_layering_modules_preserve_public_imports(self) -> None:
+        """Package splits should leave public import paths unchanged."""
+        distributions_path = (
+            self.repo_root / "src/rheedium/types/distributions"
+        )
+        self.assertTrue(distributions_path.is_dir())
+        self.assertFalse(
+            (self.repo_root / "src/rheedium/types/distributions.py").exists()
+        )
+
+        distributions = importlib.import_module("rheedium.types.distributions")
+        distribution_exports = set(distributions.__all__)
+        self.assertIn("Distribution", distribution_exports)
+        self.assertIn("BeamModeDistribution", distribution_exports)
+        self.assertIn("OrientationDistribution", distribution_exports)
+        self.assertIn("SizeDistribution", distribution_exports)
+
+        for module_name in ("base", "beam", "orientation", "size"):
+            importlib.import_module(
+                f"rheedium.types.distributions.{module_name}"
+            )
+
+        layer0 = importlib.import_module("rheedium.simul.layer0")
+        layer1 = importlib.import_module("rheedium.simul.layer1")
+        self.assertIn("kinematic_amplitude", layer0.__all__)
+        self.assertIn("multislice_amplitude", layer0.__all__)
+        self.assertIn("simulate_detector_image", layer1.__all__)
+        self.assertIs(
+            rheedium_simul.kinematic_amplitude,
+            layer0.kinematic_amplitude,
+        )
+        self.assertIs(
+            rheedium_simul.simulate_detector_image,
+            layer1.simulate_detector_image,
+        )
 
 
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):

@@ -16,8 +16,46 @@ import numpy as np
 import rheedium as rh
 
 
+def _carriers(settings, *, phi_deg=None, surface_roughness=None):
+    beam = rh.types.BeamSpec(
+        energy_kev=settings["energy_kev"],
+        theta_deg=settings["theta_deg"],
+        phi_deg=settings["phi_deg"] if phi_deg is None else phi_deg,
+        angular_divergence_mrad=settings["angular_divergence_mrad"],
+        energy_spread_ev=settings["energy_spread_ev"],
+    )
+    surface = rh.types.SurfaceCTRParams(
+        hmax=settings["hmax"],
+        kmax=settings["kmax"],
+        temperature=settings["temperature"],
+        surface_roughness=(
+            settings["surface_roughness"]
+            if surface_roughness is None
+            else surface_roughness
+        ),
+        ctr_regularization=settings["ctr_regularization"],
+        ctr_power=settings["ctr_power"],
+        roughness_power=settings["roughness_power"],
+    )
+    detector = rh.types.DetectorGeometry(
+        distance=settings["detector_distance_mm"],
+        image_shape_px=settings["image_shape_px"],
+        pixel_size_mm=settings["pixel_size_mm"],
+        beam_center_px=settings["beam_center_px"],
+        psf_sigma_pixels=settings["psf_sigma_pixels"],
+    )
+    render = rh.types.RenderParams(
+        spot_sigma_px=settings["spot_sigma_px"],
+        n_angular_samples=settings["n_angular_samples"],
+        n_energy_samples=settings["n_energy_samples"],
+        render_ctrs_as_streaks=True,
+    )
+    return beam, surface, detector, render
+
+
 def _chunked_phi_bank(crystal, phi_values, settings, batch_size):
     bank_parts = []
+    beam, surface, detector, render = _carriers(settings)
     for start in range(0, len(phi_values), batch_size):
         stop = min(start + batch_size, len(phi_values))
         chunk = jnp.asarray(phi_values[start:stop])
@@ -25,29 +63,13 @@ def _chunked_phi_bank(crystal, phi_values, settings, batch_size):
             f"building MgO phi chunk {start}:{stop} of {len(phi_values)}",
             flush=True,
         )
-        chunk_bank = rh.simul.simulate_detector_image_phi_sweep(
+        chunk_bank = rh.simul.simulate_detector_image_sweep(
             crystal=crystal,
-            phi_deg_values=chunk,
-            voltage_kv=settings["voltage_kv"],
-            theta_deg=settings["theta_deg"],
-            hmax=settings["hmax"],
-            kmax=settings["kmax"],
-            detector_distance_mm=settings["detector_distance_mm"],
-            temperature=settings["temperature"],
-            surface_roughness=settings["surface_roughness"],
-            ctr_regularization=settings["ctr_regularization"],
-            ctr_power=settings["ctr_power"],
-            roughness_power=settings["roughness_power"],
-            image_shape_px=settings["image_shape_px"],
-            pixel_size_mm=settings["pixel_size_mm"],
-            beam_center_px=settings["beam_center_px"],
-            spot_sigma_px=settings["spot_sigma_px"],
-            angular_divergence_mrad=settings["angular_divergence_mrad"],
-            energy_spread_ev=settings["energy_spread_ev"],
-            psf_sigma_pixels=settings["psf_sigma_pixels"],
-            n_angular_samples=settings["n_angular_samples"],
-            n_energy_samples=settings["n_energy_samples"],
-            render_ctrs_as_streaks=True,
+            axis=("phi_deg", chunk),
+            beam=beam,
+            surface=surface,
+            detector=detector,
+            render=render,
         )
         bank_parts.append(np.asarray(chunk_bank))
     return np.concatenate(bank_parts, axis=0)
@@ -55,6 +77,7 @@ def _chunked_phi_bank(crystal, phi_values, settings, batch_size):
 
 def _chunked_roughness_bank(crystal, roughness_values, settings, batch_size):
     bank_parts = []
+    beam, surface, detector, render = _carriers(settings)
     for start in range(0, len(roughness_values), batch_size):
         stop = min(start + batch_size, len(roughness_values))
         chunk = jnp.asarray(roughness_values[start:stop])
@@ -62,29 +85,13 @@ def _chunked_roughness_bank(crystal, roughness_values, settings, batch_size):
             f"building MgO roughness chunk {start}:{stop} of {len(roughness_values)}",
             flush=True,
         )
-        chunk_bank = rh.simul.simulate_detector_image_roughness_sweep(
+        chunk_bank = rh.simul.simulate_detector_image_sweep(
             crystal=crystal,
-            surface_roughness_values=chunk,
-            voltage_kv=settings["voltage_kv"],
-            theta_deg=settings["theta_deg"],
-            phi_deg=settings["phi_deg"],
-            hmax=settings["hmax"],
-            kmax=settings["kmax"],
-            detector_distance_mm=settings["detector_distance_mm"],
-            temperature=settings["temperature"],
-            ctr_regularization=settings["ctr_regularization"],
-            ctr_power=settings["ctr_power"],
-            roughness_power=settings["roughness_power"],
-            image_shape_px=settings["image_shape_px"],
-            pixel_size_mm=settings["pixel_size_mm"],
-            beam_center_px=settings["beam_center_px"],
-            spot_sigma_px=settings["spot_sigma_px"],
-            angular_divergence_mrad=settings["angular_divergence_mrad"],
-            energy_spread_ev=settings["energy_spread_ev"],
-            psf_sigma_pixels=settings["psf_sigma_pixels"],
-            n_angular_samples=settings["n_angular_samples"],
-            n_energy_samples=settings["n_energy_samples"],
-            render_ctrs_as_streaks=True,
+            axis=("surface_roughness", chunk),
+            beam=beam,
+            surface=surface,
+            detector=detector,
+            render=render,
         )
         bank_parts.append(np.asarray(chunk_bank))
     return np.concatenate(bank_parts, axis=0)
@@ -93,7 +100,7 @@ def _chunked_roughness_bank(crystal, roughness_values, settings, batch_size):
 def _compute_dynamic_range_floor(crystal, settings):
     sparse_pattern = rh.simul.ewald_simulator(
         crystal=crystal,
-        voltage_kv=settings["voltage_kv"],
+        energy_kev=settings["energy_kev"],
         theta_deg=settings["theta_deg"],
         phi_deg=settings["phi_deg"],
         hmax=settings["hmax"],
@@ -105,29 +112,13 @@ def _compute_dynamic_range_floor(crystal, settings):
         ctr_power=settings["ctr_power"],
         roughness_power=settings["roughness_power"],
     )
+    beam, surface, detector, render = _carriers(settings)
     detector_image = rh.simul.simulate_detector_image(
         crystal=crystal,
-        voltage_kv=settings["voltage_kv"],
-        theta_deg=settings["theta_deg"],
-        phi_deg=settings["phi_deg"],
-        hmax=settings["hmax"],
-        kmax=settings["kmax"],
-        detector_distance_mm=settings["detector_distance_mm"],
-        temperature=settings["temperature"],
-        surface_roughness=settings["surface_roughness"],
-        ctr_regularization=settings["ctr_regularization"],
-        ctr_power=settings["ctr_power"],
-        roughness_power=settings["roughness_power"],
-        image_shape_px=settings["image_shape_px"],
-        pixel_size_mm=settings["pixel_size_mm"],
-        beam_center_px=settings["beam_center_px"],
-        spot_sigma_px=settings["spot_sigma_px"],
-        angular_divergence_mrad=settings["angular_divergence_mrad"],
-        energy_spread_ev=settings["energy_spread_ev"],
-        psf_sigma_pixels=settings["psf_sigma_pixels"],
-        n_angular_samples=settings["n_angular_samples"],
-        n_energy_samples=settings["n_energy_samples"],
-        render_ctrs_as_streaks=True,
+        beam=beam,
+        surface=surface,
+        detector=detector,
+        render=render,
     )
     valid = np.asarray(sparse_pattern.G_indices) >= 0
     bragg_points_mm = np.asarray(sparse_pattern.detector_points)[valid]
@@ -154,7 +145,7 @@ def main() -> None:
     crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
     settings = {
         "material": "MgO",
-        "voltage_kv": 20.0,
+        "energy_kev": 20.0,
         "theta_deg": 2.2,
         "phi_deg": 0.0,
         "hmax": 5,
@@ -208,7 +199,7 @@ def main() -> None:
         xlim=np.asarray([-220.0, 220.0]),
         ylim=np.asarray([0.0, 220.0]),
         theta_deg=settings["theta_deg"],
-        voltage_kv=settings["voltage_kv"],
+        energy_kev=settings["energy_kev"],
         dynamic_range_floor=dynamic_range_floor,
         log_gain=settings["log_gain"],
     )
@@ -239,7 +230,7 @@ def main() -> None:
         ylim=np.asarray([0.0, 220.0]),
         phi_deg=settings["phi_deg"],
         theta_deg=settings["theta_deg"],
-        voltage_kv=settings["voltage_kv"],
+        energy_kev=settings["energy_kev"],
         dynamic_range_floor=dynamic_range_floor,
         log_gain=settings["log_gain"],
     )

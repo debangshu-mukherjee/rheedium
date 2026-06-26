@@ -118,16 +118,10 @@ Routine Listings
     High-level kinematic detector-image orchestration.
 :func:`simulate_detector_image_instrument`
     Detector-image orchestration using GSM beam-mode distributions.
-:func:`simulate_detector_image_all_sweep`
-    Simulate detector images over orientation, angle, and energy grids.
-:func:`simulate_detector_image_orientation_sweep`
-    Simulate detector images over multiple in-plane orientations.
-:func:`simulate_detector_image_theta_sweep`
-    Simulate detector images over multiple grazing incidence angles.
-:func:`simulate_detector_image_energy_sweep`
-    Simulate detector images over multiple beam energies.
-:func:`simulate_detector_image_parameter_grid`
-    Simulate detector images over orientation, angle, and energy grids.
+:func:`simulate_detector_image_sweep`
+    Simulate detector images over one named carrier axis.
+:func:`simulate_detector_image_grid`
+    Simulate detector images over ordered carrier-axis grids.
 :func:`sliced_crystal_to_projected_potential_slices`
     Convert SlicedCrystal to projected-potential slices for multislice
     simulation.
@@ -179,20 +173,10 @@ from .form_factors import (
     projected_potential,
 )
 from .kinematic import kinematic_spot_simulator, make_ewald_sphere
-from .multislice import (
-    build_transmission_function,
-)
-from .potential import crystal_projected_potential
-from .reflection_multislice import (
-    crystal_to_edge_on_slices,
-    reflection_multislice_propagate,
-    reflection_multislice_simulator,
-)
-from .simulator import (
+from .layer0 import (
     checked_ewald_simulator,
     checked_multislice_propagate,
     checked_multislice_simulator,
-    checked_simulate_detector_image,
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
@@ -207,9 +191,21 @@ from .simulator import (
     render_amplitude_to_field,
     render_ctr_amplitude_to_field,
     render_pattern_to_image,
+    sliced_crystal_to_projected_potential_slices,
+)
+from .layer1 import (
+    checked_simulate_detector_image,
     simulate_detector_image,
     simulate_detector_image_instrument,
-    sliced_crystal_to_projected_potential_slices,
+)
+from .multislice import (
+    build_transmission_function,
+)
+from .potential import crystal_projected_potential
+from .reflection_multislice import (
+    crystal_to_edge_on_slices,
+    reflection_multislice_propagate,
+    reflection_multislice_simulator,
 )
 from .surface_rods import (
     calculate_ctr_intensity,
@@ -220,15 +216,7 @@ from .surface_rods import (
     roughness_damping,
     surface_structure_factor,
 )
-from .sweeps import (
-    simulate_detector_image_all_sweep,
-    simulate_detector_image_energy_sweep,
-    simulate_detector_image_orientation_sweep,
-    simulate_detector_image_parameter_grid,
-    simulate_detector_image_phi_sweep,
-    simulate_detector_image_roughness_sweep,
-    simulate_detector_image_theta_sweep,
-)
+from .sweeps import simulate_detector_image_grid, simulate_detector_image_sweep
 
 __all__: list[str] = [
     "angular_divergence_average",
@@ -285,13 +273,8 @@ __all__: list[str] = [
     "render_pattern_to_image",
     "reflection_multislice_propagate",
     "reflection_multislice_simulator",
-    "simulate_detector_image_all_sweep",
-    "simulate_detector_image_energy_sweep",
-    "simulate_detector_image_orientation_sweep",
-    "simulate_detector_image_parameter_grid",
-    "simulate_detector_image_phi_sweep",
-    "simulate_detector_image_roughness_sweep",
-    "simulate_detector_image_theta_sweep",
+    "simulate_detector_image_grid",
+    "simulate_detector_image_sweep",
     "simulate_detector_image",
     "simulate_detector_image_instrument",
     "sliced_crystal_to_projected_potential_slices",
