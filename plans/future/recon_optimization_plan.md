@@ -148,6 +148,40 @@ posterior (sense 3) reports *which* features of the distribution are actually
 constrained — so recon returns the **identifiable distribution with error bands**,
 never an over-confident shape.
 
+#### From a base crystal + a measured pattern — the convex library route
+
+The most direct, user-facing form of this capability: **pass a base crystal and a
+measured pattern, get the distribution.** The base crystal plus a chosen
+perturbation axis — Debye–Waller *B* / RMS displacement, orientation spread, domain
+size, strain, or even a detector-plane shift grid — defines the per-sample
+amplitude library `{Aₙ}`; `|Aₙ|²` is the incoherent intensity library, and the
+**convex** solver `reconstruct_incoherent_weights(library, measured)` — **already
+implemented in `solve.py`** — returns the weights `wₙ`, the recovered
+`Distribution`. The convenience entry is
+`reconstruct_distribution(measured, base_crystal, axis_spec) -> (Distribution,
+band)`; the **only new code is the library builder** (perturb the base along the
+axis through the forward model), since the convex inversion already exists.
+
+This *is* a **deconvolution**: `I_measured = Σₙ wₙ |A(perturbationₙ)|²` is the base
+intensity mixed by `w`, so the recovered `w` is the **mixing distribution — the
+"convolution function" relating the base to the measured pattern.** Concretely,
+*pristine vs higher-temperature Bi₂Se₃*: base = pristine, axis = thermal
+displacement amplitude (Debye–Waller *B*), and `w(B)` is the distribution over
+thermal displacement that turns pristine into hot. (It generalizes to *relate any
+two patterns* against a shared base — `relate_patterns(base, I_a, I_b, axis)` is
+just `reconstruct_distribution` run against each.)
+
+**Physics caveat — temperature is not a shift-invariant convolution.** Debye–Waller
+is a *q-dependent multiplicative damping* `exp(−M(q))` (it suppresses high-angle
+reflections), plus thermal expansion (peak shifts) and a diffuse background — so
+`I_hot = I_pristine ⊛ K` holds only approximately. Two honest, *same-solver*
+choices for the axis: **(a) a physical latent** (DW-*B* / displacement / disorder)
+→ `w` is a *meaningful physical distribution*; **(b) a detector-plane shift grid**
+→ `w` is a *literal but phenomenological* blur kernel `K`. Pick (a) for physics,
+(b) for a descriptor. Either way the identifiability caveat above holds: `w` is the
+distribution that *explains the pattern*, recovered only up to the operator's null
+space — not a unique statement of what physically happened (§2.3).
+
 ### 2.2 Canonical inverse problems (what you actually ask it)
 
 The one `solve` instantiates a ladder of concrete problems, in increasing
@@ -285,11 +319,17 @@ loss has its minimum at the true parameters (1-D sanity sweep); `optimistix` and
   `optimistix` LM/GN natively); keep the public names as deprecated shims that
   forward to `solve`.
 - **Distribution reconstruction (§2.1).** `solve` over `Distribution.weights`
-  (with the K1 simplex bijector + entropy prior) recovers a *free-form* shape; and
-  a **convex fast-path** for incoherent distributions — `I = Σ_n w_n |A_n|²` is
-  linear in the weights, so it solves as non-negative least-squares /
-  maximum-entropy over the per-sample library `{|A_n|²}` (the coherent case stays
-  on the nonlinear `solve`).
+  (with the K1 simplex bijector + entropy prior) recovers a *free-form* shape. The
+  **convex fast-path** for incoherent distributions — `I = Σ_n w_n |A_n|²`, linear
+  in the weights, solved as NNLS / maximum-entropy over `{|A_n|²}` — **already
+  exists as `reconstruct_incoherent_weights` in `solve.py`**. The remaining work is
+  the **library builder** (`base_crystal` + a perturbation axis → `{|A_n|²}` via the
+  forward model) and the convenience wrapper
+  `reconstruct_distribution(measured, base_crystal, axis_spec) -> (Distribution,
+  band)` that chains builder → convex solver → K4 band — the user-facing
+  "base crystal + pattern → distribution" entry (and the pristine-vs-hot
+  "convolution function" use case of §2.1). The coherent case stays on the
+  nonlinear `solve`.
 
 **Gate KG2:** on synthetic data simulated from a *known* structure,
 `solve` (LM/GN) recovers the parameters to tolerance with a monotone loss;
@@ -298,7 +338,11 @@ retired hand-rolled optimizers' results to tolerance (regression guard); a
 **wall-clock budget** assertion on the reference problem (the "rapid" claim);
 **a planted free-form distribution shape is recovered** — incoherent weights via
 the convex path, a parametric spread (e.g. a lognormal size distribution) via
-`solve` — to tolerance; universal gate.
+`solve` — to tolerance; a **base-crystal self-consistency** check —
+`reconstruct_distribution(measured, base_crystal, axis)` recovers a *planted*
+distribution over a physical axis (e.g. hot Bi₂Se₃ simulated at a known
+Debye–Waller *B*; the recovered `w(B)` peaks at the true *B*) to tolerance;
+universal gate.
 
 ### Phase K3 — Robustness: multistart + bracket-then-refine
 
@@ -428,7 +472,7 @@ signal); K6 hardens and freezes the surface for the automatons.
 |------|--------|
 | `pyproject.toml` | `optimistix` + `optax` core deps (done; CPU + CUDA resolve) |
 | `src/rheedium/recon/transforms.py` | **new** — general bijector / reparameterization layer |
-| `src/rheedium/recon/solve.py` | **new** — `ReconProblem`, `solve` (`optimistix` LM/GN, `optax` descent), `multistart` |
+| `src/rheedium/recon/solve.py` | `ReconProblem`, `solve` (`optimistix` LM/GN, `optax` descent), `multistart`; the convex `reconstruct_incoherent_weights` (**present**) + the new **library builder** (`base_crystal` + axis → `{|A_n|²}`) and `reconstruct_distribution(measured, base_crystal, axis)` wrapper |
 | `src/rheedium/recon/uncertainty.py` | **new** — Gauss–Newton/Fisher covariance (reusing the solver's `JᵀJ`), Laplace UQ |
 | `src/rheedium/recon/deviation.py` | **new** — `recipe_deviation` (the automaton-facing control signal) |
 | `src/rheedium/recon/optimizers.py` | retire hand-rolled Adam/Adagrad/Gauss-Newton → `optimistix`/`optax`-backed shims (deprecated) |

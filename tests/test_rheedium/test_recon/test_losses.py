@@ -13,8 +13,16 @@ import pytest
 from jaxtyping import Array, Float
 
 from rheedium.recon import (
+    affine_intensity_marginalization,
+    affine_marginalized_residual,
     checked_weighted_image_residual,
     checked_weighted_mean_squared_error,
+    entropy_prior,
+    huber_image_loss,
+    log_intensity_loss,
+    normalized_cross_correlation_loss,
+    smoothness_prior,
+    sparsity_prior,
     weighted_image_residual,
     weighted_mean_squared_error,
 )
@@ -192,3 +200,128 @@ class TestCheckedWeightedLosses(chex.TestCase):
         del loss
         with pytest.raises(Exception, match="nan"):
             err.throw()
+
+
+class TestDifferentiableLosses(chex.TestCase):
+    """Tests for differentiable reconstruction loss extensions.
+
+    :see: :func:`~rheedium.recon.log_intensity_loss`
+    :see: :func:`~rheedium.recon.affine_intensity_marginalization`
+    :see: :func:`~rheedium.recon.entropy_prior`
+    """
+
+    def test_log_huber_and_ncc_losses_have_finite_gradients(self) -> None:
+        r"""Extended image losses should be differentiable in scale.
+
+        Extended Summary
+        ----------------
+        Verifies that log-intensity, Huber, and NCC image losses return finite
+        values and allow ``jax.grad`` to flow through a scalar forward
+        parameter.
+
+        Notes
+        -----
+        It builds positive synthetic images, combines the losses into one
+        scalar objective, and checks the gradient with chex finite assertions.
+        """
+        base: Float[Array, "rows cols"] = jnp.array(
+            [[1.0, 2.0], [3.0, 4.0]],
+            dtype=jnp.float64,
+        )
+        target: Float[Array, "rows cols"] = 1.5 * base + 0.25
+
+        def objective(scale: scalar_float) -> scalar_float:
+            simulated: Float[Array, "rows cols"] = scale * base
+            loss: scalar_float = (
+                log_intensity_loss(simulated, target)
+                + huber_image_loss(simulated, target, delta=0.5)
+                + normalized_cross_correlation_loss(simulated, target)
+            )
+            return loss
+
+        value: scalar_float = objective(jnp.asarray(1.0, dtype=jnp.float64))
+        gradient: scalar_float = jax.grad(objective)(
+            jnp.asarray(1.0, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(value)
+        chex.assert_tree_all_finite(gradient)
+
+    def test_affine_marginalization_removes_scale_and_background(self) -> None:
+        r"""Analytic calibration should remove affine intensity mismatch.
+
+        Extended Summary
+        ----------------
+        Verifies that the closed-form scale/background solve recovers a planted
+        calibration and drives the marginalized residual to zero.
+
+        Notes
+        -----
+        It constructs an experimental image from an exact affine transform of a
+        simulated image and checks both recovered nuisance parameters and the
+        final residual.
+        """
+        simulated: Float[Array, "rows cols"] = jnp.array(
+            [[0.5, 1.0], [2.0, 4.0]],
+            dtype=jnp.float64,
+        )
+        experimental: Float[Array, "rows cols"] = 2.5 * simulated + 0.75
+
+        scale: scalar_float
+        background: scalar_float
+        scale, background = affine_intensity_marginalization(
+            simulated,
+            experimental,
+        )
+        residual: Float[Array, "rows cols"] = affine_marginalized_residual(
+            simulated,
+            experimental,
+        )
+
+        chex.assert_trees_all_close(scale, 2.5, atol=1e-10)
+        chex.assert_trees_all_close(background, 0.75, atol=1e-10)
+        chex.assert_trees_all_close(
+            residual, jnp.zeros_like(residual), atol=1e-10
+        )
+
+    def test_priors_prefer_entropy_smoothness_and_sparsity(self) -> None:
+        r"""Regularizers should rank simple reference distributions sensibly.
+
+        Extended Summary
+        ----------------
+        Verifies that the entropy prior favors diffuse weights, smoothness
+        favors slowly varying profiles, and sparsity favors zero vectors.
+
+        Notes
+        -----
+        It compares paired synthetic vectors chosen so each prior has an
+        unambiguous ordering.
+        """
+        uniform: Float[Array, "weights"] = jnp.array(
+            [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0],
+            dtype=jnp.float64,
+        )
+        peaked: Float[Array, "weights"] = jnp.array(
+            [0.98, 0.01, 0.01],
+            dtype=jnp.float64,
+        )
+        smooth: Float[Array, "weights"] = jnp.array(
+            [0.2, 0.25, 0.3],
+            dtype=jnp.float64,
+        )
+        rough: Float[Array, "weights"] = jnp.array(
+            [0.2, 0.9, 0.1],
+            dtype=jnp.float64,
+        )
+
+        self.assertLess(
+            float(entropy_prior(uniform)), float(entropy_prior(peaked))
+        )
+        self.assertLess(
+            float(smoothness_prior(smooth)),
+            float(smoothness_prior(rough)),
+        )
+        self.assertLess(
+            float(sparsity_prior(jnp.zeros(3, dtype=jnp.float64))),
+            float(sparsity_prior(peaked)),
+        )

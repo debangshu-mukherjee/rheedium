@@ -10,16 +10,70 @@ differentiable surface-construction utilities live in
 
 Routine Listings
 ----------------
+:class:`ReconProblem`
+    Differentiable inverse problem definition for reconstruction solvers.
+:class:`ReconResult`
+    Result container returned by the general reconstruction solver.
+:class:`LaplaceUncertainty`
+    Local Gaussian uncertainty estimate around a reconstruction optimum.
+:class:`RecipeDeviationReport`
+    Compare fitted reconstruction parameters with an intended recipe.
 :class:`ReconstructionResult`
     Result container returned by reconstruction solvers.
+:func:`positive_from_unconstrained`
+    Map unconstrained values to strictly positive physical values.
+:func:`unconstrained_from_positive`
+    Map strictly positive physical values back to unconstrained coordinates.
+:func:`bounded_from_unconstrained`
+    Map unconstrained values into a closed finite interval.
+:func:`unconstrained_from_bounded`
+    Map bounded physical values back to unconstrained coordinates.
+:func:`simplex_from_unconstrained`
+    Map unconstrained logits onto a probability simplex.
+:func:`unconstrained_from_simplex`
+    Map simplex weights to centered unconstrained logits.
+:func:`ordered_bounded_from_unconstrained`
+    Map unconstrained values to ordered points inside a finite interval.
 :func:`weighted_image_residual`
     Build a weighted least-squares residual field between two images.
 :func:`weighted_mean_squared_error`
     Compute a normalized weighted mean-squared error.
+:func:`l2_image_loss`
+    Compute a weighted L2 image loss.
+:func:`huber_image_loss`
+    Compute a weighted Huber image loss.
+:func:`log_intensity_loss`
+    Compute a weighted log-intensity image loss.
+:func:`normalized_cross_correlation_loss`
+    Compute a scale-invariant normalized cross-correlation loss.
+:func:`affine_intensity_marginalization`
+    Find the optimal affine intensity calibration analytically.
+:func:`affine_marginalized_residual`
+    Build a residual after analytic scale/background marginalization.
+:func:`entropy_prior`
+    Compute a maximum-entropy prior for simplex weights.
+:func:`smoothness_prior`
+    Compute a nearest-neighbor smoothness prior.
+:func:`sparsity_prior`
+    Compute an L1 sparsity prior.
 :func:`checked_weighted_image_residual`
     Checkify-instrumented weighted residual for numerical validation.
 :func:`checked_weighted_mean_squared_error`
     Checkify-instrumented weighted MSE for numerical validation.
+:func:`solve`
+    Solve a reconstruction problem with optimistix or optax.
+:func:`multistart`
+    Run a reconstruction problem from multiple initial guesses.
+:func:`reconstruct_incoherent_weights`
+    Recover incoherent distribution weights from an intensity library.
+:func:`fisher_information_from_residual`
+    Compute a Gauss-Newton/Fisher matrix from a residual function.
+:func:`covariance_from_fisher`
+    Regularize and invert a Fisher information matrix.
+:func:`laplace_uncertainty`
+    Build a local Laplace uncertainty estimate from residual sensitivities.
+:func:`recipe_deviation`
+    Solve an inverse problem and report signed recipe deviations.
 :class:`OrientationFitResult`
     Result container for orientation-distribution fitting.
 :func:`orientation_loss`
@@ -45,9 +99,19 @@ Routine Listings
     Adagrad.
 """
 
+from .deviation import RecipeDeviationReport, recipe_deviation
 from .losses import (
+    affine_intensity_marginalization,
+    affine_marginalized_residual,
     checked_weighted_image_residual,
     checked_weighted_mean_squared_error,
+    entropy_prior,
+    huber_image_loss,
+    l2_image_loss,
+    log_intensity_loss,
+    normalized_cross_correlation_loss,
+    smoothness_prior,
+    sparsity_prior,
     weighted_image_residual,
     weighted_mean_squared_error,
 )
@@ -67,22 +131,71 @@ from .orientation import (
     fit_orientation_weights,
     orientation_loss,
 )
+from .solve import (
+    ReconProblem,
+    ReconResult,
+    multistart,
+    reconstruct_incoherent_weights,
+    solve,
+)
+from .transforms import (
+    bounded_from_unconstrained,
+    ordered_bounded_from_unconstrained,
+    positive_from_unconstrained,
+    simplex_from_unconstrained,
+    unconstrained_from_bounded,
+    unconstrained_from_positive,
+    unconstrained_from_simplex,
+)
+from .uncertainty import (
+    LaplaceUncertainty,
+    covariance_from_fisher,
+    fisher_information_from_residual,
+    laplace_uncertainty,
+)
 
 __all__: list[str] = [
+    "LaplaceUncertainty",
+    "ReconProblem",
+    "ReconResult",
     "ReconstructionResult",
     "OrientationFitResult",
+    "RecipeDeviationReport",
     "adagrad_optimize",
     "adagrad_reconstruction",
+    "affine_intensity_marginalization",
+    "affine_marginalized_residual",
     "adam_optimize",
     "adam_reconstruction",
+    "bounded_from_unconstrained",
     "checked_weighted_image_residual",
     "checked_weighted_mean_squared_error",
     "compute_fisher_information",
+    "covariance_from_fisher",
+    "entropy_prior",
     "estimate_weight_uncertainty",
+    "fisher_information_from_residual",
     "fit_orientation_weights",
     "gauss_newton_least_squares",
     "gauss_newton_reconstruction",
+    "huber_image_loss",
+    "l2_image_loss",
+    "laplace_uncertainty",
+    "log_intensity_loss",
+    "multistart",
+    "normalized_cross_correlation_loss",
+    "ordered_bounded_from_unconstrained",
     "orientation_loss",
+    "positive_from_unconstrained",
+    "recipe_deviation",
+    "reconstruct_incoherent_weights",
+    "simplex_from_unconstrained",
+    "smoothness_prior",
+    "solve",
+    "sparsity_prior",
+    "unconstrained_from_bounded",
+    "unconstrained_from_positive",
+    "unconstrained_from_simplex",
     "weighted_image_residual",
     "weighted_mean_squared_error",
 ]

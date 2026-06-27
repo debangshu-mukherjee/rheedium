@@ -8,6 +8,26 @@ Validation and regression tests for :mod:`rheedium.recon`.
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: tests.test_rheedium.test_recon.test_transforms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: tests.test_rheedium.test_recon.test_solve
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: tests.test_rheedium.test_recon.test_uncertainty
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: tests.test_rheedium.test_recon.test_deviation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: tests.test_rheedium.test_recon.test_optimizers
    :members:
    :undoc-members:
