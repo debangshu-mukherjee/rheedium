@@ -19,6 +19,9 @@ Routine Listings
     Result container returned by the general reconstruction solver.
 :func:`create_distribution_axis_spec`
     Create a perturbation-axis specification for library reconstruction.
+:func:`create_crystal_displacement_axis_spec`
+    Create a crystal displacement-axis specification for library
+    reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
@@ -41,6 +44,7 @@ from beartype.typing import Any, Callable, Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.types import (
+    CrystalStructure,
     Distribution,
     ReductionMode,
     create_distribution,
@@ -276,6 +280,111 @@ def create_distribution_axis_spec(
     if output_kind not in {"amplitude", "intensity"}:
         raise ValueError("output_kind must be 'amplitude' or 'intensity'")
     axis_spec: DistributionAxisSpec = DistributionAxisSpec(
+        samples=sample_array,
+        perturbation_fn=perturbation_fn,
+        forward_model=forward_model,
+        output_kind=output_kind,
+        axis_id=axis_id,
+    )
+    return axis_spec
+
+
+@jaxtyped(typechecker=beartype)
+def create_crystal_displacement_axis_spec(
+    samples: Float[Array, "N D"],
+    displacement_modes: Float[Array, "D A 3"],
+    forward_model: Callable[[CrystalStructure], Array],
+    output_kind: str = "amplitude",
+    axis_id: Optional[str] = "crystal_displacement",
+) -> DistributionAxisSpec:
+    """Create a crystal displacement-axis specification.
+
+    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
+
+    Parameters
+    ----------
+    samples : Float[Array, "N D"]
+        Per-row displacement-mode coordinates.
+    displacement_modes : Float[Array, "D A 3"]
+        Cartesian displacement modes in Angstrom for each active coordinate,
+        atom, and spatial axis.
+    forward_model : Callable[[CrystalStructure], Array]
+        Static differentiable model for one perturbed crystal.
+    output_kind : str, optional
+        Static forward-output interpretation, either ``"amplitude"`` or
+        ``"intensity"``. Default: ``"amplitude"``
+    axis_id : Optional[str], optional
+        Optional static label stored on the recovered distribution.
+        Default: ``"crystal_displacement"``
+
+    Returns
+    -------
+    axis_spec : DistributionAxisSpec
+        Perturbation-axis specification that applies displacement modes to a
+        :class:`~rheedium.types.CrystalStructure` carrier.
+
+    Notes
+    -----
+    1. Validate that sample coordinates and displacement modes share the same
+       active-mode dimension.
+    2. Apply Cartesian displacements to the crystal carrier while preserving
+       atomic numbers and cell parameters.
+    3. Update fractional coordinates by the orthogonal-cell length scale, which
+       is the intended lightweight fixture path for Debye-Waller/RMS
+       displacement axes.
+    """
+    sample_array: Float[Array, "N D"] = jnp.asarray(
+        samples,
+        dtype=jnp.float64,
+    )
+    mode_array: Float[Array, "D A 3"] = jnp.asarray(
+        displacement_modes,
+        dtype=jnp.float64,
+    )
+    if sample_array.ndim != 2:
+        raise ValueError("samples must have shape (N, D)")
+    if mode_array.ndim != 3 or mode_array.shape[2] != 3:
+        raise ValueError("displacement_modes must have shape (D, A, 3)")
+    if sample_array.shape[1] != mode_array.shape[0]:
+        raise ValueError(
+            "samples second dimension must match displacement mode count"
+        )
+
+    def perturbation_fn(
+        crystal: CrystalStructure,
+        sample: Float[Array, "D"],
+    ) -> CrystalStructure:
+        displacement: Float[Array, "A 3"] = jnp.einsum(
+            "d,daz->az",
+            sample,
+            mode_array,
+        )
+        atom_count: int = int(crystal.cart_positions.shape[0])
+        if displacement.shape[0] != atom_count:
+            raise ValueError(
+                "displacement_modes atom dimension must match crystal atoms"
+            )
+        cart_xyz: Float[Array, "A 3"] = (
+            crystal.cart_positions[:, :3] + displacement
+        )
+        frac_xyz: Float[Array, "A 3"] = (
+            crystal.frac_positions[:, :3] + displacement / crystal.cell_lengths
+        )
+        cart_positions: Float[Array, "A 4"] = crystal.cart_positions.at[
+            :, :3
+        ].set(cart_xyz)
+        frac_positions: Float[Array, "A 4"] = crystal.frac_positions.at[
+            :, :3
+        ].set(frac_xyz)
+        perturbed: CrystalStructure = CrystalStructure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=crystal.cell_lengths,
+            cell_angles=crystal.cell_angles,
+        )
+        return perturbed
+
+    axis_spec: DistributionAxisSpec = create_distribution_axis_spec(
         samples=sample_array,
         perturbation_fn=perturbation_fn,
         forward_model=forward_model,
@@ -711,6 +820,7 @@ __all__: list[str] = [
     "ReconProblem",
     "ReconResult",
     "build_incoherent_intensity_library",
+    "create_crystal_displacement_axis_spec",
     "create_distribution_axis_spec",
     "multistart",
     "reconstruct_distribution",

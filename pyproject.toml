@@ -45,6 +45,7 @@ dependencies = [
     "flatbuffers>=25.12.19",
     "optax>=0.2.8",
     "optimistix>=0.1.0",
+    "blackjax>=1.5",
 ]
 [project.optional-dependencies]
 cuda = [

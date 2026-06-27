@@ -1,11 +1,9 @@
-"""Tests for recon/optimizers.py.
+"""Migration guards for the retired recon optimizer APIs.
 
-Verifies the first optimizer-based reconstruction routines against a
-small linear forward model so convergence is deterministic and cheap to
-evaluate.
+Verifies that the optimistix/optax ``solve`` surface preserves the
+deterministic linear reconstruction behavior that used to be covered by the
+hand-rolled Gauss-Newton, Adam, and Adagrad tests.
 """
-
-from typing import Any
 
 import chex
 import jax.numpy as jnp
@@ -13,11 +11,9 @@ from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
-    ReconstructionResult,
-    adagrad_reconstruction,
-    adam_reconstruction,
-    gauss_newton_least_squares,
-    gauss_newton_reconstruction,
+    ReconProblem,
+    ReconResult,
+    solve,
     weighted_mean_squared_error,
 )
 from rheedium.types.custom_types import scalar_float
@@ -27,75 +23,81 @@ def _linear_forward_model(
     params: dict[str, scalar_float],
 ) -> Float[Array, "rows cols"]:
     """Map a simple two-parameter pytree to a 2-D detector image."""
-    scale: float = params["scale"]
-    offset: float = params["offset"]
-    return jnp.array(
+    scale: scalar_float = params["scale"]
+    offset: scalar_float = params["offset"]
+    image: Float[Array, "rows cols"] = jnp.array(
         [
             [2.0 * scale + offset, scale - offset],
             [scale + 0.5 * offset, -scale + 2.0 * offset],
         ],
         dtype=jnp.float64,
     )
+    return image
 
 
 def _true_params() -> dict[str, scalar_float]:
     """Return reference parameters for reconstruction tests."""
-    return {
+    params: dict[str, scalar_float] = {
         "scale": jnp.float64(1.5),
         "offset": jnp.float64(-0.25),
     }
+    return params
 
 
 def _initial_params() -> dict[str, scalar_float]:
     """Return the initial guess for reconstruction tests."""
-    return {
+    params: dict[str, scalar_float] = {
         "scale": jnp.float64(0.0),
         "offset": jnp.float64(0.0),
     }
+    return params
 
 
-class TestGaussNewtonReconstruction(chex.TestCase):
-    """Tests for Gauss-Newton-based reconstruction.
+def _linear_problem() -> tuple[ReconProblem, dict[str, scalar_float]]:
+    """Return a planted linear reconstruction problem."""
+    true_params: dict[str, scalar_float] = _true_params()
+    target: Float[Array, "rows cols"] = _linear_forward_model(true_params)
+    problem: ReconProblem = ReconProblem(
+        forward=_linear_forward_model,
+        measured=target,
+        loss_fn=weighted_mean_squared_error,
+    )
+    return problem, true_params
 
-    :see: :func:`~rheedium.recon.gauss_newton_least_squares`
-    :see: :func:`~rheedium.recon.gauss_newton_reconstruction`
+
+class TestReconOptimizerMigration(chex.TestCase):
+    """Regression tests for replacing hand-rolled optimizers with solve.
+
+    :see: :func:`~rheedium.recon.solve`
     """
 
-    def test_gauss_newton_reconstruction_recovers_linear_parameters(
-        self,
-    ) -> None:
-        r"""Gauss-Newton should recover a linear image model in one step.
+    def test_lm_solve_replaces_gauss_newton_reconstruction(self) -> None:
+        r"""LM solve should recover the former Gauss-Newton linear fixture.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Gauss-Newton
-        should recover a linear image model in one step.
+        Verifies the K2 regression guard for the retired Gauss-Newton path:
+        the general least-squares ``solve`` API recovers the same planted
+        dictionary-parameter image model to tight tolerance.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        Numerical expectations are checked with tolerance-aware closeness
-        assertions, which is appropriate for floating-point JAX arrays.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_recon.test_optimizers``, so the Test
-        Reference exposes both the guarantee and the implementation path.
+        This pins the replacement behavior in the same test module that used
+        to cover the deleted hand-rolled optimizer.
         """
-        true_params: dict[str, scalar_float] = _true_params()
-        target: Float[Array, "rows cols"] = _linear_forward_model(true_params)
+        problem: ReconProblem
+        true_params: dict[str, scalar_float]
+        problem, true_params = _linear_problem()
 
-        result: ReconstructionResult = gauss_newton_reconstruction(
-            initial_params=_initial_params(),
-            forward_model=_linear_forward_model,
-            experimental_image=target,
-            damping=jnp.float64(1e-12),
-            max_iterations=5,
-            tolerance=jnp.float64(1e-10),
+        result: ReconResult = solve(
+            problem=problem,
+            initial_latent=_initial_params(),
+            max_steps=16,
+            atol=1e-10,
+            rtol=1e-10,
         )
 
-        self.assertIsInstance(result, ReconstructionResult)
+        self.assertIsInstance(result, ReconResult)
         self.assertTrue(bool(result.converged))
         chex.assert_trees_all_close(
             result.params["scale"],
@@ -107,201 +109,112 @@ class TestGaussNewtonReconstruction(chex.TestCase):
             true_params["offset"],
             atol=1e-8,
         )
-        chex.assert_tree_all_finite(result.objective_history)
-        self.assertLessEqual(int(result.iterations), 2)
+        chex.assert_trees_all_close(result.loss, 0.0, atol=1e-12)
 
-    def test_gauss_newton_low_level_accepts_parameter_pytrees(self) -> None:
-        r"""The low-level least-squares solver should work on dict pytrees.
+    def test_bfgs_solve_replaces_scalar_minimization_path(self) -> None:
+        r"""BFGS solve should recover the planted scalar-loss fixture.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: The low-level
-        least-squares solver should work on dict pytrees.
+        Verifies that the scalar minimisation branch of the new solver surface
+        covers the low-level objective-minimization use case formerly handled
+        by bespoke optimizer loops.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        Numerical expectations are checked with tolerance-aware closeness
-        assertions, which is appropriate for floating-point JAX arrays.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_recon.test_optimizers``, so the Test
-        Reference exposes both the guarantee and the implementation path.
+        The loss is the public image MSE helper, so this also protects the
+        loss-function calling convention used by reconstruction wrappers.
         """
-        true_params: dict[str, scalar_float] = _true_params()
-        target: Float[Array, "rows cols"] = _linear_forward_model(true_params)
+        problem: ReconProblem
+        true_params: dict[str, scalar_float]
+        problem, true_params = _linear_problem()
 
-        def residual_fn(
-            params: dict[str, scalar_float],
-        ) -> Float[Array, "rows cols"]:
-            return _linear_forward_model(params) - target
-
-        result: ReconstructionResult = gauss_newton_least_squares(
-            initial_params=_initial_params(),
-            residual_fn=residual_fn,
-            damping=jnp.float64(1e-12),
-            max_iterations=5,
-            tolerance=jnp.float64(1e-10),
+        result: ReconResult = solve(
+            problem=problem,
+            initial_latent=_initial_params(),
+            mode="bfgs",
+            max_steps=64,
+            atol=1e-10,
+            rtol=1e-10,
         )
 
         self.assertTrue(bool(result.converged))
         chex.assert_trees_all_close(
             result.params["scale"],
             true_params["scale"],
-            atol=1e-8,
+            atol=1e-6,
         )
         chex.assert_trees_all_close(
             result.params["offset"],
             true_params["offset"],
-            atol=1e-8,
+            atol=1e-6,
         )
 
-
-class TestAdaptiveGradientReconstruction(chex.TestCase):
-    """Tests for Adam- and Adagrad-based reconstruction.
-
-    :see: :func:`~rheedium.recon.adagrad_reconstruction`
-    :see: :func:`~rheedium.recon.adam_reconstruction`
-    """
-
-    def test_adam_reconstruction_reduces_loss(self) -> None:
-        r"""Adam should substantially reduce the image-matching loss.
+    def test_adamw_solve_replaces_adaptive_gradient_smoke(self) -> None:
+        r"""AdamW solve should substantially reduce the old adaptive loss.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Adam should
-        substantially reduce the image-matching loss.
+        Verifies that the optax-backed first-order path keeps the practical
+        behavior previously covered by Adam/Adagrad smoke tests: starting from
+        the same poor initialization, it drives the image-matching loss down
+        and approaches the planted parameters.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        Numerical expectations are checked with tolerance-aware closeness
-        assertions, which is appropriate for floating-point JAX arrays.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_recon.test_optimizers``, so the Test
-        Reference exposes both the guarantee and the implementation path.
+        The tolerance is intentionally looser than the LM/BFGS paths because
+        this is the stochastic/high-dimensional solver branch.
         """
-        true_params: Any = _true_params()
-        target: Any = _linear_forward_model(true_params)
-        initial_loss: Any = float(
-            weighted_mean_squared_error(
-                _linear_forward_model(_initial_params()),
-                target,
-            )
+        problem: ReconProblem
+        true_params: dict[str, scalar_float]
+        problem, true_params = _linear_problem()
+        initial_loss: Float[Array, ""] = weighted_mean_squared_error(
+            _linear_forward_model(_initial_params()),
+            problem.measured,
         )
 
-        result: Float[Array, "..."] = adam_reconstruction(
-            initial_params=_initial_params(),
-            forward_model=_linear_forward_model,
-            experimental_image=target,
-            learning_rate=jnp.float64(0.1),
-            max_iterations=300,
-            tolerance=jnp.float64(1e-10),
+        result: ReconResult = solve(
+            problem=problem,
+            initial_latent=_initial_params(),
+            mode="adamw",
+            max_steps=500,
+            learning_rate=0.08,
+            atol=1e-10,
         )
 
-        self.assertLess(
-            float(result.objective_history[-1]),
-            initial_loss * 1e-3,
-        )
+        self.assertLess(float(result.loss), float(initial_loss) * 1e-3)
         chex.assert_trees_all_close(
             result.params["scale"],
             true_params["scale"],
-            atol=5e-3,
+            atol=1e-2,
         )
         chex.assert_trees_all_close(
             result.params["offset"],
             true_params["offset"],
-            atol=5e-3,
+            atol=1e-2,
         )
 
-    def test_adagrad_reconstruction_reduces_loss(self) -> None:
-        r"""Adagrad should substantially reduce the image-matching loss.
+    def test_legacy_optimizer_symbols_are_not_exported(self) -> None:
+        r"""Retired hand-rolled optimizer names should be absent.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Adagrad should
-        substantially reduce the image-matching loss.
+        Verifies the zero-legacy half of K2: the old optimizer functions and
+        result container are not public aliases for the new solver surface.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        Numerical expectations are checked with tolerance-aware closeness
-        assertions, which is appropriate for floating-point JAX arrays.
-
-        The body also exercises differentiability, protecting JAX transform
-        compatibility for this path.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_recon.test_optimizers``, so the Test
-        Reference exposes both the guarantee and the implementation path.
+        Absence is checked directly on ``rheedium.recon`` so accidental shims
+        or compatibility exports fail loudly.
         """
-        true_params: Any = _true_params()
-        target: Any = _linear_forward_model(true_params)
-        initial_loss: Any = float(
-            weighted_mean_squared_error(
-                _linear_forward_model(_initial_params()),
-                target,
-            )
+        retired_names: tuple[str, ...] = (
+            "ReconstructionResult",
+            "adagrad_optimize",
+            "adagrad_reconstruction",
+            "adam_optimize",
+            "adam_reconstruction",
+            "gauss_newton_least_squares",
+            "gauss_newton_reconstruction",
         )
-
-        result: Float[Array, "..."] = adagrad_reconstruction(
-            initial_params=_initial_params(),
-            forward_model=_linear_forward_model,
-            experimental_image=target,
-            learning_rate=jnp.float64(0.75),
-            max_iterations=600,
-            tolerance=jnp.float64(1e-10),
-        )
-
-        self.assertLess(
-            float(result.objective_history[-1]),
-            initial_loss * 1e-2,
-        )
-        chex.assert_trees_all_close(
-            result.params["scale"],
-            true_params["scale"],
-            atol=2e-2,
-        )
-        chex.assert_trees_all_close(
-            result.params["offset"],
-            true_params["offset"],
-            atol=2e-2,
-        )
-
-
-class TestReconNamespace(chex.TestCase):
-    """Tests for public recon exports."""
-
-    def test_namespace_exports_optimizer_entry_points(self) -> None:
-        r"""Optimizer APIs should be re-exported from rheedium.recon.
-
-        Extended Summary
-        ----------------
-        Verifies the documented behavior for this test case: Optimizer APIs
-        should be re-exported from rheedium.recon.
-
-        Notes
-        -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        The result is checked with direct unittest or Chex assertions against
-        the expected contract.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_recon.test_optimizers``, so the Test
-        Reference exposes both the guarantee and the implementation path.
-        """
-        self.assertIs(
-            recon.gauss_newton_reconstruction,
-            gauss_newton_reconstruction,
-        )
-        self.assertIs(recon.adam_reconstruction, adam_reconstruction)
-        self.assertIs(recon.adagrad_reconstruction, adagrad_reconstruction)
+        for retired_name in retired_names:
+            self.assertFalse(hasattr(recon, retired_name), retired_name)

@@ -14,6 +14,10 @@ Each entry summarizes the commits that landed for that version bump in
   general `ReconProblem`/`solve`/`multistart` surface, incoherent distribution
   weight reconstruction, the base-object distribution library builder,
   Fisher/Laplace uncertainty helpers, and `recipe_deviation` reports.
+  The legacy hand-rolled `ReconstructionResult`, `gauss_newton_*`,
+  `adam_*`, and `adagrad_*` optimizer APIs were removed with no shim; migrate
+  reconstruction callers to `ReconProblem` plus `solve`. HDF5 serialization now
+  registers `ReconResult`.
 - Multislice simulator and Lobató potentials are now the **default** scattering
   model.
 - Began detector-geometry rationalization: `DetectorGeometry` now carries dense

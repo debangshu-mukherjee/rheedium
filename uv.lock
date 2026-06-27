@@ -200,6 +200,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/92/8d/e296c7af03757debd8fc80df2898cbed4fb69fc61ed2c9b4a1d42e923a9e/bibtexparser-1.4.3.tar.gz", hash = "sha256:a9c7ded64bc137720e4df0b1b7f12734edc1361185f1c9097048ff7c35af2b8f", size = 55582, upload-time = "2024-12-19T20:41:57.754Z" }
 
 [[package]]
+name = "blackjax"
+version = "1.5"
+source = { registry = "https://pypi.org/simple/" }
+dependencies = [
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "optax" },
+    { name = "scipy" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/99/2e/49621e028c395730d005bff2272b7bb144b7e0eb40028f8ba569cf6e2712/blackjax-1.5.tar.gz", hash = "sha256:c4a9898d4f5340894301cd382c28d72790e38847edaf4cfc9584dbd47bd205e1", size = 4710254, upload-time = "2026-04-03T07:20:06.962Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/a7/83b321492fe7e5d0af07f484ec0100bb6ca561aa64cad1d34fc58a015d0f/blackjax-1.5-py3-none-any.whl", hash = "sha256:f3ba5cab7aeee79939326a49d71a08dd1ce35f647e96ff82d2e8556f19e4e487", size = 4697170, upload-time = "2026-04-03T07:20:05.139Z" },
+]
+
+[[package]]
 name = "bleach"
 version = "6.3.0"
 source = { registry = "https://pypi.org/simple/" }
@@ -368,10 +385,8 @@ version = "0.1.91"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "absl-py" },
-    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "jaxlib", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jaxlib", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jax" },
+    { name = "jaxlib" },
     { name = "numpy" },
     { name = "toolz" },
     { name = "typing-extensions" },
@@ -603,8 +618,7 @@ name = "equinox"
 version = "0.13.8"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
-    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jax" },
     { name = "jaxtyping" },
     { name = "typing-extensions" },
     { name = "wadler-lindig" },
@@ -1014,49 +1028,14 @@ wheels = [
 
 [[package]]
 name = "jax"
-version = "0.8.0"
-source = { registry = "https://pypi.org/simple/" }
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-]
-dependencies = [
-    { name = "jaxlib", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "ml-dtypes", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "numpy", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "opt-einsum", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "scipy", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/22/1c/9baf805e6c969a1a7afeb37d359e8a10585e8b2621f103626998b42ae838/jax-0.8.0.tar.gz", hash = "sha256:0ea5a7be7068c25934450dfd87d7d80a18a5d30e0a53454e7aade525b23accd5", size = 2489031, upload-time = "2025-10-15T23:10:11.839Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/77/4e6c9a54247810eff8ac8a1af7dc1be0779b52df0d82f3fc8586061914f3/jax-0.8.0-py3-none-any.whl", hash = "sha256:d190158bc019756c6a0f6b3d5fc8783471fb407e6deaff559eaac60dd5ee850a", size = 2900279, upload-time = "2025-10-15T23:10:09.88Z" },
-]
-
-[[package]]
-name = "jax"
 version = "0.9.2"
 source = { registry = "https://pypi.org/simple/" }
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'win64'",
-    "python_full_version == '3.12.*' and sys_platform == 'win64'",
-    "python_full_version < '3.12' and sys_platform == 'win64'",
-    "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and sys_platform == 'darwin'",
-    "python_full_version >= '3.13' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and sys_platform == 'linux'",
-    "python_full_version < '3.12' and sys_platform == 'linux'",
-    "python_full_version >= '3.13' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-]
 dependencies = [
-    { name = "jaxlib", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "ml-dtypes", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "numpy", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "opt-einsum", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "scipy", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jaxlib" },
+    { name = "ml-dtypes" },
+    { name = "numpy" },
+    { name = "opt-einsum" },
+    { name = "scipy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/92/4c/5aca25abd45fa38dd136e5ae2010376518c67950e1f9408e0c5c93fcf77d/jax-0.9.2.tar.gz", hash = "sha256:42b28017b3e6b57a44b0274cc15f5153239c4873959030399ac1afc009c22365", size = 2662784, upload-time = "2026-03-18T23:28:10.471Z" }
 wheels = [
@@ -1066,7 +1045,7 @@ wheels = [
 [package.optional-dependencies]
 cuda12 = [
     { name = "jax-cuda12-plugin", extra = ["with-cuda"], marker = "sys_platform == 'linux'" },
-    { name = "jaxlib", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "sys_platform == 'linux'" },
+    { name = "jaxlib", marker = "sys_platform == 'linux'" },
 ]
 
 [[package]]
@@ -1109,41 +1088,12 @@ with-cuda = [
 
 [[package]]
 name = "jaxlib"
-version = "0.8.0"
-source = { registry = "https://pypi.org/simple/" }
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-    "python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-]
-dependencies = [
-    { name = "ml-dtypes", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "numpy", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "scipy", marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-]
-
-[[package]]
-name = "jaxlib"
 version = "0.9.2"
 source = { registry = "https://pypi.org/simple/" }
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'win64'",
-    "python_full_version == '3.12.*' and sys_platform == 'win64'",
-    "python_full_version < '3.12' and sys_platform == 'win64'",
-    "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and sys_platform == 'darwin'",
-    "python_full_version >= '3.13' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and sys_platform == 'linux'",
-    "python_full_version < '3.12' and sys_platform == 'linux'",
-    "python_full_version >= '3.13' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'",
-]
 dependencies = [
-    { name = "ml-dtypes", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "numpy", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "scipy", marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "ml-dtypes" },
+    { name = "numpy" },
+    { name = "scipy" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b1/2c/0ba08670ab04f6094f0cda4cdc89818946007d0d1dfefa636eab6c7d5392/jaxlib-0.9.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:785f177c3eb78cb7dc797c55ed5c4b6312141845c9a686957e484bacbfce5e88", size = 58762159, upload-time = "2026-03-18T23:26:55.405Z" },
@@ -1579,8 +1529,7 @@ version = "0.1.0"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "equinox" },
-    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jax" },
     { name = "jaxtyping" },
     { name = "typing-extensions" },
 ]
@@ -2162,10 +2111,8 @@ version = "0.2.8"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "absl-py" },
-    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
-    { name = "jaxlib", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jaxlib", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jax" },
+    { name = "jaxlib" },
     { name = "numpy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8c/f9/e3d11ae6f298ee941a0690e353a323d158ba5dedc436e75621c310845c5c/optax-0.2.8.tar.gz", hash = "sha256:5b225b35066fc3eebaa4d798f1b4173b4d57d1a480610908981f8343b50af0b0", size = 301193, upload-time = "2026-03-20T23:30:05.465Z" }
@@ -2179,8 +2126,7 @@ version = "0.1.0"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "equinox" },
-    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and sys_platform != 'win64'" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "python_full_version < '3.12' or sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32' or sys_platform == 'win64'" },
+    { name = "jax" },
     { name = "jaxtyping" },
     { name = "lineax" },
     { name = "typing-extensions" },
@@ -2867,10 +2813,11 @@ source = { editable = "." }
 dependencies = [
     { name = "ase" },
     { name = "beartype" },
+    { name = "blackjax" },
     { name = "equinox" },
     { name = "flatbuffers" },
     { name = "h5py" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "jax", marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32'" },
     { name = "jaxtyping" },
     { name = "matplotlib" },
     { name = "numpy" },
@@ -2891,7 +2838,7 @@ all = [
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "ipywidgets" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "jax", extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jupyter" },
     { name = "jupytext" },
     { name = "myst-nb" },
@@ -2914,7 +2861,7 @@ all = [
     { name = "ty" },
 ]
 cuda = [
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "jax", extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "nvidia-cudnn-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 dev = [
@@ -2955,7 +2902,7 @@ dev-cuda = [
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "ipywidgets" },
-    { name = "jax", version = "0.9.2", source = { registry = "https://pypi.org/simple/" }, extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "jax", extra = ["cuda12"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jupyter" },
     { name = "jupytext" },
     { name = "myst-nb" },
@@ -3010,6 +2957,7 @@ test = [
 requires-dist = [
     { name = "ase", specifier = ">=3.26.0" },
     { name = "beartype" },
+    { name = "blackjax", specifier = ">=1.5" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2.2.post1" },
     { name = "chex", marker = "extra == 'test'", specifier = ">=0.1.89" },
     { name = "equinox", specifier = ">=0.13.8" },

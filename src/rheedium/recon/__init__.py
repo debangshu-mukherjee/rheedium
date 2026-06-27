@@ -20,8 +20,6 @@ Routine Listings
     Local Gaussian uncertainty estimate around a reconstruction optimum.
 :class:`RecipeDeviationReport`
     Compare fitted reconstruction parameters with an intended recipe.
-:class:`ReconstructionResult`
-    Result container returned by reconstruction solvers.
 :func:`positive_from_unconstrained`
     Map unconstrained values to strictly positive physical values.
 :func:`unconstrained_from_positive`
@@ -30,6 +28,16 @@ Routine Listings
     Map unconstrained values into a closed finite interval.
 :func:`unconstrained_from_bounded`
     Map bounded physical values back to unconstrained coordinates.
+:func:`fractional_from_unconstrained`
+    Map unconstrained values to unit-cell fractional coordinates.
+:func:`unconstrained_from_fractional`
+    Map fractional coordinates back to unconstrained coordinates.
+:func:`lattice_from_unconstrained`
+    Map unconstrained lengths and angles to lattice parameters.
+:func:`unconstrained_from_lattice`
+    Map lattice parameters back to unconstrained coordinates.
+:func:`wyckoff_fractional_from_unconstrained`
+    Map independent unconstrained coordinates to constrained Wyckoff positions.
 :func:`simplex_from_unconstrained`
     Map unconstrained logits onto a probability simplex.
 :func:`unconstrained_from_simplex`
@@ -64,6 +72,9 @@ Routine Listings
     Checkify-instrumented weighted MSE for numerical validation.
 :func:`create_distribution_axis_spec`
     Create a perturbation-axis specification for library reconstruction.
+:func:`create_crystal_displacement_axis_spec`
+    Create a crystal displacement-axis specification for library
+    reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
@@ -92,19 +103,6 @@ Routine Listings
     Fisher information for fitted orientation-weight logits.
 :func:`estimate_weight_uncertainty`
     Propagate Fisher information to 1σ weight uncertainties.
-:func:`gauss_newton_least_squares`
-    Gauss-Newton optimizer for arbitrary least-squares residuals.
-:func:`adam_optimize`
-    Adam optimizer for arbitrary scalar objectives.
-:func:`adagrad_optimize`
-    Adagrad optimizer for arbitrary scalar objectives.
-:func:`gauss_newton_reconstruction`
-    Reconstruct parameters by least-squares image matching.
-:func:`adam_reconstruction`
-    Reconstruct parameters by minimizing an image-matching loss with Adam.
-:func:`adagrad_reconstruction`
-    Reconstruct parameters by minimizing an image-matching loss with
-    Adagrad.
 """
 
 from .deviation import RecipeDeviationReport, recipe_deviation
@@ -123,15 +121,6 @@ from .losses import (
     weighted_image_residual,
     weighted_mean_squared_error,
 )
-from .optimizers import (
-    ReconstructionResult,
-    adagrad_optimize,
-    adagrad_reconstruction,
-    adam_optimize,
-    adam_reconstruction,
-    gauss_newton_least_squares,
-    gauss_newton_reconstruction,
-)
 from .orientation import (
     OrientationFitResult,
     compute_fisher_information,
@@ -144,6 +133,7 @@ from .solve import (
     ReconProblem,
     ReconResult,
     build_incoherent_intensity_library,
+    create_crystal_displacement_axis_spec,
     create_distribution_axis_spec,
     multistart,
     reconstruct_distribution,
@@ -152,12 +142,17 @@ from .solve import (
 )
 from .transforms import (
     bounded_from_unconstrained,
+    fractional_from_unconstrained,
+    lattice_from_unconstrained,
     ordered_bounded_from_unconstrained,
     positive_from_unconstrained,
     simplex_from_unconstrained,
     unconstrained_from_bounded,
+    unconstrained_from_fractional,
+    unconstrained_from_lattice,
     unconstrained_from_positive,
     unconstrained_from_simplex,
+    wyckoff_fractional_from_unconstrained,
 )
 from .uncertainty import (
     LaplaceUncertainty,
@@ -171,29 +166,25 @@ __all__: list[str] = [
     "LaplaceUncertainty",
     "ReconProblem",
     "ReconResult",
-    "ReconstructionResult",
     "OrientationFitResult",
     "RecipeDeviationReport",
-    "adagrad_optimize",
-    "adagrad_reconstruction",
     "affine_intensity_marginalization",
     "affine_marginalized_residual",
-    "adam_optimize",
-    "adam_reconstruction",
     "bounded_from_unconstrained",
     "build_incoherent_intensity_library",
     "checked_weighted_image_residual",
     "checked_weighted_mean_squared_error",
     "compute_fisher_information",
     "covariance_from_fisher",
+    "create_crystal_displacement_axis_spec",
     "create_distribution_axis_spec",
     "entropy_prior",
     "estimate_weight_uncertainty",
     "fisher_information_from_residual",
     "fit_orientation_weights",
-    "gauss_newton_least_squares",
-    "gauss_newton_reconstruction",
+    "fractional_from_unconstrained",
     "huber_image_loss",
+    "lattice_from_unconstrained",
     "l2_image_loss",
     "laplace_uncertainty",
     "log_intensity_loss",
@@ -210,8 +201,11 @@ __all__: list[str] = [
     "solve",
     "sparsity_prior",
     "unconstrained_from_bounded",
+    "unconstrained_from_fractional",
+    "unconstrained_from_lattice",
     "unconstrained_from_positive",
     "unconstrained_from_simplex",
     "weighted_image_residual",
     "weighted_mean_squared_error",
+    "wyckoff_fractional_from_unconstrained",
 ]

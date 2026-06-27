@@ -27,7 +27,7 @@ Pure structural identities; no physics tolerance needed.
 - **PyTree flatten/unflatten** for every `eqx.Module`:
   `tree_unflatten(treedef, leaves) == original` (values + static fields).
 - **HDF5 round-trip**: `load_from_h5(save_to_h5(x)) == x` for every registered
-  type (`CrystalStructure`, `XYZData`, `RHEEDPattern`, …, `ReconstructionResult`).
+  type (`CrystalStructure`, `XYZData`, `RHEEDPattern`, …, `ReconResult`).
   Generalizes `test_hdf5.py::_assert_round_trip_equal`.
 - **Parser round-trips**: `parse_xyz(write_xyz(data)) ≈ data`,
   `parse_poscar`/`parse_cif`/`parse_vaspxml` where a writer exists; and

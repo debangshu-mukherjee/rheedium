@@ -4,9 +4,12 @@ Verifies the general optimistix/optax reconstruction surface on lightweight
 synthetic inverse problems with deterministic linear forward models.
 """
 
+import time
+
 import chex
+import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex, Float
 
 from rheedium import recon
 from rheedium.recon import (
@@ -14,12 +17,14 @@ from rheedium.recon import (
     ReconProblem,
     ReconResult,
     build_incoherent_intensity_library,
+    create_crystal_displacement_axis_spec,
     create_distribution_axis_spec,
     multistart,
     reconstruct_distribution,
     reconstruct_incoherent_weights,
     solve,
 )
+from rheedium.types import CrystalStructure, create_crystal_structure
 
 _LINEAR_MATRIX: Float[Array, "pixels params"] = jnp.array(
     [[2.0, 1.0], [1.0, -1.0], [0.5, 2.0]],
@@ -45,6 +50,90 @@ def _linear_problem() -> tuple[ReconProblem, Float[Array, "params"]]:
         measured=measured,
     )
     return problem, true_params
+
+
+def _parametric_spread_weights(
+    samples: Float[Array, "samples"],
+    width: Float[Array, ""],
+) -> Float[Array, "samples"]:
+    """Return normalized Gaussian-like weights on fixed samples."""
+    logits: Float[Array, "samples"] = -0.5 * (samples / width) ** 2
+    weights: Float[Array, "samples"] = jax.nn.softmax(logits)
+    return weights
+
+
+def _small_crystal() -> CrystalStructure:
+    """Return a two-atom cubic crystal carrier for recon fixtures."""
+    crystal: CrystalStructure = create_crystal_structure(
+        frac_positions=jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [0.5, 0.5, 0.5, 14.0],
+            ],
+            dtype=jnp.float64,
+        ),
+        cart_positions=jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [2.0, 2.0, 2.0, 14.0],
+            ],
+            dtype=jnp.float64,
+        ),
+        cell_lengths=jnp.array([4.0, 4.0, 4.0], dtype=jnp.float64),
+        cell_angles=jnp.array([90.0, 90.0, 90.0], dtype=jnp.float64),
+    )
+    return crystal
+
+
+def _displacement_modes() -> Float[Array, "modes atoms xyz"]:
+    """Return one asymmetric Cartesian displacement mode."""
+    modes: Float[Array, "modes atoms xyz"] = jnp.array(
+        [
+            [
+                [0.7, 0.1, 0.2],
+                [-0.2, 0.6, 0.9],
+            ],
+        ],
+        dtype=jnp.float64,
+    )
+    return modes
+
+
+def _crystal_amplitude_forward(
+    crystal: CrystalStructure,
+) -> Complex[Array, "rows cols"]:
+    """Map a crystal carrier to a small differentiable amplitude image."""
+    q_vectors: Float[Array, "pixels xyz"] = jnp.array(
+        [
+            [0.4, 0.1, 0.2],
+            [0.1, 0.6, -0.2],
+            [-0.3, 0.2, 0.7],
+            [0.5, -0.4, 0.3],
+        ],
+        dtype=jnp.float64,
+    )
+    positions: Float[Array, "atoms xyz"] = crystal.cart_positions[:, :3]
+    atomic_numbers: Float[Array, "atoms"] = crystal.cart_positions[:, 3]
+    phases: Float[Array, "pixels atoms"] = q_vectors @ positions.T
+    amplitudes: Complex[Array, "pixels"] = jnp.sum(
+        atomic_numbers * jnp.exp(1j * phases),
+        axis=1,
+    )
+    image: Complex[Array, "rows cols"] = jnp.reshape(amplitudes, (2, 2))
+    return image
+
+
+def _crystal_intensity_forward(
+    crystal: CrystalStructure,
+) -> Float[Array, "rows cols"]:
+    """Map a crystal carrier to a real intensity image."""
+    amplitudes: Complex[Array, "rows cols"] = _crystal_amplitude_forward(
+        crystal
+    )
+    intensity: Float[Array, "rows cols"] = jnp.real(
+        jnp.conj(amplitudes) * amplitudes
+    )
+    return intensity
 
 
 class TestReconSolve(chex.TestCase):
@@ -155,6 +244,64 @@ class TestReconSolve(chex.TestCase):
         chex.assert_trees_all_close(result.params, true_params, atol=1e-10)
         chex.assert_trees_all_close(result.loss, 0.0, atol=1e-12)
 
+    def test_fixed_budget_matches_longer_solve_with_wall_clock_budget(
+        self,
+    ) -> None:
+        r"""Fixed-step rapid solve should match the longer convergence solve.
+
+        Extended Summary
+        ----------------
+        Verifies the K2 rapid-path gate on the reference synthetic problem:
+        after a warm-up call, a short fixed step budget recovers the same
+        parameters as a longer solve while staying inside a generous wall-clock
+        budget.
+
+        Notes
+        -----
+        The timing assertion measures the warmed-cache reference problem rather
+        than first compilation, keeping the budget meaningful but not brittle.
+        """
+        problem: ReconProblem
+        true_params: Float[Array, "params"]
+        problem, true_params = _linear_problem()
+        initial_latent: Float[Array, "params"] = jnp.zeros(
+            2,
+            dtype=jnp.float64,
+        )
+
+        _warmup: ReconResult = solve(
+            problem=problem,
+            initial_latent=initial_latent,
+            max_steps=6,
+            atol=1e-10,
+        )
+        start_time: float = time.perf_counter()
+        fixed_result: ReconResult = solve(
+            problem=problem,
+            initial_latent=initial_latent,
+            max_steps=6,
+            atol=1e-10,
+        )
+        elapsed_seconds: float = time.perf_counter() - start_time
+        longer_result: ReconResult = solve(
+            problem=problem,
+            initial_latent=initial_latent,
+            max_steps=32,
+            atol=1e-10,
+        )
+
+        self.assertLess(elapsed_seconds, 10.0)
+        chex.assert_trees_all_close(
+            fixed_result.params,
+            longer_result.params,
+            atol=1e-9,
+        )
+        chex.assert_trees_all_close(
+            fixed_result.params,
+            true_params,
+            atol=1e-8,
+        )
+
     def test_reconstruct_incoherent_weights_recovers_planted_shape(
         self,
     ) -> None:
@@ -195,6 +342,72 @@ class TestReconSolve(chex.TestCase):
         )
 
         chex.assert_trees_all_close(weights, true_weights, atol=1e-8)
+
+    def test_solve_recovers_parametric_distribution_spread(self) -> None:
+        r"""Solve should recover a planted parametric distribution spread.
+
+        Extended Summary
+        ----------------
+        Verifies the K2 distribution-reconstruction branch that is not the
+        convex free-form fast path: a single positive latent controls a smooth
+        fixed-support distribution, and ``solve`` recovers the planted spread
+        from synthetic measured weights.
+
+        Notes
+        -----
+        The support is intentionally lightweight and exactly identifiable,
+        keeping this as a solver contract test rather than a physics benchmark.
+        """
+        samples: Float[Array, "samples"] = jnp.linspace(
+            -1.0,
+            1.0,
+            5,
+            dtype=jnp.float64,
+        )
+        true_width: Float[Array, ""] = jnp.asarray(0.35, dtype=jnp.float64)
+        measured: Float[Array, "samples"] = _parametric_spread_weights(
+            samples,
+            true_width,
+        )
+
+        def transform(
+            latent: Float[Array, "params"],
+        ) -> dict[str, Float[Array, ""]]:
+            width: Float[Array, ""] = recon.positive_from_unconstrained(
+                latent[0],
+                minimum=0.05,
+            )
+            params: dict[str, Float[Array, ""]] = {"width": width}
+            return params
+
+        def forward(
+            params: dict[str, Float[Array, ""]],
+        ) -> Float[Array, "samples"]:
+            weights: Float[Array, "samples"] = _parametric_spread_weights(
+                samples,
+                params["width"],
+            )
+            return weights
+
+        problem: ReconProblem = ReconProblem(
+            forward=forward,
+            measured=measured,
+            transform=transform,
+        )
+        result: ReconResult = solve(
+            problem=problem,
+            initial_latent=jnp.array([0.7], dtype=jnp.float64),
+            max_steps=64,
+            atol=1e-10,
+            rtol=1e-10,
+        )
+
+        chex.assert_trees_all_close(
+            result.params["width"],
+            true_width,
+            atol=1e-6,
+        )
+        chex.assert_trees_all_close(result.simulated, measured, atol=1e-8)
 
 
 def _amplitude_templates() -> Float[Array, "samples rows cols"]:
@@ -304,6 +517,134 @@ class TestReconDistributionReconstruction(chex.TestCase):
         chex.assert_shape(band, (3,))
         chex.assert_tree_all_finite(band)
 
+    def test_crystal_displacement_axis_recovers_planted_weights(self) -> None:
+        r"""Crystal-backed displacement axis should recover planted weights.
+
+        Extended Summary
+        ----------------
+        Verifies the K2 physical-carrier gate by instantiating an axis
+        specification on a real :class:`rheedium.types.CrystalStructure`,
+        building its incoherent intensity library, and recovering the planted
+        displacement mixing distribution.
+
+        Notes
+        -----
+        The forward model is a compact differentiable scattering surrogate, so
+        the test exercises the carrier and reconstruction path without paying
+        for a full detector simulation.
+        """
+        crystal: CrystalStructure = _small_crystal()
+        samples: Float[Array, "samples modes"] = jnp.array(
+            [[0.0], [0.15], [0.35]],
+            dtype=jnp.float64,
+        )
+        axis_spec: DistributionAxisSpec = (
+            create_crystal_displacement_axis_spec(
+                samples=samples,
+                displacement_modes=_displacement_modes(),
+                forward_model=_crystal_amplitude_forward,
+                output_kind="amplitude",
+                axis_id="crystal_displacement",
+            )
+        )
+        intensity_library: Float[Array, "samples rows cols"] = (
+            build_incoherent_intensity_library(
+                base_object=crystal,
+                axis_spec=axis_spec,
+            )
+        )
+        true_weights: Float[Array, "samples"] = jnp.array(
+            [0.2, 0.55, 0.25],
+            dtype=jnp.float64,
+        )
+        measured: Float[Array, "rows cols"] = jnp.einsum(
+            "n,nhw->hw",
+            true_weights,
+            intensity_library,
+        )
+
+        distribution, band = reconstruct_distribution(
+            measured_image=measured,
+            base_object=crystal,
+            axis_spec=axis_spec,
+            ridge=1e-12,
+            noise_variance=0.05,
+        )
+
+        chex.assert_trees_all_close(
+            distribution.weights,
+            true_weights,
+            atol=1e-8,
+        )
+        self.assertEqual(distribution.axis_id, "crystal_displacement")
+        chex.assert_tree_all_finite(band)
+
+
+class TestReconForwardGradientGate(chex.TestCase):
+    """Tests for finite gradients through crystal-backed recon paths.
+
+    :see: :class:`~rheedium.recon.ReconProblem`
+    """
+
+    def test_crystal_backed_problem_has_finite_latent_gradient(self) -> None:
+        r"""A representative crystal-backed recon loss should differentiate.
+
+        Extended Summary
+        ----------------
+        Verifies the universal finite-gradient gate across the new transform
+        layer, a physical ``CrystalStructure`` carrier, and the public
+        :class:`rheedium.recon.ReconProblem` loss surface.
+
+        Notes
+        -----
+        The latent coordinate is bounded into a displacement amplitude before
+        perturbing the crystal, mirroring the structure-inversion path used by
+        local solvers.
+        """
+        crystal: CrystalStructure = _small_crystal()
+        axis_spec: DistributionAxisSpec = (
+            create_crystal_displacement_axis_spec(
+                samples=jnp.array([[0.0]], dtype=jnp.float64),
+                displacement_modes=_displacement_modes(),
+                forward_model=_crystal_intensity_forward,
+                output_kind="intensity",
+            )
+        )
+        target_crystal: CrystalStructure = axis_spec.perturbation_fn(
+            crystal,
+            jnp.array([0.12], dtype=jnp.float64),
+        )
+        measured: Float[Array, "rows cols"] = _crystal_intensity_forward(
+            target_crystal
+        )
+
+        def transform(latent: Float[Array, "params"]) -> CrystalStructure:
+            amplitude: Float[Array, ""] = recon.bounded_from_unconstrained(
+                latent[0],
+                -0.1,
+                0.3,
+            )
+            perturbed: CrystalStructure = axis_spec.perturbation_fn(
+                crystal,
+                jnp.array([amplitude]),
+            )
+            return perturbed
+
+        problem: ReconProblem = ReconProblem(
+            forward=_crystal_intensity_forward,
+            measured=measured,
+            transform=transform,
+        )
+        latent: Float[Array, "params"] = jnp.array(
+            [0.2],
+            dtype=jnp.float64,
+        )
+        gradient: Float[Array, "params"] = jax.grad(problem.loss_from_latent)(
+            latent
+        )
+
+        chex.assert_tree_all_finite(gradient)
+
 
 class TestReconSolveNamespace(chex.TestCase):
     """Tests for public solve exports."""
@@ -328,6 +669,10 @@ class TestReconSolveNamespace(chex.TestCase):
         self.assertIs(
             recon.create_distribution_axis_spec,
             create_distribution_axis_spec,
+        )
+        self.assertIs(
+            recon.create_crystal_displacement_axis_spec,
+            create_crystal_displacement_axis_spec,
         )
         self.assertIs(
             recon.build_incoherent_intensity_library,

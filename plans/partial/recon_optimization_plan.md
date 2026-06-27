@@ -16,19 +16,23 @@ of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
 **Loop C** (the differentiable payoff); the automatons' `invert_structure` /
 `recipe_deviation` import this module's API.
 
-Status: **in progress** — gated. **Roadmap position:** third of four —
+Status: **partial** — K1/K2 complete; later gates remain. **Roadmap position:** third of four —
 [framework](../implemented/distribution_framework_plan.md) →
 [rationalization](../implemented/rationalization_refactor_plan.md) → *this* →
 [automatons](../future/automatons_plan.md). Entry gate **K0** is satisfied by
 the completed rationalization refactor (⇒ the forward model differentiates
-end-to-end against a clean, stable API). The K1/K2 foundation has landed in
-`recon`: transforms, richer losses, the `ReconProblem`/`solve` surface,
-multistart, the incoherent distribution library path, generalized Fisher/Laplace
-UQ, and `recipe_deviation`. The remaining gates are still open: legacy optimizer
-and orientation migration, physical crystal-backed distribution fixtures,
-calibration/regression tests, docs, speed checks, and API freeze. This plan
-**supersedes** the framework's Phase-6 line and **replaces** the existing
-hand-rolled `recon` optimizers once those migration gates pass.
+end-to-end against a clean, stable API). The K1/K2 foundation is complete in
+`recon`: transforms, richer losses, lattice/Wyckoff constraints, finite-gradient
+guards, the `ReconProblem`/`solve` surface, multistart, the incoherent
+distribution library path, crystal-backed displacement-axis reconstruction,
+parametric spread fitting, generalized Fisher/Laplace UQ, and
+`recipe_deviation`. The hand-rolled `recon/optimizers.py` surface has been
+deleted outright with no shim; migration is pinned by `solve` regression tests
+and the `CHANGELOG.md` note. The remaining gates are still open: orientation
+migration, empirical UQ calibration, schema validation, docs, downstream speed
+checks, and API freeze. This plan **supersedes** the framework's Phase-6 line and
+the remaining work is hardening the new single implementation, not carrying two
+optimizer stacks.
 
 Guard on every phase: **`jax.grad` flows end-to-end, tests stay green, results are
 reproducible (seeded), and solver-migrated functions are verified to preserve the
@@ -42,10 +46,12 @@ differentiability pay off — a welded seam anywhere upstream is caught here.
 
 ## 1. Why optimistix + optax, and what already exists
 
-`recon` today hand-rolls its optimization:
+`recon` used to hand-roll its optimization:
 
 - `optimizers.py` — bespoke `adam_optimize`, `adagrad_optimize`,
-  `gauss_newton_least_squares` (+ `*_reconstruction` wrappers, `ReconstructionResult`).
+  `gauss_newton_least_squares` (+ `*_reconstruction` wrappers,
+  `ReconstructionResult`) — now deleted with no shim after the KG2 regression
+  guard.
 - `orientation.py` — a full orientation-weight fitter with its own Adam
   (`_adam_update`, `_OrientationAdamState`), softmax/softplus reparameterization,
   `orientation_loss`, `compute_fisher_information`, `estimate_weight_uncertainty`.
@@ -60,29 +66,34 @@ trust-region / line-search, quasi-Newton, learning-rate schedules, gradient
 clipping, multi-start — a non-convex RHEED inverse problem needs. The new
 foundation (`transforms.py`, extended `losses.py`, `solve.py`, `uncertainty.py`,
 `deviation.py`) is the **single source of truth**. The legacy `optimizers.py`
-(hand-rolled Adam/Adagrad/Gauss–Newton + the `*_reconstruction` wrappers +
-`ReconstructionResult`) and `orientation.py`'s bespoke Adam coexist with it **only
-transiently** and are **deleted outright** (no shim) before the migration gates
-close — the remaining work is migration, calibration, and that retirement, never
-carrying two implementations.
+retirement is complete; `orientation.py`'s bespoke Adam remains the next
+single-implementation migration target. The remaining work is orientation
+migration, calibration, and hardening, never carrying two optimizer stacks.
 
 The RHEED inverse is, at its core, a **nonlinear least-squares** fit of a forward
-model to a measured pattern. The two libraries split cleanly along that grain —
-**both are now core dependencies**:
+model to a measured pattern, whose answer is reported as a **posterior**. Three
+libraries split cleanly along that grain — **all now core dependencies**:
 
 - **`optimistix` owns the solve** — it is the JAX nonlinear-solver library
   (Levenberg–Marquardt, Gauss–Newton, Dogleg least-squares; BFGS / NonlinearCG
   minimisation; root-find; fixed-point), with convergence criteria, line search
   and trust region built in. It is the natural replacement for the hand-rolled
   `gauss_newton_least_squares`, it is from the **equinox family** (rheedium already
-  depends on `equinox`, so PyTree interop is seamless), and — decisively — its
-  Gauss–Newton/LM step forms the residual Jacobian `JᵀJ` that **is** the Fisher
-  information the UQ phase (K4) needs, so the solver and the uncertainty share one
-  Jacobian.
+  depends on `equinox`, so PyTree interop is seamless), and its Gauss–Newton/LM
+  step forms the residual Jacobian `JᵀJ` — the **Laplace approximation that
+  warm-starts** the posterior sampler.
 - **`optax` owns the gradient layer** — composable `GradientTransformation`s,
   LR schedules, clipping; the descent `optimistix.minimise` can wrap; and the home
   for the stochastic / high-dimensional and free-form-simplex (entropic) paths
   where a first-order method fits better than LM.
+- **`blackjax` owns the posterior** — HMC / NUTS / VI over the differentiable
+  log-posterior `∇ log p(θ│I)` the forward model already provides. **This is the
+  default uncertainty mechanism throughout `recon`**, not a fallback: every
+  fit, every `reconstruct_distribution`, and every `recipe_deviation` reports a
+  *sampled posterior* (credible bands / z-scores from samples), with the
+  `optimistix` Laplace `JᵀJ` as the warm-start and proposal-mass init. It is pure
+  JAX (jit/vmap-able), so chains `vmap` across the multistart inits and share the
+  compilation cache.
 
 The plan therefore *rationalizes and generalizes* recon rather than greenfielding
 it: keep the good ideas (reparameterization, Fisher UQ), swap the hand-rolled
@@ -136,11 +147,15 @@ senses:
    bijector) under an entropy / smoothness / sparsity prior, recovering an
    *arbitrary* distribution shape with no family assumption. This needs **no new
    solver** — it is `solve` over the weight vector.
-3. **Posterior (a distribution over the answer)** — the differentiable model also
-   yields p(distribution │ data): a Laplace/Fisher Gaussian at the optimum now
-   (the UQ phase), with gradient MCMC (HMC/NUTS via `blackjax`) or variational
-   inference as a slot — so the agent gets "the orientation distribution is X with
-   this credible band," not a bare point.
+3. **Posterior (a distribution over the answer) — the default output.** The
+   differentiable model yields `p(distribution │ data)`, and recon reports it by
+   **sampling that posterior with `blackjax` (HMC/NUTS, VI where cheaper)** as the
+   standard uncertainty path — warm-started from the `optimistix` Laplace/Fisher
+   mode, with chains `vmap`-ed across the multistart inits so a multimodal posterior
+   (e.g. the symmetry orbit) is captured rather than collapsed to one Gaussian. The
+   Laplace covariance remains as the fast init/approximation, but the agent's
+   credible band is **posterior-sampled** — "the orientation distribution is X with
+   this band," never a bare point.
 
 **The `reduction` flag makes this tractable** — and cleanly bifurcated:
 
@@ -304,7 +319,7 @@ Until K0 holds this plan does not start.
 ### Phase K1 — dependencies + reparameterization & loss foundation
 
 *Tasks:*
-- **Implemented:** `optimistix` and `optax` are core dependencies
+- **Implemented:** `optimistix`, `optax`, and `blackjax` are core dependencies
   (`pyproject.toml`), and local import/smoke coverage exists through the recon
   solver tests.
 - **Implemented:** `recon/transforms.py` — a **general** latent↔physical bijector layer
@@ -319,11 +334,13 @@ Until K0 holds this plan does not start.
   priors/regularizers (bounds, smoothness, defect sparsity, and **maximum-entropy
   / smoothness priors over `Distribution.weights`** for the free-form distribution
   reconstruction of §2.1 — the regularizer that fills the ill-posed null space).
-- **Remaining before closing KG1:** add real forward-model finite-gradient checks
-  across representative simulator paths and any lattice/Wyckoff-specific
-  constraint transforms needed by structure inversion.
+- **Implemented:** real-carrier finite-gradient checks now exercise a bounded
+  latent through `CrystalStructure` displacement, the public `ReconProblem` loss
+  surface, and differentiable forward intensities. Lattice/fractional/Wyckoff
+  transforms are covered for round-trip behavior where bijective and finite
+  gradients where constrained.
 
-**Gate KG1:** every loss and every transform is differentiable (finite grad);
+**Gate KG1: closed.** Every loss and every transform is differentiable (finite grad);
 each bijector round-trips (`physical = fwd(inv(physical))` to tolerance); a planted
 loss has its minimum at the true parameters (1-D sanity sweep); `optimistix` and
 `optax` both run a step on a toy objective; universal gate.
@@ -340,12 +357,14 @@ loss has its minimum at the true parameters (1-D sanity sweep); `optimistix` and
   `optimistix.minimise(..., optax_solver)` so it shares the same `solve` surface.
   Bounded `max_steps` gives the JIT-friendly fixed-iteration "rapid" path; eager
   early-stopping is the other mode.
-- **Remaining (legacy retirement, zero-cruft):** once KG2's regression guard pins
-  `solve` to their numerics, **delete** `adam_optimize` / `adagrad_optimize` /
-  `gauss_newton_least_squares`, their `*_reconstruction` wrappers, and
-  `ReconstructionResult` **outright** — no shim, no forwarding alias — and drop them
-  from `recon/__init__`'s exports; record the rename→`solve` in `CHANGELOG.md`.
-  `optimistix` LM/GN **is** the replacement; there is no second optimizer.
+- **Implemented (legacy retirement, zero-cruft):** KG2's regression guard pins
+  `solve` to the old deterministic linear fixtures, then
+  `adam_optimize` / `adagrad_optimize` / `gauss_newton_least_squares`, their
+  `*_reconstruction` wrappers, and `ReconstructionResult` were deleted
+  outright — no shim, no forwarding alias — and dropped from
+  `recon/__init__` exports. `CHANGELOG.md` records the migration to
+  `ReconProblem` + `solve`. `optimistix` LM/GN is the replacement; there is no
+  second optimizer.
 - **Implemented foundation:** **Distribution reconstruction (§2.1).** `solve` over `Distribution.weights`
   (with the K1 simplex bijector + entropy prior) recovers a *free-form* shape. The
   **convex fast-path** for incoherent distributions — `I = Σ_n w_n |A_n|²`, linear
@@ -354,13 +373,14 @@ loss has its minimum at the true parameters (1-D sanity sweep); `optimistix` and
   `build_incoherent_intensity_library`, and
   `reconstruct_distribution(measured, base, axis_spec) -> (Distribution, band)`
   provide the generic "base object + pattern → distribution" route.
-- **Remaining before closing KG2:** instantiate physics-specific `axis_spec`
-  builders for real crystal/simulator carriers, add planted physical-axis tests
-  (e.g. Debye–Waller *B* or size spread), prove fixed-step/eager equivalence,
-  add hand-rolled optimizer regression guards, and enforce the wall-clock budget.
-  The coherent case stays on nonlinear `solve` plus multistart.
+- **Implemented:** `create_crystal_displacement_axis_spec` instantiates a
+  physics-specific `DistributionAxisSpec` for real `CrystalStructure` carriers.
+  K2 tests now cover planted physical-axis weight recovery, parametric spread
+  recovery via `solve`, fixed-step vs longer-solve equivalence, the warmed
+  wall-clock budget, and hand-rolled optimizer retirement guards. The coherent
+  case stays on nonlinear `solve` plus multistart.
 
-**Gate KG2:** on synthetic data simulated from a *known* structure,
+**Gate KG2: closed.** On synthetic data simulated from a *known* structure,
 `solve` (LM/GN) recovers the parameters to tolerance with a monotone loss;
 the bounded fixed-step result == the eager result; the new path reproduces the
 retired hand-rolled optimizers' results to tolerance (regression guard); a
@@ -399,20 +419,26 @@ than a cold start; reproducible across seeds; universal gate.
 Gauss–Newton / Fisher covariance from the residual Jacobian. `uncertainty.py`
 now provides `fisher_information_from_residual`, `covariance_from_fisher`, and
 `laplace_uncertainty`, and `reconstruct_distribution` returns a linearized
-weight band for the recovered distribution. **Remaining:** when the solve used
-`optimistix` LM/GN (K2), reuse the solver's already-formed `JᵀJ` rather than
-recomputing a Jacobian; calibrate the covariance empirically; reduce to the
-orientation UQ path by regression; and expose a **gradient-MCMC / VI slot
-(`blackjax`)** for full posteriors when the Gaussian approximation is
-insufficient (multimodal orientation, heavy degeneracy). UQ is what lets the agent
-say *what is being grown* **with confidence**, not just a point estimate. This is
-also the **posterior over a reconstructed distribution** (§2.1, sense 3).
+weight band for the recovered distribution. **Remaining (posterior-first):** make
+**`blackjax` posterior sampling the default UQ across recon** — HMC/NUTS over the
+differentiable log-posterior, **warm-started from the `optimistix` Laplace `JᵀJ`**
+(reuse the solver's already-formed Jacobian, don't recompute) and `vmap`-ed across
+the K3 multistart inits so multimodal posteriors are captured, not collapsed.
+**Every recon band/z-score is then derived from the samples** — the `solve`
+covariance, the `reconstruct_distribution` weight band, and the `recipe_deviation`
+significance all flow from the posterior. The Laplace Gaussian stays as the
+warm-start / fast approximation, and a **VI path** (also `blackjax`) covers the
+hot loop where full sampling is too costly. Calibrate against the empirical spread
+and reduce to the orientation UQ by regression. Posterior UQ is what lets the agent
+say *what is being grown* **with confidence** (§2.1, sense 3).
 
-**Gate KG4:** the recovered covariance matches the **empirical** parameter spread
-over many noisy synthetic realizations to tolerance; the covariance is finite and
-positive semi-definite; it reduces to the existing orientation UQ on that
-sub-problem (regression); on a free-form reconstruction it reports a calibrated
-band on the recovered shape; universal gate.
+**Gate KG4:** the **`blackjax` sampler converges** (R-hat ≈ 1, adequate ESS) and
+recovers a multimodal posterior where one exists; the **posterior credible band
+matches the empirical** parameter spread over many noisy synthetic realizations to
+tolerance; the Laplace warm-start covariance is finite + positive semi-definite and
+agrees with the posterior in the unimodal case; it reduces to the existing
+orientation UQ by regression; on a free-form reconstruction the **posterior** band
+on the recovered shape is calibrated; universal gate.
 
 ### Phase K5 — the recipe-deviation contract (automaton-facing)
 
@@ -452,18 +478,20 @@ universal gate.
 | Gate | Pass condition (+ universal gate) |
 |------|------------------------------------|
 | **K0** | rationalization complete; forward model differentiates end-to-end |
-| **KG1** | optimistix + optax import; bijectors round-trip; losses differentiable; planted-loss minimum correct |
-| **KG2** | `solve` (LM/GN) recovers a known structure; fixed-step == eager; new path == retired hand-rolled (regression); within wall-clock budget |
+| **KG1** | **closed** — optimistix + optax import; bijectors round-trip; losses differentiable; planted-loss minimum correct; lattice/Wyckoff finite-grad guards |
+| **KG2** | **closed** — `solve` (LM/GN) recovers a known structure; fixed-step == eager; new path == retired hand-rolled (regression); within wall-clock budget |
 | **KG3** | multistart escapes a planted local min; bracketed init converges faster; reproducible |
 | **KG4** | recovered covariance matches empirical spread; PSD; reduces to orientation UQ |
 | **KG5** | recipe-deviation flags the right params with calibrated z-scores; schema-validated |
 | **KG6** | docs build; budget met warm-cache; inverse API exported + frozen |
 
-**Current checkpoint:** the K1 foundation and the generic K2 solver/distribution
-surface are implemented and covered by focused synthetic tests. The gates are not
-closed until the physical simulator-backed fixtures, legacy optimizer/orientation
-migrations, empirical UQ calibration, schema validation, wall-clock budget, and
-docs/API-freeze work land.
+**Current checkpoint:** KG1 and KG2 are closed. The constrained transform/loss
+foundation, `optimistix`/`optax` solver core, distribution reconstruction paths,
+physical crystal-backed fixture, regression guards, wall-clock check, and
+zero-legacy optimizer retirement have landed. The remaining gates are KG3-KG6:
+multistart robustness beyond the synthetic basics, orientation migration,
+empirical UQ calibration, schema validation, docs/downstream checks, and
+API freeze.
 
 K1–K2 are the foundation (replace hand-rolled with optimistix/optax, prove
 recovery); K3–K5
@@ -501,9 +529,13 @@ signal); K6 hardens and freezes the surface for the automatons.
   it empirically rather than trusting it blindly.
 - **Speed vs the growth cadence.** Mitigation: JIT-scan fixed-N loop + compilation
   cache + optional AOT (K6); the wall-clock budget is a gate, not an aspiration.
-- **New dependencies.** `optimistix` and `optax` are both pure-JAX, lightweight,
-  and equinox-family (rheedium already ships `equinox`); the `automatons-smoke`
+- **New dependencies.** `optimistix`, `optax`, and `blackjax` are all pure-JAX and
+  lightweight (rheedium already ships `equinox`); the `automatons-smoke`
   ephemeral-env check (downstream) catches any packaging surprise.
+- **Posterior-sampling cost.** MCMC runs the forward model per leapfrog step.
+  Mitigation: warm-start from the Laplace mode (few adaptation steps), short NUTS
+  chains `vmap`-ed across the multistart inits, the compilation cache, and the VI
+  path for the hot loop; the wall-clock budget (KG6) gates it.
 - **Differentiability regression from "cleanup".** Mitigation: the universal gate's
   finite-grad check is mandatory on every PR.
 
@@ -513,16 +545,16 @@ signal); K6 hardens and freezes the surface for the automatons.
 
 | Path | Change |
 |------|--------|
-| `pyproject.toml` | `optimistix` + `optax` core deps (done; CPU + CUDA resolve) |
-| `src/rheedium/recon/transforms.py` | present — general bijector / reparameterization layer; remaining: lattice/Wyckoff-specific constraints as structure inversion needs them |
-| `src/rheedium/recon/solve.py` | present — `ReconProblem`, `solve` (`optimistix` LM/GN, BFGS, optax AdamW descent), `multistart`, `DistributionAxisSpec`, `build_incoherent_intensity_library`, `reconstruct_incoherent_weights`, and `reconstruct_distribution`; remaining: physics-specific axis builders and simulator-backed fixtures |
-| `src/rheedium/recon/uncertainty.py` | present — generic Fisher covariance + Laplace UQ from residual Jacobians; remaining: reuse solver `JᵀJ`, empirical calibration, orientation regression, MCMC/VI slot |
+| `pyproject.toml` | `optimistix` + `optax` + `blackjax` core deps (done; CPU + CUDA resolve) |
+| `src/rheedium/recon/transforms.py` | present — general bijector / reparameterization layer including lattice, fractional, and Wyckoff constraints |
+| `src/rheedium/recon/solve.py` | present — `ReconProblem`, `solve` (`optimistix` LM/GN, BFGS, optax AdamW descent), `multistart`, `DistributionAxisSpec`, crystal displacement-axis builder, `build_incoherent_intensity_library`, `reconstruct_incoherent_weights`, and `reconstruct_distribution` |
+| `src/rheedium/recon/uncertainty.py` | present — Fisher/Laplace covariance from residual Jacobians (the warm-start); remaining: **`blackjax` posterior sampling as the default UQ throughout** (bands/z-scores from samples), reuse solver `JᵀJ` as the proposal mass, empirical calibration, orientation regression, VI path |
 | `src/rheedium/recon/deviation.py` | present — `recipe_deviation` foundation; remaining: schema freeze and default K4 covariance integration |
-| `src/rheedium/recon/optimizers.py` | remaining — **delete the file** (no shim): hand-rolled Adam/Adagrad/Gauss-Newton + `*_reconstruction` + `ReconstructionResult`, once KG2's regression guard pins `solve`; `optimistix` LM/GN is the only optimizer |
+| `src/rheedium/recon/optimizers.py` | deleted — hand-rolled Adam/Adagrad/Gauss-Newton + `*_reconstruction` + `ReconstructionResult` retired with no shim; `optimistix` LM/GN is the only optimizer |
 | `src/rheedium/recon/orientation.py` | remaining — **delete** the bespoke `_OrientationAdamState`/`_adam_update` + duplicate loss/UQ; `fit_orientation_weights` becomes a **thin wrapper over the general `solve`/`transforms`/`uncertainty` path** (one implementation, not two) |
 | `src/rheedium/recon/losses.py` | present — log-intensity, NCC, analytic scale/background marginalization, priors |
-| `src/rheedium/recon/__init__.py` | present — foundation exports + Routine Listings; remaining: **drop the legacy `adam_optimize`/`adagrad_optimize`/`gauss_newton_*`/`*_reconstruction`/`ReconstructionResult` exports**, then freeze the API once docs + downstream contracts pass |
-| `tests/.../test_recon/*` | present — focused synthetic coverage for transforms, losses, solve, distribution reconstruction, UQ, recipe deviation; remaining: recovery-of-known-physical-params, fixed-step==eager, solver==hand-rolled regression, multistart-escape, UQ calibration, schema validation, wall-clock budget |
+| `src/rheedium/recon/__init__.py` | present — foundation exports + Routine Listings; legacy optimizer exports removed; remaining: freeze the API once docs + downstream contracts pass |
+| `tests/.../test_recon/*` | present — focused synthetic coverage for transforms, losses, solve, distribution reconstruction, UQ, recipe deviation, recovery-of-known-physical-params, fixed-step==eager, solver==hand-rolled regression, and wall-clock budget; remaining: multistart-escape, orientation migration, UQ calibration, schema validation |
 | `docs/source/guides/` | remaining — "Differentiable inversion with optimistix" guide |
 
 ---
@@ -532,7 +564,7 @@ signal); K6 hardens and freezes the surface for the automatons.
 When complete: `recon` is a **general differentiable inverse-problem solver** —
 one `optimistix`-backed `solve` (LM/Gauss–Newton, `optax` for the gradient layer)
 over any latent space, multistart for robustness,
-calibrated uncertainty, and a frozen `recipe_deviation` contract — replacing three
+posterior credible bands throughout (`blackjax`), and a frozen `recipe_deviation` contract — replacing three
 hand-rolled optimizers and the orientation-only fitter. It answers the full ladder
 of §2.2: **orientation + beam from a CIF + pattern** (the fast, well-posed
 alignment case), **probability-distribution reconstruction** (§2.1 — the spread,

@@ -5,7 +5,7 @@ Extended Summary
 Provides functions for saving and loading rheedium PyTree objects to and
 from HDF5 files. The implementation follows the ``diffpes`` serializer
 layout but extends it to recurse through nested child pytrees so composite
-objects like :class:`rheedium.recon.ReconstructionResult` can round-trip
+objects like :class:`rheedium.recon.ReconResult` can round-trip
 without flattening nested parameter trees into ad hoc blobs.
 
 Routine Listings
@@ -21,7 +21,7 @@ The serializer supports the public rheedium PyTree containers:
 ``ElectronBeam``, ``CrystalStructure``, ``EwaldData``,
 ``PotentialSlices``, ``XYZData``, ``RHEEDPattern``, ``RHEEDImage``,
 ``SlicedCrystal``, ``SurfaceConfig``, ``DetectorGeometry``, and
-``ReconstructionResult``. Nested ``dict`` / ``list`` / ``tuple``
+``ReconResult``. Nested ``dict`` / ``list`` / ``tuple``
 containers are also supported inside those objects.
 """
 
@@ -37,7 +37,7 @@ from beartype.typing import Any, Callable, Optional, Union
 from jaxtyping import Shaped
 from numpy.typing import NDArray
 
-from ..recon import ReconstructionResult
+from ..recon import ReconResult
 from ..types import (
     CrystalStructure,
     DetectorGeometry,
@@ -258,11 +258,20 @@ _PYTREE_REGISTRY: dict[str, _PyTreeMeta] = {
         aux_encoder=_encode_none,
         aux_decoder=_decode_none,
     ),
-    "ReconstructionResult": _PyTreeMeta(
-        cls=ReconstructionResult,
-        children_fields=_field_names(ReconstructionResult),
-        aux_encoder=_encode_none,
-        aux_decoder=_decode_none,
+    "ReconResult": _PyTreeMeta(
+        cls=ReconResult,
+        children_fields=(
+            "params",
+            "latent_params",
+            "simulated",
+            "residual",
+            "loss",
+            "iterations",
+            "converged",
+        ),
+        aux_fields=("solver_status",),
+        aux_encoder=_encode_json_aux,
+        aux_decoder=_decode_json_aux,
     ),
 }
 _PYTREE_REGISTRY_BY_CLASS: dict[type[Any], _PyTreeMeta] = {

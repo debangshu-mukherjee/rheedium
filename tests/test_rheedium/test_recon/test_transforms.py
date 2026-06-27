@@ -2,7 +2,7 @@
 
 Verifies the optimizer-coordinate bijectors used by reconstruction solvers:
 positive values, bounded intervals, probability simplexes, and ordered bounded
-coordinates.
+coordinates, plus crystallographic lattice and Wyckoff constraints.
 """
 
 import chex
@@ -13,12 +13,17 @@ from jaxtyping import Array, Float
 from rheedium import recon
 from rheedium.recon import (
     bounded_from_unconstrained,
+    fractional_from_unconstrained,
+    lattice_from_unconstrained,
     ordered_bounded_from_unconstrained,
     positive_from_unconstrained,
     simplex_from_unconstrained,
     unconstrained_from_bounded,
+    unconstrained_from_fractional,
+    unconstrained_from_lattice,
     unconstrained_from_positive,
     unconstrained_from_simplex,
+    wyckoff_fractional_from_unconstrained,
 )
 
 
@@ -26,7 +31,9 @@ class TestReconTransforms(chex.TestCase):
     """Tests for reconstruction parameter transforms.
 
     :see: :func:`~rheedium.recon.positive_from_unconstrained`
+    :see: :func:`~rheedium.recon.lattice_from_unconstrained`
     :see: :func:`~rheedium.recon.simplex_from_unconstrained`
+    :see: :func:`~rheedium.recon.wyckoff_fractional_from_unconstrained`
     """
 
     def test_positive_and_bounded_transforms_round_trip(self) -> None:
@@ -132,6 +139,107 @@ class TestReconTransforms(chex.TestCase):
         self.assertLessEqual(float(jnp.max(ordered)), 3.0)
         self.assertTrue(bool(jnp.all(jnp.diff(ordered) >= -1e-12)))
 
+    def test_fractional_lattice_and_wyckoff_transforms_are_smooth(
+        self,
+    ) -> None:
+        r"""Crystallographic transforms should round-trip and differentiate.
+
+        Extended Summary
+        ----------------
+        Verifies the lattice and Wyckoff-specific constraint maps added for
+        structure inversion: fractional coordinates round-trip through logits,
+        lattice lengths/angles round-trip through their physical bounds, and a
+        constrained Wyckoff coordinate map has finite gradients.
+
+        Notes
+        -----
+        The Wyckoff check evaluates away from unit-cell wrap discontinuities,
+        which is the differentiable regime used by local optimizers.
+        """
+        fractional: Float[Array, "coords"] = jnp.array(
+            [0.15, 0.4, 0.8],
+            dtype=jnp.float64,
+        )
+        recovered_fractional: Float[Array, "coords"] = (
+            fractional_from_unconstrained(
+                unconstrained_from_fractional(fractional)
+            )
+        )
+        chex.assert_trees_all_close(
+            recovered_fractional,
+            fractional,
+            atol=1e-10,
+        )
+
+        lengths: Float[Array, "three"] = jnp.array(
+            [3.1, 4.2, 5.3],
+            dtype=jnp.float64,
+        )
+        angles: Float[Array, "three"] = jnp.array(
+            [65.0, 90.0, 118.0],
+            dtype=jnp.float64,
+        )
+        unconstrained_lengths: Float[Array, "three"]
+        unconstrained_angles: Float[Array, "three"]
+        unconstrained_lengths, unconstrained_angles = (
+            unconstrained_from_lattice(
+                lengths,
+                angles,
+                minimum_length=1.0,
+                minimum_angle_deg=30.0,
+                maximum_angle_deg=150.0,
+            )
+        )
+        recovered_lengths: Float[Array, "three"]
+        recovered_angles: Float[Array, "three"]
+        recovered_lengths, recovered_angles = lattice_from_unconstrained(
+            unconstrained_lengths,
+            unconstrained_angles,
+            minimum_length=1.0,
+            minimum_angle_deg=30.0,
+            maximum_angle_deg=150.0,
+        )
+        chex.assert_trees_all_close(recovered_lengths, lengths, atol=1e-10)
+        chex.assert_trees_all_close(recovered_angles, angles, atol=1e-10)
+
+        basis: Float[Array, "coords degrees"] = jnp.array(
+            [
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [0.5, 0.5],
+            ],
+            dtype=jnp.float64,
+        )
+        offset: Float[Array, "coords"] = jnp.array(
+            [0.05, 0.1, 0.2],
+            dtype=jnp.float64,
+        )
+        degrees: Float[Array, "degrees"] = jnp.array(
+            [-0.7, 0.3],
+            dtype=jnp.float64,
+        )
+        wyckoff: Float[Array, "coords"] = (
+            wyckoff_fractional_from_unconstrained(
+                degrees,
+                basis,
+                offset,
+            )
+        )
+        self.assertGreaterEqual(float(jnp.min(wyckoff)), 0.0)
+        self.assertLess(float(jnp.max(wyckoff)), 1.0)
+
+        gradient: Float[Array, "degrees"] = jax.grad(
+            lambda trial_degrees: jnp.sum(
+                wyckoff_fractional_from_unconstrained(
+                    trial_degrees,
+                    basis,
+                    offset,
+                )
+                ** 2
+            )
+        )(degrees)
+        chex.assert_tree_all_finite(gradient)
+
 
 class TestReconTransformNamespace(chex.TestCase):
     """Tests for public transform exports."""
@@ -154,5 +262,16 @@ class TestReconTransformNamespace(chex.TestCase):
             positive_from_unconstrained,
         )
         self.assertIs(
+            recon.fractional_from_unconstrained,
+            fractional_from_unconstrained,
+        )
+        self.assertIs(
+            recon.lattice_from_unconstrained, lattice_from_unconstrained
+        )
+        self.assertIs(
             recon.simplex_from_unconstrained, simplex_from_unconstrained
+        )
+        self.assertIs(
+            recon.wyckoff_fractional_from_unconstrained,
+            wyckoff_fractional_from_unconstrained,
         )

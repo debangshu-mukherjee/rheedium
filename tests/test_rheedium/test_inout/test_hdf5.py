@@ -13,7 +13,7 @@ import pytest
 from jaxtyping import Array, Float, Integer
 
 import rheedium as rh
-from rheedium.recon import ReconstructionResult
+from rheedium.recon import ReconResult
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
@@ -225,7 +225,7 @@ def _build_sample_pytrees() -> dict[str, object]:
         psf_sigma_pixels=0.4,
     )
 
-    reconstruction: Integer[Array, "..."] = ReconstructionResult(
+    reconstruction: ReconResult = ReconResult(
         params={
             "beam": beam,
             "offsets": [
@@ -237,11 +237,25 @@ def _build_sample_pytrees() -> dict[str, object]:
                 "scale": jnp.asarray(2.0, dtype=jnp.float64),
             },
         },
-        objective_history=jnp.array([3.0, 1.0], dtype=jnp.float64),
-        gradient_norm_history=jnp.array([4.0, 0.1], dtype=jnp.float64),
-        step_norm_history=jnp.array([0.5, 0.05], dtype=jnp.float64),
+        latent_params={
+            "offsets": [
+                jnp.asarray(0.5, dtype=jnp.float64),
+                jnp.asarray(-0.2, dtype=jnp.float64),
+            ],
+            "scale_logit": jnp.asarray(1.0, dtype=jnp.float64),
+        },
+        simulated=jnp.array(
+            [[2.0, 1.0], [0.5, 3.0]],
+            dtype=jnp.float64,
+        ),
+        residual=jnp.array(
+            [[0.1, -0.2], [0.0, 0.3]],
+            dtype=jnp.float64,
+        ),
+        loss=jnp.asarray(0.035, dtype=jnp.float64),
         iterations=jnp.asarray(2, dtype=jnp.int32),
         converged=jnp.asarray(True),
+        solver_status="successful",
     )
 
     return {
