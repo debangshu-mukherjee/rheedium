@@ -62,6 +62,24 @@ def _parametric_spread_weights(
     return weights
 
 
+def _identity_forward(
+    params: Float[Array, "params"],
+) -> Float[Array, "params"]:
+    """Return parameters unchanged as a synthetic forward output."""
+    output: Float[Array, "params"] = params
+    return output
+
+
+def _double_well_loss(
+    simulated: Float[Array, "params"],
+    measured: Float[Array, "params"],  # noqa: ARG001
+) -> Float[Array, ""]:
+    """Return an asymmetric double-well objective with a local minimum."""
+    x: Float[Array, ""] = jnp.ravel(simulated)[0]
+    loss: Float[Array, ""] = (x**2 - 1.0) ** 2 + 0.2 * x
+    return loss
+
+
 def _small_crystal() -> CrystalStructure:
     """Return a two-atom cubic crystal carrier for recon fixtures."""
     crystal: CrystalStructure = create_crystal_structure(
@@ -140,6 +158,7 @@ class TestReconSolve(chex.TestCase):
     """Tests for the general reconstruction solver.
 
     :see: :class:`~rheedium.recon.ReconProblem`
+    :see: :func:`~rheedium.recon.multistart`
     :see: :func:`~rheedium.recon.solve`
     """
 
@@ -243,6 +262,156 @@ class TestReconSolve(chex.TestCase):
 
         chex.assert_trees_all_close(result.params, true_params, atol=1e-10)
         chex.assert_trees_all_close(result.loss, 0.0, atol=1e-12)
+
+    def test_seeded_random_multistart_is_reproducible(self) -> None:
+        r"""Seeded random multistart should be reproducible.
+
+        Extended Summary
+        ----------------
+        Verifies the K3 generated-start path: a template latent plus a PRNG key
+        expands into deterministic random starts, and repeated calls with the
+        same seed return the same best reconstruction.
+
+        Notes
+        -----
+        The linear reference problem is exactly recoverable from every basin,
+        which keeps this test focused on seeded generation and deterministic
+        selection.
+        """
+        problem: ReconProblem
+        true_params: Float[Array, "params"]
+        problem, true_params = _linear_problem()
+        key: Array = jax.random.PRNGKey(101)
+        template: Float[Array, "params"] = jnp.zeros(
+            2,
+            dtype=jnp.float64,
+        )
+
+        first_result: ReconResult = multistart(
+            problem=problem,
+            initial_latents=template,
+            key=key,
+            n_starts=5,
+            random_scale=3.0,
+            max_steps=16,
+            atol=1e-10,
+        )
+        second_result: ReconResult = multistart(
+            problem=problem,
+            initial_latents=template,
+            key=key,
+            n_starts=5,
+            random_scale=3.0,
+            max_steps=16,
+            atol=1e-10,
+        )
+
+        chex.assert_trees_all_close(
+            first_result.params, true_params, atol=1e-8
+        )
+        chex.assert_trees_all_close(
+            first_result.params,
+            second_result.params,
+            atol=1e-12,
+        )
+        chex.assert_trees_all_close(
+            first_result.loss,
+            second_result.loss,
+            atol=1e-12,
+        )
+
+    def test_multistart_escapes_planted_local_minimum(self) -> None:
+        r"""Multistart should escape a planted local objective basin.
+
+        Extended Summary
+        ----------------
+        Verifies the K3 robustness gate on an asymmetric double-well scalar
+        objective: a single cold start lands in the higher-loss positive basin,
+        while multistart finds the lower-loss negative basin.
+
+        Notes
+        -----
+        The problem uses the finite-budget AdamW scalar minimization mode so
+        the positive local basin is not crossed by a single cold start, and
+        best-start selection is based on ``ReconResult.loss``.
+        """
+        problem: ReconProblem = ReconProblem(
+            forward=_identity_forward,
+            measured=jnp.zeros(1, dtype=jnp.float64),
+            loss_fn=_double_well_loss,
+        )
+
+        single_result: ReconResult = solve(
+            problem=problem,
+            initial_latent=jnp.array([2.0], dtype=jnp.float64),
+            mode="adamw",
+            max_steps=100,
+            learning_rate=0.02,
+            atol=1e-10,
+        )
+        starts: Float[Array, "starts params"] = jnp.array(
+            [[2.0], [-2.0]],
+            dtype=jnp.float64,
+        )
+        multistart_result: ReconResult = multistart(
+            problem=problem,
+            initial_latents=starts,
+            mode="adamw",
+            max_steps=100,
+            learning_rate=0.02,
+            atol=1e-10,
+        )
+
+        self.assertGreater(float(single_result.params[0]), 0.5)
+        self.assertLess(float(multistart_result.params[0]), -0.5)
+        self.assertLess(
+            float(multistart_result.loss), float(single_result.loss)
+        )
+
+    def test_bracketed_initialization_converges_in_fewer_steps(self) -> None:
+        r"""A bracketed start should refine faster than a cold start.
+
+        Extended Summary
+        ----------------
+        Verifies the Loop-B to Loop-C handoff contract for K3: when a coarse
+        bracket already places the latent near the correct basin, the same
+        nonlinear least-squares solve reaches the planted solution in fewer
+        reported solver steps than a distant cold start.
+
+        Notes
+        -----
+        The synthetic residual ``x**2 - 4`` is nonlinear but exactly
+        identifiable, so the iteration comparison is stable.
+        """
+        problem: ReconProblem = ReconProblem(
+            forward=lambda latent: latent**2,
+            measured=jnp.array([4.0], dtype=jnp.float64),
+        )
+
+        cold_result: ReconResult = solve(
+            problem=problem,
+            initial_latent=jnp.array([10.0], dtype=jnp.float64),
+            max_steps=64,
+            atol=1e-10,
+            rtol=1e-10,
+        )
+        bracketed_result: ReconResult = solve(
+            problem=problem,
+            initial_latent=jnp.array([2.2], dtype=jnp.float64),
+            max_steps=64,
+            atol=1e-10,
+            rtol=1e-10,
+        )
+
+        chex.assert_trees_all_close(
+            bracketed_result.params,
+            jnp.array([2.0], dtype=jnp.float64),
+            atol=1e-8,
+        )
+        self.assertLess(
+            int(bracketed_result.iterations),
+            int(cold_result.iterations),
+        )
 
     def test_fixed_budget_matches_longer_solve_with_wall_clock_budget(
         self,

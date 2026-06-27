@@ -18,6 +18,8 @@ Routine Listings
     Result container returned by the general reconstruction solver.
 :class:`LaplaceUncertainty`
     Local Gaussian uncertainty estimate around a reconstruction optimum.
+:class:`PosteriorSamples`
+    Posterior sample container with diagnostics and credible intervals.
 :class:`RecipeDeviationReport`
     Compare fitted reconstruction parameters with an intended recipe.
 :func:`positive_from_unconstrained`
@@ -91,6 +93,12 @@ Routine Listings
     Regularize and invert a Fisher information matrix.
 :func:`laplace_uncertainty`
     Build a local Laplace uncertainty estimate from residual sensitivities.
+:func:`laplace_inverse_mass_matrix`
+    Build a blackjax inverse-mass warm start from Laplace precision.
+:func:`posterior_from_samples`
+    Summarize posterior samples with diagnostics and credible intervals.
+:func:`sample_posterior`
+    Draw blackjax NUTS samples from a differentiable log posterior.
 :func:`recipe_deviation`
     Solve an inverse problem and report signed recipe deviations.
 :class:`OrientationFitResult`
@@ -156,14 +164,19 @@ from .transforms import (
 )
 from .uncertainty import (
     LaplaceUncertainty,
+    PosteriorSamples,
     covariance_from_fisher,
     fisher_information_from_residual,
+    laplace_inverse_mass_matrix,
     laplace_uncertainty,
+    posterior_from_samples,
+    sample_posterior,
 )
 
 __all__: list[str] = [
     "DistributionAxisSpec",
     "LaplaceUncertainty",
+    "PosteriorSamples",
     "ReconProblem",
     "ReconResult",
     "OrientationFitResult",
@@ -186,6 +199,7 @@ __all__: list[str] = [
     "huber_image_loss",
     "lattice_from_unconstrained",
     "l2_image_loss",
+    "laplace_inverse_mass_matrix",
     "laplace_uncertainty",
     "log_intensity_loss",
     "multistart",
@@ -193,11 +207,13 @@ __all__: list[str] = [
     "ordered_bounded_from_unconstrained",
     "orientation_loss",
     "positive_from_unconstrained",
+    "posterior_from_samples",
     "recipe_deviation",
     "reconstruct_distribution",
     "reconstruct_incoherent_weights",
     "simplex_from_unconstrained",
     "smoothness_prior",
+    "sample_posterior",
     "solve",
     "sparsity_prior",
     "unconstrained_from_bounded",

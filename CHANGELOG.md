@@ -18,6 +18,15 @@ Each entry summarizes the commits that landed for that version bump in
   `adam_*`, and `adagrad_*` optimizer APIs were removed with no shim; migrate
   reconstruction callers to `ReconProblem` plus `solve`. HDF5 serialization now
   registers `ReconResult`.
+- Completed the generalized recon UQ gate: `uncertainty.py` now exposes
+  `PosteriorSamples`, blackjax NUTS posterior sampling, R-hat/ESS diagnostics,
+  credible intervals, and Laplace/Fisher inverse-mass warm starts, with tests for
+  empirical covariance calibration, multimodal posterior retention, orientation
+  Fisher regression, and free-form distribution bands.
+- Completed the K3 recon robustness gate: `multistart` can now generate seeded
+  random starts from a template latent, scalar minimization results report the
+  optimized objective in `ReconResult.loss`, and tests cover reproducibility,
+  planted local-minimum escape, and bracketed-init faster refinement.
 - Multislice simulator and Lobató potentials are now the **default** scattering
   model.
 - Began detector-geometry rationalization: `DetectorGeometry` now carries dense

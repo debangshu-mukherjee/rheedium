@@ -86,6 +86,71 @@ def _tree_mean_square(tree: Any) -> Float[Array, ""]:
     return loss
 
 
+def _n_multistart_latents(initial_latents: Any) -> int:
+    """Return and validate the leading start count for batched latents."""
+    leaves: list[Any] = jax.tree_util.tree_leaves(initial_latents)
+    if not leaves:
+        raise ValueError("initial_latents must contain at least one leaf")
+    n_starts: int = int(jnp.asarray(leaves[0]).shape[0])
+    if n_starts <= 0:
+        raise ValueError("initial_latents must contain at least one start")
+    for leaf in leaves[1:]:
+        if int(jnp.asarray(leaf).shape[0]) != n_starts:
+            raise ValueError(
+                "all initial_latents leaves must share a leading start axis"
+            )
+    return n_starts
+
+
+def _random_multistart_latents(
+    template_latent: Any,
+    key: Array,
+    n_starts: int,
+    random_scale: scalar_float,
+    include_initial: bool,
+) -> Any:
+    """Generate seeded random latent starts around a template pytree."""
+    if n_starts <= 0:
+        raise ValueError("n_starts must be positive")
+    n_random: int = n_starts - 1 if include_initial else n_starts
+    if n_random < 0:
+        raise ValueError("n_starts must be at least one")
+
+    leaves: list[Any]
+    treedef: Any
+    leaves, treedef = jax.tree_util.tree_flatten(template_latent)
+    if not leaves:
+        raise ValueError("template_latent must contain at least one leaf")
+    keys: Array = jax.random.split(key, len(leaves))
+    scale: Float[Array, ""] = jnp.asarray(random_scale, dtype=jnp.float64)
+    batched_leaves: list[Array] = []
+    for leaf, leaf_key in zip(leaves, keys, strict=True):
+        leaf_array: Array = jnp.asarray(leaf)
+        dtype: Any = (
+            leaf_array.dtype
+            if jnp.issubdtype(leaf_array.dtype, jnp.floating)
+            else jnp.float64
+        )
+        center: Array = jnp.asarray(leaf_array, dtype=dtype)
+        random_shape: tuple[int, ...] = (n_random, *center.shape)
+        noise: Array = scale * jax.random.normal(
+            leaf_key,
+            random_shape,
+            dtype=dtype,
+        )
+        random_starts: Array = center[None, ...] + noise
+        if include_initial:
+            batched_leaf: Array = jnp.concatenate(
+                [center[None, ...], random_starts],
+                axis=0,
+            )
+        else:
+            batched_leaf = random_starts
+        batched_leaves.append(batched_leaf)
+    generated_latents: Any = treedef.unflatten(batched_leaves)
+    return generated_latents
+
+
 def _default_loss(simulated: Any, measured: Any) -> Float[Array, ""]:
     """Return the default mean-squared data loss."""
     residual: Any = _default_residual(simulated, measured)
@@ -509,7 +574,10 @@ def solve(  # noqa: PLR0913
         final_simulated,
         problem.measured,
     )
-    final_loss: Float[Array, ""] = _tree_mean_square(final_residual)
+    if mode == "least_squares":
+        final_loss: Float[Array, ""] = _tree_mean_square(final_residual)
+    else:
+        final_loss = problem.loss_fn(final_simulated, problem.measured)
     iterations: Int[Array, ""] = jnp.asarray(
         solution.stats.get("num_steps", max_steps),
         dtype=jnp.int32,
@@ -536,7 +604,7 @@ def solve(  # noqa: PLR0913
 
 
 @jaxtyped(typechecker=beartype)
-def multistart(
+def multistart(  # noqa: PLR0913
     problem: ReconProblem,
     initial_latents: Any,
     solver: Optional[Any] = None,
@@ -546,6 +614,10 @@ def multistart(
     atol: scalar_float = 1e-6,
     learning_rate: scalar_float = 1e-2,
     clip_norm: scalar_float = 1.0,
+    key: Optional[Array] = None,
+    n_starts: Optional[int] = None,
+    random_scale: scalar_float = 1.0,
+    include_initial: bool = True,
 ) -> ReconResult:
     """Run a reconstruction problem from multiple initial guesses.
 
@@ -556,7 +628,9 @@ def multistart(
     problem : ReconProblem
         Reconstruction problem to solve.
     initial_latents : Any
-        Pytree whose leaves have a leading ``K`` start dimension.
+        Pytree whose leaves have a leading ``K`` start dimension. If ``key``
+        and ``n_starts`` are supplied, this is instead treated as a template
+        latent used to generate seeded random starts.
     solver : Optional[Any], optional
         Explicit ``optimistix`` solver instance. Default: chosen by ``mode``.
     mode : str, optional
@@ -572,6 +646,19 @@ def multistart(
         Learning rate used by the optax path. Default: 1e-2
     clip_norm : scalar_float, optional
         Global gradient clipping norm for the optax path. Default: 1.0
+    key : Optional[Array], optional
+        PRNG key used to generate random starts around ``initial_latents``.
+        If omitted, ``initial_latents`` is interpreted as an already-batched
+        start pytree. Default: None
+    n_starts : Optional[int], optional
+        Total number of starts to generate when ``key`` is provided. Default:
+        None
+    random_scale : scalar_float, optional
+        Standard deviation of the normal random perturbations applied to the
+        template latent when generating starts. Default: 1.0
+    include_initial : bool, optional
+        If True, prepend the template latent as the first generated start.
+        Default: True
 
     Returns
     -------
@@ -580,22 +667,32 @@ def multistart(
 
     Notes
     -----
-    1. Slice the leading start axis from every latent pytree leaf.
-    2. Run the common ``solve`` surface for each start.
-    3. Select the lowest-loss result deterministically.
+    1. Optionally generate seeded starts around a template latent.
+    2. Slice the leading start axis from every latent pytree leaf.
+    3. Run the common ``solve`` surface for each start.
+    4. Select the lowest-loss result deterministically.
     """
-    leaves: list[Any] = jax.tree_util.tree_leaves(initial_latents)
-    if not leaves:
-        raise ValueError("initial_latents must contain at least one leaf")
-    n_starts: int = int(jnp.asarray(leaves[0]).shape[0])
-    if n_starts <= 0:
-        raise ValueError("initial_latents must contain at least one start")
+    active_initial_latents: Any = initial_latents
+    if key is not None:
+        if n_starts is None:
+            raise ValueError("n_starts is required when key is provided")
+        active_initial_latents = _random_multistart_latents(
+            template_latent=initial_latents,
+            key=key,
+            n_starts=n_starts,
+            random_scale=random_scale,
+            include_initial=include_initial,
+        )
+    elif n_starts is not None:
+        raise ValueError("key is required when n_starts is provided")
+
+    n_active_starts: int = _n_multistart_latents(active_initial_latents)
 
     results: list[ReconResult] = []
-    for start_index in range(n_starts):
+    for start_index in range(n_active_starts):
         start_latent: Any = jax.tree_util.tree_map(
             lambda leaf, idx=start_index: leaf[idx],
-            initial_latents,
+            active_initial_latents,
         )
         start_result: ReconResult = solve(
             problem=problem,
