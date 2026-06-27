@@ -10,6 +10,8 @@ differentiable surface-construction utilities live in
 
 Routine Listings
 ----------------
+:class:`DistributionAxisSpec`
+    Static perturbation-axis contract for distribution reconstruction.
 :class:`ReconProblem`
     Differentiable inverse problem definition for reconstruction solvers.
 :class:`ReconResult`
@@ -60,12 +62,18 @@ Routine Listings
     Checkify-instrumented weighted residual for numerical validation.
 :func:`checked_weighted_mean_squared_error`
     Checkify-instrumented weighted MSE for numerical validation.
+:func:`create_distribution_axis_spec`
+    Create a perturbation-axis specification for library reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
     Run a reconstruction problem from multiple initial guesses.
+:func:`build_incoherent_intensity_library`
+    Build a per-sample incoherent intensity library from a base object.
 :func:`reconstruct_incoherent_weights`
     Recover incoherent distribution weights from an intensity library.
+:func:`reconstruct_distribution`
+    Recover a distribution over a perturbation axis from a measured image.
 :func:`fisher_information_from_residual`
     Compute a Gauss-Newton/Fisher matrix from a residual function.
 :func:`covariance_from_fisher`
@@ -132,9 +140,13 @@ from .orientation import (
     orientation_loss,
 )
 from .solve import (
+    DistributionAxisSpec,
     ReconProblem,
     ReconResult,
+    build_incoherent_intensity_library,
+    create_distribution_axis_spec,
     multistart,
+    reconstruct_distribution,
     reconstruct_incoherent_weights,
     solve,
 )
@@ -155,6 +167,7 @@ from .uncertainty import (
 )
 
 __all__: list[str] = [
+    "DistributionAxisSpec",
     "LaplaceUncertainty",
     "ReconProblem",
     "ReconResult",
@@ -168,10 +181,12 @@ __all__: list[str] = [
     "adam_optimize",
     "adam_reconstruction",
     "bounded_from_unconstrained",
+    "build_incoherent_intensity_library",
     "checked_weighted_image_residual",
     "checked_weighted_mean_squared_error",
     "compute_fisher_information",
     "covariance_from_fisher",
+    "create_distribution_axis_spec",
     "entropy_prior",
     "estimate_weight_uncertainty",
     "fisher_information_from_residual",
@@ -188,6 +203,7 @@ __all__: list[str] = [
     "orientation_loss",
     "positive_from_unconstrained",
     "recipe_deviation",
+    "reconstruct_distribution",
     "reconstruct_incoherent_weights",
     "simplex_from_unconstrained",
     "smoothness_prior",

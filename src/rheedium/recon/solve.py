@@ -11,16 +11,24 @@ free-form-weight problems.
 
 Routine Listings
 ----------------
+:class:`DistributionAxisSpec`
+    Static perturbation-axis contract for distribution reconstruction.
 :class:`ReconProblem`
     Differentiable inverse problem definition for reconstruction solvers.
 :class:`ReconResult`
     Result container returned by the general reconstruction solver.
+:func:`create_distribution_axis_spec`
+    Create a perturbation-axis specification for library reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
     Run a reconstruction problem from multiple initial guesses.
+:func:`build_incoherent_intensity_library`
+    Build a per-sample incoherent intensity library from a base object.
 :func:`reconstruct_incoherent_weights`
     Recover incoherent distribution weights from an intensity library.
+:func:`reconstruct_distribution`
+    Recover a distribution over a perturbation axis from a measured image.
 """
 
 import equinox as eqx
@@ -29,10 +37,17 @@ import jax.numpy as jnp
 import optax
 import optimistix as optx
 from beartype import beartype
-from beartype.typing import Any, Callable, Optional
+from beartype.typing import Any, Callable, Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
-from rheedium.types import scalar_float
+from rheedium.types import (
+    Distribution,
+    ReductionMode,
+    create_distribution,
+    scalar_float,
+)
+
+from .uncertainty import covariance_from_fisher
 
 
 def _identity(value: Any) -> Any:
@@ -82,6 +97,39 @@ def _result_message(result: Any) -> str:
         return message
     message: str = str(optx.RESULTS[result])
     return message
+
+
+class DistributionAxisSpec(eqx.Module):
+    """Static perturbation-axis contract for distribution reconstruction.
+
+    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
+
+    Attributes
+    ----------
+    samples : Float[Array, "N D"]
+        Latent-axis sample coordinates used as rows in the recovered
+        distribution.
+    perturbation_fn : Callable[[Any, Float[Array, "D"]], Any]
+        Static function that maps ``(base_object, sample)`` to a perturbed
+        physical object.
+    forward_model : Callable[[Any], Array]
+        Static differentiable model that maps the perturbed object to either a
+        coherent amplitude image or an intensity image.
+    output_kind : str
+        Static forward-output interpretation: ``"amplitude"`` or
+        ``"intensity"``.
+    axis_id : Optional[str]
+        Optional static label attached to the recovered
+        :class:`~rheedium.types.Distribution`.
+    """
+
+    samples: Float[Array, "N D"]
+    perturbation_fn: Callable[[Any, Float[Array, "D"]], Any] = eqx.field(
+        static=True
+    )
+    forward_model: Callable[[Any], Array] = eqx.field(static=True)
+    output_kind: str = eqx.field(static=True, default="amplitude")
+    axis_id: Optional[str] = eqx.field(static=True, default=None)
 
 
 class ReconProblem(eqx.Module):
@@ -177,6 +225,64 @@ class ReconResult(eqx.Module):
     iterations: Int[Array, ""]
     converged: Bool[Array, ""]
     solver_status: str = eqx.field(static=True)
+
+
+@jaxtyped(typechecker=beartype)
+def create_distribution_axis_spec(
+    samples: Float[Array, "N D"],
+    perturbation_fn: Callable[[Any, Float[Array, "D"]], Any],
+    forward_model: Callable[[Any], Array],
+    output_kind: str = "amplitude",
+    axis_id: Optional[str] = None,
+) -> DistributionAxisSpec:
+    """Create a perturbation-axis specification for library reconstruction.
+
+    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
+
+    Parameters
+    ----------
+    samples : Float[Array, "N D"]
+        Two-dimensional latent-axis sample coordinates.
+    perturbation_fn : Callable[[Any, Float[Array, "D"]], Any]
+        Static function mapping ``(base_object, sample)`` to a perturbed
+        physical object.
+    forward_model : Callable[[Any], Array]
+        Static differentiable forward model for one perturbed object.
+    output_kind : str, optional
+        Static forward-output interpretation, either ``"amplitude"`` or
+        ``"intensity"``. Default: ``"amplitude"``
+    axis_id : Optional[str], optional
+        Optional static axis label stored on the recovered distribution.
+
+    Returns
+    -------
+    axis_spec : DistributionAxisSpec
+        Validated perturbation-axis specification.
+
+    Notes
+    -----
+    1. Convert samples to ``float64``.
+    2. Validate the static sample rank and supported output interpretation.
+    3. Store callables and metadata as static PyTree fields.
+    """
+    sample_array: Float[Array, "N D"] = jnp.asarray(
+        samples,
+        dtype=jnp.float64,
+    )
+    if sample_array.ndim != 2:
+        raise ValueError("samples must have shape (N, D)")
+    if sample_array.shape[0] <= 0:
+        raise ValueError("samples must contain at least one row")
+    if output_kind not in {"amplitude", "intensity"}:
+        raise ValueError("output_kind must be 'amplitude' or 'intensity'")
+    axis_spec: DistributionAxisSpec = DistributionAxisSpec(
+        samples=sample_array,
+        perturbation_fn=perturbation_fn,
+        forward_model=forward_model,
+        output_kind=output_kind,
+        axis_id=axis_id,
+    )
+    return axis_spec
 
 
 @jaxtyped(typechecker=beartype)
@@ -404,6 +510,60 @@ def multistart(
 
 
 @jaxtyped(typechecker=beartype)
+def build_incoherent_intensity_library(
+    base_object: Any,
+    axis_spec: DistributionAxisSpec,
+) -> Float[Array, "N H W"]:
+    """Build a per-sample incoherent intensity library from a base object.
+
+    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
+
+    Parameters
+    ----------
+    base_object : Any
+        Base crystal, structure, detector pattern carrier, or other physical
+        object perturbed along ``axis_spec.samples``.
+    axis_spec : DistributionAxisSpec
+        Perturbation-axis specification containing samples, perturbation
+        function, forward model, output interpretation, and axis label.
+
+    Returns
+    -------
+    intensity_library : Float[Array, "N H W"]
+        Per-sample intensity images suitable for
+        :func:`reconstruct_incoherent_weights`.
+
+    Notes
+    -----
+    1. Vectorize over latent-axis samples with ``jax.vmap``.
+    2. Perturb the base object at each sample.
+    3. Interpret the forward output as amplitude via ``|A|^2`` or as an
+       already-formed intensity image.
+    """
+
+    def sample_intensity(sample: Float[Array, "D"]) -> Float[Array, "H W"]:
+        perturbed_object: Any = axis_spec.perturbation_fn(
+            base_object,
+            sample,
+        )
+        forward_output: Array = jnp.asarray(
+            axis_spec.forward_model(perturbed_object)
+        )
+        if axis_spec.output_kind == "amplitude":
+            intensity: Float[Array, "H W"] = jnp.real(
+                jnp.conj(forward_output) * forward_output
+            )
+            return intensity
+        intensity: Float[Array, "H W"] = jnp.real(forward_output)
+        return intensity
+
+    intensity_library: Float[Array, "N H W"] = jax.vmap(sample_intensity)(
+        axis_spec.samples
+    )
+    return intensity_library
+
+
+@jaxtyped(typechecker=beartype)
 def reconstruct_incoherent_weights(
     intensity_library: Float[Array, "N H W"],
     measured_image: Float[Array, "H W"],
@@ -467,10 +627,93 @@ def reconstruct_incoherent_weights(
     return weights
 
 
+@jaxtyped(typechecker=beartype)
+def reconstruct_distribution(
+    measured_image: Float[Array, "H W"],
+    base_object: Any,
+    axis_spec: DistributionAxisSpec,
+    ridge: scalar_float = 1e-10,
+    noise_variance: scalar_float = 1.0,
+) -> Tuple[Distribution, Float[Array, "N"]]:
+    """Recover a distribution over a perturbation axis from a measured image.
+
+    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
+
+    Parameters
+    ----------
+    measured_image : Float[Array, "H W"]
+        Measured detector image to explain as an incoherent mixture.
+    base_object : Any
+        Base crystal, structure, detector pattern carrier, or other physical
+        object from which the per-axis library is generated.
+    axis_spec : DistributionAxisSpec
+        Perturbation-axis specification for building the intensity library.
+    ridge : scalar_float, optional
+        Diagonal Tikhonov regularization for the linear solve. Default: 1e-10
+    noise_variance : scalar_float, optional
+        Per-pixel Gaussian noise variance used for the returned weight band.
+        Default: 1.0
+
+    Returns
+    -------
+    distribution : Distribution
+        Recovered incoherent distribution over ``axis_spec.samples``.
+    band : Float[Array, "N"]
+        One-sigma linearized uncertainty band for the recovered weights.
+
+    Notes
+    -----
+    1. Build the per-sample incoherent intensity library from the base object.
+    2. Solve the convex linear weight reconstruction problem.
+    3. Package the recovered simplex weights as a
+       :class:`~rheedium.types.Distribution`.
+    4. Estimate a local Fisher/Laplace band in weight coordinates.
+    """
+    intensity_library: Float[Array, "N H W"] = (
+        build_incoherent_intensity_library(
+            base_object=base_object,
+            axis_spec=axis_spec,
+        )
+    )
+    weights: Float[Array, "N"] = reconstruct_incoherent_weights(
+        intensity_library=intensity_library,
+        measured_image=measured_image,
+        ridge=ridge,
+    )
+    distribution: Distribution = create_distribution(
+        samples=axis_spec.samples,
+        weights=weights,
+        reduction=ReductionMode.INCOHERENT,
+        axis_id=axis_spec.axis_id,
+    )
+    n_samples: int = intensity_library.shape[0]
+    design: Float[Array, "P N"] = jnp.reshape(
+        jnp.moveaxis(intensity_library, 0, -1),
+        (-1, n_samples),
+    )
+    safe_noise_variance: Float[Array, ""] = jnp.maximum(
+        jnp.asarray(noise_variance, dtype=design.dtype),
+        jnp.asarray(1e-12, dtype=design.dtype),
+    )
+    fisher_information: Float[Array, "N N"] = (
+        design.T @ design
+    ) / safe_noise_variance
+    covariance: Float[Array, "N N"] = covariance_from_fisher(
+        fisher_information=fisher_information,
+        regularization=ridge,
+    )
+    band: Float[Array, "N"] = jnp.sqrt(jnp.maximum(jnp.diag(covariance), 0.0))
+    return distribution, band
+
+
 __all__: list[str] = [
+    "DistributionAxisSpec",
     "ReconProblem",
     "ReconResult",
+    "build_incoherent_intensity_library",
+    "create_distribution_axis_spec",
     "multistart",
+    "reconstruct_distribution",
     "reconstruct_incoherent_weights",
     "solve",
 ]

@@ -12,8 +12,8 @@ Each entry summarizes the commits that landed for that version bump in
 - Added the foundational `recon` optimization API from the optimistix/optax
   plan: constrained latent transforms, richer differentiable losses, the
   general `ReconProblem`/`solve`/`multistart` surface, incoherent distribution
-  weight reconstruction, Fisher/Laplace uncertainty helpers, and
-  `recipe_deviation` reports.
+  weight reconstruction, the base-object distribution library builder,
+  Fisher/Laplace uncertainty helpers, and `recipe_deviation` reports.
 - Multislice simulator and Lobató potentials are now the **default** scattering
   model.
 - Began detector-geometry rationalization: `DetectorGeometry` now carries dense

@@ -10,9 +10,13 @@ from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
+    DistributionAxisSpec,
     ReconProblem,
     ReconResult,
+    build_incoherent_intensity_library,
+    create_distribution_axis_spec,
     multistart,
+    reconstruct_distribution,
     reconstruct_incoherent_weights,
     solve,
 )
@@ -193,6 +197,114 @@ class TestReconSolve(chex.TestCase):
         chex.assert_trees_all_close(weights, true_weights, atol=1e-8)
 
 
+def _amplitude_templates() -> Float[Array, "samples rows cols"]:
+    """Return independent synthetic amplitude templates."""
+    templates: Float[Array, "samples rows cols"] = jnp.array(
+        [
+            [[1.0, 0.0], [0.0, 0.5]],
+            [[0.0, 1.5], [0.0, 0.0]],
+            [[0.0, 0.0], [2.0, 1.0]],
+        ],
+        dtype=jnp.float64,
+    )
+    return templates
+
+
+def _one_hot_perturbation(
+    base_templates: Float[Array, "samples rows cols"],
+    sample: Float[Array, "samples"],
+) -> Float[Array, "rows cols"]:
+    """Select one amplitude template from a one-hot sample coordinate."""
+    amplitude: Float[Array, "rows cols"] = jnp.einsum(
+        "n,nhw->hw",
+        sample,
+        base_templates,
+    )
+    return amplitude
+
+
+def _identity_forward(
+    amplitude: Float[Array, "rows cols"],
+) -> Float[Array, "rows cols"]:
+    """Return a synthetic coherent amplitude image unchanged."""
+    return amplitude
+
+
+class TestReconDistributionReconstruction(chex.TestCase):
+    """Tests for base-object distribution reconstruction.
+
+    :see: :class:`~rheedium.recon.DistributionAxisSpec`
+    :see: :func:`~rheedium.recon.create_distribution_axis_spec`
+    :see: :func:`~rheedium.recon.build_incoherent_intensity_library`
+    :see: :func:`~rheedium.recon.reconstruct_distribution`
+    """
+
+    def test_reconstruct_distribution_recovers_planted_axis_weights(
+        self,
+    ) -> None:
+        r"""Base-axis reconstruction should recover planted weights.
+
+        Extended Summary
+        ----------------
+        Verifies the updated plan's library-builder path: a base object and
+        perturbation-axis specification build an incoherent intensity library,
+        then the convex solver recovers the planted mixing distribution.
+
+        Notes
+        -----
+        It uses one-hot axis samples to select independent amplitude templates,
+        mixes their intensities with known weights, and checks the recovered
+        distribution plus its one-sigma band.
+        """
+        samples: Float[Array, "samples sample_dim"] = jnp.eye(
+            3,
+            dtype=jnp.float64,
+        )
+        axis_spec: DistributionAxisSpec = create_distribution_axis_spec(
+            samples=samples,
+            perturbation_fn=_one_hot_perturbation,
+            forward_model=_identity_forward,
+            output_kind="amplitude",
+            axis_id="synthetic_axis",
+        )
+        base_templates: Float[Array, "samples rows cols"] = (
+            _amplitude_templates()
+        )
+        intensity_library: Float[Array, "samples rows cols"] = (
+            build_incoherent_intensity_library(
+                base_object=base_templates,
+                axis_spec=axis_spec,
+            )
+        )
+        true_weights: Float[Array, "samples"] = jnp.array(
+            [0.2, 0.5, 0.3],
+            dtype=jnp.float64,
+        )
+        measured: Float[Array, "rows cols"] = jnp.einsum(
+            "n,nhw->hw",
+            true_weights,
+            intensity_library,
+        )
+
+        distribution, band = reconstruct_distribution(
+            measured_image=measured,
+            base_object=base_templates,
+            axis_spec=axis_spec,
+            ridge=1e-12,
+            noise_variance=0.05,
+        )
+
+        chex.assert_trees_all_close(
+            distribution.weights,
+            true_weights,
+            atol=1e-8,
+        )
+        chex.assert_trees_all_close(distribution.samples, samples, atol=1e-12)
+        self.assertEqual(distribution.axis_id, "synthetic_axis")
+        chex.assert_shape(band, (3,))
+        chex.assert_tree_all_finite(band)
+
+
 class TestReconSolveNamespace(chex.TestCase):
     """Tests for public solve exports."""
 
@@ -213,3 +325,12 @@ class TestReconSolveNamespace(chex.TestCase):
         self.assertIs(recon.ReconResult, ReconResult)
         self.assertIs(recon.solve, solve)
         self.assertIs(recon.multistart, multistart)
+        self.assertIs(
+            recon.create_distribution_axis_spec,
+            create_distribution_axis_spec,
+        )
+        self.assertIs(
+            recon.build_incoherent_intensity_library,
+            build_incoherent_intensity_library,
+        )
+        self.assertIs(recon.reconstruct_distribution, reconstruct_distribution)
