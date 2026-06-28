@@ -28,8 +28,20 @@ This catalog lists every top-level Python script in `automatons/`.
 | `invert_structure.py` | Synthetic measured detector vector to recovered structure-latent parameters. |
 | `recipe_deviation.py` | Intended-vs-fitted recipe gap, z-scores, severity, and frozen deviation report. |
 
+## Diagnostics & Ensemble
+
+| Script | Purpose |
+|---|---|
+| `azimuthal_sweep.py` | Distributed azimuth sweep to per-angle detector metrics, mean image, and montage artifacts. |
+| `parameter_grid.py` | Distributed energy-by-theta detector grid to numeric arrays and integrated-intensity heatmap. |
+| `ensemble_average.py` | Generic `Distribution` ensemble average to averaged detector image and mode/effective-count metrics. |
+| `reconstruct_orientation.py` | Synthetic orientation-mixture inverse fit to recovered weights, residual image, and gradient check. |
+| `convergence_study.py` | Mode-count convergence diagnostic to monotone residual-vs-N curve and detector previews. |
+
 ## Operations
 
 | Script | Purpose |
 |---|---|
+| `audit_invariants.py` | Run stateless physics-invariant checks and emit pass/fail residual artifacts. |
 | `bump_pin.py` | Rewrite PEP 723 `rheedium==...` pins across automaton scripts. |
+| `export_model.py` | Export a version-tagged StableHLO kinematic forward artifact with separate-process reload proof. |

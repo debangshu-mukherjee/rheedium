@@ -210,10 +210,9 @@ jobs:
         path: dist/
 
   automatons-smoke:
-    name: Automatons smoke (informational)
+    name: Automatons smoke
     needs: resolve-python
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
     - name: Checkout
       uses: actions/checkout@v5

@@ -16,6 +16,13 @@ uv run automatons/invert_structure.py --smoke --outdir /tmp/rh-invert
 uv run automatons/recipe_deviation.py --smoke --outdir /tmp/rh-dev
 uv run automatons/rheed_ingest.py --smoke --outdir /tmp/rh-ingest
 uv run automatons/growth_monitor.py --smoke --outdir /tmp/rh-growth
+uv run automatons/azimuthal_sweep.py --smoke --outdir /tmp/rh-azimuth
+uv run automatons/parameter_grid.py --smoke --outdir /tmp/rh-grid
+uv run automatons/ensemble_average.py --smoke --outdir /tmp/rh-ensemble
+uv run automatons/reconstruct_orientation.py --smoke --outdir /tmp/rh-orient
+uv run automatons/convergence_study.py --smoke --outdir /tmp/rh-conv
+uv run automatons/audit_invariants.py --smoke --outdir /tmp/rh-audit
+uv run automatons/export_model.py --smoke --outdir /tmp/rh-export
 ```
 
 During local development, run against the working tree instead of the PEP 723

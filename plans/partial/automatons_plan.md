@@ -41,8 +41,16 @@ synthetic smoke fixtures, including the recipe-deviation control signal.
 **G4 (Loop A) is closed:** `rheed_ingest.py` emits per-frame-stateless growth
 state from one detector frame, and `growth_monitor.py` recovers the planted
 oscillation period and roughness trend from the committed
-`tests/test_data/rheed_loop_a/` rolling series. **Remaining:** diagnostics (G6),
-the rest of ops/hardening (G7), and docs (G8). The reason it was sequenced last:
+`tests/test_data/rheed_loop_a/` rolling series. **G6 (diagnostics/ensemble) is
+closed:** `azimuthal_sweep.py`, `parameter_grid.py`, `ensemble_average.py`,
+`reconstruct_orientation.py`, and `convergence_study.py` cover distributed
+sweeps, generic distribution averaging, orientation recovery, and monotone
+convergence artifacts. **G7 (ops/hardening) is closed:** `audit_invariants.py`
+runs the physics-invariant suite, `export_model.py` emits a version-tagged
+StableHLO kinematic artifact with a separate-process reload proof,
+`bump_pin.py` is tested for idempotent release pinning, and `automatons-smoke`
+is no longer soft-failed in CI. **Remaining:** docs (G8). The reason it was
+sequenced last:
 these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
@@ -783,7 +791,9 @@ single-parameter case of Loop C); `convergence_study`.
 
 **Gate G6:** smoke-green; `ensemble_average` reports mode / effective-count
 metrics; `convergence_study` emits a monotone residual-vs-N series; each emits a
-valid `--describe`.
+valid `--describe`. **Closed:** the five diagnostic/ensemble scripts are
+landed with smoke assertions for sweep/grid shape, mode/effective-count
+metrics, orientation recovery, and monotone convergence.
 
 ### Phase 7 — Ops automatons + hardening
 
@@ -801,7 +811,11 @@ the wheel-exclusion test is green; `bump_pin.py` is idempotent (a second run is 
 no-op) and rewrites every header to one pinned version (tested); `export_model`
 produces a **StableHLO** artifact that **deserializes and runs in a separate
 process** (proving recompile-free portability), with a recorded `rheedium_version`
-and a same-result check against the in-process forward call.
+and a same-result check against the in-process forward call. **Closed:** the
+workflow no longer marks `automatons-smoke` informational/soft-fail, wheel
+exclusion and pin idempotence are tested, and `export_model.py` smoke proves the
+separate-process StableHLO reload path. GitHub branch-protection selection of
+the status check remains an external repository setting.
 
 ### Phase 8 — Docs
 
@@ -824,14 +838,14 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | **G3** | **closed** — **Loop B**: `screen_xyz_ensemble` ranks `.xyz`, `match_measured_to_simulated` scores measured-vs-sim, `forward_multislice`/`forward_reflection` provide alternate back-ends; smoke, same-seed reproducibility, and exported kinematic artifact over ≥2 atom counts from one lowering are green |
 | **G4** | **closed** — **Loop A**: `rheed_ingest` emits growth state from one frame; `growth_monitor` recovers a known oscillation period from the committed `tests/test_data/rheed_loop_a/` series; per-frame-stateless repeatability is verified |
 | **G5** | **closed** — **Loop C**: `fit_orientation_beam` wraps `fit_geometry_beam`, `reconstruct_distribution` wraps the distribution recon path, `invert_structure` wraps `solve`, and `recipe_deviation` emits the frozen deviation payload; planted smoke fixtures recover within tolerance and budget |
-| G6 | diagnostics/ensemble smoke-green; valid `--describe` |
-| G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green (`bump_pin.py` already landed); `export_model` StableHLO deserializes + runs in a separate process |
+| **G6** | **closed** — diagnostics/ensemble: `azimuthal_sweep`, `parameter_grid`, `ensemble_average`, `reconstruct_orientation`, and `convergence_study` are smoke-green; `ensemble_average` reports mode/effective-count metrics; `convergence_study` emits a monotone residual-vs-N series; all expose valid `--describe` |
+| **G7** | **closed** — ops/hardening: `audit_invariants` emits invariant pass/fail artifacts; `export_model` writes a version-tagged StableHLO kinematic artifact that reloads and runs in a separate process; wheel-exclusion and idempotent `bump_pin` tests are green; `automatons-smoke` is no longer soft-failed in CI |
 | G8 | docs build with the guide; `INDEX.md` matches the directory |
 
-**Current checkpoint:** A0 + G0–G5 closed (contract, harness, exemplar, Loop B,
-Loop A, Loop C); 38 automaton smoke/repro/export/recon/fixture tests passing;
-`bump_pin.py` landed early from G7. The remaining gates are diagnostics (G6),
-the rest of G7, and docs (G8).
+**Current checkpoint:** A0 + G0–G7 closed (contract, harness, exemplar, Loop B,
+Loop A, Loop C, diagnostics/ensemble, ops/hardening); automaton smoke/repro/
+export/recon/fixture/diagnostic/deployment tests passing. The remaining gate is
+docs (G8).
 
 Phases 0–2 are the critical path — they lock the contract and prove the loop.
 Phases 3–5 are the **three mission loops** (B theory, A online, C inverse), each

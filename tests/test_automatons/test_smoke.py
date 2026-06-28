@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import textwrap
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,17 @@ _LOOP_C_GATE_SCRIPTS: tuple[Path, ...] = (
 _LOOP_A_GATE_SCRIPTS: tuple[Path, ...] = (
     _AUTOMATON_DIR / "rheed_ingest.py",
     _AUTOMATON_DIR / "growth_monitor.py",
+)
+_G6_GATE_SCRIPTS: tuple[Path, ...] = (
+    _AUTOMATON_DIR / "azimuthal_sweep.py",
+    _AUTOMATON_DIR / "parameter_grid.py",
+    _AUTOMATON_DIR / "ensemble_average.py",
+    _AUTOMATON_DIR / "reconstruct_orientation.py",
+    _AUTOMATON_DIR / "convergence_study.py",
+)
+_G7_GATE_SCRIPTS: tuple[Path, ...] = (
+    _AUTOMATON_DIR / "audit_invariants.py",
+    _AUTOMATON_DIR / "export_model.py",
 )
 _KINEMATIC_EXPORT_PROBE: str = textwrap.dedent(
     """
@@ -447,3 +459,230 @@ def test_g4_rheed_ingest_is_per_frame_stateless(tmp_path: Path) -> None:
     assert first["result_key"] == second["result_key"]
     assert first["metrics"] == second["metrics"]
     assert first["growth_state"] == second["growth_state"]
+
+
+@pytest.mark.parametrize(
+    "script",
+    _G6_GATE_SCRIPTS,
+    ids=[path.name for path in _G6_GATE_SCRIPTS],
+)
+def test_g6_diagnostic_smoke_emits_promised_metrics(
+    script: Path,
+    tmp_path: Path,
+) -> None:
+    r"""G6 diagnostics emit their ensemble and convergence gate metrics.
+
+    Extended Summary
+    ----------------
+    Verifies the diagnostics/ensemble gate: sweep automatons produce
+    reproducible numeric grids, ``ensemble_average`` reports mode and
+    effective-count metrics, ``reconstruct_orientation`` recovers a planted
+    synthetic orientation distribution, and ``convergence_study`` emits a
+    monotone residual-vs-N series.
+
+    Notes
+    -----
+    The test runs each script through the same subprocess smoke contract as
+    every other top-level automaton, then asserts the science-facing metrics
+    that distinguish G6 from a generic "process exited" check.
+    """
+    payload = _run_automaton(script, tmp_path / script.stem)
+    metrics: dict[str, Any] = payload["metrics"]
+
+    if script.name == "azimuthal_sweep.py":
+        assert metrics["n_angles"] >= 3
+        assert metrics["max_integrated_intensity"] >= 0.0
+        assert len(payload["sweep"]) == metrics["n_angles"]
+    elif script.name == "parameter_grid.py":
+        assert metrics["n_grid_points"] >= 4
+        assert metrics["grid_shape"][0] >= 2
+        assert metrics["grid_shape"][1] >= 2
+    elif script.name == "ensemble_average.py":
+        assert metrics["mode_count"] >= 3
+        assert metrics["effective_count"] > 1.0
+        assert sum(payload["ensemble"]["weights"]) == pytest.approx(1.0)
+    elif script.name == "reconstruct_orientation.py":
+        assert metrics["weight_l1_error"] < 0.20
+        assert metrics["final_loss"] < metrics["initial_loss"]
+        assert metrics["gradient_finite"] is True
+    elif script.name == "convergence_study.py":
+        assert metrics["n_mode_counts"] >= 4
+        assert metrics["residual_monotone"] is True
+        assert metrics["final_residual"] < metrics["initial_residual"]
+    else:
+        raise AssertionError(f"unexpected G6 script: {script.name}")
+
+
+@pytest.mark.parametrize(
+    "script",
+    _G7_GATE_SCRIPTS,
+    ids=[path.name for path in _G7_GATE_SCRIPTS],
+)
+def test_g7_ops_smoke_emits_deployment_proofs(
+    script: Path,
+    tmp_path: Path,
+) -> None:
+    r"""G7 ops automatons emit audit and StableHLO deployment proofs.
+
+    Extended Summary
+    ----------------
+    Verifies the operations/hardening gate: ``audit_invariants`` reports a
+    passing physics-invariant suite, and ``export_model`` writes a serialized
+    StableHLO artifact that reloads in a separate process and matches the
+    in-process kinematic forward call.
+
+    Notes
+    -----
+    It runs both scripts through the same subprocess smoke contract as the
+    user-facing automata so the proof covers PEP 723 execution, working-tree
+    overrides, artifact emission, and final-line result JSON together.
+    """
+    payload = _run_automaton(script, tmp_path / script.stem)
+    metrics: dict[str, Any] = payload["metrics"]
+
+    if script.name == "audit_invariants.py":
+        assert metrics["n_invariants"] >= 7
+        assert metrics["all_passed"] is True
+        assert metrics["n_failed"] == 0
+        assert len(payload["invariants"]) == metrics["n_invariants"]
+    elif script.name == "export_model.py":
+        assert metrics["artifact_bytes"] > 0
+        assert metrics["separate_process_ok"] is True
+        assert metrics["atom_counts_verified"] == [2, 3]
+        assert metrics["same_result_max_abs_error"] < 1e-10
+        assert (
+            payload["export"]["rheedium_version"]
+            == payload["rheedium_version"]
+        )
+        artifact_paths = {
+            artifact["role"]: artifact["path"]
+            for artifact in payload["artifacts"]
+        }
+        stablehlo_path = (
+            tmp_path / script.stem / artifact_paths["stablehlo_artifact"]
+        )
+        assert stablehlo_path.suffix == ".stablehlo"
+        assert stablehlo_path.stat().st_size == metrics["artifact_bytes"]
+    else:
+        raise AssertionError(f"unexpected G7 script: {script.name}")
+
+
+def test_g7_bump_pin_rewrites_and_is_idempotent(tmp_path: Path) -> None:
+    r"""The release pin rewriter updates every automaton header once.
+
+    Extended Summary
+    ----------------
+    Verifies the G7 pin-hardening requirement without mutating the real
+    automaton directory: a temporary automaton root with plain and CUDA pins is
+    rewritten to one pinned ``rheedium`` version, and a second run is a no-op.
+
+    Notes
+    -----
+    The test executes ``automatons/bump_pin.py`` through ``uv run`` so the
+    script path and command shape match release automation rather than relying
+    on an import-only unit test.
+    """
+    root = tmp_path / "automatons"
+    root.mkdir()
+    first = root / "first.py"
+    second = root / "second.py"
+    first.write_text(
+        '"rheedium==2026.1.1"\n"numpy==2.0.0"\n',
+        encoding="utf-8",
+    )
+    second.write_text(
+        '"rheedium[cuda]==2026.1.1"\n',
+        encoding="utf-8",
+    )
+
+    command = [
+        "uv",
+        "run",
+        str((_AUTOMATON_DIR / "bump_pin.py").relative_to(_REPO_ROOT)),
+        "2026.6.8",
+        "--root",
+        str(root),
+    ]
+    first_run = subprocess.run(
+        command,
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    second_run = subprocess.run(
+        command,
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert first_run.returncode == 0, first_run.stderr
+    assert second_run.returncode == 0, second_run.stderr
+    assert "updated 2 file(s)" in first_run.stdout
+    assert "updated 0 file(s)" in second_run.stdout
+    assert '"rheedium==2026.6.8"' in first.read_text(encoding="utf-8")
+    assert '"rheedium==2026.6.8"' in second.read_text(encoding="utf-8")
+
+
+def test_g7_automatons_are_not_packaged_in_wheel(tmp_path: Path) -> None:
+    r"""The top-level automaton directory is excluded from the wheel.
+
+    Extended Summary
+    ----------------
+    Verifies the G7 wheel-exclusion gate: experiment scripts are tracked in
+    the repository and executable via PEP 723, but remain outside the packaged
+    ``rheedium`` wheel.
+
+    Notes
+    -----
+    It builds a wheel into a temporary directory and inspects the archive
+    member names directly, avoiding assumptions about the generated wheel
+    filename.
+    """
+    result = subprocess.run(
+        ["uv", "build", "--wheel", "--out-dir", str(tmp_path)],
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    wheel_path = next(tmp_path.glob("*.whl"))
+    with zipfile.ZipFile(wheel_path) as wheel:
+        names = wheel.namelist()
+    assert not any(name.startswith("automatons/") for name in names)
+
+
+def test_g7_automatons_smoke_ci_is_blocking() -> None:
+    r"""The CI automaton smoke job is no longer informational.
+
+    Extended Summary
+    ----------------
+    Verifies the repo-side half of making ``automatons-smoke`` a required
+    branch status: the workflow job does not use ``continue-on-error`` and its
+    display name no longer labels it informational.
+
+    Notes
+    -----
+    GitHub branch-protection settings live outside the repository, so this
+    test guards the workflow configuration that makes the status check
+    enforceable.
+    """
+    workflow = (_REPO_ROOT / ".github/workflows/test.yml").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(
+        r"\n  automatons-smoke:\n(?P<body>.*?)(?=\n  [a-zA-Z0-9_-]+:|\Z)",
+        workflow,
+        flags=re.DOTALL,
+    )
+    assert match is not None
+    job_body = match.group("body")
+    assert "continue-on-error" not in job_body
+    assert "informational" not in job_body.lower()
