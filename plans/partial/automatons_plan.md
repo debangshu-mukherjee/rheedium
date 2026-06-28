@@ -15,11 +15,13 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **proposed** — not yet implemented, and **sequenced last** in the
+Status: **ready to start — entry gate A0 met (no automaton code yet).** Last in the
 roadmap: [framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/implemented/rationalization_refactor_plan.md) →
-[recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. It
-begins only after all three land. The reason for last: these scripts call
+[recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. All
+three upstream plans are **complete**, and **`rheedium==2026.6.8` is published to
+PyPI** carrying the rationalized forward API + the recon inverse API — so A0 holds
+and Phase 0 may begin. The reason it was sequenced last: these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
 the **recon `solve` / `recipe_deviation` API that Loop C consumes** — so each
@@ -274,7 +276,7 @@ minimal:
 ```python
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.6"]
+# dependencies = ["rheedium==2026.6.8"]
 # ///
 ```
 
@@ -310,7 +312,7 @@ Every script is structured identically so an agent (and a human) can predict it:
 ```python
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.6"]
+# dependencies = ["rheedium==2026.6.8"]
 # ///
 """One-line summary of the experiment.
 
@@ -618,12 +620,17 @@ and the [recon optax solver](../implemented/recon_optimization_plan.md) (K0–KG
 **complete** — which transitively requires the
 [distribution framework](plans/implemented/distribution_framework_plan.md). A
 `rheedium` release carrying the rationalized API (the ~6-arg
-`simulate_detector_image` + config carriers + unified sweeps) **and** the frozen
-recon inverse API (`ReconProblem` / `solve` / `multistart` / `recipe_deviation`,
-which Loop C's `invert_structure` + `recipe_deviation` automatons import) is
-**published**, so the PEP 723 pin (§3) targets it. Until A0 holds this plan does
-not start — building automatons against the pre-refactor or pre-solver API would
-mean rewriting every one afterward.
+`simulate_detector_image` + config carriers + unified sweeps) **and** the recon
+inverse API must be **published** so the PEP 723 pin (§3) targets it. The inverse
+API splits across two import surfaces after the types-centralization refactor:
+the **functions** Loop C calls — `solve` / `multistart` / `fit_geometry_beam` /
+`reconstruct_distribution` / `recipe_deviation` — export from `rheedium.recon`,
+while the **type carriers** — `ReconProblem` / `ReconResult` /
+`RecipeDeviationReport` / `DistributionAxisSpec` — export from `rheedium.types`
+(*not* `rheedium.recon`; importing a carrier from `recon` is an error). **A0 is
+satisfied: `rheedium==2026.6.8` is published to PyPI** carrying both, so §3 pins to
+it. Until A0 held this plan did not start — building automatons against the
+pre-refactor or pre-solver API would have meant rewriting every one afterward.
 
 ### Phase 0 — Contract design (paper, no code)
 
@@ -728,8 +735,10 @@ parametric family or free-form weights, with a calibrated band); then
 **`recipe_deviation`** (the per-parameter gap between intended recipe and inverted
 reality, normalized to a z-score — the control signal the agent acts on).
 
-*Tasks:* the four automatons above, each a thin wrapper over the frozen recon API
-(`fit_geometry_beam` / `reconstruct_distribution` / `solve` / `recipe_deviation`);
+*Tasks:* the four automatons above, each a thin wrapper over the recon API —
+functions (`fit_geometry_beam` / `reconstruct_distribution` / `solve` /
+`recipe_deviation`) from `rheedium.recon`, type carriers (`ReconProblem`, …) from
+`rheedium.types`;
 all lean on the speed machinery — compilation cache, AOT-exported forward kernels,
 the unchecked fast path — so an inversion completes inside a growth-control
 cadence.
@@ -786,7 +795,7 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 
 | Gate | One-line pass condition |
 |---|---|
-| **A0** | rationalization + recon-optax complete (⇒ framework complete); rationalized API + frozen recon inverse API published; PEP 723 pin targets it |
+| **A0** | **met** — rationalization + recon-optax complete (⇒ framework complete); `rheedium==2026.6.8` published to PyPI with the rationalized API + recon inverse API (functions in `rheedium.recon`, carriers in `rheedium.types`); §3 pin targets it |
 | G0 | result + `--describe` JSON schemas committed and reviewed |
 | G1 | harness tests + schema-snapshot green; `ty`/`ruff` clean |
 | G2 | exemplar runs `--smoke` green in clean ephemeral CI; template frozen |

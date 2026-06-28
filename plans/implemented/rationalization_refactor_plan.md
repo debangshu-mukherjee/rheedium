@@ -24,7 +24,7 @@ return-type split + `energy_kev`/angle unit cut (RG5), and the module
 reorganization (RG6) — all under the zero-legacy policy (§3) and asserted by the
 §4 gate matrix. **Roadmap position:** second of four —
 framework → *this* → [recon (inversion)](../implemented/recon_optimization_plan.md) →
-[automatons](../future/automatons_plan.md). With this complete, recon's entry
+[automatons](../partial/automatons_plan.md). With this complete, recon's entry
 gate **K0** (a rationalized, stable API) is now met, so the recon solver may
 start.
 

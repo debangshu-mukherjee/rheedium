@@ -843,6 +843,30 @@ The codebase carries **no compatibility layer**. When an API changes:
 - Prefer getting the API right over preserving a wrong one — a clean break with a
   changelog entry beats a forwarding alias that quietly rots.
 
+### Versioning & release pins
+
+`[project].version` in `pyproject.toml` is the **single source of truth** for the
+package version (CalVer, e.g. `2026.6.8`). The `automatons/` experiment scripts
+each pin that exact version in their PEP 723 header
+(`dependencies = ["rheedium==<version>"]`) for reproducibility, so the two must
+**never drift**:
+
+- **Bumping `[project].version` and updating the `automatons/` pins is one
+  atomic change.** When you change the version in `pyproject.toml`, update the
+  PEP 723 `rheedium==<version>` pin in **every** `automatons/*.py` (and the GPU
+  `rheedium[cuda]==<version>` form) in the *same* commit. A bumped `pyproject`
+  version with a stale automaton pin — or vice versa — is a defect.
+- **Use the canonical rewriter, don't hand-edit.** `automatons/bump_pin.py` (a
+  PEP 723 script) reads the version from `pyproject.toml` and rewrites every
+  automaton header to match; it is idempotent (a second run is a no-op). Run it on
+  every bump rather than editing headers by hand, so all pins stay identical and in
+  sync with `pyproject`.
+- **A guard test enforces it.** A test asserts every `automatons/*.py` pins exactly
+  the current `[project].version`; it fails CI if any pin drifts from `pyproject`.
+- This only constrains the *released, pinned* form. Local development against
+  unpublished changes still uses `uv run --with-editable . automatons/<x>.py`,
+  which overrides the pin (see the automatons plan §3).
+
 ## Getting Help
 
 - **Questions:** Open a discussion or issue
