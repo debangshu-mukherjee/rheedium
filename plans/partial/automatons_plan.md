@@ -15,7 +15,7 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **partial — G0–G3 and G5 closed; G4 (Loop A) next.** Last in the roadmap:
+Status: **partial — G0–G5 closed; diagnostics/ops/docs next.** Last in the roadmap:
 [framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/implemented/rationalization_refactor_plan.md) →
 [recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. All
@@ -38,8 +38,11 @@ exported kinematic kernel running over ≥2 atom counts from one lowering.
 `reconstruct_distribution.py`, `invert_structure.py`, and
 `recipe_deviation.py` wrap the frozen `rheedium.recon` API and recover planted
 synthetic smoke fixtures, including the recipe-deviation control signal.
-**Remaining:** G4 (Loop A online), diagnostics (G6), the rest of ops/hardening
-(G7), and docs (G8). The reason it was sequenced last:
+**G4 (Loop A) is closed:** `rheed_ingest.py` emits per-frame-stateless growth
+state from one detector frame, and `growth_monitor.py` recovers the planted
+oscillation period and roughness trend from the committed
+`tests/test_data/rheed_loop_a/` rolling series. **Remaining:** diagnostics (G6),
+the rest of ops/hardening (G7), and docs (G8). The reason it was sequenced last:
 these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
@@ -214,7 +217,8 @@ metrics.**
 - **Keep the numeric array** as a serialized `.npz` artifact (on request) for
   Loop C, residuals, and any quantitative downstream — images for display do not
   replace arrays for math.
-- **Render controls as params** — `cmap` (e.g. `"phosphor"`), image size,
+- **Render controls as params** — primary plots always use the `"phosphor"`
+  colormap; image size,
   normalization / log-scale — so the agent can request a specific render
   (`rh.plots.plot_rheed` / `render_pattern_to_image` already exist).
 
@@ -818,16 +822,16 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | **G1** | **closed** — `rheedium.harness` implemented + exported + tested; `ty`/`ruff` clean |
 | **G2** | **closed** — `forward_kinematic.py` exemplar runs `--smoke` green; `automatons-smoke` test + CI job; `automatons` in `ty` scope |
 | **G3** | **closed** — **Loop B**: `screen_xyz_ensemble` ranks `.xyz`, `match_measured_to_simulated` scores measured-vs-sim, `forward_multislice`/`forward_reflection` provide alternate back-ends; smoke, same-seed reproducibility, and exported kinematic artifact over ≥2 atom counts from one lowering are green |
-| G4 | **Loop A** — `rheed_ingest` emits growth state from one frame; `growth_monitor` recovers a known oscillation period from the committed `tests/test_data/rheed_loop_a/` series; per-frame-stateless repeatability is verified |
+| **G4** | **closed** — **Loop A**: `rheed_ingest` emits growth state from one frame; `growth_monitor` recovers a known oscillation period from the committed `tests/test_data/rheed_loop_a/` series; per-frame-stateless repeatability is verified |
 | **G5** | **closed** — **Loop C**: `fit_orientation_beam` wraps `fit_geometry_beam`, `reconstruct_distribution` wraps the distribution recon path, `invert_structure` wraps `solve`, and `recipe_deviation` emits the frozen deviation payload; planted smoke fixtures recover within tolerance and budget |
 | G6 | diagnostics/ensemble smoke-green; valid `--describe` |
 | G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green (`bump_pin.py` already landed); `export_model` StableHLO deserializes + runs in a separate process |
 | G8 | docs build with the guide; `INDEX.md` matches the directory |
 
-**Current checkpoint:** A0 + G0–G3 and G5 closed (contract, harness, exemplar,
-Loop B, Loop C); 29 automaton smoke/repro/export/recon tests passing;
-`bump_pin.py` landed early from G7. The remaining gates are G4 (Loop A),
-diagnostics (G6), the rest of G7, and docs (G8).
+**Current checkpoint:** A0 + G0–G5 closed (contract, harness, exemplar, Loop B,
+Loop A, Loop C); 38 automaton smoke/repro/export/recon/fixture tests passing;
+`bump_pin.py` landed early from G7. The remaining gates are diagnostics (G6),
+the rest of G7, and docs (G8).
 
 Phases 0–2 are the critical path — they lock the contract and prove the loop.
 Phases 3–5 are the **three mission loops** (B theory, A online, C inverse), each

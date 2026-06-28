@@ -274,13 +274,6 @@ def _simulate_image(
             unit="px",
             bounds=(0.2, 10.0),
         ),
-        Param(
-            "cmap",
-            str,
-            default="phosphor",
-            help="Colormap for best-match image artifact.",
-            choices=("phosphor", "viridis", "magma", "gray"),
-        ),
     ],
     returns={
         "metrics": {
@@ -375,13 +368,13 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     best_artifact = ctx.save_image(
         "best_match.png",
         best_image,
-        cmap=args.cmap,
+        cmap="phosphor",
         role="best_match_image",
     )
     residual_artifact = ctx.save_image(
         "best_residual.png",
         residual,
-        cmap="magma",
+        cmap="phosphor",
         role="residual_image",
     )
 

@@ -14,6 +14,8 @@ uv run automatons/fit_orientation_beam.py --smoke --outdir /tmp/rh-fit
 uv run automatons/reconstruct_distribution.py --smoke --outdir /tmp/rh-dist
 uv run automatons/invert_structure.py --smoke --outdir /tmp/rh-invert
 uv run automatons/recipe_deviation.py --smoke --outdir /tmp/rh-dev
+uv run automatons/rheed_ingest.py --smoke --outdir /tmp/rh-ingest
+uv run automatons/growth_monitor.py --smoke --outdir /tmp/rh-growth
 ```
 
 During local development, run against the working tree instead of the PEP 723

@@ -35,7 +35,7 @@ jobs:
       run: |
         # Run pygount with cloc-xml format for reliable parsing
         # Extract total code lines from the <total> element
-        LOGICAL_LOC=$(uv run pygount --format=cloc-xml src/rheedium | grep -oP '<total[^>]*code="\K[0-9]+')
+        LOGICAL_LOC=$(uv run pygount --format=cloc-xml src/rheedium automatons | grep -oP '<total[^>]*code="\K[0-9]+')
 
         echo "Logical lines of code: $LOGICAL_LOC"
         echo "loc=$LOGICAL_LOC" >> $GITHUB_OUTPUT

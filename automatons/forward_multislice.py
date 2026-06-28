@@ -258,14 +258,6 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             choices=("lobato", "kirkland"),
             example="lobato",
         ),
-        Param(
-            "cmap",
-            str,
-            default="phosphor",
-            help="Matplotlib colormap for the PNG artifact.",
-            choices=("phosphor", "viridis", "magma", "gray"),
-            example="phosphor",
-        ),
     ],
     returns={
         "metrics": {
@@ -326,7 +318,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     png_artifact = ctx.save_image(
         "pattern.png",
         image,
-        cmap=args.cmap,
+        cmap="phosphor",
         role="detector_image",
     )
     npz_artifact = ctx.save_array(

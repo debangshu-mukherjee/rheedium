@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import textwrap
 from pathlib import Path
@@ -30,6 +31,10 @@ _LOOP_C_GATE_SCRIPTS: tuple[Path, ...] = (
     _AUTOMATON_DIR / "reconstruct_distribution.py",
     _AUTOMATON_DIR / "invert_structure.py",
     _AUTOMATON_DIR / "recipe_deviation.py",
+)
+_LOOP_A_GATE_SCRIPTS: tuple[Path, ...] = (
+    _AUTOMATON_DIR / "rheed_ingest.py",
+    _AUTOMATON_DIR / "growth_monitor.py",
 )
 _KINEMATIC_EXPORT_PROBE: str = textwrap.dedent(
     """
@@ -230,13 +235,16 @@ def test_automaton_index_mentions_scripts() -> None:
 
     Notes
     -----
-    It reads the committed Markdown index and asserts that every ``*.py`` file
-    in ``automatons/`` appears by filename, including operational helpers such
-    as the pin rewriter.
+    It reads the committed Markdown index and asserts that the backticked
+    ``*.py`` entries exactly match the files in ``automatons/``, including
+    operational helpers such as the pin rewriter.
     """
     index_text: str = (_AUTOMATON_DIR / "INDEX.md").read_text(encoding="utf-8")
-    for path in sorted(_AUTOMATON_DIR.glob("*.py")):
-        assert path.name in index_text
+    actual_scripts: set[str] = {
+        path.name for path in sorted(_AUTOMATON_DIR.glob("*.py"))
+    }
+    indexed_scripts: set[str] = set(re.findall(r"`([^`]+\.py)`", index_text))
+    assert indexed_scripts == actual_scripts
 
 
 @pytest.mark.parametrize(
@@ -268,6 +276,8 @@ def test_loop_b_smoke_runs_are_reproducible(
     first = _run_automaton(script, outdir)
     second = _run_automaton(script, outdir)
 
+    assert first["params"] == second["params"]
+    assert first["rheedium_version"] == second["rheedium_version"]
     assert first["result_key"] == second["result_key"]
     assert first["metrics"] == second["metrics"]
     assert _artifact_manifest(first) == _artifact_manifest(second)
@@ -366,3 +376,74 @@ def test_g5_loop_c_smoke_recovers_planted_signal(
         assert metrics["first_z_score"] == pytest.approx(5.0)
     else:
         raise AssertionError(f"unexpected Loop C script: {script.name}")
+
+
+@pytest.mark.parametrize(
+    "script",
+    _LOOP_A_GATE_SCRIPTS,
+    ids=[path.name for path in _LOOP_A_GATE_SCRIPTS],
+)
+def test_g4_loop_a_smoke_emits_growth_state(
+    script: Path,
+    tmp_path: Path,
+) -> None:
+    r"""Loop A automatons emit the planted online-growth observables.
+
+    Extended Summary
+    ----------------
+    Verifies the G4 mission-loop gate: ``rheed_ingest`` emits stateless
+    per-frame observables from the committed RHEED frame fixture, and
+    ``growth_monitor`` recovers the planted oscillation period from the
+    committed rolling series fixture.
+
+    Notes
+    -----
+    The scripts run through the same ``uv run --with-editable .`` smoke
+    contract as all other automatons. Assertions focus on the science payload:
+    center/spacing/state for the single frame, and period/roughness/transition
+    flags for the rolling series.
+    """
+    payload = _run_automaton(script, tmp_path / script.stem)
+    metrics: dict[str, Any] = payload["metrics"]
+
+    if script.name == "rheed_ingest.py":
+        assert metrics["specular_center_y"] == 12
+        assert metrics["specular_center_x"] == 32
+        assert metrics["specular_intensity"] > 0.0
+        assert metrics["streak_spacing_px"] == pytest.approx(10.0)
+        assert metrics["is_2d"] is True
+        assert metrics["surface_state"] == "2d_streaky"
+    elif script.name == "growth_monitor.py":
+        assert metrics["n_frames"] == 24
+        assert metrics["dominant_period_frames"] == pytest.approx(
+            6.0,
+            abs=0.1,
+        )
+        assert metrics["oscillation_count"] == pytest.approx(4.0, abs=0.1)
+        assert metrics["roughness_trend"] == "stable"
+        assert metrics["oscillation_detected"] is True
+    else:
+        raise AssertionError(f"unexpected Loop A script: {script.name}")
+
+
+def test_g4_rheed_ingest_is_per_frame_stateless(tmp_path: Path) -> None:
+    r"""Repeated RHEED frame ingest emits the same state for the same frame.
+
+    Extended Summary
+    ----------------
+    Verifies the resolved open-decision #5 contract for Loop A:
+    ``rheed_ingest`` is per-frame-stateless, so identical frame, params, seed,
+    and rheedium version produce identical science payloads.
+
+    Notes
+    -----
+    The test compares the deterministic result key, metrics, and growth-state
+    payload while ignoring wall-clock runtime and binary preview encoding.
+    """
+    script = _AUTOMATON_DIR / "rheed_ingest.py"
+    first = _run_automaton(script, tmp_path / "first")
+    second = _run_automaton(script, tmp_path / "second")
+
+    assert first["result_key"] == second["result_key"]
+    assert first["metrics"] == second["metrics"]
+    assert first["growth_state"] == second["growth_state"]
