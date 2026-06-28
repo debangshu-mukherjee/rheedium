@@ -15,10 +15,10 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **partial — G0–G5 closed; diagnostics/ops/docs next.** Last in the roadmap:
-[framework](plans/implemented/distribution_framework_plan.md) →
-[rationalization](plans/implemented/rationalization_refactor_plan.md) →
-[recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. All
+Status: **implemented — A0 and G0-G8 closed.** Last in the roadmap:
+[framework](distribution_framework_plan.md) →
+[rationalization](rationalization_refactor_plan.md) →
+[recon (inversion)](recon_optimization_plan.md) → automatons. All
 three upstream plans are **complete**, and **`rheedium==2026.6.8` is published to
 PyPI** carrying the rationalized forward API + the recon inverse API — so A0 holds.
 The **critical-path foundation is built**: the G0 JSON schemas
@@ -49,8 +49,10 @@ convergence artifacts. **G7 (ops/hardening) is closed:** `audit_invariants.py`
 runs the physics-invariant suite, `export_model.py` emits a version-tagged
 StableHLO kinematic artifact with a separate-process reload proof,
 `bump_pin.py` is tested for idempotent release pinning, and `automatons-smoke`
-is no longer soft-failed in CI. **Remaining:** docs (G8). The reason it was
-sequenced last:
+is no longer soft-failed in CI. **G8 (docs) is closed:** the agent-running guide
+is registered in the guides index and root toctree, the catalog-directory sync
+test remains enforced, and `tests/test_automatons` verifies 68 automaton
+contract tests. The reason it was sequenced last:
 these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
@@ -321,7 +323,7 @@ minimal:
 - **Dev-vs-handoff resolution.** During local development against unpublished
   changes, override the pin to the working tree without editing the script:
   ```bash
-  uv run --with-editable . automatons/<x>.py        # local source wins
+  uv run --with-editable . python automatons/<x>.py # local source wins
   ```
   Document this in `automatons/README.md`. For agents running off a branch, a git
   source is the portable form:
@@ -619,10 +621,12 @@ The "fully and independently executable" promise is only real if CI proves it:
    parsing, `--describe` schema shape, `emit` JSON contract, error-path exit
    code, artifact-path resolution, seed determinism.
 2. **Script smoke tests** (`tests/test_automatons/`): a parametrized test discovers every `automatons/*.py` and
-   runs it via **`uv run --with-editable . automatons/<x>.py --smoke --outdir <tmp>`**
-   in a subprocess, asserting (a) exit code 0, (b) the last stdout line parses as
-   the result JSON with `status == "ok"`, (c) declared artifacts exist. `--smoke`
-   forces a tiny grid so each runs in seconds.
+   runs it via **`uv run --with-editable . python automatons/<x>.py --smoke --outdir <tmp>`**
+   in a subprocess, keeping the local `pyproject.toml` version as the source of
+   truth while separately asserting the PEP 723 pins match it. The test asserts
+   (a) exit code 0, (b) the last stdout line parses as the result JSON with
+   `status == "ok"`, (c) declared artifacts exist. `--smoke` forces a tiny grid
+   so each runs in seconds.
 3. **CI job** `automatons-smoke` (non-blocking at first, then blocking once stable),
    mirroring the existing informational-job pattern in `test.yml`: it executes
    each script under `uv run` in a clean ephemeral env to catch a header that
@@ -826,6 +830,9 @@ keep `INDEX.md` complete.
 
 **Gate G8:** `cd docs && uv run make html` builds with the new guide; a test
 asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
+**Closed:** the guide is registered in both documentation navigation surfaces,
+the catalog still matches the directory, and the plan has graduated to
+`plans/implemented/`.
 
 ### Gate summary
 
@@ -840,12 +847,9 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | **G5** | **closed** — **Loop C**: `fit_orientation_beam` wraps `fit_geometry_beam`, `reconstruct_distribution` wraps the distribution recon path, `invert_structure` wraps `solve`, and `recipe_deviation` emits the frozen deviation payload; planted smoke fixtures recover within tolerance and budget |
 | **G6** | **closed** — diagnostics/ensemble: `azimuthal_sweep`, `parameter_grid`, `ensemble_average`, `reconstruct_orientation`, and `convergence_study` are smoke-green; `ensemble_average` reports mode/effective-count metrics; `convergence_study` emits a monotone residual-vs-N series; all expose valid `--describe` |
 | **G7** | **closed** — ops/hardening: `audit_invariants` emits invariant pass/fail artifacts; `export_model` writes a version-tagged StableHLO kinematic artifact that reloads and runs in a separate process; wheel-exclusion and idempotent `bump_pin` tests are green; `automatons-smoke` is no longer soft-failed in CI |
-| G8 | docs build with the guide; `INDEX.md` matches the directory |
+| **G8** | **closed** — docs build with the "Running experiments as an agent" guide registered in the guides index and root toctree; `INDEX.md` matches the automaton directory; the plan has graduated to `plans/implemented/` |
 
-**Current checkpoint:** A0 + G0–G7 closed (contract, harness, exemplar, Loop B,
-Loop A, Loop C, diagnostics/ensemble, ops/hardening); automaton smoke/repro/
-export/recon/fixture/diagnostic/deployment tests passing. The remaining gate is
-docs (G8).
+**Current checkpoint:** A0 + G0-G8 closed; 68 `tests/test_automatons` tests passing, covering smoke/repro/export/recon/fixture/diagnostic/deployment/docs/version-pin contracts.
 
 Phases 0–2 are the critical path — they lock the contract and prove the loop.
 Phases 3–5 are the **three mission loops** (B theory, A online, C inverse), each

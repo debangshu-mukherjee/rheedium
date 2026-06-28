@@ -37,7 +37,7 @@ owns as gate P6. It builds on the completed
 [framework](../implemented/distribution_framework_plan.md) →
 [rationalization](../implemented/rationalization_refactor_plan.md) →
 [recon](../implemented/recon_optimization_plan.md) chain and feeds the
-[automatons](../partial/automatons_plan.md) (the ledger + experiment-design gates
+[automatons](../implemented/automatons_plan.md) (the ledger + experiment-design gates
 P12–P15 are what Loop C's `recipe_deviation` and tie-breaking-experiment actions
 consume). Like the defect plan, it is a physics-fidelity track, **not** a blocking
 roadmap gate for the automatons.
@@ -389,7 +389,7 @@ recon's `fisher_information_from_residual` / `laplace_uncertainty` /
   gain, condition improvement, and closure reduction — the differentiable
   realization of recon §2.3's `argmax_Δ E[D_KL]`. *Exit:* the package recommends a
   physically meaningful next RHEED measurement. **This is the report Loop C's
-  tie-breaking action ([automatons](../partial/automatons_plan.md)) consumes.**
+  tie-breaking action ([automatons](../implemented/automatons_plan.md)) consumes.**
 
 ---
 
@@ -475,7 +475,7 @@ sloppy/null direction (P12), **localizes the degeneracy to the
 coherence/image-formation stages** (P13), flags that no parameter explains part of
 the residual (P14), and **recommends a second grazing angle or coherence
 calibration** (P15) — the action the autonomous lab's Loop C
-([automatons](../partial/automatons_plan.md)) then takes. After the second
+([automatons](../implemented/automatons_plan.md)) then takes. After the second
 measurement the null space shrinks and the parameters separate.
 
 This is what makes `rheedium` not merely a differentiable RHEED simulator but a

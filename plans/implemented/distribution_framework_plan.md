@@ -21,7 +21,7 @@ delegated to rationalization R2 has since landed — rationalization is complete
 > **Keystone — the critical path.** This is the root of the whole roadmap:
 > [rationalization](plans/implemented/rationalization_refactor_plan.md) R0,
 > [recon](../implemented/recon_optimization_plan.md) K0, and
-> [automatons](plans/partial/automatons_plan.md) A0 all gate transitively on it.
+> [automatons](automatons_plan.md) A0 all gate transitively on it.
 > The single load-bearing item is the **Phase 6 end-to-end differentiability
 > guarantee** — `jax.grad` finite through `simulate_detector_image` w.r.t. every
 > producer latent — because it is *literally* recon's entry gate **K0**. It is
@@ -181,7 +181,7 @@ is delegated to rationalization. Higher-fidelity defect physics is explicitly
   1. *this* (distribution framework)
   2. [rationalization refactor](plans/implemented/rationalization_refactor_plan.md)
   3. [recon (inversion)](../implemented/recon_optimization_plan.md)
-  4. [automatons](plans/partial/automatons_plan.md)
+  4. [automatons](automatons_plan.md)
 - **Physics-depth follow-up (not a gate)** —
   [defect_diffraction_fidelity_plan.md](plans/future/defect_diffraction_fidelity_plan.md)
   takes the deferred high-fidelity defect/coherence physics (fine-twin satellites,

@@ -19,7 +19,7 @@ of the framework's Phase-6 "inverse problem" sketch and the autonomous lab's
 Status: **complete** — KG1-KG6 closed. **Roadmap position:** third of four —
 [framework](../implemented/distribution_framework_plan.md) →
 [rationalization](../implemented/rationalization_refactor_plan.md) → *this* →
-[automatons](../partial/automatons_plan.md). Entry gate **K0** is satisfied by
+[automatons](automatons_plan.md). Entry gate **K0** is satisfied by
 the completed rationalization refactor (⇒ the forward model differentiates
 end-to-end against a clean, stable API). The KG1-KG6 implementation is complete in
 `recon`: transforms, richer losses, lattice/Wyckoff constraints, finite-gradient

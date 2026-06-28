@@ -29,8 +29,12 @@ During local development, run against the working tree instead of the PEP 723
 pin:
 
 ```bash
-uv run --with-editable . automatons/forward_kinematic.py --smoke
+uv run --with-editable . python automatons/forward_kinematic.py --smoke
 ```
+
+That keeps the local `pyproject.toml` version as the source of truth. Running
+the script path directly resolves the PEP 723 pin first, which is correct for a
+published handoff but can fail before a bumped local version is on PyPI.
 
 Every automaton supports shared harness flags:
 

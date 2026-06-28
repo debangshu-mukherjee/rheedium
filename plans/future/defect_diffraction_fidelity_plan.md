@@ -23,7 +23,7 @@ This is a **physics-depth track, not a roadmap gate.** It builds on the
 framework's coherent reduction + `Distribution`/bind contract (which already
 exist), but **nothing downstream depends on it**: the gated chain
 (rationalization → [recon](../implemented/recon_optimization_plan.md) →
-[automatons](plans/partial/automatons_plan.md)) needs only the framework's
+[automatons](../implemented/automatons_plan.md)) needs only the framework's
 differentiability guarantee, which this plan does not touch. It runs in parallel
 to — or after — the roadmap, purely to raise simulation fidelity.
 

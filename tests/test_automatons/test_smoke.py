@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import textwrap
+import tomllib
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,9 @@ import pytest
 
 _REPO_ROOT: Path = Path(__file__).parents[2]
 _AUTOMATON_DIR: Path = _REPO_ROOT / "automatons"
+_AGENT_GUIDE: Path = (
+    _REPO_ROOT / "docs/source/guides/running-experiments-as-an-agent.md"
+)
 _EXPERIMENT_SCRIPTS: list[Path] = [
     path
     for path in sorted(_AUTOMATON_DIR.glob("*.py"))
@@ -125,22 +129,31 @@ def _last_json(stdout: str) -> dict[str, Any]:
     return json.loads(stdout.strip().splitlines()[-1])
 
 
+def _automaton_command(script: Path, *args: str) -> list[str]:
+    """Return the local editable command for an automaton script."""
+    return [
+        "uv",
+        "run",
+        "--with-editable",
+        ".",
+        "python",
+        str(script.relative_to(_REPO_ROOT)),
+        *args,
+    ]
+
+
 def _run_automaton(script: Path, outdir: Path) -> dict[str, Any]:
     """Run one automaton in smoke mode and parse its result JSON."""
     result = subprocess.run(
-        [
-            "uv",
-            "run",
-            "--with-editable",
-            ".",
-            str(script.relative_to(_REPO_ROOT)),
+        _automaton_command(
+            script,
             "--smoke",
             "--seed",
             "123",
             "--outdir",
             str(outdir),
             "--json",
-        ],
+        ),
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
@@ -174,15 +187,16 @@ def test_automaton_smoke_run(script: Path, tmp_path: Path) -> None:
     Extended Summary
     ----------------
     Verifies the executable handoff contract for top-level automaton scripts:
-    each experiment script must run from its PEP 723 entry point, exit
+    each experiment script must run against the local editable tree, exit
     successfully, and emit a final JSON result with declared artifacts.
 
     Notes
     -----
-    It launches the script with ``uv run --with-editable .`` so the test uses
-    the working tree while still exercising the same command shape an agent
-    uses. The test then parses the final stdout line and checks every artifact
-    path against the requested output directory.
+    It launches the script with ``uv run --with-editable . python`` so tests
+    use the working tree as the source of truth even when the PEP 723 pin has
+    been bumped ahead of PyPI publication. The test then parses the final
+    stdout line and checks every artifact path against the requested output
+    directory.
     """
     outdir: Path = tmp_path / script.stem
     payload = _run_automaton(script, outdir)
@@ -209,19 +223,12 @@ def test_automaton_describe(script: Path) -> None:
 
     Notes
     -----
-    It invokes each script through ``uv run --with-editable . --describe``,
-    parses the final JSON line, and checks for the canonical schema version
-    plus non-empty parameter metadata.
+    It invokes each script through the local editable harness, parses the final
+    JSON line, and checks for the canonical schema version plus non-empty
+    parameter metadata.
     """
     result = subprocess.run(
-        [
-            "uv",
-            "run",
-            "--with-editable",
-            ".",
-            str(script.relative_to(_REPO_ROOT)),
-            "--describe",
-        ],
+        _automaton_command(script, "--describe"),
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
@@ -278,10 +285,10 @@ def test_loop_b_smoke_runs_are_reproducible(
 
     Notes
     -----
-    It runs each Loop B automaton twice in smoke mode through the normal
-    ``uv run --with-editable .`` entry point, then compares the result key,
-    metrics, artifact manifest, and any ranked rows while intentionally
-    ignoring wall-clock runtime and binary preview encoding.
+    It runs each Loop B automaton twice in smoke mode through the local
+    editable command, then compares the result key, metrics, artifact manifest,
+    and any ranked rows while intentionally ignoring wall-clock runtime and
+    binary preview encoding.
     """
     outdir: Path = tmp_path / script.stem
 
@@ -410,10 +417,10 @@ def test_g4_loop_a_smoke_emits_growth_state(
 
     Notes
     -----
-    The scripts run through the same ``uv run --with-editable .`` smoke
-    contract as all other automatons. Assertions focus on the science payload:
-    center/spacing/state for the single frame, and period/roughness/transition
-    flags for the rolling series.
+    The scripts run through the same local editable smoke contract as all other
+    automatons. Assertions focus on the science payload: center/spacing/state
+    for the single frame, and period/roughness/transition flags for the rolling
+    series.
     """
     payload = _run_automaton(script, tmp_path / script.stem)
     metrics: dict[str, Any] = payload["metrics"]
@@ -686,3 +693,151 @@ def test_g7_automatons_smoke_ci_is_blocking() -> None:
     job_body = match.group("body")
     assert "continue-on-error" not in job_body
     assert "informational" not in job_body.lower()
+
+
+def test_g8_agent_guide_exists_with_contract_sections() -> None:
+    r"""The agent-running guide documents the automaton handoff contract.
+
+    Extended Summary
+    ----------------
+    Verifies the G8 guide exists and covers the concrete invocation topics an
+    automated caller needs: discovery, parameter introspection, structured
+    inputs, result JSON, smoke mode, and the three lab loops.
+
+    Notes
+    -----
+    This is intentionally a lightweight source-level documentation contract;
+    the Sphinx build test covers rendering.
+    """
+    text = _AGENT_GUIDE.read_text(encoding="utf-8")
+    required_terms = [
+        "# Running Experiments as an Agent",
+        "--describe",
+        "--params",
+        "--json",
+        "--smoke",
+        "--with-editable",
+        "schema/automaton_result.schema.json",
+        "Loop A",
+        "Loop B",
+        "Loop C",
+    ]
+    for term in required_terms:
+        assert term in text
+
+
+def test_g8_agent_guide_registered_in_guides_index() -> None:
+    r"""The guide landing page links the agent-running guide.
+
+    Extended Summary
+    ----------------
+    Verifies that ``docs/source/guides/index.md`` exposes the new guide in the
+    human-facing guide overview table.
+
+    Notes
+    -----
+    The root toctree is checked separately so navigation and landing-page
+    discoverability fail independently.
+    """
+    index_text = (_REPO_ROOT / "docs/source/guides/index.md").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "[Running Experiments as an Agent](running-experiments-as-an-agent.md)"
+    ) in index_text
+
+
+def test_g8_agent_guide_registered_in_root_toctree() -> None:
+    r"""The root Sphinx toctree includes the agent-running guide.
+
+    Extended Summary
+    ----------------
+    Verifies that the new guide participates in the rendered documentation
+    navigation instead of existing only as an orphan Markdown file.
+
+    Notes
+    -----
+    The check reads ``docs/source/index.rst`` directly because that file owns
+    the hidden Guides toctree used by the HTML sidebar.
+    """
+    root_index = (_REPO_ROOT / "docs/source/index.rst").read_text(
+        encoding="utf-8"
+    )
+    assert "guides/running-experiments-as-an-agent" in root_index
+
+
+def test_g8_agent_guide_points_to_live_automaton_catalogs() -> None:
+    r"""The guide points agents at the live automaton catalog files.
+
+    Extended Summary
+    ----------------
+    Verifies that the guide links to the checked-in catalog and README rather
+    than duplicating a stale list of runnable scripts.
+
+    Notes
+    -----
+    ``test_automaton_index_mentions_scripts`` remains the authoritative
+    directory-sync check for the catalog itself.
+    """
+    text = _AGENT_GUIDE.read_text(encoding="utf-8")
+    assert "automatons/INDEX.md" in text
+    assert "automatons/README.md" in text
+    assert "automatons/export_model.py" in text
+
+
+def test_g8_automatons_plan_graduated_to_implemented() -> None:
+    r"""The automaton plan has graduated out of ``plans/partial``.
+
+    Extended Summary
+    ----------------
+    Verifies the final G8 bookkeeping: after the docs gate closes, the plan
+    lives under ``plans/implemented`` and records A0 plus G0-G8 closure.
+
+    Notes
+    -----
+    This guards against future edits reviving the old partial-plan path after
+    the implementation has landed.
+    """
+    partial = _REPO_ROOT / "plans/partial/automatons_plan.md"
+    implemented = _REPO_ROOT / "plans/implemented/automatons_plan.md"
+    assert not partial.exists()
+    assert implemented.exists()
+    text = implemented.read_text(encoding="utf-8")
+    assert "Status: **implemented" in text
+    assert "A0 + G0-G8 closed" in text
+    assert "68 `tests/test_automatons` tests passing" in text
+
+
+def test_pins_match_pyproject_version() -> None:
+    r"""Every automaton PEP 723 pin matches the current package version.
+
+    Extended Summary
+    ----------------
+    Verifies the CONTRIBUTING *Versioning & release pins* rule: each
+    ``automatons/*.py`` header pins ``rheedium==<version>`` to the exact
+    ``[project].version`` in ``pyproject.toml``, so a version bump cannot
+    silently drift from the script pins. ``bump_pin.py`` carries no pin and is
+    skipped.
+
+    Notes
+    -----
+    Reads ``[project].version`` from ``pyproject.toml`` and scans every other
+    automaton script for ``rheedium==`` / ``rheedium[cuda]==`` PEP 723 pins,
+    asserting each equals that version. Running ``automatons/bump_pin.py``
+    repairs any drift this catches.
+    """
+    with (_REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        version: str = str(tomllib.load(handle)["project"]["version"])
+    expected: str = f"rheedium=={version}"
+    pin_re = re.compile(r"rheedium(?:\[cuda\])?==[0-9][^\"']*")
+    for path in sorted(_AUTOMATON_DIR.glob("*.py")):
+        if path.name == "bump_pin.py":
+            continue
+        pins: list[str] = pin_re.findall(path.read_text(encoding="utf-8"))
+        assert pins, f"{path.name} has no rheedium PEP 723 pin"
+        for pin in pins:
+            normalized: str = pin.replace("[cuda]", "")
+            assert normalized == expected, (
+                f"{path.name} pins {pin!r}, expected {expected!r}; "
+                "run automatons/bump_pin.py"
+            )

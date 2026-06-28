@@ -24,6 +24,7 @@ Rheedium
    guides/parallelization-and-compilation
    guides/checked-numerical-entry-points
    guides/differentiable-inversion-with-optimistix
+   guides/running-experiments-as-an-agent
 
 .. toctree::
    :maxdepth: 2

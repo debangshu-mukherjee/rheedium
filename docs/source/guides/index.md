@@ -35,6 +35,7 @@ These guides are written for **physics researchers** working with RHEED who want
 | [Parallelization and Compilation](parallelization-and-compilation.md) | Persistent compilation cache, multi-device sweeps, multi-host setup, and exporting compiled artifacts |
 | [Checked Numerical Entry Points](checked-numerical-entry-points.md) | Standard vs `checkify`-checked simulator APIs, and when to use each |
 | [Differentiable Inversion With Optimistix](differentiable-inversion-with-optimistix.md) | Shared `ReconProblem` solves, warm-cache inversion, geometry/beam fitting, UQ, and recipe deviation |
+| [Running Experiments as an Agent](running-experiments-as-an-agent.md) | Automaton invocation contract, `--describe`, result JSON, artifacts, and autonomous-lab loop handoff |
 
 ## Quick Start
 

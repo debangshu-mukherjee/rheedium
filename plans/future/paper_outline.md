@@ -334,7 +334,7 @@ rheedium_paper/
 **Relationship to the rest of the ecosystem**
 
 - Same PEP 723 / single-`rheedium`-dependency contract as
-  [automatons](../partial/automatons_plan.md); a figure script may simply *be* a
+  [automatons](../implemented/automatons_plan.md); a figure script may simply *be* a
   thin caller of the public API (or reuse an automaton's emitted result JSON /
   artifacts), so figure code and experiment code don't diverge.
 - Pins to the **same release** the paper cites, so the figures and the claimed

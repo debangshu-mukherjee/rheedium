@@ -31,6 +31,18 @@ repos:
         language: system
         pass_filenames: false
         files: ^(README\.md|docs/source/guides/figures/.*|docs/check_readme_figures\.py)$
+      # Keep automaton PEP 723 pins in lockstep with [project].version. Runs the
+      # canonical rewriter (which reads the version from pyproject.toml); like
+      # ruff --fix, if it rewrites any pin pre-commit reports the files modified
+      # and aborts, so you re-stage. pass_filenames: false so staged paths are
+      # never passed as the version positional. Runs only when pyproject or an
+      # automaton script is staged.
+      - id: bump-automaton-pins
+        name: sync automaton pins to pyproject version
+        entry: uv run --no-sync python automatons/bump_pin.py
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|automatons/.*\.py)$
       - id: ty-check
         name: ty check (src + tests)
         entry: uv run --no-sync ty check

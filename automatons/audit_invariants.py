@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.8"]
+# dependencies = ["rheedium==2026.6.9"]
 # ///
 """Run rheedium's default physics-invariant audit suite.
 
