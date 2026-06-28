@@ -6,6 +6,10 @@ the final stdout line.
 
 ```bash
 uv run automatons/forward_kinematic.py --smoke --outdir /tmp/rh-auto
+uv run automatons/forward_multislice.py --smoke --outdir /tmp/rh-multi
+uv run automatons/forward_reflection.py --smoke --outdir /tmp/rh-refl
+uv run automatons/screen_xyz_ensemble.py --smoke --outdir /tmp/rh-screen
+uv run automatons/match_measured_to_simulated.py --smoke --outdir /tmp/rh-match
 ```
 
 During local development, run against the working tree instead of the PEP 723

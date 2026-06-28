@@ -295,6 +295,12 @@ exclude = "\\.git|\\.tox|tests/"
 
 [tool.ty.environment]
 root = ["src/", "."]
+# Pin the analysis platform so type-checking is identical across the Linux /
+# macOS / Windows CI matrix. The harness's POSIX-only deadline path
+# (signal.SIGALRM / setitimer / ITIMER_REAL) is runtime-guarded behind
+# hasattr(signal, "SIGALRM"); without this pin, ty on the Windows runner resolves
+# `signal` against the Windows stdlib and reports those members as unresolved.
+python-platform = "linux"
 
 [tool.ty.src]
 include = ["src", "tests", "docs", "automatons"]

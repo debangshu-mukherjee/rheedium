@@ -15,13 +15,28 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **ready to start — entry gate A0 met (no automaton code yet).** Last in the
-roadmap: [framework](plans/implemented/distribution_framework_plan.md) →
+Status: **partial — G0–G3 closed; G4 (Loop A) next.** Last in the roadmap:
+[framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/implemented/rationalization_refactor_plan.md) →
 [recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. All
 three upstream plans are **complete**, and **`rheedium==2026.6.8` is published to
-PyPI** carrying the rationalized forward API + the recon inverse API — so A0 holds
-and Phase 0 may begin. The reason it was sequenced last: these scripts call
+PyPI** carrying the rationalized forward API + the recon inverse API — so A0 holds.
+The **critical-path foundation is built**: the G0 JSON schemas
+(`schema/automaton_params.schema.json` + `automaton_result.schema.json`), the G1
+`rheedium.harness` subpackage (`Param` / `experiment` / `ExperimentContext` /
+`emit` + `ErrorKind` / `AutomatonError` / `DeadlineExceededError` / schema-version
+constants, exported and tested), and the G2 exemplar (`automatons/forward_kinematic.py`
++ `README.md` + `INDEX.md`, the `tests/test_automatons/` smoke tests + CI job, `automatons` in
+the `ty` scope) are all landed and green. `automatons/bump_pin.py` (a Phase-7 item)
+was built ahead of order. **G3 (Loop B) is closed:** the ensemble screener
+(`automatons/screen_xyz_ensemble.py`), measured↔simulated bridge
+(`automatons/match_measured_to_simulated.py`), and alternative simulate back-ends
+(`automatons/forward_multislice.py` / `automatons/forward_reflection.py`) are
+landed and smoke-green; the gate proof covers same-seed reproducibility plus an
+exported kinematic kernel running over ≥2 atom counts from one lowering.
+**Remaining:** G4 (Loop A online), G5 (Loop C inverse), diagnostics (G6), the
+rest of ops/hardening (G7), and docs (G8). The reason it was sequenced last:
+these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
 the **recon `solve` / `recipe_deviation` API that Loop C consumes** — so each
@@ -588,7 +603,7 @@ The "fully and independently executable" promise is only real if CI proves it:
 1. **Harness unit tests** (`tests/test_rheedium/test_harness/`): `Param`/CLI
    parsing, `--describe` schema shape, `emit` JSON contract, error-path exit
    code, artifact-path resolution, seed determinism.
-2. **Script smoke tests**: a parametrized test discovers every `automatons/*.py` and
+2. **Script smoke tests** (`tests/test_automatons/`): a parametrized test discovers every `automatons/*.py` and
    runs it via **`uv run --with-editable . automatons/<x>.py --smoke --outdir <tmp>`**
    in a subprocess, asserting (a) exit code 0, (b) the last stdout line parses as
    the result JSON with `status == "ok"`, (c) declared artifacts exist. `--smoke`
@@ -796,15 +811,20 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | Gate | One-line pass condition |
 |---|---|
 | **A0** | **met** — rationalization + recon-optax complete (⇒ framework complete); `rheedium==2026.6.8` published to PyPI with the rationalized API + recon inverse API (functions in `rheedium.recon`, carriers in `rheedium.types`); §3 pin targets it |
-| G0 | result + `--describe` JSON schemas committed and reviewed |
-| G1 | harness tests + schema-snapshot green; `ty`/`ruff` clean |
-| G2 | exemplar runs `--smoke` green in clean ephemeral CI; template frozen |
-| G3 | **Loop B** — `screen_xyz_ensemble` ranks `.xyz`, bridge scores measured-vs-sim; reproducible; exported kinematic artifact runs over ≥2 atom counts from one lowering |
+| **G0** | **closed** — `schema/automaton_params.schema.json` + `automaton_result.schema.json` committed |
+| **G1** | **closed** — `rheedium.harness` implemented + exported + tested; `ty`/`ruff` clean |
+| **G2** | **closed** — `forward_kinematic.py` exemplar runs `--smoke` green; `automatons-smoke` test + CI job; `automatons` in `ty` scope |
+| **G3** | **closed** — **Loop B**: `screen_xyz_ensemble` ranks `.xyz`, `match_measured_to_simulated` scores measured-vs-sim, `forward_multislice`/`forward_reflection` provide alternate back-ends; smoke, same-seed reproducibility, and exported kinematic artifact over ≥2 atom counts from one lowering are green |
 | G4 | **Loop A** — `rheed_ingest` emits growth state; `growth_monitor` recovers a known oscillation period; `--serve` warms up once then steady per-frame latency |
 | G5 | **Loop C** — `fit_orientation_beam` recovers orientation+beam from a CIF; `reconstruct_distribution` recovers a planted shape w/ band; `invert_structure` recovers a known structure; `recipe_deviation` reports the gap; within budget |
 | G6 | diagnostics/ensemble smoke-green; valid `--describe` |
-| G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green; `export_model` StableHLO deserializes + runs in a separate process |
+| G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green (`bump_pin.py` already landed); `export_model` StableHLO deserializes + runs in a separate process |
 | G8 | docs build with the guide; `INDEX.md` matches the directory |
+
+**Current checkpoint:** A0 + G0–G3 closed (contract, harness, exemplar, Loop B);
+17 automaton smoke/repro/export tests passing; `bump_pin.py` landed early from
+G7. The remaining gates are G4 (Loop A), G5 (Loop C), diagnostics (G6), the rest
+of G7, and docs (G8).
 
 Phases 0–2 are the critical path — they lock the contract and prove the loop.
 Phases 3–5 are the **three mission loops** (B theory, A online, C inverse), each
@@ -848,7 +868,7 @@ holds the mission loops can be reordered or parallelized.
 | `automatons/README.md`, `automatons/INDEX.md` | usage, dev override, experiment index |
 | `automatons/bump_pin.py` | release-time pin rewriter (PEP 723 script) |
 | `tests/test_rheedium/test_harness/` | harness unit tests |
-| `tests/.../test_automatons_smoke.py` | discover + `uv run` every `automatons/*.py --smoke` |
+| `tests/test_automatons/` | discover + `uv run` every `automatons/*.py --smoke`; houses automaton-specific smoke, reproducibility, and gate tests outside the mirrored `tests/test_rheedium/` package tests |
 | `pyproject.toml` | add `automatons` to `[tool.ty.src].include` at the src-strict rule set (no relaxation); confirm `automatons/` excluded from `uv_build` |
 | `.github/workflows/test.yml` | `automatons-smoke` job (ephemeral `uv run` per script) |
 | `docs/source/guides/` | "Running experiments as an agent" guide (Phase 8) |
