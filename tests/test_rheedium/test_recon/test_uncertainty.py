@@ -9,10 +9,9 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
+import rheedium.types as rh_types
 from rheedium import recon
 from rheedium.recon import (
-    LaplaceUncertainty,
-    PosteriorSamples,
     compute_fisher_information,
     covariance_from_fisher,
     fisher_information_from_residual,
@@ -22,7 +21,9 @@ from rheedium.recon import (
     sample_posterior,
 )
 from rheedium.types import (
+    LaplaceUncertainty,
     OrientationDistribution,
+    PosteriorSamples,
     create_discrete_orientation,
     integrate_over_orientation,
 )
@@ -273,7 +274,7 @@ class TestReconUncertainty(chex.TestCase):
 class TestReconPosteriorUncertainty(chex.TestCase):
     """Tests for blackjax posterior UQ and diagnostics.
 
-    :see: :class:`~rheedium.recon.PosteriorSamples`
+    :see: :class:`~rheedium.types.PosteriorSamples`
     :see: :func:`~rheedium.recon.laplace_inverse_mass_matrix`
     :see: :func:`~rheedium.recon.posterior_from_samples`
     :see: :func:`~rheedium.recon.sample_posterior`
@@ -531,8 +532,10 @@ class TestReconUncertaintyNamespace(chex.TestCase):
         It checks object identity between direct imports and attributes on
         ``rheedium.recon``.
         """
-        self.assertIs(recon.LaplaceUncertainty, LaplaceUncertainty)
-        self.assertIs(recon.PosteriorSamples, PosteriorSamples)
+        self.assertFalse(hasattr(recon, "LaplaceUncertainty"))
+        self.assertFalse(hasattr(recon, "PosteriorSamples"))
+        self.assertIs(rh_types.LaplaceUncertainty, LaplaceUncertainty)
+        self.assertIs(rh_types.PosteriorSamples, PosteriorSamples)
         self.assertIs(
             recon.fisher_information_from_residual,
             fisher_information_from_residual,

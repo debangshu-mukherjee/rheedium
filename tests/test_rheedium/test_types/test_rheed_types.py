@@ -21,8 +21,8 @@ from jaxtyping import (
 )
 
 from rheedium.types.custom_types import scalar_float
+from rheedium.types.detector import DetectorGeometry
 from rheedium.types.rheed_types import (
-    DetectorGeometry,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,

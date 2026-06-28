@@ -13,10 +13,10 @@ import pytest
 from jaxtyping import Array, Float, Integer
 
 import rheedium as rh
-from rheedium.recon import ReconResult
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
+    ReconResult,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,

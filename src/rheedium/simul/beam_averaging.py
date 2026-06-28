@@ -14,8 +14,6 @@ All functions are end-to-end differentiable via ``jax.grad``.
 
 Routine Listings
 ----------------
-:func:`gauss_hermite_nodes_weights`
-    Gauss-Hermite quadrature nodes and weights for Gaussian averaging.
 :func:`angular_divergence_average`
     Average pattern over Gaussian angular divergence distribution.
 :func:`apply_distribution`
@@ -53,7 +51,9 @@ from beartype import beartype
 from beartype.typing import Callable, Sequence
 from jaxtyping import Array, Complex, Float, Int, jaxtyped
 
-from rheedium.tools import gauss_hermite_nodes_weights
+from rheedium.tools import (
+    gauss_hermite_nodes_weights as _gauss_hermite_nodes_weights,
+)
 from rheedium.types import (
     BeamModeDistribution,
     Distribution,
@@ -293,7 +293,7 @@ def _energy_mode_axis(
         return offsets, weights
     nodes: Float[Array, "E"]
     quad_weights: Float[Array, "E"]
-    nodes, quad_weights = gauss_hermite_nodes_weights(n_energy_points)
+    nodes, quad_weights = _gauss_hermite_nodes_weights(n_energy_points)
     sqrt2: Float[Array, ""] = jnp.sqrt(jnp.array(2.0, dtype=jnp.float64))
     sqrt_pi: Float[Array, ""] = jnp.sqrt(jnp.array(jnp.pi, dtype=jnp.float64))
     offsets = sqrt2 * energy_spread_ev * nodes
@@ -529,7 +529,7 @@ def angular_divergence_average(
     divergence_rad: scalar_float = angular_divergence_mrad * 1e-3
     nodes: Float[Array, " N"]
     weights: Float[Array, " N"]
-    nodes, weights = gauss_hermite_nodes_weights(n_quadrature_points)
+    nodes, weights = _gauss_hermite_nodes_weights(n_quadrature_points)
     angle_samples: Float[Array, " N"] = (
         nominal_polar_angle_rad + jnp.sqrt(2.0) * divergence_rad * nodes
     )
@@ -614,7 +614,7 @@ def energy_spread_average(
     spread_kev: scalar_float = energy_spread_ev * 1e-3
     nodes: Float[Array, " N"]
     weights: Float[Array, " N"]
-    nodes, weights = gauss_hermite_nodes_weights(n_quadrature_points)
+    nodes, weights = _gauss_hermite_nodes_weights(n_quadrature_points)
     energy_samples: Float[Array, " N"] = (
         nominal_energy_kev + jnp.sqrt(2.0) * spread_kev * nodes
     )
@@ -806,8 +806,10 @@ def instrument_broadened_pattern(
     angle_weights: Float[Array, " N_a"]
     energy_nodes: Float[Array, " N_e"]
     energy_weights: Float[Array, " N_e"]
-    angle_nodes, angle_weights = gauss_hermite_nodes_weights(n_angular_samples)
-    energy_nodes, energy_weights = gauss_hermite_nodes_weights(
+    angle_nodes, angle_weights = _gauss_hermite_nodes_weights(
+        n_angular_samples
+    )
+    energy_nodes, energy_weights = _gauss_hermite_nodes_weights(
         n_energy_samples
     )
     angle_samples: Float[Array, "N_a"] = (
@@ -873,6 +875,5 @@ __all__: list[str] = [
     "decompose_beam_modes_static",
     "detector_psf_convolve",
     "energy_spread_average",
-    "gauss_hermite_nodes_weights",
     "instrument_broadened_pattern",
 ]

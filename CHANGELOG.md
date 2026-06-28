@@ -11,22 +11,38 @@ Each entry summarizes the commits that landed for that version bump in
 
 - Added the foundational `recon` optimization API from the optimistix/optax
   plan: constrained latent transforms, richer differentiable losses, the
-  general `ReconProblem`/`solve`/`multistart` surface, incoherent distribution
-  weight reconstruction, the base-object distribution library builder,
+  general `rheedium.types.ReconProblem` + `recon.solve`/`multistart` surface,
+  incoherent distribution weight reconstruction, the base-object distribution
+  library builder,
   Fisher/Laplace uncertainty helpers, and `recipe_deviation` reports.
   The legacy hand-rolled `ReconstructionResult`, `gauss_newton_*`,
   `adam_*`, and `adagrad_*` optimizer APIs were removed with no shim; migrate
-  reconstruction callers to `ReconProblem` plus `solve`. HDF5 serialization now
-  registers `ReconResult`.
+  reconstruction callers to `rheedium.types.ReconProblem` plus `recon.solve`.
+  HDF5 serialization now registers `rheedium.types.ReconResult`.
+- Centralized the remaining structured carriers under `rheedium.types`:
+  recon problem/result/spec/UQ/report carriers and axis-spec constructors,
+  TIFF `FrameMetadata`, and detector-kernel axis update tuples. The consuming
+  `recon`, `inout`, and `procs` subpackages no longer export those carriers.
 - Completed the generalized recon UQ gate: `uncertainty.py` now exposes
-  `PosteriorSamples`, blackjax NUTS posterior sampling, R-hat/ESS diagnostics,
-  credible intervals, and Laplace/Fisher inverse-mass warm starts, with tests for
-  empirical covariance calibration, multimodal posterior retention, orientation
-  Fisher regression, and free-form distribution bands.
+  blackjax NUTS posterior sampling, R-hat/ESS diagnostics, credible intervals,
+  and Laplace/Fisher inverse-mass warm starts; `rheedium.types.PosteriorSamples`
+  owns the sample container. Tests cover empirical covariance calibration,
+  multimodal posterior retention, orientation Fisher regression, and free-form
+  distribution bands.
 - Completed the K3 recon robustness gate: `multistart` can now generate seeded
   random starts from a template latent, scalar minimization results report the
   optimized objective in `ReconResult.loss`, and tests cover reproducibility,
   planted local-minimum escape, and bracketed-init faster refinement.
+- Completed the K5 recipe-deviation contract: reports now default to K4
+  Laplace covariance when uncertainty is not supplied, carry covariance and
+  per-parameter sigma metadata, export a schema-validated automaton payload, and
+  include calibrated matched/mismatched recipe tests.
+- Completed the K6 recon hardening gate: `solve`/`multistart` can enable the
+  persistent XLA compilation cache before inversion scans, `fit_geometry_beam`
+  is exported as the fixed-crystal geometry/beam convenience wrapper,
+  `fit_orientation_weights` now uses the shared `ReconProblem`/`solve` path
+  instead of a bespoke Adam loop, and the inverse API is Routine-Listed,
+  documented, typed, and frozen by tests.
 - Multislice simulator and Lobató potentials are now the **default** scattering
   model.
 - Began detector-geometry rationalization: `DetectorGeometry` now carries dense
@@ -98,9 +114,14 @@ Each entry summarizes the commits that landed for that version bump in
   sub-coherence-modifier return split.
 - Completed the R6/RG6 module reorganization: `types.distributions` is now a
   subpackage split into base, beam, orientation, and size modules with the old
-  public import path preserved, and `rheedium.simul.layer0` /
-  `rheedium.simul.layer1` expose coherent-kernel and detector-integrator
-  boundaries.
+  public import path preserved. The transient `rheedium.simul.layer0` /
+  `rheedium.simul.layer1` compatibility modules were removed with no shim;
+  import simulator-owned kernels from `rheedium.simul` or
+  `rheedium.simul.simulator`.
+- Removed compatibility forwarding exports for `lattice_to_cell_params` from
+  `rheedium.inout.crystal` and `DetectorGeometry` from
+  `rheedium.types.rheed_types`; import them from `rheedium.inout.lattice` (or
+  `rheedium.inout`) and `rheedium.types.detector` (or `rheedium.types`).
 - Began W7 naming cleanup: code and tests now use `energy_kev` for beam energy
   in keV, deleting the old `voltage_kv` name from the checked code surface.
   Tutorials and source docs now use the same `energy_kev` spelling; internal

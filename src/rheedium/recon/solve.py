@@ -11,21 +11,12 @@ free-form-weight problems.
 
 Routine Listings
 ----------------
-:class:`DistributionAxisSpec`
-    Static perturbation-axis contract for distribution reconstruction.
-:class:`ReconProblem`
-    Differentiable inverse problem definition for reconstruction solvers.
-:class:`ReconResult`
-    Result container returned by the general reconstruction solver.
-:func:`create_distribution_axis_spec`
-    Create a perturbation-axis specification for library reconstruction.
-:func:`create_crystal_displacement_axis_spec`
-    Create a crystal displacement-axis specification for library
-    reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
     Run a reconstruction problem from multiple initial guesses.
+:func:`fit_geometry_beam`
+    Fit orientation and beam-mode parameters for a fixed crystal.
 :func:`build_incoherent_intensity_library`
     Build a per-sample incoherent intensity library from a base object.
 :func:`reconstruct_incoherent_weights`
@@ -34,7 +25,6 @@ Routine Listings
     Recover a distribution over a perturbation axis from a measured image.
 """
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import optax
@@ -43,47 +33,25 @@ from beartype import beartype
 from beartype.typing import Any, Callable, Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
+from rheedium.tools.caching import enable_compilation_cache
 from rheedium.types import (
-    CrystalStructure,
+    BeamModeDistribution,
     Distribution,
+    DistributionAxisSpec,
+    LaplaceUncertainty,
+    ReconProblem,
+    ReconResult,
     ReductionMode,
     create_distribution,
     scalar_float,
 )
+from rheedium.types.recon_types import (
+    _default_loss,
+    _default_residual,
+    _tree_mean_square,
+)
 
-from .uncertainty import covariance_from_fisher
-
-
-def _identity(value: Any) -> Any:
-    """Return a value unchanged."""
-    return value
-
-
-def _default_residual(simulated: Any, measured: Any) -> Any:
-    """Return a default residual pytree."""
-    residual: Any = jax.tree_util.tree_map(
-        lambda sim_leaf, meas_leaf: jnp.asarray(sim_leaf)
-        - jnp.asarray(meas_leaf),
-        simulated,
-        measured,
-    )
-    return residual
-
-
-def _tree_mean_square(tree: Any) -> Float[Array, ""]:
-    """Return the mean square across all numeric leaves in a pytree."""
-    leaves: list[Any] = jax.tree_util.tree_leaves(tree)
-    if not leaves:
-        loss: Float[Array, ""] = jnp.asarray(0.0, dtype=jnp.float64)
-        return loss
-    total: Float[Array, ""] = jnp.asarray(0.0, dtype=jnp.float64)
-    count: Float[Array, ""] = jnp.asarray(0.0, dtype=jnp.float64)
-    for leaf in leaves:
-        leaf_array: Array = jnp.asarray(leaf)
-        total = total + jnp.sum(jnp.square(leaf_array))
-        count = count + jnp.asarray(leaf_array.size, dtype=jnp.float64)
-    loss: Float[Array, ""] = total / jnp.maximum(count, 1.0)
-    return loss
+from .uncertainty import covariance_from_fisher, laplace_uncertainty
 
 
 def _n_multistart_latents(initial_latents: Any) -> int:
@@ -151,13 +119,6 @@ def _random_multistart_latents(
     return generated_latents
 
 
-def _default_loss(simulated: Any, measured: Any) -> Float[Array, ""]:
-    """Return the default mean-squared data loss."""
-    residual: Any = _default_residual(simulated, measured)
-    loss: Float[Array, ""] = _tree_mean_square(residual)
-    return loss
-
-
 def _result_message(result: Any) -> str:
     """Convert an optimistix result enum to a readable status string."""
     is_successful: bool = bool(result == optx.RESULTS.successful)
@@ -166,297 +127,6 @@ def _result_message(result: Any) -> str:
         return message
     message: str = str(optx.RESULTS[result])
     return message
-
-
-class DistributionAxisSpec(eqx.Module):
-    """Static perturbation-axis contract for distribution reconstruction.
-
-    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
-
-    Attributes
-    ----------
-    samples : Float[Array, "N D"]
-        Latent-axis sample coordinates used as rows in the recovered
-        distribution.
-    perturbation_fn : Callable[[Any, Float[Array, "D"]], Any]
-        Static function that maps ``(base_object, sample)`` to a perturbed
-        physical object.
-    forward_model : Callable[[Any], Array]
-        Static differentiable model that maps the perturbed object to either a
-        coherent amplitude image or an intensity image.
-    output_kind : str
-        Static forward-output interpretation: ``"amplitude"`` or
-        ``"intensity"``.
-    axis_id : Optional[str]
-        Optional static label attached to the recovered
-        :class:`~rheedium.types.Distribution`.
-    """
-
-    samples: Float[Array, "N D"]
-    perturbation_fn: Callable[[Any, Float[Array, "D"]], Any] = eqx.field(
-        static=True
-    )
-    forward_model: Callable[[Any], Array] = eqx.field(static=True)
-    output_kind: str = eqx.field(static=True, default="amplitude")
-    axis_id: Optional[str] = eqx.field(static=True, default=None)
-
-
-class ReconProblem(eqx.Module):
-    """Differentiable inverse problem definition for reconstruction solvers.
-
-    :see: :class:`~.test_solve.TestReconSolve`
-
-    Attributes
-    ----------
-    forward : Callable[[Any], Any]
-        Differentiable forward model accepting physical parameters.
-    measured : Any
-        Measured target data pytree.
-    transform : Callable[[Any], Any]
-        Static map from unconstrained latent parameters to physical
-        parameters.
-    residual_fn : Callable[[Any, Any], Any]
-        Static residual builder comparing simulated and measured data.
-    loss_fn : Callable[[Any, Any], Float[Array, ""]]
-        Static scalar loss for minimisation modes.
-    """
-
-    forward: Callable[[Any], Any] = eqx.field(static=True)
-    measured: Any
-    transform: Callable[[Any], Any] = eqx.field(
-        static=True,
-        default=_identity,
-    )
-    residual_fn: Callable[[Any, Any], Any] = eqx.field(
-        static=True,
-        default=_default_residual,
-    )
-    loss_fn: Callable[[Any, Any], Float[Array, ""]] = eqx.field(
-        static=True,
-        default=_default_loss,
-    )
-
-    def physical_from_latent(self, latent_params: Any) -> Any:
-        """Map latent optimizer coordinates to physical parameters."""
-        physical_params: Any = self.transform(latent_params)
-        return physical_params
-
-    def simulate(self, latent_params: Any) -> Any:
-        """Evaluate the forward model from latent optimizer coordinates."""
-        physical_params: Any = self.physical_from_latent(latent_params)
-        simulated: Any = self.forward(physical_params)
-        return simulated
-
-    def residual_from_latent(self, latent_params: Any) -> Any:
-        """Evaluate residuals from latent optimizer coordinates."""
-        simulated: Any = self.simulate(latent_params)
-        residual: Any = self.residual_fn(simulated, self.measured)
-        return residual
-
-    def loss_from_latent(self, latent_params: Any) -> Float[Array, ""]:
-        """Evaluate scalar loss from latent optimizer coordinates."""
-        simulated: Any = self.simulate(latent_params)
-        loss: Float[Array, ""] = self.loss_fn(simulated, self.measured)
-        return loss
-
-
-class ReconResult(eqx.Module):
-    """Result container returned by the general reconstruction solver.
-
-    :see: :class:`~.test_solve.TestReconSolve`
-
-    Attributes
-    ----------
-    params : Any
-        Final physical parameter pytree.
-    latent_params : Any
-        Final unconstrained optimizer-coordinate pytree.
-    simulated : Any
-        Forward-model output at the final parameters.
-    residual : Any
-        Residual pytree at the final parameters.
-    loss : Float[Array, ""]
-        Final scalar data loss.
-    iterations : Int[Array, ""]
-        Number of nonlinear solver steps reported by ``optimistix``.
-    converged : Bool[Array, ""]
-        True when the solver result is successful or the final loss is below
-        the absolute tolerance.
-    solver_status : str
-        Static human-readable solver status.
-    """
-
-    params: Any
-    latent_params: Any
-    simulated: Any
-    residual: Any
-    loss: Float[Array, ""]
-    iterations: Int[Array, ""]
-    converged: Bool[Array, ""]
-    solver_status: str = eqx.field(static=True)
-
-
-@jaxtyped(typechecker=beartype)
-def create_distribution_axis_spec(
-    samples: Float[Array, "N D"],
-    perturbation_fn: Callable[[Any, Float[Array, "D"]], Any],
-    forward_model: Callable[[Any], Array],
-    output_kind: str = "amplitude",
-    axis_id: Optional[str] = None,
-) -> DistributionAxisSpec:
-    """Create a perturbation-axis specification for library reconstruction.
-
-    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
-
-    Parameters
-    ----------
-    samples : Float[Array, "N D"]
-        Two-dimensional latent-axis sample coordinates.
-    perturbation_fn : Callable[[Any, Float[Array, "D"]], Any]
-        Static function mapping ``(base_object, sample)`` to a perturbed
-        physical object.
-    forward_model : Callable[[Any], Array]
-        Static differentiable forward model for one perturbed object.
-    output_kind : str, optional
-        Static forward-output interpretation, either ``"amplitude"`` or
-        ``"intensity"``. Default: ``"amplitude"``
-    axis_id : Optional[str], optional
-        Optional static axis label stored on the recovered distribution.
-
-    Returns
-    -------
-    axis_spec : DistributionAxisSpec
-        Validated perturbation-axis specification.
-
-    Notes
-    -----
-    1. Convert samples to ``float64``.
-    2. Validate the static sample rank and supported output interpretation.
-    3. Store callables and metadata as static PyTree fields.
-    """
-    sample_array: Float[Array, "N D"] = jnp.asarray(
-        samples,
-        dtype=jnp.float64,
-    )
-    if sample_array.ndim != 2:
-        raise ValueError("samples must have shape (N, D)")
-    if sample_array.shape[0] <= 0:
-        raise ValueError("samples must contain at least one row")
-    if output_kind not in {"amplitude", "intensity"}:
-        raise ValueError("output_kind must be 'amplitude' or 'intensity'")
-    axis_spec: DistributionAxisSpec = DistributionAxisSpec(
-        samples=sample_array,
-        perturbation_fn=perturbation_fn,
-        forward_model=forward_model,
-        output_kind=output_kind,
-        axis_id=axis_id,
-    )
-    return axis_spec
-
-
-@jaxtyped(typechecker=beartype)
-def create_crystal_displacement_axis_spec(
-    samples: Float[Array, "N D"],
-    displacement_modes: Float[Array, "D A 3"],
-    forward_model: Callable[[CrystalStructure], Array],
-    output_kind: str = "amplitude",
-    axis_id: Optional[str] = "crystal_displacement",
-) -> DistributionAxisSpec:
-    """Create a crystal displacement-axis specification.
-
-    :see: :class:`~.test_solve.TestReconDistributionReconstruction`
-
-    Parameters
-    ----------
-    samples : Float[Array, "N D"]
-        Per-row displacement-mode coordinates.
-    displacement_modes : Float[Array, "D A 3"]
-        Cartesian displacement modes in Angstrom for each active coordinate,
-        atom, and spatial axis.
-    forward_model : Callable[[CrystalStructure], Array]
-        Static differentiable model for one perturbed crystal.
-    output_kind : str, optional
-        Static forward-output interpretation, either ``"amplitude"`` or
-        ``"intensity"``. Default: ``"amplitude"``
-    axis_id : Optional[str], optional
-        Optional static label stored on the recovered distribution.
-        Default: ``"crystal_displacement"``
-
-    Returns
-    -------
-    axis_spec : DistributionAxisSpec
-        Perturbation-axis specification that applies displacement modes to a
-        :class:`~rheedium.types.CrystalStructure` carrier.
-
-    Notes
-    -----
-    1. Validate that sample coordinates and displacement modes share the same
-       active-mode dimension.
-    2. Apply Cartesian displacements to the crystal carrier while preserving
-       atomic numbers and cell parameters.
-    3. Update fractional coordinates by the orthogonal-cell length scale, which
-       is the intended lightweight fixture path for Debye-Waller/RMS
-       displacement axes.
-    """
-    sample_array: Float[Array, "N D"] = jnp.asarray(
-        samples,
-        dtype=jnp.float64,
-    )
-    mode_array: Float[Array, "D A 3"] = jnp.asarray(
-        displacement_modes,
-        dtype=jnp.float64,
-    )
-    if sample_array.ndim != 2:
-        raise ValueError("samples must have shape (N, D)")
-    if mode_array.ndim != 3 or mode_array.shape[2] != 3:
-        raise ValueError("displacement_modes must have shape (D, A, 3)")
-    if sample_array.shape[1] != mode_array.shape[0]:
-        raise ValueError(
-            "samples second dimension must match displacement mode count"
-        )
-
-    def perturbation_fn(
-        crystal: CrystalStructure,
-        sample: Float[Array, "D"],
-    ) -> CrystalStructure:
-        displacement: Float[Array, "A 3"] = jnp.einsum(
-            "d,daz->az",
-            sample,
-            mode_array,
-        )
-        atom_count: int = int(crystal.cart_positions.shape[0])
-        if displacement.shape[0] != atom_count:
-            raise ValueError(
-                "displacement_modes atom dimension must match crystal atoms"
-            )
-        cart_xyz: Float[Array, "A 3"] = (
-            crystal.cart_positions[:, :3] + displacement
-        )
-        frac_xyz: Float[Array, "A 3"] = (
-            crystal.frac_positions[:, :3] + displacement / crystal.cell_lengths
-        )
-        cart_positions: Float[Array, "A 4"] = crystal.cart_positions.at[
-            :, :3
-        ].set(cart_xyz)
-        frac_positions: Float[Array, "A 4"] = crystal.frac_positions.at[
-            :, :3
-        ].set(frac_xyz)
-        perturbed: CrystalStructure = CrystalStructure(
-            frac_positions=frac_positions,
-            cart_positions=cart_positions,
-            cell_lengths=crystal.cell_lengths,
-            cell_angles=crystal.cell_angles,
-        )
-        return perturbed
-
-    axis_spec: DistributionAxisSpec = create_distribution_axis_spec(
-        samples=sample_array,
-        perturbation_fn=perturbation_fn,
-        forward_model=forward_model,
-        output_kind=output_kind,
-        axis_id=axis_id,
-    )
-    return axis_spec
 
 
 @jaxtyped(typechecker=beartype)
@@ -471,6 +141,8 @@ def solve(  # noqa: PLR0913
     learning_rate: scalar_float = 1e-2,
     clip_norm: scalar_float = 1.0,
     throw: bool = False,
+    compilation_cache_dir: Optional[str] = None,
+    compilation_cache_per_arch: bool = True,
 ) -> ReconResult:
     """Solve a reconstruction problem with optimistix or optax.
 
@@ -501,6 +173,13 @@ def solve(  # noqa: PLR0913
         Global gradient clipping norm for the optax path. Default: 1.0
     throw : bool, optional
         If True, let ``optimistix`` raise on solver failure. Default: False
+    compilation_cache_dir : Optional[str], optional
+        Persistent XLA compilation-cache root for this inversion. If supplied,
+        :func:`rheedium.tools.enable_compilation_cache` is called before the
+        solver scan is compiled. Default: None
+    compilation_cache_per_arch : bool, optional
+        If True, namespace ``compilation_cache_dir`` by CPU/GPU architecture
+        when enabling the cache. Default: True
 
     Returns
     -------
@@ -514,7 +193,15 @@ def solve(  # noqa: PLR0913
     2. BFGS mode minimizes the scalar ``problem.loss_fn``.
     3. AdamW mode wraps an ``optax`` gradient transformation in
        :class:`optimistix.OptaxMinimiser`.
+    4. When requested, persistent compilation cache configuration happens
+       before any optimizer executable is lowered.
     """
+    if compilation_cache_dir is not None:
+        enable_compilation_cache(
+            compilation_cache_dir,
+            per_arch=compilation_cache_per_arch,
+        )
+
     if mode == "least_squares":
         active_solver: Any = solver
         if active_solver is None:
@@ -618,6 +305,8 @@ def multistart(  # noqa: PLR0913
     n_starts: Optional[int] = None,
     random_scale: scalar_float = 1.0,
     include_initial: bool = True,
+    compilation_cache_dir: Optional[str] = None,
+    compilation_cache_per_arch: bool = True,
 ) -> ReconResult:
     """Run a reconstruction problem from multiple initial guesses.
 
@@ -659,6 +348,12 @@ def multistart(  # noqa: PLR0913
     include_initial : bool, optional
         If True, prepend the template latent as the first generated start.
         Default: True
+    compilation_cache_dir : Optional[str], optional
+        Persistent XLA compilation-cache root passed to each solve. Default:
+        None
+    compilation_cache_per_arch : bool, optional
+        If True, namespace ``compilation_cache_dir`` by architecture when
+        enabling the cache. Default: True
 
     Returns
     -------
@@ -704,6 +399,8 @@ def multistart(  # noqa: PLR0913
             atol=atol,
             learning_rate=learning_rate,
             clip_norm=clip_norm,
+            compilation_cache_dir=compilation_cache_dir,
+            compilation_cache_per_arch=compilation_cache_per_arch,
         )
         results.append(start_result)
 
@@ -713,6 +410,144 @@ def multistart(  # noqa: PLR0913
     best_index: int = int(jnp.argmin(losses))
     best_result: ReconResult = results[best_index]
     return best_result
+
+
+@jaxtyped(typechecker=beartype)
+def fit_geometry_beam(  # noqa: PLR0913
+    crystal: Any,
+    measured: Any,
+    forward: Callable[[Any, Any, BeamModeDistribution], Any],
+    initial_latent: Any,
+    transform: Callable[[Any], Tuple[Any, BeamModeDistribution]],
+    residual_fn: Callable[[Any, Any], Any] = _default_residual,
+    loss_fn: Callable[[Any, Any], Float[Array, ""]] = _default_loss,
+    solver: Optional[Any] = None,
+    mode: str = "least_squares",
+    max_steps: int = 256,
+    rtol: scalar_float = 1e-6,
+    atol: scalar_float = 1e-6,
+    learning_rate: scalar_float = 1e-2,
+    clip_norm: scalar_float = 1.0,
+    noise_variance: scalar_float = 1.0,
+    uncertainty_regularization: scalar_float = 1e-6,
+    compilation_cache_dir: Optional[str] = None,
+    compilation_cache_per_arch: bool = True,
+) -> Tuple[Any, BeamModeDistribution, Float[Array, "P P"]]:
+    """Fit orientation and beam-mode parameters for a fixed crystal.
+
+    :see: :class:`~.test_solve.TestGeometryBeamFit`
+
+    Parameters
+    ----------
+    crystal : Any
+        Fixed known structure or structure-like carrier supplied to
+        ``forward``.
+    measured : Any
+        Measured detector data to match.
+    forward : Callable[[Any, Any, BeamModeDistribution], Any]
+        Static calibrated forward model with signature
+        ``(crystal, orientation, beam_modes) -> simulated``.
+    initial_latent : Any
+        Initial unconstrained optimizer-coordinate pytree.
+    transform : Callable[[Any], Tuple[Any, BeamModeDistribution]]
+        Static map from latent coordinates to
+        ``(orientation, beam_modes)`` physical parameters.
+    residual_fn : Callable[[Any, Any], Any], optional
+        Residual builder comparing simulated and measured data. Default:
+        elementwise subtraction.
+    loss_fn : Callable[[Any, Any], Float[Array, ""]], optional
+        Scalar loss used by minimization modes. Default: mean squared error.
+    solver : Optional[Any], optional
+        Explicit optimistix solver or minimizer. Default: chosen by ``mode``.
+    mode : str, optional
+        Solver family (**static**) passed to :func:`solve`. Default:
+        ``"least_squares"``.
+    max_steps : int, optional
+        Maximum solver steps (**static**). Default: 256
+    rtol : scalar_float, optional
+        Relative convergence tolerance. Default: 1e-6
+    atol : scalar_float, optional
+        Absolute convergence tolerance. Default: 1e-6
+    learning_rate : scalar_float, optional
+        Learning rate for the optax path. Default: 1e-2
+    clip_norm : scalar_float, optional
+        Global gradient clipping norm for the optax path. Default: 1.0
+    noise_variance : scalar_float, optional
+        Per-residual Gaussian noise variance for Laplace covariance.
+        Default: 1.0
+    uncertainty_regularization : scalar_float, optional
+        Diagonal Fisher regularization for covariance. Default: 1e-6
+    compilation_cache_dir : Optional[str], optional
+        Persistent XLA compilation-cache root passed to :func:`solve`.
+        Default: None
+    compilation_cache_per_arch : bool, optional
+        If True, namespace ``compilation_cache_dir`` by architecture.
+        Default: True
+
+    Returns
+    -------
+    orientation : Any
+        Fitted orientation parameters returned by ``transform``.
+    beam_modes : BeamModeDistribution
+        Fitted beam-mode distribution returned by ``transform``.
+    covariance : Float[Array, "P P"]
+        Flattened Laplace covariance for ``(orientation, beam_modes)``.
+
+    Notes
+    -----
+    1. Close the known crystal over a calibrated geometry/beam forward model.
+    2. Solve through the common :class:`ReconProblem` surface.
+    3. Estimate local covariance in the fitted physical basis.
+    """
+
+    def forward_from_physical(
+        physical_params: Tuple[Any, BeamModeDistribution],
+    ) -> Any:
+        orientation: Any
+        beam_modes: BeamModeDistribution
+        orientation, beam_modes = physical_params
+        simulated: Any = forward(crystal, orientation, beam_modes)
+        return simulated
+
+    problem: ReconProblem = ReconProblem(
+        forward=forward_from_physical,
+        measured=measured,
+        transform=transform,
+        residual_fn=residual_fn,
+        loss_fn=loss_fn,
+    )
+    result: ReconResult = solve(
+        problem=problem,
+        initial_latent=initial_latent,
+        solver=solver,
+        mode=mode,
+        max_steps=max_steps,
+        rtol=rtol,
+        atol=atol,
+        learning_rate=learning_rate,
+        clip_norm=clip_norm,
+        compilation_cache_dir=compilation_cache_dir,
+        compilation_cache_per_arch=compilation_cache_per_arch,
+    )
+
+    def residual_from_physical(
+        physical_params: Tuple[Any, BeamModeDistribution],
+    ) -> Any:
+        simulated: Any = forward_from_physical(physical_params)
+        residual: Any = residual_fn(simulated, measured)
+        return residual
+
+    uncertainty: LaplaceUncertainty = laplace_uncertainty(
+        residual_fn=residual_from_physical,
+        params=result.params,
+        noise_variance=noise_variance,
+        regularization=uncertainty_regularization,
+    )
+    orientation: Any
+    beam_modes: BeamModeDistribution
+    orientation, beam_modes = result.params
+    covariance: Float[Array, "P P"] = uncertainty.covariance
+    return orientation, beam_modes, covariance
 
 
 @jaxtyped(typechecker=beartype)
@@ -913,12 +748,8 @@ def reconstruct_distribution(
 
 
 __all__: list[str] = [
-    "DistributionAxisSpec",
-    "ReconProblem",
-    "ReconResult",
     "build_incoherent_intensity_library",
-    "create_crystal_displacement_axis_spec",
-    "create_distribution_axis_spec",
+    "fit_geometry_beam",
     "multistart",
     "reconstruct_distribution",
     "reconstruct_incoherent_weights",

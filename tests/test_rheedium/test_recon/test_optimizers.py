@@ -11,11 +11,10 @@ from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
-    ReconProblem,
-    ReconResult,
     solve,
     weighted_mean_squared_error,
 )
+from rheedium.types import ReconProblem, ReconResult
 from rheedium.types.custom_types import scalar_float
 
 

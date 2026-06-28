@@ -6,18 +6,25 @@ case launches a subprocess that imports rheedium and reports the resolved
 ``EQX_ON_ERROR`` value.
 """
 
+import ast
+import importlib
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 import chex
+import pytest
 
 _PROBE: str = (
     "import os, rheedium; "
     "print('EQX=' + os.environ.get('EQX_ON_ERROR', '<unset>'))"
 )
 _REPO_ROOT: Path = Path(__file__).parents[2]
+_TYPE_CONSTRUCTOR_EXEMPTIONS: set[tuple[str, str]] = {
+    ("src/rheedium/plots/figuring.py", "create_phosphor_colormap"),
+    ("src/rheedium/procs/surface_builder.py", "create_surface_slab"),
+}
 
 
 def _resolved_eqx_on_error(**overrides: str) -> str:
@@ -38,6 +45,16 @@ def _resolved_eqx_on_error(**overrides: str) -> str:
         row for row in result.stdout.splitlines() if row.startswith("EQX=")
     )
     return line.removeprefix("EQX=")
+
+
+def _base_name(base: ast.expr) -> str:
+    """Return a dotted-ish display name for one class base expression."""
+    if isinstance(base, ast.Name):
+        return base.id
+    if isinstance(base, ast.Attribute):
+        prefix: str = _base_name(base.value)
+        return f"{prefix}.{base.attr}" if prefix else base.attr
+    return ""
 
 
 class TestRuntimeCheckToggle(chex.TestCase):
@@ -155,4 +172,72 @@ class TestNamingGuards(chex.TestCase):
                     text = path.read_text(encoding="utf-8")
                     if old_name in text:
                         offenders.append(str(path.relative_to(_REPO_ROOT)))
+        self.assertEqual(offenders, [])
+
+    def test_removed_forwarding_exports_stay_removed(self) -> None:
+        r"""Compatibility forwarding exports should stay deleted.
+
+        Extended Summary
+        ----------------
+        Verifies the updated export contract: symbols are public from the
+        owning module and subpackage, not from additional forwarding modules.
+
+        Notes
+        -----
+        It imports the former forwarding modules that still exist for other
+        helpers and checks that the retired public attributes are absent. It
+        also asserts the removed simulator layer modules are not importable.
+        """
+        inout_crystal = importlib.import_module("rheedium.inout.crystal")
+        rheed_types = importlib.import_module("rheedium.types.rheed_types")
+
+        self.assertFalse(hasattr(inout_crystal, "lattice_to_cell_params"))
+        self.assertFalse(hasattr(rheed_types, "DetectorGeometry"))
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module("rheedium.simul.layer0")
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module("rheedium.simul.layer1")
+
+    def test_structured_type_definitions_stay_under_types(self) -> None:
+        r"""PyTree carriers and constructors should stay under types.
+
+        Extended Summary
+        ----------------
+        Verifies the types-centralization rule by scanning source modules for
+        non-types `eqx.Module` and `NamedTuple` definitions, plus top-level
+        `create_*` constructors outside the documented non-type exceptions.
+
+        Notes
+        -----
+        This is an architectural guard rather than a behavioral test: it keeps
+        future feature work from reintroducing local carriers in recon, procs,
+        inout, or other consuming subpackages.
+        """
+        offenders: list[str] = []
+        source_root: Path = _REPO_ROOT / "src" / "rheedium"
+        for path in source_root.rglob("*.py"):
+            relative_path: str = str(path.relative_to(_REPO_ROOT))
+            if relative_path.startswith("src/rheedium/types/"):
+                continue
+            tree: ast.Module = ast.parse(path.read_text(encoding="utf-8"))
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef):
+                    base_names: set[str] = {
+                        _base_name(base) for base in node.bases
+                    }
+                    if base_names & {
+                        "NamedTuple",
+                        "typing.NamedTuple",
+                        "beartype.typing.NamedTuple",
+                        "eqx.Module",
+                        "equinox.Module",
+                    }:
+                        offenders.append(f"{relative_path}:{node.name}")
+                if (
+                    isinstance(node, ast.FunctionDef)
+                    and node.name.startswith("create_")
+                    and (relative_path, node.name)
+                    not in _TYPE_CONSTRUCTOR_EXEMPTIONS
+                ):
+                    offenders.append(f"{relative_path}:{node.name}")
         self.assertEqual(offenders, [])

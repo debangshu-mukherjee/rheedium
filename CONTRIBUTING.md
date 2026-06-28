@@ -169,10 +169,38 @@ def simulate_pattern(
 
 ### Custom Types and PyTrees
 
-Structured data types live in `rheedium.types` and are **Equinox modules**
-(`eqx.Module`): immutable JAX PyTrees that flow through `jit`/`grad`/`vmap`.
-Static, non-array metadata fields are declared with `eqx.field(static=True)`
-so they are excluded from the differentiable leaves.
+**All types live in `rheedium.types` — no exceptions.** Every structured data
+type — every `eqx.Module` PyTree, every `NamedTuple` / dataclass carrier, every
+type alias, **and every `create_*` constructor that builds one** — is defined under
+`src/rheedium/types/` and **nowhere else**. Every other subpackage (`simul`,
+`procs`, `recon`, `ucell`, `inout`, `plots`, `tools`, `audit`) **imports** its
+types from `rheedium.types`; it must **not** define its own PyTree, container, or
+`create_*`/`*_spec` factory. Why: a single import surface, one PyTree
+flatten/unflatten registration per type, one home for the validation (`create_*`)
+contract, and no duplicate or near-duplicate carriers drifting across modules
+(which is exactly what the inverse problem needs — `recon` compares `Distribution`
+objects, so there must be *one* `Distribution`). A new type or constructor a
+feature needs is added to the appropriate `types/<area>.py` first — e.g.
+`crystal_types.py`, `beam_types.py`, `detector.py`, `simulation_params.py`,
+`rheed_types.py`, or the `types/distributions/` subpackage — **then** imported
+where it is used. A result/parameter container that "feels local" to a solver or
+producer (e.g. a fit-result or problem-spec PyTree) is **still a type**: it goes in
+`rheedium.types`, not beside the function that returns it.
+
+The `create_*` part of this rule means constructors that build Rheedium-owned
+structured data carriers. It does **not** move domain producers whose job is to
+compute an existing carrier, such as `procs.create_surface_slab(...) ->
+CrystalStructure`, out of the producer subpackage; the returned type is still
+owned by `rheedium.types`, but the surface-building procedure belongs in
+`procs`. It also does not apply to third-party object factories such as
+`plots.create_phosphor_colormap(...)`, which returns a Matplotlib colormap rather
+than a Rheedium type. Those functions must not define new carriers or new
+carrier constructors locally.
+
+Structured data types are **Equinox modules** (`eqx.Module`): immutable JAX PyTrees
+that flow through `jit`/`grad`/`vmap`. Static, non-array metadata fields are
+declared with `eqx.field(static=True)` so they are excluded from the differentiable
+leaves.
 
 ```python
 import equinox as eqx
@@ -195,7 +223,8 @@ class CrystalStructure(eqx.Module):
 ### Validation Pattern for Factory Functions
 
 Custom types are constructed through `create_*` factory functions that
-validate inputs. Use a two-tier approach:
+validate inputs. These factories live in `rheedium.types` **next to the type they
+build** (never in the consuming subpackage). Use a two-tier approach:
 
 - **Static shape/structure checks** that can be resolved at trace time use
   plain Python `raise ValueError`.
@@ -237,9 +266,21 @@ def create_crystal_structure(
 ### Documentation Standards
 
 Docstrings follow the **NumPy / numpydoc convention** (enforced by Ruff's
-`pydocstyle` rules and `pydoclint`). Coverage is checked by `interrogate`
-(`fail-under = 90`). Do **not** use ad-hoc section headers — stick to the
-numpydoc sections below.
+`pydocstyle` rules and a source-only `pydoclint` pass). Coverage is checked by
+`interrogate` (`fail-under = 90`). Do **not** use ad-hoc section headers — stick
+to the numpydoc sections below.
+
+`pydoclint` is configured in `pyproject.toml` for the project's actual type
+system: jaxtyping shape strings (for example `Float[Array, "H W"]`) are core
+signature syntax, and current pydoclint cannot safely parse them for return-type
+comparison. Therefore pydoclint still enforces argument order and required
+`Returns` / `Yields` sections, but return type equality is left to `ty`,
+jaxtyping, and beartype. The committed `.pydoclint-baseline` records existing
+source docstring debt so new source violations fail without forcing unrelated
+historical cleanup. Test docstrings are covered by
+`tests/test_rheedium/test_testing_documentation.py` instead of pydoclint because
+the test suite intentionally uses `Extended Summary` / `Notes` sections for
+rendered validation docs.
 
 #### Module Docstrings
 
@@ -342,6 +383,27 @@ Listings` — the three must read verbatim the same (in the example above,
 appears identically in the function docstring, the module listing, and the
 `__init__.py` listing). When you change a function's summary line, update both
 `Routine Listings` descriptions to match it.
+
+**Export once, from the module that owns it — no compatibility re-exports.** Each
+public symbol has exactly **one** canonical export path: the module that *defines*
+it, surfaced through *its own* subpackage's `__init__.py` (the three places above).
+That is the only place it is exported from. Do **not** add a second export of the
+same symbol from any other module or subpackage — not to preserve an old import
+location, not "for convenience," not as a forwarding alias. A symbol importable
+from two places is a bug magnet: the paths drift, callers split across both,
+`__all__` / `Routine Listings` fall out of sync, and a re-exported PyTree can even
+register its flatten/unflatten twice. The single re-export the codebase *does*
+allow is the structural one already required — a subpackage `__init__.py` surfacing
+the public API of **its own** submodules; that **is** the canonical path, not a
+duplicate of it. Cross-subpackage access always goes through the owner's public
+path (`from rheedium.types import Distribution`), never by re-publishing the symbol
+from a second subpackage.
+
+When a symbol **moves or is renamed, it moves**: update every import site to the
+new canonical path and **delete** the old one in the *same* change — no shim, no
+alias, no `DeprecationWarning`, no re-export left behind for old callers. This is
+the project's zero-legacy policy; the only migration record is a `CHANGELOG.md`
+note. Two implementations or two import paths never ship together.
 
 #### Function and Class Docstrings
 
@@ -644,6 +706,9 @@ other generated documentation artifacts.
 ruff check src/ tests/
 ruff format src/ tests/
 
+# Source docstring structure
+pydoclint src/
+
 # Type check (primary checker is `ty`)
 ty check
 
@@ -749,6 +814,9 @@ Include:
    - Plan the type signatures, custom types, and public API
 
 2. **Implementation:**
+   - **Any new type, PyTree, or `create_*` constructor goes in `rheedium.types`**
+     (see *Custom Types and PyTrees*) — never in the consuming subpackage; import
+     it from there.
    - Place the code in the appropriate subpackage and export it via that
      package's `__init__.py` (`__all__`)
    - Decorate with `@jaxtyped(typechecker=beartype)` and annotate fully
@@ -762,11 +830,18 @@ Include:
    - Add a tutorial example if it introduces user-facing functionality
    - Update the README if needed
 
-### Backwards Compatibility
+### API Evolution (zero-legacy)
 
-- Maintain API compatibility when possible
-- Use deprecation warnings for breaking changes
-- Document migration paths in CHANGELOG
+The codebase carries **no compatibility layer**. When an API changes:
+
+- **No shims, aliases, re-exports, or `DeprecationWarning`s** are kept alive for
+  old import paths or signatures (see *Export once, from the module that owns it*).
+- Update every call site and **delete** the old path in the *same* change; two
+  implementations or import paths never ship together.
+- The **only** migration record is a `CHANGELOG.md` note documenting the
+  rename/removal and the new path.
+- Prefer getting the API right over preserving a wrong one — a clean break with a
+  changelog entry beats a forwarding alias that quietly rots.
 
 ## Getting Help
 

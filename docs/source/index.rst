@@ -23,6 +23,7 @@ Rheedium
    guides/jax-transformability
    guides/parallelization-and-compilation
    guides/checked-numerical-entry-points
+   guides/differentiable-inversion-with-optimistix
 
 .. toctree::
    :maxdepth: 2

@@ -11,8 +11,6 @@ Routine Listings
 ----------------
 :func:`atomic_masses`
     Return preloaded atomic masses as JAX array.
-:class:`FrameMetadata`
-    Per-frame metadata extracted from TIFF tags.
 :func:`atomic_symbol`
     Returns atomic number for given atomic symbol string.
 :func:`debye_temperatures`
@@ -80,7 +78,6 @@ from .interop import from_ase, from_pymatgen, to_ase, to_pymatgen
 from .lattice import lattice_to_cell_params
 from .poscar import parse_poscar
 from .tiff import (
-    FrameMetadata,
     detect_beam_center,
     extract_frame_metadata,
     load_tiff_as_rheed_image,
@@ -103,7 +100,6 @@ __all__: list[str] = [
     "debye_temperatures",
     "detect_beam_center",
     "extract_frame_metadata",
-    "FrameMetadata",
     "from_ase",
     "from_pymatgen",
     "kirkland_potentials",

@@ -4,6 +4,8 @@ Verifies the general optimistix/optax reconstruction surface on lightweight
 synthetic inverse problems with deterministic linear forward models.
 """
 
+import os
+import tempfile
 import time
 
 import chex
@@ -11,20 +13,26 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
+import rheedium.types as rh_types
 from rheedium import recon
 from rheedium.recon import (
-    DistributionAxisSpec,
-    ReconProblem,
-    ReconResult,
     build_incoherent_intensity_library,
-    create_crystal_displacement_axis_spec,
-    create_distribution_axis_spec,
+    fit_geometry_beam,
     multistart,
     reconstruct_distribution,
     reconstruct_incoherent_weights,
     solve,
 )
-from rheedium.types import CrystalStructure, create_crystal_structure
+from rheedium.types import (
+    BeamModeDistribution,
+    CrystalStructure,
+    DistributionAxisSpec,
+    ReconProblem,
+    ReconResult,
+    create_crystal_displacement_axis_spec,
+    create_crystal_structure,
+    create_distribution_axis_spec,
+)
 
 _LINEAR_MATRIX: Float[Array, "pixels params"] = jnp.array(
     [[2.0, 1.0], [1.0, -1.0], [0.5, 2.0]],
@@ -68,6 +76,54 @@ def _identity_forward(
     """Return parameters unchanged as a synthetic forward output."""
     output: Float[Array, "params"] = params
     return output
+
+
+_GEOMETRY_BEAM_MATRIX: Float[Array, "pixels params"] = jnp.array(
+    [
+        [1.0, 0.0, 2.0, -0.5],
+        [0.0, 1.0, -1.0, 1.5],
+        [1.5, -0.5, 0.25, 0.75],
+        [-0.25, 1.25, 1.0, 0.5],
+        [0.75, 0.5, -0.5, 1.0],
+    ],
+    dtype=jnp.float64,
+)
+
+
+def _geometry_beam_transform(
+    latent: Float[Array, "params"],
+) -> tuple[Float[Array, "orientation"], BeamModeDistribution]:
+    """Map synthetic latent coordinates to orientation and beam modes."""
+    orientation: Float[Array, "orientation"] = latent[:2]
+    beam_modes: BeamModeDistribution = BeamModeDistribution(
+        beta_in_plane=jnp.asarray(0.0, dtype=jnp.float64),
+        beta_out_of_plane=jnp.asarray(0.0, dtype=jnp.float64),
+        divergence_in_plane_rad=latent[2],
+        divergence_out_of_plane_rad=latent[3],
+        energy_spread_ev=jnp.asarray(0.0, dtype=jnp.float64),
+        distribution_id="synthetic_geometry_beam",
+    )
+    return orientation, beam_modes
+
+
+def _geometry_beam_forward(
+    crystal: CrystalStructure,
+    orientation: Float[Array, "orientation"],
+    beam_modes: BeamModeDistribution,
+) -> Float[Array, "pixels"]:
+    """Return a linear detector fixture from orientation and beam modes."""
+    del crystal
+    parameter_vector: Float[Array, "params"] = jnp.array(
+        [
+            orientation[0],
+            orientation[1],
+            beam_modes.divergence_in_plane_rad,
+            beam_modes.divergence_out_of_plane_rad,
+        ],
+        dtype=jnp.float64,
+    )
+    pixels: Float[Array, "pixels"] = _GEOMETRY_BEAM_MATRIX @ parameter_vector
+    return pixels
 
 
 def _double_well_loss(
@@ -157,7 +213,7 @@ def _crystal_intensity_forward(
 class TestReconSolve(chex.TestCase):
     """Tests for the general reconstruction solver.
 
-    :see: :class:`~rheedium.recon.ReconProblem`
+    :see: :class:`~rheedium.types.ReconProblem`
     :see: :func:`~rheedium.recon.multistart`
     :see: :func:`~rheedium.recon.solve`
     """
@@ -471,6 +527,47 @@ class TestReconSolve(chex.TestCase):
             atol=1e-8,
         )
 
+    def test_solve_enables_requested_compilation_cache(self) -> None:
+        r"""Solve should wire inversion runs through the XLA cache helper.
+
+        Extended Summary
+        ----------------
+        Verifies the K6 warm-cache path by passing a compilation-cache
+        directory directly to ``solve`` and checking that JAX sees the
+        requested persistent cache before the optimizer path runs.
+
+        Notes
+        -----
+        The test restores the previous cache directory when one was already
+        configured, keeping the global JAX setting contained.
+        """
+        problem: ReconProblem
+        _true_params: Float[Array, "params"]
+        problem, _true_params = _linear_problem()
+        saved_cache_dir: str | None = jax.config.jax_compilation_cache_dir
+        cache_dir: str = tempfile.mkdtemp(prefix="rheedium-solve-cache-")
+
+        try:
+            result: ReconResult = solve(
+                problem=problem,
+                initial_latent=jnp.zeros(2, dtype=jnp.float64),
+                max_steps=6,
+                atol=1e-10,
+                compilation_cache_dir=cache_dir,
+                compilation_cache_per_arch=False,
+            )
+
+            self.assertTrue(bool(result.converged))
+            self.assertEqual(
+                jax.config.jax_compilation_cache_dir,
+                os.path.abspath(cache_dir),
+            )
+        finally:
+            jax.config.update(
+                "jax_compilation_cache_dir",
+                saved_cache_dir or cache_dir,
+            )
+
     def test_reconstruct_incoherent_weights_recovers_planted_shape(
         self,
     ) -> None:
@@ -612,11 +709,78 @@ def _identity_forward(
     return amplitude
 
 
+class TestGeometryBeamFit(chex.TestCase):
+    """Tests for the geometry/beam convenience wrapper.
+
+    :see: :func:`~rheedium.recon.fit_geometry_beam`
+    """
+
+    def test_fit_geometry_beam_recovers_planted_linear_fixture(self) -> None:
+        r"""The convenience wrapper should recover orientation and beam params.
+
+        Extended Summary
+        ----------------
+        Verifies that ``fit_geometry_beam`` builds a shared
+        :class:`ReconProblem`, solves a calibrated forward closure, and returns
+        a finite Laplace covariance in the physical parameter basis.
+
+        Notes
+        -----
+        The fixture uses a fixed crystal carrier and a planted linear
+        orientation/beam detector map so recovery is deterministic and cheap.
+        """
+        crystal: CrystalStructure = _small_crystal()
+        true_latent: Float[Array, "params"] = jnp.array(
+            [1.25, -0.4, 0.2, 0.35],
+            dtype=jnp.float64,
+        )
+        true_orientation: Float[Array, "orientation"]
+        true_beam: BeamModeDistribution
+        true_orientation, true_beam = _geometry_beam_transform(true_latent)
+        measured: Float[Array, "pixels"] = _geometry_beam_forward(
+            crystal,
+            true_orientation,
+            true_beam,
+        )
+
+        orientation: Float[Array, "orientation"]
+        beam_modes: BeamModeDistribution
+        covariance: Float[Array, "cov cov"]
+        orientation, beam_modes, covariance = fit_geometry_beam(
+            crystal=crystal,
+            measured=measured,
+            forward=_geometry_beam_forward,
+            initial_latent=jnp.zeros(4, dtype=jnp.float64),
+            transform=_geometry_beam_transform,
+            max_steps=32,
+            atol=1e-10,
+            uncertainty_regularization=1e-5,
+        )
+
+        chex.assert_trees_all_close(
+            orientation,
+            true_orientation,
+            atol=1e-8,
+        )
+        chex.assert_trees_all_close(
+            beam_modes.divergence_in_plane_rad,
+            true_beam.divergence_in_plane_rad,
+            atol=1e-8,
+        )
+        chex.assert_trees_all_close(
+            beam_modes.divergence_out_of_plane_rad,
+            true_beam.divergence_out_of_plane_rad,
+            atol=1e-8,
+        )
+        self.assertEqual(covariance.shape, (7, 7))
+        chex.assert_tree_all_finite(covariance)
+
+
 class TestReconDistributionReconstruction(chex.TestCase):
     """Tests for base-object distribution reconstruction.
 
-    :see: :class:`~rheedium.recon.DistributionAxisSpec`
-    :see: :func:`~rheedium.recon.create_distribution_axis_spec`
+    :see: :class:`~rheedium.types.DistributionAxisSpec`
+    :see: :func:`~rheedium.types.create_distribution_axis_spec`
     :see: :func:`~rheedium.recon.build_incoherent_intensity_library`
     :see: :func:`~rheedium.recon.reconstruct_distribution`
     """
@@ -752,7 +916,7 @@ class TestReconDistributionReconstruction(chex.TestCase):
 class TestReconForwardGradientGate(chex.TestCase):
     """Tests for finite gradients through crystal-backed recon paths.
 
-    :see: :class:`~rheedium.recon.ReconProblem`
+    :see: :class:`~rheedium.types.ReconProblem`
     """
 
     def test_crystal_backed_problem_has_finite_latent_gradient(self) -> None:
@@ -762,7 +926,7 @@ class TestReconForwardGradientGate(chex.TestCase):
         ----------------
         Verifies the universal finite-gradient gate across the new transform
         layer, a physical ``CrystalStructure`` carrier, and the public
-        :class:`rheedium.recon.ReconProblem` loss surface.
+        :class:`rheedium.types.ReconProblem` loss surface.
 
         Notes
         -----
@@ -831,16 +995,22 @@ class TestReconSolveNamespace(chex.TestCase):
         It checks object identity between direct imports and attributes on
         ``rheedium.recon``.
         """
-        self.assertIs(recon.ReconProblem, ReconProblem)
-        self.assertIs(recon.ReconResult, ReconResult)
+        self.assertFalse(hasattr(recon, "ReconProblem"))
+        self.assertFalse(hasattr(recon, "ReconResult"))
+        self.assertIs(rh_types.ReconProblem, ReconProblem)
+        self.assertIs(rh_types.ReconResult, ReconResult)
         self.assertIs(recon.solve, solve)
         self.assertIs(recon.multistart, multistart)
+        self.assertFalse(hasattr(recon, "create_distribution_axis_spec"))
+        self.assertFalse(
+            hasattr(recon, "create_crystal_displacement_axis_spec")
+        )
         self.assertIs(
-            recon.create_distribution_axis_spec,
+            rh_types.create_distribution_axis_spec,
             create_distribution_axis_spec,
         )
         self.assertIs(
-            recon.create_crystal_displacement_axis_spec,
+            rh_types.create_crystal_displacement_axis_spec,
             create_crystal_displacement_axis_spec,
         )
         self.assertIs(

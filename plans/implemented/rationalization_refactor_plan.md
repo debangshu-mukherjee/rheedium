@@ -23,7 +23,7 @@ unification (RG1), ensemble-integrator collapse (RG2), dangling-code retirement
 return-type split + `energy_kev`/angle unit cut (RG5), and the module
 reorganization (RG6) — all under the zero-legacy policy (§3) and asserted by the
 §4 gate matrix. **Roadmap position:** second of four —
-framework → *this* → [recon (inversion)](../partial/recon_optimization_plan.md) →
+framework → *this* → [recon (inversion)](../implemented/recon_optimization_plan.md) →
 [automatons](../future/automatons_plan.md). With this complete, recon's entry
 gate **K0** (a rationalized, stable API) is now met, so the recon solver may
 start.
@@ -209,8 +209,11 @@ simplify to a config + `distribute_batched` call.
 
 - `types/distributions.py` → split into a `types/distributions/` subpackage
   (base, orientation, size, beam) with a re-exporting `__init__`.
-- `simul`: separate the amplitude kernels (Layer 0) from the integrator
-  (Layer 1) into clearly named modules so the layering is visible in the tree.
+- `simul`: keep the Layer-0 (amplitude kernels) / Layer-1 (integrator) split
+  legible. **(Revised in R6:** a trial physical split into `simul.layer0` /
+  `simul.layer1` was **dropped** — those turned out to be def-less re-export
+  façades over `simulator.py`, which the export-once rule forbids; `simulator.py`
+  stays the single owner and the layering is documented in-module.)
 
 ---
 
@@ -398,16 +401,22 @@ universal gate. **Closed 2026-06-26.**
 ### Phase R6 — Module reorganization (mechanical, low-risk)  ·  W8
 
 *Tasks:* split `types/distributions.py` into a `types/distributions/` subpackage
-(base, orientation, size, beam, defects) with a re-exporting `__init__`; separate
-the Layer-0 amplitude kernels from the Layer-1 integrator into clearly named
-`simul` modules so the layering is visible in the tree.
+(base, orientation, size, beam, defects) with a re-exporting `__init__`. The
+companion goal — a *physical* `simul` Layer-0/Layer-1 module split — was **dropped**:
+the trial `simul.layer0` / `simul.layer1` modules were def-less re-export façades
+over `simulator.py`, which the export-once rule (CONTRIBUTING) forbids, so they were
+deleted and `simulator.py` remains the single owner (the layering is documented
+in-module and surfaced through the `simul` `__init__`).
 
-**Progress:** complete as of 2026-06-26. `types.distributions` is now a
-subpackage split into `base`, `beam`, `orientation`, and `size` modules with a
-re-exporting `__init__`. `rheedium.simul.layer0` and `rheedium.simul.layer1`
-make the coherent-kernel and detector-integrator boundaries visible while
-preserving the existing `rheedium.simul.*` and `rheedium.simul.simulator`
-imports.
+**Progress:** complete as of 2026-06-26 and export-hardened afterward.
+`types.distributions` is now a subpackage split into `base`, `beam`,
+`orientation`, and `size` modules with a re-exporting `__init__`. The temporary
+`rheedium.simul.layer0` and `rheedium.simul.layer1` forwarding modules were
+removed under the zero-legacy export rule; simulator-owned kernels are imported
+from `rheedium.simul` or `rheedium.simul.simulator`. A guard test
+(`test_simulator.py`) asserts both forwarding modules now raise
+`ModuleNotFoundError` and that `rheedium.simul.<symbol>` **is the same object** as
+`rheedium.simul.simulator.<symbol>` — one canonical path, no re-export hop.
 
 **Gate RG6:** public import paths unchanged (re-exports preserve
 `rheedium.types.*` / `rheedium.simul.*`); a no-op import-parity test; universal
@@ -423,7 +432,7 @@ gate. **Closed 2026-06-26.**
 | **RG3** | **complete 2026-06-26** — no dangling public symbol; hard deletions, no shims/aliases (CHANGELOG only) |
 | **RG4** | **complete 2026-06-26** — detector-image carrier signature, two generic sweep helpers, old kwargs removed, tutorials/notebooks/generator scripts migrated |
 | **RG5** | **complete 2026-06-26** — `energy_kev` clean cut, generated guide figures migrated, angle conversion centralized, `procs` return trichotomy documented and asserted |
-| **RG6** | **complete 2026-06-26** — `types.distributions` subpackage and explicit `simul.layer0`/`simul.layer1` boundaries with public import parity |
+| **RG6** | **complete 2026-06-26; export-hardened afterward** — `types.distributions` subpackage; temporary `simul.layer0`/`simul.layer1` forwarding modules removed with no shim |
 
 R1–R3 are the structural debt the framework most exposes (do first); R4–R5 are
 the readability/ergonomics wins; R6 is cosmetic and may land any time after R0.

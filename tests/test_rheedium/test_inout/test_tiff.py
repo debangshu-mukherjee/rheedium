@@ -19,13 +19,13 @@ from jaxtyping import Array, Float, PRNGKeyArray
 from numpy.typing import NDArray
 
 from rheedium.inout.tiff import (
-    FrameMetadata,
     detect_beam_center,
     extract_frame_metadata,
     load_tiff_as_rheed_image,
     load_tiff_sequence,
     normalize_sequence,
 )
+from rheedium.types import FrameMetadata
 from rheedium.types.custom_types import scalar_float
 from rheedium.types.rheed_types import RHEEDImage
 

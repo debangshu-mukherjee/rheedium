@@ -20,7 +20,7 @@ delegated to rationalization R2 has since landed — rationalization is complete
 
 > **Keystone — the critical path.** This is the root of the whole roadmap:
 > [rationalization](plans/implemented/rationalization_refactor_plan.md) R0,
-> [recon](../partial/recon_optimization_plan.md) K0, and
+> [recon](../implemented/recon_optimization_plan.md) K0, and
 > [automatons](plans/future/automatons_plan.md) A0 all gate transitively on it.
 > The single load-bearing item is the **Phase 6 end-to-end differentiability
 > guarantee** — `jax.grad` finite through `simulate_detector_image` w.r.t. every
@@ -180,7 +180,7 @@ is delegated to rationalization. Higher-fidelity defect physics is explicitly
   completing:
   1. *this* (distribution framework)
   2. [rationalization refactor](plans/implemented/rationalization_refactor_plan.md)
-  3. [recon (inversion)](../partial/recon_optimization_plan.md)
+  3. [recon (inversion)](../implemented/recon_optimization_plan.md)
   4. [automatons](plans/future/automatons_plan.md)
 - **Physics-depth follow-up (not a gate)** —
   [defect_diffraction_fidelity_plan.md](plans/future/defect_diffraction_fidelity_plan.md)
@@ -198,7 +198,7 @@ is delegated to rationalization. Higher-fidelity defect physics is explicitly
    differentiability **only**. Every inverse / reconstruction capability (fitting
    latents, reconstructing probability distributions, recipe-deviation,
    uncertainty) lives in the **`recon`** module, specified by
-   [recon_optimization_plan.md](../partial/recon_optimization_plan.md); the
+   [recon_optimization_plan.md](../implemented/recon_optimization_plan.md); the
    framework's sole inverse-related obligation is to keep `jax.grad` flowing
    end-to-end (Phase 6).
 
@@ -211,7 +211,7 @@ architecture* — pushing the modulus-squared down to Layer 0 so kernels return
 amplitude, and collapsing the simulator into a thin `apply(distribution, kernel)`
 integrator. It does **not** mean the inverse problem (recovering parameters from a
 pattern); that — fitting, reconstruction, recipe-deviation, UQ — lives in
-[`recon`](../partial/recon_optimization_plan.md), per decision (b).
+[`recon`](../implemented/recon_optimization_plan.md), per decision (b).
 
 Today `simulate_detector_image` bakes the modulus-squared into the sparse
 reflection list, then scatters instrument effects (`n_angular_samples`,
@@ -632,7 +632,7 @@ cannot — strictly more expressive, not a re-weighting.
    itself — optax optimization, loss design, multistart, uncertainty,
    distribution reconstruction, recipe-deviation — is **not built here**; it
    belongs to the `recon` module and is specified by
-   [recon_optimization_plan.md](../partial/recon_optimization_plan.md), whose
+   [recon_optimization_plan.md](../implemented/recon_optimization_plan.md), whose
    entry gate **K0** is exactly this differentiability guarantee.
 
 Phases 1–2 are independently shippable and fully CPU-testable; later phases are
@@ -706,7 +706,7 @@ Per CONTRIBUTING (`chex`, parameterized, 8-virtual-device harness,
 | `src/rheedium/simul/multislice.py` | Multislice primitives remain here; `multislice_amplitude` currently lives in `simulator.py` beside `multislice_propagate` / `multislice_simulator` |
 | `src/rheedium/types/distributions.py` | `Distribution` base + `ReductionMode` + `TRIVIAL`; retrofit `OrientationDistribution`/`SizeDistribution`; `BeamModeDistribution` + GSM factories; `reduction_mode_from_coherence_length` |
 | `src/rheedium/types/detector.py` | `DetectorGeometry` carrier and detector helper accessors shared by kinematic and multislice detector paths |
-| `src/rheedium/types/rheed_types.py` | RHEED image/pattern/sliced-crystal/surface types; compatibility re-export of `DetectorGeometry` |
+| `src/rheedium/types/rheed_types.py` | RHEED image/pattern/sliced-crystal/surface types; `DetectorGeometry` remains owned by `types/detector.py` |
 | `src/rheedium/simul/beam_averaging.py` | `apply`/`apply_all` integrator + `decompose_beam_modes`; `coherence_envelope` removed; legacy angular/energy quadrature remains outside the default framework path |
 | `src/rheedium/procs/{grains,surface_modifier,crystal_defects}.py` | grain/twin-wall/step-edge producers return `Distribution`; twin/step bind helpers build modified structures per sample; sub-coherence disorder remains analytic structure modification |
 | `src/rheedium/procs/distribution_binds.py` | Producer-owned kinematic and multislice axis bind semantics for beam/orientation/grain/size/twin/step axes |

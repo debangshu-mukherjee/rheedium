@@ -5,7 +5,7 @@ Extended Summary
 Provides functions for saving and loading rheedium PyTree objects to and
 from HDF5 files. The implementation follows the ``diffpes`` serializer
 layout but extends it to recurse through nested child pytrees so composite
-objects like :class:`rheedium.recon.ReconResult` can round-trip
+objects like :class:`rheedium.types.ReconResult` can round-trip
 without flattening nested parameter trees into ad hoc blobs.
 
 Routine Listings
@@ -37,13 +37,13 @@ from beartype.typing import Any, Callable, Optional, Union
 from jaxtyping import Shaped
 from numpy.typing import NDArray
 
-from ..recon import ReconResult
 from ..types import (
     CrystalStructure,
     DetectorGeometry,
     ElectronBeam,
     EwaldData,
     PotentialSlices,
+    ReconResult,
     RHEEDImage,
     RHEEDPattern,
     SlicedCrystal,

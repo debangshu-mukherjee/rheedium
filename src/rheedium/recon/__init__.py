@@ -10,18 +10,6 @@ differentiable surface-construction utilities live in
 
 Routine Listings
 ----------------
-:class:`DistributionAxisSpec`
-    Static perturbation-axis contract for distribution reconstruction.
-:class:`ReconProblem`
-    Differentiable inverse problem definition for reconstruction solvers.
-:class:`ReconResult`
-    Result container returned by the general reconstruction solver.
-:class:`LaplaceUncertainty`
-    Local Gaussian uncertainty estimate around a reconstruction optimum.
-:class:`PosteriorSamples`
-    Posterior sample container with diagnostics and credible intervals.
-:class:`RecipeDeviationReport`
-    Compare fitted reconstruction parameters with an intended recipe.
 :func:`positive_from_unconstrained`
     Map unconstrained values to strictly positive physical values.
 :func:`unconstrained_from_positive`
@@ -72,15 +60,12 @@ Routine Listings
     Checkify-instrumented weighted residual for numerical validation.
 :func:`checked_weighted_mean_squared_error`
     Checkify-instrumented weighted MSE for numerical validation.
-:func:`create_distribution_axis_spec`
-    Create a perturbation-axis specification for library reconstruction.
-:func:`create_crystal_displacement_axis_spec`
-    Create a crystal displacement-axis specification for library
-    reconstruction.
 :func:`solve`
     Solve a reconstruction problem with optimistix or optax.
 :func:`multistart`
     Run a reconstruction problem from multiple initial guesses.
+:func:`fit_geometry_beam`
+    Fit orientation and beam-mode parameters for a fixed crystal.
 :func:`build_incoherent_intensity_library`
     Build a per-sample incoherent intensity library from a base object.
 :func:`reconstruct_incoherent_weights`
@@ -101,8 +86,12 @@ Routine Listings
     Draw blackjax NUTS samples from a differentiable log posterior.
 :func:`recipe_deviation`
     Solve an inverse problem and report signed recipe deviations.
-:class:`OrientationFitResult`
-    Result container for orientation-distribution fitting.
+:func:`recipe_deviation_report_payload`
+    Convert a recipe-deviation report into the frozen JSON payload.
+:func:`recipe_deviation_report_schema`
+    Load the committed recipe-deviation report schema.
+:func:`validate_recipe_deviation_report`
+    Validate a recipe-deviation report payload against the committed schema.
 :func:`orientation_loss`
     Compute a masked image loss for an orientation distribution.
 :func:`fit_orientation_weights`
@@ -113,7 +102,12 @@ Routine Listings
     Propagate Fisher information to 1σ weight uncertainties.
 """
 
-from .deviation import RecipeDeviationReport, recipe_deviation
+from .deviation import (
+    recipe_deviation,
+    recipe_deviation_report_payload,
+    recipe_deviation_report_schema,
+    validate_recipe_deviation_report,
+)
 from .losses import (
     affine_intensity_marginalization,
     affine_marginalized_residual,
@@ -130,19 +124,14 @@ from .losses import (
     weighted_mean_squared_error,
 )
 from .orientation import (
-    OrientationFitResult,
     compute_fisher_information,
     estimate_weight_uncertainty,
     fit_orientation_weights,
     orientation_loss,
 )
 from .solve import (
-    DistributionAxisSpec,
-    ReconProblem,
-    ReconResult,
     build_incoherent_intensity_library,
-    create_crystal_displacement_axis_spec,
-    create_distribution_axis_spec,
+    fit_geometry_beam,
     multistart,
     reconstruct_distribution,
     reconstruct_incoherent_weights,
@@ -163,8 +152,6 @@ from .transforms import (
     wyckoff_fractional_from_unconstrained,
 )
 from .uncertainty import (
-    LaplaceUncertainty,
-    PosteriorSamples,
     covariance_from_fisher,
     fisher_information_from_residual,
     laplace_inverse_mass_matrix,
@@ -174,13 +161,6 @@ from .uncertainty import (
 )
 
 __all__: list[str] = [
-    "DistributionAxisSpec",
-    "LaplaceUncertainty",
-    "PosteriorSamples",
-    "ReconProblem",
-    "ReconResult",
-    "OrientationFitResult",
-    "RecipeDeviationReport",
     "affine_intensity_marginalization",
     "affine_marginalized_residual",
     "bounded_from_unconstrained",
@@ -189,10 +169,9 @@ __all__: list[str] = [
     "checked_weighted_mean_squared_error",
     "compute_fisher_information",
     "covariance_from_fisher",
-    "create_crystal_displacement_axis_spec",
-    "create_distribution_axis_spec",
     "entropy_prior",
     "estimate_weight_uncertainty",
+    "fit_geometry_beam",
     "fisher_information_from_residual",
     "fit_orientation_weights",
     "fractional_from_unconstrained",
@@ -209,6 +188,8 @@ __all__: list[str] = [
     "positive_from_unconstrained",
     "posterior_from_samples",
     "recipe_deviation",
+    "recipe_deviation_report_payload",
+    "recipe_deviation_report_schema",
     "reconstruct_distribution",
     "reconstruct_incoherent_weights",
     "simplex_from_unconstrained",
@@ -221,6 +202,7 @@ __all__: list[str] = [
     "unconstrained_from_lattice",
     "unconstrained_from_positive",
     "unconstrained_from_simplex",
+    "validate_recipe_deviation_report",
     "weighted_image_residual",
     "weighted_mean_squared_error",
     "wyckoff_fractional_from_unconstrained",

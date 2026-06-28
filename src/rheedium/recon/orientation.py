@@ -19,8 +19,6 @@ weight regularization and entropy stabilization.
 
 Routine Listings
 ----------------
-:class:`OrientationFitResult`
-    Container for orientation-fitting outputs and diagnostics.
 :func:`orientation_loss`
     Compute loss between an observed pattern and a trial distribution.
 :func:`fit_orientation_weights`
@@ -39,154 +37,30 @@ The inverse problem is most informative when:
 3. Regularization prevents overfitting to noise.
 """
 
-import logging
-
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable, Final, NamedTuple, Optional, Tuple
-from jaxtyping import Array, Bool, Float, Int, jaxtyped
+from beartype.typing import Any, Callable, Final, Optional, Tuple
+from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.types import (
     OrientationDistribution,
+    OrientationFitResult,
+    ReconProblem,
+    ReconResult,
     create_orientation_distribution,
     float_jax_image,
     integrate_over_orientation,
     scalar_float,
     scalar_int,
 )
+from rheedium.types.recon_types import _OrientationWeightParameters
+
+from .solve import solve
 
 _PROBABILITY_EPS: Final[float] = 1e-10
 _DEFAULT_MOSAIC_PARAM: Final[float] = -5.0
 _FISHER_REGULARIZATION: Final[float] = 1e-6
-_ADAM_BETA1: Final[float] = 0.9
-_ADAM_BETA2: Final[float] = 0.999
-_ADAM_EPSILON: Final[float] = 1e-8
-_LOGGER: logging.Logger = logging.getLogger("rheedium")
-
-
-class _OrientationWeightParameters(NamedTuple):
-    """Internal unconstrained parameterization for weight fitting."""
-
-    weight_logits: Float[Array, "M"]
-    mosaic_param: Float[Array, ""]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[Float[Array, "M"], Float[Array, ""]],
-        None,
-    ]:
-        """Flatten for JAX PyTree support."""
-        return ((self.weight_logits, self.mosaic_param), None)
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[Float[Array, "M"], Float[Array, ""]],
-    ) -> "_OrientationWeightParameters":
-        """Unflatten from a JAX PyTree."""
-        del aux_data
-        return cls(*children)
-
-
-class _OrientationAdamState(NamedTuple):
-    """Internal Adam optimizer state for orientation fitting."""
-
-    first_logits: Float[Array, "M"]
-    second_logits: Float[Array, "M"]
-    first_mosaic: Float[Array, ""]
-    second_mosaic: Float[Array, ""]
-
-    def tree_flatten(
-        self,
-    ) -> Tuple[
-        Tuple[
-            Float[Array, "M"],
-            Float[Array, "M"],
-            Float[Array, ""],
-            Float[Array, ""],
-        ],
-        None,
-    ]:
-        """Flatten for JAX PyTree support."""
-        return (
-            (
-                self.first_logits,
-                self.second_logits,
-                self.first_mosaic,
-                self.second_mosaic,
-            ),
-            None,
-        )
-
-    @classmethod
-    def tree_unflatten(
-        cls,
-        aux_data: None,
-        children: Tuple[
-            Float[Array, "M"],
-            Float[Array, "M"],
-            Float[Array, ""],
-            Float[Array, ""],
-        ],
-    ) -> "_OrientationAdamState":
-        """Unflatten from a JAX PyTree."""
-        del aux_data
-        return cls(*children)
-
-
-_OrientationObjectiveGradFn = Callable[
-    [_OrientationWeightParameters],
-    Tuple[Float[Array, ""], _OrientationWeightParameters],
-]
-_OrientationOptimizerCarry = Tuple[
-    _OrientationWeightParameters,
-    _OrientationAdamState,
-    Bool[Array, ""],
-    scalar_int,
-    Float[Array, ""],
-]
-_OrientationOptimizerStep = Tuple[
-    _OrientationOptimizerCarry,
-    Float[Array, ""],
-]
-_OrientationOptimizerResult = Tuple[
-    _OrientationWeightParameters,
-    Float[Array, "N_steps_full"],
-    scalar_int,
-    Float[Array, ""],
-    Bool[Array, ""],
-]
-
-
-class OrientationFitResult(eqx.Module):
-    """Results from orientation distribution fitting.
-
-    Attributes
-    ----------
-    fitted_distribution : OrientationDistribution
-        Recovered orientation distribution.
-    final_loss : Float[Array, ""]
-        Final scalar loss value.
-    loss_history : Float[Array, "N_steps"]
-        Loss value after each optimizer step.
-    converged : bool
-        Whether the optimizer met its stopping tolerance.
-    n_iterations : int
-        Number of recorded optimization iterations.
-    residual_pattern : float_jax_image
-        Difference ``I_observed - I_fitted`` for diagnostics.
-    """
-
-    fitted_distribution: OrientationDistribution
-    final_loss: Float[Array, ""]
-    loss_history: Float[Array, "N_steps"]
-    converged: bool = eqx.field(static=True)
-    n_iterations: int = eqx.field(static=True)
-    residual_pattern: float_jax_image
 
 
 @jaxtyped(typechecker=beartype)
@@ -285,88 +159,6 @@ def _simulate_distribution_pattern(
         _sanitize_distribution(distribution),
         n_mosaic_points=n_mosaic_points,
     )
-
-
-@jaxtyped(typechecker=beartype)
-def _parameter_norm(params: _OrientationWeightParameters) -> Float[Array, ""]:
-    """Compute the Euclidean norm of the fit parameter pytree."""
-    logit_norm_sq: Float[Array, ""] = jnp.real(
-        jnp.vdot(params.weight_logits, params.weight_logits)
-    )
-    mosaic_norm_sq: Float[Array, ""] = jnp.square(params.mosaic_param)
-    return jnp.sqrt(logit_norm_sq + mosaic_norm_sq)
-
-
-@jaxtyped(typechecker=beartype)
-def _adam_update(
-    params: _OrientationWeightParameters,
-    gradients: _OrientationWeightParameters,
-    optimizer_state: _OrientationAdamState,
-    learning_rate: scalar_float,
-    iteration: scalar_int,
-) -> Tuple[
-    _OrientationWeightParameters,
-    _OrientationAdamState,
-    Float[Array, ""],
-]:
-    """Apply one Adam step to the orientation fit parameters."""
-    first_logits: Float[Array, "M"] = (
-        _ADAM_BETA1 * optimizer_state.first_logits
-        + (1.0 - _ADAM_BETA1) * gradients.weight_logits
-    )
-    second_logits: Float[Array, "M"] = (
-        _ADAM_BETA2 * optimizer_state.second_logits
-        + (1.0 - _ADAM_BETA2) * gradients.weight_logits**2
-    )
-    first_mosaic: Float[Array, ""] = (
-        _ADAM_BETA1 * optimizer_state.first_mosaic
-        + (1.0 - _ADAM_BETA1) * gradients.mosaic_param
-    )
-    second_mosaic: Float[Array, ""] = (
-        _ADAM_BETA2 * optimizer_state.second_mosaic
-        + (1.0 - _ADAM_BETA2) * gradients.mosaic_param**2
-    )
-
-    first_bias_correction: Float[Array, ""] = 1.0 - _ADAM_BETA1**iteration
-    second_bias_correction: Float[Array, ""] = 1.0 - _ADAM_BETA2**iteration
-    first_logits_hat: Float[Array, "M"] = first_logits / first_bias_correction
-    second_logits_hat: Float[Array, "M"] = (
-        second_logits / second_bias_correction
-    )
-    first_mosaic_hat: Float[Array, ""] = first_mosaic / first_bias_correction
-    second_mosaic_hat: Float[Array, ""] = (
-        second_mosaic / second_bias_correction
-    )
-
-    logit_step: Float[Array, "M"] = (
-        -learning_rate
-        * first_logits_hat
-        / (jnp.sqrt(second_logits_hat) + _ADAM_EPSILON)
-    )
-    mosaic_step: Float[Array, ""] = (
-        -learning_rate
-        * first_mosaic_hat
-        / (jnp.sqrt(second_mosaic_hat) + _ADAM_EPSILON)
-    )
-    updated_params: _OrientationWeightParameters = (
-        _OrientationWeightParameters(
-            weight_logits=params.weight_logits + logit_step,
-            mosaic_param=params.mosaic_param + mosaic_step,
-        )
-    )
-    updated_state: _OrientationAdamState = _OrientationAdamState(
-        first_logits=first_logits,
-        second_logits=second_logits,
-        first_mosaic=first_mosaic,
-        second_mosaic=second_mosaic,
-    )
-    step_norm: Float[Array, ""] = _parameter_norm(
-        _OrientationWeightParameters(
-            weight_logits=logit_step,
-            mosaic_param=mosaic_step,
-        )
-    )
-    return updated_params, updated_state, step_norm
 
 
 @jaxtyped(typechecker=beartype)
@@ -512,9 +304,9 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
     -----------
     Given a fixed candidate angle support, optimize the discrete
     orientation weights together with a shared Gaussian mosaic width.
-    The internal optimization is carried out in an unconstrained space
-    with a specialized Adam update on ``(weight_logits, mosaic_param)``
-    and a JIT-compiled :func:`jax.lax.scan` loop.
+    The internal optimization is carried out in the shared
+    :class:`ReconProblem` / :func:`solve` stack using unconstrained
+    ``(weight_logits, mosaic_param)`` coordinates.
 
     :see: :class:`~.test_orientation.TestOrientationFitting`
 
@@ -532,12 +324,11 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
     initial_weights : Optional[Float[Array, "M"]], optional
         Initial weight guess. Default: uniform weights.
     learning_rate : scalar_float, optional
-        Adam learning rate. Default: 0.1
+        AdamW learning rate used by the shared solver. Default: 0.1
     n_iterations : scalar_int, optional
         Maximum optimization steps. Default: 500
     convergence_tol : scalar_float, optional
-        Stop when the optimizer update norm falls below this tolerance.
-        Default: 1e-6
+        Absolute solver-loss tolerance. Default: 1e-6
     regularization_strength : scalar_float, optional
         L2 regularization on weight deviations from uniform.
         Default: 1e-4
@@ -575,274 +366,158 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
         )
     )
 
-    def objective_fn(
-        params: _OrientationWeightParameters,
-    ) -> Float[Array, ""]:
-        return orientation_loss(
-            distribution=_distribution_from_parameters(
-                candidate_angles,
-                params,
-            ),
-            simulate_fn=simulate_fn,
-            observed_pattern=observed_pattern,
-            mask=mask,
-            normalize=normalize,
-            regularization_strength=regularization_strength,
-            entropy_weight=entropy_weight,
-            n_mosaic_points=n_mosaic_points,
-        )
-
     n_iterations_int: int = int(n_iterations)
 
-    def _run_optimizer(  # noqa: PLR0915
-        start_params: _OrientationWeightParameters,
-    ) -> _OrientationOptimizerResult:
-        objective_and_grad_fn: _OrientationObjectiveGradFn = (
-            jax.value_and_grad(objective_fn)
-        )
-        initial_optimizer_state: _OrientationAdamState = _OrientationAdamState(
-            first_logits=jnp.zeros_like(start_params.weight_logits),
-            second_logits=jnp.zeros_like(start_params.weight_logits),
-            first_mosaic=jnp.zeros_like(start_params.mosaic_param),
-            second_mosaic=jnp.zeros_like(start_params.mosaic_param),
-        )
-        initial_loss: Float[Array, ""] = objective_fn(start_params)
-
-        def _step(
-            carry: _OrientationOptimizerCarry,
-            step_index: Int[Array, ""],
-        ) -> _OrientationOptimizerStep:
-            params: _OrientationWeightParameters
-            optimizer_state: _OrientationAdamState
-            converged_flag: Bool[Array, ""]
-            steps_taken: scalar_int
-            last_loss: Float[Array, ""]
-            (
-                params,
-                optimizer_state,
-                converged_flag,
-                steps_taken,
-                last_loss,
-            ) = carry
-
-            def _frozen_step(
-                frozen_carry: _OrientationOptimizerCarry,
-            ) -> _OrientationOptimizerStep:
-                return frozen_carry, frozen_carry[-1]
-
-            def _active_step(
-                active_carry: _OrientationOptimizerCarry,
-            ) -> _OrientationOptimizerStep:
-                active_params: _OrientationWeightParameters
-                active_optimizer_state: _OrientationAdamState
-                _active_converged_flag: Bool[Array, ""]
-                active_steps: scalar_int
-                _active_last_loss: Float[Array, ""]
-                (
-                    active_params,
-                    active_optimizer_state,
-                    _active_converged_flag,
-                    active_steps,
-                    _active_last_loss,
-                ) = active_carry
-                objective_value: Float[Array, ""]
-                gradients: _OrientationWeightParameters
-                objective_value, gradients = objective_and_grad_fn(
-                    active_params
-                )
-                gradient_norm: Float[Array, ""] = _parameter_norm(gradients)
-
-                def _converged_on_gradient(
-                    operand: Tuple[
-                        _OrientationWeightParameters,
-                        _OrientationAdamState,
-                        Float[Array, ""],
-                    ],
-                ) -> Tuple[
-                    _OrientationWeightParameters,
-                    _OrientationAdamState,
-                    Float[Array, ""],
-                    Bool[Array, ""],
-                ]:
-                    grad_params: _OrientationWeightParameters
-                    grad_optimizer_state: _OrientationAdamState
-                    grad_loss: Float[Array, ""]
-                    grad_params, grad_optimizer_state, grad_loss = operand
-                    return (
-                        grad_params,
-                        grad_optimizer_state,
-                        grad_loss,
-                        jnp.asarray(True),
-                    )
-
-                def _take_update_step(
-                    operand: Tuple[
-                        _OrientationWeightParameters,
-                        _OrientationAdamState,
-                        Float[Array, ""],
-                    ],
-                ) -> Tuple[
-                    _OrientationWeightParameters,
-                    _OrientationAdamState,
-                    Float[Array, ""],
-                    Bool[Array, ""],
-                ]:
-                    update_params: _OrientationWeightParameters
-                    update_optimizer_state: _OrientationAdamState
-                    _update_loss: Float[Array, ""]
-                    update_params, update_optimizer_state, _update_loss = (
-                        operand
-                    )
-                    next_params: _OrientationWeightParameters
-                    next_optimizer_state: _OrientationAdamState
-                    step_norm: Float[Array, ""]
-                    next_params, next_optimizer_state, step_norm = (
-                        _adam_update(
-                            params=update_params,
-                            gradients=gradients,
-                            optimizer_state=update_optimizer_state,
-                            learning_rate=learning_rate,
-                            iteration=step_index + 1,
-                        )
-                    )
-                    next_loss: Float[Array, ""] = objective_fn(next_params)
-                    next_converged: Bool[Array, ""] = (
-                        step_norm <= convergence_tol
-                    )
-                    return (
-                        next_params,
-                        next_optimizer_state,
-                        next_loss,
-                        next_converged,
-                    )
-
-                next_params: _OrientationWeightParameters
-                next_optimizer_state: _OrientationAdamState
-                recorded_loss: Float[Array, ""]
-                next_converged_flag: Bool[Array, ""]
-                cond_result: Tuple[
-                    _OrientationWeightParameters,
-                    _OrientationAdamState,
-                    Float[Array, ""],
-                    Bool[Array, ""],
-                ]
-                cond_result = jax.lax.cond(
-                    gradient_norm <= convergence_tol,
-                    _converged_on_gradient,
-                    _take_update_step,
-                    (active_params, active_optimizer_state, objective_value),
-                )
-                (
-                    next_params,
-                    next_optimizer_state,
-                    recorded_loss,
-                    next_converged_flag,
-                ) = cond_result
-                next_steps: scalar_int = active_steps + jnp.asarray(
-                    1, dtype=jnp.int32
-                )
-                next_carry: _OrientationOptimizerCarry = (
-                    next_params,
-                    next_optimizer_state,
-                    next_converged_flag,
-                    next_steps,
-                    recorded_loss,
-                )
-                return next_carry, recorded_loss
-
-            return jax.lax.cond(
-                converged_flag,
-                _frozen_step,
-                _active_step,
-                carry,
-            )
-
-        final_carry: _OrientationOptimizerCarry
-        loss_history_full: Float[Array, "N_steps_full"]
-        final_carry, loss_history_full = jax.lax.scan(
-            _step,
-            (
-                start_params,
-                initial_optimizer_state,
-                jnp.asarray(False),
-                jnp.asarray(0, dtype=jnp.int32),
-                initial_loss,
-            ),
-            jnp.arange(n_iterations_int, dtype=jnp.int32),
-        )
-        final_params: _OrientationWeightParameters
-        _final_optimizer_state: _OrientationAdamState
-        converged_flag: Bool[Array, ""]
-        steps_taken: scalar_int
-        final_loss: Float[Array, ""]
-        (
-            final_params,
-            _final_optimizer_state,
-            converged_flag,
-            steps_taken,
-            final_loss,
-        ) = final_carry
-        return (
-            final_params,
-            loss_history_full,
-            steps_taken,
-            final_loss,
-            converged_flag,
-        )
-
-    fitted_params: _OrientationWeightParameters
-    full_loss_history: Float[Array, "N_steps_full"]
-    completed_steps: scalar_int
-    final_loss: Float[Array, ""]
-    converged_flag: Bool[Array, ""]
-    (
-        fitted_params,
-        full_loss_history,
-        completed_steps,
-        final_loss,
-        converged_flag,
-    ) = eqx.filter_jit(_run_optimizer)(initial_params)
-    completed_steps_int: int = int(completed_steps)
-    loss_history: Float[Array, "N_steps"] = full_loss_history[
-        :completed_steps_int
-    ]
-    fitted_distribution: OrientationDistribution = (
-        _distribution_from_parameters(
+    def transform(
+        params: _OrientationWeightParameters,
+    ) -> OrientationDistribution:
+        distribution: OrientationDistribution = _distribution_from_parameters(
             candidate_angles,
-            fitted_params,
+            params,
         )
+        return distribution
+
+    def forward(
+        distribution: OrientationDistribution,
+    ) -> Tuple[float_jax_image, OrientationDistribution]:
+        simulated_pattern: float_jax_image = _simulate_distribution_pattern(
+            simulate_fn,
+            distribution,
+            n_mosaic_points=n_mosaic_points,
+        )
+        simulated: Tuple[float_jax_image, OrientationDistribution] = (
+            simulated_pattern,
+            distribution,
+        )
+        return simulated
+
+    def objective_from_simulated(
+        simulated: Tuple[float_jax_image, OrientationDistribution],
+        measured: float_jax_image,
+    ) -> Float[Array, ""]:
+        simulated_pattern: float_jax_image
+        distribution: OrientationDistribution
+        simulated_pattern, distribution = simulated
+        prepared_observed: float_jax_image = _prepare_pattern_for_loss(
+            measured,
+            mask=mask,
+            normalize=normalize,
+        )
+        prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
+            simulated_pattern,
+            mask=mask,
+            normalize=normalize,
+        )
+        mask_array: float_jax_image
+        if mask is None:
+            mask_array = jnp.ones_like(measured)
+        else:
+            mask_array = jnp.asarray(mask, dtype=jnp.float64)
+        n_pixels: Float[Array, ""] = jnp.sum(mask_array) + _PROBABILITY_EPS
+        mse: Float[Array, ""] = (
+            jnp.sum(jnp.square(prepared_observed - prepared_simulated))
+            / n_pixels
+        )
+        weights: Float[Array, "M"] = distribution.discrete_weights
+        target_weights: Float[Array, "M"] = (
+            jnp.ones(weights.shape[0], dtype=jnp.float64) / weights.shape[0]
+        )
+        l2_penalty: Float[Array, ""] = jnp.sum(
+            jnp.square(weights - target_weights)
+        )
+        entropy: Float[Array, ""] = -jnp.sum(
+            weights * jnp.log(weights + _PROBABILITY_EPS)
+        )
+        loss: Float[Array, ""] = (
+            mse
+            + regularization_strength * l2_penalty
+            - entropy_weight * entropy
+        )
+        return loss
+
+    def residual_fn(
+        simulated: Tuple[float_jax_image, OrientationDistribution],
+        measured: float_jax_image,
+    ) -> Tuple[float_jax_image, Float[Array, "M"]]:
+        simulated_pattern: float_jax_image
+        distribution: OrientationDistribution
+        simulated_pattern, distribution = simulated
+        prepared_observed: float_jax_image = _prepare_pattern_for_loss(
+            measured,
+            mask=mask,
+            normalize=normalize,
+        )
+        prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
+            simulated_pattern,
+            mask=mask,
+            normalize=normalize,
+        )
+        weights: Float[Array, "M"] = distribution.discrete_weights
+        target_weights: Float[Array, "M"] = (
+            jnp.ones(weights.shape[0], dtype=jnp.float64) / weights.shape[0]
+        )
+        regularization_scale: Float[Array, ""] = jnp.sqrt(
+            jnp.maximum(
+                jnp.asarray(regularization_strength, dtype=jnp.float64),
+                0.0,
+            )
+        )
+        regularization_residual: Float[Array, "M"] = regularization_scale * (
+            weights - target_weights
+        )
+        residual: Tuple[float_jax_image, Float[Array, "M"]] = (
+            prepared_simulated - prepared_observed,
+            regularization_residual,
+        )
+        return residual
+
+    problem: ReconProblem = ReconProblem(
+        forward=forward,
+        measured=jnp.asarray(observed_pattern, dtype=jnp.float64),
+        transform=transform,
+        residual_fn=residual_fn,
+        loss_fn=objective_from_simulated,
     )
-    simulated_pattern: float_jax_image = _simulate_distribution_pattern(
-        simulate_fn,
-        fitted_distribution,
-        n_mosaic_points=n_mosaic_points,
+    solve_result: ReconResult = solve(
+        problem=problem,
+        initial_latent=initial_params,
+        mode="adamw",
+        max_steps=n_iterations_int,
+        atol=convergence_tol,
+        learning_rate=learning_rate,
     )
+    fitted_distribution: OrientationDistribution = solve_result.params
+    simulated_output: Any = solve_result.simulated
+    simulated_pattern: float_jax_image = simulated_output[0]
     residual_pattern: float_jax_image = (
         jnp.asarray(observed_pattern, dtype=jnp.float64) - simulated_pattern
     )
-    if completed_steps_int == 0:
-        final_loss = objective_fn(initial_params)
-
+    completed_steps_int: int = int(solve_result.iterations)
+    loss_history: Float[Array, "N_steps"] = jnp.asarray(
+        [solve_result.loss],
+        dtype=jnp.float64,
+    )
     if verbose:
         fitted_weights: list[str] = [
             f"{float(weight):.3f}"
             for weight in fitted_distribution.discrete_weights
         ]
-        _LOGGER.info(
-            "Orientation fit: loss=%.6f weights=%s mosaic_fwhm_deg=%.4f",
-            float(final_loss),
-            fitted_weights,
-            float(fitted_distribution.mosaic_fwhm_deg),
+        print(
+            "Orientation fit: "
+            f"loss={float(solve_result.loss):.6f} "
+            f"weights={fitted_weights} "
+            f"mosaic_fwhm_deg={float(fitted_distribution.mosaic_fwhm_deg):.4f}"
         )
 
-    return OrientationFitResult(
+    result: OrientationFitResult = OrientationFitResult(
         fitted_distribution=fitted_distribution,
-        final_loss=final_loss,
+        final_loss=solve_result.loss,
         loss_history=loss_history,
-        converged=bool(converged_flag),
+        converged=bool(solve_result.converged),
         n_iterations=completed_steps_int,
         residual_pattern=residual_pattern,
     )
+    return result
 
 
 @jaxtyped(typechecker=beartype)
@@ -1003,7 +678,6 @@ def estimate_weight_uncertainty(
 
 
 __all__: list[str] = [
-    "OrientationFitResult",
     "compute_fisher_information",
     "estimate_weight_uncertainty",
     "fit_orientation_weights",

@@ -18,18 +18,38 @@ Routine Listings
     Configuration for RHEED detector geometry (tilt, curvature, offsets).
 :class:`Distribution`
     Generic weighted ensemble over latent simulation samples.
+:class:`DistributionAxisSpec`
+    Static perturbation-axis contract for distribution reconstruction.
 :class:`ElectronBeam`
     Complete specification of an electron beam for RHEED simulation.
 :class:`EwaldData`
     Angle-independent Ewald sphere data for RHEED simulation.
 :class:`EdgeOnSlices`
     Edge-on projected-potential slices for reflection multislice.
+:class:`FrameMetadata`
+    Per-frame metadata extracted from TIFF tags.
+:class:`KinematicAxisUpdate`
+    Per-axis update consumed by the kinematic detector kernel.
 :class:`KirklandParameters`
     Structured Kirkland coefficients for one element.
+:class:`LaplaceUncertainty`
+    Local Gaussian uncertainty estimate around a reconstruction optimum.
+:class:`MultisliceAxisUpdate`
+    Per-axis update consumed by the multislice detector kernel.
+:class:`OrientationFitResult`
+    Result container for orientation-distribution fitting.
 :class:`OrientationDistribution`
     Probability distribution over azimuthal domain orientations.
+:class:`PosteriorSamples`
+    Posterior sample container with diagnostics and credible intervals.
 :class:`PotentialSlices`
     JAX-compatible data structure for representing multislice potential data.
+:class:`RecipeDeviationReport`
+    Compare fitted reconstruction parameters with an intended recipe.
+:class:`ReconProblem`
+    Differentiable inverse problem definition for reconstruction solvers.
+:class:`ReconResult`
+    Result container returned by the general reconstruction solver.
 :class:`RHEEDImage`
     Container for RHEED image data with pixel coordinates and intensity values.
 :class:`RHEEDPattern`
@@ -53,8 +73,13 @@ Routine Listings
     Factory function to create CrystalStructure instances.
 :func:`beam_modes_from_electron_beam`
     Convert ElectronBeam metadata to GSM beam-mode parameters.
+:func:`create_crystal_displacement_axis_spec`
+    Create a crystal displacement-axis specification for library
+    reconstruction.
 :func:`create_coherent_beam`
     Create a single sharp coherent beam-mode producer.
+:func:`create_distribution_axis_spec`
+    Create a perturbation-axis specification for library reconstruction.
 :func:`create_electron_beam`
     Factory function to create ElectronBeam instances.
 :func:`create_beam_spec`
@@ -121,6 +146,8 @@ Routine Listings
     Identity one-sample distribution.
 :obj:`TRIVIAL`
     Short alias for the identity one-sample distribution.
+:obj:`RECIPE_DEVIATION_SCHEMA_VERSION`
+    Frozen recipe-deviation payload schema identifier.
 :obj:`float_jax_image`
     Type alias for float-valued 2D JAX image arrays.
 :obj:`float_np_image`
@@ -169,6 +196,10 @@ is because beartype does not support type checking of dataclasses.
 from .beam_types import (
     ElectronBeam,
     create_electron_beam,
+)
+from .bind_types import (
+    KinematicAxisUpdate,
+    MultisliceAxisUpdate,
 )
 from .constants import (
     AMU_TO_KG,
@@ -244,6 +275,19 @@ from .distributions import (
     reduction_mode_from_coherence_length,
     size_to_distribution,
 )
+from .inout_types import FrameMetadata
+from .recon_types import (
+    RECIPE_DEVIATION_SCHEMA_VERSION,
+    DistributionAxisSpec,
+    LaplaceUncertainty,
+    OrientationFitResult,
+    PosteriorSamples,
+    RecipeDeviationReport,
+    ReconProblem,
+    ReconResult,
+    create_crystal_displacement_axis_spec,
+    create_distribution_axis_spec,
+)
 from .rheed_types import (
     RHEEDImage,
     RHEEDPattern,
@@ -274,11 +318,13 @@ __all__: list[str] = [
     "SPEED_OF_LIGHT_MS",
     "beam_modes_from_electron_beam",
     "BeamSpec",
+    "create_crystal_displacement_axis_spec",
     "create_crystal_structure",
     "create_beam_spec",
     "create_coherent_beam",
     "create_discrete_orientation",
     "create_distribution",
+    "create_distribution_axis_spec",
     "create_electron_beam",
     "create_edge_on_slices",
     "create_ewald_data",
@@ -306,22 +352,33 @@ __all__: list[str] = [
     "detector_pixel_size_mm",
     "detector_psf_sigma_pixels",
     "Distribution",
+    "DistributionAxisSpec",
     "EdgeOnSlices",
     "ElectronBeam",
     "EwaldData",
+    "FrameMetadata",
     "float_jax_image",
     "float_np_image",
     "integrate_over_orientation",
+    "KinematicAxisUpdate",
     "KirklandParameters",
+    "LaplaceUncertainty",
     "identify_surface_atoms",
     "int_jax_image",
     "int_np_image",
+    "MultisliceAxisUpdate",
     "non_jax_number",
     "discretize_orientation",
     "discretize_orientation_static",
     "discretize_size_distribution",
+    "OrientationFitResult",
     "OrientationDistribution",
+    "PosteriorSamples",
     "PotentialSlices",
+    "RECIPE_DEVIATION_SCHEMA_VERSION",
+    "RecipeDeviationReport",
+    "ReconProblem",
+    "ReconResult",
     "RHEEDImage",
     "RHEEDPattern",
     "ReductionMode",

@@ -34,6 +34,7 @@ These guides are written for **physics researchers** working with RHEED who want
 | [JAX Transformability](jax-transformability.md) | Which of `grad`/`vmap`/`jit` are supported where, and the `jit` boundaries |
 | [Parallelization and Compilation](parallelization-and-compilation.md) | Persistent compilation cache, multi-device sweeps, multi-host setup, and exporting compiled artifacts |
 | [Checked Numerical Entry Points](checked-numerical-entry-points.md) | Standard vs `checkify`-checked simulator APIs, and when to use each |
+| [Differentiable Inversion With Optimistix](differentiable-inversion-with-optimistix.md) | Shared `ReconProblem` solves, warm-cache inversion, geometry/beam fitting, UQ, and recipe deviation |
 
 ## Quick Start
 

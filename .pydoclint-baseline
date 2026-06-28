@@ -1,0 +1,256 @@
+src/rheedium/__init__.py
+    DOC001: Function/method `init_distributed`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/audit/invariants.py
+    DOC101: Function `check_form_factor_positivity`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `check_form_factor_positivity`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [q_max: scalar_float, q_min: scalar_float]. Arguments in the docstring but not in the function signature: [q_min, q_max: float].
+    DOC101: Function `check_form_factor_monotonic_decrease`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `check_form_factor_monotonic_decrease`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [q_max: scalar_float, q_min: scalar_float]. Arguments in the docstring but not in the function signature: [q_min, q_max: float].
+    DOC101: Function `check_form_factor_kirkland_lobato_close`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `check_form_factor_kirkland_lobato_close`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [q_max: scalar_float, q_min: scalar_float]. Arguments in the docstring but not in the function signature: [q_min, q_max: float].
+    DOC105: Function `check_wavelength_relativistic_consistency`: Argument names match, but type hints in these args do not match: voltages_kv, relative_tolerance
+    DOC105: Function `check_friedel_law_structure_factor`: Argument names match, but type hints in these args do not match: g_vectors, relative_tolerance
+    DOC101: Function `check_elastic_closure_ewald`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `check_elastic_closure_ewald`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [hmax: scalar_int, kmax: scalar_int]. Arguments in the docstring but not in the function signature: [hmax, kmax: scalar_int].
+--------------------
+src/rheedium/audit/metrics.py
+    DOC501: Function `dominant_peak_positions` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `dominant_peak_positions` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `extract_streak_profile` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `extract_streak_profile` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/audit/reference_benchmark.py
+    DOC501: Function `simulate_detector_image_from_metadata` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `simulate_detector_image_from_metadata` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `benchmark_reference_suite` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `benchmark_reference_suite` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/inout/cif.py
+    DOC502: Function `_extract_cell_params` has a "Raises" section in the docstring, but there are not "raise" statements in the body
+    DOC503: Function `parse_cif` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'ValueError']. Raised exceptions in the body: ['FileNotFoundError', 'RuntimeError', 'ValueError'].
+--------------------
+src/rheedium/inout/hdf5.py
+    DOC503: Function `save_to_h5` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['TypeError', 'ValueError', 'ValueError']. Raised exceptions in the body: ['ValueError'].
+    DOC503: Function `load_from_h5` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'KeyError', 'RuntimeError', 'TypeError']. Raised exceptions in the body: ['FileNotFoundError', 'KeyError', 'PermissionError', 'RuntimeError'].
+--------------------
+src/rheedium/inout/interop.py
+    DOC105: Function `from_ase`: Argument names match, but type hints in these args do not match: atoms
+    DOC503: Function `from_ase` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['ValueError']. Raised exceptions in the body: ['TypeError', 'ValueError'].
+    DOC105: Function `from_pymatgen`: Argument names match, but type hints in these args do not match: structure
+    DOC501: Function `from_pymatgen` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `from_pymatgen` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['TypeError'].
+--------------------
+src/rheedium/inout/poscar.py
+    DOC503: Function `parse_poscar` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'ValueError']. Raised exceptions in the body: ['FileNotFoundError', 'RuntimeError', 'ValueError'].
+--------------------
+src/rheedium/inout/tiff.py
+    DOC001: Function/method `load_tiff_sequence`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC501: Function `_load_multipage_tiff` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `_load_multipage_tiff` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['PermissionError', 'RuntimeError'].
+    DOC503: Function `_load_tiff_directory` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['ValueError']. Raised exceptions in the body: ['PermissionError', 'RuntimeError', 'ValueError'].
+    DOC001: Function/method `normalize_sequence`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `detect_beam_center`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `load_tiff_as_rheed_image`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/inout/xyz.py
+    DOC502: Function `_load_atomic_numbers` has a "Raises" section in the docstring, but there are not "raise" statements in the body
+    DOC503: Function `_load_kirkland_csv` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'ValueError']. Raised exceptions in the body: ['ValueError'].
+    DOC503: Function `_load_lobato_csv` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'ValueError']. Raised exceptions in the body: ['ValueError'].
+    DOC503: Function `parse_xyz` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['FileNotFoundError', 'ValueError']. Raised exceptions in the body: ['RuntimeError', 'ValueError'].
+--------------------
+src/rheedium/plots/diagrams.py
+    DOC105: Function `plot_wavelength_curve`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_form_factors`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_debye_waller`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_ctr_profile`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_roughness_damping`: Argument names match, but type hints in these args do not match: sigma_values, ax
+    DOC105: Function `plot_rod_broadening`: Argument names match, but type hints in these args do not match: correlation_lengths, ax
+    DOC105: Function `plot_ewald_sphere_2d`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_ewald_sphere_3d`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_unit_cell_3d`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_crystal_structure_3d`: Argument names match, but type hints in these args do not match: positions, atomic_numbers, cell_lengths, cell_angles, ax
+    DOC105: Function `plot_grazing_incidence_geometry`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `plot_structure_factor_phases`: Argument names match, but type hints in these args do not match: ax
+    DOC105: Function `view_atoms_interactive`: Argument names match, but type hints in these args do not match: beam_direction, backend
+    DOC105: Function `view_atoms`: Argument names match, but type hints in these args do not match: elev, azim, atom_scale, figsize, ax
+--------------------
+src/rheedium/plots/figuring.py
+    DOC105: Function `create_phosphor_colormap`: Argument names match, but type hints in these args do not match: name
+    DOC105: Function `plot_rheed`: Argument names match, but type hints in these args do not match: cmap_name, x_extent, y_extent
+    DOC501: Function `plot_rheed` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `plot_rheed` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/procs/grains.py
+    DOC501: Function `grain_population_to_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `grain_population_to_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/procs/library.py
+    DOC101: Function `_build_bulk_crystal`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `_build_bulk_crystal`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [a: scalar_float, alpha: scalar_float, b: scalar_float, beta: scalar_float, c: scalar_float, gamma: scalar_float]. Arguments in the docstring but not in the function signature: [a, b, c: scalar_float, alpha, beta, gamma: scalar_float].
+--------------------
+src/rheedium/procs/preprocessing.py
+    DOC001: Function/method `soft_threshold_mask`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `log_intensity_transform`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `normalize_image`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `preprocess_experimental`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/procs/surface_modifier.py
+    DOC501: Function `twin_wall_to_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `twin_wall_to_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `step_edge_to_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `step_edge_to_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/recon/deviation.py
+    DOC501: Function `recipe_deviation` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `recipe_deviation` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `validate_recipe_deviation_report` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `validate_recipe_deviation_report` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/recon/losses.py
+    DOC001: Function/method `weighted_image_residual`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `weighted_mean_squared_error`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC105: Function `l2_image_loss`: Argument names match, but type hints in these args do not match: weight_map
+    DOC105: Function `huber_image_loss`: Argument names match, but type hints in these args do not match: weight_map
+    DOC105: Function `log_intensity_loss`: Argument names match, but type hints in these args do not match: weight_map
+    DOC105: Function `normalized_cross_correlation_loss`: Argument names match, but type hints in these args do not match: weight_map
+    DOC105: Function `affine_intensity_marginalization`: Argument names match, but type hints in these args do not match: weight_map
+    DOC105: Function `affine_marginalized_residual`: Argument names match, but type hints in these args do not match: weight_map
+--------------------
+src/rheedium/recon/orientation.py
+    DOC001: Function/method `orientation_loss`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `fit_orientation_weights`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `compute_fisher_information`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `estimate_weight_uncertainty`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/recon/solve.py
+    DOC501: Function `solve` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `solve` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `multistart` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `multistart` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/recon/uncertainty.py
+    DOC501: Function `posterior_from_samples` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `posterior_from_samples` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `sample_posterior` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `sample_posterior` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/simul/beam_averaging.py
+    DOC501: Function `apply_distributions` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `apply_distributions` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC001: Function/method `angular_divergence_average`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `energy_spread_average`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `detector_psf_convolve`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `instrument_broadened_pattern`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/simul/ewald.py
+    DOC501: Function `build_ewald_data` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `build_ewald_data` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC105: Function `ewald_allowed_reflections`: Argument names match, but type hints in these args do not match: domain_extent_ang
+--------------------
+src/rheedium/simul/finite_domain.py
+    DOC101: Function `finite_domain_intensities_for_size_distribution`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `finite_domain_intensities_for_size_distribution`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [phi_deg: scalar_float, theta_deg: scalar_float]. Arguments in the docstring but not in the function signature: [theta_deg, phi_deg: scalar_float].
+    DOC501: Function `finite_domain_intensities_for_size_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `finite_domain_intensities_for_size_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/simul/form_factors.py
+    DOC501: Function `atomic_scattering_factor` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `atomic_scattering_factor` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/simul/multislice.py
+    DOC105: Function `fresnel_propagator`: Argument names match, but type hints in these args do not match: grid_shape
+--------------------
+src/rheedium/simul/potential.py
+    DOC105: Function `crystal_projected_potential`: Argument names match, but type hints in these args do not match: grid_shape
+--------------------
+src/rheedium/simul/reflection_multislice.py
+    DOC101: Function `crystal_to_edge_on_slices`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `crystal_to_edge_on_slices`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [dx_slice: scalar_float, dy: scalar_float, dz: scalar_float]. Arguments in the docstring but not in the function signature: [dx_slice, dy, dz: scalar_float].
+    DOC501: Function `crystal_to_edge_on_slices` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `crystal_to_edge_on_slices` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC101: Function `reflection_multislice_simulator`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `reflection_multislice_simulator`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [dx_slice: scalar_float, dy: scalar_float, dz: scalar_float]. Arguments in the docstring but not in the function signature: [dx_slice, dy, dz: scalar_float].
+--------------------
+src/rheedium/simul/simulator.py
+    DOC501: Function `compute_kinematic_intensities_with_ctrs` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `compute_kinematic_intensities_with_ctrs` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `ewald_simulator` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `ewald_simulator` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `render_amplitude_to_field` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `render_amplitude_to_field` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC101: Function `kinematic_amplitude`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `kinematic_amplitude`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [ctr_power: scalar_float, ctr_regularization: scalar_float, energy_kev: scalar_num, hmax: scalar_int, kmax: scalar_int, phi_deg: scalar_num, roughness_power: scalar_float, theta_deg: scalar_num]. Arguments in the docstring but not in the function signature: [ctr_regularization, ctr_power, roughness_power: scalar_float, energy_kev, theta_deg, phi_deg: scalar_num, hmax, kmax: scalar_int].
+    DOC501: Function `render_ctr_amplitude_to_field` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `render_ctr_amplitude_to_field` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC105: Function `simulate_detector_image`: Argument names match, but type hints in these args do not match: beam, surface, detector, render
+    DOC501: Function `simulate_detector_image` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `simulate_detector_image` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/tools/caching.py
+    DOC105: Function `enable_compilation_cache`: Argument names match, but type hints in these args do not match: cache_dir
+--------------------
+src/rheedium/tools/exporting.py
+    DOC503: Function `export_forward` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: ['ExportError']. Raised exceptions in the body: ['ExportError', 'NotImplementedError'].
+--------------------
+src/rheedium/tools/parallel.py
+    DOC001: Function/method `shard_array`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `distribute_batched`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/tools/simul_utils.py
+    DOC001: Function/method `wavelength_ang`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `interaction_constant`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/types/crystal_types.py
+    DOC602: Class `CrystalStructure`: Class docstring contains more class attributes than in actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `CrystalStructure`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the docstring but not in the actual class attributes: [PyTree node, making it compatible with JAX: , This class is an Equinox module (``eqx.Module``) registered as a JAX: , in JAX arrays for efficient computation.: , transformations like jit, grad, and vmap. All data is immutable and stored: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC602: Class `KirklandParameters`: Class docstring contains more class attributes than in actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `KirklandParameters`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the docstring but not in the actual class attributes: [JAX arrays and are stored as leaf nodes.: , PyTree node, making it compatible: , This class is an Equinox module (``eqx.Module``) registered as a JAX: , with JAX transformations like jit, grad, and vmap. All fields are: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC602: Class `PotentialSlices`: Class docstring contains more class attributes than in actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `PotentialSlices`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the docstring but not in the actual class attributes: [All data is immutable for functional programming patterns.: , PyTree node, making it compatible with JAX: , This class is an Equinox module (``eqx.Module``) registered as a JAX: , preserved as auxiliary data while slice data can be efficiently processed.: , transformations like jit, grad, and vmap. The calibration metadata is: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC101: Function `create_edge_on_slices`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `create_edge_on_slices`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [dx_slice: scalar_float, dy: scalar_float, dz: scalar_float]. Arguments in the docstring but not in the function signature: [dx_slice, dy, dz: scalar_float].
+    DOC605: Class `XYZData`: Attribute names match, but type hints in these attributes do not match: energy  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+--------------------
+src/rheedium/types/distributions/base.py
+    DOC605: Class `ReductionMode`: Attribute names match, but type hints in these attributes do not match: COHERENT, INCOHERENT  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC501: Function `create_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `create_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC501: Function `create_trivial_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `create_trivial_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+--------------------
+src/rheedium/types/distributions/beam.py
+    DOC501: Function `reduction_mode_from_coherence_length` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `reduction_mode_from_coherence_length` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC101: Function `create_gaussian_schell_beam`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `create_gaussian_schell_beam`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [beta_in_plane: scalar_float, beta_out_of_plane: scalar_float, divergence_in_plane_rad: scalar_float, divergence_out_of_plane_rad: scalar_float]. Arguments in the docstring but not in the function signature: [beta_in_plane, beta_out_of_plane: scalar_float, divergence_in_plane_rad, divergence_out_of_plane_rad: scalar_float].
+    DOC101: Function `create_field_emission_beam`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `create_field_emission_beam`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [angular_divergence_mrad: scalar_float, coherence_length_longitudinal_angstrom: scalar_float, coherence_length_transverse_angstrom: scalar_float, distribution_id: Optional[str], energy_kev: scalar_float, energy_spread_ev: scalar_float, incidence_angle_deg: scalar_float, spot_size_um: Tuple[float, float]].
+    DOC101: Function `create_thermionic_beam`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `create_thermionic_beam`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [angular_divergence_mrad: scalar_float, coherence_length_longitudinal_angstrom: scalar_float, coherence_length_transverse_angstrom: scalar_float, distribution_id: Optional[str], energy_kev: scalar_float, energy_spread_ev: scalar_float, incidence_angle_deg: scalar_float, spot_size_um: Tuple[float, float]].
+--------------------
+src/rheedium/types/distributions/orientation.py
+    DOC001: Class `OrientationDistribution`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary"
+    DOC501: Function `create_orientation_distribution` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Function `create_orientation_distribution` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC001: Function/method `discretize_orientation`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `discretize_orientation_static`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+    DOC001: Function/method `integrate_over_orientation`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Description" (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
+--------------------
+src/rheedium/types/distributions/size.py
+    DOC001: Class `SizeDistribution`: Potential formatting errors in docstring. Error message: Unsupported numpy docstring section: "Extended Summary"
+--------------------
+src/rheedium/types/rheed_types.py
+    DOC602: Class `RHEEDPattern`: Class docstring contains more class attributes than in actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `RHEEDPattern`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the docstring but not in the actual class attributes: [PyTree node, making it compatible with JAX: , This class is an Equinox module (``eqx.Module``) registered as a JAX: , stored in JAX arrays for efficient RHEED pattern analysis.: , transformations like jit, grad, and vmap. All data is immutable and: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC605: Class `RHEEDImage`: Attribute names match, but type hints in these attributes do not match: detector_distance  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+--------------------
+src/rheedium/ucell/unitcell.py
+    DOC105: Function `reciprocal_unitcell`: Argument names match, but type hints in these args do not match: in_degrees, out_degrees
+    DOC101: Function `get_unit_cell_matrix`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `get_unit_cell_matrix`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [a: scalar_float, alpha: scalar_float, b: scalar_float, beta: scalar_float, c: scalar_float, gamma: scalar_float]. Arguments in the docstring but not in the function signature: [a, b, c: scalar_float, alpha, beta, gamma: scalar_float].
+    DOC101: Function `build_cell_vectors`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `build_cell_vectors`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [a: scalar_float, alpha: scalar_float, b: scalar_float, beta: scalar_float, c: scalar_float, gamma: scalar_float]. Arguments in the docstring but not in the function signature: [a, b, c: scalar_float, alpha, beta, gamma: scalar_float].
+    DOC101: Function `generate_reciprocal_points`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `generate_reciprocal_points`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [hmax: scalar_int, kmax: scalar_int, lmax: scalar_int]. Arguments in the docstring but not in the function signature: [hmax, kmax, lmax: scalar_int].
+    DOC105: Function `reciprocal_lattice_vectors`: Argument names match, but type hints in these args do not match: in_degrees
+--------------------

@@ -61,6 +61,7 @@ docs = [
     "furo>=2025.7.19",
     "sphinx-autodoc-typehints>=3.0.1",
     "numpydoc>=1.9.0",
+    "pydoclint>=0.8.7",
 ]
 test = [
     "pytest>=8.3.5",
@@ -278,11 +279,17 @@ convention = "numpy"
 
 [tool.pydoclint]
 style = "numpy"
-check-return-types = true
+# pydoclint cannot currently parse jaxtyping shape strings such as
+# Float[Array, "H W"] when comparing return annotations to docstring types.
+# Keep signature/documentation presence checks active, and let jaxtyping/ty
+# validate the actual return types.
+check-return-types = false
 check-yield-types = true
 check-arg-order = true
 require-return-section-when-returning = true
 require-yield-section-when-yielding = true
+baseline = ".pydoclint-baseline"
+exclude = "\\.git|\\.tox|tests/"
 
 
 [tool.ty.environment]

@@ -60,8 +60,6 @@ from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.procs.distribution_binds import (
-    KinematicAxisUpdate,
-    MultisliceAxisUpdate,
     bind_kinematic_axis_distribution,
     bind_multislice_axis_distribution,
 )
@@ -82,6 +80,8 @@ from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
     Distribution,
+    KinematicAxisUpdate,
+    MultisliceAxisUpdate,
     OrientationDistribution,
     PotentialSlices,
     ReductionMode,

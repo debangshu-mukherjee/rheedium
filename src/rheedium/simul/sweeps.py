@@ -16,7 +16,7 @@ from rheedium.types import (
     scalar_float,
 )
 
-from .layer1 import simulate_detector_image
+from .simulator import simulate_detector_image
 
 SweepAxis = Tuple[str, Float[Array, "..."]]
 

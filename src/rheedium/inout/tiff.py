@@ -9,8 +9,6 @@ detecting the specular beam center for detector geometry calibration.
 
 Routine Listings
 ----------------
-:class:`FrameMetadata`
-    Per-frame metadata extracted from TIFF tags.
 :func:`load_tiff_sequence`
     Load ordered TIFF stack into a JAX array.
 :func:`extract_frame_metadata`
@@ -39,13 +37,14 @@ import jax.numpy as jnp
 import numpy as np
 import tifffile
 from beartype import beartype
-from beartype.typing import List, NamedTuple, Optional, Tuple, Union
+from beartype.typing import List, Optional, Tuple, Union
 from jaxtyping import Array, Float, jaxtyped
 from numpy.typing import NDArray
 
 from rheedium.types import (
     H_OVER_SQRT_2ME_ANG_VSQRT,
     RELATIVISTIC_COEFF_PER_V,
+    FrameMetadata,
     RHEEDImage,
     create_rheed_image,
     scalar_float,
@@ -56,33 +55,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 _EXIF_EXPOSURE_TIME_TAG: int = 33434
 _SINGLE_FRAME_NDIM: int = 2
 _MULTIPAGE_FRAME_NDIM: int = 3
-
-
-class FrameMetadata(NamedTuple):
-    """Per-frame metadata extracted from TIFF tags.
-
-    Attributes
-    ----------
-    exposure_time_s : float
-        Exposure time in seconds. NaN if not available.
-    timestamp_s : float
-        Timestamp in seconds since epoch. NaN if not available.
-    description : str
-        Image description string from TIFF tag. Empty if not
-        available.
-    frame_index : int
-        Zero-based index of this frame in the sequence.
-
-    Notes
-    -----
-    Metadata availability depends on the acquisition software.
-    Missing fields default to NaN (numeric) or empty string (text).
-    """
-
-    exposure_time_s: float
-    timestamp_s: float
-    description: str
-    frame_index: int
 
 
 @beartype
@@ -647,7 +619,6 @@ def load_tiff_as_rheed_image(
 
 
 __all__: list[str] = [
-    "FrameMetadata",
     "detect_beam_center",
     "extract_frame_metadata",
     "load_tiff_as_rheed_image",

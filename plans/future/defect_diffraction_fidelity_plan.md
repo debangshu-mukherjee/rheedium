@@ -22,7 +22,7 @@ framework plan (its "Tier 3"), plus a fourth, related forward-physics capability
 This is a **physics-depth track, not a roadmap gate.** It builds on the
 framework's coherent reduction + `Distribution`/bind contract (which already
 exist), but **nothing downstream depends on it**: the gated chain
-(rationalization → [recon](../partial/recon_optimization_plan.md) →
+(rationalization → [recon](../implemented/recon_optimization_plan.md) →
 [automatons](plans/future/automatons_plan.md)) needs only the framework's
 differentiability guarantee, which this plan does not touch. It runs in parallel
 to — or after — the roadmap, purely to raise simulation fidelity.

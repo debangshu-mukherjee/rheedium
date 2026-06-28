@@ -11,7 +11,6 @@ from jaxtyping import Array, Float
 
 from rheedium import recon
 from rheedium.recon import (
-    OrientationFitResult,
     compute_fisher_information,
     estimate_weight_uncertainty,
     fit_orientation_weights,
@@ -19,6 +18,7 @@ from rheedium.recon import (
 )
 from rheedium.types import (
     OrientationDistribution,
+    OrientationFitResult,
     create_discrete_orientation,
     integrate_over_orientation,
 )

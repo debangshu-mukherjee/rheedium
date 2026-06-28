@@ -173,10 +173,20 @@ from .form_factors import (
     projected_potential,
 )
 from .kinematic import kinematic_spot_simulator, make_ewald_sphere
-from .layer0 import (
+from .multislice import (
+    build_transmission_function,
+)
+from .potential import crystal_projected_potential
+from .reflection_multislice import (
+    crystal_to_edge_on_slices,
+    reflection_multislice_propagate,
+    reflection_multislice_simulator,
+)
+from .simulator import (
     checked_ewald_simulator,
     checked_multislice_propagate,
     checked_multislice_simulator,
+    checked_simulate_detector_image,
     compute_kinematic_intensities_with_ctrs,
     detector_extent_mm,
     ewald_simulator,
@@ -191,21 +201,9 @@ from .layer0 import (
     render_amplitude_to_field,
     render_ctr_amplitude_to_field,
     render_pattern_to_image,
-    sliced_crystal_to_projected_potential_slices,
-)
-from .layer1 import (
-    checked_simulate_detector_image,
     simulate_detector_image,
     simulate_detector_image_instrument,
-)
-from .multislice import (
-    build_transmission_function,
-)
-from .potential import crystal_projected_potential
-from .reflection_multislice import (
-    crystal_to_edge_on_slices,
-    reflection_multislice_propagate,
-    reflection_multislice_simulator,
+    sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
     calculate_ctr_intensity,

@@ -1121,25 +1121,20 @@ class TestRationalizationGuards(chex.TestCase):
         self.assertEqual(missing_annotations, [])
         self.assertEqual(category_mismatches, [])
 
-    def test_rg6_layering_modules_preserve_public_imports(self) -> None:
-        r"""Package splits should leave public import paths unchanged.
+    def test_rg6_layering_modules_do_not_keep_forwarding_paths(self) -> None:
+        r"""Package splits should not keep compatibility forwarding modules.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Package splits
-        should leave public import paths unchanged.
+        Verifies the documented zero-legacy export rule: subpackage APIs may
+        surface owned symbols, but old module-level forwarding paths are
+        deleted instead of preserved as aliases.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
-
-        The result is checked with direct unittest or Chex assertions against
-        the expected contract.
-
-        The documented check is rendered from
-        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
-        Reference exposes both the guarantee and the implementation path.
+        It imports the canonical subpackage surfaces and asserts that
+        the retired ``layer0`` / ``layer1`` modules are not importable
+        compatibility shims.
         """
         distributions_path = (
             self.repo_root / "src/rheedium/types/distributions"
@@ -1161,19 +1156,19 @@ class TestRationalizationGuards(chex.TestCase):
                 f"rheedium.types.distributions.{module_name}"
             )
 
-        layer0 = importlib.import_module("rheedium.simul.layer0")
-        layer1 = importlib.import_module("rheedium.simul.layer1")
-        self.assertIn("kinematic_amplitude", layer0.__all__)
-        self.assertIn("multislice_amplitude", layer0.__all__)
-        self.assertIn("simulate_detector_image", layer1.__all__)
+        simulator = importlib.import_module("rheedium.simul.simulator")
         self.assertIs(
             rheedium_simul.kinematic_amplitude,
-            layer0.kinematic_amplitude,
+            simulator.kinematic_amplitude,
         )
         self.assertIs(
             rheedium_simul.simulate_detector_image,
-            layer1.simulate_detector_image,
+            simulator.simulate_detector_image,
         )
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module("rheedium.simul.layer0")
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module("rheedium.simul.layer1")
 
 
 class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):

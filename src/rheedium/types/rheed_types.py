@@ -8,8 +8,6 @@ that ensures data integrity at compile time.
 
 Routine Listings
 ----------------
-:class:`DetectorGeometry`
-    Configuration for RHEED detector geometry.
 :class:`RHEEDImage`
     Container for RHEED image data with pixel coordinates
     and intensity values.
@@ -48,7 +46,6 @@ from beartype.typing import Final, NamedTuple, Union
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import float_jax_image, scalar_float, scalar_num
-from .detector import DetectorGeometry
 
 _NDIM_POSITIONS: Final[int] = 2
 _NCOLS_CART: Final[int] = 4
@@ -766,7 +763,6 @@ def identify_surface_atoms(
 
 
 __all__: list[str] = [
-    "DetectorGeometry",
     "RHEEDImage",
     "RHEEDPattern",
     "SlicedCrystal",

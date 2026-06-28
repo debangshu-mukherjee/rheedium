@@ -12,10 +12,6 @@ intervals, R-hat, and effective sample-size diagnostics.
 
 Routine Listings
 ----------------
-:class:`LaplaceUncertainty`
-    Local Gaussian uncertainty estimate around a reconstruction optimum.
-:class:`PosteriorSamples`
-    Posterior sample container with diagnostics and credible intervals.
 :func:`fisher_information_from_residual`
     Compute a Gauss-Newton/Fisher matrix from a residual function.
 :func:`covariance_from_fisher`
@@ -31,7 +27,6 @@ Routine Listings
 """
 
 import blackjax
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
@@ -39,79 +34,9 @@ from beartype.typing import Any, Callable, Optional
 from jax.flatten_util import ravel_pytree
 from jaxtyping import Array, Bool, Float, jaxtyped
 
-from rheedium.types import scalar_float
+from rheedium.types import LaplaceUncertainty, PosteriorSamples, scalar_float
 
 _EPS: float = 1e-12
-
-
-class LaplaceUncertainty(eqx.Module):
-    """Local Gaussian uncertainty estimate around a reconstruction optimum.
-
-    :see: :class:`~.test_uncertainty.TestReconUncertainty`
-
-    Attributes
-    ----------
-    fisher_information : Float[Array, "P P"]
-        Gauss-Newton/Fisher information matrix in flattened coordinates.
-    covariance : Float[Array, "P P"]
-        Regularized inverse Fisher matrix.
-    standard_deviation : Float[Array, "P"]
-        One-sigma uncertainty for each flattened parameter.
-    correlation : Float[Array, "P P"]
-        Parameter correlation matrix derived from covariance.
-    """
-
-    fisher_information: Float[Array, "P P"]
-    covariance: Float[Array, "P P"]
-    standard_deviation: Float[Array, "P"]
-    correlation: Float[Array, "P P"]
-
-
-class PosteriorSamples(eqx.Module):
-    """Posterior sample container with diagnostics and credible intervals.
-
-    :see: :class:`~.test_uncertainty.TestReconPosteriorUncertainty`
-
-    Attributes
-    ----------
-    samples : Float[Array, "C S P"]
-        Flattened posterior samples with chain, draw, and parameter axes.
-    log_probability : Float[Array, "C S"]
-        Log-posterior value for each retained sample.
-    acceptance_rate : Float[Array, "C"]
-        Mean NUTS acceptance rate for each chain.
-    mean : Float[Array, "P"]
-        Posterior mean in flattened coordinates.
-    covariance : Float[Array, "P P"]
-        Empirical posterior covariance.
-    credible_interval : Float[Array, "2 P"]
-        Equal-tailed posterior interval; row 0 is lower, row 1 is upper.
-    r_hat : Float[Array, "P"]
-        Split-chain Gelman-Rubin diagnostic per flattened parameter.
-    effective_sample_size : Float[Array, "P"]
-        Autocorrelation-adjusted effective sample size estimate.
-    converged : Bool[Array, ""]
-        True when all R-hat values and ESS values pass the supplied thresholds.
-    unravel_fn : Callable[[Float[Array, "P"]], Any]
-        Static function that maps one flattened sample back to the original
-        parameter pytree.
-    """
-
-    samples: Float[Array, "C S P"]
-    log_probability: Float[Array, "C S"]
-    acceptance_rate: Float[Array, "C"]
-    mean: Float[Array, "P"]
-    covariance: Float[Array, "P P"]
-    credible_interval: Float[Array, "2 P"]
-    r_hat: Float[Array, "P"]
-    effective_sample_size: Float[Array, "P"]
-    converged: Bool[Array, ""]
-    unravel_fn: Callable[[Float[Array, "P"]], Any] = eqx.field(static=True)
-
-    def mean_tree(self) -> Any:
-        """Return the posterior mean reconstructed as the original pytree."""
-        mean: Any = self.unravel_fn(self.mean)
-        return mean
 
 
 def _identity(value: Any) -> Any:
@@ -787,8 +712,6 @@ def sample_posterior(  # noqa: PLR0913
 
 
 __all__: list[str] = [
-    "LaplaceUncertainty",
-    "PosteriorSamples",
     "covariance_from_fisher",
     "fisher_information_from_residual",
     "laplace_inverse_mass_matrix",

@@ -98,8 +98,6 @@ from .crystal_defects import (
     apply_vacancy_field,
 )
 from .distribution_binds import (
-    KinematicAxisUpdate,
-    MultisliceAxisUpdate,
     bind_kinematic_axis_distribution,
     bind_multislice_axis_distribution,
     validate_kinematic_axis,
@@ -163,10 +161,8 @@ __all__: list[str] = [
     "grain_distribution_average",
     "grain_population_to_distribution",
     "incoherent_domain_average",
-    "KinematicAxisUpdate",
     "log_intensity_transform",
     "mgo001_bulk_terminated",
-    "MultisliceAxisUpdate",
     "normalize_image",
     "preprocess_experimental",
     "si100_2x1",

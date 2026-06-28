@@ -8,10 +8,6 @@ translate one sample into geometry, structure, or finite-domain updates.
 
 Routine Listings
 ----------------
-:class:`KinematicAxisUpdate`
-    Per-axis update consumed by the kinematic detector kernel.
-:class:`MultisliceAxisUpdate`
-    Per-axis update consumed by the multislice detector kernel.
 :func:`bind_kinematic_axis_distribution`
     Bind one Distribution axis to kinematic sample-update semantics.
 :func:`bind_multislice_axis_distribution`
@@ -25,14 +21,17 @@ from beam-mode samples in internal radians/eV to public detector-kernel deltas
 in degrees/keV.
 """
 
-from typing import Any, NamedTuple
-
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Callable, Final
+from beartype.typing import Any, Callable, Final
 from jaxtyping import Array, Float
 
-from rheedium.types import CrystalStructure, Distribution
+from rheedium.types import (
+    CrystalStructure,
+    Distribution,
+    KinematicAxisUpdate,
+    MultisliceAxisUpdate,
+)
 
 AZIMUTH_AXIS_IDS: Final[frozenset[str]] = frozenset(
     {"trivial", "orientation", "azimuth", "phi", "test_phi"}
@@ -44,26 +43,6 @@ STRUCTURE_AXIS_IDS: Final[frozenset[str]] = frozenset({"twins", "steps"})
 GRAIN_AXIS_IDS: Final[frozenset[str]] = frozenset({"grains"})
 SIZE_AXIS_IDS: Final[frozenset[str]] = frozenset({"size"})
 UNSUPPORTED_AXIS_IDS: Final[frozenset[str]] = frozenset()
-
-
-class KinematicAxisUpdate(NamedTuple):
-    """Kernel-local updates produced by one kinematic axis sample."""
-
-    crystal: CrystalStructure | None
-    energy_delta_kev: Any
-    theta_delta_deg: Any
-    phi_delta_deg: Any
-    domain_size_angstrom: Any | None
-
-
-class MultisliceAxisUpdate(NamedTuple):
-    """Kernel-local updates produced by one multislice axis sample."""
-
-    crystal: CrystalStructure | None
-    energy_delta_kev: Any
-    theta_delta_deg: Any
-    phi_delta_deg: Any
-    domain_size_angstrom: Any | None
 
 
 def _beam_axis_sample_to_public_deltas(
@@ -305,8 +284,6 @@ __all__: list[str] = [
     "AZIMUTH_AXIS_IDS",
     "BEAM_AXIS_IDS",
     "GRAIN_AXIS_IDS",
-    "KinematicAxisUpdate",
-    "MultisliceAxisUpdate",
     "SIZE_AXIS_IDS",
     "STRUCTURE_AXIS_IDS",
     "UNSUPPORTED_AXIS_IDS",

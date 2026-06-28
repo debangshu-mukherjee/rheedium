@@ -43,7 +43,7 @@ from rheedium.types import (
 )
 
 from .form_factors import projected_potential
-from .layer0 import project_on_detector_geometry
+from .simulator import project_on_detector_geometry
 
 
 def _require_phi_zero(phi_deg: scalar_num) -> None:

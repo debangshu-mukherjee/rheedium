@@ -8,9 +8,6 @@ provides conversion utilities between different crystal representations.
 
 Routine Listings
 ----------------
-:func:`lattice_to_cell_params`
-    Convert 3x3 lattice vectors to crystallographic
-    cell parameters.
 :func:`parse_crystal`
     Parse CIF or XYZ file into simulation-ready
     CrystalStructure.
@@ -41,7 +38,7 @@ from rheedium.types import (
 )
 
 from .cif import parse_cif
-from .lattice import lattice_to_cell_params
+from .lattice import lattice_to_cell_params as _lattice_to_cell_params
 from .poscar import parse_poscar
 from .xyz import parse_xyz
 
@@ -221,7 +218,7 @@ def xyz_to_crystal(
 
     cell_lengths: Float[Array, "3"]
     cell_angles: Float[Array, "3"]
-    cell_lengths, cell_angles = lattice_to_cell_params(lattice)
+    cell_lengths, cell_angles = _lattice_to_cell_params(lattice)
 
     lattice_inv: Float[Array, "3 3"] = jnp.linalg.inv(lattice)
     frac_coords: Float[Array, "N 3"] = positions @ lattice_inv
@@ -362,7 +359,6 @@ def parse_crystal(
 
 __all__: list[str] = [
     "_infer_lattice_from_positions",
-    "lattice_to_cell_params",
     "parse_crystal",
     "xyz_to_crystal",
 ]
