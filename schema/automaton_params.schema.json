@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/debangshu-mukherjee/rheedium/schema/automaton_params.schema.json",
+  "title": "Rheedium automaton parameter description",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment",
+    "summary",
+    "description",
+    "params",
+    "params_schema",
+    "returns",
+    "inherited_flags"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rheedium.automaton.describe.v1"
+    },
+    "experiment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "params": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/param"
+      }
+    },
+    "params_schema": {
+      "type": "object"
+    },
+    "returns": {
+      "type": "object"
+    },
+    "inherited_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type", "help"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string"},
+          "help": {"type": "string"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "required", "help"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": {
+          "enum": ["string", "integer", "number", "boolean", "object", "array"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {},
+        "help": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "bounds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": ["number", "null"]
+          }
+        },
+        "choices": {
+          "type": "array"
+        },
+        "example": {}
+      }
+    }
+  }
+}

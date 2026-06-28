@@ -16,6 +16,8 @@ Routine Listings
     Benchmarking and realism-audit utilities for detector images.
 :mod:`inout`
     Data input/output operations for crystal structures and RHEED images.
+:mod:`harness`
+    Process-boundary helpers for agent-runnable automaton scripts.
 :mod:`plots`
     Visualization tools for RHEED patterns and crystal structures.
 :mod:`procs`
@@ -169,6 +171,7 @@ init_distributed()
 
 from . import (  # noqa: E402, I001
     audit,
+    harness,
     inout,
     plots,
     procs,
@@ -184,6 +187,7 @@ __version__: str = version("rheedium")
 __all__: list[str] = [
     "init_distributed",
     "audit",
+    "harness",
     "inout",
     "plots",
     "procs",

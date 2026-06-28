@@ -33,6 +33,12 @@ decision (the framework treats these defects as smooth structure modifiers that
 *change* the pattern but do not reproduce satellites / streak splitting). Not on
 the critical path.
 
+**This plan is gate P6** ("surface non-ideality & defect signatures") of the
+umbrella [RHEED physics A+ plan](physics.md): it is the single source of truth for
+the twin / step / mosaic / strain / reconstruction signatures, so physics.md
+references it rather than duplicating them. Its DG1–DG4 closing *is* P6's exit
+criterion.
+
 ---
 
 ## 1. Why a separate plan

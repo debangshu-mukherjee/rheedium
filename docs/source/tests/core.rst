@@ -8,6 +8,16 @@ Validation tests for package import behavior and test-suite contracts.
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: tests.test_rheedium.test_automatons_smoke
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: tests.test_rheedium.test_harness.test_contract
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: tests.test_rheedium.test_test_typing_helpers
    :members:
    :undoc-members:

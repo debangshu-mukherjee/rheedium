@@ -34,6 +34,7 @@ dependencies = [
     "numpy>=2.2.1",
     "scipy>=1.14.1",
     "matplotlib>=3.10.0",
+    "defusedxml>=0.7.1",
     "jax>=0.9.2 ; sys_platform == 'win32'",
     "jax>=0.9.2 ; sys_platform == 'darwin'",
     "jax>=0.9.2 ; sys_platform == 'linux'",
@@ -150,7 +151,7 @@ source = ["rheedium"]
 omit = ["*/tests/*", "*/site-packages/*"]
 
 [tool.ruff]
-include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py", "automatons/**/*.py"]
 line-length = 79
 target-version = "py312"
 exclude = [
@@ -296,7 +297,7 @@ exclude = "\\.git|\\.tox|tests/"
 root = ["src/", "."]
 
 [tool.ty.src]
-include = ["src", "tests", "docs"]
+include = ["src", "tests", "docs", "automatons"]
 
 [tool.ty.rules]
 too-many-positional-arguments = "ignore"

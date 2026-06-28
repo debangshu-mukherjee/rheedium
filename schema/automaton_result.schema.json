@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/debangshu-mukherjee/rheedium/schema/automaton_result.schema.json",
+  "title": "Rheedium automaton result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "status",
+    "experiment",
+    "rheedium_version",
+    "jax_backend",
+    "seed",
+    "params",
+    "metrics",
+    "artifacts",
+    "wall_seconds",
+    "result_key"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rheedium.automaton.result.v1"
+    },
+    "status": {
+      "enum": ["ok", "error", "timeout"]
+    },
+    "experiment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rheedium_version": {
+      "type": "string"
+    },
+    "jax_backend": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "params": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "wall_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "result_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "returns": {
+      "type": "object"
+    },
+    "error": {
+      "type": "string"
+    },
+    "error_kind": {
+      "enum": [
+        "InvalidStructure",
+        "ParamOutOfRange",
+        "Unsupported",
+        "ResourceExhausted",
+        "NumericalFailure",
+        "Timeout",
+        "Unknown"
+      ]
+    },
+    "field": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "mime", "path"],
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "preview_b64": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

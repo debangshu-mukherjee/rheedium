@@ -76,8 +76,8 @@ jobs:
 
     - name: Lint with Ruff
       run: |
-        uv run ruff check src/ tests/
-        uv run ruff format --check src/ tests/
+        uv run ruff check src/ tests/ automatons/
+        uv run ruff format --check src/ tests/ automatons/
         uv run interrogate tests
 
     - name: Type check with ty
@@ -208,6 +208,38 @@ jobs:
       with:
         name: dist
         path: dist/
+
+  automatons-smoke:
+    name: Automatons smoke (informational)
+    needs: resolve-python
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install ${{ needs.resolve-python.outputs.latest }}
+
+    - name: Install dependencies
+      run: uv sync --extra dev
+
+    - name: Run automaton smoke tests
+      env:
+        JAX_PLATFORMS: cpu
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/automatons"
+        for script in automatons/*.py; do
+          [ "$(basename "$script")" = "bump_pin.py" ] && continue
+          outdir="$RUNNER_TEMP/automatons/$(basename "$script" .py)"
+          uv run --with-editable . "$script" --smoke --outdir "$outdir" --json
+        done
 
   type-safety-scan:
     name: Strict type scan (informational)
