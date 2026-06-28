@@ -10,6 +10,10 @@ uv run automatons/forward_multislice.py --smoke --outdir /tmp/rh-multi
 uv run automatons/forward_reflection.py --smoke --outdir /tmp/rh-refl
 uv run automatons/screen_xyz_ensemble.py --smoke --outdir /tmp/rh-screen
 uv run automatons/match_measured_to_simulated.py --smoke --outdir /tmp/rh-match
+uv run automatons/fit_orientation_beam.py --smoke --outdir /tmp/rh-fit
+uv run automatons/reconstruct_distribution.py --smoke --outdir /tmp/rh-dist
+uv run automatons/invert_structure.py --smoke --outdir /tmp/rh-invert
+uv run automatons/recipe_deviation.py --smoke --outdir /tmp/rh-dev
 ```
 
 During local development, run against the working tree instead of the PEP 723

@@ -25,6 +25,12 @@ _LOOP_B_REPRO_SCRIPTS: tuple[Path, ...] = (
     _AUTOMATON_DIR / "match_measured_to_simulated.py",
     _AUTOMATON_DIR / "screen_xyz_ensemble.py",
 )
+_LOOP_C_GATE_SCRIPTS: tuple[Path, ...] = (
+    _AUTOMATON_DIR / "fit_orientation_beam.py",
+    _AUTOMATON_DIR / "reconstruct_distribution.py",
+    _AUTOMATON_DIR / "invert_structure.py",
+    _AUTOMATON_DIR / "recipe_deviation.py",
+)
 _KINEMATIC_EXPORT_PROBE: str = textwrap.dedent(
     """
     import json
@@ -311,3 +317,52 @@ def test_g3_kinematic_export_runs_two_atom_counts() -> None:
     assert payload["blob_bytes"] > 0
     assert payload["n2"] > 0.0
     assert payload["n3"] > 0.0
+
+
+@pytest.mark.parametrize(
+    "script",
+    _LOOP_C_GATE_SCRIPTS,
+    ids=[path.name for path in _LOOP_C_GATE_SCRIPTS],
+)
+def test_g5_loop_c_smoke_recovers_planted_signal(
+    script: Path,
+    tmp_path: Path,
+) -> None:
+    r"""Loop C recon automatons recover their planted smoke fixtures.
+
+    Extended Summary
+    ----------------
+    Verifies the G5 gate for inversion automatons: the four thin wrappers over
+    ``rheedium.recon`` run through the normal subprocess contract and recover a
+    known synthetic signal, distribution, structure latent, or recipe gap.
+
+    Notes
+    -----
+    It intentionally checks science-facing metrics rather than only process
+    success: fit errors must be tiny for exact linear fixtures, the planted
+    distribution must reconstruct, and recipe deviation must flag the
+    deliberately mismatched intended recipe as critical.
+    """
+    payload = _run_automaton(script, tmp_path / script.stem)
+    metrics: dict[str, Any] = payload["metrics"]
+    assert payload["wall_seconds"] < 60.0
+
+    if script.name == "fit_orientation_beam.py":
+        assert metrics["orientation_l2_error"] < 1e-6
+        assert metrics["beam_l2_error"] < 1e-6
+        assert metrics["residual_mse"] < 1e-12
+    elif script.name == "reconstruct_distribution.py":
+        assert metrics["weight_l1_error"] < 1e-6
+        assert metrics["max_band"] > 0.0
+        assert metrics["best_sample_index"] == 1
+    elif script.name == "invert_structure.py":
+        assert metrics["param_l2_error"] < 1e-6
+        assert metrics["final_loss"] < 1e-12
+        assert metrics["converged"] is True
+    elif script.name == "recipe_deviation.py":
+        assert metrics["severity"] == 2
+        assert metrics["max_abs_z"] >= 3.0
+        assert metrics["first_deviation"] == pytest.approx(0.5)
+        assert metrics["first_z_score"] == pytest.approx(5.0)
+    else:
+        raise AssertionError(f"unexpected Loop C script: {script.name}")

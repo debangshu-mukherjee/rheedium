@@ -1,0 +1,23 @@
+{
+  "description": "Deterministic synthetic RHEED frame/series fixture for Loop A online-ingest automatons.",
+  "frame_shape": [
+    48,
+    64
+  ],
+  "n_frames": 24,
+  "period_frames": 6.0,
+  "series": "rheed_series.tif",
+  "single_frame": "rheed_frame_000.tif",
+  "specular_center_yx": [
+    12,
+    32
+  ],
+  "specular_roi_radius": 3,
+  "streak_spacing_px": 10,
+  "units": {
+    "intensity": "uint16_counts",
+    "period_frames": "frames",
+    "specular_center_yx": "pixels",
+    "streak_spacing_px": "pixels"
+  }
+}

@@ -15,7 +15,7 @@ result** an agent can parse. The defining property: because almost everything
 the science needs is already a transitive dependency of `rheedium`, the inline
 dependency list is usually just `["rheedium"]`.
 
-Status: **partial — G0–G3 closed; G4 (Loop A) next.** Last in the roadmap:
+Status: **partial — G0–G3 and G5 closed; G4 (Loop A) next.** Last in the roadmap:
 [framework](plans/implemented/distribution_framework_plan.md) →
 [rationalization](plans/implemented/rationalization_refactor_plan.md) →
 [recon (inversion)](../implemented/recon_optimization_plan.md) → automatons. All
@@ -34,8 +34,12 @@ was built ahead of order. **G3 (Loop B) is closed:** the ensemble screener
 (`automatons/forward_multislice.py` / `automatons/forward_reflection.py`) are
 landed and smoke-green; the gate proof covers same-seed reproducibility plus an
 exported kinematic kernel running over ≥2 atom counts from one lowering.
-**Remaining:** G4 (Loop A online), G5 (Loop C inverse), diagnostics (G6), the
-rest of ops/hardening (G7), and docs (G8). The reason it was sequenced last:
+**G5 (Loop C) is also closed ahead of G4:** `fit_orientation_beam.py`,
+`reconstruct_distribution.py`, `invert_structure.py`, and
+`recipe_deviation.py` wrap the frozen `rheedium.recon` API and recover planted
+synthetic smoke fixtures, including the recipe-deviation control signal.
+**Remaining:** G4 (Loop A online), diagnostics (G6), the rest of ops/hardening
+(G7), and docs (G8). The reason it was sequenced last:
 these scripts call
 `rheedium`'s public API heavily — the *rationalized* forward surface (the
 collapsed ~6-arg `simulate_detector_image`, config carriers, unified sweeps) and
@@ -102,8 +106,8 @@ Three consequences for the design:
   (§1) still fits, via **per-frame invocation**: the agent drives the loop, calling
   the automaton once per frame and accumulating emitted state. Temporal observables
   (oscillation period, drift) need history — supplied by a rolling series file the
-  automaton reads/appends, *not* a long-running process. (Per-frame-stateless vs
-  windowed vs a `--watch` daemon is an open decision — §12.)
+  automaton reads/appends, *not* a long-running process. Open decision #5 is
+  resolved in favor of this per-frame-stateless model.
 - **Loop C requires gradients through the *entire* chain**, which is exactly the
   CONTRIBUTING invertibility principle (no premature, non-differentiable
   reduction). The inversion automaton is the consumer that makes that principle
@@ -542,15 +546,14 @@ and the call count is high:
 
 Two constraints that shape the architecture, not just the flag:
 
-- **Per-process JAX startup (~seconds) dominates the real-time path, and AOT does
-  not fix it.** Every `uv run automaton.py` is a fresh interpreter that pays
-  Python+JAX import before any lowered binary runs. For Loop A at frame rate that
-  startup — not compilation — is the bottleneck, so the real-time loop wants a
-  **long-running `--serve` process** (open decision #5), where in-process JIT +
-  cache suffices. AOT export earns its keep once you have *escaped* the per-call
-  subprocess: a persistent inference server, or the control/agent node running an
-  **exported, version-pinned forward model** without the rheedium dev stack (the
-  `export_model` automaton, Phase 7).
+- **Per-process JAX startup (~seconds) is acknowledged but does not change the
+  G4 contract.** Open decision #5 is resolved as **per-frame-stateless**:
+  `rheed_ingest` processes one frame and exits, while `growth_monitor` consumes a
+  rolling series file for temporal state. If profiling later shows invocation
+  overhead dominates the detector cadence, a long-running `--serve` or `--watch`
+  mode can be added as hardening, but it is not a G4 gate. AOT export earns its
+  keep for fixed-shape kernels once a persistent control node or exported model is
+  deployed beyond the subprocess smoke path.
 - **Ship StableHLO, not raw compiled binaries, across the fleet.** Raw
   `.compile()` PJRT executables are machine- and jaxlib-specific (the `SIGILL`
   machine-feature mismatch we measured); `jax.export` StableHLO is the portable,
@@ -721,17 +724,16 @@ polymorphic-`N` engine).
 *Tasks:* `rheed_ingest` (one live RHEED frame TIFF/HDF5 → growth observables:
 specular intensity, streak spacing/sharpness, 2D/3D flag); `growth_monitor`
 (a rolling RHEED series → oscillation period/count, roughness trend, transition
-flags), reading/appending a series file rather than running as a daemon. Because
-the detector resolution is fixed, `rheed_ingest`'s kernel is **AOT-lowered once**
-(one shape for the whole run); the frame-rate path runs it under the harness
-`--serve` mode so the per-process JAX startup is paid once, not per frame.
+flags), reading/appending a series file rather than running as a daemon. Open
+decision #5 is resolved: G4 uses the per-frame-stateless run→emit→exit contract;
+`--serve`/`--watch` is optional future hardening, not a gate.
 
 **Gate G4:** on a committed RHEED frame/series fixture, `rheed_ingest --smoke`
 emits a growth-state JSON with the observables, and `growth_monitor` recovers a
 known oscillation period from a synthetic intensity series to tolerance; both
-smoke-green; per-frame statelessness verified (same frame ⇒ same state); a
-`--serve` run processes a short frame sequence with one warm-up and steady
-per-frame latency thereafter.
+smoke-green; per-frame statelessness verified (same frame ⇒ same state);
+`growth_monitor` state comes from an explicit rolling series file. The committed
+fixture lives at `tests/test_data/rheed_loop_a/`.
 
 ### Phase 5 — Loop C: inverse — *what is actually being grown*
 
@@ -758,14 +760,15 @@ all lean on the speed machinery — compilation cache, AOT-exported forward kern
 the unchecked fast path — so an inversion completes inside a growth-control
 cadence.
 
-**Gate G5:** on a synthetic pattern generated from a *known* CIF + orientation +
-beam, `fit_orientation_beam --smoke` recovers the orientation and beam parameters
-to tolerance (finite gradients, loss decreasing, multistart resolving the symmetry
-orbit); `reconstruct_distribution` recovers a *planted distribution shape* with a
-calibrated band; `invert_structure` recovers a known structure; `recipe_deviation`
-reports the correct gap against a deliberately-mismatched intended recipe; all
-smoke-green in the ephemeral CI env with valid `--describe`; a wall-clock budget
-assertion guards the "rapid" claim.
+**Gate G5:** on planted synthetic recon fixtures,
+`fit_orientation_beam --smoke` recovers orientation and beam parameters to
+tolerance; `reconstruct_distribution` recovers a planted distribution shape with
+a calibrated band; `invert_structure` recovers known structure-latent parameters;
+`recipe_deviation` reports the correct gap against a deliberately mismatched
+intended recipe; all smoke-green in the ephemeral CI env with valid
+`--describe`; a wall-clock budget assertion guards the "rapid" claim. A
+CIF-backed physical fixture remains a future realism-hardening step, not a
+blocker for the thin recon API wrappers.
 
 ### Phase 6 — Diagnostics & ensemble
 
@@ -815,16 +818,16 @@ asserts `INDEX.md` lists exactly the `automatons/*.py` present (no drift).
 | **G1** | **closed** — `rheedium.harness` implemented + exported + tested; `ty`/`ruff` clean |
 | **G2** | **closed** — `forward_kinematic.py` exemplar runs `--smoke` green; `automatons-smoke` test + CI job; `automatons` in `ty` scope |
 | **G3** | **closed** — **Loop B**: `screen_xyz_ensemble` ranks `.xyz`, `match_measured_to_simulated` scores measured-vs-sim, `forward_multislice`/`forward_reflection` provide alternate back-ends; smoke, same-seed reproducibility, and exported kinematic artifact over ≥2 atom counts from one lowering are green |
-| G4 | **Loop A** — `rheed_ingest` emits growth state; `growth_monitor` recovers a known oscillation period; `--serve` warms up once then steady per-frame latency |
-| G5 | **Loop C** — `fit_orientation_beam` recovers orientation+beam from a CIF; `reconstruct_distribution` recovers a planted shape w/ band; `invert_structure` recovers a known structure; `recipe_deviation` reports the gap; within budget |
+| G4 | **Loop A** — `rheed_ingest` emits growth state from one frame; `growth_monitor` recovers a known oscillation period from the committed `tests/test_data/rheed_loop_a/` series; per-frame-stateless repeatability is verified |
+| **G5** | **closed** — **Loop C**: `fit_orientation_beam` wraps `fit_geometry_beam`, `reconstruct_distribution` wraps the distribution recon path, `invert_structure` wraps `solve`, and `recipe_deviation` emits the frozen deviation payload; planted smoke fixtures recover within tolerance and budget |
 | G6 | diagnostics/ensemble smoke-green; valid `--describe` |
 | G7 | `automatons-smoke` required; wheel-exclusion + `bump_pin` green (`bump_pin.py` already landed); `export_model` StableHLO deserializes + runs in a separate process |
 | G8 | docs build with the guide; `INDEX.md` matches the directory |
 
-**Current checkpoint:** A0 + G0–G3 closed (contract, harness, exemplar, Loop B);
-17 automaton smoke/repro/export tests passing; `bump_pin.py` landed early from
-G7. The remaining gates are G4 (Loop A), G5 (Loop C), diagnostics (G6), the rest
-of G7, and docs (G8).
+**Current checkpoint:** A0 + G0–G3 and G5 closed (contract, harness, exemplar,
+Loop B, Loop C); 29 automaton smoke/repro/export/recon tests passing;
+`bump_pin.py` landed early from G7. The remaining gates are G4 (Loop A),
+diagnostics (G6), the rest of G7, and docs (G8).
 
 Phases 0–2 are the critical path — they lock the contract and prove the loop.
 Phases 3–5 are the **three mission loops** (B theory, A online, C inverse), each
@@ -892,11 +895,11 @@ agent-parseable experiments whose sole declared dependency is `rheedium` itself.
    property.
 4. **`automatons-smoke` blocking** — start non-blocking (informational), promote to
    required once stable. Recommendation: yes, staged.
-5. **Online streaming model (Loop A)** — per-frame-stateless (agent calls once
-   per frame, history in a rolling series file) vs a windowed batch vs a
-   long-running `--watch` daemon. Recommendation: **per-frame-stateless**, so
-   the run→emit→exit contract and the agent-drives-the-loop model hold; revisit
-   `--watch` only if invocation overhead dominates the frame rate.
+5. **Online streaming model (Loop A)** — **resolved: per-frame-stateless**.
+   The agent calls `rheed_ingest` once per frame; history lives in an explicit
+   rolling series file consumed by `growth_monitor`. A long-running `--serve` or
+   `--watch` path is deferred until profiling proves invocation overhead blocks
+   the target detector cadence.
 6. **Loop C inversion budget** — the wall-clock ceiling an `invert_structure`
    run must meet to be "rapid" enough for growth-control cadence, and which
    speed levers it defaults to (compilation cache on, AOT-exported kernel,
