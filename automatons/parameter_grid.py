@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.9"]
+# dependencies = ["rheedium==2026.6.10"]
 # ///
 """Run a distributed energy-by-incidence detector grid.
 
@@ -55,13 +55,29 @@ def _smoke_crystal() -> CrystalStructure:
     )
 
 
-def _load_crystal(path: str, *, smoke: bool) -> CrystalStructure:
-    """Load a user crystal or generate the smoke fixture."""
-    if smoke and not path:
-        return _smoke_crystal()
-    if not path:
+def _zone_axis(args: Any) -> tuple[int, int, int]:
+    """Return the requested surface zone axis as Miller indices."""
+    zone: tuple[int, int, int] = (
+        int(args.zone_h),
+        int(args.zone_k),
+        int(args.zone_l),
+    )
+    if zone == (0, 0, 0):
+        raise ValueError("zone axis cannot be [0, 0, 0]")
+    return zone
+
+
+def _load_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
+    """Load a user crystal (or smoke fixture) reoriented to the zone axis."""
+    if smoke and not args.crystal:
+        crystal: CrystalStructure = _smoke_crystal()
+    elif not args.crystal:
         raise ValueError("crystal is required unless --smoke is set")
-    return rh.inout.parse_crystal(path)
+    else:
+        crystal = rh.inout.parse_crystal(args.crystal)
+    return rh.ucell.reorient_to_zone_axis(
+        crystal, jnp.asarray(_zone_axis(args), dtype=jnp.int32)
+    )
 
 
 def _grid_carriers(
@@ -84,7 +100,7 @@ def _grid_carriers(
         spot_sigma_px=spot_sigma_px,
         n_angular_samples=1,
         n_energy_samples=1,
-        render_ctrs_as_streaks=False,
+        render_ctrs_as_streaks=True,
     )
     return surface, detector, render
 
@@ -145,6 +161,27 @@ def _grid_rows(
         Param(
             "phi_deg", float, default=0.0, help="Fixed azimuth.", unit="deg"
         ),
+        Param(
+            "zone_h",
+            int,
+            default=0,
+            help="Surface zone-axis Miller h index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_k",
+            int,
+            default=0,
+            help="Surface zone-axis Miller k index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_l",
+            int,
+            default=1,
+            help="Surface zone-axis Miller l index.",
+            bounds=(-8.0, 8.0),
+        ),
         Param("hmax", int, default=1, help="Maximum absolute h index."),
         Param("kmax", int, default=1, help="Maximum absolute k index."),
         Param("image_size", int, default=48, help="Square detector size."),
@@ -173,7 +210,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     )
     n_theta: int = max(2, min(args.n_theta, 3) if args.smoke else args.n_theta)
 
-    crystal: CrystalStructure = _load_crystal(args.crystal, smoke=args.smoke)
+    crystal: CrystalStructure = _load_crystal(args, smoke=args.smoke)
     energies: Float[Array, "E"] = jnp.linspace(
         args.energy_min_kev,
         args.energy_max_kev,
@@ -260,6 +297,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     )
     metrics: dict[str, Any] = {
         "n_grid_points": int(rows.shape[0]),
+        "zone_axis": list(_zone_axis(args)),
         "grid_shape": [n_energy, n_theta],
         "best_energy_kev": float(best_row[0]),
         "best_theta_deg": float(best_row[1]),

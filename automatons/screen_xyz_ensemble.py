@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.9"]
+# dependencies = ["rheedium==2026.6.10"]
 # ///
 """Rank a structure-file ensemble by simulated RHEED similarity.
 
@@ -16,6 +16,7 @@ from __future__ import annotations
 import glob
 from pathlib import Path
 
+import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
 from beartype.typing import Any
@@ -162,6 +163,18 @@ def _smoke_files(ctx: Any) -> tuple[str, str]:
     return str(smoke_dir), str(target_path)
 
 
+def _zone_axis(args: Any) -> tuple[int, int, int]:
+    """Return the requested surface zone axis as Miller indices."""
+    zone: tuple[int, int, int] = (
+        int(args.zone_h),
+        int(args.zone_k),
+        int(args.zone_l),
+    )
+    if zone == (0, 0, 0):
+        raise ValueError("zone axis cannot be [0, 0, 0]")
+    return zone
+
+
 def _simulate_image(
     structure_path: Path,
     args: Any,
@@ -172,6 +185,9 @@ def _simulate_image(
 ) -> tuple[Float[NDArray, "height width"], int]:
     """Simulate one structure and return its detector image and hit count."""
     crystal = rh.inout.parse_crystal(structure_path)
+    crystal = rh.ucell.reorient_to_zone_axis(
+        crystal, jnp.asarray(_zone_axis(args), dtype=jnp.int32)
+    )
     pattern = rh.simul.ewald_simulator(
         crystal,
         energy_kev=args.energy_kev,
@@ -187,7 +203,7 @@ def _simulate_image(
         beam_center_px=(image_size / 2.0, max(1.0, image_size * 0.08)),
         psf_sigma_pixels=0.0,
     )
-    image = rh.simul.render_pattern_to_image(
+    image = rh.simul.render_ctr_streaks_to_image(
         pattern,
         geometry,
         spot_sigma_px=args.spot_sigma_px,
@@ -255,6 +271,27 @@ def _simulate_image(
             help="In-plane azimuth angle.",
             unit="deg",
             bounds=(-180.0, 180.0),
+        ),
+        Param(
+            "zone_h",
+            int,
+            default=0,
+            help="Surface zone-axis Miller h index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_k",
+            int,
+            default=0,
+            help="Surface zone-axis Miller k index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_l",
+            int,
+            default=1,
+            help="Surface zone-axis Miller l index.",
+            bounds=(-8.0, 8.0),
         ),
         Param("hmax", int, default=3, help="Maximum absolute h index."),
         Param("kmax", int, default=3, help="Maximum absolute k index."),
@@ -382,6 +419,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     return {
         "metrics": {
             "n_candidates": len(ranked),
+            "zone_axis": list(_zone_axis(args)),
             "best_score": float(best["score"]),
             "best_candidate": str(best["candidate"]),
             "best_mse": float(best["mse"]),

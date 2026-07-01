@@ -1598,6 +1598,46 @@ def render_ctr_amplitude_to_field(
 
 
 @jaxtyped(typechecker=beartype)
+def render_ctr_streaks_to_image(
+    pattern: RHEEDPattern,
+    geometry: DetectorGeometry,
+    spot_sigma_px: scalar_float,
+) -> Float[Array, "H W"]:
+    """Rasterize a sparse RHEEDPattern onto a dense image as CTR streaks.
+
+    Drop-in replacement for :func:`render_pattern_to_image` that renders each
+    reflection as a compact Bragg spot core plus a vertically elongated crystal
+    truncation rod (CTR) streak, giving the characteristic RHEED streak
+    appearance instead of isotropic spots. Streak elongation is along the
+    detector ``y`` axis (the surface-normal projection).
+
+    :see: :class:`~.test_simulator.TestDetectorImageOrchestrator`
+
+    Parameters
+    ----------
+    pattern : RHEEDPattern
+        Sparse detector pattern with positions in millimetres. ``G_indices``
+        marks valid reflections (``>= 0``); invalid entries are skipped.
+    geometry : DetectorGeometry
+        Detector geometry carrying output shape, pixel calibration, and beam
+        centre.
+    spot_sigma_px : scalar_float
+        Gaussian spot-core width in detector pixels. The streak halo is
+        elongated to ``max(4 * spot_sigma_px, 2.5)`` pixels in ``y``.
+
+    Returns
+    -------
+    image : Float[Array, "H W"]
+        Rasterized streak image normalized to unit maximum.
+
+    See Also
+    --------
+    render_pattern_to_image : Isotropic-spot rasterizer.
+    """
+    return _render_ctr_streaks_to_image(pattern, geometry, spot_sigma_px)
+
+
+@jaxtyped(typechecker=beartype)
 def _render_ctr_streaks_to_image(
     pattern: RHEEDPattern,
     geometry: DetectorGeometry,

@@ -44,6 +44,7 @@ from .unitcell import (
     miller_to_reciprocal,
     reciprocal_lattice_vectors,
     reciprocal_unitcell,
+    reorient_to_zone_axis,
 )
 
 __all__: list[str] = [
@@ -58,4 +59,5 @@ __all__: list[str] = [
     "parse_cif_and_scrape",
     "reciprocal_lattice_vectors",
     "reciprocal_unitcell",
+    "reorient_to_zone_axis",
 ]

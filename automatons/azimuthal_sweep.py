@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.9"]
+# dependencies = ["rheedium==2026.6.10"]
 # ///
 """Run a distributed azimuthal detector-image sweep.
 
@@ -54,13 +54,29 @@ def _smoke_crystal() -> CrystalStructure:
     )
 
 
-def _load_crystal(path: str, *, smoke: bool) -> CrystalStructure:
-    """Load a user crystal or generate the smoke fixture."""
-    if smoke and not path:
-        return _smoke_crystal()
-    if not path:
+def _zone_axis(args: Any) -> tuple[int, int, int]:
+    """Return the requested surface zone axis as Miller indices."""
+    zone: tuple[int, int, int] = (
+        int(args.zone_h),
+        int(args.zone_k),
+        int(args.zone_l),
+    )
+    if zone == (0, 0, 0):
+        raise ValueError("zone axis cannot be [0, 0, 0]")
+    return zone
+
+
+def _load_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
+    """Load a user crystal (or smoke fixture) reoriented to the zone axis."""
+    if smoke and not args.crystal:
+        crystal: CrystalStructure = _smoke_crystal()
+    elif not args.crystal:
         raise ValueError("crystal is required unless --smoke is set")
-    return rh.inout.parse_crystal(path)
+    else:
+        crystal = rh.inout.parse_crystal(args.crystal)
+    return rh.ucell.reorient_to_zone_axis(
+        crystal, jnp.asarray(_zone_axis(args), dtype=jnp.int32)
+    )
 
 
 def _carriers(
@@ -94,7 +110,7 @@ def _carriers(
         spot_sigma_px=args.spot_sigma_px,
         n_angular_samples=1,
         n_energy_samples=1,
-        render_ctrs_as_streaks=False,
+        render_ctrs_as_streaks=True,
     )
     return beam, surface, detector, render
 
@@ -161,6 +177,27 @@ def _angle_rows(
             help="Grazing incidence angle.",
             unit="deg",
         ),
+        Param(
+            "zone_h",
+            int,
+            default=0,
+            help="Surface zone-axis Miller h index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_k",
+            int,
+            default=0,
+            help="Surface zone-axis Miller k index.",
+            bounds=(-8.0, 8.0),
+        ),
+        Param(
+            "zone_l",
+            int,
+            default=1,
+            help="Surface zone-axis Miller l index.",
+            bounds=(-8.0, 8.0),
+        ),
         Param("hmax", int, default=1, help="Maximum absolute h index."),
         Param("kmax", int, default=1, help="Maximum absolute k index."),
         Param(
@@ -194,7 +231,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         3, min(args.n_angles, 5) if args.smoke else args.n_angles
     )
 
-    crystal: CrystalStructure = _load_crystal(args.crystal, smoke=args.smoke)
+    crystal: CrystalStructure = _load_crystal(args, smoke=args.smoke)
     beam, surface, detector, render = _carriers(
         args,
         hmax=hmax,
@@ -226,9 +263,12 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     intensities: Float[Array, "N"] = jnp.sum(image_bank, axis=(1, 2))
     maxima: Float[Array, "N"] = jnp.max(image_bank, axis=(1, 2))
     mean_image: Float[Array, "H W"] = jnp.mean(image_bank, axis=0)
-    montage = np.concatenate(
-        [np.asarray(image) for image in image_bank], axis=1
-    )
+    # Gather the whole (possibly device-sharded) bank to host before
+    # iterating: iterating a JAX array sharded on axis 0 triggers an
+    # ``unstack`` that fails on the sharding axis when the CI runner exposes
+    # multiple devices.
+    image_bank_host: np.ndarray[Any, Any] = np.asarray(image_bank)
+    montage = np.concatenate(list(image_bank_host), axis=1)
     rows: list[dict[str, float]] = _angle_rows(
         phi_values,
         intensities,
@@ -264,6 +304,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     )
     metrics: dict[str, Any] = {
         "n_angles": n_angles,
+        "zone_axis": list(_zone_axis(args)),
         "image_shape": [image_size, image_size],
         "mean_integrated_intensity": float(jnp.mean(intensities)),
         "max_integrated_intensity": float(jnp.max(intensities)),

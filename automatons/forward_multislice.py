@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.9"]
+# dependencies = ["rheedium==2026.6.10"]
 # ///
 """Simulate one transmission multislice RHEED detector image.
 
@@ -72,15 +72,15 @@ def _pattern_metrics(pattern: RHEEDPattern) -> dict[str, float | int]:
     }
 
 
-def _orientation(args: Any) -> tuple[int, int, int]:
+def _zone_axis(args: Any) -> tuple[int, int, int]:
     """Return the requested surface orientation as Miller indices."""
     orientation = (
-        int(args.orientation_h),
-        int(args.orientation_k),
-        int(args.orientation_l),
+        int(args.zone_h),
+        int(args.zone_k),
+        int(args.zone_l),
     )
     if orientation == (0, 0, 0):
-        raise ValueError("surface orientation cannot be [0, 0, 0]")
+        raise ValueError("zone axis cannot be [0, 0, 0]")
     return orientation
 
 
@@ -93,7 +93,7 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
     crystal = rh.inout.parse_crystal(args.crystal)
     return rh.ucell.bulk_to_slice(
         bulk_crystal=crystal,
-        orientation=jnp.asarray(_orientation(args), dtype=jnp.int32),
+        orientation=jnp.asarray(_zone_axis(args), dtype=jnp.int32),
         depth=args.depth_ang,
         x_extent=args.x_extent_ang,
         y_extent=args.y_extent_ang,
@@ -138,26 +138,26 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             example=0.0,
         ),
         Param(
-            "orientation_h",
+            "zone_h",
             int,
             default=0,
-            help="Surface-orientation Miller h index.",
+            help="Surface zone-axis Miller h index (always applied).",
             bounds=(-8.0, 8.0),
             example=0,
         ),
         Param(
-            "orientation_k",
+            "zone_k",
             int,
             default=0,
-            help="Surface-orientation Miller k index.",
+            help="Surface zone-axis Miller k index (always applied).",
             bounds=(-8.0, 8.0),
             example=0,
         ),
         Param(
-            "orientation_l",
+            "zone_l",
             int,
             default=1,
-            help="Surface-orientation Miller l index.",
+            help="Surface zone-axis Miller l index (always applied).",
             bounds=(-8.0, 8.0),
             example=1,
         ),
@@ -309,7 +309,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         beam_center_px=(image_size / 2.0, max(1.0, image_size * 0.08)),
         psf_sigma_pixels=0.0,
     )
-    image = rh.simul.render_pattern_to_image(
+    image = rh.simul.render_ctr_streaks_to_image(
         pattern,
         geometry,
         spot_sigma_px=args.spot_sigma_px,
@@ -335,6 +335,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     metrics: dict[str, Any] = {
         "image_shape": [image_size, image_size],
         "potential_shape": list(potential.slices.shape),
+        "zone_axis": list(_zone_axis(args)),
         **_pattern_metrics(pattern),
         **_image_metrics(image),
     }

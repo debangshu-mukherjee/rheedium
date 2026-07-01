@@ -10,6 +10,7 @@ from typing import Any
 import chex
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from absl.testing import parameterized
 from jaxtyping import Array, Bool, Float, Integer
 from numpy.typing import NDArray
@@ -22,6 +23,8 @@ from rheedium.types.custom_types import scalar_float
 from rheedium.types.rheed_types import SlicedCrystal
 from rheedium.ucell.helper import compute_lengths_angles
 from rheedium.ucell.unitcell import (
+    _det3_int,
+    _surface_cell_transform,
     atom_scraper,
     build_cell_vectors,
     bulk_to_slice,
@@ -30,6 +33,7 @@ from rheedium.ucell.unitcell import (
     miller_to_reciprocal,
     reciprocal_lattice_vectors,
     reciprocal_unitcell,
+    reorient_to_zone_axis,
 )
 
 
@@ -3086,6 +3090,286 @@ class TestGenerateReciprocalPoints(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_shape(g_vecs, (expected_count, 3))
         chex.assert_tree_all_finite(g_vecs)
+
+
+def _make_crystal(
+    lengths: tuple[float, float, float],
+    angles: tuple[float, float, float],
+    frac_xyz: NDArray,
+    z_nums: NDArray,
+) -> CrystalStructure:
+    """Build a CrystalStructure with Cartesian positions from fractions."""
+    cell_vectors: NDArray = np.asarray(build_cell_vectors(*lengths, *angles))
+    cart_xyz: NDArray = frac_xyz @ cell_vectors
+    frac_pos: Float[Array, "atoms four"] = jnp.array(
+        np.hstack([frac_xyz, z_nums[:, None]])
+    )
+    cart_pos: Float[Array, "atoms four"] = jnp.array(
+        np.hstack([cart_xyz, z_nums[:, None]])
+    )
+    return create_crystal_structure(
+        frac_positions=frac_pos,
+        cart_positions=cart_pos,
+        cell_lengths=jnp.array(lengths),
+        cell_angles=jnp.array(angles),
+    )
+
+
+def _cstar_dot_normal(
+    crystal: CrystalStructure,
+    h: int,
+    k: int,
+    l: int,  # noqa: E741
+) -> float:
+    """Absolute cosine between surface-cell c* and the (hkl) normal."""
+    lengths: list[float] = [float(x) for x in crystal.cell_lengths]
+    angles: list[float] = [float(x) for x in crystal.cell_angles]
+    cell_vectors: NDArray = np.asarray(build_cell_vectors(*lengths, *angles))
+    transform: NDArray = np.asarray(
+        _surface_cell_transform(h, k, l, jnp.asarray(cell_vectors)),
+        dtype=float,
+    )
+    new_vectors: NDArray = transform @ cell_vectors
+    cstar: NDArray = np.cross(new_vectors[0], new_vectors[1])
+    cstar = cstar / np.linalg.norm(cstar)
+    recip: NDArray = np.asarray(reciprocal_lattice_vectors(*lengths, *angles))
+    normal: NDArray = h * recip[0] + k * recip[1] + l * recip[2]
+    normal = normal / np.linalg.norm(normal)
+    return abs(float(np.dot(cstar, normal)))
+
+
+class TestReorientToZoneAxis(chex.TestCase, parameterized.TestCase):
+    """Tests for reorient_to_zone_axis surface-cell construction.
+
+    :see: :func:`~rheedium.ucell.reorient_to_zone_axis`
+    """
+
+    def _cubic(self) -> CrystalStructure:
+        frac_xyz: NDArray = np.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
+        z_nums: NDArray = np.array([12.0, 8.0])
+        return _make_crystal(
+            (4.0, 4.0, 4.0), (90.0, 90.0, 90.0), frac_xyz, z_nums
+        )
+
+    def test_zone_axis_zero_raises(self) -> None:
+        """A [0, 0, 0] zone axis is rejected.
+
+        Extended Summary
+        ----------------
+        Verifies that a degenerate zone axis with no direction is refused
+        rather than producing an ill-defined surface cell.
+
+        Notes
+        -----
+        It calls the reorientation with ``[0, 0, 0]`` inside an assertion
+        context and expects a ``ValueError``.
+        """
+        with pytest.raises(ValueError, match="zone_axis"):
+            reorient_to_zone_axis(self._cubic(), jnp.array([0, 0, 0]))
+
+    def test_identity_for_001(self) -> None:
+        """[001] on a c-normal cell leaves cell and atoms unchanged.
+
+        Extended Summary
+        ----------------
+        Verifies the identity guarantee: when the requested surface is already
+        the c-normal plane, the cell parameters and atom positions round-trip
+        unchanged.
+
+        Notes
+        -----
+        It reorients a cubic crystal to ``[0, 0, 1]`` and compares cell
+        lengths, cell angles, and sorted Cartesian positions with tolerance.
+        """
+        crystal: CrystalStructure = self._cubic()
+        reoriented: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([0, 0, 1])
+        )
+        np.testing.assert_allclose(
+            np.asarray(reoriented.cell_lengths),
+            np.asarray(crystal.cell_lengths),
+            atol=1e-5,
+        )
+        np.testing.assert_allclose(
+            np.asarray(reoriented.cell_angles),
+            np.asarray(crystal.cell_angles),
+            atol=1e-5,
+        )
+        assert reoriented.cart_positions.shape == crystal.cart_positions.shape
+        np.testing.assert_allclose(
+            np.sort(np.asarray(reoriented.cart_positions), axis=0),
+            np.sort(np.asarray(crystal.cart_positions), axis=0),
+            atol=1e-5,
+        )
+
+    def test_common_factor_reduced(self) -> None:
+        """[002] behaves identically to [001].
+
+        Extended Summary
+        ----------------
+        Verifies that Miller indices sharing a common factor are reduced, so a
+        non-primitive index triple selects the same surface as its reduced
+        form.
+
+        Notes
+        -----
+        It reorients the same crystal to ``[0, 0, 1]`` and ``[0, 0, 2]`` and
+        compares cell lengths and sorted Cartesian positions.
+        """
+        crystal: CrystalStructure = self._cubic()
+        one: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([0, 0, 1])
+        )
+        two: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([0, 0, 2])
+        )
+        np.testing.assert_allclose(
+            np.asarray(one.cell_lengths),
+            np.asarray(two.cell_lengths),
+            atol=1e-5,
+        )
+        np.testing.assert_allclose(
+            np.sort(np.asarray(one.cart_positions), axis=0),
+            np.sort(np.asarray(two.cart_positions), axis=0),
+            atol=1e-5,
+        )
+
+    @parameterized.parameters(
+        {"hkl": (0, 0, 1)},
+        {"hkl": (1, 0, 0)},
+        {"hkl": (1, 1, 0)},
+        {"hkl": (1, 1, 1)},
+        {"hkl": (2, 1, 0)},
+        {"hkl": (1, 0, 2)},
+    )
+    def test_cstar_parallel_to_normal_cubic(
+        self, hkl: tuple[int, int, int]
+    ) -> None:
+        """Surface-cell c* is parallel to the (hkl) plane normal (cubic).
+
+        Extended Summary
+        ----------------
+        Verifies the core geometric contract: the transformed cell's reciprocal
+        c-axis aligns with the requested plane normal, so the forward models
+        see ``[hkl]`` as the surface normal.
+
+        Notes
+        -----
+        It computes the absolute cosine between the surface-cell c* and the
+        ``(hkl)`` normal for a cubic crystal and expects unity.
+        """
+        self.assertAlmostEqual(
+            _cstar_dot_normal(self._cubic(), *hkl), 1.0, places=4
+        )
+
+    @parameterized.parameters(
+        {"lengths": (3.2, 3.2, 5.1), "angles": (90.0, 90.0, 120.0)},
+        {"lengths": (4.0, 5.0, 6.0), "angles": (90.0, 105.0, 90.0)},
+        {"lengths": (4.0, 5.0, 6.0), "angles": (80.0, 95.0, 110.0)},
+    )
+    def test_cstar_parallel_to_normal_general(
+        self,
+        lengths: tuple[float, float, float],
+        angles: tuple[float, float, float],
+    ) -> None:
+        """c* stays parallel to the normal for non-orthogonal cells.
+
+        Extended Summary
+        ----------------
+        Verifies the geometric contract holds for hexagonal, monoclinic, and
+        triclinic cells, where the direct and reciprocal bases differ, and that
+        the resulting cell angles remain physical.
+
+        Notes
+        -----
+        It reorients a multi-atom crystal across several ``(hkl)`` values,
+        asserts each output angle lies in ``(0, 180)``, and checks the
+        c*-to-normal cosine equals unity.
+        """
+        frac_xyz: NDArray = np.array(
+            [[0.0, 0.0, 0.0], [0.33, 0.66, 0.5], [0.66, 0.33, 0.25]]
+        )
+        z_nums: NDArray = np.array([14.0, 8.0, 8.0])
+        crystal: CrystalStructure = _make_crystal(
+            lengths, angles, frac_xyz, z_nums
+        )
+        for hkl in [(0, 0, 1), (1, 0, 0), (1, 1, 0), (1, 0, 2), (1, 1, 1)]:
+            reoriented: CrystalStructure = reorient_to_zone_axis(
+                crystal, jnp.array(hkl)
+            )
+            angles_out: NDArray = np.asarray(reoriented.cell_angles)
+            assert np.all((angles_out > 0.0) & (angles_out < 180.0))
+            self.assertAlmostEqual(
+                _cstar_dot_normal(crystal, *hkl), 1.0, places=4
+            )
+
+    def test_atom_count_matches_determinant(self) -> None:
+        """Reoriented atom count equals |det M| times the original count.
+
+        Extended Summary
+        ----------------
+        Verifies that the surface cell is filled with the correct number of
+        atoms: the transform determinant sets how many primitive cells the new
+        cell spans, and the basis is replicated to match.
+
+        Notes
+        -----
+        It compares the reoriented atom count against ``|det M|`` times the
+        original count for several ``(hkl)`` values on a cubic crystal.
+        """
+        crystal: CrystalStructure = self._cubic()
+        n_original: int = crystal.frac_positions.shape[0]
+        cell_vectors = build_cell_vectors(4.0, 4.0, 4.0, 90.0, 90.0, 90.0)
+        for hkl in [(0, 0, 1), (1, 1, 0), (1, 1, 1), (2, 1, 0)]:
+            transform = _surface_cell_transform(*hkl, cell_vectors)
+            det: int = abs(_det3_int(transform))
+            reoriented: CrystalStructure = reorient_to_zone_axis(
+                crystal, jnp.array(hkl)
+            )
+            assert reoriented.frac_positions.shape[0] == det * n_original
+
+    def test_fractional_coordinates_wrapped(self) -> None:
+        """All returned fractional coordinates lie in [0, 1).
+
+        Extended Summary
+        ----------------
+        Verifies that atoms filling the surface cell are wrapped into the
+        primitive fractional range, so no duplicate or out-of-cell positions
+        leak into the returned structure.
+
+        Notes
+        -----
+        It reorients a cubic crystal to ``[1, 1, 1]`` and asserts every
+        fractional coordinate is within ``[0, 1)`` up to tolerance.
+        """
+        crystal: CrystalStructure = self._cubic()
+        reoriented: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([1, 1, 1])
+        )
+        frac_xyz: NDArray = np.asarray(reoriented.frac_positions[:, :3])
+        assert np.all(frac_xyz >= -1e-6)
+        assert np.all(frac_xyz < 1.0)
+
+    def test_atomic_numbers_preserved(self) -> None:
+        """The multiset of atomic numbers is preserved under reorientation.
+
+        Extended Summary
+        ----------------
+        Verifies that reorientation is composition-preserving: it relabels
+        coordinates but never adds, drops, or mutates atomic species.
+
+        Notes
+        -----
+        It reorients a cubic crystal to ``[1, 1, 0]`` and compares the sorted
+        atomic-number columns of the input and output structures.
+        """
+        crystal: CrystalStructure = self._cubic()
+        reoriented: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([1, 1, 0])
+        )
+        original: NDArray = np.sort(np.asarray(crystal.frac_positions[:, 3]))
+        result: NDArray = np.sort(np.asarray(reoriented.frac_positions[:, 3]))
+        np.testing.assert_array_equal(original, result)
 
 
 if __name__ == "__main__":

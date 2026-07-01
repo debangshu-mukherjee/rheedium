@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.9"]
+# dependencies = ["rheedium==2026.6.10"]
 # ///
 """Simulate one kinematic RHEED detector image from a structure file.
 
@@ -58,13 +58,29 @@ def _image_metrics(image: Float[Array, "height width"]) -> dict[str, float]:
     }
 
 
-def _load_crystal(path: str, *, smoke: bool) -> CrystalStructure:
-    """Load a user crystal or generate the smoke fixture."""
-    if smoke and not path:
-        return _smoke_crystal()
-    if not path:
+def _zone_axis(args: Any) -> tuple[int, int, int]:
+    """Return the requested surface zone axis as Miller indices."""
+    zone: tuple[int, int, int] = (
+        int(args.zone_h),
+        int(args.zone_k),
+        int(args.zone_l),
+    )
+    if zone == (0, 0, 0):
+        raise ValueError("zone axis cannot be [0, 0, 0]")
+    return zone
+
+
+def _load_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
+    """Load a user crystal (or smoke fixture) reoriented to the zone axis."""
+    if smoke and not args.crystal:
+        crystal: CrystalStructure = _smoke_crystal()
+    elif not args.crystal:
         raise ValueError("crystal is required unless --smoke is set")
-    return rh.inout.parse_crystal(path)
+    else:
+        crystal = rh.inout.parse_crystal(args.crystal)
+    return rh.ucell.reorient_to_zone_axis(
+        crystal, jnp.asarray(_zone_axis(args), dtype=jnp.int32)
+    )
 
 
 @experiment(
@@ -103,6 +119,30 @@ def _load_crystal(path: str, *, smoke: bool) -> CrystalStructure:
             unit="deg",
             bounds=(-180.0, 180.0),
             example=0.0,
+        ),
+        Param(
+            "zone_h",
+            int,
+            default=0,
+            help="Surface zone-axis Miller h index.",
+            bounds=(-8.0, 8.0),
+            example=0,
+        ),
+        Param(
+            "zone_k",
+            int,
+            default=0,
+            help="Surface zone-axis Miller k index.",
+            bounds=(-8.0, 8.0),
+            example=0,
+        ),
+        Param(
+            "zone_l",
+            int,
+            default=1,
+            help="Surface zone-axis Miller l index.",
+            bounds=(-8.0, 8.0),
+            example=1,
         ),
         Param(
             "hmax",
@@ -158,7 +198,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         min(args.image_size, 48) if args.smoke else args.image_size
     )
 
-    crystal: CrystalStructure = _load_crystal(args.crystal, smoke=args.smoke)
+    crystal: CrystalStructure = _load_crystal(args, smoke=args.smoke)
     pattern = rh.simul.ewald_simulator(
         crystal,
         energy_kev=args.energy_kev,
@@ -174,7 +214,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         beam_center_px=(image_size / 2.0, max(1.0, image_size * 0.08)),
         psf_sigma_pixels=0.0,
     )
-    image = rh.simul.render_pattern_to_image(
+    image = rh.simul.render_ctr_streaks_to_image(
         pattern,
         geometry,
         spot_sigma_px=args.spot_sigma_px,
@@ -199,6 +239,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     metrics: dict[str, Any] = {
         "n_reflections": int(pattern.intensities.shape[0]),
         "image_shape": [image_size, image_size],
+        "zone_axis": list(_zone_axis(args)),
         **_image_metrics(image),
     }
     ctx.save_json("metrics.json", metrics, role="metrics")

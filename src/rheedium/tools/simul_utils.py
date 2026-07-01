@@ -36,7 +36,6 @@ from rheedium.types import (
     PLANCK_CONSTANT_JS,
     RELATIVISTIC_COEFF_PER_V,
     SPEED_OF_LIGHT_MS,
-    scalar_float,
     scalar_num,
 )
 
@@ -116,8 +115,8 @@ def wavelength_ang(
 
 @jaxtyped(typechecker=beartype)
 def incidence_angles_to_radians(
-    theta_deg: scalar_float,
-    phi_deg: scalar_float = 0.0,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num = 0.0,
 ) -> tuple[Float[Array, ""], Float[Array, ""]]:
     """Convert public grazing/azimuth degrees to internal radian angles.
 
@@ -125,9 +124,9 @@ def incidence_angles_to_radians(
 
     Parameters
     ----------
-    theta_deg : scalar_float
+    theta_deg : scalar_num
         Public grazing angle in degrees.
-    phi_deg : scalar_float, optional
+    phi_deg : scalar_num, optional
         Public azimuthal angle in degrees. Default: 0.0
 
     Returns
@@ -154,9 +153,9 @@ def incidence_angles_to_radians(
 
 @jaxtyped(typechecker=beartype)
 def incident_wavevector(
-    lam_ang: scalar_float,
-    theta_deg: scalar_float,
-    phi_deg: scalar_float = 0.0,
+    lam_ang: scalar_num,
+    theta_deg: scalar_num,
+    phi_deg: scalar_num = 0.0,
 ) -> Float[Array, "3"]:
     r"""Calculate the incident electron wavevector for RHEED geometry.
 
@@ -164,11 +163,11 @@ def incident_wavevector(
 
     Parameters
     ----------
-    lam_ang : scalar_float
+    lam_ang : scalar_num
         Electron wavelength in angstroms.
-    theta_deg : scalar_float
+    theta_deg : scalar_num
         Grazing angle of incidence in degrees (angle from surface).
-    phi_deg : scalar_float, optional
+    phi_deg : scalar_num, optional
         Azimuthal angle in degrees (in-plane rotation).
         phi=0: beam along +x axis (default, gives horizontal streaks)
         phi=90: beam along +y axis (gives vertical streaks)
@@ -215,8 +214,8 @@ def incident_wavevector(
 
 @jaxtyped(typechecker=beartype)
 def interaction_constant(
-    energy_kev: scalar_float,
-    wavelength_ang: scalar_float,
+    energy_kev: scalar_num,
+    wavelength_ang: scalar_num,
 ) -> Float[Array, ""]:
     r"""Relativistic electron interaction constant σ in 1/(V·Å).
 
@@ -242,9 +241,9 @@ def interaction_constant(
 
     Parameters
     ----------
-    energy_kev : scalar_float
+    energy_kev : scalar_num
         Accelerating voltage in kilovolts.
-    wavelength_ang : scalar_float
+    wavelength_ang : scalar_num
         Relativistic electron wavelength in angstroms.
 
     Returns

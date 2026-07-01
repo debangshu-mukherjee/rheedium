@@ -38,9 +38,12 @@ Notes
 All functions are JAX-compatible and support automatic differentiation.
 """
 
+import math
+
 import jax.numpy as jnp
+import numpy as np
 from beartype import beartype
-from beartype.typing import Tuple
+from beartype.typing import List, Tuple
 from jax import lax
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
@@ -52,17 +55,18 @@ from rheedium.types import (
     scalar_bool,
     scalar_float,
     scalar_int,
+    scalar_num,
 )
 
 
 @jaxtyped(typechecker=beartype)
 def reciprocal_unitcell(
-    a: scalar_float,
-    b: scalar_float,
-    c: scalar_float,
-    alpha: scalar_float,
-    beta: scalar_float,
-    gamma: scalar_float,
+    a: scalar_num,
+    b: scalar_num,
+    c: scalar_num,
+    alpha: scalar_num,
+    beta: scalar_num,
+    gamma: scalar_num,
     in_degrees: scalar_bool = True,
     out_degrees: scalar_bool = True,
 ) -> Tuple[Float[Array, "3"], Float[Array, "3"]]:
@@ -76,17 +80,17 @@ def reciprocal_unitcell(
 
     Parameters
     ----------
-    a : scalar_float
+    a : scalar_num
         Direct cell length a in Angstroms
-    b : scalar_float
+    b : scalar_num
         Direct cell length b in Angstroms
-    c : scalar_float
+    c : scalar_num
         Direct cell length c in Angstroms
-    alpha : scalar_float
+    alpha : scalar_num
         Direct cell angle α (between b and c axes)
-    beta : scalar_float
+    beta : scalar_num
         Direct cell angle β (between a and c axes)
-    gamma : scalar_float
+    gamma : scalar_num
         Direct cell angle γ (between a and b axes)
     in_degrees : bool
         If True, input angles are in degrees. Default: True
@@ -184,12 +188,12 @@ def reciprocal_unitcell(
 
 @jaxtyped(typechecker=beartype)
 def get_unit_cell_matrix(
-    a: scalar_float,
-    b: scalar_float,
-    c: scalar_float,
-    alpha: scalar_float,
-    beta: scalar_float,
-    gamma: scalar_float,
+    a: scalar_num,
+    b: scalar_num,
+    c: scalar_num,
+    alpha: scalar_num,
+    beta: scalar_num,
+    gamma: scalar_num,
 ) -> Float[Array, "3 3"]:
     r"""Build transformation matrix between direct and reciprocal space.
 
@@ -197,9 +201,9 @@ def get_unit_cell_matrix(
 
     Parameters
     ----------
-    a, b, c : scalar_float
+    a, b, c : scalar_num
         Direct cell lengths in angstroms.
-    alpha, beta, gamma : scalar_float
+    alpha, beta, gamma : scalar_num
         Direct cell angles in degrees.
 
     Returns
@@ -275,12 +279,12 @@ def get_unit_cell_matrix(
 
 @jaxtyped(typechecker=beartype)
 def build_cell_vectors(
-    a: scalar_float,
-    b: scalar_float,
-    c: scalar_float,
-    alpha: scalar_float,
-    beta: scalar_float,
-    gamma: scalar_float,
+    a: scalar_num,
+    b: scalar_num,
+    c: scalar_num,
+    alpha: scalar_num,
+    beta: scalar_num,
+    gamma: scalar_num,
 ) -> Float[Array, "3 3"]:
     r"""Construct unit cell vectors from lengths and angles.
 
@@ -288,9 +292,9 @@ def build_cell_vectors(
 
     Parameters
     ----------
-    a, b, c : scalar_float
+    a, b, c : scalar_num
         Direct cell lengths in angstroms.
-    alpha, beta, gamma : scalar_float
+    alpha, beta, gamma : scalar_num
         Direct cell angles in degrees.
 
     Returns
@@ -728,12 +732,12 @@ def atom_scraper(
 
 @jaxtyped(typechecker=beartype)
 def reciprocal_lattice_vectors(
-    a: scalar_float,
-    b: scalar_float,
-    c: scalar_float,
-    alpha: scalar_float,
-    beta: scalar_float,
-    gamma: scalar_float,
+    a: scalar_num,
+    b: scalar_num,
+    c: scalar_num,
+    alpha: scalar_num,
+    beta: scalar_num,
+    gamma: scalar_num,
     in_degrees: scalar_bool = True,
 ) -> Float[Array, "3 3"]:
     """Generate reciprocal lattice basis vectors b₁, b₂, b₃.
@@ -748,17 +752,17 @@ def reciprocal_lattice_vectors(
 
     Parameters
     ----------
-    a : scalar_float
+    a : scalar_num
         Direct cell length a in Angstroms
-    b : scalar_float
+    b : scalar_num
         Direct cell length b in Angstroms
-    c : scalar_float
+    c : scalar_num
         Direct cell length c in Angstroms
-    alpha : scalar_float
+    alpha : scalar_num
         Direct cell angle α (between b and c axes)
-    beta : scalar_float
+    beta : scalar_num
         Direct cell angle β (between a and c axes)
-    gamma : scalar_float
+    gamma : scalar_num
         Direct cell angle γ (between a and b axes)
     in_degrees : bool
         If True, input angles are in degrees. Default: True
@@ -911,6 +915,247 @@ def miller_to_reciprocal(
     )
 
     return g_vectors
+
+
+def _ext_gcd(a: int, b: int) -> Tuple[int, int]:
+    """Return integers ``(x, y)`` with ``a*x + b*y = gcd(a, b)``."""
+    if b == 0:
+        return (1, 0)
+    if a % b == 0:
+        return (0, 1)
+    x, y = _ext_gcd(b, a % b)
+    return (y, x - y * (a // b))
+
+
+def _det3_int(rows: List[List[int]]) -> int:
+    """Exact integer determinant of a 3x3 matrix given as row lists."""
+    (a, b, c), (d, e, f), (g, h, i) = rows
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+
+def _surface_cell_transform(
+    h: int,
+    k: int,
+    l: int,  # noqa: E741
+    cell_vectors: Float[Array, "3 3"],
+) -> List[List[int]]:
+    """Integer transform mapping the bulk lattice to an (hkl) surface cell.
+
+    Returns integer coefficient rows ``[c1, c2, c3]`` (combinations of the
+    direct lattice vectors) where ``c1, c2`` span the (hkl) plane and ``c3``
+    is out of plane, so the third reciprocal axis of the transformed cell is
+    parallel to the (hkl) plane normal. Mirrors the construction used by
+    ``ase.build.surface``. The returned matrix has positive determinant
+    (right-handed).
+    """
+    zero: Tuple[bool, bool, bool] = (h == 0, k == 0, l == 0)
+    if sum(zero) >= 2:
+        if not zero[0]:
+            rows: List[List[int]] = [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+        elif not zero[1]:
+            rows = [[0, 0, 1], [1, 0, 0], [0, 1, 0]]
+        else:
+            rows = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    else:
+        p, q = _ext_gcd(k, l)
+        a1: Float[Array, "3"] = cell_vectors[0]
+        a2: Float[Array, "3"] = cell_vectors[1]
+        a3: Float[Array, "3"] = cell_vectors[2]
+        plane_vec: Float[Array, "3"] = l * a2 - k * a3
+        k1: float = float(
+            jnp.dot(p * (k * a1 - h * a2) + q * (l * a1 - h * a3), plane_vec)
+        )
+        k2: float = float(
+            jnp.dot(l * (k * a1 - h * a2) - k * (l * a1 - h * a3), plane_vec)
+        )
+        if abs(k2) > 1e-10:
+            shift: int = -int(round(k1 / k2))
+            p, q = p + shift * l, q - shift * k
+        a_coef, b_coef = _ext_gcd(p * k + q * l, h)
+        gcd_lk: int = math.gcd(l, k)
+        rows = [
+            [p * k + q * l, -p * h, -q * h],
+            [0, l // gcd_lk, -k // gcd_lk],
+            [b_coef, a_coef * p, a_coef * q],
+        ]
+    if _det3_int(rows) < 0:
+        rows = [rows[0], rows[1], [-value for value in rows[2]]]
+    return rows
+
+
+@jaxtyped(typechecker=beartype)
+def reorient_to_zone_axis(
+    crystal: CrystalStructure,
+    zone_axis: Int[Array, "3"],
+) -> CrystalStructure:
+    """Re-express a crystal in a surface unit cell for a given zone axis.
+
+    Builds a new unit cell whose ``a`` and ``b`` axes span the ``(hkl)`` plane
+    and whose ``c`` axis is out of plane, so the reoriented cell's reciprocal
+    ``c*`` is parallel to the ``(hkl)`` surface normal. The atom basis is
+    rebuilt to fill the (generally larger) surface cell. This is the correct
+    reorientation for the kinematic and reflection forward models
+    (``ewald_simulator`` and ``reflection_multislice_simulator``), which take
+    the crystallographic ``c`` axis as the surface normal and rebuild their
+    geometry from ``cell_lengths``/``cell_angles`` — a plain rotation of the
+    atoms would leave those parameters, and thus the pattern, unchanged.
+
+    :see: :class:`~.test_unitcell.TestReorientToZoneAxis`
+
+    Parameters
+    ----------
+    crystal : CrystalStructure
+        Bulk crystal structure from a CIF/XYZ/POSCAR file or other source.
+    zone_axis : Int[Array, "3"]
+        Miller indices ``[h, k, l]`` of the desired surface. ``[0, 0, 1]``
+        leaves a c-normal cell unchanged. Common integer multiples are reduced
+        (``[0, 0, 2]`` behaves as ``[0, 0, 1]``). ``[0, 0, 0]`` is rejected.
+
+    Returns
+    -------
+    reoriented : CrystalStructure
+        Crystal expressed in the surface unit cell, with ``c*`` parallel to the
+        ``(hkl)`` normal and the atom basis filling the new cell.
+
+    Notes
+    -----
+    1. **Reduce indices** --
+       Divide ``[h, k, l]`` by their greatest common divisor.
+    2. **Surface transform** --
+       Build the integer transform ``M`` (rows are lattice-vector coefficients)
+       whose first two rows lie in the ``(hkl)`` plane, via
+       :func:`_surface_cell_transform`.
+    3. **New cell** --
+       ``new_vectors = M @ cell_vectors``; recover ``cell_lengths`` and
+       ``cell_angles`` with :func:`compute_lengths_angles` and rebuild the
+       canonical frame with :func:`build_cell_vectors`.
+    4. **Fill basis** --
+       Replicate each original atom over integer lattice translations and keep
+       those whose new fractional coordinates lie in ``[0, 1)``. The kept count
+       equals ``|det M|`` times the original atom count.
+    5. **Assemble** --
+       Convert kept fractional coordinates to Cartesian in the canonical frame
+       and construct a validated :class:`CrystalStructure`.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import rheedium as rh
+    >>>
+    >>> bulk = rh.inout.parse_crystal("SrTiO3.cif")
+    >>> surf = rh.ucell.reorient_to_zone_axis(bulk, jnp.array([1, 1, 1]))
+
+    See Also
+    --------
+    bulk_to_slice : Build a finite surface slab (used by the multislice model).
+    reciprocal_lattice_vectors : Reciprocal basis used by the forward models.
+    """
+    h_i: int = int(zone_axis[0])
+    k_i: int = int(zone_axis[1])
+    l_i: int = int(zone_axis[2])
+    if h_i == 0 and k_i == 0 and l_i == 0:
+        raise ValueError("zone_axis cannot be [0, 0, 0]")
+    common: int = math.gcd(math.gcd(abs(h_i), abs(k_i)), abs(l_i))
+    h_i, k_i, l_i = h_i // common, k_i // common, l_i // common
+
+    cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        float(crystal.cell_lengths[0]),
+        float(crystal.cell_lengths[1]),
+        float(crystal.cell_lengths[2]),
+        float(crystal.cell_angles[0]),
+        float(crystal.cell_angles[1]),
+        float(crystal.cell_angles[2]),
+    )
+
+    transform_rows: List[List[int]] = _surface_cell_transform(
+        h_i, k_i, l_i, cell_vectors
+    )
+    transform: Float[Array, "3 3"] = jnp.asarray(
+        transform_rows, dtype=jnp.float64
+    )
+
+    new_vectors: Float[Array, "3 3"] = transform @ cell_vectors
+    new_lengths: Float[Array, "3"]
+    new_angles: Float[Array, "3"]
+    new_lengths, new_angles = compute_lengths_angles(new_vectors)
+    canonical_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        new_lengths[0],
+        new_lengths[1],
+        new_lengths[2],
+        new_angles[0],
+        new_angles[1],
+        new_angles[2],
+    )
+
+    transform_int: np.ndarray = np.asarray(transform_rows, dtype=np.int64)
+    inv_transform: np.ndarray = np.linalg.inv(transform_int.astype(np.float64))
+    old_frac: np.ndarray = np.asarray(
+        crystal.frac_positions[:, :3], dtype=np.float64
+    )
+    atomic_numbers: np.ndarray = np.asarray(crystal.frac_positions[:, 3])
+
+    selectors: np.ndarray = np.array(
+        [[s0, s1, s2] for s0 in (0, 1) for s1 in (0, 1) for s2 in (0, 1)],
+        dtype=np.int64,
+    )
+    corners: np.ndarray = selectors @ transform_int
+    lo: np.ndarray = corners.min(axis=0) - 1
+    hi: np.ndarray = corners.max(axis=0) + 1
+    translations: np.ndarray = np.array(
+        [
+            [n0, n1, n2]
+            for n0 in range(int(lo[0]), int(hi[0]) + 1)
+            for n1 in range(int(lo[1]), int(hi[1]) + 1)
+            for n2 in range(int(lo[2]), int(hi[2]) + 1)
+        ],
+        dtype=np.float64,
+    )
+
+    tol: float = 1e-6
+    kept_frac: List[List[float]] = []
+    kept_z: List[float] = []
+    seen: set = set()
+    for atom_idx in range(old_frac.shape[0]):
+        candidates: np.ndarray = old_frac[atom_idx][None, :] + translations
+        new_frac: np.ndarray = candidates @ inv_transform
+        inside: np.ndarray = np.all(
+            (new_frac >= -tol) & (new_frac < 1.0 - tol), axis=1
+        )
+        z_val: float = float(atomic_numbers[atom_idx])
+        for row in new_frac[inside]:
+            wrapped: np.ndarray = np.mod(row, 1.0)
+            key: Tuple[float, float, float, int] = (
+                round(float(wrapped[0]), 4),
+                round(float(wrapped[1]), 4),
+                round(float(wrapped[2]), 4),
+                int(round(z_val)),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            kept_frac.append(
+                [float(wrapped[0]), float(wrapped[1]), float(wrapped[2])]
+            )
+            kept_z.append(z_val)
+
+    frac_xyz: Float[Array, "M 3"] = jnp.asarray(kept_frac, dtype=jnp.float64)
+    z_col: Float[Array, "M 1"] = jnp.asarray(kept_z, dtype=jnp.float64)[
+        :, None
+    ]
+    cart_xyz: Float[Array, "M 3"] = frac_xyz @ canonical_vectors
+
+    new_frac_positions: Float[Array, "M 4"] = jnp.concatenate(
+        [frac_xyz, z_col], axis=1
+    )
+    new_cart_positions: Float[Array, "M 4"] = jnp.concatenate(
+        [cart_xyz, z_col], axis=1
+    )
+    return create_crystal_structure(
+        frac_positions=new_frac_positions,
+        cart_positions=new_cart_positions,
+        cell_lengths=new_lengths,
+        cell_angles=new_angles,
+    )
 
 
 @jaxtyped(typechecker=beartype)

@@ -216,7 +216,7 @@ class TestNamingGuards(chex.TestCase):
         offenders: list[str] = []
         source_root: Path = _REPO_ROOT / "src" / "rheedium"
         for path in source_root.rglob("*.py"):
-            relative_path: str = str(path.relative_to(_REPO_ROOT))
+            relative_path: str = path.relative_to(_REPO_ROOT).as_posix()
             if relative_path.startswith("src/rheedium/types/"):
                 continue
             tree: ast.Module = ast.parse(path.read_text(encoding="utf-8"))
