@@ -15,8 +15,7 @@ Routine Listings
     Calculate reciprocal unit cell parameters from direct
     cell parameters.
 :func:`get_unit_cell_matrix`
-    Build transformation matrix between direct and
-    reciprocal space.
+    Build the fractional-coordinate to Cartesian-coordinate matrix.
 :func:`build_cell_vectors`
     Construct unit cell vectors from lengths and angles.
 :func:`compute_lengths_angles`
@@ -195,7 +194,7 @@ def get_unit_cell_matrix(
     beta: scalar_num,
     gamma: scalar_num,
 ) -> Float[Array, "3 3"]:
-    r"""Build transformation matrix between direct and reciprocal space.
+    r"""Build the fractional-coordinate to Cartesian-coordinate matrix.
 
     :see: :class:`~.test_unitcell.TestGetUnitCellMatrix`
 
@@ -209,7 +208,8 @@ def get_unit_cell_matrix(
     Returns
     -------
     Float[Array, "3 3"]
-        Transformation matrix from direct to reciprocal space.
+        Matrix with lattice vectors as columns. For a fractional coordinate
+        column vector ``f``, Cartesian coordinates are ``matrix @ f``.
 
     Notes
     -----
@@ -222,8 +222,9 @@ def get_unit_cell_matrix(
     3. **Matrix Assembly** --
        Populate the 3x3 transformation matrix with
        elements derived from lengths, angles, and the
-       volume factor. The matrix maps direct space
-       coordinates to Cartesian coordinates.
+       volume factor. The matrix stores lattice vectors
+       as columns and is equivalent to
+       ``build_cell_vectors(...).T``.
 
     Examples
     --------
@@ -241,10 +242,10 @@ def get_unit_cell_matrix(
     ... )
     >>> f"Transformation matrix:\n{matrix}"
     >>>
-    >>> # Transform a direct space vector to reciprocal space
-    >>> direct_vec = jnp.array([1.0, 0.0, 0.0])
-    >>> recip_vec = direct_vec @ matrix
-    >>> f"Reciprocal vector: {recip_vec}"
+    >>> # Transform a fractional column vector to Cartesian space
+    >>> frac_col = jnp.array([1.0, 0.0, 0.0])
+    >>> cart_col = matrix @ frac_col
+    >>> f"Cartesian vector: {cart_col}"
 
     See Also
     --------
@@ -548,7 +549,7 @@ def generate_reciprocal_points(
 def atom_scraper(
     crystal: CrystalStructure,
     zone_axis: Float[Array, "3"],
-    thickness: Float[Array, "3"],
+    thickness_ang: scalar_float,
 ) -> CrystalStructure:
     """Filter atoms within specified thickness along zone axis.
 
@@ -560,8 +561,9 @@ def atom_scraper(
         Crystal structure to filter.
     zone_axis : Float[Array, "3"]
         Zone axis direction.
-    thickness : Float[Array, "3"]
-        Thickness in each direction.
+    thickness_ang : scalar_float
+        Thickness in Angstroms measured along the normalized zone axis. A
+        value of zero selects the top layer using an adaptive tolerance.
 
     Returns
     -------
@@ -609,7 +611,7 @@ def atom_scraper(
     >>> filtered = atom_scraper(
     ...     crystal=crystal,
     ...     zone_axis=jnp.array([1.0, 1.0, 1.0]),
-    ...     thickness=jnp.array([12.0, 12.0, 12.0]),
+    ...     thickness_ang=12.0,
     ... )
     >>> f"Original atoms: {len(crystal.frac_positions)}"
     >>> f"Filtered atoms: {len(filtered.frac_positions)}"
@@ -637,18 +639,20 @@ def atom_scraper(
     d_max: Float[Array, ""] = jnp.max(dot_vals)
     dist_from_top: Float[Array, "n"] = d_max - dot_vals
     distance_cutoff: Float[Array, ""] = 1e-8
-    positive_distances: Float[Array, "m"] = dist_from_top[
-        dist_from_top > distance_cutoff
-    ]
+    min_positive_distance: Float[Array, ""] = jnp.min(
+        jnp.where(
+            dist_from_top > distance_cutoff,
+            dist_from_top,
+            jnp.inf,
+        )
+    )
     adaptive_eps: Float[Array, ""] = jnp.where(
-        positive_distances.size > 0,
-        jnp.maximum(1e-3, 2 * jnp.min(positive_distances)),
+        jnp.isfinite(min_positive_distance),
+        jnp.maximum(1e-3, 2 * min_positive_distance),
         1e-3,
     )
-    # Project thickness onto zone axis for scalar
-    # thickness along that direction
     thickness_along_axis: Float[Array, ""] = jnp.abs(
-        jnp.dot(thickness, zone_axis_hat)
+        jnp.asarray(thickness_ang, dtype=jnp.float64)
     )
     is_top_layer_mode: Bool[Array, ""] = jnp.isclose(
         thickness_along_axis, jnp.asarray(0.0), atol=1e-8
@@ -664,9 +668,6 @@ def atom_scraper(
     ) -> Float[Array, "m 4"]:
         return positions[gather_mask]
 
-    filtered_frac: Float[Array, "m 4"] = _gather_valid_positions(
-        crystal.frac_positions, mask
-    )
     filtered_cart: Float[Array, "m 4"] = _gather_valid_positions(
         crystal.cart_positions, mask
     )
@@ -721,9 +722,33 @@ def atom_scraper(
     new_lengths: Float[Array, "3"]
     new_angles: Float[Array, "3"]
     new_lengths, new_angles = compute_lengths_angles(scaled_vectors)
+    canonical_vectors: Float[Array, "3 3"] = build_cell_vectors(
+        new_lengths[0],
+        new_lengths[1],
+        new_lengths[2],
+        new_angles[0],
+        new_angles[1],
+        new_angles[2],
+    )
+    filtered_cart_xyz: Float[Array, "m 3"] = filtered_cart[:, :3]
+    kept_projections: Float[Array, "m"] = jnp.einsum(
+        "ij,j->i", filtered_cart_xyz, zone_axis_hat
+    )
+    slab_origin: Float[Array, "3"] = jnp.min(kept_projections) * zone_axis_hat
+    cart_shifted_xyz: Float[Array, "m 3"] = filtered_cart_xyz - slab_origin
+    frac_shifted_xyz: Float[Array, "m 3"] = cart_shifted_xyz @ jnp.linalg.inv(
+        canonical_vectors
+    )
+    atomic_numbers: Float[Array, "m"] = filtered_cart[:, 3]
+    filtered_frac: Float[Array, "m 4"] = jnp.column_stack(
+        [frac_shifted_xyz, atomic_numbers]
+    )
+    filtered_cart_canonical: Float[Array, "m 4"] = jnp.column_stack(
+        [cart_shifted_xyz, atomic_numbers]
+    )
     filtered_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=filtered_frac,
-        cart_positions=filtered_cart,
+        cart_positions=filtered_cart_canonical,
         cell_lengths=new_lengths,
         cell_angles=new_angles,
     )
@@ -1314,18 +1339,41 @@ def bulk_to_slice(  # noqa: PLR0915
 
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
 
-    box_corners: Float[Array, "8 3"] = jnp.array(
-        [
-            [0.0, 0.0, 0.0],
-            [x_extent, 0.0, 0.0],
-            [0.0, y_extent, 0.0],
-            [0.0, 0.0, depth],
-            [x_extent, y_extent, 0.0],
-            [x_extent, 0.0, depth],
-            [0.0, y_extent, depth],
-            [x_extent, y_extent, depth],
-        ],
-        dtype=jnp.float64,
+    positive_layer_z: Float[Array, ""] = jnp.min(
+        jnp.where(
+            rotated_positions[:, 2] > 1e-8, rotated_positions[:, 2], jnp.inf
+        )
+    )
+    aligned_z_phase: Float[Array, ""] = jnp.where(
+        jnp.isfinite(positive_layer_z), positive_layer_z, 0.0
+    )
+    z_phase: Float[Array, ""] = jnp.where(
+        rot_axis_norm < _rot_threshold,
+        aligned_z_phase,
+        0.0,
+    )
+    window_lower: Float[Array, "3"] = jnp.array(
+        [1e-8, 1e-8, z_phase], dtype=jnp.float64
+    )
+    window_upper: Float[Array, "3"] = window_lower + jnp.array(
+        [x_extent, y_extent, depth], dtype=jnp.float64
+    )
+
+    box_corners: Float[Array, "8 3"] = (
+        jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [x_extent, 0.0, 0.0],
+                [0.0, y_extent, 0.0],
+                [0.0, 0.0, depth],
+                [x_extent, y_extent, 0.0],
+                [x_extent, 0.0, depth],
+                [0.0, y_extent, depth],
+                [x_extent, y_extent, depth],
+            ],
+            dtype=jnp.float64,
+        )
+        + window_lower
     )
     rotated_inv: Float[Array, "3 3"] = jnp.linalg.inv(rotated_cell_vecs)
     corner_lattice_coords: Float[Array, "8 3"] = box_corners @ rotated_inv
@@ -1366,21 +1414,23 @@ def bulk_to_slice(  # noqa: PLR0915
     centered_positions: Float[Array, "M 3"] = supercell_positions
 
     x_mask: Bool[Array, "M"] = jnp.logical_and(
-        centered_positions[:, 0] >= 0,
-        centered_positions[:, 0] < x_extent,
+        centered_positions[:, 0] >= window_lower[0],
+        centered_positions[:, 0] < window_upper[0],
     )
     y_mask: Bool[Array, "M"] = jnp.logical_and(
-        centered_positions[:, 1] >= 0,
-        centered_positions[:, 1] < y_extent,
+        centered_positions[:, 1] >= window_lower[1],
+        centered_positions[:, 1] < window_upper[1],
     )
     z_mask: Bool[Array, "M"] = jnp.logical_and(
-        centered_positions[:, 2] >= 0,
-        centered_positions[:, 2] < depth,
+        centered_positions[:, 2] >= window_lower[2],
+        centered_positions[:, 2] < window_upper[2],
     )
 
     combined_mask: Bool[Array, "M"] = x_mask & y_mask & z_mask
 
-    filtered_positions: Float[Array, "K 3"] = centered_positions[combined_mask]
+    filtered_positions: Float[Array, "K 3"] = (
+        centered_positions[combined_mask] - window_lower
+    )
     filtered_atomic_nums: Float[Array, "K"] = supercell_atomic_nums[
         combined_mask
     ]

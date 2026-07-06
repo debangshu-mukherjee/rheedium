@@ -476,14 +476,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [5.0, 5.0, 3.0]
-        )  # 3 Angstrom thickness
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Should filter to atoms near the top (z=8)
@@ -513,14 +511,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [10.0, 10.0, 20.0]
-        )  # Much larger than crystal
+        thickness_ang: float = 20.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Should keep all 5 atoms
@@ -551,25 +547,21 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [0.0, 0.0, 0.0]
-        )  # Zero thickness = top layer mode
+        thickness_ang: float = 0.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
-        # With atoms at z=0,2,4,6,8 and spacing=2Å, adaptive_eps=4Å
-        # This includes atoms within 4Å of top (z=8): z=8,6,4
+        # With atoms at z=0,2,4,6,8 and spacing=2 Å, adaptive_eps=4 Å.
+        # The returned slab is shifted so the lowest kept projection is 0.
         n_atoms: int = filtered.cart_positions.shape[0]
-        self.assertGreaterEqual(int(n_atoms), 1)
-        self.assertLessEqual(int(n_atoms), 5)
+        self.assertEqual(int(n_atoms), 3)
 
-        # Verify the topmost atom is included
         max_z: scalar_float = jnp.max(filtered.cart_positions[:, 2])
-        chex.assert_trees_all_close(max_z, 8.0, atol=1e-6)
+        chex.assert_trees_all_close(max_z, 4.0, atol=1e-6)
 
     @parameterized.named_parameters(
         ("z_axis", [0.0, 0.0, 1.0]),
@@ -601,12 +593,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis_arr: Float[Array, "three"] = jnp.array(zone_axis)
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis_arr,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Should produce valid output regardless of axis scaling
@@ -654,12 +646,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
         zone_axis: Float[Array, "..."] = jnp.array([1.0, 0.0, 0.0])
-        thickness: Float[Array, "..."] = jnp.array([3.0, 5.0, 5.0])
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         n_atoms: int = filtered.cart_positions.shape[0]
@@ -687,12 +679,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([1.0, 1.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 5.0])
+        thickness_ang: float = 5.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Should produce valid output
@@ -721,12 +713,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Check it's a CrystalStructure
@@ -766,12 +758,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         chex.assert_trees_all_equal(jnp.all(filtered.cell_lengths > 0), True)
@@ -797,12 +789,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, 3.0])
+        thickness_ang: float = 3.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Angles should be between 0 and 180 degrees
@@ -831,14 +823,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [5.0, 5.0, 20.0]
-        )  # Keep all atoms
+        thickness_ang: float = 20.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # All atoms should still be silicon (Z=14)
@@ -892,14 +882,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [10.0, 10.0, 1.0]
-        )  # 1 Angstrom slice
+        thickness_ang: float = 1.0
 
         filtered: Any = atom_scraper(
             crystal=crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # All 4 atoms should be included (within 1 Angstrom of top)
@@ -938,12 +926,10 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array([5.0, 5.0, z_thickness])
-
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=z_thickness,
         )
 
         n_atoms: int = filtered.cart_positions.shape[0]
@@ -970,14 +956,12 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         exposes both the guarantee and the implementation path.
         """
         zone_axis: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-        thickness: Float[Array, "..."] = jnp.array(
-            [5.0, 5.0, 20.0]
-        )  # Keep all atoms
+        thickness_ang: float = 20.0
 
         filtered: Any = atom_scraper(
             crystal=self.cubic_crystal,
             zone_axis=zone_axis,
-            thickness=thickness,
+            thickness_ang=thickness_ang,
         )
 
         # Number of atoms should match
@@ -989,6 +973,82 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         frac_z: Any = filtered.frac_positions[:, 3]
         cart_z: Any = filtered.cart_positions[:, 3]
         chex.assert_trees_all_close(frac_z, cart_z, atol=1e-10)
+
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *filtered.cell_lengths,
+            *filtered.cell_angles,
+        )
+        chex.assert_trees_all_close(
+            filtered.frac_positions[:, :3] @ cell_vectors,
+            filtered.cart_positions[:, :3],
+            atol=1e-6,
+        )
+
+    def test_111_scalar_thickness_selects_exact_column_depth(self) -> None:
+        """A 12 Å [111] scrape keeps exactly atoms within 12 Å of the top."""
+        spacing: float = 2.31
+        zone_axis: Float[Array, "3"] = jnp.array([1.0, 1.0, 1.0])
+        zone_axis_hat: Float[Array, "3"] = zone_axis / jnp.linalg.norm(
+            zone_axis
+        )
+        distances: Float[Array, "10"] = (
+            jnp.arange(10, dtype=jnp.float64) * spacing
+        )
+        cart_coords: Float[Array, "10 3"] = distances[:, None] * zone_axis_hat
+        atomic_numbers: Float[Array, "10"] = jnp.full(10, 14.0)
+        cell_lengths: Float[Array, "3"] = jnp.array([30.0, 30.0, 30.0])
+        frac_coords: Float[Array, "10 3"] = cart_coords / cell_lengths
+        crystal: CrystalStructure = create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack([cart_coords, atomic_numbers]),
+            cell_lengths=cell_lengths,
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+
+        filtered: CrystalStructure = atom_scraper(
+            crystal=crystal,
+            zone_axis=zone_axis,
+            thickness_ang=12.0,
+        )
+
+        kept_distances = jnp.max(distances) - distances
+        expected_count = int(jnp.sum(kept_distances <= 12.0))
+        self.assertEqual(filtered.cart_positions.shape[0], expected_count)
+
+        kept_projections = filtered.cart_positions[:, :3] @ zone_axis_hat
+        assert float(jnp.min(kept_projections)) >= -1e-8
+        assert float(jnp.max(kept_projections)) <= 12.0 + 1e-8
+
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *filtered.cell_lengths,
+            *filtered.cell_angles,
+        )
+        chex.assert_trees_all_close(
+            filtered.frac_positions[:, :3] @ cell_vectors,
+            filtered.cart_positions[:, :3],
+            atol=1e-6,
+        )
+
+    def test_monolayer_zero_thickness_does_not_crash(self) -> None:
+        """Coplanar atoms have no positive spacing and still return safely."""
+        crystal: CrystalStructure = self._create_xy_plane_crystal()
+
+        filtered: CrystalStructure = atom_scraper(
+            crystal=crystal,
+            zone_axis=jnp.array([0.0, 0.0, 1.0]),
+            thickness_ang=0.0,
+        )
+
+        self.assertEqual(filtered.cart_positions.shape[0], 4)
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *filtered.cell_lengths,
+            *filtered.cell_angles,
+        )
+        chex.assert_trees_all_close(
+            filtered.frac_positions[:, :3] @ cell_vectors,
+            filtered.cart_positions[:, :3],
+            atol=1e-6,
+        )
 
 
 class TestReciprocalUnitcell(chex.TestCase, parameterized.TestCase):

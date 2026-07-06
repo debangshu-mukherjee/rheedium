@@ -40,6 +40,7 @@ differentiation and GPU acceleration.
 
 import fractions
 import re
+import warnings
 from pathlib import Path
 
 import jax
@@ -261,16 +262,28 @@ def _extract_sym_op_from_line(
     >>> op
     'x,y,z'
     """
-    if "_symmetry_equiv_pos_as_xyz" in sym_loop_columns:
-        xyz_col_idx: int = sym_loop_columns.index("_symmetry_equiv_pos_as_xyz")
+    lower_columns: List[str] = [col.lower() for col in sym_loop_columns]
+    operation_tags: Tuple[str, ...] = (
+        "_symmetry_equiv_pos_as_xyz",
+        "_space_group_symop_operation_xyz",
+    )
+    operation_idx: Optional[int] = next(
+        (
+            lower_columns.index(tag)
+            for tag in operation_tags
+            if tag in lower_columns
+        ),
+        None,
+    )
+    if operation_idx is not None:
         match: re.Match[str] | None = re.search(r"'([^']+)'", stripped_line)
         if not match:
             match = re.search(r'"([^"]+)"', stripped_line)
         if match:
             return match.group(1).strip()
         tokens: List[str] = stripped_line.split()
-        if len(tokens) > xyz_col_idx:
-            op: str = tokens[xyz_col_idx].strip("'\"")
+        if len(tokens) > operation_idx:
+            op: str = tokens[operation_idx].strip("'\"")
             if "," in op:
                 return op
     elif not sym_loop_columns:
@@ -281,13 +294,43 @@ def _extract_sym_op_from_line(
     return None
 
 
+def _is_symmetry_loop_column(stripped_line: str) -> bool:
+    """Return whether a CIF loop header is a symmetry-operation column."""
+    lower_line: str = stripped_line.lower()
+    return lower_line.startswith(("_symmetry_equiv_pos", "_space_group_symop"))
+
+
+def _declares_non_p1_space_group(lines: List[str]) -> bool:
+    """Detect a declared non-P1 space group without expanding it by name."""
+    for line in lines:
+        stripped_line: str = line.strip()
+        lower_line: str = stripped_line.lower()
+        if lower_line.startswith("_space_group_it_number"):
+            tokens: List[str] = stripped_line.split(maxsplit=1)
+            if len(tokens) > 1:
+                try:
+                    return int(_strip_esd(tokens[1].strip("'\""))) != 1
+                except ValueError:
+                    continue
+        if lower_line.startswith(
+            ("_space_group_name_h-m", "_symmetry_space_group_name_h-m")
+        ):
+            tokens = stripped_line.split(maxsplit=1)
+            if len(tokens) <= 1:
+                continue
+            name: str = re.sub(r"['\"\\s_]", "", tokens[1]).lower()
+            if name != "p1":
+                return True
+    return False
+
+
 @beartype
 def _parse_symmetry_ops(lines: List[str]) -> List[str]:
     """Parse symmetry operations from CIF file.
 
-    Extracts all symmetry operations from the _symmetry_equiv_pos section
-    of a CIF file. Returns ["x,y,z"] (identity) if no symmetry operations
-    are found.
+    Extracts all symmetry operations from legacy ``_symmetry_equiv_pos*`` or
+    modern ``_space_group_symop*`` CIF loops. Returns ["x,y,z"] (identity) if
+    no symmetry operations are found.
 
     :see: :class:`~.test_cif.TestParseSymmetryOps`
 
@@ -319,14 +362,14 @@ def _parse_symmetry_ops(lines: List[str]) -> List[str]:
             in_sym_loop = False
             sym_loop_columns = []
             continue
-        if stripped_line.startswith("_symmetry_equiv_pos"):
+        if _is_symmetry_loop_column(stripped_line):
             sym_loop_columns.append(stripped_line)
             in_sym_loop = True
             continue
         if not in_sym_loop or not stripped_line:
             continue
-        if stripped_line.startswith("_") and not stripped_line.startswith(
-            "_symmetry"
+        if stripped_line.startswith("_") and not _is_symmetry_loop_column(
+            stripped_line
         ):
             in_sym_loop = False
             continue
@@ -338,6 +381,12 @@ def _parse_symmetry_ops(lines: List[str]) -> List[str]:
             sym_ops.append(op)
 
     if not sym_ops:
+        if _declares_non_p1_space_group(lines):
+            warnings.warn(
+                "space group declared but no operator loop; expanding as P1",
+                UserWarning,
+                stacklevel=2,
+            )
         sym_ops = ["x,y,z"]
 
     return sym_ops
@@ -710,10 +759,17 @@ def symmetry_expansion(
     atomic_numbers: Float[Array, "U"] = unique_cart_with_z[:, 3]
     cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
     unique_frac: Float[Array, "U 3"] = (unique_cart @ cell_inv) % 1.0
+    # Snap float-noise wraps (e.g. -1e-17 % 1 -> 0.999...) back to 0 and
+    # rebuild cart from the wrapped frac so the frame contract holds exactly.
+    wrap_tolerance: float = 1e-9
+    unique_frac = jnp.where(
+        unique_frac > 1.0 - wrap_tolerance, 0.0, unique_frac
+    )
+    wrapped_cart: Float[Array, "U 3"] = unique_frac @ cell_vectors
 
     expanded_crystal: CrystalStructure = create_crystal_structure(
         frac_positions=jnp.column_stack([unique_frac, atomic_numbers]),
-        cart_positions=jnp.column_stack([unique_cart, atomic_numbers]),
+        cart_positions=jnp.column_stack([wrapped_cart, atomic_numbers]),
         cell_lengths=crystal.cell_lengths,
         cell_angles=crystal.cell_angles,
     )

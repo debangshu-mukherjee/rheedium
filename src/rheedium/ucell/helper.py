@@ -22,7 +22,6 @@ All functions are JAX-compatible and support automatic differentiation.
 
 from pathlib import Path
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple, Union
@@ -65,19 +64,6 @@ def angle_in_degrees(
     >>> angle
     90.0
     """
-
-    def _check_vector_dimensions() -> Tuple[
-        Float[Array, "n"], Float[Array, "n"]
-    ]:
-        return jax.lax.cond(
-            v1.shape == v2.shape,
-            lambda: (v1, v2),
-            lambda: jax.lax.stop_gradient(
-                jax.lax.cond(False, lambda: (v1, v2), lambda: (v1, v2))
-            ),
-        )
-
-    _check_vector_dimensions()
     angle: Float[Array, ""] = (
         180.0
         * jnp.arccos(

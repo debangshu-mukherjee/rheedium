@@ -6,6 +6,7 @@ references rather than against rheedium's own implementation choices.
 
 import math
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import jax
@@ -15,6 +16,7 @@ import pytest
 import scipy.special
 
 from rheedium.inout import kirkland_potentials, lobato_potentials
+from rheedium.inout.cif import parse_cif
 from rheedium.inout.interop import from_ase, to_ase
 from rheedium.simul.ewald import _compute_structure_factor_single
 from rheedium.simul.form_factors import (
@@ -34,6 +36,7 @@ from rheedium.types import (
     M2_TO_ANG2,
 )
 from rheedium.ucell import reciprocal_lattice_vectors
+from rheedium.ucell.unitcell import bulk_to_slice
 
 
 def test_lobato_table_bethe_sum_rule() -> None:
@@ -188,3 +191,30 @@ def test_frame_contract_roundtrip_from_ase() -> None:
         atoms.get_scaled_positions(),
         atol=1e-8,
     )
+
+
+@pytest.mark.parametrize("orientation", [(0, 0, 1), (1, 1, 1)])
+def test_slab_density(orientation: tuple[int, int, int]) -> None:
+    """SrTiO3 slabs tile all three lattice directions at bulk density."""
+    crystal = parse_cif(Path("tests/test_data/SrTiO3.cif"))
+    depth = 20.0
+    x_extent = 40.0
+    y_extent = 40.0
+    slab = bulk_to_slice(
+        crystal,
+        jnp.asarray(orientation, dtype=jnp.int32),
+        depth,
+        x_extent,
+        y_extent,
+    )
+    xyz = np.asarray(slab.cart_positions[:, :3])
+    bulk_density = 5.0 / float(crystal.cell_lengths[0]) ** 3
+    expected_atoms = bulk_density * x_extent * y_extent * depth
+
+    assert np.ptp(xyz[:, 2]) >= 0.9 * depth
+    assert abs(xyz.shape[0] / expected_atoms - 1.0) < 0.05
+
+    for z_min in np.arange(0.0, depth, 5.0):
+        band = xyz[(xyz[:, 2] >= z_min) & (xyz[:, 2] < z_min + 5.0)]
+        assert band.shape[0] > 0
+        assert np.ptp(band[:, 0]) >= 0.8 * x_extent

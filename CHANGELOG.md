@@ -9,6 +9,10 @@ Each entry summarizes the commits that landed for that version bump in
 
 ## [Unreleased]
 
+- Changed `ucell.atom_scraper` to take scalar `thickness_ang` measured along
+  the normalized zone axis, replacing the previous vector `thickness` argument.
+  The returned scraped structure is rebuilt to satisfy the canonical
+  `frac @ cell == cart` frame contract.
 - Added the foundational `recon` optimization API from the optimistix/optax
   plan: constrained latent transforms, richer differentiable losses, the
   general `rheedium.types.ReconProblem` + `recon.solve`/`multistart` surface,

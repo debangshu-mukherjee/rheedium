@@ -318,6 +318,26 @@ class TestParseSymmetryOps(chex.TestCase):
 
         assert sym_ops == ["x,y,z"]
 
+    def test_modern_space_group_symop_loop(self) -> None:
+        """Parse modern IUCr space-group symmetry operation loops."""
+        lines: list[str] = [
+            "loop_",
+            "_space_group_symop_id",
+            "_space_group_symop_operation_xyz",
+            "1 'x,y,z'",
+            "2 'x+1/2,y+1/2,z'",
+            "3 'x+1/2,y,z+1/2'",
+            "4 'x,y+1/2,z+1/2'",
+        ]
+        sym_ops: Any = _parse_symmetry_ops(lines)
+
+        assert sym_ops == [
+            "x,y,z",
+            "x+1/2,y+1/2,z",
+            "x+1/2,y,z+1/2",
+            "x,y+1/2,z+1/2",
+        ]
+
 
 class TestExtractSymOpFromLine(chex.TestCase):
     """Test symmetry operation extraction from single line.
@@ -658,7 +678,7 @@ class TestSymmetryExpansion(chex.TestCase):
             [[0.25, 0.25, 0.25, 14.0]]
         )
         cart_positions: Float[Array, "..."] = jnp.array(
-            [[1.36, 1.36, 1.36, 14.0]]
+            [[1.3575, 1.3575, 1.3575, 14.0]]
         )
         cell_lengths: Float[Array, "..."] = jnp.array([5.43, 5.43, 5.43])
         cell_angles: Float[Array, "..."] = jnp.array([90.0, 90.0, 90.0])
@@ -826,6 +846,92 @@ Si 0.125 0.125 0.125
             crystal: CrystalStructure = parse_cif(cif_file)
 
             assert crystal.frac_positions.shape[0] >= 1
+
+    def test_modern_symop_cif_matches_legacy_loop(self) -> None:
+        """Modern and legacy CIF symmetry tags expand the same fcc basis."""
+        base_cif: str = """
+data_Cu
+_cell_length_a 3.61
+_cell_length_b 3.61
+_cell_length_c 3.61
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+{symmetry_headers}
+  1 'x,y,z'
+  2 'x+1/2,y+1/2,z'
+  3 'x+1/2,y,z+1/2'
+  4 'x,y+1/2,z+1/2'
+loop_
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Cu 0.125 0.125 0.125
+"""
+        modern_headers = "\n".join(
+            [
+                "_space_group_symop_id",
+                "_space_group_symop_operation_xyz",
+            ]
+        )
+        legacy_headers = "\n".join(
+            [
+                "_symmetry_equiv_pos_site_id",
+                "_symmetry_equiv_pos_as_xyz",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            modern_file: Path = Path(tmp_dir) / "cu_modern.cif"
+            legacy_file: Path = Path(tmp_dir) / "cu_legacy.cif"
+            modern_file.write_text(
+                base_cif.format(symmetry_headers=modern_headers)
+            )
+            legacy_file.write_text(
+                base_cif.format(symmetry_headers=legacy_headers)
+            )
+
+            modern = parse_cif(modern_file)
+            legacy = parse_cif(legacy_file)
+
+        assert modern.frac_positions.shape[0] == 4
+        chex.assert_trees_all_close(
+            jnp.sort(modern.frac_positions[:, :3], axis=0),
+            jnp.sort(legacy.frac_positions[:, :3], axis=0),
+            atol=1e-8,
+        )
+
+    def test_non_p1_without_operator_loop_warns(self) -> None:
+        """Declared non-P1 space groups without ops warn before P1 fallback."""
+        cif_content: str = """
+data_Cu
+_space_group_name_H-M 'F m -3 m'
+_cell_length_a 3.61
+_cell_length_b 3.61
+_cell_length_c 3.61
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Cu 0.0 0.0 0.0
+"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cif_file: Path = Path(tmp_dir) / "cu_missing_ops.cif"
+            cif_file.write_text(cif_content)
+
+            with pytest.warns(
+                UserWarning,
+                match="space group declared but no operator loop",
+            ):
+                crystal = parse_cif(cif_file)
+
+        assert crystal.frac_positions.shape[0] == 1
 
     def test_file_not_found(self) -> None:
         r"""Missing file should raise FileNotFoundError.
