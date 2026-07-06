@@ -32,7 +32,11 @@ from beartype import beartype
 from beartype.typing import Any, Callable, NamedTuple, Optional, Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
-from .crystal_types import CrystalStructure
+from .crystal_types import (
+    CrystalStructure,
+    _build_canonical_cell_vectors,
+    create_crystal_structure,
+)
 from .custom_types import float_jax_image
 from .distributions import OrientationDistribution
 
@@ -514,16 +518,19 @@ def create_crystal_displacement_axis_spec(
         cart_xyz: Float[Array, "A 3"] = (
             crystal.cart_positions[:, :3] + displacement
         )
-        frac_xyz: Float[Array, "A 3"] = (
-            crystal.frac_positions[:, :3] + displacement / crystal.cell_lengths
+        cell_vectors: Float[Array, "3 3"] = _build_canonical_cell_vectors(
+            crystal.cell_lengths, crystal.cell_angles
         )
+        frac_xyz: Float[Array, "A 3"] = crystal.frac_positions[
+            :, :3
+        ] + displacement @ jnp.linalg.inv(cell_vectors)
         cart_positions: Float[Array, "A 4"] = crystal.cart_positions.at[
             :, :3
         ].set(cart_xyz)
         frac_positions: Float[Array, "A 4"] = crystal.frac_positions.at[
             :, :3
         ].set(frac_xyz)
-        perturbed: CrystalStructure = CrystalStructure(
+        perturbed: CrystalStructure = create_crystal_structure(
             frac_positions=frac_positions,
             cart_positions=cart_positions,
             cell_lengths=crystal.cell_lengths,

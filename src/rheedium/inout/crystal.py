@@ -23,6 +23,7 @@ differentiation and GPU acceleration.
 """
 
 import logging
+import warnings
 from pathlib import Path
 
 import jax.numpy as jnp
@@ -36,6 +37,7 @@ from rheedium.types import (
     create_crystal_structure,
     scalar_float,
 )
+from rheedium.ucell import build_cell_vectors
 
 from .cif import parse_cif
 from .lattice import lattice_to_cell_params as _lattice_to_cell_params
@@ -219,6 +221,13 @@ def xyz_to_crystal(
     cell_lengths: Float[Array, "3"]
     cell_angles: Float[Array, "3"]
     cell_lengths, cell_angles = _lattice_to_cell_params(lattice)
+    if float(jnp.linalg.det(lattice)) < 0.0:
+        warnings.warn(
+            "Input lattice is left-handed; canonical CrystalStructure "
+            "coordinates mirror the source-frame chirality.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     lattice_inv: Float[Array, "3 3"] = jnp.linalg.inv(lattice)
     frac_coords: Float[Array, "N 3"] = positions @ lattice_inv
@@ -226,8 +235,18 @@ def xyz_to_crystal(
     frac_positions: Float[Array, "N 4"] = jnp.column_stack(
         [frac_coords, atomic_numbers.astype(jnp.float64)]
     )
+    canonical_lattice: Float[Array, "3 3"] = build_cell_vectors(
+        cell_lengths[0],
+        cell_lengths[1],
+        cell_lengths[2],
+        cell_angles[0],
+        cell_angles[1],
+        cell_angles[2],
+    )
+    canonical_positions: Float[Array, "N 3"] = frac_coords @ canonical_lattice
+
     cart_positions: Float[Array, "N 4"] = jnp.column_stack(
-        [positions, atomic_numbers.astype(jnp.float64)]
+        [canonical_positions, atomic_numbers.astype(jnp.float64)]
     )
 
     return create_crystal_structure(

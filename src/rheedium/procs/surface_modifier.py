@@ -98,7 +98,7 @@ def _rebuild_surface_structure(
         *slab.cell_lengths, *slab.cell_angles
     )
     inv_cell_vectors: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
-    frac_xyz: Float[Array, "N_atoms 3"] = cart_xyz @ inv_cell_vectors.T
+    frac_xyz: Float[Array, "N_atoms 3"] = cart_xyz @ inv_cell_vectors
     frac_positions: Float[Array, "N_atoms 4"] = jnp.column_stack(
         [frac_xyz, effective_atomic_numbers]
     )

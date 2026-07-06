@@ -31,6 +31,7 @@ from beartype.typing import List, Tuple, Union
 from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import CrystalStructure, create_crystal_structure
+from rheedium.ucell import build_cell_vectors
 
 from .lattice import lattice_to_cell_params
 from .xyz import atomic_symbol
@@ -372,7 +373,17 @@ def parse_poscar(
     cell_angles: Float[Array, "3"]
     cell_lengths, cell_angles = lattice_to_cell_params(lattice)
 
-    cart_positions_3: Float[Array, "n_atoms 3"] = frac_positions_3 @ lattice
+    canonical_lattice: Float[Array, "3 3"] = build_cell_vectors(
+        cell_lengths[0],
+        cell_lengths[1],
+        cell_lengths[2],
+        cell_angles[0],
+        cell_angles[1],
+        cell_angles[2],
+    )
+    cart_positions_3: Float[Array, "n_atoms 3"] = (
+        frac_positions_3 @ canonical_lattice
+    )
 
     frac_positions: Float[Array, "n_atoms 4"] = jnp.column_stack(
         [frac_positions_3, atomic_numbers.astype(jnp.float64)]

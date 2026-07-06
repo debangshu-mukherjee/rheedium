@@ -1124,6 +1124,7 @@ def reorient_to_zone_axis(
         z_val: float = float(atomic_numbers[atom_idx])
         for row in new_frac[inside]:
             wrapped: np.ndarray = np.mod(row, 1.0)
+            wrapped[wrapped > 1.0 - tol] = 0.0
             key: Tuple[float, float, float, int] = (
                 round(float(wrapped[0]), 4),
                 round(float(wrapped[1]), 4),
@@ -1137,6 +1138,15 @@ def reorient_to_zone_axis(
                 [float(wrapped[0]), float(wrapped[1]), float(wrapped[2])]
             )
             kept_z.append(z_val)
+
+    expected_atoms: int = int(round(abs(np.linalg.det(transform_int)))) * int(
+        old_frac.shape[0]
+    )
+    if len(kept_frac) != expected_atoms:
+        raise ValueError(
+            "surface transform produced "
+            f"{len(kept_frac)} atoms, expected {expected_atoms}"
+        )
 
     frac_xyz: Float[Array, "M 3"] = jnp.asarray(kept_frac, dtype=jnp.float64)
     z_col: Float[Array, "M 1"] = jnp.asarray(kept_z, dtype=jnp.float64)[
@@ -1298,40 +1308,52 @@ def bulk_to_slice(  # noqa: PLR0915
 
     positions_xyz: Float[Array, "N 3"] = bulk_crystal.cart_positions[:, :3]
     rotated_positions: Float[Array, "N 3"] = positions_xyz @ rotation_matrix.T
+    rotated_positions = rotated_positions - jnp.min(rotated_positions, axis=0)
 
     rotated_cell_vecs: Float[Array, "3 3"] = cell_vecs @ rotation_matrix.T
 
-    z_projections: Float[Array, "3"] = jnp.abs(rotated_cell_vecs[:, 2])
-    in_plane_axes: Int[Array, "2"] = jnp.argsort(z_projections)[:2]
-    in_plane_vecs: Float[Array, "2 3"] = rotated_cell_vecs[in_plane_axes]
-    x_repeat_vec: Float[Array, "3"] = in_plane_vecs[0]
-    y_repeat_vec: Float[Array, "3"] = in_plane_vecs[1]
-    cell_x_proj: Float[Array, ""] = jnp.max(jnp.abs(in_plane_vecs[:, 0]))
-    cell_y_proj: Float[Array, ""] = jnp.max(jnp.abs(in_plane_vecs[:, 1]))
-
-    nx: int = int(jnp.ceil(x_extent / (cell_x_proj + 1e-10))) + 2
-    ny: int = int(jnp.ceil(y_extent / (cell_y_proj + 1e-10))) + 2
-
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
 
-    ix_vals: Float[Array, "Rx"] = jnp.arange(
-        -nx // 2, nx // 2 + 1, dtype=jnp.float64
+    box_corners: Float[Array, "8 3"] = jnp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [x_extent, 0.0, 0.0],
+            [0.0, y_extent, 0.0],
+            [0.0, 0.0, depth],
+            [x_extent, y_extent, 0.0],
+            [x_extent, 0.0, depth],
+            [0.0, y_extent, depth],
+            [x_extent, y_extent, depth],
+        ],
+        dtype=jnp.float64,
     )
-    iy_vals: Float[Array, "Ry"] = jnp.arange(
-        -ny // 2, ny // 2 + 1, dtype=jnp.float64
+    rotated_inv: Float[Array, "3 3"] = jnp.linalg.inv(rotated_cell_vecs)
+    corner_lattice_coords: Float[Array, "8 3"] = box_corners @ rotated_inv
+    range_lo_np = np.floor(np.asarray(jnp.min(corner_lattice_coords, axis=0)))
+    range_hi_np = np.ceil(np.asarray(jnp.max(corner_lattice_coords, axis=0)))
+    range_lo = range_lo_np.astype(int) - 1
+    range_hi = range_hi_np.astype(int) + 1
+
+    i_vals: Float[Array, "Ri"] = jnp.arange(
+        range_lo[0], range_hi[0] + 1, dtype=jnp.float64
     )
-    ix_grid: Float[Array, "Rx Ry"] = jnp.repeat(
-        ix_vals[:, None], iy_vals.shape[0], axis=1
+    j_vals: Float[Array, "Rj"] = jnp.arange(
+        range_lo[1], range_hi[1] + 1, dtype=jnp.float64
     )
-    iy_grid: Float[Array, "Rx Ry"] = jnp.repeat(
-        iy_vals[None, :], ix_vals.shape[0], axis=0
+    k_vals: Float[Array, "Rk"] = jnp.arange(
+        range_lo[2], range_hi[2] + 1, dtype=jnp.float64
     )
-    ix_flat: Float[Array, "R"] = ix_grid.ravel()
-    iy_flat: Float[Array, "R"] = iy_grid.ravel()
-    n_replicas: int = ix_flat.shape[0]
+    i_grid, j_grid, k_grid = jnp.meshgrid(
+        i_vals, j_vals, k_vals, indexing="ij"
+    )
+    i_flat: Float[Array, "R"] = i_grid.ravel()
+    j_flat: Float[Array, "R"] = j_grid.ravel()
+    k_flat: Float[Array, "R"] = k_grid.ravel()
+    n_replicas: int = i_flat.shape[0]
     translations: Float[Array, "R 3"] = (
-        ix_flat[:, None] * x_repeat_vec[None, :]
-        + iy_flat[:, None] * y_repeat_vec[None, :]
+        i_flat[:, None] * rotated_cell_vecs[0][None, :]
+        + j_flat[:, None] * rotated_cell_vecs[1][None, :]
+        + k_flat[:, None] * rotated_cell_vecs[2][None, :]
     )
     tiled_positions: Float[Array, "R N 3"] = (
         rotated_positions[None, :, :] + translations[:, None, :]
@@ -1341,25 +1363,19 @@ def bulk_to_slice(  # noqa: PLR0915
         atomic_numbers, n_replicas
     )
 
-    x_min: Float[Array, ""] = supercell_positions[:, 0].min()
-    y_min: Float[Array, ""] = supercell_positions[:, 1].min()
-    z_min: Float[Array, ""] = supercell_positions[:, 2].min()
-
-    centered_positions: Float[Array, "M 3"] = supercell_positions - jnp.array(
-        [x_min, y_min, z_min]
-    )
+    centered_positions: Float[Array, "M 3"] = supercell_positions
 
     x_mask: Bool[Array, "M"] = jnp.logical_and(
         centered_positions[:, 0] >= 0,
-        centered_positions[:, 0] <= x_extent,
+        centered_positions[:, 0] < x_extent,
     )
     y_mask: Bool[Array, "M"] = jnp.logical_and(
         centered_positions[:, 1] >= 0,
-        centered_positions[:, 1] <= y_extent,
+        centered_positions[:, 1] < y_extent,
     )
     z_mask: Bool[Array, "M"] = jnp.logical_and(
         centered_positions[:, 2] >= 0,
-        centered_positions[:, 2] <= depth,
+        centered_positions[:, 2] < depth,
     )
 
     combined_mask: Bool[Array, "M"] = x_mask & y_mask & z_mask

@@ -48,6 +48,7 @@ from rheedium.types import (
     create_crystal_structure,
     create_xyz_data,
 )
+from rheedium.ucell import build_cell_vectors
 
 from .lattice import lattice_to_cell_params
 from .xyz import atomic_symbol
@@ -411,7 +412,20 @@ def parse_vaspxml(  # noqa: PLR0912, PLR0915
         forces = _extract_forces(calculation)
         stress = _extract_stress(calculation)
 
-    cart_positions: Float[Array, "n_atoms 3"] = frac_positions @ lattice
+    cell_lengths: Float[Array, "3"]
+    cell_angles: Float[Array, "3"]
+    cell_lengths, cell_angles = lattice_to_cell_params(lattice)
+    canonical_lattice: Float[Array, "3 3"] = build_cell_vectors(
+        cell_lengths[0],
+        cell_lengths[1],
+        cell_lengths[2],
+        cell_angles[0],
+        cell_angles[1],
+        cell_angles[2],
+    )
+    cart_positions: Float[Array, "n_atoms 3"] = (
+        frac_positions @ canonical_lattice
+    )
 
     if include_forces:
         properties: list[dict[str, str | int]] | None = None
@@ -421,15 +435,12 @@ def parse_vaspxml(  # noqa: PLR0912, PLR0915
         return create_xyz_data(
             positions=cart_positions,
             atomic_numbers=atomic_numbers,
-            lattice=lattice,
+            lattice=canonical_lattice,
             stress=stress,
             energy=energy,
             properties=properties,
             comment=f"From vasprun.xml step {step}",
         )
-    cell_lengths: Float[Array, "3"]
-    cell_angles: Float[Array, "3"]
-    cell_lengths, cell_angles = lattice_to_cell_params(lattice)
 
     frac_positions_4: Float[Array, "n_atoms 4"] = jnp.column_stack(
         [frac_positions, atomic_numbers.astype(jnp.float64)]

@@ -15,6 +15,8 @@ import pytest
 import scipy.special
 
 from rheedium.inout import kirkland_potentials, lobato_potentials
+from rheedium.inout.interop import from_ase, to_ase
+from rheedium.simul.ewald import _compute_structure_factor_single
 from rheedium.simul.form_factors import (
     get_atomic_mass,
     get_debye_temperature,
@@ -31,6 +33,7 @@ from rheedium.types import (
     HBAR_JS,
     M2_TO_ANG2,
 )
+from rheedium.ucell import reciprocal_lattice_vectors
 
 LOBATO_FALLBACK_REASON = (
     "bundled Lobato table failed validation -- see "
@@ -143,3 +146,37 @@ def test_debye_msd_full_model_limits() -> None:
     temps = jnp.asarray([1.0, 100.0, 300.0, 1000.0], dtype=jnp.float64)
     msds = jnp.asarray([get_mean_square_displacement(z, t) for t in temps])
     assert bool(jnp.all(jnp.diff(msds) > 0.0))
+
+
+def test_frame_contract_roundtrip_from_ase() -> None:
+    """Primitive ASE cells canonicalize positions without losing phases."""
+    bulk = pytest.importorskip("ase.build").bulk
+    atoms = bulk("Si", "diamond", a=5.43)
+
+    crystal = from_ase(atoms)
+    recip = reciprocal_lattice_vectors(
+        *crystal.cell_lengths, *crystal.cell_angles
+    )
+    atomic_numbers = crystal.cart_positions[:, 3].astype(jnp.int32)
+
+    f111 = _compute_structure_factor_single(
+        jnp.asarray([1.0, 1.0, 1.0]) @ recip,
+        crystal.cart_positions[:, :3],
+        atomic_numbers,
+        300.0,
+        "kirkland",
+    )
+    f222 = _compute_structure_factor_single(
+        jnp.asarray([2.0, 2.0, 2.0]) @ recip,
+        crystal.cart_positions[:, :3],
+        atomic_numbers,
+        300.0,
+        "kirkland",
+    )
+    assert float(jnp.abs(f222) / jnp.abs(f111)) < 1e-6
+
+    np.testing.assert_allclose(
+        to_ase(crystal).get_scaled_positions(),
+        atoms.get_scaled_positions(),
+        atol=1e-8,
+    )

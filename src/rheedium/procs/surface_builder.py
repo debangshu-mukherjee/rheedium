@@ -210,7 +210,7 @@ def create_surface_slab(  # noqa: PLR0915
         *new_cell_lengths, *new_cell_angles
     )
     inv_cell: Float[Array, "3 3"] = jnp.linalg.inv(new_cell_vecs)
-    frac_positions: Float[Array, "K 3"] = filtered_positions @ inv_cell.T
+    frac_positions: Float[Array, "K 3"] = filtered_positions @ inv_cell
 
     cart_with_z: Float[Array, "K 4"] = jnp.column_stack(
         [filtered_positions, filtered_atomic_nums]
@@ -321,7 +321,7 @@ def apply_surface_reconstruction(  # noqa: PLR0915
         [new_a_vec, new_b_vec, new_c_vec], axis=0
     )
     inv_new_cell: Float[Array, "3 3"] = jnp.linalg.inv(new_cell_vecs_mat)
-    frac_in_new: Float[Array, "M 3"] = supercell_positions @ inv_new_cell.T
+    frac_in_new: Float[Array, "M 3"] = supercell_positions @ inv_new_cell
 
     in_cell: Bool[Array, "M"] = jnp.all(
         (frac_in_new >= -_FRAC_TOL) & (frac_in_new < 1.0 - _FRAC_TOL),

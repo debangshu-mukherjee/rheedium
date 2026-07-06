@@ -58,6 +58,34 @@ from jaxtyping import Array, Complex, Float, Int, Num, jaxtyped
 from .custom_types import scalar_float
 
 
+def _build_canonical_cell_vectors(
+    cell_lengths: Num[Array, "3"],
+    cell_angles: Num[Array, "3"],
+) -> Float[Array, "3 3"]:
+    """Build row-vector canonical cell vectors without importing ucell."""
+    a: Num[Array, ""]
+    b: Num[Array, ""]
+    c: Num[Array, ""]
+    alpha: Num[Array, ""]
+    beta: Num[Array, ""]
+    gamma: Num[Array, ""]
+    a, b, c = cell_lengths
+    alpha, beta, gamma = jnp.radians(cell_angles)
+    a_vec: Float[Array, "3"] = jnp.array([a, 0.0, 0.0])
+    b_vec: Float[Array, "3"] = jnp.array(
+        [b * jnp.cos(gamma), b * jnp.sin(gamma), 0.0]
+    )
+    c_x: Num[Array, ""] = c * jnp.cos(beta)
+    c_y: Num[Array, ""] = c * (
+        (jnp.cos(alpha) - jnp.cos(beta) * jnp.cos(gamma)) / jnp.sin(gamma)
+    )
+    c_z_sq: Num[Array, ""] = c**2 - c_x**2 - c_y**2
+    c_vec: Float[Array, "3"] = jnp.array(
+        [c_x, c_y, jnp.sqrt(jnp.clip(c_z_sq, min=0.0))]
+    )
+    return jnp.stack([a_vec, b_vec, c_vec], axis=0)
+
+
 class CrystalStructure(eqx.Module):
     """JAX-compatible Pytree with fractional and Cartesian coordinates.
 
@@ -192,9 +220,23 @@ def create_crystal_structure(
             jnp.any((cell_angles <= 0) | (cell_angles >= 180)),
             "cell_angles must be between 0 and 180 degrees",
         )
+        canonical_vectors: Float[Array, "3 3"] = _build_canonical_cell_vectors(
+            checked_cell_lengths, checked_cell_angles
+        )
+        expected_cart: Float[Array, "... 3"] = (
+            checked_frac_positions[:, :3] @ canonical_vectors
+        )
+        cart_delta: Float[Array, ""] = jnp.max(
+            jnp.abs(expected_cart - cart_positions[:, :3])
+        )
+        checked_cart_positions: Num[Array, "... 4"] = eqx.error_if(
+            cart_positions,
+            cart_delta > 1e-6,
+            "cart_positions must equal frac_positions @ canonical cell",
+        )
         return CrystalStructure(
             frac_positions=checked_frac_positions,
-            cart_positions=cart_positions,
+            cart_positions=checked_cart_positions,
             cell_lengths=checked_cell_lengths,
             cell_angles=checked_cell_angles,
         )
