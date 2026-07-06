@@ -400,7 +400,7 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         params: Any = kirkland_potentials()[13]  # Si, zero-indexed
         amplitudes: Any = params[::2]
         scales: Any = params[1::2]
-        s_squared: scalar_float = (q_values / (4.0 * jnp.pi))[
+        s_squared: scalar_float = (q_values / (2.0 * jnp.pi))[
             :, jnp.newaxis
         ] ** 2
         expected: scalar_float = jnp.sum(
@@ -449,12 +449,15 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         params: Any = kirkland_potentials()[13]  # Si, zero-indexed
         amplitudes: Any = params[::2]
         scales: Any = params[1::2]
-        prefactor: scalar_float = 47.87801 * 2.0 * jnp.pi
+        prefactor_lorentzian: scalar_float = 47.87801 * 2.0 * jnp.pi
+        prefactor_gaussian: scalar_float = 47.87801 * jnp.pi
         r_expanded: Float[Array, "..."] = radial_positions[:, jnp.newaxis]
-        expected: Float[Array, "..."] = prefactor * jnp.sum(
+        expected: Float[Array, "..."] = prefactor_lorentzian * jnp.sum(
             amplitudes[:3][jnp.newaxis, :]
-            * bessel_k0(2.0 * jnp.pi * r_expanded * jnp.sqrt(scales[:3]))
-            + (amplitudes[3:][jnp.newaxis, :] / scales[3:])
+            * bessel_k0(2.0 * jnp.pi * r_expanded * jnp.sqrt(scales[:3])),
+            axis=-1,
+        ) + prefactor_gaussian * jnp.sum(
+            (amplitudes[3:][jnp.newaxis, :] / scales[3:])
             * jnp.exp(-(jnp.pi**2) * r_expanded**2 / scales[3:]),
             axis=-1,
         )

@@ -61,7 +61,7 @@ class RenderParams(eqx.Module):
     n_angular_samples: int = eqx.field(default=5, static=True)
     n_energy_samples: int = eqx.field(default=5, static=True)
     n_mosaic_points: scalar_int = eqx.field(default=7, static=True)
-    parameterization: str = eqx.field(default="kirkland", static=True)
+    parameterization: str = eqx.field(default="lobato", static=True)
     render_ctrs_as_streaks: bool = eqx.field(default=True, static=True)
     kernel: str = eqx.field(default="kinematic", static=True)
     inner_potential_v0: scalar_float = 0.0

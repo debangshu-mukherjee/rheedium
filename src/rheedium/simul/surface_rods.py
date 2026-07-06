@@ -60,7 +60,7 @@ def calculate_ctr_intensity(
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Float[Array, "N M"]:
     """Calculate continuous intensity along crystal truncation rods (CTRs).
 
@@ -200,7 +200,7 @@ def calculate_ctr_amplitude(
     surface_roughness: scalar_float,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Complex[Array, "N M"]:
     r"""Calculate complex amplitude along crystal truncation rods (CTRs).
 
@@ -336,7 +336,7 @@ def integrated_ctr_amplitude(
     n_integration_points: int = 50,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Complex[Array, ""]:
     """Integrate CTR amplitude over finite detector acceptance.
 
@@ -620,7 +620,7 @@ def surface_structure_factor(
     atomic_numbers: Int[Array, "N"],
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "N"] | None = None,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Complex[Array, ""]:
     r"""Calculate structure factor for surface with q_z dependence.
 
@@ -720,7 +720,7 @@ def integrated_rod_intensity(
     n_integration_points: int = 50,
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "n_atoms"] | None = None,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> scalar_float:
     """Integrate CTR intensity over finite detector acceptance.
 

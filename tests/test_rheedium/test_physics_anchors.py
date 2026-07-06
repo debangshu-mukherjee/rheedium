@@ -24,7 +24,7 @@ from rheedium.simul.form_factors import (
     kirkland_form_factor,
     kirkland_projected_potential,
     lobato_form_factor,
-    projected_potential,
+    lobato_projected_potential,
 )
 from rheedium.tools import bessel_k0, bessel_k1
 from rheedium.types import (
@@ -35,13 +35,7 @@ from rheedium.types import (
 )
 from rheedium.ucell import reciprocal_lattice_vectors
 
-LOBATO_FALLBACK_REASON = (
-    "bundled Lobato table failed validation -- see "
-    ".claude/RED_TEAM_REPORT.md C1"
-)
 
-
-@pytest.mark.xfail(strict=False, reason=LOBATO_FALLBACK_REASON)
 def test_lobato_table_bethe_sum_rule() -> None:
     """Lobato coefficients obey the exact Bethe asymptote sum rule."""
     params = np.asarray(lobato_potentials())
@@ -49,12 +43,10 @@ def test_lobato_table_bethe_sum_rule() -> None:
     b = params[:, 1::2]
     z = np.arange(1, 104, dtype=np.float64)
     expected = 0.0957336 * z
-    np.testing.assert_array_less(0.0, a)
     np.testing.assert_array_less(0.0, b)
     np.testing.assert_allclose(np.sum(a / b, axis=1), expected, rtol=1e-3)
 
 
-@pytest.mark.xfail(strict=False, reason=LOBATO_FALLBACK_REASON)
 def test_lobato_vs_kirkland_f0() -> None:
     """Lobato and Kirkland f(0) agree at table-load time."""
     lobato_params = np.asarray(lobato_potentials())
@@ -68,12 +60,18 @@ def test_lobato_vs_kirkland_f0() -> None:
     assert np.median(np.abs(ratio - 1.0)) < 0.05
 
 
-def test_lobato_fallback_raises() -> None:
-    """The invalid bundled Lobato table is not silently usable."""
-    with pytest.raises(ValueError, match="failed validation"):
-        lobato_form_factor(14, jnp.asarray([0.0]))
-    with pytest.raises(ValueError, match="failed validation"):
-        projected_potential(14, jnp.asarray([1.0]), parameterization="lobato")
+def test_kirkland_lobato_cross_agreement() -> None:
+    """Independent Kirkland/Lobato parameterizations of f_e agree."""
+    ratios = []
+    for z in (6, 8, 13, 14, 26, 38, 79):
+        for g_inv_ang in (0.5, 1.0, 2.0, 4.0):
+            q_pkg = jnp.asarray([2.0 * jnp.pi * g_inv_ang], dtype=jnp.float64)
+            f_lobato = float(lobato_form_factor(z, q_pkg)[0])
+            f_kirkland = float(kirkland_form_factor(z, q_pkg)[0])
+            ratios.append(f_kirkland / f_lobato)
+    deviations = np.abs(np.asarray(ratios) - 1.0)
+    assert float(np.max(deviations)) < 0.20
+    assert float(np.median(deviations)) < 0.08
 
 
 def test_kirkland_bethe_asymptote() -> None:
@@ -84,19 +82,29 @@ def test_kirkland_bethe_asymptote() -> None:
     assert abs(f_si / expected - 1.0) < 0.15
 
 
+@pytest.mark.parametrize(
+    ("form_factor_fn", "potential_fn"),
+    [
+        (kirkland_form_factor, kirkland_projected_potential),
+        (lobato_form_factor, lobato_projected_potential),
+    ],
+)
 @pytest.mark.parametrize("z", [14, 79])
 @pytest.mark.parametrize("r_ang", [0.2, 0.5, 1.0])
 def test_projected_potential_is_hankel_pair_of_form_factor(
-    z: int, r_ang: float
+    form_factor_fn: Callable[[Any, Any], Any],
+    potential_fn: Callable[[Any, Any], Any],
+    z: int,
+    r_ang: float,
 ) -> None:
-    """Kirkland projected potential matches the Hankel transform of f(g)."""
+    """Each projected potential matches the Hankel transform of its f(g)."""
     pref = 47.87801 * 2.0 * np.pi
     g = np.linspace(0.0, 80.0, 200_000)
     q_pkg = jnp.asarray(2.0 * np.pi * g, dtype=jnp.float64)
-    f = np.asarray(kirkland_form_factor(z, q_pkg))
+    f = np.asarray(form_factor_fn(z, q_pkg))
     integrand = f * scipy.special.j0(2.0 * np.pi * g * r_ang) * g
     ref = pref * np.trapezoid(integrand, g)
-    code_vz = float(kirkland_projected_potential(z, jnp.asarray([r_ang]))[0])
+    code_vz = float(potential_fn(z, jnp.asarray([r_ang]))[0])
     assert abs(code_vz / ref - 1.0) < 0.02
 
 

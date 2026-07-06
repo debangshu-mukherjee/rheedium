@@ -51,10 +51,11 @@ Debye temperatures are from:
 - Various experimental sources for less common elements
 """
 
+import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
-from jaxtyping import Array, Float, Int, jaxtyped
+from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from rheedium.inout import (
     atomic_masses,
@@ -152,14 +153,6 @@ _DEBYE_GL_WEIGHTS: Float[Array, "32"] = jnp.asarray(
     ],
     dtype=jnp.float64,
 )
-
-
-def _raise_lobato_unavailable() -> None:
-    """Raise for the disabled Lobato path."""
-    raise ValueError(
-        "bundled Lobato table failed validation -- see "
-        ".claude/RED_TEAM_REPORT.md C1"
-    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -584,7 +577,6 @@ def lobato_form_factor(
     ----------
     Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70, 636--649.
     """
-    _raise_lobato_unavailable()
     a_coeffs: Float[Array, "5"]
     b_coeffs: Float[Array, "5"]
     a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
@@ -672,7 +664,6 @@ def lobato_projected_potential(
     .. [1] Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70,
        636--649, Eq. (16).
     """
-    _raise_lobato_unavailable()
     a_coeffs: Float[Array, "5"]
     b_coeffs: Float[Array, "5"]
     a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
@@ -701,7 +692,7 @@ def lobato_projected_potential(
 def projected_potential(
     atomic_number: scalar_int,
     r: Float[Array, "..."],
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Float[Array, "..."]:
     r"""Projected atomic potential with selectable parameterization.
 
@@ -743,11 +734,17 @@ def projected_potential(
     lobato_projected_potential : Lobato-van Dyck parameterization
     kirkland_projected_potential : Kirkland parameterization
     """
-    if parameterization == "lobato":
-        _raise_lobato_unavailable()
-    if parameterization != "kirkland":
-        raise ValueError("parameterization must be 'kirkland'")
-    return kirkland_projected_potential(atomic_number, r)
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
+    use_lobato: Bool[Array, ""] = jnp.asarray(parameterization == "lobato")
+    potential: Float[Array, "..."] = jax.lax.cond(
+        use_lobato,
+        lobato_projected_potential,
+        kirkland_projected_potential,
+        atomic_number,
+        r,
+    )
+    return potential
 
 
 @jaxtyped(typechecker=beartype)
@@ -947,7 +944,7 @@ def atomic_scattering_factor(
     q_vector: Float[Array, "... 3"],
     temperature: scalar_float = 300.0,
     is_surface: scalar_bool = False,
-    parameterization: str = "kirkland",
+    parameterization: str = "lobato",
 ) -> Float[Array, "..."]:
     r"""Calculate combined atomic scattering factor with thermal damping.
 
@@ -1013,14 +1010,15 @@ def atomic_scattering_factor(
     get_mean_square_displacement : Calculate thermal displacement
     debye_waller_factor : Calculate thermal damping factor
     """
-    if parameterization == "lobato":
-        _raise_lobato_unavailable()
-    if parameterization != "kirkland":
-        raise ValueError("parameterization must be 'kirkland'")
+    if parameterization not in {"lobato", "kirkland"}:
+        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
     q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
-    form_factor: Float[Array, "..."] = kirkland_form_factor(
-        atomic_number, q_magnitude
-    )
+    if parameterization == "lobato":
+        form_factor: Float[Array, "..."] = lobato_form_factor(
+            atomic_number, q_magnitude
+        )
+    else:
+        form_factor = kirkland_form_factor(atomic_number, q_magnitude)
     mean_square_disp: Float[Array, ""] = get_mean_square_displacement(
         atomic_number, temperature, is_surface
     )

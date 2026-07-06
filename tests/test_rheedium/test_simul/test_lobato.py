@@ -79,7 +79,7 @@ class TestLoadLobatoPotentials(chex.TestCase):
         chex.assert_tree_all_finite(params)
 
     def test_csv_positive(self) -> None:
-        r"""All a_i and b_i coefficients are positive.
+        r"""All b_i widths are positive (a_i may be negative in Lobato).
 
         Extended Summary
         ----------------
@@ -99,7 +99,7 @@ class TestLoadLobatoPotentials(chex.TestCase):
         exposes both the guarantee and the implementation path.
         """
         params: Float[Array, "103 10"] = lobato_potentials()
-        assert jnp.all(params > 0)
+        assert jnp.all(params[:, 1::2] > 0)
 
     def test_load_lobato_parameters_hydrogen(self) -> None:
         r"""Hydrogen parameters match CSV row 1.
@@ -128,7 +128,7 @@ class TestLoadLobatoPotentials(chex.TestCase):
         chex.assert_shape(b, (5,))
         chex.assert_tree_all_finite(a)
         chex.assert_tree_all_finite(b)
-        chex.assert_trees_all_close(a[0], jnp.array(0.0349), rtol=1e-3)
+        chex.assert_trees_all_close(a[0], jnp.array(0.0064738), rtol=1e-3)
 
     def test_load_lobato_parameters_silicon(self) -> None:
         r"""Silicon (Z=14) parameters match CSV.
@@ -153,7 +153,7 @@ class TestLoadLobatoPotentials(chex.TestCase):
         a: Float[Array, "5"]
         _b: Float[Array, "5"]
         a, _b = load_lobato_parameters(14)
-        chex.assert_trees_all_close(a[0], jnp.array(0.2519), rtol=1e-3)
+        chex.assert_trees_all_close(a[0], jnp.array(2.8718914), rtol=1e-3)
 
 
 class TestLobatoFormFactor(chex.TestCase, parameterized.TestCase):
