@@ -33,7 +33,7 @@ def _carriers(settings, *, phi_deg=None, surface_roughness=None):
             if surface_roughness is None
             else surface_roughness
         ),
-        ctr_regularization=settings["ctr_regularization"],
+        layer_attenuation=settings["layer_attenuation"],
         ctr_power=settings["ctr_power"],
         roughness_power=settings["roughness_power"],
     )
@@ -108,7 +108,7 @@ def _compute_dynamic_range_floor(crystal, settings):
         detector_distance=settings["detector_distance_mm"],
         temperature=settings["temperature"],
         surface_roughness=settings["surface_roughness"],
-        ctr_regularization=settings["ctr_regularization"],
+        layer_attenuation=settings["layer_attenuation"],
         ctr_power=settings["ctr_power"],
         roughness_power=settings["roughness_power"],
     )
@@ -153,9 +153,9 @@ def main() -> None:
         "detector_distance_mm": 1000.0,
         "temperature": 300.0,
         "surface_roughness": 0.0,
-        "ctr_regularization": 0.01,
+        "layer_attenuation": 0.10536052,  # -log(1-sqrt(0.01)): legacy cap 1/0.01
         "ctr_power": 1.0,
-        "roughness_power": 0.25,
+        "roughness_power": 1.0,
         "image_shape_px": (300, 300),
         "pixel_size_mm": (2.16, 2.16),
         "beam_center_px": (150.0, 0.0),

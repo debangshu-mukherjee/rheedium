@@ -52,6 +52,8 @@ All functions support JAX transformations and automatic differentiation for
 gradient-based optimization and inverse problems.
 """
 
+import warnings
+
 import jax
 import jax.numpy as jnp
 from beartype import beartype
@@ -119,13 +121,17 @@ from .beam_averaging import (
 from .finite_domain import (
     compute_shell_sigma,
     extent_to_rod_sigma,
-    rod_ewald_overlap,
+    find_ctr_ewald_intersection,
 )
 from .form_factors import (
     atomic_scattering_factor,
     projected_potential,
 )
-from .surface_rods import integrated_ctr_amplitude, integrated_rod_intensity
+from .surface_rods import (
+    ctr_truncation_amplitude,
+    ctr_truncation_intensity,
+    roughness_damping,
+)
 
 _VALID_THRESHOLD: Final[float] = 0.5
 _KINEMATIC_KERNEL: Final[str] = "kinematic"
@@ -144,28 +150,77 @@ def _validate_layer0_kernel(kernel: str) -> None:
         )
 
 
+def _resolve_layer_attenuation(
+    layer_attenuation: scalar_float,
+    ctr_regularization: scalar_float | None,
+) -> scalar_float:
+    r"""Resolve the CTR attenuation ε, honoring the deprecated alias.
+
+    ``ctr_regularization`` was the additive constant in the legacy
+    ``1 / (sin^2(pi l) + reg)`` shape. It is deprecated in favor of the
+    per-layer amplitude attenuation ε of the semi-infinite truncation
+    factor. When given, it is converted so the legacy Bragg-peak cap
+    ``1/reg`` is preserved exactly: the new cap is
+    ``1/(1 - exp(-ε))^2``, so ``ε = -log(1 - sqrt(reg))`` for
+    ``0 < reg < 1``.
+    """
+    if ctr_regularization is None:
+        return layer_attenuation
+    warnings.warn(
+        "ctr_regularization is deprecated; pass layer_attenuation "
+        "(per-layer amplitude attenuation epsilon) instead. The given "
+        "value is converted via epsilon = -log(1 - sqrt(reg)) so the "
+        "legacy Bragg-peak cap 1/reg is preserved exactly.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+    reg: Float[Array, ""] = jnp.clip(
+        jnp.asarray(ctr_regularization, dtype=jnp.float64), 1e-12, 1.0 - 1e-12
+    )
+    epsilon: Float[Array, ""] = -jnp.log(1.0 - jnp.sqrt(reg))
+    return epsilon
+
+
 @jaxtyped(typechecker=beartype)
 def _compose_ewald_intensity(
     sf_intensity: scalar_float,
     l_value: scalar_float,
     q_z: scalar_float,
     surface_roughness: scalar_float,
-    ctr_regularization: scalar_float,
+    layer_attenuation: scalar_float,
     ctr_power: scalar_float,
     roughness_power: scalar_float,
 ) -> Tuple[Float[Array, ""], Float[Array, ""], Float[Array, ""]]:
-    """Combine sparse Ewald intensity terms with tunable powers."""
-    sin_pi_l: Float[Array, ""] = jnp.sin(jnp.pi * l_value)
-    ctr_modulation: Float[Array, ""] = 1.0 / (sin_pi_l**2 + ctr_regularization)
-    roughness_damping: Float[Array, ""] = jnp.exp(
-        -0.5 * (surface_roughness**2) * q_z**2
+    r"""Combine sparse Ewald intensity terms into the unified CTR model.
+
+    The intensity is
+    ``sf_intensity * T(l)**ctr_power * R(q_z)**roughness_power`` where
+    ``T(l) = 1 / (1 - 2 e^{-eps} cos(2 pi l) + e^{-2 eps})`` is the
+    semi-infinite truncation-rod intensity factor
+    (:func:`~rheedium.simul.ctr_truncation_intensity`) and
+    ``R(q_z) = exp(-sigma^2 q_z^2)`` is the roughness **intensity**
+    factor (the square of
+    :func:`~rheedium.simul.roughness_damping`). ``ctr_power`` and
+    ``roughness_power`` are non-physical diagnostic knobs; both default
+    to 1.0, which is the physical model.
+    """
+    ctr_modulation: Float[Array, ""] = ctr_truncation_intensity(
+        l_values=jnp.asarray(l_value, dtype=jnp.float64),
+        layer_attenuation=layer_attenuation,
+    )
+    roughness_intensity: Float[Array, ""] = (
+        roughness_damping(
+            q_z=jnp.asarray(q_z, dtype=jnp.float64),
+            sigma_height=surface_roughness,
+        )
+        ** 2
     )
     total_intensity: Float[Array, ""] = (
         sf_intensity
         * ctr_modulation**ctr_power
-        * roughness_damping**roughness_power
+        * roughness_intensity**roughness_power
     )
-    return total_intensity, ctr_modulation, roughness_damping
+    return total_intensity, ctr_modulation, roughness_intensity
 
 
 @jaxtyped(typechecker=beartype)
@@ -388,21 +443,24 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     hkl_indices: Int[Array, "N 3"] | None = None,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.0,
-    detector_acceptance: scalar_float = 0.01,
+    detector_acceptance_inv_ang: scalar_float = 0.01,  # noqa: ARG001
     surface_fraction: scalar_float = 0.3,  # noqa: ARG001
     surface_config: SurfaceConfig | None = None,
-    ctr_mixing_mode: str = "incoherent",
+    ctr_mixing_mode: str = "rod",
     ctr_weight: scalar_float = 1.0,
     hk_tolerance: scalar_float = 0.1,
+    layer_attenuation: scalar_float = 0.01,
     parameterization: str = "lobato",
 ) -> Float[Array, "N"]:
-    """Calculate kinematic diffraction intensities with CTR contributions.
+    r"""Calculate kinematic diffraction intensities with CTR truncation.
 
-    For each reflection, computes the structure factor by summing atomic
-    contributions (form factor × phase factor). The phase is computed as
-    G·r where G vectors already include the 2π factor from reciprocal
-    lattice generation. CTR contributions are mixed according to the
-    specified mode.
+    For each reflection, computes the single-cell structure factor by
+    summing atomic contributions (form factor × phase factor). The phase
+    is computed as G·r where G vectors already include the 2π factor from
+    reciprocal lattice generation. For reflections whose (h, k) are
+    near-integer, the intensity **is** the unified truncation-rod model
+    :math:`|F_{cell}(q)|^2 \times T(l) \times e^{-q_z^2 \sigma^2}` —
+    one model, with no additive kinematic + CTR double counting.
 
     :see: :class:`~.test_simulator.TestComputeKinematicIntensitiesExtended`
 
@@ -426,8 +484,11 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     surface_roughness : scalar_float, optional
         RMS surface roughness in angstroms.
         Default: 0.0
-    detector_acceptance : scalar_float, optional
-        Detector angular acceptance in reciprocal angstroms.
+    detector_acceptance_inv_ang : scalar_float, optional
+        Gaussian σ of the detector q_z acceptance window in 1/Å (this
+        parameter was never an angle). Retained for API stability; the
+        unified rod model evaluates the truncation factor at the
+        reflection's own l, so this window is not applied here.
         Default: 0.01
     surface_fraction : scalar_float, optional
         Legacy height-fraction knob retained for API compatibility. It is
@@ -444,19 +505,26 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
         atoms. Slab-based callers that want thermal surface enhancement
         must opt in explicitly.
     ctr_mixing_mode : str, optional
-        How to combine kinematic and CTR contributions:
-        - "coherent": Add complex amplitudes, then square (interference)
-        - "incoherent": Add intensities directly (no interference)
-        - "none": Only kinematic scattering, no CTR contribution
-        Default: "incoherent"
+        CTR handling mode:
+        - "rod" (default): unified truncation-rod model
+          :math:`|F|^2 T(l) e^{-q_z^2 \sigma^2}` for near-integer (h, k)
+        - "none": bare :math:`|F|^2` (bulk-like, no CTR factor)
+        - "coherent"/"incoherent": deprecated aliases of "rod" (emit a
+          DeprecationWarning); the old additive kinematic + CTR paths
+          double-counted the rod and were removed.
+        Default: "rod"
     ctr_weight : scalar_float, optional
-        Weight factor for CTR contribution (0.0-1.0). Controls the
-        relative strength of streak vs spot intensity.
+        Blend factor in [0, 1] between the bare kinematic model (0.0)
+        and the full truncation-rod model (1.0): the applied factor is
+        ``(1 - w) + w * T(l) * exp(-q_z^2 sigma^2)``.
         Default: 1.0
     hk_tolerance : scalar_float, optional
         Tolerance for validating near-integer h,k indices. CTR is only
         applied when :math:`|h - round(h)| < tolerance` and same for k.
         Default: 0.1
+    layer_attenuation : scalar_float, optional
+        Per-layer amplitude attenuation :math:`\epsilon` of the
+        truncation factor. Default: 0.01
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
 
@@ -467,11 +535,6 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
 
     Notes
     -----
-    The coherent mode is physically more accurate as it accounts for
-    interference between kinematic scattering and CTR contributions.
-    However, incoherent mode may be more stable numerically and is
-    the historical default behavior.
-
     Surface atom identification supports multiple strategies:
     - "height": Top fraction by z-coordinate (simple, fast)
     - "coordination": Atoms with fewer neighbors (better for steps)
@@ -486,36 +549,54 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
        layers, or explicit mask).
     3. **Per-reflection intensity** --
        For each G: compute :math:`q = k_{out} - k_{in}`,
-       evaluate structure factor with form factors and
-       Debye-Waller, gate CTR on near-integer (h, k).
-    4. **Mix contributions** --
-       Coherent (add amplitudes), incoherent (add
-       intensities), or no CTR.
+       evaluate the structure factor with form factors and
+       Debye-Waller, gate the rod factor on near-integer (h, k).
+    4. **Apply the unified rod model** --
+       Multiply :math:`|F|^2` by the truncation factor
+       :math:`T(l)` at the reflection's continuous l and by the
+       roughness intensity factor; "none" skips both.
 
     See Also
     --------
     atomic_scattering_factor : Compute form factors with Debye-Waller.
-    integrated_ctr_amplitude : CTR amplitude for coherent mixing.
-    integrated_rod_intensity : CTR intensity for incoherent mixing.
+    ctr_truncation_intensity : Semi-infinite truncation-rod factor.
+    roughness_damping : Roughness amplitude factor (squared here).
     identify_surface_atoms : Identify surface atoms from positions.
     """
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
+    if ctr_mixing_mode in {"coherent", "incoherent"}:
+        warnings.warn(
+            "ctr_mixing_mode='coherent'/'incoherent' are deprecated "
+            "aliases of 'rod': the additive kinematic + CTR paths "
+            "double-counted the truncation rod and were removed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        ctr_mixing_mode = "rod"
+    if ctr_mixing_mode not in {"rod", "none"}:
+        raise ValueError(
+            "ctr_mixing_mode must be one of 'rod', 'none' (or the "
+            "deprecated aliases 'coherent'/'incoherent')."
+        )
     atom_positions: Float[Array, "M 3"] = crystal.cart_positions[:, :3]
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
-    # Recover Miller indices for CTR gating; prefer explicit indices when given
+    recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+        *crystal.cell_lengths,
+        *crystal.cell_angles,
+        in_degrees=True,
+    )
+    inv_recip: Float[Array, "3 3"] = jnp.linalg.inv(recip_vecs)
+    # Continuous (h, k, l) of each reflection's momentum transfer in the
+    # reciprocal basis; the l column feeds the truncation factor.
+    hkl_q: Float[Array, "N 3"] = jnp.matmul(k_out - k_in, inv_recip)
+    # Miller indices used for near-integer (h, k) gating; prefer explicit
     hkl_all: Float[Array, "N 3"]
     if hkl_indices is not None:
         hkl_all = jnp.asarray(hkl_indices, dtype=jnp.float64)
     else:
-        recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
-            *crystal.cell_lengths,
-            *crystal.cell_angles,
-            in_degrees=True,
-        )
-        inv_recip: Float[Array, "3 3"] = jnp.linalg.inv(recip_vecs)
         hkl_all = jnp.matmul(g_allowed, inv_recip)
 
     # Default: no surface enhancement. The bulk basis here is repeated by
@@ -565,7 +646,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
         )
         structure_factor: Complex[Array, ""] = jnp.sum(contributions)
 
-        # Validate h,k are near-integer before applying CTR
+        # Validate h,k are near-integer before applying the rod factor
         h_val: Float[Array, ""] = hkl_all[idx, 0]
         k_val: Float[Array, ""] = hkl_all[idx, 1]
         h_deviation: Float[Array, ""] = jnp.abs(h_val - jnp.round(h_val))
@@ -574,59 +655,36 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
             k_deviation < hk_tolerance
         )
 
-        hk_index: Int[Array, "2"] = jnp.array(
-            [
-                jnp.round(h_val).astype(jnp.int32),
-                jnp.round(k_val).astype(jnp.int32),
-            ]
-        )
-        q_z_value: Float[Array, ""] = q_vector[2]
-        q_z_range: Float[Array, "2"] = jnp.array(
-            [q_z_value - detector_acceptance, q_z_value + detector_acceptance]
-        )
-
-        # Calculate intensity based on mixing mode
         kinematic_intensity: Float[Array, ""] = jnp.abs(structure_factor) ** 2
 
         if ctr_mixing_mode == "none":
-            # No CTR contribution
+            # Bulk-like: bare |F|^2, no truncation-rod factor
             total_intensity: Float[Array, ""] = kinematic_intensity
-        elif ctr_mixing_mode == "coherent":
-            # Coherent mixing: add complex amplitudes, then square
-            ctr_amplitude: Complex[Array, ""] = integrated_ctr_amplitude(
-                hk_index=hk_index,
-                q_z_range=q_z_range,
-                crystal=crystal,
-                surface_roughness=surface_roughness,
-                detector_acceptance=detector_acceptance,
-                temperature=temperature,
-                parameterization=parameterization,
-            )
-            # Apply weight and near-integer mask
-            weighted_ctr: Complex[Array, ""] = (
-                ctr_weight * ctr_amplitude * is_near_integer
-            )
-            total_amplitude: Complex[Array, ""] = (
-                structure_factor + weighted_ctr
-            )
-            total_intensity: Float[Array, ""] = jnp.abs(total_amplitude) ** 2
         else:
-            # Incoherent mixing (default): add intensities
-            ctr_intensity: Float[Array, ""] = integrated_rod_intensity(
-                hk_index=hk_index,
-                q_z_range=q_z_range,
-                crystal=crystal,
-                surface_roughness=surface_roughness,
-                detector_acceptance=detector_acceptance,
-                temperature=temperature,
-                parameterization=parameterization,
+            # Unified truncation-rod model (ONE model, no double count):
+            # |F(q)|^2 * T(l) * exp(-q_z^2 sigma^2) at the reflection's
+            # own continuous l along the (h, k) rod.
+            l_value: Float[Array, ""] = hkl_q[idx, 2]
+            truncation: Float[Array, ""] = ctr_truncation_intensity(
+                l_values=l_value,
+                layer_attenuation=layer_attenuation,
             )
-            # Apply weight and near-integer mask
-            weighted_ctr_intensity: Float[Array, ""] = (
-                ctr_weight * ctr_intensity * is_near_integer
+            roughness_intensity: Float[Array, ""] = (
+                roughness_damping(
+                    q_z=q_vector[2],
+                    sigma_height=surface_roughness,
+                )
+                ** 2
+            )
+            rod_factor: Float[Array, ""] = truncation * roughness_intensity
+            blended_factor: Float[Array, ""] = (
+                1.0 - ctr_weight
+            ) + ctr_weight * rod_factor
+            applied_factor: Float[Array, ""] = jnp.where(
+                is_near_integer, blended_factor, 1.0
             )
             total_intensity: Float[Array, ""] = (
-                kinematic_intensity + weighted_ctr_intensity
+                kinematic_intensity * applied_factor
             )
 
         return total_intensity
@@ -640,69 +698,6 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
 
 
 @jaxtyped(typechecker=beartype)
-def find_ctr_ewald_intersection(
-    h: scalar_int,
-    k: scalar_int,
-    k_in: Float[Array, "3"],
-    recip_a: Float[Array, "3"],
-    recip_b: Float[Array, "3"],
-    recip_c: Float[Array, "3"],
-) -> Tuple[Float[Array, "2"], Float[Array, "2 3"], Float[Array, "2"]]:
-    """Find where a crystal truncation rod intersects the Ewald sphere.
-
-    Solves the quadratic rod-sphere equation and returns both valid
-    upward-scattering branches, if present.
-
-    Parameters
-    ----------
-    h : scalar_int
-        Miller index h for the rod.
-    k : scalar_int
-        Miller index k for the rod.
-    k_in : Float[Array, "3"]
-        Incident wavevector.
-    recip_a : Float[Array, "3"]
-        First reciprocal lattice vector (a*).
-    recip_b : Float[Array, "3"]
-        Second reciprocal lattice vector (b*).
-    recip_c : Float[Array, "3"]
-        Third reciprocal lattice vector (c*), defines rod direction.
-
-    Returns
-    -------
-    l_intersect : Float[Array, "2"]
-        The plus and minus branch l values, zeroed when invalid.
-    k_out : Float[Array, "2 3"]
-        Outgoing wavevectors for the plus and minus branches.
-    valid : Float[Array, "2"]
-        Branch validity flags as floats in ``{0.0, 1.0}``.
-    """
-    g_hk: Float[Array, "3"] = h * recip_a + k * recip_b
-    c_star: Float[Array, "3"] = recip_c
-    k_mag_sq: Float[Array, ""] = jnp.dot(k_in, k_in)
-    p_vec: Float[Array, "3"] = k_in + g_hk
-    a_coef: Float[Array, ""] = jnp.dot(c_star, c_star)
-    b_coef: Float[Array, ""] = 2.0 * jnp.dot(p_vec, c_star)
-    c_coef: Float[Array, ""] = jnp.dot(p_vec, p_vec) - k_mag_sq
-    discriminant: Float[Array, ""] = b_coef**2 - 4.0 * a_coef * c_coef
-    safe_disc: Float[Array, ""] = jnp.maximum(discriminant, 1e-30)
-    sqrt_disc: Float[Array, ""] = jnp.sqrt(safe_disc)
-    l_plus: Float[Array, ""] = (-b_coef + sqrt_disc) / (2.0 * a_coef)
-    l_minus: Float[Array, ""] = (-b_coef - sqrt_disc) / (2.0 * a_coef)
-    k_out_plus: Float[Array, "3"] = p_vec + l_plus * c_star
-    k_out_minus: Float[Array, "3"] = p_vec + l_minus * c_star
-    valid_plus: Float[Array, ""] = (discriminant >= 0) & (k_out_plus[2] > 0)
-    valid_minus: Float[Array, ""] = (discriminant >= 0) & (k_out_minus[2] > 0)
-    l_intersect: Float[Array, "2"] = jnp.array([l_plus, l_minus])
-    k_out: Float[Array, "2 3"] = jnp.stack([k_out_plus, k_out_minus], axis=0)
-    valid_mask: Bool[Array, "2"] = jnp.array([valid_plus, valid_minus])
-    l_intersect = jnp.where(valid_mask, l_intersect, 0.0)
-    k_out = jnp.where(valid_mask[:, None], k_out, 0.0)
-    valid: Float[Array, "2"] = valid_mask.astype(jnp.float64)
-    return l_intersect, k_out, valid
-
-
-@jaxtyped(typechecker=beartype)
 def ewald_simulator(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
     energy_kev: scalar_num = 20.0,
@@ -713,11 +708,12 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     detector_distance: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
+    layer_attenuation: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
+    roughness_power: scalar_float = 1.0,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
+    ctr_regularization: scalar_float | None = None,
 ) -> RHEEDPattern:
     r"""Simulate RHEED pattern using exact Ewald sphere-CTR intersection.
 
@@ -749,18 +745,27 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
         Temperature in Kelvin for Debye-Waller factors. Default: 300.0
     surface_roughness : scalar_float, optional
         RMS surface roughness in Ångstroms for CTR damping. Default: 0.0
-    ctr_regularization : scalar_float, optional
-        Additive regularization in the CTR factor ``1 / (sin^2(pi l) + eps)``.
-        Default: 0.01
+    layer_attenuation : scalar_float, optional
+        Per-layer amplitude attenuation :math:`\epsilon \geq 0` in the
+        semi-infinite truncation factor
+        :math:`1/(1 - 2 e^{-\epsilon}\cos 2\pi l + e^{-2\epsilon})`,
+        absorbing the finite penetration depth. Default: 0.01
     ctr_power : scalar_float, optional
-        Exponent applied to the CTR modulation term. Set to ``0.0`` to disable
-        CTR weighting while leaving the geometry unchanged. Default: 1.0
+        Non-physical diagnostic exponent applied to the CTR truncation
+        term. The physical model is ``1.0`` (default); set to ``0.0`` to
+        disable CTR weighting while leaving the geometry unchanged.
     roughness_power : scalar_float, optional
-        Exponent applied to the roughness damping term. Set to ``0.0`` to
-        disable roughness damping while leaving the geometry unchanged.
-        Default: 0.25
+        Non-physical diagnostic exponent applied to the roughness
+        intensity factor :math:`e^{-\sigma^2 q_z^2}`. The physical model
+        is ``1.0`` (default); set to ``0.0`` to disable roughness damping
+        while leaving the geometry unchanged.
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
+    ctr_regularization : scalar_float | None, optional
+        Deprecated alias of the ε parameterization. The legacy additive
+        constant of ``1/(sin^2(pi l) + reg)`` is converted so the
+        Bragg-peak cap matches: ``eps = 2 asinh(sqrt(reg)/2)``. Emits a
+        DeprecationWarning when not None. Default: None
     surface_config : SurfaceConfig | None, optional
         Configuration for surface atom identification. Default: None,
         which maps to ``SurfaceConfig(method="none")`` — no surface
@@ -825,6 +830,9 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     """
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
+    layer_attenuation = _resolve_layer_attenuation(
+        layer_attenuation, ctr_regularization
+    )
     energy_kev: Float[Array, ""] = jnp.asarray(energy_kev)
     theta_deg: Float[Array, ""] = jnp.asarray(theta_deg)
     phi_deg: Float[Array, ""] = jnp.asarray(phi_deg)
@@ -962,7 +970,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
             l_value=l_val,
             q_z=q_z,
             surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
+            layer_attenuation=layer_attenuation,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
         )[0]
@@ -1005,9 +1013,9 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     detector_distance: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
+    layer_attenuation: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
+    roughness_power: scalar_float = 1.0,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
 ) -> Tuple[RHEEDPattern, Complex[Array, "K"]]:
@@ -1137,19 +1145,31 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
             atom_indices
         )
         structure_factor: Complex[Array, ""] = jnp.sum(contributions)
-        _, ctr_modulation, roughness_damping = _compose_ewald_intensity(
+        _, ctr_modulation, roughness_intensity = _compose_ewald_intensity(
             sf_intensity=jnp.abs(structure_factor) ** 2,
             l_value=l_val,
             q_z=q_z,
             surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
+            layer_attenuation=layer_attenuation,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
         )
+        # Preserve the complex phase of the truncation amplitude while
+        # letting the diagnostic powers act on the magnitudes, so that
+        # |amplitude|^2 matches _compose_ewald_intensity exactly.
+        truncation_amp: Complex[Array, ""] = ctr_truncation_amplitude(
+            l_values=l_val,
+            layer_attenuation=layer_attenuation,
+        )
+        truncation_phase: Complex[Array, ""] = truncation_amp / jnp.sqrt(
+            ctr_modulation
+        )
         amplitude_scale: Float[Array, ""] = ctr_modulation ** (
             0.5 * ctr_power
-        ) * roughness_damping ** (0.5 * roughness_power)
-        amplitude: Complex[Array, ""] = structure_factor * amplitude_scale
+        ) * roughness_intensity ** (0.5 * roughness_power)
+        amplitude: Complex[Array, ""] = (
+            structure_factor * truncation_phase * amplitude_scale
+        )
         return jnp.where(is_valid, amplitude, 0.0 + 0.0j)
 
     n_valid: int = valid_indices.shape[0]
@@ -1331,9 +1351,9 @@ def kinematic_amplitude(  # noqa: PLR0913
     detector_distance_mm: scalar_float = 1000.0,
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.0,
-    ctr_regularization: scalar_float = 0.01,
+    layer_attenuation: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
-    roughness_power: scalar_float = 0.25,
+    roughness_power: scalar_float = 1.0,
     image_shape_px: Tuple[int, int] = (192, 192),
     pixel_size_mm: Tuple[float, float] = (1.5, 3.0),
     beam_center_px: Tuple[float, float] = (96.0, 8.0),
@@ -1341,6 +1361,7 @@ def kinematic_amplitude(  # noqa: PLR0913
     render_ctrs_as_streaks: bool = False,
     parameterization: str = "lobato",
     surface_config: SurfaceConfig | None = None,
+    ctr_regularization: scalar_float | None = None,
 ) -> Complex[Array, "H W"]:
     """Render one coherent kinematic Ewald pattern as detector amplitude.
 
@@ -1360,9 +1381,12 @@ def kinematic_amplitude(  # noqa: PLR0913
         Temperature in Kelvin for Debye-Waller damping.
     surface_roughness : scalar_float, optional
         RMS surface roughness in Ångstroms.
-    ctr_regularization, ctr_power, roughness_power : scalar_float, optional
-        CTR and roughness weighting controls passed to
-        :func:`ewald_simulator`.
+    layer_attenuation, ctr_power, roughness_power : scalar_float, optional
+        CTR truncation and roughness controls with the same meaning and
+        defaults as in :func:`ewald_simulator`.
+    ctr_regularization : scalar_float | None, optional
+        Deprecated alias of the ε parameterization; see
+        :func:`ewald_simulator`. Default: None
     image_shape_px : Tuple[int, int], optional
         Detector field shape as ``(height_px, width_px)``.
     pixel_size_mm : Tuple[float, float], optional
@@ -1395,6 +1419,9 @@ def kinematic_amplitude(  # noqa: PLR0913
     render_amplitude_to_field : Dense complex detector renderer.
     _ewald_amplitude_pattern : Sparse kinematic Ewald amplitude simulator.
     """
+    layer_attenuation = _resolve_layer_attenuation(
+        layer_attenuation, ctr_regularization
+    )
     sparse_pattern: RHEEDPattern
     amplitudes: Complex[Array, "N"]
     sparse_pattern, amplitudes = _ewald_amplitude_pattern(
@@ -1407,7 +1434,7 @@ def kinematic_amplitude(  # noqa: PLR0913
         detector_distance=detector_distance_mm,
         temperature=temperature,
         surface_roughness=surface_roughness,
-        ctr_regularization=ctr_regularization,
+        layer_attenuation=layer_attenuation,
         ctr_power=ctr_power,
         roughness_power=roughness_power,
         parameterization=parameterization,
@@ -1447,7 +1474,7 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     detector_distance_mm: scalar_float,
     temperature: scalar_float,
     surface_roughness: scalar_float,
-    ctr_regularization: scalar_float,
+    layer_attenuation: scalar_float,
     ctr_power: scalar_float,
     roughness_power: scalar_float,
     image_shape_px: Tuple[int, int],
@@ -1457,10 +1484,16 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
     render_ctrs_as_streaks: bool,
     parameterization: str,
     surface_config: SurfaceConfig | None,
-    energy_spread_frac: scalar_float,
-    beam_divergence_rad: scalar_float,
+    energy_spread_frac: scalar_float,  # noqa: ARG001
+    beam_divergence_rad: scalar_float,  # noqa: ARG001
 ) -> Complex[Array, "H W"]:
-    """Render kinematic amplitudes with finite-domain rod/Ewald overlap."""
+    """Render kinematic amplitudes with finite-domain spot broadening.
+
+    The sparse amplitudes come from exact rod-sphere intersections, where
+    the rod-based lateral overlap weight is identically 1, so the
+    finite-domain physics enters through the lateral rod widths that
+    broaden the rendered spots.
+    """
     sparse_pattern: RHEEDPattern
     amplitudes: Complex[Array, "N"]
     sparse_pattern, amplitudes = _ewald_amplitude_pattern(
@@ -1473,7 +1506,7 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
         detector_distance=detector_distance_mm,
         temperature=temperature,
         surface_roughness=surface_roughness,
-        ctr_regularization=ctr_regularization,
+        layer_attenuation=layer_attenuation,
         ctr_power=ctr_power,
         roughness_power=roughness_power,
         parameterization=parameterization,
@@ -1487,31 +1520,15 @@ def _kinematic_finite_domain_amplitude(  # noqa: PLR0913
         jnp.asarray(domain_size_angstrom, dtype=jnp.float64) * aspect_ratio
     )
     lam_ang: Float[Array, ""] = wavelength_ang(energy_kev)
-    k_in: Float[Array, "3"] = incident_wavevector(
-        lam_ang,
-        theta_deg,
-        phi_deg,
-    )
     k_magnitude: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
-    rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_extent_ang)
-    overlap: Float[Array, "N"] = rod_ewald_overlap(
-        g_vectors=sparse_pattern.k_out - k_in,
-        k_in=k_in,
-        k_magnitude=k_magnitude,
-        rod_sigma=rod_sigma,
-        shell_sigma=compute_shell_sigma(
-            k_magnitude=k_magnitude,
-            energy_spread_frac=energy_spread_frac,
-            beam_divergence_rad=beam_divergence_rad,
-        ),
-    )
-    finite_amplitudes: Complex[Array, "N"] = amplitudes * jnp.sqrt(overlap)
+    rod_sigma: Float[Array, "3"] = extent_to_rod_sigma(domain_extent_ang)
+    finite_amplitudes: Complex[Array, "N"] = amplitudes
     mean_pixel_size_mm: Float[Array, ""] = jnp.mean(
         jnp.asarray(pixel_size_mm, dtype=jnp.float64)
     )
     finite_sigma_px: Float[Array, ""] = (
         detector_distance_mm
-        * jnp.mean(rod_sigma)
+        * jnp.mean(rod_sigma[:2])
         / jnp.maximum(k_magnitude * mean_pixel_size_mm, 1e-12)
     )
     effective_spot_sigma_px: Float[Array, ""] = jnp.sqrt(
@@ -1945,7 +1962,7 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     detector_distance_mm: scalar_float,
     temperature: scalar_float,
     surface_roughness: scalar_float,
-    ctr_regularization: scalar_float,
+    layer_attenuation: scalar_float,
     ctr_power: scalar_float,
     roughness_power: scalar_float,
     angular_divergence_mrad: scalar_float,
@@ -2040,7 +2057,7 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
                 detector_distance_mm=detector_distance_mm,
                 temperature=temperature,
                 surface_roughness=surface_roughness,
-                ctr_regularization=ctr_regularization,
+                layer_attenuation=layer_attenuation,
                 ctr_power=ctr_power,
                 roughness_power=roughness_power,
                 image_shape_px=image_shape_px,
@@ -2064,7 +2081,7 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
             detector_distance_mm=detector_distance_mm,
             temperature=temperature,
             surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
+            layer_attenuation=layer_attenuation,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
             image_shape_px=image_shape_px,
@@ -2409,7 +2426,10 @@ def simulate_detector_image(
             detector_distance_mm=detector_geometry_distance_mm(detector),
             temperature=surface.temperature,
             surface_roughness=surface.surface_roughness,
-            ctr_regularization=surface.ctr_regularization,
+            layer_attenuation=_resolve_layer_attenuation(
+                surface.layer_attenuation,
+                surface.ctr_regularization,
+            ),
             ctr_power=surface.ctr_power,
             roughness_power=surface.roughness_power,
             angular_divergence_mrad=beam.angular_divergence_mrad,

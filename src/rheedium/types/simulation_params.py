@@ -34,15 +34,24 @@ class BeamSpec(ElectronBeam):
 
 
 class SurfaceCTRParams(eqx.Module):
-    """CTR, roughness, and finite-domain surface parameters."""
+    """CTR, roughness, and finite-domain surface parameters.
+
+    ``layer_attenuation`` is the per-layer amplitude attenuation ε of the
+    semi-infinite CTR truncation factor. ``ctr_regularization`` is a
+    deprecated alias (the legacy additive constant of
+    ``1/(sin^2(pi l) + reg)``); when not None it is converted downstream
+    so the Bragg-peak cap matches. ``ctr_power`` and ``roughness_power``
+    are non-physical diagnostic exponents; 1.0 is the physical model.
+    """
 
     hmax: scalar_int = eqx.field(default=5, static=True)
     kmax: scalar_int = eqx.field(default=5, static=True)
     temperature: scalar_float = 300.0
     surface_roughness: scalar_float = 0.0
-    ctr_regularization: scalar_float = 0.01
+    layer_attenuation: scalar_float = 0.01
+    ctr_regularization: scalar_float | None = None
     ctr_power: scalar_float = 1.0
-    roughness_power: scalar_float = 0.25
+    roughness_power: scalar_float = 1.0
     surface_config: SurfaceConfig | None = eqx.field(
         default=None,
         static=True,

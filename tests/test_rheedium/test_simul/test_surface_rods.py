@@ -17,7 +17,10 @@ from jaxtyping import Array, Bool, Float, Int, Integer
 
 from rheedium.simul.surface_rods import (
     calculate_ctr_intensity,
+    ctr_truncation_amplitude,
+    ctr_truncation_intensity,
     gaussian_rod_profile,
+    integrated_ctr_amplitude,
     integrated_rod_intensity,
     lorentzian_rod_profile,
     rod_profile_function,
@@ -28,11 +31,13 @@ from rheedium.tools.wrappers import jax_safe
 from rheedium.types import CrystalStructure
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.types.custom_types import scalar_float
+from rheedium.ucell import reciprocal_lattice_vectors
 
 
 class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     """Tests for surface crystal-truncation-rod calculations.
 
+    :see: :func:`~rheedium.simul.calculate_ctr_amplitude`
     :see: :func:`~rheedium.simul.calculate_ctr_intensity`
     :see: :func:`~rheedium.simul.gaussian_rod_profile`
     :see: :func:`~rheedium.simul.integrated_rod_intensity`
@@ -49,7 +54,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         testing CTR calculations. Sets up fractional and Cartesian
         coordinate arrays, cell parameters (5.43 Å cubic lattice), and
         test parameters including:
-        - q_z values from 0 to 5 reciprocal lattice units
+        - Continuous l values from 0 to 5 along the rods
         - (h,k) indices for different crystal truncation rods
         - Surface roughness values from smooth (0) to rough (2 Å)
         - Temperature values (100K, 300K, 600K)
@@ -85,7 +90,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             cell_angles=self.cell_angles,
         )
 
-        self.q_z_values: Float[Array, "..."] = jnp.linspace(0.0, 5.0, 20)
+        self.l_values: Float[Array, "..."] = jnp.linspace(0.0, 5.0, 20)
         self.hk_indices: Integer[Array, "..."] = jnp.array(
             [[0, 0], [1, 0], [1, 1], [2, 0]], dtype=jnp.int32
         )
@@ -189,7 +194,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         var_damping: Callable[..., Any] = self.variant(roughness_damping)
 
         q_z_2d: Float[Array, "..."] = jnp.tile(
-            self.q_z_values[:, jnp.newaxis], (1, 5)
+            self.l_values[:, jnp.newaxis], (1, 5)
         )
         sigma_test: float = 1.0
 
@@ -197,7 +202,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         chex.assert_shape(damping_2d, q_z_2d.shape)
 
         q_z_3d: Float[Array, "..."] = jnp.tile(
-            self.q_z_values[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
+            self.l_values[:, jnp.newaxis, jnp.newaxis], (1, 3, 4)
         )
         damping_3d: Any = var_damping(q_z_3d, sigma_test)
         chex.assert_shape(damping_3d, q_z_3d.shape)
@@ -640,20 +645,20 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities: Float[Array, "..."] = var_ctr(
             hk_indices=hk_array,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=roughness,
             temperature=300.0,
         )
 
-        chex.assert_shape(intensities, (1, len(self.q_z_values)))
+        chex.assert_shape(intensities, (1, len(self.l_values)))
 
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
         chex.assert_tree_all_finite(intensities)
 
         if roughness > 0.1:
-            n_points: Float[Array, "..."] = len(self.q_z_values)
+            n_points: Float[Array, "..."] = len(self.l_values)
             first_quarter_mean: scalar_float = jnp.mean(
                 intensities[0, : n_points // 4]
             )
@@ -701,7 +706,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities: Float[Array, "..."] = var_ctr(
             hk_indices=self.hk_indices,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=1.0,
             temperature=300.0,
@@ -709,7 +714,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         expected_shape: tuple[Any, ...] = (
             len(self.hk_indices),
-            len(self.q_z_values),
+            len(self.l_values),
         )
         chex.assert_shape(intensities, expected_shape)
 
@@ -757,7 +762,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities_smooth: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=0.1,
             temperature=300.0,
@@ -765,13 +770,13 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities_rough: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=2.0,
             temperature=300.0,
         )
 
-        n_half: int = len(self.q_z_values) // 2
+        n_half: int = len(self.l_values) // 2
         smooth_high_qz: Any = intensities_smooth[0, n_half:]
         rough_high_qz: Any = intensities_rough[0, n_half:]
 
@@ -792,7 +797,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
     def test_integrated_rod_intensity(
         self,
         q_z_range: tuple[float, float],
-        detector_acceptance: float,
+        detector_acceptance_inv_ang: float,
     ) -> None:
         r"""Test integrated CTR intensity over detector acceptance.
 
@@ -802,9 +807,10 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         intensity over detector acceptance. Existing context from the original
         test prose: Tests numerical integration of CTR intensity over a q_z
         range, simulating finite detector acceptance. Tests various integration
-        ranges (narrow: 0-1, wide: 0-5, offset: 2-4) and detector acceptances
-        (0.1-0.5 reciprocal units). The integrated intensity represents what a
-        real detector measures, accounting for its finite angular resolution.
+        ranges (narrow: 0-1, wide: 0-5, offset: 2-4) and detector acceptance
+        window widths (Gaussian sigma of 0.1-0.5 inverse Angstroms in q_z).
+        The window-weighted mean intensity represents what a real detector
+        pixel measures, accounting for its finite q_z acceptance.
         Verifies that integrated intensity is a positive scalar value,
         essential for comparing with experimental measurements. Note: This
         function has built-in JIT with static_argnames for
@@ -814,8 +820,9 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         Notes
         -----
         It receives parametrized or fixture-provided inputs named
-        ``q_z_range``, ``detector_acceptance``, so the documented behavior is
-        checked across the cases supplied by pytest, Chex, Hypothesis, or absl.
+        ``q_z_range``, ``detector_acceptance_inv_ang``, so the documented
+        behavior is checked across the cases supplied by pytest, Chex,
+        Hypothesis, or absl.
 
         It uses the declared parameter table to exercise multiple named
         examples with the same assertion logic.
@@ -832,7 +839,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
             q_z_range=jnp.array(q_z_range, dtype=jnp.float64),
             crystal=self.test_crystal,
             surface_roughness=1.0,
-            detector_acceptance=detector_acceptance,
+            detector_acceptance_inv_ang=detector_acceptance_inv_ang,
             n_integration_points=30,
             temperature=300.0,
         )
@@ -880,7 +887,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities_cold: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=0.5,
             temperature=100.0,
@@ -888,7 +895,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
         intensities_hot: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
-            q_z=self.q_z_values,
+            l_values=self.l_values,
             crystal=self.test_crystal,
             surface_roughness=0.5,
             temperature=600.0,
@@ -939,7 +946,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         def ctr_for_roughness(sigma: scalar_float) -> Float[Array, "1 10"]:
             return var_ctr(
                 hk_indices=jnp.array([[1, 0]], dtype=jnp.int32),
-                q_z=self.q_z_values[:10],
+                l_values=self.l_values[:10],
                 crystal=self.test_crystal,
                 surface_roughness=sigma,
                 temperature=300.0,
@@ -962,7 +969,7 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         def loss_fn(sigma: float) -> scalar_float:
             intensities: Float[Array, "1 1"] = var_ctr(
                 hk_indices=jnp.array([[0, 0]], dtype=jnp.int32),
-                q_z=jnp.array([2.0]),
+                l_values=jnp.array([2.0]),
                 crystal=self.test_crystal,
                 surface_roughness=sigma,
                 temperature=300.0,
@@ -1035,20 +1042,21 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_physical_consistency(self) -> None:
-        r"""Test physical consistency of CTR calculations.
+        r"""Test the unified truncation-rod decomposition of CTR intensity.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: physical
-        consistency of CTR calculations. Existing context from the original
-        test prose: Validates that CTR intensity calculation correctly
-        implements the physical relationship: I(h,k,q_z) = \|F(h,k,q_z)\|² ×
-        exp(-q_z²σ²). Tests the decomposition by calculating structure factor
-        and roughness damping separately, then verifying their product matches
-        the combined CTR intensity. Tests multiple rods (0,0), (1,0), (2,0) at
-        q_z=1.0 to ensure the formula is consistently applied. This validates
-        the theoretical foundation of CTR analysis for surface structure
-        determination.
+        Verifies the documented behavior for this test case: the CTR
+        intensity is exactly the unified semi-infinite truncation-rod
+        model I(h,k,l) = \|F_cell(q)\|² × T(l) × exp(-q_z²σ²), with q =
+        h·b1 + k·b2 + l·b3, T(l) the truncation intensity factor, and the
+        roughness damping applied as the squared amplitude factor. The
+        decomposition is rebuilt from surface_structure_factor,
+        ctr_truncation_intensity, and roughness_damping and compared to
+        calculate_ctr_intensity on the (0,0), (1,0), and (2,0) rods at
+        l = 0.37 (an arbitrary off-Bragg point). The retired basis-only
+        formula \|F\|² × exp(-q_z²σ²/2) had no truncation factor and only
+        half the roughness exponent.
 
         Notes
         -----
@@ -1059,8 +1067,8 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         assertion covers both transformed and untransformed JAX execution
         paths.
 
-        Exact tree equality assertions check structure, dtype, and values where
-        the expected result is discrete or deterministic.
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
@@ -1075,44 +1083,57 @@ class TestSurfaceRods(chex.TestCase, parameterized.TestCase):
         hk_test: Integer[Array, "..."] = jnp.array(
             [[0, 0], [1, 0], [2, 0]], dtype=jnp.int32
         )
-        q_z_single: Float[Array, "..."] = jnp.array([1.0])
+        l_single: Float[Array, "..."] = jnp.array([0.37])
+        roughness: float = 0.5
+        epsilon: float = 0.01
 
         intensities: Float[Array, "..."] = var_ctr(
             hk_indices=hk_test,
-            q_z=q_z_single,
+            l_values=l_single,
             crystal=self.test_crystal,
-            surface_roughness=0.5,
+            surface_roughness=roughness,
+            layer_attenuation=epsilon,
             temperature=300.0,
         )
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-        q_vec: Float[Array, "..."] = jnp.array([0.0, 0.0, 1.0])
-
-        # Create per-atom surface mask (all True for this test)
+        recip: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+            *self.test_crystal.cell_lengths,
+            *self.test_crystal.cell_angles,
+        )
         n_atoms: int = self.test_crystal.cart_positions.shape[0]
-        is_surface_atom: Bool[Array, "..."] = jnp.ones(
+        is_surface_atom: Bool[Array, "..."] = jnp.zeros(
             n_atoms, dtype=jnp.bool_
         )
-        f_struct: Float[Array, "..."] = var_structure(
-            q_vector=q_vec,
-            atomic_positions=self.test_crystal.cart_positions[:, :3],
-            atomic_numbers=self.test_crystal.cart_positions[:, 3].astype(
-                jnp.int32
-            ),
-            temperature=300.0,
-            is_surface_atom=is_surface_atom,
+        truncation: Float[Array, "..."] = ctr_truncation_intensity(
+            l_values=l_single[0], layer_attenuation=epsilon
         )
-
-        damping: Float[Array, "..."] = var_damping(
-            q_z=jnp.array(1.0), sigma_height=0.5
-        )
-
-        expected_intensity: Float[Array, "..."] = (
-            jnp.abs(f_struct) ** 2 * damping
-        )
-
-        chex.assert_tree_all_finite(expected_intensity)
+        for rod_index in range(3):
+            hk: Integer[Array, "..."] = hk_test[rod_index]
+            q_vec: Float[Array, "..."] = (
+                jnp.float64(hk[0]) * recip[0]
+                + jnp.float64(hk[1]) * recip[1]
+                + l_single[0] * recip[2]
+            )
+            f_struct: Any = var_structure(
+                q_vector=q_vec,
+                atomic_positions=self.test_crystal.cart_positions[:, :3],
+                atomic_numbers=self.test_crystal.cart_positions[:, 3].astype(
+                    jnp.int32
+                ),
+                temperature=300.0,
+                is_surface_atom=is_surface_atom,
+            )
+            damping: Float[Array, "..."] = var_damping(
+                q_z=q_vec[2], sigma_height=roughness
+            )
+            expected_intensity: Float[Array, "..."] = (
+                jnp.abs(f_struct) ** 2 * truncation * damping**2
+            )
+            chex.assert_trees_all_close(
+                intensities[rod_index, 0], expected_intensity, rtol=1e-10
+            )
 
 
 def _make_si_crystal() -> CrystalStructure:
@@ -1167,13 +1188,13 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
-        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+        l_values: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
         def loss(roughness: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
-                    q_z=q_z,
+                    l_values=l_values,
                     crystal=_SI_CRYSTAL,
                     surface_roughness=roughness,
                     temperature=300.0,
@@ -1208,13 +1229,13 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
-        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+        l_values: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
         def loss(temp: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
-                    q_z=q_z,
+                    l_values=l_values,
                     crystal=_SI_CRYSTAL,
                     surface_roughness=0.5,
                     temperature=temp,
@@ -1248,13 +1269,13 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
-        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+        l_values: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
         def f(roughness: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
-                    q_z=q_z,
+                    l_values=l_values,
                     crystal=_SI_CRYSTAL,
                     surface_roughness=roughness,
                     temperature=300.0,
@@ -1287,13 +1308,13 @@ class TestCTRIntensityGradients(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
-        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+        l_values: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
         def f(temp: scalar_float) -> scalar_float:
             return jnp.sum(
                 calculate_ctr_intensity(
                     hk_indices=hk_indices,
-                    q_z=q_z,
+                    l_values=l_values,
                     crystal=_SI_CRYSTAL,
                     surface_roughness=0.5,
                     temperature=temp,
@@ -1330,12 +1351,12 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]])
-        q_z: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
+        l_values: Float[Array, "5"] = jnp.linspace(0.5, 3.0, 5)
 
         def f(roughness: scalar_float) -> Float[Array, "1 5"]:
             return calculate_ctr_intensity(
                 hk_indices=hk_indices,
-                q_z=q_z,
+                l_values=l_values,
                 crystal=_SI_CRYSTAL,
                 surface_roughness=roughness,
                 temperature=300.0,
@@ -1349,6 +1370,246 @@ class TestCTRVmapConsistency(chex.TestCase, parameterized.TestCase):
             [f(r) for r in roughness_batch]
         )
         chex.assert_trees_all_close(batched, sequential, atol=1e-6)
+
+
+class TestCtrTruncationFactors(chex.TestCase, parameterized.TestCase):
+    """Tests for the semi-infinite CTR truncation factors.
+
+    :see: :func:`~rheedium.simul.ctr_truncation_amplitude`
+    :see: :func:`~rheedium.simul.ctr_truncation_intensity`
+    """
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_amplitude_squared_equals_intensity(self) -> None:
+        r"""The squared truncation amplitude equals the intensity factor.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the complex
+        truncation amplitude 1/(1 - exp(-2*pi*i*l) exp(-eps)) and the
+        intensity factor 1/(1 - 2 exp(-eps) cos(2*pi*l) + exp(-2*eps))
+        satisfy \|amplitude\|^2 == intensity across Bragg, anti-Bragg,
+        and generic l values.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        It runs through the Chex variant wrapper where present, so the
+        same assertion covers both transformed and untransformed JAX
+        execution paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        var_amp: Callable[..., Any] = self.variant(ctr_truncation_amplitude)
+        var_int: Callable[..., Any] = self.variant(ctr_truncation_intensity)
+
+        l_values: Float[Array, "..."] = jnp.linspace(-1.3, 2.7, 201)
+        amplitude: Any = var_amp(l_values, 0.02)
+        intensity: Any = var_int(l_values, 0.02)
+        chex.assert_trees_all_close(
+            jnp.abs(amplitude) ** 2, intensity, rtol=1e-12
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_bragg_cap_and_anti_bragg_value(self) -> None:
+        r"""Truncation intensity caps at Bragg and is ~1/4 at anti-Bragg.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: at integer l
+        the truncation intensity equals the exact cap 1/(1-exp(-eps))^2
+        (the small-eps form 1/(4 sinh^2(eps/2)) up to exp(-eps)), and at
+        half-integer l it equals 1/(1+exp(-eps))^2 which approaches 1/4
+        as eps goes to zero, matching the 1/(4 sin^2(pi l)) semi-infinite
+        limit.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        It runs through the Chex variant wrapper where present, so the
+        same assertion covers both transformed and untransformed JAX
+        execution paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        var_int: Callable[..., Any] = self.variant(ctr_truncation_intensity)
+
+        epsilon: float = 0.01
+        at_bragg: Any = var_int(jnp.array([0.0, 1.0, 2.0]), epsilon)
+        expected_cap: Float[Array, ""] = 1.0 / (1.0 - jnp.exp(-epsilon)) ** 2
+        chex.assert_trees_all_close(
+            at_bragg, jnp.full(3, expected_cap), rtol=1e-9
+        )
+
+        at_anti_bragg: Any = var_int(jnp.array([0.5, 1.5]), epsilon)
+        expected_anti: Float[Array, ""] = 1.0 / (1.0 + jnp.exp(-epsilon)) ** 2
+        chex.assert_trees_all_close(
+            at_anti_bragg, jnp.full(2, expected_anti), rtol=1e-9
+        )
+
+    @chex.variants(with_jit=True, without_jit=True)
+    def test_matches_four_sin_squared_off_bragg(self) -> None:
+        r"""Off-Bragg truncation intensity matches 1/(4 sin^2(pi l)).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: away from
+        Bragg points the small-attenuation truncation intensity converges
+        to the classic semi-infinite crystal truncation rod shape
+        1/(4 sin^2(pi l)) within O(eps).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        It runs through the Chex variant wrapper where present, so the
+        same assertion covers both transformed and untransformed JAX
+        execution paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        var_int: Callable[..., Any] = self.variant(ctr_truncation_intensity)
+
+        l_values: Float[Array, "..."] = jnp.array([0.1, 0.25, 0.5, 0.8])
+        intensity: Any = var_int(l_values, 1e-6)
+        reference: Float[Array, "..."] = 1.0 / (
+            4.0 * jnp.sin(jnp.pi * l_values) ** 2
+        )
+        chex.assert_trees_all_close(intensity, reference, rtol=1e-4)
+
+
+class TestIntegratedWindowConsistency(chex.TestCase, parameterized.TestCase):
+    """Window-normalization consistency of the integrated rod quantities.
+
+    :see: :func:`~rheedium.simul.integrated_ctr_amplitude`
+    :see: :func:`~rheedium.simul.integrated_rod_intensity`
+    """
+
+    def test_amplitude_squared_matches_intensity_on_smooth_rod(self) -> None:
+        r"""\|integrated amplitude\|^2 tracks integrated intensity to 2%.
+
+        Extended Summary
+        ----------------
+        WP5.5 acceptance: both integrated_rod_intensity and
+        integrated_ctr_amplitude return the acceptance-window-weighted
+        mean (sum(w x)/sum(w)), so on a slowly varying rod segment the
+        squared modulus of the mean amplitude approximates the mean
+        intensity within 2 percent. The retired implementation trapezoid-
+        integrated the weighted intensity without normalizing, making the
+        coherent and incoherent paths differ by an arbitrary scale.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case, using a narrow acceptance window on an off-Bragg rod
+        segment where the CTR varies slowly.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        hk_index: Int[Array, "2"] = jnp.array([1, 0], dtype=jnp.int32)
+        q_z_range: Float[Array, "2"] = jnp.array([0.45, 0.55])
+        acceptance_inv_ang: float = 0.02
+
+        integrated_intensity: Any = integrated_rod_intensity(
+            hk_index=hk_index,
+            q_z_range=q_z_range,
+            crystal=_SI_CRYSTAL,
+            surface_roughness=0.5,
+            detector_acceptance_inv_ang=acceptance_inv_ang,
+            n_integration_points=101,
+        )
+        integrated_amplitude: Any = integrated_ctr_amplitude(
+            hk_index=hk_index,
+            q_z_range=q_z_range,
+            crystal=_SI_CRYSTAL,
+            surface_roughness=0.5,
+            detector_acceptance_inv_ang=acceptance_inv_ang,
+            n_integration_points=101,
+        )
+        ratio: float = float(
+            jnp.abs(integrated_amplitude) ** 2 / integrated_intensity
+        )
+        self.assertLess(abs(ratio - 1.0), 0.02)
+
+    def test_window_mean_of_constant_rod_is_identity(self) -> None:
+        r"""The window-weighted mean of a constant integrand is itself.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: because both
+        integrated quantities are normalized means (sum(w x)/sum(w)), a
+        vanishing acceptance window width or a flat rod cannot rescale
+        the result; the mean intensity lies between the minimum and
+        maximum of the pointwise CTR intensity over the sampled range.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        The result is checked with direct unittest or Chex assertions
+        against min/max bounds of the pointwise intensities.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        hk_index: Int[Array, "2"] = jnp.array([1, 0], dtype=jnp.int32)
+        q_z_range: Float[Array, "2"] = jnp.array([0.9, 1.3])
+
+        integrated: Any = integrated_rod_intensity(
+            hk_index=hk_index,
+            q_z_range=q_z_range,
+            crystal=_SI_CRYSTAL,
+            surface_roughness=0.5,
+            detector_acceptance_inv_ang=0.1,
+            n_integration_points=64,
+        )
+        recip: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+            *_SI_CRYSTAL.cell_lengths,
+            *_SI_CRYSTAL.cell_angles,
+        )
+        b3_z: Any = recip[2, 2]
+        q_z_values: Float[Array, "64"] = jnp.linspace(0.9, 1.3, 64)
+        l_values: Float[Array, "64"] = q_z_values / b3_z
+        pointwise: Any = calculate_ctr_intensity(
+            hk_indices=hk_index[None, :],
+            l_values=l_values,
+            crystal=_SI_CRYSTAL,
+            surface_roughness=0.5,
+        )[0]
+        self.assertGreaterEqual(float(integrated), float(jnp.min(pointwise)))
+        self.assertLessEqual(float(integrated), float(jnp.max(pointwise)))
 
 
 if __name__ == "__main__":

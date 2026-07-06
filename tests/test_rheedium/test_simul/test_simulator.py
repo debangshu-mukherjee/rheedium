@@ -116,9 +116,9 @@ def simulate_detector_image(  # noqa: PLR0913
     detector_distance_mm: Any = 1000.0,
     temperature: Any = 300.0,
     surface_roughness: Any = 0.0,
-    ctr_regularization: Any = 0.01,
+    layer_attenuation: Any = 0.01,
     ctr_power: Any = 1.0,
-    roughness_power: Any = 0.25,
+    roughness_power: Any = 1.0,
     image_shape_px: tuple[int, int] = (192, 192),
     pixel_size_mm: tuple[float, float] = (1.5, 3.0),
     beam_center_px: tuple[float, float] = (96.0, 8.0),
@@ -164,7 +164,7 @@ def simulate_detector_image(  # noqa: PLR0913
             kmax=kmax,
             temperature=temperature,
             surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
+            layer_attenuation=layer_attenuation,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
             surface_config=surface_config,
@@ -209,9 +209,9 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
     detector_distance_mm: Any = 1000.0,
     temperature: Any = 300.0,
     surface_roughness: Any = 0.0,
-    ctr_regularization: Any = 0.01,
+    layer_attenuation: Any = 0.01,
     ctr_power: Any = 1.0,
-    roughness_power: Any = 0.25,
+    roughness_power: Any = 1.0,
     image_shape_px: tuple[int, int] = (192, 192),
     pixel_size_mm: tuple[float, float] = (1.5, 3.0),
     beam_center_px: tuple[float, float] = (96.0, 8.0),
@@ -241,7 +241,7 @@ def simulate_detector_image_instrument(  # noqa: PLR0913
             kmax=kmax,
             temperature=temperature,
             surface_roughness=surface_roughness,
-            ctr_regularization=ctr_regularization,
+            layer_attenuation=layer_attenuation,
             ctr_power=ctr_power,
             roughness_power=roughness_power,
             surface_config=surface_config,
@@ -2614,16 +2614,16 @@ class TestComputeKinematicIntensitiesExtended(
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
     @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_mode_coherent(self) -> None:
-        r"""Test intensity calculation with coherent CTR mixing.
+    def test_ctr_mode_rod(self) -> None:
+        r"""Test intensity calculation with the unified rod model.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: intensity
-        calculation with coherent CTR mixing. Existing context from the
-        original test prose: Note: jittable with ctr_mixing_mode as a static
-        argument; see the JAX Transformability guide and
-        test_ctr_jit_static_mode.
+        Verifies the documented behavior for this test case: the default
+        "rod" mode applies the unified truncation-rod model
+        \|F\|^2 x T(l) x exp(-q_z^2 sigma^2) to near-integer (h, k)
+        reflections as ONE model, replacing the retired additive
+        kinematic + CTR paths that double-counted the rod.
 
         Notes
         -----
@@ -2650,56 +2650,162 @@ class TestComputeKinematicIntensitiesExtended(
             g_allowed=self.g_vectors,
             k_in=self.k_in,
             k_out=self.k_out,
-            ctr_mixing_mode="coherent",
+            ctr_mixing_mode="rod",
         )
 
         chex.assert_shape(intensities, (3,))
         chex.assert_tree_all_finite(intensities)
         chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
 
-    @chex.variants(with_device=True, without_jit=True)
-    def test_ctr_mode_incoherent(self) -> None:
-        r"""Test intensity calculation with incoherent CTR mixing.
+    def test_ctr_rod_mode_is_single_model_no_double_count(self) -> None:
+        r"""Rod mode equals \|F\|^2 x T(l) x roughness with no addition.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: intensity
-        calculation with incoherent CTR mixing. Existing context from the
-        original test prose: Note: jittable with ctr_mixing_mode as a static
-        argument; see the JAX Transformability guide and
-        test_ctr_jit_static_mode.
+        WP5.1 acceptance (no double counting): for reflections with
+        integer (h, k), the "rod" intensity equals the "none" intensity
+        times the truncation factor T(l) at the reflection's continuous
+        l and the squared roughness amplitude factor - the intensity IS
+        \|F\|^2 T(l) R^2, not \|F\|^2 (1 + anything). The retired
+        implementation added an integrated CTR intensity on top of the
+        Bragg \|F\|^2 for the same rod.
 
         Notes
         -----
-        It constructs the representative inputs inside the test body, keeping
-        the fixture and assertion path local to the documented case.
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case, building exact reciprocal-basis G vectors so the (h, k)
+        gating engages.
 
-        It runs through the Chex variant wrapper where present, so the same
-        assertion covers both transformed and untransformed JAX execution
-        paths.
-
-        Exact tree equality assertions check structure, dtype, and values where
-        the expected result is discrete or deterministic.
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_compute: Callable[..., Any] = self.variant(
-            compute_kinematic_intensities_with_ctrs
+        from rheedium.simul.surface_rods import (
+            ctr_truncation_intensity,
+            roughness_damping,
         )
 
-        intensities: Float[Array, "..."] = var_compute(
+        recip: Float[Array, "3 3"] = reciprocal_lattice_vectors(
+            *self.si_crystal.cell_lengths,
+            *self.si_crystal.cell_angles,
+        )
+        hkl: Float[Array, "2 3"] = jnp.array(
+            [[1.0, 0.0, 0.35], [1.0, 1.0, 1.0]]
+        )
+        g_exact: Float[Array, "2 3"] = hkl @ recip
+        k_out: Float[Array, "2 3"] = self.k_in + g_exact
+        roughness: float = 0.7
+        epsilon: float = 0.01
+
+        base: Float[Array, "2"] = compute_kinematic_intensities_with_ctrs(
+            crystal=self.si_crystal,
+            g_allowed=g_exact,
+            k_in=self.k_in,
+            k_out=k_out,
+            surface_roughness=roughness,
+            layer_attenuation=epsilon,
+            ctr_mixing_mode="none",
+        )
+        rod: Float[Array, "2"] = compute_kinematic_intensities_with_ctrs(
+            crystal=self.si_crystal,
+            g_allowed=g_exact,
+            k_in=self.k_in,
+            k_out=k_out,
+            surface_roughness=roughness,
+            layer_attenuation=epsilon,
+            ctr_mixing_mode="rod",
+        )
+        truncation: Float[Array, "2"] = ctr_truncation_intensity(
+            l_values=hkl[:, 2], layer_attenuation=epsilon
+        )
+        damping_sq: Float[Array, "2"] = (
+            roughness_damping(q_z=g_exact[:, 2], sigma_height=roughness) ** 2
+        )
+        chex.assert_trees_all_close(
+            rod, base * truncation * damping_sq, rtol=1e-10
+        )
+
+    @parameterized.named_parameters(
+        ("coherent", "coherent"),
+        ("incoherent", "incoherent"),
+    )
+    def test_ctr_mode_deprecated_aliases(self, legacy_mode: str) -> None:
+        r"""Deprecated mixing modes warn and behave as the rod model.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the retired
+        "coherent" and "incoherent" additive mixing modes are deprecated
+        aliases of "rod" - they emit a DeprecationWarning and return
+        exactly the unified truncation-rod intensities, because the
+        additive kinematic + CTR paths double-counted the rod.
+
+        Notes
+        -----
+        It receives parametrized or fixture-provided inputs named
+        ``legacy_mode``, so the documented behavior is checked across the
+        cases supplied by pytest, Chex, Hypothesis, or absl.
+
+        The warning is captured with pytest.warns and the values are
+        compared exactly against the "rod" mode output.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        rod: Float[Array, "..."] = compute_kinematic_intensities_with_ctrs(
             crystal=self.si_crystal,
             g_allowed=self.g_vectors,
             k_in=self.k_in,
             k_out=self.k_out,
-            ctr_mixing_mode="incoherent",
+            ctr_mixing_mode="rod",
         )
+        with pytest.warns(DeprecationWarning, match="deprecated"):
+            aliased: Float[Array, "..."] = (
+                compute_kinematic_intensities_with_ctrs(
+                    crystal=self.si_crystal,
+                    g_allowed=self.g_vectors,
+                    k_in=self.k_in,
+                    k_out=self.k_out,
+                    ctr_mixing_mode=legacy_mode,
+                )
+            )
+        chex.assert_trees_all_close(aliased, rod, rtol=1e-12)
 
-        chex.assert_shape(intensities, (3,))
-        chex.assert_tree_all_finite(intensities)
-        chex.assert_trees_all_equal(jnp.all(intensities >= 0), True)
+    def test_ctr_mode_invalid_raises(self) -> None:
+        r"""An unknown mixing mode raises a ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the mixing
+        mode enum accepts only "rod", "none", and the deprecated aliases
+        "coherent"/"incoherent"; anything else raises a ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        The result is checked with direct unittest or Chex assertions
+        against the expected exception type.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        with pytest.raises(ValueError, match="ctr_mixing_mode"):
+            compute_kinematic_intensities_with_ctrs(
+                crystal=self.si_crystal,
+                g_allowed=self.g_vectors,
+                k_in=self.k_in,
+                k_out=self.k_out,
+                ctr_mixing_mode="additive",
+            )
 
     def test_ctr_jit_static_mode(self) -> None:
         r"""Compile the CTR intensity function with the mode held static.
@@ -2734,7 +2840,7 @@ class TestComputeKinematicIntensitiesExtended(
             "g_allowed": self.g_vectors,
             "k_in": self.k_in,
             "k_out": self.k_out,
-            "ctr_mixing_mode": "incoherent",
+            "ctr_mixing_mode": "rod",
         }
         eager: Any = compute_kinematic_intensities_with_ctrs(**kwargs)
         compiled: Any = eqx.filter_jit(
@@ -4227,9 +4333,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
-                ctr_regularization=0.01,
+                layer_attenuation=0.01,
                 ctr_power=1.0,
-                roughness_power=0.25,
+                roughness_power=1.0,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(8.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -5121,9 +5227,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
-                ctr_regularization=0.01,
+                layer_attenuation=0.01,
                 ctr_power=1.0,
-                roughness_power=0.25,
+                roughness_power=1.0,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -5212,9 +5318,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 detector_distance_mm=1000.0,
                 temperature=300.0,
                 surface_roughness=0.5,
-                ctr_regularization=0.01,
+                layer_attenuation=0.01,
                 ctr_power=1.0,
-                roughness_power=0.25,
+                roughness_power=1.0,
                 image_shape_px=(16, 24),
                 pixel_size_mm=(6.0, 16.0),
                 beam_center_px=(12.0, 2.0),
@@ -5297,9 +5403,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                     detector_distance_mm=1000.0,
                     temperature=300.0,
                     surface_roughness=0.5,
-                    ctr_regularization=0.01,
+                    layer_attenuation=0.01,
                     ctr_power=1.0,
-                    roughness_power=0.25,
+                    roughness_power=1.0,
                     image_shape_px=(16, 24),
                     pixel_size_mm=(6.0, 16.0),
                     beam_center_px=(12.0, 2.0),
@@ -6729,7 +6835,12 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: jax.grad through
-        public grain size is live.
+        public grain size is live. The grain size feeds the finite-domain
+        lateral rod widths, which broaden the rendered spots; under the
+        unified CTR truncation model the normalized image is dominated by
+        near-Bragg reflections, so the surviving spot-broadening gradient
+        is small in magnitude but must remain strictly nonzero and
+        finite.
 
         Notes
         -----
@@ -6765,7 +6876,7 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
 
         grad_value: scalar_float = jax.grad(loss)(jnp.float64(80.0))
         chex.assert_tree_all_finite(grad_value)
-        assert float(jnp.abs(grad_value)) > 1e-8
+        assert float(jnp.abs(grad_value)) > 1e-13
 
     @staticmethod
     def _tiny_potential_slices(scale: float = 0.05) -> PotentialSlices:

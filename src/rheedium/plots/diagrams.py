@@ -702,8 +702,10 @@ def plot_ctr_profile(
 ) -> Axes:
     """Plot crystal truncation rod intensity profile I(l).
 
-    Shows the characteristic 1/sin^2(pi*l) modulation with Bragg peaks. A small
-    epsilon is added to avoid division by zero at integer l values.
+    Shows the semi-infinite truncation-rod factor
+    1/(1 - 2 e^(-eps) cos(2 pi l) + e^(-2 eps)) with Bragg peaks capped by
+    the per-layer attenuation eps (the same model as
+    :func:`rheedium.simul.ctr_truncation_intensity`).
 
     :see: :class:`~.test_diagrams.TestDiagramPlots`
 
@@ -724,7 +726,7 @@ def plot_ctr_profile(
     Notes
     -----
     1. **Compute CTR Intensity** --
-       Evaluate 1/sin^2(pi*l) with a small epsilon to
+       Evaluate the semi-infinite truncation factor with attenuation to
        avoid divergence at integer l, then normalize.
     2. **Mark Bragg Peaks** --
        Draw vertical dashed lines at integer l values
@@ -736,9 +738,13 @@ def plot_ctr_profile(
     l_values: Float[NDArray, "N"] = np.linspace(
         l_range[0], l_range[1], n_points
     )
-    epsilon: float = 0.01
-    sin_term: Float[NDArray, "N"] = np.sin(np.pi * l_values)
-    intensity: Float[NDArray, "N"] = 1.0 / (sin_term**2 + epsilon)
+    layer_attenuation: float = 0.01
+    attenuation: float = float(np.exp(-layer_attenuation))
+    intensity: Float[NDArray, "N"] = 1.0 / (
+        1.0
+        - 2.0 * attenuation * np.cos(2.0 * np.pi * l_values)
+        + attenuation**2
+    )
     intensity = intensity / intensity.max()
     ax.semilogy(l_values, intensity, "b-", linewidth=2)
     bragg_l: Int[NDArray, "N"] = np.arange(
@@ -771,8 +777,10 @@ def plot_roughness_damping(
 ) -> Axes:
     """Plot surface roughness damping for different roughness values.
 
-    Shows how surface roughness attenuates CTR intensity at high q_z using the
-    damping formula exp(-0.5 * q_z^2 * sigma^2).
+    Shows how surface roughness attenuates CTR **intensity** at high q_z
+    using the intensity damping factor exp(-q_z^2 * sigma^2), the square
+    of the amplitude factor exp(-q_z^2 * sigma^2 / 2) implemented by
+    :func:`~rheedium.simul.roughness_damping`.
 
     :see: :class:`~.test_diagrams.TestDiagramPlots`
 
@@ -795,8 +803,9 @@ def plot_roughness_damping(
     Notes
     -----
     1. **Compute Damping Curves** --
-       For each sigma value, evaluate exp(-0.5 * q_z^2
-       * sigma^2) over the q_z grid.
+       For each sigma value, evaluate the intensity factor
+       exp(-q_z^2 * sigma^2) over the q_z grid (amplitude factor
+       squared).
     2. **Plot with Color Gradient** --
        Use viridis colormap to distinguish roughness
        levels and label each curve.
@@ -813,7 +822,9 @@ def plot_roughness_damping(
         np.linspace(0, 0.9, len(sigma_values))
     )
     for i, sigma in enumerate(sigma_values):
-        damping: Float[NDArray, "N"] = np.exp(-0.5 * q_z**2 * sigma**2)
+        # Intensity damping: square of the amplitude factor
+        # exp(-q_z^2 sigma^2 / 2) from rheedium.simul.roughness_damping.
+        damping: Float[NDArray, "N"] = np.exp(-(q_z**2) * sigma**2)
         ax.plot(
             q_z,
             damping,
@@ -822,7 +833,9 @@ def plot_roughness_damping(
             label=f"$\\sigma_h$ = {sigma:.1f} A",
         )
     ax.set_xlabel("$q_z$ (1/A)", fontsize=12)
-    ax.set_ylabel("Roughness Damping Factor", fontsize=12)
+    ax.set_ylabel(
+        "Intensity Damping Factor $e^{-q_z^2\\sigma^2}$", fontsize=12
+    )
     ax.set_title("Surface Roughness Damping of CTR Intensity", fontsize=14)
     ax.legend(loc="upper right", fontsize=10)
     ax.grid(True, alpha=0.3)

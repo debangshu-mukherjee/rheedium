@@ -45,7 +45,8 @@ from rheedium.ucell import (
 from .finite_domain import (
     compute_shell_sigma,
     extent_to_rod_sigma,
-    rod_ewald_overlap,
+    rod_base_intensities,
+    rod_domain_overlap,
 )
 from .form_factors import (
     atomic_scattering_factor,
@@ -277,6 +278,9 @@ def build_ewald_data(
         g_magnitudes=g_mags,
         structure_factors=structure_factors,
         intensities=intensities,
+        atom_positions=atom_positions,
+        atomic_numbers=atomic_numbers,
+        temperature=temperature_arr,
     )
     return ewald_data
 
@@ -290,6 +294,8 @@ def ewald_allowed_reflections(
     domain_extent_ang: Float[Array, "3"] | None = None,
     energy_spread_frac: scalar_float = 1e-4,
     beam_divergence_rad: scalar_float = 1e-3,
+    layer_attenuation: scalar_float = 0.01,
+    parameterization: str = "lobato",
 ) -> tuple[Int[Array, "N"], Float[Array, "N 3"], Float[Array, "N"]]:
     r"""Find reflections satisfying Ewald sphere condition at beam angles.
 
@@ -338,19 +344,30 @@ def ewald_allowed_reflections(
         Beam angular divergence in radians for shell thickness calculation.
         Used in finite domain mode and for the default binary tolerance.
         Default: 1e-3
+    layer_attenuation : scalar_float, optional
+        Per-layer amplitude attenuation ε of the CTR truncation factor
+        evaluated along each rod in finite domain mode. Ignored in binary
+        mode. Default: 0.01
 
     Returns
     -------
     allowed_indices : Int[Array, "N"]
         Indices into ewald.hkl_grid for allowed reflections.
         In binary mode, only indices within tolerance are valid (rest are -1).
-        In finite domain mode, all indices with k_out_z > 0 are included.
+        In finite domain mode, each (h, k) rod is represented by the grid
+        point whose integer l is nearest to the continuous rod-sphere
+        intersection :math:`l^*`; other slots are -1.
     k_out : Float[Array, "N 3"]
-        Outgoing wavevectors for allowed reflections. Padded slots
-        (allowed_indices == -1) are exactly zero.
+        Outgoing wavevectors for allowed reflections. In finite domain
+        mode these lie at the continuous rod-sphere intersection. Padded
+        slots (allowed_indices == -1) are exactly zero.
     intensities : Float[Array, "N"]
         Structure factor intensities. In binary mode: :math:`I(G) = |F(G)|^2`.
-        In finite domain mode: :math:`I(G) = |F(G)|^2 \\times \\text{overlap}`.
+        In finite domain mode:
+        :math:`I = |F|^2 \\times w \\times \\langle T(l^*)\\rangle` with
+        the rod envelope weight w and the Gauss-Hermite-windowed CTR
+        truncation factor T (see
+        :func:`~rheedium.simul.rod_domain_overlap`).
         Padded slots (allowed_indices == -1) are exactly zero, so
         ``intensities.sum()`` counts each allowed reflection once.
 
@@ -425,20 +442,24 @@ def ewald_allowed_reflections(
         domain_arr: Float[Array, "3"] = jnp.asarray(
             domain_extent_ang, dtype=jnp.float64
         )
-        rod_sigma: Float[Array, "2"] = extent_to_rod_sigma(domain_arr)
+        rod_sigma: Float[Array, "3"] = extent_to_rod_sigma(domain_arr)
         shell_sigma: Float[Array, ""] = compute_shell_sigma(
             k_magnitude=k_mag,
             energy_spread_frac=energy_spread_frac,
             beam_divergence_rad=beam_divergence_rad,
         )
-        overlap: Float[Array, "M"] = rod_ewald_overlap(
-            g_vectors=g_vecs,
+        overlap: Float[Array, "M"]
+        rod_factor: Float[Array, "M"]
+        k_out_rod: Float[Array, "M 3"]
+        overlap, rod_factor, k_out_rod = rod_domain_overlap(
+            hkl_points=ewald.hkl_grid,
+            recip_vectors=ewald.recip_vectors,
             k_in=k_in,
             k_magnitude=k_mag,
             rod_sigma=rod_sigma,
             shell_sigma=shell_sigma,
+            layer_attenuation=layer_attenuation,
         )
-        overlap = jnp.where(upward_mask, overlap, 0.0)
         overlap_threshold: float = 1e-6
         is_allowed: Bool[Array, "M"] = overlap > overlap_threshold
         allowed_indices: Int[Array, "N"] = jnp.where(
@@ -447,12 +468,18 @@ def ewald_allowed_reflections(
         safe_indices: Int[Array, "N"] = jnp.maximum(allowed_indices, 0)
         valid: Bool[Array, "N"] = allowed_indices >= 0
         k_out: Float[Array, "N 3"] = jnp.where(
-            valid[:, None], k_out_all[safe_indices], 0.0
+            valid[:, None], k_out_rod[safe_indices], 0.0
         )
-        base_intensities: Float[Array, "N"] = ewald.intensities[safe_indices]
-        overlap_weights: Float[Array, "N"] = overlap[safe_indices]
+        base_all: Float[Array, "M"] = rod_base_intensities(
+            ewald=ewald,
+            k_in=k_in,
+            k_out_rod=k_out_rod,
+            parameterization=parameterization,
+        )
+        base_intensities: Float[Array, "N"] = base_all[safe_indices]
+        rod_weights: Float[Array, "N"] = rod_factor[safe_indices]
         intensities: Float[Array, "N"] = jnp.where(
-            valid, base_intensities * overlap_weights, 0.0
+            valid, base_intensities * rod_weights, 0.0
         )
     else:
         if tolerance_inv_ang is None:

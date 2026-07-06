@@ -11,6 +11,68 @@ Each entry summarizes the commits that landed for that version bump in
 
 ### Red-team remediation
 
+- Unified the CTR model on the semi-infinite truncation rod
+  (WP5.1/M4, M6, N2): `simul.calculate_ctr_intensity` /
+  `simul.calculate_ctr_amplitude` now take continuous `l_values` instead
+  of Cartesian `q_z`, build `q = h b1 + k b2 + l b3` from the full
+  reciprocal basis (no hard-coded Cartesian-z rod), and multiply the
+  single-cell structure factor by the truncation factor
+  `1 / (1 - exp(-2 pi i l) exp(-eps))` (amplitude) /
+  `1 / (1 - 2 e^-eps cos(2 pi l) + e^-2eps)` (intensity). New public
+  helpers `ctr_truncation_amplitude` / `ctr_truncation_intensity`. The
+  per-layer attenuation `layer_attenuation` (eps, default 0.01) replaces
+  `ctr_regularization`, which is retained as a deprecated alias
+  (`eps = 2 asinh(sqrt(reg)/2)` preserves the Bragg cap and emits a
+  `DeprecationWarning`). `ewald_simulator` / `kinematic_amplitude` /
+  `SurfaceCTRParams` gained `layer_attenuation`; `ctr_power` and
+  `roughness_power` are documented as non-physical diagnostic knobs and
+  both now default to 1.0 (previously `roughness_power=0.25`).
+  `compute_kinematic_intensities_with_ctrs` no longer adds an integrated
+  CTR intensity on top of the Bragg `|F|^2` (the double count is gone):
+  `ctr_mixing_mode="rod"` (new default) applies
+  `|F(q)|^2 * T(l) * exp(-q_z^2 sigma^2)` as one model to near-integer
+  (h, k) reflections, `"none"` returns bare `|F|^2`, and
+  `"coherent"`/`"incoherent"` are deprecated aliases of `"rod"`.
+- One roughness convention (WP5.2/M5): `simul.roughness_damping` is the
+  single exponent definition and returns the **amplitude** factor
+  `exp(-q_z^2 sigma^2 / 2)`; amplitude paths multiply by it once and
+  every intensity path multiplies by its square `exp(-q_z^2 sigma^2)`
+  (previously three inconsistent conventions under-damped by 2x, 4x, and
+  8x in the exponent). The `plots.plot_roughness_damping` figure now
+  plots the intensity factor.
+- Renamed `detector_acceptance` to `detector_acceptance_inv_ang` in
+  `integrated_rod_intensity`, `integrated_ctr_amplitude`, and
+  `compute_kinematic_intensities_with_ctrs` (WP5.3/M20): it is the
+  Gaussian sigma of the q_z acceptance window in 1/Angstrom and was
+  never an angle in radians.
+- Finite-domain overlap now operates on (h, k) rods, not discrete
+  (h, k, l) points (WP5.4/M9, N11): new `simul.rod_domain_overlap`
+  solves the rod-sphere quadratic per rod, evaluates real intersections
+  at the continuous `l*` with unit envelope weight (composing with the
+  WP5.1 truncation shape via a 7-point Gauss-Hermite l-window with
+  `sigma_l = sigma_z / |b3|`), and weights lateral misses by
+  `exp(-d^2 / (2 sigma_lat^2 + 2 sigma_shell^2))` with the closed-form
+  miss distance `d = sqrt(-disc) / (2 sqrt(a))`.
+  `finite_domain_intensities` and the `domain_extent_ang` branch of
+  `ewald_allowed_reflections` are rewired to the rod API (each rod is
+  represented by the grid point whose integer l is nearest `l*`; both
+  gained a `layer_attenuation` keyword). `extent_to_rod_sigma` now
+  returns all three widths `[sx, sy, sz]` with the sinc^2-matched
+  constant `0.886/2.355 * 2 pi / L ~ 2.364/L` (the old
+  `2 pi / (L sqrt(2 pi)) ~ 2.507/L` was ~6% too wide, and the z-extent
+  previously never entered the model). The legacy point-based Gaussian
+  survives privately as `finite_domain._point_domain_overlap`;
+  `rod_ewald_overlap` is removed from the public API.
+  `find_ctr_ewald_intersection` moved from `simul.simulator` to
+  `simul.finite_domain` (still re-exported from both).
+- Consistent acceptance-window normalization (WP5.5/N3):
+  `integrated_rod_intensity` and `integrated_ctr_amplitude` both return
+  the window-weighted mean (`sum(w x) / sum(w)`), so
+  `|integrated_amplitude|^2 ~ integrated_intensity` on a smooth rod
+  (previously the intensity version trapezoid-integrated the weighted
+  integrand without normalizing, making the two paths differ by an
+  arbitrary scale).
+
 - Standardized the binary Ewald condition on one absolute tolerance
   (WP4.1/M7): `simul.ewald_allowed_reflections` and
   `simul.find_kinematic_reflections` (and the

@@ -26,8 +26,14 @@ Routine Listings
 :func:`crystal_projected_potential`
     Build complex projected potential V_real + i*V_abs for one
     multislice slice.
+:func:`calculate_ctr_amplitude`
+    Calculate complex amplitude along crystal truncation rods.
 :func:`calculate_ctr_intensity`
     Calculate continuous intensity along crystal truncation rods.
+:func:`ctr_truncation_amplitude`
+    Semi-infinite truncation-rod complex amplitude factor.
+:func:`ctr_truncation_intensity`
+    Semi-infinite truncation-rod intensity factor.
 :func:`compute_domain_extent`
     Compute domain extent from atomic positions bounding box.
 :func:`compute_kinematic_intensities_with_ctrs`
@@ -66,8 +72,10 @@ Routine Listings
     Calculate mean square displacement for given temperature.
 :func:`instrument_broadened_pattern`
     Full instrument-averaged RHEED pattern combining all effects.
+:func:`integrated_ctr_amplitude`
+    Acceptance-window-weighted mean CTR amplitude.
 :func:`integrated_rod_intensity`
-    Integrate CTR intensity over finite detector acceptance.
+    Acceptance-window-weighted mean CTR intensity.
 :func:`kinematic_spot_simulator`
     RHEED simulation using discrete 3D reciprocal lattice (spots).
 :func:`kinematic_amplitude`
@@ -110,6 +118,8 @@ Routine Listings
     Rasterize sparse complex amplitudes onto a dense detector field.
 :func:`render_ctr_amplitude_to_field`
     Rasterize sparse complex CTR amplitudes onto dense detector streaks.
+:func:`rod_domain_overlap`
+    Rod-based overlap between broadened (h, k) rods and the Ewald shell.
 :func:`rod_profile_function`
     Lateral width profile of rods due to finite correlation length.
 :func:`roughness_damping`
@@ -160,6 +170,7 @@ from .finite_domain import (
     extent_to_rod_sigma,
     finite_domain_intensities,
     finite_domain_intensities_for_size_distribution,
+    rod_domain_overlap,
 )
 from .form_factors import (
     atomic_scattering_factor,
@@ -207,8 +218,12 @@ from .simulator import (
     sliced_crystal_to_projected_potential_slices,
 )
 from .surface_rods import (
+    calculate_ctr_amplitude,
     calculate_ctr_intensity,
+    ctr_truncation_amplitude,
+    ctr_truncation_intensity,
     gaussian_rod_profile,
+    integrated_ctr_amplitude,
     integrated_rod_intensity,
     lorentzian_rod_profile,
     rod_profile_function,
@@ -232,10 +247,13 @@ __all__: list[str] = [
     "decompose_beam_modes_static",
     "crystal_projected_potential",
     "crystal_to_edge_on_slices",
+    "calculate_ctr_amplitude",
     "calculate_ctr_intensity",
     "compute_domain_extent",
     "compute_kinematic_intensities_with_ctrs",
     "compute_shell_sigma",
+    "ctr_truncation_amplitude",
+    "ctr_truncation_intensity",
     "detector_extent_mm",
     "debye_waller_factor",
     "detector_psf_convolve",
@@ -250,6 +268,7 @@ __all__: list[str] = [
     "gaussian_rod_profile",
     "get_mean_square_displacement",
     "instrument_broadened_pattern",
+    "integrated_ctr_amplitude",
     "integrated_rod_intensity",
     "kinematic_spot_simulator",
     "kinematic_amplitude",
@@ -265,6 +284,7 @@ __all__: list[str] = [
     "multislice_amplitude",
     "multislice_simulator",
     "project_on_detector_geometry",
+    "rod_domain_overlap",
     "rod_profile_function",
     "roughness_damping",
     "render_amplitude_to_field",

@@ -18,7 +18,16 @@ import scipy.special
 from rheedium.inout import kirkland_potentials, lobato_potentials
 from rheedium.inout.cif import parse_cif
 from rheedium.inout.interop import from_ase, to_ase
-from rheedium.simul.ewald import _compute_structure_factor_single
+from rheedium.simul.ewald import (
+    _compute_structure_factor_single,
+    build_ewald_data,
+    ewald_allowed_reflections,
+)
+from rheedium.simul.finite_domain import (
+    compute_shell_sigma,
+    extent_to_rod_sigma,
+    rod_domain_overlap,
+)
 from rheedium.simul.form_factors import (
     get_atomic_mass,
     get_debye_temperature,
@@ -28,14 +37,21 @@ from rheedium.simul.form_factors import (
     lobato_form_factor,
     lobato_projected_potential,
 )
-from rheedium.tools import bessel_k0, bessel_k1
+from rheedium.simul.surface_rods import ctr_truncation_intensity
+from rheedium.tools import (
+    bessel_k0,
+    bessel_k1,
+    incident_wavevector,
+    wavelength_ang,
+)
 from rheedium.types import (
     AMU_TO_KG,
     BOLTZMANN_CONSTANT_JK,
     HBAR_JS,
     M2_TO_ANG2,
+    create_crystal_structure,
 )
-from rheedium.ucell import reciprocal_lattice_vectors
+from rheedium.ucell import build_cell_vectors, reciprocal_lattice_vectors
 from rheedium.ucell.unitcell import bulk_to_slice
 
 
@@ -502,3 +518,370 @@ def test_periodic_potential_grid_fft_is_real_for_centrosymmetric_atom() -> (
     v_real = np.asarray(jnp.real(v))
     spectrum = np.fft.fft2(v_real)
     assert np.abs(spectrum.imag).max() < 1e-10 * np.abs(spectrum[0, 0])
+
+
+def test_ctr_shape() -> None:
+    r"""The (0,0) CTR follows the semi-infinite truncation-rod shape.
+
+    Extended Summary
+    ----------------
+    WP5.1 acceptance anchor: for a one-cell SrTiO3 crystal the (0, 0) rod
+    intensity, after dividing out the single-cell ``|F|^2`` variation,
+    matches the analytic truncation shape
+    ``[sin^2(0.05 pi) + s0] / [sin^2(0.5 pi) + s0]`` (with
+    ``s0 = sinh^2(eps/2)``) within 5 percent; the rod direction
+    ``q(0,0,l)`` for a hexagonal cell is parallel to ``b3`` (never a
+    hard-coded Cartesian z); and at a Bragg point the intensity equals
+    ``|F|^2 / (1 - e^{-eps})^2`` (the exact cap, equal to
+    ``|F|^2 / (4 sinh^2(eps/2))`` up to ``e^{-eps}``) with no additive
+    ``|F|^2 (1 + anything)`` double counting.
+
+    Notes
+    -----
+    It computes the reference ratio from closed-form trigonometry only,
+    divides out the structure-factor variation with the package's own
+    per-q ``|F|^2`` (a pure normalization), and checks the hexagonal rod
+    direction with an exact cross-product bound.
+
+    :see: :func:`~rheedium.simul.calculate_ctr_intensity`
+    :see: :func:`~rheedium.simul.ctr_truncation_intensity`
+    """
+    from rheedium.simul.surface_rods import (
+        calculate_ctr_intensity,
+        surface_structure_factor,
+    )
+    from rheedium.types.crystal_types import create_crystal_structure
+
+    a_sto = 3.905
+    frac = jnp.array(
+        [
+            [0.0, 0.0, 0.0, 38.0],
+            [0.5, 0.5, 0.5, 22.0],
+            [0.5, 0.5, 0.0, 8.0],
+            [0.5, 0.0, 0.5, 8.0],
+            [0.0, 0.5, 0.5, 8.0],
+        ]
+    )
+    cart = frac.at[:, :3].multiply(a_sto)
+    crystal = create_crystal_structure(
+        frac_positions=frac,
+        cart_positions=cart,
+        cell_lengths=jnp.array([a_sto, a_sto, a_sto]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+    epsilon = 0.01
+    hk = jnp.array([[0, 0]], dtype=jnp.int32)
+    l_values = jnp.array([0.05, 0.5, 1.0])
+    intensity = np.asarray(
+        calculate_ctr_intensity(
+            hk_indices=hk,
+            l_values=l_values,
+            crystal=crystal,
+            surface_roughness=0.0,
+            layer_attenuation=epsilon,
+        )
+    )[0]
+
+    recip = reciprocal_lattice_vectors(
+        *crystal.cell_lengths, *crystal.cell_angles
+    )
+    f_sq = []
+    for l_val in np.asarray(l_values):
+        q_vec = l_val * recip[2]
+        f_val = surface_structure_factor(
+            q_vector=jnp.asarray(q_vec),
+            atomic_positions=crystal.cart_positions[:, :3],
+            atomic_numbers=crystal.cart_positions[:, 3].astype(jnp.int32),
+        )
+        f_sq.append(float(jnp.abs(f_val) ** 2))
+    f_sq = np.asarray(f_sq)
+
+    shape = intensity / f_sq
+    s0 = math.sinh(epsilon / 2.0) ** 2
+    reference_ratio = (math.sin(0.05 * math.pi) ** 2 + s0) / (
+        math.sin(0.5 * math.pi) ** 2 + s0
+    )
+    measured_ratio = shape[1] / shape[0]
+    assert abs(measured_ratio / reference_ratio - 1.0) < 0.05
+
+    # Bragg point: I == |F|^2 / (1 - e^{-eps})^2 exactly (small-eps form
+    # |F|^2 / (4 sinh^2(eps/2)) up to e^{-eps}); NOT |F|^2 (1 + anything).
+    exact_cap = 1.0 / (1.0 - math.exp(-epsilon)) ** 2
+    assert abs(intensity[2] / (f_sq[2] * exact_cap) - 1.0) < 1e-10
+    small_eps_cap = 1.0 / (4.0 * math.sinh(epsilon / 2.0) ** 2)
+    assert abs(intensity[2] / (f_sq[2] * small_eps_cap) - 1.0) < 2.0 * epsilon
+
+    # Hexagonal cell: q(0,0,l) must be parallel to b3.
+    recip_hex = reciprocal_lattice_vectors(
+        jnp.asarray(4.0),
+        jnp.asarray(4.0),
+        jnp.asarray(6.0),
+        jnp.asarray(90.0),
+        jnp.asarray(90.0),
+        jnp.asarray(120.0),
+    )
+    b3 = np.asarray(recip_hex[2])
+    for l_val in (0.3, 0.7, 1.4):
+        q_rod = l_val * b3  # q(0,0,l) = 0*b1 + 0*b2 + l*b3 by construction
+        cross = np.cross(q_rod, b3)
+        assert np.linalg.norm(cross) < 1e-12 * np.linalg.norm(b3) ** 2
+
+
+def test_roughness_intensity_ratio() -> None:
+    r"""CTR intensity roughness damping is exactly exp(-q_z^2 sigma^2).
+
+    Extended Summary
+    ----------------
+    WP5.2 acceptance anchor: for a single-atom crystal the ratio of rough
+    to smooth CTR intensity, which cancels the structure factor and the
+    truncation factor (equivalent to disabling the truncation factor),
+    equals the analytic intensity damping ``exp(-q_z^2 sigma^2)`` to
+    1e-12 - the square of the single amplitude convention
+    ``exp(-q_z^2 sigma^2 / 2)``.
+
+    Notes
+    -----
+    It computes the reference damping from ``numpy.exp`` alone and takes
+    q_z from the reciprocal-basis geometry, so no rheedium roughness code
+    appears on the reference side of the comparison.
+
+    :see: :func:`~rheedium.simul.roughness_damping`
+    :see: :func:`~rheedium.simul.calculate_ctr_intensity`
+    """
+    from rheedium.simul.surface_rods import calculate_ctr_intensity
+    from rheedium.types.crystal_types import create_crystal_structure
+
+    a_cell = 4.0
+    frac = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+    cart = frac.at[:, :3].multiply(a_cell)
+    crystal = create_crystal_structure(
+        frac_positions=frac,
+        cart_positions=cart,
+        cell_lengths=jnp.array([a_cell, a_cell, a_cell]),
+        cell_angles=jnp.array([90.0, 90.0, 90.0]),
+    )
+    sigma = 0.8
+    hk = jnp.array([[0, 0]], dtype=jnp.int32)
+    l_values = jnp.linspace(0.05, 2.45, 25)
+
+    smooth = np.asarray(
+        calculate_ctr_intensity(
+            hk_indices=hk,
+            l_values=l_values,
+            crystal=crystal,
+            surface_roughness=0.0,
+        )
+    )[0]
+    rough = np.asarray(
+        calculate_ctr_intensity(
+            hk_indices=hk,
+            l_values=l_values,
+            crystal=crystal,
+            surface_roughness=sigma,
+        )
+    )[0]
+
+    b3_z = float(
+        reciprocal_lattice_vectors(
+            *crystal.cell_lengths, *crystal.cell_angles
+        )[2, 2]
+    )
+    q_z = np.asarray(l_values) * b3_z
+    reference = np.exp(-(q_z**2) * sigma**2)
+    np.testing.assert_allclose(rough / smooth, reference, rtol=1e-12)
+
+
+def test_rod_sigma_matches_sinc_fwhm() -> None:
+    r"""The finite-domain rod sigma matches the sinc^2 FWHM externally.
+
+    Extended Summary
+    ----------------
+    WP5.4/N11 anchor: the Gaussian rod width returned by
+    ``extent_to_rod_sigma`` must match the FWHM of the true finite-domain
+    shape function ``sinc^2(q L / 2)``. The half-maximum point of
+    ``sin^2(x)/x^2`` is found with scipy root finding, giving
+    FWHM = 4 x_half / L = 0.886 (2 pi / L), so the matched Gaussian sigma
+    is FWHM / (2 sqrt(2 ln 2)) = 0.376 (2 pi / L) = 2.364 / L. The
+    retired constant 2 pi / (L sqrt(2 pi)) = 2.507 / L was about 6
+    percent too wide.
+
+    Notes
+    -----
+    It derives the reference sigma entirely from scipy.optimize.brentq
+    and closed-form constants, then compares the package output for a
+    100 Angstrom domain within 0.5 percent.
+
+    :see: :func:`~rheedium.simul.extent_to_rod_sigma`
+    """
+    from scipy.optimize import brentq
+
+    from rheedium.simul.finite_domain import extent_to_rod_sigma
+
+    x_half = brentq(lambda x: math.sin(x) ** 2 / x**2 - 0.5, 1e-9, 2.0)
+    domain_l = 100.0
+    fwhm_q = 4.0 * x_half / domain_l
+    sigma_ref = fwhm_q / (2.0 * math.sqrt(2.0 * math.log(2.0)))
+
+    sigma_pkg = np.asarray(
+        extent_to_rod_sigma(jnp.array([domain_l, domain_l, domain_l]))
+    )
+    np.testing.assert_allclose(sigma_pkg, sigma_ref, rtol=5e-3)
+    # And the old constant is measurably wrong (~6%):
+    old_sigma = 2.0 * math.pi / (domain_l * math.sqrt(2.0 * math.pi))
+    assert abs(old_sigma / sigma_ref - 1.0) > 0.05
+
+
+def test_rod_miss_distance_closed_form() -> None:
+    r"""The closed-form rod-sphere miss distance matches brute force.
+
+    Extended Summary
+    ----------------
+    WP5.4 anchor: for a rod line ``k_in + G_hk + l b3`` that misses the
+    Ewald sphere, the closed-form lateral miss distance
+    ``d = sqrt(-disc) / (2 sqrt(a))`` from the rod-sphere quadratic
+    equals the brute-force minimum over l of
+    ``sqrt(|k_in + G(l)|^2 - k^2)`` to 1e-8, since the quadratic
+    ``f(l) = a l^2 + b l + c`` attains ``-disc/(4a)`` at its vertex.
+
+    Notes
+    -----
+    It builds the geometry with plain numpy vectors and minimizes the
+    distance metric with scipy.optimize.minimize_scalar as the external
+    reference; no rheedium overlap code appears on either side except
+    the geometry convention itself.
+
+    :see: :func:`~rheedium.simul.rod_domain_overlap`
+    """
+    from scipy.optimize import minimize_scalar
+
+    k_mag = 62.9  # ~15 kV electrons, 1/Angstrom
+    theta = math.radians(2.0)
+    k_in = k_mag * np.array([math.cos(theta), 0.0, -math.sin(theta)])
+    b1 = np.array([1.492, 0.0, 0.0])
+    b2 = np.array([0.0, 1.492, 0.0])
+    b3 = np.array([0.0, 0.0, 1.492])
+
+    checked = 0
+    for h, k in [(2, 0), (3, 1), (2, 2)]:
+        p = k_in + h * b1 + k * b2
+        a_coef = float(b3 @ b3)
+        b_coef = float(2.0 * p @ b3)
+        c_coef = float(p @ p - k_mag**2)
+        disc = b_coef**2 - 4.0 * a_coef * c_coef
+        if disc >= 0.0:
+            continue
+        d_closed = math.sqrt(-disc) / (2.0 * math.sqrt(a_coef))
+
+        def metric(l_val: float, p_vec: np.ndarray = p) -> float:
+            k_out = p_vec + l_val * b3
+            return math.sqrt(max(float(k_out @ k_out) - k_mag**2, 0.0))
+
+        result = minimize_scalar(
+            metric,
+            bounds=(-500.0, 500.0),
+            method="bounded",
+            options={"xatol": 1e-12},
+        )
+        assert abs(result.fun - d_closed) < 1e-8
+        checked += 1
+    assert checked > 0
+
+
+def test_rod_intensity_evaluated_at_intersection() -> None:
+    r"""Finite-domain rods use :math:`|F(l^*)|^2`, not the grid value.
+
+    Extended Summary
+    ----------------
+    Builds a two-atom basis whose off-symmetry layer spacing makes
+    :math:`|F(0,0,l)|^2` vary strongly along the rod, so evaluating the
+    structure factor at the continuous rod-sphere intersection
+    :math:`l^*` differs measurably from the nearest integer-``l`` grid
+    point. The domain-mode reflections must equal
+    :math:`|F(q^*)|^2` times the rod weight exactly, and must differ
+    from the integer-grid product for at least one rod.
+
+    Notes
+    -----
+    The reference value recomputes the structure factor independently at
+    :math:`q^* = k_{out} - k_{in}` with the same form-factor machinery,
+    anchoring the WP5.4 requirement that rod intensities are evaluated at
+    the intersection rather than gathered from the integer grid.
+
+    The check exercises ``build_ewald_data`` storage of atomic data and
+    the ``rod_base_intensities`` path through
+    ``ewald_allowed_reflections``.
+    """
+    lattice_constant = 5.43
+    frac = jnp.asarray(
+        [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.37, 14.0]], dtype=jnp.float64
+    )
+    cell = build_cell_vectors(
+        lattice_constant, lattice_constant, lattice_constant, 90.0, 90.0, 90.0
+    )
+    cart = jnp.concatenate([frac[:, :3] @ cell, frac[:, 3:]], axis=1)
+    crystal = create_crystal_structure(
+        frac_positions=frac,
+        cart_positions=cart,
+        cell_lengths=jnp.asarray([lattice_constant] * 3),
+        cell_angles=jnp.asarray([90.0, 90.0, 90.0]),
+    )
+    ewald = build_ewald_data(crystal, energy_kev=15.0, hmax=1, kmax=1, lmax=3)
+    domain = jnp.asarray([80.0, 80.0, 15.0])
+    indices, k_out, intensities = ewald_allowed_reflections(
+        ewald, theta_deg=2.0, phi_deg=0.0, domain_extent_ang=domain
+    )
+    lam = float(wavelength_ang(jnp.asarray(15.0)))
+    k_in = incident_wavevector(lam, 2.0)
+    rod_sigma = extent_to_rod_sigma(domain)
+    shell_sigma = compute_shell_sigma(ewald.k_magnitude, 1e-4, 1e-3)
+    _, rod_factor, k_out_rod = rod_domain_overlap(
+        ewald.hkl_grid,
+        ewald.recip_vectors,
+        k_in,
+        ewald.k_magnitude,
+        rod_sigma,
+        shell_sigma,
+        0.01,
+    )
+    grid_intensities = np.asarray(ewald.intensities)
+    any_differs = False
+    for slot, returned in zip(
+        np.asarray(indices), np.asarray(intensities), strict=True
+    ):
+        if slot < 0:
+            continue
+        q_star = k_out_rod[slot] - k_in
+        f_star = _compute_structure_factor_single(
+            g_vector=q_star,
+            atom_positions=ewald.atom_positions,
+            atomic_numbers=ewald.atomic_numbers,
+            temperature=ewald.temperature,
+        )
+        expected = float(jnp.abs(f_star) ** 2 * rod_factor[slot])
+        np.testing.assert_allclose(returned, expected, rtol=1e-10)
+        grid_value = float(grid_intensities[slot] * rod_factor[slot])
+        if abs(expected - grid_value) / max(expected, 1e-30) > 0.02:
+            any_differs = True
+    assert any_differs, "test basis must make F(l*) differ from grid F"
+
+
+def test_ctr_regularization_alias_preserves_bragg_cap() -> None:
+    r"""The deprecated alias maps to the exact legacy Bragg cap.
+
+    Extended Summary
+    ----------------
+    The legacy CTR shape capped Bragg peaks at ``1/reg``. The alias must
+    convert ``ctr_regularization`` to a per-layer attenuation whose new
+    cap ``1/(1 - exp(-eps))**2`` equals the legacy cap exactly, i.e.
+    ``eps = -log(1 - sqrt(reg))``.
+
+    Notes
+    -----
+    Evaluates the truncation intensity at a Bragg point (integer ``l``)
+    with the converted epsilon and compares against ``1/reg`` for two
+    representative legacy values.
+    """
+    for reg in (0.01, 0.05):
+        eps = -np.log(1.0 - np.sqrt(reg))
+        cap = float(ctr_truncation_intensity(jnp.asarray(1.0), eps))
+        np.testing.assert_allclose(cap, 1.0 / reg, rtol=1e-10)

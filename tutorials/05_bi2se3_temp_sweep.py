@@ -121,9 +121,9 @@ settings = {
     # 1/sin^2(pi l) CTR factor (ctr_power=0) and the roughness envelope so we do
     # not impose a spurious 100 A box-periodicity comb on top of the real F(q).
     "surface_roughness": 0.0,
-    "ctr_regularization": 0.01,
+    "layer_attenuation": 0.01,
     "ctr_power": 0.0,
-    "roughness_power": 0.25,
+    "roughness_power": 1.0,
 }
 image_kw = {
     "image_shape_px": (300, 300),
@@ -161,7 +161,7 @@ for label, crystal in crystals.items():
         detector_distance=settings["detector_distance_mm"],
         temperature=settings["temperature"],
         surface_roughness=settings["surface_roughness"],
-        ctr_regularization=settings["ctr_regularization"],
+        layer_attenuation=settings["layer_attenuation"],
         ctr_power=settings["ctr_power"],
         roughness_power=settings["roughness_power"],
     )

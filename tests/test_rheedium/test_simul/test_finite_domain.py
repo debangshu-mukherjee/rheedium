@@ -17,12 +17,13 @@ from jaxtyping import Array, Float
 
 from rheedium.simul.ewald import build_ewald_data
 from rheedium.simul.finite_domain import (
+    _point_domain_overlap,
     compute_domain_extent,
     compute_shell_sigma,
     extent_to_rod_sigma,
     finite_domain_intensities,
     finite_domain_intensities_for_size_distribution,
-    rod_ewald_overlap,
+    rod_domain_overlap,
 )
 from rheedium.types import (
     SizeDistribution,
@@ -37,7 +38,10 @@ from rheedium.types.custom_types import scalar_float
 
 
 class TestComputeDomainExtent(chex.TestCase, parameterized.TestCase):
-    """Test suite for compute_domain_extent function."""
+    """Test suite for compute_domain_extent function.
+
+    :see: :func:`~rheedium.simul.compute_domain_extent`
+    """
 
     def setUp(self) -> None:
         """Set up test fixtures for domain extent calculations.
@@ -281,12 +285,13 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_output_shape(self) -> None:
-        r"""Test that output has shape (2,) for x,y rod widths.
+        r"""Test that output has shape (3,) for x,y,z rod widths.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: output has shape
-        (2,) for x,y rod widths.
+        (3,) for the x, y, and z rod widths; the z-width feeds the
+        finite-thickness l-window of the rod-based overlap.
 
         Notes
         -----
@@ -308,7 +313,7 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
         sigma: Float[Array, "..."] = var_sigma(self.medium_extent)
 
-        chex.assert_shape(sigma, (2,))
+        chex.assert_shape(sigma, (3,))
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_inverse_scaling(self) -> None:
@@ -347,7 +352,9 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
         # sigma_10 should be 10× larger than sigma_100
         ratio: Any = sigma_10 / sigma_100
-        chex.assert_trees_all_close(ratio, jnp.array([10.0, 10.0]), rtol=1e-6)
+        chex.assert_trees_all_close(
+            ratio, jnp.array([10.0, 10.0, 10.0]), rtol=1e-6
+        )
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_numerical_value_100A(self) -> None:  # noqa: N802
@@ -356,8 +363,9 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: numerical value
-        for 100 Å domain. Existing context from the original test prose: σ =
-        2π/(L×√(2π)) = 2π/(100×2.507) ≈ 0.0251 Å⁻¹
+        for 100 Å domain with the sinc²-matched constant: σ =
+        (0.886/2.355) × 2π/L ≈ 2.3637/100 ≈ 0.0236 Å⁻¹ (the old
+        2π/(L√(2π)) ≈ 0.0251 Å⁻¹ constant was ≈6% too wide).
 
         Notes
         -----
@@ -379,11 +387,9 @@ class TestExtentToRodSigma(chex.TestCase, parameterized.TestCase):
 
         sigma: Float[Array, "..."] = var_sigma(self.medium_extent)
 
-        expected: scalar_float = (
-            2.0 * jnp.pi / (100.0 * jnp.sqrt(2.0 * jnp.pi))
-        )
+        expected: scalar_float = 0.886 / 2.355 * 2.0 * jnp.pi / 100.0
         chex.assert_trees_all_close(
-            sigma, jnp.array([expected, expected]), rtol=1e-6
+            sigma, jnp.array([expected, expected, expected]), rtol=1e-6
         )
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -635,10 +641,10 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
         chex.assert_scalar_positive(float(sigma))
 
 
-class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
-    """Test suite for rod_ewald_overlap function.
+class TestPointDomainOverlap(chex.TestCase, parameterized.TestCase):
+    """Test suite for the legacy point-based overlap (reference only).
 
-    :see: :func:`~rheedium.simul.finite_domain.rod_ewald_overlap`
+    :see: :func:`~rheedium.simul.finite_domain._point_domain_overlap`
     """
 
     def setUp(self) -> None:
@@ -709,7 +715,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap: Any = var_overlap(
             self.g_on_sphere,
@@ -746,7 +752,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap: Any = var_overlap(
             self.g_batch,
@@ -785,7 +791,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         g_specular: Float[Array, "..."] = jnp.array([[0.0, 0.0, 0.0]])
         overlap: Any = var_overlap(
@@ -823,7 +829,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap: Any = var_overlap(
             self.g_off_sphere,
@@ -861,7 +867,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap: Any = var_overlap(
             self.g_batch,
@@ -899,7 +905,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap_small: Any = var_overlap(
             self.g_off_sphere,
@@ -944,7 +950,7 @@ class TestRodEwaldOverlap(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         overlap: Any = var_overlap(
             self.g_batch,
@@ -1100,7 +1106,9 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: modified
-        intensities ≤ original intensities.
+        intensities are bounded by the base intensities times the CTR
+        truncation-factor cap 1/(1-e^{-ε})² (the rod-based model composes
+        the envelope weight, which is ≤ 1, with the truncation shape).
 
         Notes
         -----
@@ -1130,9 +1138,13 @@ class TestFiniteDomainIntensities(chex.TestCase, parameterized.TestCase):
             domain_extent_ang=self.small_domain,
         )
 
-        # I_modified = I_base × overlap ≤ I_base (since overlap ≤ 1)
+        # I_modified = I_base × w × <T>; w ≤ 1 and T ≤ 1/(1-e^{-ε})²
+        truncation_cap: Float[Array, ""] = 1.0 / (1.0 - jnp.exp(-0.01)) ** 2
         chex.assert_trees_all_equal(
-            jnp.all(modified <= self.ewald.intensities + 1e-10), True
+            jnp.all(
+                modified <= self.ewald.intensities * truncation_cap + 1e-10
+            ),
+            True,
         )
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -1490,9 +1502,8 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: rod sigma formula
-        is correct. Existing context from the original test prose: σ_q = 2π /
-        (L × √(2π)) For L = 100 Å: σ_q = 2π / (100 × 2.5066) = 6.283 / 250.66 ≈
-        0.0251 Å⁻¹
+        is correct. The sinc²-matched constant gives σ_q = (0.886/2.355) ×
+        2π/L; for L = 100 Å: σ_q ≈ 2.3637/100 ≈ 0.0236 Å⁻¹.
 
         Notes
         -----
@@ -1515,7 +1526,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         L: float = 100.0
         sigma: Float[Array, "..."] = var_sigma(jnp.array([L, L, L]))
 
-        expected: scalar_float = 2.0 * jnp.pi / (L * self.sqrt_2pi)
+        expected: scalar_float = 0.886 / 2.355 * 2.0 * jnp.pi / L
         chex.assert_trees_all_close(sigma[0], expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -1585,7 +1596,7 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        var_overlap: Callable[..., Any] = self.variant(rod_ewald_overlap)
+        var_overlap: Callable[..., Any] = self.variant(_point_domain_overlap)
 
         # Set up geometry where we can calculate d analytically
         k: scalar_float = jnp.array(73.0)
@@ -1613,3 +1624,287 @@ class TestPhysicsValidation(chex.TestCase, parameterized.TestCase):
         expected: Float[Array, "..."] = jnp.exp(-(d**2) / (2.0 * sigma_eff_sq))
 
         chex.assert_trees_all_close(overlap[0], expected, rtol=1e-3)
+
+
+class TestRodDomainOverlap(chex.TestCase, parameterized.TestCase):
+    """Test suite for the rod-based finite-domain overlap.
+
+    :see: :func:`~rheedium.simul.rod_domain_overlap`
+    :see: :func:`~rheedium.simul.finite_domain_intensities`
+    """
+
+    def setUp(self) -> None:
+        """Set up a cubic crystal, EwaldData, and rod/shell widths.
+
+        Uses a 100 x 100 x 20 Angstrom domain at 15 kV, the WP5.4
+        acceptance geometry, with an MgO-like cubic cell.
+        """
+        super().setUp()
+        cell_lengths: Float[Array, "3"] = jnp.array([4.21, 4.21, 4.21])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        frac_positions: Float[Array, "..."] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 12.0],
+                [0.5, 0.5, 0.5, 8.0],
+            ]
+        )
+        cart_positions: Float[Array, "..."] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 12.0],
+                [2.105, 2.105, 2.105, 8.0],
+            ]
+        )
+        self.crystal: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=cell_lengths,
+            cell_angles=cell_angles,
+        )
+        self.ewald: Any = build_ewald_data(
+            crystal=self.crystal,
+            energy_kev=15.0,
+            hmax=2,
+            kmax=2,
+            lmax=3,
+            temperature=300.0,
+        )
+        self.domain: Float[Array, "3"] = jnp.array([100.0, 100.0, 20.0])
+        self.rod_sigma: Float[Array, "3"] = extent_to_rod_sigma(self.domain)
+        self.shell_sigma: Float[Array, ""] = compute_shell_sigma(
+            k_magnitude=self.ewald.k_magnitude
+        )
+
+    def _k_in(self, theta_deg: float) -> Float[Array, "3"]:
+        """Build the incident wavevector at the given grazing angle."""
+        theta_rad: Float[Array, ""] = jnp.deg2rad(jnp.asarray(theta_deg))
+        k_in: Float[Array, "3"] = self.ewald.k_magnitude * jnp.array(
+            [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
+        )
+        return k_in
+
+    def test_theta_scan_first_order_rod_no_gaps(self) -> None:
+        r"""The first-order rod contributes continuously over a theta scan.
+
+        Extended Summary
+        ----------------
+        WP5.4 acceptance: for a 100 x 100 x 20 Angstrom domain at 15 kV,
+        the first-order rod must contribute nonzero intensity for the
+        continuous range theta = 1..4 degrees in 0.1 degree steps. With
+        the beam along +x the intersecting first-order rod is (-1, 0)
+        (the (+1, 0) rod lies on the forward side outside the sphere and
+        never crosses it). The retired point-based model produced strings
+        of zeros between integer-l crossings; the rod-based model
+        evaluates the continuous rod-sphere intersection so no gaps
+        remain.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        The result is checked with direct unittest or Chex assertions on
+        the per-angle summed (1, 0)-rod intensity being strictly positive
+        at every scanned angle.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        hkl: Float[Array, "N 3"] = jnp.asarray(
+            self.ewald.hkl_grid, dtype=jnp.float64
+        )
+        rod_mask: Any = (hkl[:, 0] == -1.0) & (hkl[:, 1] == 0.0)
+        theta_values: Any = jnp.arange(1.0, 4.0 + 1e-9, 0.1)
+        rod_totals: list[float] = []
+        for theta in theta_values:
+            _, intensities = finite_domain_intensities(
+                ewald=self.ewald,
+                theta_deg=float(theta),
+                phi_deg=0.0,
+                domain_extent_ang=self.domain,
+            )
+            rod_totals.append(float(jnp.sum(intensities * rod_mask)))
+        rod_totals_arr: Any = jnp.asarray(rod_totals)
+        self.assertTrue(bool(jnp.all(rod_totals_arr > 0.0)))
+
+    def test_miss_distance_matches_brute_force(self) -> None:
+        r"""Closed-form lateral miss distance matches a brute-force scan.
+
+        Extended Summary
+        ----------------
+        WP5.4 acceptance: the closed-form miss distance
+        d_miss = sqrt(-disc) / (2 sqrt(a)) equals the brute-force minimum
+        over l of sqrt(|k_in + G(l)|^2 - k^2) to 1e-8, since the rod-
+        sphere quadratic f(l) attains its minimum -disc/(4a) at the
+        closest approach l* = -b/(2a) and d_miss = sqrt(min_l f).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case, and minimizes the distance metric over l with
+        scipy.optimize.minimize_scalar as the external reference.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions to 1e-8, which is appropriate for floating-point JAX
+        arrays against a converged scalar minimization.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        import numpy as np
+        from scipy.optimize import minimize_scalar
+
+        k_in: Any = np.asarray(self._k_in(2.0))
+        k_mag: float = float(self.ewald.k_magnitude)
+        b1, b2, b3 = np.asarray(self.ewald.recip_vectors)
+        checked: int = 0
+        for h, k in [(2, 2), (2, -2), (-2, -2), (2, -1)]:
+            p = k_in + h * b1 + k * b2
+            a_coef = float(b3 @ b3)
+            b_coef = float(2.0 * p @ b3)
+            c_coef = float(p @ p - k_mag**2)
+            disc = b_coef**2 - 4.0 * a_coef * c_coef
+            if disc >= 0.0:
+                continue
+            d_closed = np.sqrt(-disc) / (2.0 * np.sqrt(a_coef))
+
+            def distance_metric(l_val: float, p_vec: Any = p) -> float:
+                """Distance metric sqrt(|k_out(l)|^2 - k^2) along the rod."""
+                k_out = p_vec + l_val * b3
+                return float(
+                    np.sqrt(max(float(k_out @ k_out) - k_mag**2, 0.0))
+                )
+
+            result = minimize_scalar(
+                distance_metric,
+                bounds=(-500.0, 500.0),
+                method="bounded",
+                options={"xatol": 1e-12},
+            )
+            self.assertLess(abs(result.fun - d_closed), 1e-8)
+            checked += 1
+        self.assertGreater(checked, 0)
+
+    def test_each_active_rod_represented_once(self) -> None:
+        r"""Each intersecting (h, k) rod occupies exactly one grid slot.
+
+        Extended Summary
+        ----------------
+        The rod-based overlap is keyed on (h, k) rods: for fixed-shape JIT
+        compatibility the per-rod contribution is assigned to the single
+        grid point whose integer l is nearest to the continuous
+        intersection l*, so summing intensities over grid points counts
+        each rod exactly once.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        The result is checked with direct unittest or Chex assertions
+        counting active grid slots per (h, k) rod.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        import numpy as np
+
+        overlap, _, _ = rod_domain_overlap(
+            hkl_points=self.ewald.hkl_grid,
+            recip_vectors=self.ewald.recip_vectors,
+            k_in=self._k_in(2.0),
+            k_magnitude=self.ewald.k_magnitude,
+            rod_sigma=self.rod_sigma,
+            shell_sigma=self.shell_sigma,
+        )
+        hkl: Any = np.asarray(self.ewald.hkl_grid)
+        active: Any = np.asarray(overlap) > 1e-6
+        counts: dict[tuple[int, int], int] = {}
+        for i in range(hkl.shape[0]):
+            if active[i]:
+                key = (int(hkl[i, 0]), int(hkl[i, 1]))
+                counts[key] = counts.get(key, 0) + 1
+        self.assertGreater(len(counts), 0)
+        self.assertEqual(set(counts.values()), {1})
+
+    def test_intersection_k_out_on_sphere_with_unit_weight(self) -> None:
+        r"""True rod-sphere intersections have unit weight and elastic k_out.
+
+        Extended Summary
+        ----------------
+        For rods that truly intersect the Ewald sphere the envelope
+        weight is exactly 1 and the returned outgoing wavevector lies on
+        the sphere, |k_out| = |k_in|, because the intensity is evaluated
+        at the continuous intersection l*.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        import numpy as np
+
+        overlap, _, k_out = rod_domain_overlap(
+            hkl_points=self.ewald.hkl_grid,
+            recip_vectors=self.ewald.recip_vectors,
+            k_in=self._k_in(2.0),
+            k_magnitude=self.ewald.k_magnitude,
+            rod_sigma=self.rod_sigma,
+            shell_sigma=self.shell_sigma,
+        )
+        hit: Any = np.asarray(overlap) > 0.999
+        self.assertTrue(bool(hit.any()))
+        k_out_mag: Any = np.linalg.norm(np.asarray(k_out), axis=1)
+        np.testing.assert_allclose(
+            k_out_mag[hit],
+            float(self.ewald.k_magnitude),
+            rtol=1e-10,
+        )
+
+    def test_overlap_bounded_zero_one(self) -> None:
+        r"""Rod envelope weights are bounded to [0, 1].
+
+        Extended Summary
+        ----------------
+        The overlap output of the rod-based model is an envelope weight:
+        1 at true intersections, a lateral-miss Gaussian otherwise, and 0
+        on non-representative grid slots, so it must lie in [0, 1].
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+
+        Exact tree equality assertions check structure, dtype, and values
+        where the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_finite_domain``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        overlap, rod_factor, _ = rod_domain_overlap(
+            hkl_points=self.ewald.hkl_grid,
+            recip_vectors=self.ewald.recip_vectors,
+            k_in=self._k_in(2.0),
+            k_magnitude=self.ewald.k_magnitude,
+            rod_sigma=self.rod_sigma,
+            shell_sigma=self.shell_sigma,
+        )
+        chex.assert_trees_all_equal(jnp.all(overlap >= 0), True)
+        chex.assert_trees_all_equal(jnp.all(overlap <= 1), True)
+        chex.assert_trees_all_equal(jnp.all(rod_factor >= 0), True)
+        chex.assert_tree_all_finite(rod_factor)

@@ -298,6 +298,15 @@ class EwaldData(eqx.Module):
         Complex structure factors F(G) for each reciprocal lattice point.
     intensities : Float[Array, "N"]
         Kinematic diffraction intensities :math:`I(G) = |F(G)|^2`.
+    atom_positions : Float[Array, "M 3"] | None
+        Cartesian atomic positions in Ångstroms, stored so continuous-rod
+        paths can re-evaluate :math:`F(q)` off the integer-l grid.
+        ``None`` for hand-built instances (rod paths then fall back to the
+        grid intensities with a warning).
+    atomic_numbers : Int[Array, "M"] | None
+        Atomic numbers matching ``atom_positions``.
+    temperature : Float[Array, ""] | None
+        Temperature in Kelvin used for the stored Debye-Waller factors.
 
     Notes
     -----
@@ -329,10 +338,13 @@ class EwaldData(eqx.Module):
     g_magnitudes: Float[Array, "N"]
     structure_factors: Complex[Array, "N"]
     intensities: Float[Array, "N"]
+    atom_positions: Float[Array, "M 3"] | None = None
+    atomic_numbers: Int[Array, "M"] | None = None
+    temperature: Float[Array, ""] | None = None
 
 
 @jaxtyped(typechecker=beartype)
-def create_ewald_data(
+def create_ewald_data(  # noqa: PLR0913
     wavelength_ang: Float[Array, ""],
     k_magnitude: Float[Array, ""],
     sphere_radius: Float[Array, ""],
@@ -342,6 +354,9 @@ def create_ewald_data(
     g_magnitudes: Float[Array, "N"],
     structure_factors: Complex[Array, "N"],
     intensities: Float[Array, "N"],
+    atom_positions: Optional[Float[Array, "M 3"]] = None,
+    atomic_numbers: Optional[Int[Array, "M"]] = None,
+    temperature: Optional[Float[Array, ""]] = None,
 ) -> EwaldData:
     r"""Create an EwaldData PyTree with validation.
 
@@ -480,6 +495,15 @@ def create_ewald_data(
             g_magnitudes=checked_g_magnitudes,
             structure_factors=structure_factors,
             intensities=checked_intensities,
+            atom_positions=None
+            if atom_positions is None
+            else jnp.asarray(atom_positions, dtype=jnp.float64),
+            atomic_numbers=None
+            if atomic_numbers is None
+            else jnp.asarray(atomic_numbers, dtype=jnp.int32),
+            temperature=None
+            if temperature is None
+            else jnp.asarray(temperature, dtype=jnp.float64),
         )
 
     validated_ewald_data: EwaldData = _validate_and_create()

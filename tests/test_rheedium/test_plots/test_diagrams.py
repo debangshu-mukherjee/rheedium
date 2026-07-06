@@ -363,7 +363,9 @@ class TestDiagramPlots:
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: roughness damping
-        with custom sigma values.
+        with custom sigma values, and that the plotted curves are the CTR
+        **intensity** damping factor exp(-q_z^2 sigma^2) (the square of the
+        amplitude convention exp(-q_z^2 sigma^2 / 2)).
 
         Notes
         -----
@@ -371,7 +373,8 @@ class TestDiagramPlots:
         the fixture and assertion path local to the documented case.
 
         The existing assertions in the function body compare the observed
-        result with the expected contract for this module.
+        result with the expected contract for this module, and the sigma = 1
+        curve data is compared to the closed-form intensity factor.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_plots.test_diagrams``, so the Test Reference
@@ -383,6 +386,12 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
         assert len(ax.get_lines()) >= 3
+        sigma_one_line: Any = ax.get_lines()[1]
+        q_z_plot: Any = np.asarray(sigma_one_line.get_xdata())
+        damping_plot: Any = np.asarray(sigma_one_line.get_ydata())
+        np.testing.assert_allclose(
+            damping_plot, np.exp(-(q_z_plot**2)), rtol=1e-12
+        )
 
     def test_plot_rod_broadening_default(self) -> None:
         r"""Test rod broadening plot with default parameters.
