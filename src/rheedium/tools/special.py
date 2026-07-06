@@ -25,7 +25,8 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
     """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
-    t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)
+    x_small: Float[Array, "..."] = jnp.minimum(x_safe, SAFE_X)
+    t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
     p_coeffs: Float[Array, "7"] = jnp.array(
         [
             -0.57721566,
@@ -43,9 +44,9 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.arange(7, dtype=jnp.float64),
     )
     poly_small: Float[Array, "..."] = jnp.sum(p_coeffs * powers_small, axis=-1)
-    i0e_val: Float[Array, "..."] = jax.lax.bessel_i0e(x_safe)
-    i0_val: Float[Array, "..."] = i0e_val * jnp.exp(jnp.abs(x_safe))
-    log_term: Float[Array, "..."] = -jnp.log(x_safe / 2.0) * i0_val
+    i0e_val: Float[Array, "..."] = jax.lax.bessel_i0e(x_small)
+    i0_val: Float[Array, "..."] = i0e_val * jnp.exp(jnp.abs(x_small))
+    log_term: Float[Array, "..."] = -jnp.log(x_small / 2.0) * i0_val
     k0_small: Float[Array, "..."] = log_term + poly_small
 
     q_coeffs: Float[Array, "7"] = jnp.array(
@@ -82,7 +83,8 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
     """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
-    t_small: Float[Array, "..."] = jnp.square(x_safe / 2.0)
+    x_small: Float[Array, "..."] = jnp.minimum(x_safe, SAFE_X)
+    t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
     p_coeffs: Float[Array, "7"] = jnp.array(
         [
             1.0,
@@ -100,10 +102,10 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.arange(7, dtype=jnp.float64),
     )
     poly_small: Float[Array, "..."] = jnp.sum(p_coeffs * powers_small, axis=-1)
-    i1e_val: Float[Array, "..."] = jax.lax.bessel_i1e(x_safe)
-    i1_val: Float[Array, "..."] = i1e_val * jnp.exp(jnp.abs(x_safe))
-    log_term: Float[Array, "..."] = jnp.log(x_safe / 2.0) * i1_val
-    k1_small: Float[Array, "..."] = log_term + (1.0 / x_safe) * poly_small
+    i1e_val: Float[Array, "..."] = jax.lax.bessel_i1e(x_small)
+    i1_val: Float[Array, "..."] = i1e_val * jnp.exp(jnp.abs(x_small))
+    log_term: Float[Array, "..."] = jnp.log(x_small / 2.0) * i1_val
+    k1_small: Float[Array, "..."] = log_term + (1.0 / x_small) * poly_small
 
     q_coeffs: Float[Array, "7"] = jnp.array(
         [

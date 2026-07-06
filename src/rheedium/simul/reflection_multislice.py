@@ -160,7 +160,7 @@ def crystal_to_edge_on_slices(
     cap_width: scalar_float = 15.0,
     penetration_depth: scalar_float | None = None,
     r_cutoff: scalar_float = 4.0,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> EdgeOnSlices:
     """Convert a crystal slab to edge-on projected-potential slices.
 
@@ -390,7 +390,7 @@ def reflection_multislice_simulator(  # noqa: PLR0913
     dz: scalar_float = 0.25,
     vacuum_above: scalar_float = 30.0,
     cap_width: scalar_float = 15.0,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> RHEEDPattern:
     """Simulate a reflected sparse RHEED pattern by edge-on multislice.
 

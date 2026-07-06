@@ -41,8 +41,9 @@ Routine Listings
 Notes
 -----
 All functions support JAX transformations and automatic differentiation.
-Combined form-factor and projected-potential dispatchers use Lobato-van Dyck
-by default. Kirkland remains available when requested explicitly.
+Combined form-factor and projected-potential dispatchers use Kirkland by
+default. The bundled Lobato table is disabled because it failed the 2026-07-06
+red-team validation gates.
 
 Debye temperatures are from:
 - Kittel, Introduction to Solid State Physics (8th ed.)
@@ -50,7 +51,6 @@ Debye temperatures are from:
 - Various experimental sources for less common elements
 """
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple
@@ -78,6 +78,88 @@ from rheedium.types import (
 DEBYE_TEMPERATURES: Float[Array, "103"] = debye_temperatures()
 ATOMIC_MASSES: Float[Array, "103"] = atomic_masses()
 LOBATO_PARAMS: Float[Array, "103 10"] = lobato_potentials()
+_DEBYE_GL_NODES: Float[Array, "32"] = jnp.asarray(
+    [
+        -9.972638618494815699e-01,
+        -9.856115115452683817e-01,
+        -9.647622555875063899e-01,
+        -9.349060759377396668e-01,
+        -8.963211557660520912e-01,
+        -8.493676137325699704e-01,
+        -7.944837959679423856e-01,
+        -7.321821187402897113e-01,
+        -6.630442669302152314e-01,
+        -5.877157572407623043e-01,
+        -5.068999089322293594e-01,
+        -4.213512761306353327e-01,
+        -3.318686022821276671e-01,
+        -2.392873622521370647e-01,
+        -1.444719615827964876e-01,
+        -4.830766568773832426e-02,
+        4.830766568773832426e-02,
+        1.444719615827964876e-01,
+        2.392873622521370647e-01,
+        3.318686022821276671e-01,
+        4.213512761306353327e-01,
+        5.068999089322293594e-01,
+        5.877157572407623043e-01,
+        6.630442669302152314e-01,
+        7.321821187402897113e-01,
+        7.944837959679423856e-01,
+        8.493676137325699704e-01,
+        8.963211557660520912e-01,
+        9.349060759377396668e-01,
+        9.647622555875063899e-01,
+        9.856115115452683817e-01,
+        9.972638618494815699e-01,
+    ],
+    dtype=jnp.float64,
+)
+_DEBYE_GL_WEIGHTS: Float[Array, "32"] = jnp.asarray(
+    [
+        7.018610009470505756e-03,
+        1.627439473090574323e-02,
+        2.539206530926202410e-02,
+        3.427386291302176452e-02,
+        4.283589802222683568e-02,
+        5.099805926237609144e-02,
+        5.868409347853556501e-02,
+        6.582222277636168295e-02,
+        7.234579410884833806e-02,
+        7.819389578707022781e-02,
+        8.331192422694670696e-02,
+        8.765209300440378326e-02,
+        9.117387869576377979e-02,
+        9.384439908080451087e-02,
+        9.563872007927470831e-02,
+        9.654008851472765940e-02,
+        9.654008851472765940e-02,
+        9.563872007927470831e-02,
+        9.384439908080451087e-02,
+        9.117387869576377979e-02,
+        8.765209300440378326e-02,
+        8.331192422694670696e-02,
+        7.819389578707022781e-02,
+        7.234579410884833806e-02,
+        6.582222277636168295e-02,
+        5.868409347853556501e-02,
+        5.099805926237609144e-02,
+        4.283589802222683568e-02,
+        3.427386291302176452e-02,
+        2.539206530926202410e-02,
+        1.627439473090574323e-02,
+        7.018610009470505756e-03,
+    ],
+    dtype=jnp.float64,
+)
+
+
+def _raise_lobato_unavailable() -> None:
+    """Raise for the disabled Lobato path."""
+    raise ValueError(
+        "bundled Lobato table failed validation -- see "
+        ".claude/RED_TEAM_REPORT.md C1"
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -234,7 +316,7 @@ def kirkland_form_factor(
         f_e(s) = \sum_{i=1}^{3} \frac{a_i}{s^2 + b_i}
         + \sum_{i=1}^{3} c_i \exp(-d_i s^2)
 
-    where :math:`s = q / (4\pi)`.
+    where :math:`q_K = q / (2\pi)`.
 
     :see: :class:`~.test_form_factors.TestFormFactors`
 
@@ -255,7 +337,7 @@ def kirkland_form_factor(
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
     2. **Prepare q term** --
-       :math:`s = q / (4\\pi)`.
+       :math:`q_K = q / (2\\pi)`.
     3. **Lorentzian terms** --
        :math:`a_i / (s^2 + b_i)` for :math:`i = 1 \\ldots 3`.
     4. **Gaussian terms** --
@@ -270,18 +352,18 @@ def kirkland_form_factor(
     debye_waller_factor : Thermal damping factor
     """
     parameters: KirklandParameters = load_kirkland_parameters(atomic_number)
-    four_pi: Float[Array, ""] = jnp.asarray(4.0 * jnp.pi, dtype=jnp.float64)
-    q_over_4pi: Float[Array, "..."] = q_magnitude / four_pi
-    q_over_4pi_squared: Float[Array, "... 1"] = jnp.square(q_over_4pi)[
+    two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
+    q_over_2pi: Float[Array, "..."] = q_magnitude / two_pi
+    q_over_2pi_squared: Float[Array, "... 1"] = jnp.square(q_over_2pi)[
         ..., jnp.newaxis
     ]
     lorentzian_terms: Float[Array, "... 3"] = (
         parameters.lorentzian_amplitudes
-        / (q_over_4pi_squared + parameters.lorentzian_scales)
+        / (q_over_2pi_squared + parameters.lorentzian_scales)
     )
     gaussian_terms: Float[Array, "... 3"] = (
         parameters.gaussian_amplitudes
-        * jnp.exp(-parameters.gaussian_scales * q_over_4pi_squared)
+        * jnp.exp(-parameters.gaussian_scales * q_over_2pi_squared)
     )
     form_factor: Float[Array, "..."] = jnp.sum(
         lorentzian_terms + gaussian_terms,
@@ -323,11 +405,10 @@ def kirkland_projected_potential(
     .. math::
 
         V_z(r) = 4\pi^2 a_0 e
-        \left[
-            \sum_{i=1}^{3} a_i K_0(2\pi r \sqrt{b_i}) +
-            \sum_{i=1}^{3} \frac{c_i}{d_i}
-            \exp\!\left(-\frac{\pi^2 r^2}{d_i}\right)
-        \right]
+        \sum_{i=1}^{3} a_i K_0(2\pi r \sqrt{b_i}) +
+        2\pi^2 a_0 e
+        \sum_{i=1}^{3} \frac{c_i}{d_i}
+        \exp\!\left(-\frac{\pi^2 r^2}{d_i}\right)
 
     1. **Load parameters** --
        Kirkland :math:`a_i, b_i` for the element.
@@ -351,8 +432,12 @@ def kirkland_projected_potential(
     """
     parameters: KirklandParameters = load_kirkland_parameters(atomic_number)
     two_pi: Float[Array, ""] = jnp.asarray(2.0 * jnp.pi, dtype=jnp.float64)
-    prefactor: Float[Array, ""] = jnp.asarray(
+    lorentzian_prefactor: Float[Array, ""] = jnp.asarray(
         47.87801 * 2.0 * jnp.pi,
+        dtype=jnp.float64,
+    )
+    gaussian_prefactor: Float[Array, ""] = jnp.asarray(
+        47.87801 * jnp.pi,
         dtype=jnp.float64,
     )
     r_safe: Float[Array, "..."] = jnp.maximum(r, 1e-10)
@@ -373,10 +458,9 @@ def kirkland_projected_potential(
         * expanded_r**2
         / parameters.gaussian_scales[jnp.newaxis, :]
     )
-    potential: Float[Array, "..."] = prefactor * jnp.sum(
-        lorentzian_terms + gaussian_terms,
-        axis=-1,
-    )
+    potential: Float[Array, "..."] = lorentzian_prefactor * jnp.sum(
+        lorentzian_terms, axis=-1
+    ) + gaussian_prefactor * jnp.sum(gaussian_terms, axis=-1)
     return potential
 
 
@@ -500,6 +584,7 @@ def lobato_form_factor(
     ----------
     Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70, 636--649.
     """
+    _raise_lobato_unavailable()
     a_coeffs: Float[Array, "5"]
     b_coeffs: Float[Array, "5"]
     a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
@@ -548,11 +633,11 @@ def lobato_projected_potential(
 
     .. math::
 
-        V_z(r) = \frac{2\pi\,h^2}{m_e\,e} \sum_{i=1}^{5} a_i
+        V_z(r) = 4\pi^2 a_0 e \sum_{i=1}^{5} a_i
         \left[
-            \frac{\pi}{\sqrt{b_i}}\,K_0\!\bigl(\tfrac{2\pi r}
+            \frac{1}{b_i}\,K_0\!\bigl(\tfrac{2\pi r}
             {\sqrt{b_i}}\bigr)
-            + \frac{2\pi^2 r}{b_i}\,K_1\!\bigl(\tfrac{2\pi r}
+            + \frac{\pi r}{b_i^{3/2}}\,K_1\!\bigl(\tfrac{2\pi r}
             {\sqrt{b_i}}\bigr)
         \right]
 
@@ -587,6 +672,7 @@ def lobato_projected_potential(
     .. [1] Lobato, I.I. and Van Dyck, D. (2014). Acta Cryst. A70,
        636--649, Eq. (16).
     """
+    _raise_lobato_unavailable()
     a_coeffs: Float[Array, "5"]
     b_coeffs: Float[Array, "5"]
     a_coeffs, b_coeffs = load_lobato_parameters(atomic_number)
@@ -602,11 +688,9 @@ def lobato_projected_potential(
     bessel_arg: Float[Array, "... 5"] = two_pi * expanded_r / sqrt_b
     k0_vals: Float[Array, "... 5"] = bessel_k0(bessel_arg)
     k1_vals: Float[Array, "... 5"] = bessel_k1(bessel_arg)
-    k0_contribution: Float[Array, "... 5"] = (
-        expanded_a * jnp.pi / sqrt_b * k0_vals
-    )
+    k0_contribution: Float[Array, "... 5"] = expanded_a / expanded_b * k0_vals
     k1_contribution: Float[Array, "... 5"] = (
-        expanded_a * two_pi * jnp.pi * expanded_r / expanded_b * k1_vals
+        expanded_a * jnp.pi * expanded_r / expanded_b**1.5 * k1_vals
     )
     per_term: Float[Array, "... 5"] = k0_contribution + k1_contribution
     potential: Float[Array, "..."] = prefactor * jnp.sum(per_term, axis=-1)
@@ -617,7 +701,7 @@ def lobato_projected_potential(
 def projected_potential(
     atomic_number: scalar_int,
     r: Float[Array, "..."],
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> Float[Array, "..."]:
     r"""Projected atomic potential with selectable parameterization.
 
@@ -634,7 +718,8 @@ def projected_potential(
     r : Float[Array, "..."]
         Radial distance from atom centre in Angstroms
     parameterization : str, optional
-        Potential model: ``"lobato"`` (default) or ``"kirkland"``.
+        Potential model: ``"kirkland"`` (default). ``"lobato"`` is disabled
+        because the bundled table failed validation.
 
     Returns
     -------
@@ -658,15 +743,11 @@ def projected_potential(
     lobato_projected_potential : Lobato-van Dyck parameterization
     kirkland_projected_potential : Kirkland parameterization
     """
-    use_lobato: Float[Array, ""] = jnp.asarray(parameterization == "lobato")
-    potential: Float[Array, "..."] = jax.lax.cond(
-        use_lobato,
-        lobato_projected_potential,
-        kirkland_projected_potential,
-        atomic_number,
-        r,
-    )
-    return potential
+    if parameterization == "lobato":
+        _raise_lobato_unavailable()
+    if parameterization != "kirkland":
+        raise ValueError("parameterization must be 'kirkland'")
+    return kirkland_projected_potential(atomic_number, r)
 
 
 @jaxtyped(typechecker=beartype)
@@ -704,14 +785,15 @@ def get_mean_square_displacement(
     -----
     The Debye model for mean square displacement is:
 
-        ⟨u²⟩ = (3 * hbar²) / (m * k_B * Θ_D) * [Φ(Θ_D/T) + 1/4]
+        ⟨u²⟩ = (3 * hbar²) / (m * k_B * Θ_D)
+        * [Φ(Θ_D/T)/(Θ_D/T) + 1/4]
 
     where:
     - hbar = reduced Planck constant
     - m = atomic mass
     - k_B = Boltzmann constant
     - Θ_D = Debye temperature
-    - Φ(x) = Debye function ≈ 1/x for high T, → 0 for low T
+    - Φ(x) = (1/x)∫₀ˣ t/(exp(t)-1) dt
 
     In the high-temperature limit (T >> Θ_D):
         ⟨u²⟩ ≈ (3 * hbar² * T) / (m * k_B * Θ_D²)
@@ -724,8 +806,7 @@ def get_mean_square_displacement(
     1. **Retrieve Debye temperature** --
        Look up element-specific :math:`\\Theta_D`.
     2. **Debye model MSD** --
-       :math:`\\langle u^2 \\rangle = 3 \\hbar^2 T
-       / (m k_B \\Theta_D^2)` (high-T limit).
+       Full Debye function with zero-point term.
     3. **Fallback model** --
        If :math:`\\Theta_D = 0`, use generic scaling
        :math:`\\propto \\sqrt{12/Z} \\times T/300`.
@@ -756,13 +837,35 @@ def get_mean_square_displacement(
     def debye_msd() -> Float[Array, ""]:
         """Calculate MSD using Debye model with element-specific Θ_D."""
         theta_d_safe: Float[Array, ""] = jnp.maximum(theta_d, 1.0)
-        numerator: Float[Array, ""] = 3.0 * hbar**2 * temperature_float
-        denominator: Float[Array, ""] = mass_kg * k_b * theta_d_safe**2
-        msd_m2: Float[Array, ""] = numerator / denominator
+        temperature_safe: Float[Array, ""] = jnp.maximum(
+            temperature_float, 1e-6
+        )
+        x_debye: Float[Array, ""] = theta_d_safe / temperature_safe
+        t_nodes: Float[Array, "32"] = 0.5 * x_debye * (_DEBYE_GL_NODES + 1.0)
+        t_safe: Float[Array, "32"] = jnp.where(t_nodes < 1e-8, 1e-8, t_nodes)
+        integrand_raw: Float[Array, "32"] = t_safe / jnp.expm1(t_safe)
+        integrand_series: Float[Array, "32"] = 1.0 - 0.5 * t_nodes
+        integrand: Float[Array, "32"] = jnp.where(
+            t_nodes < 1e-8, integrand_series, integrand_raw
+        )
+        integral: Float[Array, ""] = (
+            0.5 * x_debye * jnp.sum(_DEBYE_GL_WEIGHTS * integrand)
+        )
+        phi_over_x_quad: Float[Array, ""] = integral / jnp.square(x_debye)
+        phi_over_x_asymptotic: Float[Array, ""] = jnp.pi**2 / (
+            6.0 * jnp.square(x_debye)
+        )
+        phi_over_x: Float[Array, ""] = jnp.where(
+            x_debye > 80.0, phi_over_x_asymptotic, phi_over_x_quad
+        )
+        bracket: Float[Array, ""] = phi_over_x + 0.25
+        numerator: Float[Array, ""] = 3.0 * hbar**2
+        denominator: Float[Array, ""] = mass_kg * k_b * theta_d_safe
+        msd_m2: Float[Array, ""] = numerator / denominator * bracket
         return msd_m2 * m2_to_ang2
 
     def fallback_msd() -> Float[Array, ""]:
-        """Calculate MSD using generic sqrt(12/Z)*T scaling."""
+        """Calculate MSD using heuristic generic sqrt(12/Z)*T scaling."""
         room_temp: Float[Array, ""] = jnp.asarray(300.0, dtype=jnp.float64)
         base_b: Float[Array, ""] = jnp.asarray(0.5, dtype=jnp.float64)
         z_scaling: Float[Array, ""] = jnp.sqrt(12.0 / atomic_number_float)
@@ -844,7 +947,7 @@ def atomic_scattering_factor(
     q_vector: Float[Array, "... 3"],
     temperature: scalar_float = 300.0,
     is_surface: scalar_bool = False,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> Float[Array, "..."]:
     r"""Calculate combined atomic scattering factor with thermal damping.
 
@@ -865,7 +968,8 @@ def atomic_scattering_factor(
     is_surface : scalar_bool, optional
         If True, use surface-enhanced thermal vibrations. Default: False
     parameterization : str, optional
-        Form-factor model: ``"lobato"`` (default) or ``"kirkland"``.
+        Form-factor model: ``"kirkland"`` (default). ``"lobato"`` is disabled
+        because the bundled table failed validation.
 
     Returns
     -------
@@ -877,8 +981,7 @@ def atomic_scattering_factor(
     1. **q magnitude** --
        :math:`|q| = \\|q\\|`.
     2. **Form factor** --
-       Evaluate Lobato-van Dyck :math:`f(|q|)` by default, or Kirkland when
-       requested.
+       Evaluate Kirkland :math:`f(|q|)`.
     3. **Mean square displacement** --
        Element- and temperature-dependent
        :math:`\\langle u^2 \\rangle` with optional surface
@@ -910,15 +1013,14 @@ def atomic_scattering_factor(
     get_mean_square_displacement : Calculate thermal displacement
     debye_waller_factor : Calculate thermal damping factor
     """
-    if parameterization not in {"lobato", "kirkland"}:
-        raise ValueError("parameterization must be 'lobato' or 'kirkland'")
-    q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
     if parameterization == "lobato":
-        form_factor: Float[Array, "..."] = lobato_form_factor(
-            atomic_number, q_magnitude
-        )
-    else:
-        form_factor = kirkland_form_factor(atomic_number, q_magnitude)
+        _raise_lobato_unavailable()
+    if parameterization != "kirkland":
+        raise ValueError("parameterization must be 'kirkland'")
+    q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
+    form_factor: Float[Array, "..."] = kirkland_form_factor(
+        atomic_number, q_magnitude
+    )
     mean_square_disp: Float[Array, ""] = get_mean_square_displacement(
         atomic_number, temperature, is_surface
     )

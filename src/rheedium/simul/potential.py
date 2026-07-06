@@ -47,7 +47,7 @@ def crystal_projected_potential(
     grid_shape: Tuple[int, int],
     cell_dimensions_angstrom: Float[Array, "2"],
     absorption_fraction: scalar_float = 0.1,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> Complex[Array, "H W"]:
     r"""Compute the complex projected potential for one slice.
 

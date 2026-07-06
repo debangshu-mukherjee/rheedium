@@ -376,7 +376,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     ctr_mixing_mode: str = "incoherent",
     ctr_weight: scalar_float = 1.0,
     hk_tolerance: scalar_float = 0.1,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> Float[Array, "N"]:
     """Calculate kinematic diffraction intensities with CTR contributions.
 
@@ -690,7 +690,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     ctr_regularization: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
     roughness_power: scalar_float = 0.25,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
     surface_config: SurfaceConfig | None = None,
 ) -> RHEEDPattern:
     r"""Simulate RHEED pattern using exact Ewald sphere-CTR intersection.
@@ -974,7 +974,7 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     ctr_regularization: scalar_float = 0.01,
     ctr_power: scalar_float = 1.0,
     roughness_power: scalar_float = 0.25,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
     surface_config: SurfaceConfig | None = None,
 ) -> Tuple[RHEEDPattern, Complex[Array, "K"]]:
     """Return sparse Ewald pattern plus complex per-reflection amplitudes."""
@@ -1303,7 +1303,7 @@ def kinematic_amplitude(  # noqa: PLR0913
     beam_center_px: Tuple[float, float] = (96.0, 8.0),
     spot_sigma_px: scalar_float = 1.4,
     render_ctrs_as_streaks: bool = False,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
     surface_config: SurfaceConfig | None = None,
 ) -> Complex[Array, "H W"]:
     """Render one coherent kinematic Ewald pattern as detector amplitude.
@@ -2468,7 +2468,7 @@ def sliced_crystal_to_projected_potential_slices(
     sliced_crystal: SlicedCrystal,
     slice_thickness: scalar_float = 2.0,
     pixel_size: scalar_float = 0.1,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> PotentialSlices:
     r"""Convert a SlicedCrystal into projected-potential slices.
 

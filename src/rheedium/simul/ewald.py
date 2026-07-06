@@ -57,7 +57,7 @@ def _compute_structure_factor_single(
     atom_positions: Float[Array, "M 3"],
     atomic_numbers: Int[Array, "M"],
     temperature: scalar_float,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> Complex[Array, ""]:
     r"""Compute structure factor F(G) for a single reciprocal vector.
 
@@ -131,7 +131,7 @@ def build_ewald_data(
     kmax: scalar_int,
     lmax: scalar_int,
     temperature: scalar_float = 300.0,
-    parameterization: str = "lobato",
+    parameterization: str = "kirkland",
 ) -> EwaldData:
     r"""Build angle-independent EwaldData from crystal and beam parameters.
 
