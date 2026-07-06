@@ -43,11 +43,10 @@ import re
 import warnings
 from pathlib import Path
 
-import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Callable, Dict, List, Optional, Tuple, Union
-from jaxtyping import Array, Bool, Float, Int, Num
+from jaxtyping import Array, Float, Num
 
 from rheedium.inout.xyz import atomic_symbol
 from rheedium.types import (
@@ -149,9 +148,9 @@ def _extract_cell_params(
 
 
 @beartype
-def _parse_atom_positions(
+def _parse_atom_positions_and_occupancies(
     lines: List[str],
-) -> List[List[float]]:
+) -> Tuple[List[List[float]], List[float]]:
     """Parse atomic positions from CIF atom site loop.
 
     Extracts fractional coordinates and element types from the _atom_site_
@@ -170,6 +169,9 @@ def _parse_atom_positions(
     positions_list : List[List[float]]
         List of [frac_x, frac_y, frac_z, atomic_number] for each atom.
         Returns empty list if no valid atom positions are found.
+    occupancies : List[float]
+        Per-atom occupancies parsed from ``_atom_site_occupancy`` when present,
+        otherwise 1.0.
 
     Examples
     --------
@@ -187,6 +189,7 @@ def _parse_atom_positions(
     """
     atom_site_columns: List[str] = []
     positions_list: List[List[float]] = []
+    occupancies: List[float] = []
     in_atom_site_loop: bool = False
 
     for line in lines:
@@ -224,10 +227,26 @@ def _parse_atom_positions(
         frac_x: float = _strip_esd(tokens[col_indices["_atom_site_fract_x"]])
         frac_y: float = _strip_esd(tokens[col_indices["_atom_site_fract_y"]])
         frac_z: float = _strip_esd(tokens[col_indices["_atom_site_fract_z"]])
+        occupancy: float = 1.0
+        if "_atom_site_occupancy" in atom_site_columns:
+            occupancy_idx: int = atom_site_columns.index(
+                "_atom_site_occupancy"
+            )
+            occupancy = _strip_esd(tokens[occupancy_idx])
         atomic_number: float = float(atomic_symbol(element_symbol))
         positions_list.append([frac_x, frac_y, frac_z, atomic_number])
+        occupancies.append(occupancy)
 
-    return positions_list
+    return positions_list, occupancies
+
+
+@beartype
+def _parse_atom_positions(
+    lines: List[str],
+) -> List[List[float]]:
+    """Parse atomic positions from CIF atom site loop."""
+    positions, _ = _parse_atom_positions_and_occupancies(lines)
+    return positions
 
 
 @beartype
@@ -464,13 +483,20 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
     )
 
     lines: List[str] = cif_text.splitlines()
-    positions_list: List[List[float]] = _parse_atom_positions(lines)
+    positions_list: List[List[float]]
+    occupancy_list: List[float]
+    positions_list, occupancy_list = _parse_atom_positions_and_occupancies(
+        lines
+    )
 
     if not positions_list:
         raise ValueError("No atomic positions found in CIF.")
 
     frac_positions: Float[Array, "N 4"] = jnp.array(
         positions_list, dtype=jnp.float64
+    )
+    occupancies: Float[Array, "N"] = jnp.array(
+        occupancy_list, dtype=jnp.float64
     )
     cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         a, b, c, alpha, beta, gamma
@@ -487,9 +513,10 @@ def parse_cif(cif_path: Union[str, Path]) -> CrystalStructure:
         cart_positions=cart_positions,
         cell_lengths=cell_lengths,
         cell_angles=cell_angles,
+        occupancies=occupancies,
     )
     expanded_crystal: CrystalStructure = symmetry_expansion(
-        crystal, sym_ops, tolerance=0.5
+        crystal, sym_ops, tolerance=0.1
     )
     return expanded_crystal
 
@@ -611,13 +638,19 @@ def _apply_symmetry_ops(
 @beartype
 def _deduplicate_positions(
     positions_with_z: Float[Array, "n_pos 4"],
-    tol: scalar_float,
-) -> Float[Array, "n_unique 4"]:
+    tol: scalar_float = 0.1,
+    cell_vectors: Optional[Float[Array, "3 3"]] = None,
+    occupancies: Optional[Float[Array, "n_pos"]] = None,
+) -> Union[
+    Float[Array, "n_unique 4"],
+    Tuple[Float[Array, "n_unique 4"], Float[Array, "n_unique"]],
+]:
     """Remove duplicate positions within tolerance.
 
     Iterates through positions and keeps only those that are not within
-    the specified tolerance of any previously kept position. Uses JAX's
-    scan for efficient sequential processing.
+    the specified tolerance of any previously kept position of the same
+    atomic number. When ``cell_vectors`` is provided, the input coordinates
+    are fractional and distances use the periodic minimum image.
 
     :see: :class:`~.test_cif.TestDeduplicatePositions`
 
@@ -629,6 +662,11 @@ def _deduplicate_positions(
     tol : scalar_float
         Distance tolerance in Angstroms. Positions within this distance of
         an existing unique position are considered duplicates.
+    cell_vectors : Optional[Float[Array, "3 3"]]
+        Row-vector cell matrix for periodic minimum-image comparisons. If
+        omitted, positions are treated as Cartesian coordinates.
+    occupancies : Optional[Float[Array, "n_pos"]]
+        Optional per-position occupancies to keep aligned with retained sites.
 
     Returns
     -------
@@ -650,44 +688,43 @@ def _deduplicate_positions(
     >>> unique.shape[0]
     2
     """
-    n_positions: int = positions_with_z.shape[0]
-
-    def _unique_cond(
-        carry: Tuple[Float[Array, "n_pos 4"], Int[Array, ""]],
-        pos_z: Float[Array, "4"],
-    ) -> Tuple[Tuple[Float[Array, "n_pos 4"], Int[Array, ""]], None]:
-        unique: Float[Array, "n_pos 4"]
-        count: Int[Array, ""]
-        unique, count = carry
-        pos: Float[Array, "3"] = pos_z[:3]
-        diff: Float[Array, "n_pos 3"] = unique[:, :3] - pos
-        dist_sq: Float[Array, "n_pos"] = jnp.sum(diff**2, axis=1)
-        indices: Int[Array, "n_pos"] = jnp.arange(n_positions)
-        valid_mask: Bool[Array, "n_pos"] = indices < count
-        is_dup: bool = jnp.any((dist_sq < tol**2) & valid_mask)
-        unique = jax.lax.cond(
-            is_dup,
-            lambda u: u,
-            lambda u: u.at[count].set(pos_z),
-            unique,
-        )
-        count += jnp.logical_not(is_dup)
-        return (unique, count), None
-
-    unique_init: Float[Array, "n_pos 4"] = jnp.zeros_like(positions_with_z)
-    unique_init = unique_init.at[0].set(positions_with_z[0])
-    count_init: int = 1
-    (unique_final, final_count), _ = jax.lax.scan(
-        _unique_cond, (unique_init, count_init), positions_with_z[1:]
+    unique_positions: list[Float[Array, "4"]] = []
+    unique_occupancies: list[Float[Array, ""]] = []
+    occupancy_values: Float[Array, "n_pos"] | None = (
+        None if occupancies is None else jnp.asarray(occupancies)
     )
-    return unique_final[:final_count]
+
+    for idx, pos_z in enumerate(positions_with_z):
+        is_duplicate: bool = False
+        for unique_pos in unique_positions:
+            if unique_pos[3] != pos_z[3]:
+                continue
+            if cell_vectors is None:
+                diff: Float[Array, "3"] = unique_pos[:3] - pos_z[:3]
+            else:
+                frac_diff: Float[Array, "3"] = unique_pos[:3] - pos_z[:3]
+                diff = (frac_diff - jnp.round(frac_diff)) @ cell_vectors
+            distance: Float[Array, ""] = jnp.linalg.norm(diff)
+            if bool(distance < tol):
+                is_duplicate = True
+                break
+        if is_duplicate:
+            continue
+        unique_positions.append(pos_z)
+        if occupancy_values is not None:
+            unique_occupancies.append(occupancy_values[idx])
+
+    unique_array: Float[Array, "n_unique 4"] = jnp.stack(unique_positions)
+    if occupancy_values is None:
+        return unique_array
+    return unique_array, jnp.stack(unique_occupancies)
 
 
 @beartype
 def symmetry_expansion(
     crystal: CrystalStructure,
     sym_ops: List[str],
-    tolerance: scalar_float = 1.0,
+    tolerance: scalar_float = 0.1,
 ) -> CrystalStructure:
     """Apply symmetry operations to expand fractional positions.
 
@@ -706,7 +743,7 @@ def symmetry_expansion(
     tolerance : scalar_float, optional
         Distance tolerance in Angstroms for duplicate atom removal.
         Atoms within this distance are considered duplicates.
-        Default: 1.0 A.
+        Default: 0.1 A.
 
     Returns
     -------
@@ -742,23 +779,30 @@ def symmetry_expansion(
     expanded_positions: Float[Array, "M 4"] = _apply_symmetry_ops(
         frac_positions, sym_ops
     )
+    source_occupancies: Float[Array, "N"] = (
+        jnp.ones(frac_positions.shape[0], dtype=frac_positions.dtype)
+        if crystal.occupancies is None
+        else crystal.occupancies
+    )
+    expanded_occupancies: Float[Array, "M"] = jnp.repeat(
+        source_occupancies, len(sym_ops)
+    )
 
     cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         *crystal.cell_lengths, *crystal.cell_angles
     )
-    cart_coords: Float[Array, "M 3"] = expanded_positions[:, :3] @ cell_vectors
-    cart_with_z: Float[Array, "M 4"] = jnp.column_stack(
-        [cart_coords, expanded_positions[:, 3]]
+
+    unique_frac_with_z: Float[Array, "U 4"]
+    unique_occupancies: Float[Array, "U"]
+    unique_frac_with_z, unique_occupancies = _deduplicate_positions(
+        expanded_positions,
+        tolerance,
+        cell_vectors=cell_vectors,
+        occupancies=expanded_occupancies,
     )
 
-    unique_cart_with_z: Float[Array, "U 4"] = _deduplicate_positions(
-        cart_with_z, tolerance
-    )
-
-    unique_cart: Float[Array, "U 3"] = unique_cart_with_z[:, :3]
-    atomic_numbers: Float[Array, "U"] = unique_cart_with_z[:, 3]
-    cell_inv: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
-    unique_frac: Float[Array, "U 3"] = (unique_cart @ cell_inv) % 1.0
+    unique_frac: Float[Array, "U 3"] = unique_frac_with_z[:, :3] % 1.0
+    atomic_numbers: Float[Array, "U"] = unique_frac_with_z[:, 3]
     # Snap float-noise wraps (e.g. -1e-17 % 1 -> 0.999...) back to 0 and
     # rebuild cart from the wrapped frac so the frame contract holds exactly.
     wrap_tolerance: float = 1e-9
@@ -772,6 +816,7 @@ def symmetry_expansion(
         cart_positions=jnp.column_stack([wrapped_cart, atomic_numbers]),
         cell_lengths=crystal.cell_lengths,
         cell_angles=crystal.cell_angles,
+        occupancies=unique_occupancies,
     )
     return expanded_crystal
 

@@ -114,6 +114,9 @@ class CrystalStructure(eqx.Module):
         Unit cell angles [α, β, γ] in degrees, where α is the angle between
         b and c, β is the angle between a and c, and γ is the angle between
         a and b.
+    occupancies : Num[Array, "N"]
+        Per-site scattering occupancies. Defaults to 1 for fully occupied
+        sites.
     This class is an Equinox module (``eqx.Module``) registered as a JAX
     PyTree node, making it compatible with JAX
     transformations like jit, grad, and vmap. All data is immutable and stored
@@ -141,6 +144,7 @@ class CrystalStructure(eqx.Module):
     cart_positions: Num[Array, "N 4"]
     cell_lengths: Num[Array, "3"]
     cell_angles: Num[Array, "3"]
+    occupancies: Num[Array, "N"] | None = None
 
 
 @jaxtyped(typechecker=beartype)
@@ -149,6 +153,7 @@ def create_crystal_structure(
     cart_positions: Num[Array, "... 4"],
     cell_lengths: Num[Array, "3"],
     cell_angles: Num[Array, "3"],
+    occupancies: Optional[Num[Array, "..."]] = None,
 ) -> CrystalStructure:
     """Create a CrystalStructure PyTree with data validation.
 
@@ -166,6 +171,9 @@ def create_crystal_structure(
         Unit cell lengths [a, b, c] in Ångstroms.
     cell_angles : Num[Array, "3"]
         Unit cell angles [α, β, γ] in degrees.
+    occupancies : Optional[Num[Array, "..."]]
+        Per-site occupancies. If omitted, all sites are treated as fully
+        occupied.
 
     Returns
     -------
@@ -190,6 +198,12 @@ def create_crystal_structure(
     cart_positions: Num[Array, "... 4"] = jnp.asarray(cart_positions)
     cell_lengths: Num[Array, "3"] = jnp.asarray(cell_lengths)
     cell_angles: Num[Array, "3"] = jnp.asarray(cell_angles)
+    if occupancies is None:
+        occupancies_array: Num[Array, "..."] = jnp.ones(
+            frac_positions.shape[0], dtype=frac_positions.dtype
+        )
+    else:
+        occupancies_array = jnp.asarray(occupancies)
 
     def _validate_and_create() -> CrystalStructure:
         max_cols: int = 4
@@ -204,6 +218,8 @@ def create_crystal_structure(
             raise ValueError("cell_angles must have shape (3,)")
         if frac_positions.shape[0] != cart_positions.shape[0]:
             raise ValueError("frac_positions and cart_positions length differ")
+        if occupancies_array.shape != (frac_positions.shape[0],):
+            raise ValueError("occupancies must have shape (N,)")
 
         checked_frac_positions: Float[Array, "... 4"] = eqx.error_if(
             frac_positions,
@@ -219,6 +235,11 @@ def create_crystal_structure(
             cell_angles,
             jnp.any((cell_angles <= 0) | (cell_angles >= 180)),
             "cell_angles must be between 0 and 180 degrees",
+        )
+        checked_occupancies: Num[Array, "..."] = eqx.error_if(
+            occupancies_array,
+            jnp.any((occupancies_array < 0.0) | (occupancies_array > 1.0)),
+            "occupancies must be between 0 and 1",
         )
         canonical_vectors: Float[Array, "3 3"] = _build_canonical_cell_vectors(
             checked_cell_lengths, checked_cell_angles
@@ -239,6 +260,7 @@ def create_crystal_structure(
             cart_positions=checked_cart_positions,
             cell_lengths=checked_cell_lengths,
             cell_angles=checked_cell_angles,
+            occupancies=checked_occupancies,
         )
 
     validated_crystal_structure: CrystalStructure = _validate_and_create()

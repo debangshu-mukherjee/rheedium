@@ -576,6 +576,33 @@ class TestDeduplicatePositions(chex.TestCase):
 
         assert unique.shape[0] == 2
 
+    def test_keeps_same_position_different_species(self) -> None:
+        """Co-located sites with different atomic numbers are not merged."""
+        positions: Float[Array, "..."] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 38.0],
+                [0.0, 0.0, 0.0, 56.0],
+            ]
+        )
+        unique: Any = _deduplicate_positions(positions, tol=0.1)
+
+        assert unique.shape[0] == 2
+
+    def test_periodic_boundary_duplicate_same_species(self) -> None:
+        """Periodic minimum-image distance deduplicates wrapped sites."""
+        positions: Float[Array, "..."] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [0.0, 0.0, 0.999, 14.0],
+            ]
+        )
+        cell_vectors: Float[Array, "..."] = jnp.eye(3) * 5.0
+        unique: Any = _deduplicate_positions(
+            positions, tol=0.01, cell_vectors=cell_vectors
+        )
+
+        assert unique.shape[0] == 1
+
     def test_keeps_distinct_atoms(self) -> None:
         r"""Distinct positions are preserved.
 
@@ -930,6 +957,72 @@ Cu 0.0 0.0 0.0
                 match="space group declared but no operator loop",
             ):
                 crystal = parse_cif(cif_file)
+
+        assert crystal.frac_positions.shape[0] == 1
+
+    def test_cif_occupancy_and_species_aware_dedup(self) -> None:
+        """Mixed occupancy species on one site survive as separate sites."""
+        cif_content: str = """
+data_STO_mixed_A_site
+_cell_length_a 3.905
+_cell_length_b 3.905
+_cell_length_c 3.905
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sr1 Sr 0.0 0.0 0.0 0.5
+Ba1 Ba 0.0 0.0 0.0 0.5
+Ti1 Ti 0.5 0.5 0.5 1.0
+O1 O 0.5 0.5 0.0 1.0
+O2 O 0.5 0.0 0.5 1.0
+O3 O 0.0 0.5 0.5 1.0
+"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cif_file: Path = Path(tmp_dir) / "sto_mixed.cif"
+            cif_file.write_text(cif_content)
+
+            crystal: CrystalStructure = parse_cif(cif_file)
+
+        assert crystal.frac_positions.shape[0] == 6
+        chex.assert_trees_all_close(
+            crystal.frac_positions[:, 3],
+            jnp.array([38.0, 56.0, 22.0, 8.0, 8.0, 8.0]),
+        )
+        chex.assert_trees_all_close(
+            crystal.occupancies,
+            jnp.array([0.5, 0.5, 1.0, 1.0, 1.0, 1.0]),
+        )
+
+    def test_symmetry_image_across_boundary_dedups(self) -> None:
+        """Same-species images near z=0 and z=1 deduplicate by PBC distance."""
+        cif_content: str = """
+data_wrapped_image
+_cell_length_a 5.0
+_cell_length_b 5.0
+_cell_length_c 5.0
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si 0.0 0.0 0.999
+Si 0.0 0.0 0.001
+"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cif_file: Path = Path(tmp_dir) / "wrapped.cif"
+            cif_file.write_text(cif_content)
+
+            crystal: CrystalStructure = parse_cif(cif_file)
 
         assert crystal.frac_positions.shape[0] == 1
 

@@ -25,7 +25,7 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
     """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
-    x_small: Float[Array, "..."] = jnp.minimum(x_safe, SAFE_X)
+    x_small: Float[Array, "..."] = jnp.where(x_safe <= SAFE_X, x_safe, SAFE_X)
     t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
     p_coeffs: Float[Array, "7"] = jnp.array(
         [
@@ -83,7 +83,7 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
     """
     x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
 
-    x_small: Float[Array, "..."] = jnp.minimum(x_safe, SAFE_X)
+    x_small: Float[Array, "..."] = jnp.where(x_safe <= SAFE_X, x_safe, SAFE_X)
     t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
     p_coeffs: Float[Array, "7"] = jnp.array(
         [
