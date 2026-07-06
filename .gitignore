@@ -21,6 +21,10 @@ notebooks/__pycache__/
 /.claude/ROADMAP_multislice.md
 /.claude/XYZ_CIF_Unite.md
 /.claude/ROADMAP.md
+/.claude/*.md
+/.claude/FIX_PLAN.md
+/.claude/RED_TEAM_REPORT.md
+/.claude/FIX_PROGRESS.md
 
 #Temp folder for image generation
 .tmp/
