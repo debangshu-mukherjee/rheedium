@@ -985,7 +985,28 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
     def test_111_scalar_thickness_selects_exact_column_depth(self) -> None:
-        """A 12 Å [111] scrape keeps exactly atoms within 12 Å of the top."""
+        r"""A 12 Å [111] scrape keeps exactly atoms within 12 Å of the top.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: scraping along a
+        [111] zone axis with a scalar thickness keeps exactly the atoms whose
+        depth below the top surface is within the requested 12 Angstroms.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body: a column
+        of ten silicon atoms spaced along the [111] direction in a cubic cell.
+
+        The kept atom count is checked with an exact equality assertion, the
+        kept projections with strict depth bounds, and the frame contract
+        between fractional and Cartesian positions with tolerance-aware
+        closeness assertions.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_unitcell``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         spacing: float = 2.31
         zone_axis: Float[Array, "3"] = jnp.array([1.0, 1.0, 1.0])
         zone_axis_hat: Float[Array, "3"] = zone_axis / jnp.linalg.norm(
@@ -1030,7 +1051,27 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         )
 
     def test_monolayer_zero_thickness_does_not_crash(self) -> None:
-        """Coplanar atoms have no positive spacing and still return safely."""
+        r"""Coplanar atoms have no positive spacing and still return safely.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a zero-thickness
+        scrape of a strictly coplanar monolayer returns every atom instead of
+        crashing on the degenerate zero interlayer spacing.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body through
+        the shared coplanar-crystal helper fixture.
+
+        The kept atom count is checked with an exact equality assertion and
+        the frame contract between fractional and Cartesian positions with
+        tolerance-aware closeness assertions.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_unitcell``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
         crystal: CrystalStructure = self._create_xy_plane_crystal()
 
         filtered: CrystalStructure = atom_scraper(

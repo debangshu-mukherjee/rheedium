@@ -895,12 +895,17 @@ class XYZData(eqx.Module):
     lattice : Optional[Float[Array, "3 3"]]
         Lattice vectors in Ångstroms if present in the XYZ file, otherwise
         None. Shape (3, 3) matrix where each row is a lattice vector.
+        When absent, the field stays None; no placeholder lattice is
+        fabricated.
     stress : Optional[Float[Array, "3 3"]]
         Symmetric stress tensor if present in the metadata, otherwise None.
         Shape (3, 3) matrix with stress components.
     energy : Optional[scalar_float]
         Total energy in eV if present in the metadata, otherwise None.
         Scalar value.
+    forces : Optional[Float[Array, "N 3"]]
+        Per-atom forces in eV/Ångstrom if present in the source data,
+        otherwise None. Shape (N, 3) matching ``positions``.
     properties : Optional[List[Dict[str, Union[str, int]]]]
         List of per-atom properties described in the metadata, otherwise None.
     comment : Optional[str]
@@ -932,10 +937,11 @@ class XYZData(eqx.Module):
     lattice: Optional[Float[Array, "3 3"]]
     stress: Optional[Float[Array, "3 3"]]
     energy: Optional[Float[Array, ""]]
+    forces: Optional[Float[Array, "N 3"]] = None
     properties: Optional[List[Dict[str, Union[str, int]]]] = eqx.field(
-        static=True
+        static=True, default=None
     )
-    comment: Optional[str] = eqx.field(static=True)
+    comment: Optional[str] = eqx.field(static=True, default=None)
 
 
 @jaxtyped(typechecker=beartype)
@@ -947,6 +953,7 @@ def create_xyz_data(
     energy: Optional[scalar_float] = None,
     properties: Optional[List[Dict[str, Union[str, int]]]] = None,
     comment: Optional[str] = None,
+    forces: Optional[Float[Array, "N 3"]] = None,
 ) -> XYZData:
     """Create a XYZData PyTree with runtime validation.
 
@@ -959,7 +966,10 @@ def create_xyz_data(
     atomic_numbers : Int[Array, "N"]
         Atomic numbers (Z) for each atom.
     lattice : Optional[Float[Array, "3 3"]], optional
-        Lattice vectors (if any).
+        Lattice vectors (if any). ``None`` is stored as ``None``; no
+        identity-matrix placeholder is fabricated, so downstream
+        consumers can distinguish "no lattice given" from a genuine
+        1 Ångstrom cubic cell.
     stress : Optional[Float[Array, "3 3"]], optional
         Stress tensor (if any).
     energy : Optional[scalar_float], optional
@@ -968,6 +978,8 @@ def create_xyz_data(
         Per-atom metadata.
     comment : Optional[str], optional
         Original XYZ comment line.
+    forces : Optional[Float[Array, "N 3"]], optional
+        Per-atom forces in eV/Ångstrom (if any).
 
     Returns
     -------
@@ -978,14 +990,15 @@ def create_xyz_data(
     -----
     - Convert required inputs to JAX arrays with appropriate
       dtypes: positions to float64, atomic_numbers to int32,
-      lattice/stress/energy to float64 if provided.
+      lattice/stress/energy/forces to float64 if provided.
     - Execute shape validation checks: verify positions has
       shape (N, 3) and atomic_numbers has shape (N,).
     - Execute value validation checks: ensure all position
       values are finite and atomic numbers are non-negative.
     - Execute optional matrix validation checks: for lattice
       and stress tensors verify shape is (3, 3) and all
-      values are finite.
+      values are finite; for forces verify shape is (N, 3)
+      and all values are finite.
     - If all validations pass, create and return XYZData
       instance.
     - If any validation fails, raise ValueError with
@@ -997,14 +1010,15 @@ def create_xyz_data(
     )
     if lattice is not None:
         lattice: Float[Array, "3 3"] = jnp.asarray(lattice, dtype=jnp.float64)
-    else:
-        lattice: Float[Array, "3 3"] = jnp.eye(3, dtype=jnp.float64)
 
     if stress is not None:
         stress: Float[Array, "3 3"] = jnp.asarray(stress, dtype=jnp.float64)
 
     if energy is not None:
         energy: Float[Array, ""] = jnp.asarray(energy, dtype=jnp.float64)
+
+    if forces is not None:
+        forces: Float[Array, "N 3"] = jnp.asarray(forces, dtype=jnp.float64)
 
     def _validate_and_create() -> XYZData:
         nn: int = positions.shape[0]
@@ -1018,6 +1032,8 @@ def create_xyz_data(
             raise ValueError("lattice must have shape (3, 3)")
         if stress is not None and stress.shape != (3, 3):
             raise ValueError("stress must have shape (3, 3)")
+        if forces is not None and forces.shape != (nn, max_dims):
+            raise ValueError("forces must have shape (N, 3)")
 
         checked_positions: Float[Array, "N 3"] = eqx.error_if(
             positions,
@@ -1029,10 +1045,14 @@ def create_xyz_data(
             jnp.any(atomic_numbers < 0),
             "atomic_numbers must be non-negative",
         )
-        checked_lattice: Optional[Float[Array, "3 3"]] = eqx.error_if(
-            lattice,
-            jnp.any(~jnp.isfinite(lattice)),
-            "lattice contains non-finite values",
+        checked_lattice: Optional[Float[Array, "3 3"]] = (
+            None
+            if lattice is None
+            else eqx.error_if(
+                lattice,
+                jnp.any(~jnp.isfinite(lattice)),
+                "lattice contains non-finite values",
+            )
         )
         checked_stress: Optional[Float[Array, "3 3"]] = (
             None
@@ -1052,6 +1072,15 @@ def create_xyz_data(
                 "energy must be finite",
             )
         )
+        checked_forces: Optional[Float[Array, "N 3"]] = (
+            None
+            if forces is None
+            else eqx.error_if(
+                forces,
+                jnp.any(~jnp.isfinite(forces)),
+                "forces contain non-finite values",
+            )
+        )
 
         return XYZData(
             positions=checked_positions,
@@ -1059,6 +1088,7 @@ def create_xyz_data(
             lattice=checked_lattice,
             stress=checked_stress,
             energy=checked_energy,
+            forces=checked_forces,
             properties=properties,
             comment=comment,
         )

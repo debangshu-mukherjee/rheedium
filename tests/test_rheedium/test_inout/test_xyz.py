@@ -375,6 +375,61 @@ class TestParseXyzMetadata(chex.TestCase):
 
         assert metadata["energy"] == pytest.approx(-1.23e-4)
 
+    def test_energy_key_not_matched_inside_other_keys(self) -> None:
+        r"""The energy regex does not match ``free_energy=`` first.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: on a comment
+        line containing both ``free_energy=-99.5`` and ``energy=-42.25``,
+        the parser extracts -42.25 from the standalone ``energy=`` key
+        instead of matching the ``energy=`` substring inside
+        ``free_energy=``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_xyz``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        line: str = "free_energy=-99.5 energy=-42.25"
+        metadata: Any = _parse_xyz_metadata(line)
+
+        assert metadata["energy"] == pytest.approx(-42.25)
+
+    def test_free_energy_only_yields_no_energy(self) -> None:
+        r"""A lone ``free_energy=`` key does not populate energy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a comment line
+        that carries only ``free_energy=-99.5`` produces no ``energy``
+        metadata entry, because the boundary-anchored regex refuses to
+        match inside another key name.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_xyz``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        line: str = "free_energy=-99.5"
+        metadata: Any = _parse_xyz_metadata(line)
+
+        assert "energy" not in metadata
+
     def test_properties_extraction(self) -> None:
         r"""Extract properties descriptor.
 
@@ -1009,8 +1064,10 @@ C 0.0 0.0 0.0
 
             data: Any = parse_xyz(xyz_file)
 
+            assert data.lattice is None
             assert data.stress is None
             assert data.energy is None
+            assert data.forces is None
             assert data.properties is None
 
 

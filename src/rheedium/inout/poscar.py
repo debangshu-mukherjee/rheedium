@@ -45,7 +45,10 @@ def _parse_poscar_header(
 
     Parses the first 7 lines of a VASP 5.x POSCAR file to extract the
     universal scaling factor, lattice vectors, element species names,
-    and atom counts per species.
+    and atom counts per species. A negative universal scale is
+    interpreted, per VASP semantics, as a target cell volume in cubic
+    Angstroms: the resolved linear factor is
+    ``(-scale / det(raw_lattice)) ** (1/3)``.
 
     :see: :class:`~.test_poscar.TestParsePoscarHeader`
 
@@ -57,10 +60,14 @@ def _parse_poscar_header(
 
     Returns
     -------
-    scaling : float
-        Universal scaling factor applied to all lattice vectors.
+    scale_factor : float
+        Resolved positive linear scale factor applied to the lattice
+        vectors (and, for Cartesian coordinate mode, to the position
+        lines). For a positive universal scale this is the scale itself;
+        for a negative universal scale (target volume) it is
+        ``(-scale / det(raw_lattice)) ** (1/3)``.
     lattice : Float[Array, "3 3"]
-        Lattice vectors as rows, scaled by the scaling factor.
+        Lattice vectors as rows, scaled by the resolved scale factor.
         [[a1, a2, a3], [b1, b2, b3], [c1, c2, c3]] in Angstroms.
     species : List[str]
         Element symbols in order (e.g., ["Si", "O"]).
@@ -70,8 +77,11 @@ def _parse_poscar_header(
     Raises
     ------
     ValueError
-        If scaling factor cannot be parsed, lattice vectors are invalid,
-        or species/counts lines are malformed.
+        If the scale line contains three values (per-axis lattice scale
+        factors are not supported), the scaling factor cannot be parsed,
+        a negative scale is combined with a non-right-handed raw lattice
+        (determinant <= 0), lattice vectors are invalid, or
+        species/counts lines are malformed.
 
     Examples
     --------
@@ -84,8 +94,14 @@ def _parse_poscar_header(
     ...     "Si",
     ...     "8",
     ... ]
-    >>> scaling, lattice, species, counts = _parse_poscar_header(lines)
+    >>> scale_factor, lattice, species, counts = _parse_poscar_header(lines)
     """
+    scale_tokens: List[str] = lines[1].split() if len(lines) > 1 else []
+    n_axis_scales: int = 3
+    if len(scale_tokens) == n_axis_scales:
+        raise ValueError(
+            "Invalid POSCAR: three lattice scale factors are not supported"
+        )
     try:
         scaling: float = float(lines[1].strip())
     except (ValueError, IndexError) as err:
@@ -111,8 +127,21 @@ def _parse_poscar_header(
                 f"Invalid POSCAR: cannot parse lattice vector on line {i + 1}"
             ) from err
 
-    lattice: Float[Array, "3 3"] = jnp.array(lattice_rows, dtype=jnp.float64)
-    lattice: Float[Array, "3 3"] = lattice * scaling
+    raw_lattice: Float[Array, "3 3"] = jnp.array(
+        lattice_rows, dtype=jnp.float64
+    )
+    if scaling < 0.0:
+        det: float = float(jnp.linalg.det(raw_lattice))
+        if det <= 0.0:
+            raise ValueError(
+                "Invalid POSCAR: negative scale (target volume) requires "
+                f"a right-handed lattice with positive determinant, "
+                f"got det = {det}"
+            )
+        scale_factor: float = (-scaling / det) ** (1.0 / 3.0)
+    else:
+        scale_factor: float = scaling
+    lattice: Float[Array, "3 3"] = raw_lattice * scale_factor
 
     try:
         species: List[str] = lines[5].split()
@@ -136,7 +165,7 @@ def _parse_poscar_header(
             "Invalid POSCAR: cannot parse atom counts on line 7"
         ) from err
 
-    return scaling, lattice, species, counts
+    return scale_factor, lattice, species, counts
 
 
 @beartype
@@ -146,12 +175,16 @@ def _parse_poscar_positions(
     n_atoms: int,
     is_cartesian: bool,
     lattice: Float[Array, "3 3"],
+    scale_factor: float = 1.0,
 ) -> Float[Array, "n_atoms 3"]:
     """Parse atomic positions in Direct or Cartesian format.
 
     Reads atomic position lines from a POSCAR file, handling both
     Direct (fractional) and Cartesian coordinate modes. Selective
-    dynamics flags (T/F) are parsed but not stored.
+    dynamics flags (T/F) are parsed but not stored. In Cartesian mode
+    the raw coordinate values are multiplied by the resolved universal
+    scale factor (VASP semantics) before conversion to fractional
+    coordinates.
 
     :see: :class:`~.test_poscar.TestParsePoscarPositions`
 
@@ -167,7 +200,12 @@ def _parse_poscar_positions(
         If True, coordinates are Cartesian (Angstroms).
         If False, coordinates are Direct (fractional).
     lattice : Float[Array, "3 3"]
-        Lattice vectors as rows, used for Cartesian to fractional conversion.
+        Lattice vectors as rows (already scaled by the resolved scale
+        factor), used for Cartesian to fractional conversion.
+    scale_factor : float, optional
+        Resolved positive universal scale factor from the header.
+        Multiplies Cartesian coordinate lines before conversion to
+        fractional coordinates; ignored in Direct mode. Default: 1.0
 
     Returns
     -------
@@ -219,7 +257,9 @@ def _parse_poscar_positions(
 
     if is_cartesian:
         lattice_inv: Float[Array, "3 3"] = jnp.linalg.inv(lattice)
-        frac_positions: Float[Array, "n_atoms 3"] = positions_arr @ lattice_inv
+        frac_positions: Float[Array, "n_atoms 3"] = (
+            positions_arr * scale_factor
+        ) @ lattice_inv
     else:
         frac_positions: Float[Array, "n_atoms 3"] = positions_arr
 
@@ -280,7 +320,12 @@ def parse_poscar(
         Direct                 # or Cartesian
           0.0 0.0 0.0 T T T   # Positions with optional selective dynamics
 
-    The scaling factor is applied to all lattice vectors. Selective dynamics
+    The scaling factor is applied to all lattice vectors and, in Cartesian
+    coordinate mode, to the position lines (VASP semantics). A negative
+    scaling factor is interpreted as a target cell volume in cubic
+    Angstroms; the linear factor is then
+    ``(-scale / det(raw_lattice)) ** (1/3)``. A scale line with three
+    values (per-axis scale factors) is rejected. Selective dynamics
     flags (T/F) are parsed but not stored in CrystalStructure.
 
     1. **Read file** --
@@ -357,7 +402,7 @@ def parse_poscar(
     line_idx += 1
 
     frac_positions_3: Float[Array, "n_atoms 3"] = _parse_poscar_positions(
-        lines, line_idx, n_atoms, is_cartesian, lattice
+        lines, line_idx, n_atoms, is_cartesian, lattice, scaling
     )
 
     atomic_numbers_list: List[int] = []

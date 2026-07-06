@@ -223,6 +223,7 @@ _PYTREE_REGISTRY: dict[str, _PyTreeMeta] = {
             "lattice",
             "stress",
             "energy",
+            "forces",
         ),
         aux_fields=("properties", "comment"),
         aux_encoder=_encode_json_aux,

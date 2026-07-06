@@ -99,8 +99,11 @@ def crystal_projected_potential(
     n_y: int = grid_shape[1]
     lx: Float[Array, ""] = cell_dimensions_angstrom[0]
     ly: Float[Array, ""] = cell_dimensions_angstrom[1]
-    x_coords: Float[Array, "H"] = jnp.linspace(0.0, lx, n_x)
-    y_coords: Float[Array, "W"] = jnp.linspace(0.0, ly, n_y)
+    # Periodic grid: n samples spaced L/n, excluding the endpoint L
+    # (0 and L are the same periodic point). This matches the
+    # fftfreq(n, L/n) convention used by the Fresnel propagators.
+    x_coords: Float[Array, "H"] = jnp.arange(n_x) * (lx / n_x)
+    y_coords: Float[Array, "W"] = jnp.arange(n_y) * (ly / n_y)
     xx: Float[Array, "H W"]
     yy: Float[Array, "H W"]
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")

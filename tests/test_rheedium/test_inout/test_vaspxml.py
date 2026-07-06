@@ -526,6 +526,91 @@ class TestParseVaspxml(chex.TestCase):
             )
             assert xyz_data.stress is not None
             assert xyz_data.lattice is not None
+            assert xyz_data.forces is not None
+            chex.assert_trees_all_close(
+                xyz_data.forces,
+                jnp.array([[0.001, 0.002, 0.003], [-0.001, -0.002, -0.003]]),
+                atol=1e-12,
+            )
+            assert xyz_data.properties == [
+                {"name": "forces", "type": "R", "count": 3}
+            ]
+
+    def test_forces_absent_when_not_requested(self) -> None:
+        r"""Trajectory parsed with include_forces=False stores no forces.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: when forces
+        are not requested, ``XYZData.forces`` is None and the properties
+        metadata does not advertise a forces column, even though the
+        vasprun.xml fixture contains a forces varray.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The existing assertions in the function body compare the observed
+        result with the expected contract for this module.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        tmp_dir: str
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
+            xml_file.write_text(SIMPLE_VASPXML)
+
+            trajectory: Any = parse_vaspxml_trajectory(
+                xml_file, include_forces=False
+            )
+
+            assert all(xyz.forces is None for xyz in trajectory)
+            assert all(xyz.properties is None for xyz in trajectory)
+
+    def test_trajectory_forces_populated(self) -> None:
+        r"""Trajectory parsed with include_forces=True stores force values.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the trajectory
+        variant populates ``XYZData.forces`` with the exact values from the
+        vasprun.xml forces varray, and the properties metadata advertises
+        the forces column only because forces are actually present.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_vaspxml``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        tmp_dir: str
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            xml_file: Path = Path(tmp_dir) / "vasprun.xml"
+            xml_file.write_text(SIMPLE_VASPXML)
+
+            trajectory: Any = parse_vaspxml_trajectory(
+                xml_file, include_forces=True
+            )
+
+            assert len(trajectory) == 1
+            assert trajectory[0].forces is not None
+            chex.assert_trees_all_close(
+                trajectory[0].forces,
+                jnp.array([[0.001, 0.002, 0.003], [-0.001, -0.002, -0.003]]),
+                atol=1e-12,
+            )
+            assert trajectory[0].properties == [
+                {"name": "forces", "type": "R", "count": 3}
+            ]
 
     def test_parse_specific_step(self) -> None:
         r"""Parse specific ionic step.
@@ -810,8 +895,9 @@ class TestParseVaspxmlTrajectory(chex.TestCase):
                 xml_file, include_forces=False
             )
 
-            # Energy should be None when include_forces=False
+            # Energy and forces should be None when include_forces=False
             assert all(xyz.energy is None for xyz in trajectory)
+            assert all(xyz.forces is None for xyz in trajectory)
 
     def test_trajectory_file_not_found(self) -> None:
         r"""Missing file raises FileNotFoundError.

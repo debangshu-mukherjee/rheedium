@@ -20,7 +20,8 @@ from rheedium.simul.ewald import (
     build_ewald_data,
     ewald_allowed_reflections,
 )
-from rheedium.types import CrystalStructure, EwaldData
+from rheedium.simul.finite_domain import compute_shell_sigma
+from rheedium.types import CrystalStructure, EwaldData, create_ewald_data
 from rheedium.types.crystal_types import create_crystal_structure
 from rheedium.types.custom_types import scalar_float
 
@@ -1135,12 +1136,14 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(intensities)
 
     def test_tolerance_effect(self) -> None:
-        r"""Test that larger tolerance allows more reflections.
+        r"""Test that larger absolute tolerance allows more reflections.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: larger tolerance
-        allows more reflections.
+        Verifies the documented behavior for this test case: a larger
+        ``tolerance_inv_ang`` (absolute Ewald-shell half-thickness in
+        inverse Ångstroms) admits at least as many reflections as a
+        tighter one.
 
         Notes
         -----
@@ -1153,6 +1156,8 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
         exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.ewald_allowed_reflections`
         """
         indices_tight: Int[Array, "N"]
         k_out_tight: Float[Array, "N 3"]
@@ -1162,7 +1167,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
                 ewald=self.ewald,
                 theta_deg=2.0,
                 phi_deg=0.0,
-                tolerance=0.01,
+                tolerance_inv_ang=0.05,
             )
         )
         indices_loose: Int[Array, "N"]
@@ -1173,13 +1178,13 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
                 ewald=self.ewald,
                 theta_deg=2.0,
                 phi_deg=0.0,
-                tolerance=0.1,
+                tolerance_inv_ang=1.0,
             )
         )
 
         # More allowed reflections with larger tolerance
-        n_tight: scalar_float = jnp.sum(intensities_tight > 0)
-        n_loose: scalar_float = jnp.sum(intensities_loose > 0)
+        n_tight: scalar_float = jnp.sum(indices_tight >= 0)
+        n_loose: scalar_float = jnp.sum(indices_loose >= 0)
 
         self.assertGreaterEqual(int(n_loose), int(n_tight))
 
@@ -1249,7 +1254,7 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
                 ewald=self.ewald,
                 theta_deg=2.0,
                 phi_deg=0.0,
-                tolerance=0.05,
+                tolerance_inv_ang=0.25,
             )
         )
         indices_finite: Int[Array, "N"]
@@ -1323,6 +1328,202 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
                 chex.assert_trees_all_close(
                     k_out[i], expected_k_out, rtol=1e-10
                 )
+
+    def test_default_tolerance_derived_from_shell_sigma(self) -> None:
+        r"""Test that the default tolerance is 3 x compute_shell_sigma.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: when
+        ``tolerance_inv_ang`` is None, the binary Ewald condition uses an
+        absolute half-thickness of three shell sigmas derived from the
+        default beam parameters (energy spread 1e-4, divergence 1 mrad).
+        At 20 kV this admits reflections with :math:`|\Delta k|` below
+        roughly 0.25 inverse Ångstroms, not the 3.66 inverse Ångstroms
+        the old fractional default allowed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+        :see: :func:`~rheedium.simul.compute_shell_sigma`
+        """
+        tol_default: Float[Array, ""] = 3.0 * compute_shell_sigma(
+            k_magnitude=self.ewald.k_magnitude,
+            energy_spread_frac=1e-4,
+            beam_divergence_rad=1e-3,
+        )
+        # Physical shell half-thickness at 20 kV, well under 0.25 1/A
+        self.assertLess(float(tol_default), 0.25)
+        self.assertGreater(float(tol_default), 0.0)
+
+        indices_none: Int[Array, "N"]
+        k_out_none: Float[Array, "N 3"]
+        intensities_none: Float[Array, "N"]
+        indices_none, k_out_none, intensities_none = ewald_allowed_reflections(
+            ewald=self.ewald,
+            theta_deg=2.0,
+            phi_deg=0.0,
+        )
+        indices_explicit: Int[Array, "N"]
+        k_out_explicit: Float[Array, "N 3"]
+        intensities_explicit: Float[Array, "N"]
+        indices_explicit, k_out_explicit, intensities_explicit = (
+            ewald_allowed_reflections(
+                ewald=self.ewald,
+                theta_deg=2.0,
+                phi_deg=0.0,
+                tolerance_inv_ang=tol_default,
+            )
+        )
+        chex.assert_trees_all_equal(indices_none, indices_explicit)
+        chex.assert_trees_all_close(k_out_none, k_out_explicit)
+        chex.assert_trees_all_close(intensities_none, intensities_explicit)
+
+        # All admitted reflections satisfy |dk| < tol_default (absolute)
+        theta_rad: Float[Array, ""] = jnp.deg2rad(2.0)
+        k_mag: Float[Array, ""] = self.ewald.k_magnitude
+        k_in: Float[Array, "3"] = k_mag * jnp.array(
+            [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
+        )
+        valid_mask: Bool[Array, "N"] = indices_none >= 0
+        for i, idx in enumerate(indices_none):
+            if valid_mask[i]:
+                dk: Float[Array, ""] = jnp.abs(
+                    jnp.linalg.norm(k_in + self.ewald.g_vectors[idx]) - k_mag
+                )
+                self.assertLess(float(dk), float(tol_default))
+
+    def test_single_reflection_padding_zeroed(self) -> None:
+        r"""Test padded slots are zeroed with exactly one allowed reflection.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with a
+        hand-built EwaldData containing exactly one G vector on the Ewald
+        sphere and several far off it, the padded output slots carry
+        ``k_out == 0``, ``intensity == 0``, and ``index == -1``, and the
+        intensity sum equals the single reflection's intensity. This
+        guards against the JAX gather semantics where index -1 silently
+        reads the last array element, producing phantom copies.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+        """
+        k_mag: Float[Array, ""] = self.ewald.k_magnitude
+        theta_rad: Float[Array, ""] = jnp.deg2rad(2.0)
+        k_in: Float[Array, "3"] = k_mag * jnp.array(
+            [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
+        )
+        # One G exactly on the sphere with upward k_out; three far off
+        k_out_target: Float[Array, "3"] = k_mag * jnp.array(
+            [jnp.cos(theta_rad), 0.0, jnp.sin(theta_rad)]
+        )
+        g_on_sphere: Float[Array, "3"] = k_out_target - k_in
+        g_vectors: Float[Array, "4 3"] = jnp.stack(
+            [
+                g_on_sphere,
+                jnp.array([10.0, 0.0, 0.0]),
+                jnp.array([0.0, 10.0, 0.0]),
+                jnp.array([10.0, 10.0, 10.0]),
+            ]
+        )
+        structure_factors: Complex[Array, "4"] = jnp.array(
+            [2.0 + 0.0j, 3.0 + 0.0j, 4.0 + 0.0j, 5.0 + 0.0j]
+        )
+        intensities_all: Float[Array, "4"] = jnp.abs(structure_factors) ** 2
+        ewald_single: EwaldData = create_ewald_data(
+            wavelength_ang=self.ewald.wavelength_ang,
+            k_magnitude=k_mag,
+            sphere_radius=k_mag,
+            recip_vectors=self.ewald.recip_vectors,
+            hkl_grid=jnp.zeros((4, 3), dtype=jnp.int32),
+            g_vectors=g_vectors,
+            g_magnitudes=jnp.linalg.norm(g_vectors, axis=-1),
+            structure_factors=structure_factors,
+            intensities=intensities_all,
+        )
+        indices: Int[Array, "4"]
+        k_out: Float[Array, "4 3"]
+        intensities: Float[Array, "4"]
+        indices, k_out, intensities = ewald_allowed_reflections(
+            ewald=ewald_single,
+            theta_deg=2.0,
+            phi_deg=0.0,
+        )
+        chex.assert_trees_all_equal(
+            indices, jnp.array([0, -1, -1, -1], dtype=indices.dtype)
+        )
+        chex.assert_trees_all_equal(k_out[1:], jnp.zeros((3, 3)))
+        chex.assert_trees_all_equal(intensities[1:], jnp.zeros(3))
+        chex.assert_trees_all_close(intensities[0], intensities_all[0])
+        # Sum counts the single reflection exactly once - no phantom copies
+        chex.assert_trees_all_close(jnp.sum(intensities), intensities_all[0])
+        chex.assert_trees_all_close(k_out[0], k_out_target)
+
+    def test_finite_domain_padding_zeroed(self) -> None:
+        r"""Test padded slots are zeroed in finite-domain mode.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: in finite
+        domain mode every output slot with ``index == -1`` carries
+        exactly zero ``k_out`` and zero intensity, so summing the
+        returned intensities never double-counts a live reflection.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+        """
+        domain: Float[Array, "3"] = jnp.array([100.0, 100.0, 50.0])
+        indices: Int[Array, "N"]
+        k_out: Float[Array, "N 3"]
+        intensities: Float[Array, "N"]
+        indices, k_out, intensities = ewald_allowed_reflections(
+            ewald=self.ewald,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            domain_extent_ang=domain,
+        )
+        invalid_mask: Bool[Array, "N"] = indices < 0
+        chex.assert_trees_all_equal(
+            jnp.all(jnp.where(invalid_mask[:, None], k_out, 0.0) == 0.0),
+            True,
+        )
+        chex.assert_trees_all_equal(
+            jnp.all(jnp.where(invalid_mask, intensities, 0.0) == 0.0),
+            True,
+        )
 
 
 if __name__ == "__main__":

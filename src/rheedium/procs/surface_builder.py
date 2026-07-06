@@ -267,6 +267,9 @@ def apply_surface_reconstruction(  # noqa: PLR0915
     3. Replicate atoms to fill the expanded cell.
     4. Apply displacements to the surface-layer atoms.
     5. Recompute fractional coordinates in the new cell.
+    6. Re-express Cartesian positions in the canonical frame of
+       the new cell so ``cart_positions`` equals
+       ``frac_positions @ build_cell_vectors(...)``.
     """
     reconstruction_matrix: Int[Array, "2 2"] = jnp.asarray(
         reconstruction_matrix, dtype=jnp.int32
@@ -367,9 +370,13 @@ def apply_surface_reconstruction(  # noqa: PLR0915
         jnp.arccos(jnp.clip(cos_angles, -1.0, 1.0))
     )
 
-    new_frac: Float[Array, "K 3"] = displaced_positions @ inv_new_cell.T
+    new_frac: Float[Array, "K 3"] = displaced_positions @ inv_new_cell
+    canonical_cell_vecs: Float[Array, "3 3"] = build_cell_vectors(
+        *new_cell_lengths, *new_cell_angles
+    )
+    canonical_positions: Float[Array, "K 3"] = new_frac @ canonical_cell_vecs
     cart_with_z: Float[Array, "K 4"] = jnp.column_stack(
-        [displaced_positions, filtered_atomic_nums]
+        [canonical_positions, filtered_atomic_nums]
     )
     frac_with_z: Float[Array, "K 4"] = jnp.column_stack(
         [new_frac, filtered_atomic_nums]

@@ -599,6 +599,11 @@ class SurfaceConfig(NamedTuple):
         - "coordination": atoms with fewer neighbors than bulk
         - "layers": atoms in topmost N complete layers
         - "explicit": user-provided surface mask
+        - "none": no atom is a surface atom (all-False mask). This is
+          the correct choice for bulk-cell simulators where the basis
+          is implicitly repeated by a CTR factor: a repeated bulk unit
+          cell has no surface atoms, so no thermal enhancement should
+          be applied.
     height_fraction : float
         For "height" method: fraction of z-range considered surface.
         Default: 0.3 (top 30% of atoms by height)
@@ -672,6 +677,11 @@ def identify_surface_atoms(
     - **explicit**: Uses user-provided mask directly from
       `config.explicit_mask`.
 
+    - **none**: Returns an all-False mask; no atom receives surface
+      thermal enhancement. Appropriate for bulk unit cells whose
+      repetition is modeled by a CTR factor rather than by an
+      explicit slab.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -685,6 +695,9 @@ def identify_surface_atoms(
     """
     n_atoms: int = atom_positions.shape[0]
     z_coords: Float[Array, "N"] = atom_positions[:, 2]
+
+    if config.method == "none":
+        return jnp.zeros(n_atoms, dtype=bool)
 
     if config.method == "explicit":
         # Use explicit mask if provided

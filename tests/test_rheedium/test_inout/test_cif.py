@@ -149,6 +149,7 @@ class TestParseAtomPositions(chex.TestCase):
     """Test atomic position parsing from CIF lines.
 
     :see: :func:`~rheedium.inout.cif._parse_atom_positions`
+    :see: :func:`~rheedium.inout.cif._parse_atom_positions_and_occupancies`
     """
 
     def test_standard_atom_loop(self) -> None:
@@ -319,7 +320,26 @@ class TestParseSymmetryOps(chex.TestCase):
         assert sym_ops == ["x,y,z"]
 
     def test_modern_space_group_symop_loop(self) -> None:
-        """Parse modern IUCr space-group symmetry operation loops."""
+        r"""Parse modern IUCr space-group symmetry operation loops.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: symmetry loops
+        tagged with the modern ``_space_group_symop_*`` names parse into the
+        same operator strings as the legacy tag family.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with an exact equality assertion on the parsed
+        operator strings.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         lines: list[str] = [
             "loop_",
             "_space_group_symop_id",
@@ -577,7 +597,26 @@ class TestDeduplicatePositions(chex.TestCase):
         assert unique.shape[0] == 2
 
     def test_keeps_same_position_different_species(self) -> None:
-        """Co-located sites with different atomic numbers are not merged."""
+        r"""Co-located sites with different atomic numbers are not merged.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: deduplication is
+        species-aware, so two atoms sharing one site but carrying different
+        atomic numbers both survive.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with an exact equality assertion on the number
+        of surviving sites.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 38.0],
@@ -589,7 +628,26 @@ class TestDeduplicatePositions(chex.TestCase):
         assert unique.shape[0] == 2
 
     def test_periodic_boundary_duplicate_same_species(self) -> None:
-        """Periodic minimum-image distance deduplicates wrapped sites."""
+        r"""Periodic minimum-image distance deduplicates wrapped sites.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: two same-species
+        sites separated only by a lattice wrap across the cell boundary are
+        recognized as one atom under the minimum-image convention.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with an exact equality assertion on the number
+        of surviving sites.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         positions: Float[Array, "..."] = jnp.array(
             [
                 [0.0, 0.0, 0.0, 14.0],
@@ -875,7 +933,26 @@ Si 0.125 0.125 0.125
             assert crystal.frac_positions.shape[0] >= 1
 
     def test_modern_symop_cif_matches_legacy_loop(self) -> None:
-        """Modern and legacy CIF symmetry tags expand the same fcc basis."""
+        r"""Modern and legacy CIF symmetry tags expand the same fcc basis.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a CIF using
+        modern ``_space_group_symop_*`` tags expands to the same fcc atomic
+        basis as an otherwise identical CIF using legacy symmetry tags.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body: two
+        temporary CIF files that differ only in the symmetry tag family.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions on the sorted fractional positions of both parses.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         base_cif: str = """
 data_Cu
 _cell_length_a 3.61
@@ -931,7 +1008,27 @@ Cu 0.125 0.125 0.125
         )
 
     def test_non_p1_without_operator_loop_warns(self) -> None:
-        """Declared non-P1 space groups without ops warn before P1 fallback."""
+        r"""Declared non-P1 space groups without ops warn before P1 fallback.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a CIF that
+        declares a non-P1 space group but omits the operator loop emits a
+        warning instead of silently expanding with identity only.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body: a
+        temporary CIF declaring ``F m -3 m`` with no symmetry loop.
+
+        The warning path is validated by asserting the expected warning
+        category and message, and the P1 fallback is checked with an exact
+        equality assertion on the atom count.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_Cu
 _space_group_name_H-M 'F m -3 m'
@@ -961,7 +1058,26 @@ Cu 0.0 0.0 0.0
         assert crystal.frac_positions.shape[0] == 1
 
     def test_cif_occupancy_and_species_aware_dedup(self) -> None:
-        """Mixed occupancy species on one site survive as separate sites."""
+        r"""Mixed occupancy species on one site survive as separate sites.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: partially
+        occupied sites shared by different species are kept as distinct atoms
+        with their parsed occupancies instead of being merged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body: a
+        temporary CIF with a mixed A-site perovskite occupancy column.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions on the parsed per-site occupancies.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_STO_mixed_A_site
 _cell_length_a 3.905
@@ -1001,7 +1117,26 @@ O3 O 0.0 0.5 0.5 1.0
         )
 
     def test_symmetry_image_across_boundary_dedups(self) -> None:
-        """Same-species images near z=0 and z=1 deduplicate by PBC distance."""
+        r"""Same-species images near z=0 and z=1 deduplicate by PBC distance.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: symmetry images
+        that land just inside opposite cell faces collapse to a single site
+        because deduplication measures periodic minimum-image distance.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body: a
+        temporary CIF whose expanded positions straddle the z boundary.
+
+        The result is checked with an exact equality assertion on the number
+        of surviving sites after parsing.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_cif``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
         cif_content: str = """
 data_wrapped_image
 _cell_length_a 5.0

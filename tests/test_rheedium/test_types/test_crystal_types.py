@@ -31,6 +31,7 @@ from rheedium.types.crystal_types import (
     create_potential_slices,
     create_xyz_data,
 )
+from rheedium.ucell.unitcell import build_cell_vectors
 
 from ..._assertions import assert_rejects
 
@@ -143,12 +144,14 @@ class TestCrystalStructure(chex.TestCase):
         """
         n_atoms: int = 5
         frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
-        cart_positions: Float[Array, "N 4"] = jnp.concatenate(
-            [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
-            axis=1,
-        )
         cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
         cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *cell_lengths, *cell_angles
+        )
+        cart_positions: Float[Array, "N 4"] = jnp.column_stack(
+            [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
+        )
 
         create_fn: Callable[
             [
@@ -223,11 +226,14 @@ class TestCrystalStructure(chex.TestCase):
             ],
             axis=1,
         )
-        cart_positions: Float[Array, "N 4"] = frac_positions * jnp.concatenate(
-            [jnp.array(lengths), jnp.array([1.0])]
-        )
         cell_lengths: Float[Array, "3"] = jnp.array(lengths)
         cell_angles: Float[Array, "3"] = jnp.array(angles)
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *cell_lengths, *cell_angles
+        )
+        cart_positions: Float[Array, "N 4"] = jnp.column_stack(
+            [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
+        )
         max_angle: float = 180.0
 
         var_create_crystal_structure: Callable[
@@ -307,12 +313,14 @@ class TestCrystalStructure(chex.TestCase):
 
         n_atoms: int = 5
         frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
-        cart_positions: Float[Array, "N 4"] = jnp.concatenate(
-            [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
-            axis=1,
-        )
         cell_lengths: Float[Array, "3"] = jnp.array([3.0, 4.0, 5.0])
         cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            *cell_lengths, *cell_angles
+        )
+        cart_positions: Float[Array, "N 4"] = jnp.column_stack(
+            [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
+        )
 
         result: Num[Array, ""] = jitted_fn(
             frac_positions, cart_positions, cell_lengths, cell_angles
@@ -1265,9 +1273,10 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
 
         chex.assert_shape(xyz_data.positions, (n_atoms, 3))
         chex.assert_shape(xyz_data.atomic_numbers, (n_atoms,))
-        chex.assert_trees_all_equal(xyz_data.lattice is not None, True)
+        chex.assert_trees_all_equal(xyz_data.lattice, None)
         chex.assert_trees_all_equal(xyz_data.stress, None)
         chex.assert_trees_all_equal(xyz_data.energy, None)
+        chex.assert_trees_all_equal(xyz_data.forces, None)
         chex.assert_trees_all_equal(xyz_data.properties, None)
         chex.assert_trees_all_equal(xyz_data.comment, None)
 
@@ -1664,6 +1673,138 @@ class TestXYZData(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(scaled_data.positions, positions * 2.0)
         chex.assert_trees_all_close(scaled_data.atomic_numbers, atomic_numbers)
 
+    @chex.variants(without_jit=True, with_jit=False)
+    def test_xyz_data_lattice_none_not_fabricated(self) -> None:
+        r"""Omitted lattice stays None instead of a fabricated identity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: creating
+        XYZData without a lattice stores ``lattice=None``, while an
+        explicit identity lattice (a genuine 1 Angstrom cubic cell) is
+        stored as the identity matrix. The two cases remain
+        distinguishable, so downstream bounding-box fallbacks trigger
+        only for truly absent lattices.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "N 3"] = jnp.zeros((2, 3))
+        atomic_numbers: Int[Array, "N"] = jnp.array([6, 6])
+
+        # create_xyz_data is a foreign interface; use variant without JIT
+        make_fn: Callable[..., XYZData] = self.variant(create_xyz_data)
+        without_lattice: XYZData = make_fn(positions, atomic_numbers)
+        with_unit_lattice: XYZData = make_fn(
+            positions, atomic_numbers, lattice=jnp.eye(3)
+        )
+
+        chex.assert_trees_all_equal(without_lattice.lattice, None)
+        assert with_unit_lattice.lattice is not None
+        chex.assert_trees_all_close(
+            with_unit_lattice.lattice, jnp.eye(3), atol=1e-12
+        )
+
+    @chex.variants(without_jit=True, with_jit=False)
+    def test_xyz_data_forces_stored(self) -> None:
+        r"""Forces are stored as a dynamic (N, 3) field when provided.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: passing a
+        forces array to ``create_xyz_data`` stores the exact values in
+        ``XYZData.forces`` as a float64 (N, 3) array, and the field
+        participates in PyTree flattening as a dynamic leaf.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "N 3"] = jnp.zeros((2, 3))
+        atomic_numbers: Int[Array, "N"] = jnp.array([14, 14])
+        forces: Float[Array, "N 3"] = jnp.array(
+            [[0.001, 0.002, 0.003], [-0.001, -0.002, -0.003]]
+        )
+
+        # create_xyz_data is a foreign interface; use variant without JIT
+        make_fn: Callable[..., XYZData] = self.variant(create_xyz_data)
+        xyz_data: XYZData = make_fn(positions, atomic_numbers, forces=forces)
+
+        assert xyz_data.forces is not None
+        chex.assert_shape(xyz_data.forces, (2, 3))
+        chex.assert_trees_all_close(xyz_data.forces, forces, atol=1e-15)
+        leaves = tree_util.tree_leaves(xyz_data)
+        assert any(
+            hasattr(leaf, "shape")
+            and leaf.shape == (2, 3)
+            and jnp.allclose(leaf, forces)
+            for leaf in leaves
+        )
+
+    @chex.variants(without_jit=True, with_jit=False)
+    def test_xyz_data_forces_wrong_shape_rejected(self) -> None:
+        r"""Forces with a mismatched shape are rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: passing a
+        forces array whose leading dimension does not match the number of
+        atoms is rejected instead of being silently stored. The jaxtyping
+        signature annotation (shared axis ``N`` between ``positions`` and
+        ``forces``) raises a TypeCheckError naming the ``forces``
+        argument, and the factory's own shape validation backs it up with
+        a ValueError.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "N 3"] = jnp.zeros((3, 3))
+        atomic_numbers: Int[Array, "N"] = jnp.array([6, 6, 6])
+        bad_forces: Float[Array, "M 3"] = jnp.zeros((2, 3))
+
+        # create_xyz_data is a foreign interface; use variant without JIT
+        make_fn: Callable[..., XYZData] = self.variant(create_xyz_data)
+        with pytest.raises((ValueError, TypeCheckError), match=r"forces"):
+            make_fn(positions, atomic_numbers, forces=bad_forces)
+
 
 class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
     """Test PyTree operations across all crystal types."""
@@ -1694,11 +1835,14 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         Reference exposes both the guarantee and the implementation path.
         """
         n_atoms: int = 5
+        frac_positions: Float[Array, "N 4"] = jnp.ones((n_atoms, 4))
+        cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
+            3.0, 4.0, 5.0, 90.0, 90.0, 90.0
+        )
         crystal: CrystalStructure = create_crystal_structure(
-            jnp.ones((n_atoms, 4)),
-            jnp.concatenate(
-                [jnp.ones((n_atoms, 3)) * 2.0, jnp.ones((n_atoms, 1))],
-                axis=1,
+            frac_positions,
+            jnp.column_stack(
+                [frac_positions[:, :3] @ cell_vectors, frac_positions[:, 3]]
             ),
             jnp.array([3.0, 4.0, 5.0]),
             jnp.array([90.0, 90.0, 90.0]),
@@ -1769,7 +1913,7 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
         )
         cart_positions_batch: Float[Array, "batch N 4"] = jnp.concatenate(
             [
-                jnp.ones((batch_size, n_atoms, 3)) * 2.0,
+                jnp.ones((batch_size, n_atoms, 3)) * 5.0,
                 jnp.ones((batch_size, n_atoms, 1)),
             ],
             axis=2,

@@ -286,7 +286,7 @@ def ewald_allowed_reflections(
     ewald: EwaldData,
     theta_deg: scalar_float,
     phi_deg: scalar_float,
-    tolerance: scalar_float = 0.05,
+    tolerance_inv_ang: scalar_float | None = None,
     domain_extent_ang: Float[Array, "3"] | None = None,
     energy_spread_frac: scalar_float = 1e-4,
     beam_divergence_rad: scalar_float = 1e-3,
@@ -314,20 +314,30 @@ def ewald_allowed_reflections(
     phi_deg : scalar_float
         Azimuthal angle in degrees (rotation about surface normal).
         0 degrees = beam along x-axis.
-    tolerance : scalar_float, optional
-        Fractional tolerance for Ewald sphere intersection condition
-        :math:`||k_{out}| - |k_{in}|| / |k_{in}| <` tolerance.
+    tolerance_inv_ang : scalar_float | None, optional
+        Absolute Ewald-shell half-thickness in inverse Ångstroms. A
+        reflection is allowed when
+        :math:`||k_{out}| - |k_{in}|| <` tolerance_inv_ang.
         Only used in binary mode (when domain_extent_ang is None).
-        Default: 0.05 (5%).
+        If None (default), derived from the beam parameters as
+        :math:`3 \\sigma_{shell}` with
+        :func:`~rheedium.simul.compute_shell_sigma` evaluated at
+        ``energy_spread_frac`` and ``beam_divergence_rad``. At 20 kV with
+        the default ΔE/E = 1e-4 and 1 mrad divergence this admits
+        :math:`|\\Delta k| \\lesssim 0.25` 1/Å (k = 73.2 1/Å), a physical
+        shell thickness rather than the reciprocal-lattice-scale 3.66 1/Å
+        the old fractional default allowed.
     domain_extent_ang : Float[Array, "3"], optional
         Physical domain size [Lx, Ly, Lz] in Ångstroms. If provided, enables
         finite domain mode with continuous overlap weighting. Default: None
     energy_spread_frac : scalar_float, optional
         Fractional energy spread ΔE/E for shell thickness calculation.
-        Only used in finite domain mode. Default: 1e-4
+        Used in finite domain mode and for the default binary tolerance.
+        Default: 1e-4
     beam_divergence_rad : scalar_float, optional
         Beam angular divergence in radians for shell thickness calculation.
-        Only used in finite domain mode. Default: 1e-3
+        Used in finite domain mode and for the default binary tolerance.
+        Default: 1e-3
 
     Returns
     -------
@@ -336,10 +346,13 @@ def ewald_allowed_reflections(
         In binary mode, only indices within tolerance are valid (rest are -1).
         In finite domain mode, all indices with k_out_z > 0 are included.
     k_out : Float[Array, "N 3"]
-        Outgoing wavevectors for allowed reflections.
+        Outgoing wavevectors for allowed reflections. Padded slots
+        (allowed_indices == -1) are exactly zero.
     intensities : Float[Array, "N"]
         Structure factor intensities. In binary mode: :math:`I(G) = |F(G)|^2`.
         In finite domain mode: :math:`I(G) = |F(G)|^2 \\times \\text{overlap}`.
+        Padded slots (allowed_indices == -1) are exactly zero, so
+        ``intensities.sum()`` counts each allowed reflection once.
 
     Notes
     -----
@@ -350,7 +363,8 @@ def ewald_allowed_reflections(
        For each G vector, compute
        :math:`k_{out} = k_{in} + G`.
     3. **Apply Ewald condition** --
-       Binary mode: check tolerance. Finite domain mode:
+       Binary mode: check :math:`||k_{out}| - |k_{in}|| <`
+       tolerance_inv_ang (absolute, 1/Å). Finite domain mode:
        compute rod-shell overlap weights.
     4. **Filter reflections** --
        Keep only upward scattering
@@ -430,23 +444,40 @@ def ewald_allowed_reflections(
         allowed_indices: Int[Array, "N"] = jnp.where(
             is_allowed, size=g_vecs.shape[0], fill_value=-1
         )[0]
-        k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
-        base_intensities: Float[Array, "N"] = ewald.intensities[
-            allowed_indices
-        ]
-        overlap_weights: Float[Array, "N"] = overlap[allowed_indices]
-        intensities: Float[Array, "N"] = base_intensities * overlap_weights
+        safe_indices: Int[Array, "N"] = jnp.maximum(allowed_indices, 0)
+        valid: Bool[Array, "N"] = allowed_indices >= 0
+        k_out: Float[Array, "N 3"] = jnp.where(
+            valid[:, None], k_out_all[safe_indices], 0.0
+        )
+        base_intensities: Float[Array, "N"] = ewald.intensities[safe_indices]
+        overlap_weights: Float[Array, "N"] = overlap[safe_indices]
+        intensities: Float[Array, "N"] = jnp.where(
+            valid, base_intensities * overlap_weights, 0.0
+        )
     else:
+        if tolerance_inv_ang is None:
+            tol_abs: Float[Array, ""] = 3.0 * compute_shell_sigma(
+                k_magnitude=k_mag,
+                energy_spread_frac=energy_spread_frac,
+                beam_divergence_rad=beam_divergence_rad,
+            )
+        else:
+            tol_abs = jnp.asarray(tolerance_inv_ang, dtype=jnp.float64)
         k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=-1)
-        relative_error: Float[Array, "M"] = jnp.abs(k_out_mags - k_mag) / k_mag
         is_allowed: Bool[Array, "M"] = (
-            relative_error < tolerance
+            jnp.abs(k_out_mags - k_mag) < tol_abs
         ) & upward_mask
         allowed_indices: Int[Array, "N"] = jnp.where(
             is_allowed, size=g_vecs.shape[0], fill_value=-1
         )[0]
-        k_out: Float[Array, "N 3"] = k_out_all[allowed_indices]
-        intensities: Float[Array, "N"] = ewald.intensities[allowed_indices]
+        safe_indices: Int[Array, "N"] = jnp.maximum(allowed_indices, 0)
+        valid: Bool[Array, "N"] = allowed_indices >= 0
+        k_out: Float[Array, "N 3"] = jnp.where(
+            valid[:, None], k_out_all[safe_indices], 0.0
+        )
+        intensities: Float[Array, "N"] = jnp.where(
+            valid, ewald.intensities[safe_indices], 0.0
+        )
     return allowed_indices, k_out, intensities
 
 

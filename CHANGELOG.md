@@ -9,6 +9,72 @@ Each entry summarizes the commits that landed for that version bump in
 
 ## [Unreleased]
 
+### Red-team remediation
+
+- Standardized the binary Ewald condition on one absolute tolerance
+  (WP4.1/M7): `simul.ewald_allowed_reflections` and
+  `simul.find_kinematic_reflections` (and the
+  `simul.kinematic_spot_simulator` pass-through) now take
+  `tolerance_inv_ang: scalar_float | None = None`, the Ewald-shell
+  half-thickness in 1/Angstrom, replacing the old `tolerance` knob that
+  meant a 5% fractional error in one function and an absolute 0.05
+  1/Angstrom in the other. `None` derives
+  `3 * compute_shell_sigma(k, energy_spread_frac=1e-4,
+  beam_divergence_rad=1e-3)`; at 20 kV the default admits
+  |dk| < ~0.22 1/Angstrom instead of the old 3.66 1/Angstrom.
+- Padded `-1` slots from `ewald_allowed_reflections` (both modes) and
+  `find_kinematic_reflections` now return exactly zero `k_out` rows and
+  zero intensities instead of gathering the last live reflection through
+  JAX's negative-index semantics (WP4.2/M8); summed intensities no longer
+  contain phantom copies.
+- `SurfaceConfig` gained `method="none"` (all-False surface mask) and it
+  is now the default in `ewald_simulator`,
+  `compute_kinematic_intensities_with_ctrs`, and the internal
+  `_ewald_amplitude_pattern` when `surface_config=None` (WP4.3/M10):
+  bulk unit cells repeated by the CTR factor have no surface atoms, so
+  the previous silent 2x mean-square-displacement enhancement of the top
+  30% of every cell is gone; slab-based callers must opt in explicitly.
+  `compute_kinematic_intensities_with_ctrs`'s `surface_fraction`
+  parameter is retained but ignored unless a height-based config is
+  passed explicitly.
+- Periodic real-space grids in `simul.crystal_projected_potential` and
+  `simul.sliced_crystal_to_projected_potential_slices` now use
+  `arange(n) * (L / n)` instead of `linspace(0, L, n)` (WP4.4/M12), so
+  the sample spacing matches the `fftfreq(n, L/n)` propagator lattice
+  and the periodic boundary column is no longer double-weighted.
+
+- Fixed VASP POSCAR scale semantics (WP3.3/M14): a negative universal scale
+  is now interpreted as a target cell volume
+  (`factor = (-scale / det(raw_lattice)) ** (1/3)`, requiring a positive
+  determinant), Cartesian-mode coordinate lines are multiplied by the
+  resolved scale factor before fractional conversion, and a scale line with
+  three values is rejected with an accurate "three lattice scale factors are
+  not supported" message. `_parse_poscar_positions` gained a
+  `scale_factor` keyword (default 1.0).
+- `rheedium.types.XYZData` gained a real `forces` PyTree field
+  (`Float[Array, "N 3"] | None`, default `None`) and `create_xyz_data`
+  accepts a `forces` keyword (WP3.4/M15). `inout.parse_vaspxml` /
+  `parse_vaspxml_trajectory` now actually store parsed VASP forces instead
+  of only advertising them in `properties`; HDF5 serialization round-trips
+  the new field. The `properties` forces descriptor is still emitted only
+  when forces are present.
+- Extended-XYZ metadata parsing anchors the `energy=` regex with a
+  `(?<![A-Za-z_])` boundary so `free_energy=` no longer shadows the
+  standalone `energy` key (WP3.5/N18).
+- `create_xyz_data(lattice=None)` now stores `None` instead of fabricating
+  an identity lattice, and `inout.xyz_to_crystal` uses an explicit
+  `lattice is None` check for the bounding-box fallback, so a genuine
+  1 Angstrom cubic cell survives ingestion un-replaced (WP3.5/N15).
+  `XYZData.properties` and `XYZData.comment` now default to `None`.
+- TIFF fixes (WP3.6/N20): `load_tiff_sequence(sort_by="timestamp")` now
+  deterministically falls back to lexicographic name order when *any*
+  frame timestamp is NaN (documented); `detect_beam_center` smooths with an
+  edge-padded separable Gaussian convolution instead of circular FFT
+  convolution, so spots near an image edge no longer bleed to the opposite
+  edge (edge-spot centroid error drops from ~1.2 px to ~0.03 px); docstring
+  references to the nonexistent `DetectorGeometry.center_pixel` now point
+  to `DetectorGeometry.beam_center_px`.
+
 - Changed `ucell.atom_scraper` to take scalar `thickness_ang` measured along
   the normalized zone axis, replacing the previous vector `thickness` argument.
   The returned scraped structure is rebuilt to satisfy the canonical

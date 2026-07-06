@@ -152,6 +152,14 @@ def _build_sample_pytrees() -> dict[str, object]:
             dtype=jnp.float64,
         ),
         energy=jnp.asarray(-14.25, dtype=jnp.float64),
+        forces=jnp.array(
+            [
+                [0.01, -0.02, 0.03],
+                [-0.01, 0.02, -0.03],
+                [0.00, 0.00, 0.00],
+            ],
+            dtype=jnp.float64,
+        ),
         properties=[
             {"name": "species", "columns": 1},
             {"name": "index", "columns": 1},
@@ -165,6 +173,7 @@ def _build_sample_pytrees() -> dict[str, object]:
         lattice=None,
         stress=None,
         energy=None,
+        forces=None,
         properties=None,
         comment=None,
     )

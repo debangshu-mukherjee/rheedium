@@ -419,6 +419,94 @@ class TestXyzToCrystal(chex.TestCase):
 
         assert isinstance(crystal, CrystalStructure)
 
+    def test_unit_cubic_lattice_preserved(self) -> None:
+        r"""A genuine 1 Angstrom cubic lattice is not replaced.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: an explicit
+        identity lattice (1 Angstrom cubic cell) in ``xyz_data.lattice``
+        survives ingestion unchanged. It must not be mistaken for a
+        missing-lattice sentinel and silently replaced by a bounding-box
+        cell inferred from the atomic positions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "..."] = jnp.array([[0.25, 0.25, 0.25]])
+        atomic_numbers: Integer[Array, "..."] = jnp.array([6])
+        lattice: Float[Array, "..."] = jnp.eye(3)
+
+        xyz_data: Any = create_xyz_data(
+            positions=positions,
+            atomic_numbers=atomic_numbers,
+            lattice=lattice,
+        )
+
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data)
+
+        chex.assert_trees_all_close(
+            crystal.cell_lengths,
+            jnp.array([1.0, 1.0, 1.0]),
+            atol=1e-10,
+        )
+        chex.assert_trees_all_close(
+            crystal.frac_positions[:, :3],
+            jnp.array([[0.25, 0.25, 0.25]]),
+            atol=1e-10,
+        )
+
+    def test_missing_lattice_uses_bounding_box(self) -> None:
+        r"""A lattice-free XYZData falls back to the bounding-box cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: when
+        ``xyz_data.lattice`` is None and no ``cell_vectors`` override is
+        supplied, the cell is inferred from the atomic bounding box plus
+        symmetric padding (extent 2 + 2*2 padding = 6 Angstroms per axis).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_crystal``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]]
+        )
+        atomic_numbers: Integer[Array, "..."] = jnp.array([6, 6])
+
+        xyz_data: Any = create_xyz_data(
+            positions=positions,
+            atomic_numbers=atomic_numbers,
+        )
+
+        assert xyz_data.lattice is None
+
+        crystal: CrystalStructure = xyz_to_crystal(xyz_data, padding_ang=2.0)
+
+        chex.assert_trees_all_close(
+            crystal.cell_lengths,
+            jnp.array([6.0, 6.0, 6.0]),
+            atol=1e-10,
+        )
+
 
 class TestParseCrystal(chex.TestCase):
     """Test unified crystal parser.

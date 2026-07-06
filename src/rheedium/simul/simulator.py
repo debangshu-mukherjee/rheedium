@@ -289,9 +289,9 @@ def find_kinematic_reflections(
     k_in: Float[Array, "3"],
     gs: Float[Array, "M 3"],
     z_sign: scalar_float = 1.0,
-    tolerance: scalar_float = 0.05,
+    tolerance_inv_ang: scalar_float | None = None,
 ) -> Tuple[Int[Array, "N"], Float[Array, "N 3"]]:
-    """Find kinematically allowed reflections.
+    r"""Find kinematically allowed reflections.
 
     Computes k_out = k_in + G for all reciprocal lattice vectors G, then
     filters based on elastic scattering condition
@@ -310,9 +310,15 @@ def find_kinematic_reflections(
         If +1, keep reflections with positive z in k_out.
         If -1, keep reflections with negative z.
         Default: 1.0
-    tolerance : scalar_float, optional
-        Tolerance for reflection condition :math:`|k_{out}| = |k_{in}|`.
-        Default: 0.05
+    tolerance_inv_ang : scalar_float | None, optional
+        Absolute Ewald-shell half-thickness in inverse Ångstroms for the
+        elastic condition :math:`||k_{out}| - |k_{in}|| <` tolerance_inv_ang.
+        Same name and meaning as in
+        :func:`~rheedium.simul.ewald_allowed_reflections`. If None
+        (default), derived from beam parameters as :math:`3 \sigma_{shell}`
+        via :func:`~rheedium.simul.compute_shell_sigma` with
+        ΔE/E = 1e-4 and 1 mrad beam divergence. At 20 kV
+        (k = 73.2 1/Å) this admits :math:`|\Delta k| \lesssim 0.25` 1/Å.
 
     Returns
     -------
@@ -320,8 +326,8 @@ def find_kinematic_reflections(
         Indices of allowed reflections in gs array. Invalid entries are -1.
         Use `allowed_indices >= 0` to filter valid results.
     k_out : Float[Array, "M 3"]
-        Output wavevectors for allowed reflections. Invalid entries
-        correspond to `allowed_indices == -1`.
+        Output wavevectors for allowed reflections. Padded entries
+        (`allowed_indices == -1`) are exactly zero.
 
     Notes
     -----
@@ -333,12 +339,13 @@ def find_kinematic_reflections(
     1. **Outgoing wavevectors** --
        :math:`k_{out} = k_{in} + G` for all G vectors.
     2. **Elastic condition** --
-       Filter by :math:`||k_{out}| - |k_{in}|| <` tolerance.
+       Filter by :math:`||k_{out}| - |k_{in}|| <` tolerance_inv_ang
+       (absolute, 1/Å).
     3. **z-direction filter** --
        Keep reflections with correct z-sign.
     4. **Fixed-size output** --
        Use :func:`jnp.where` with fill_value for JIT
-       compatibility.
+       compatibility; padded k_out rows are zeroed at the source.
 
     See Also
     --------
@@ -347,9 +354,17 @@ def find_kinematic_reflections(
     """
     k_out_all: Float[Array, "M 3"] = k_in + gs
     k_in_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
+    if tolerance_inv_ang is None:
+        tol_abs: Float[Array, ""] = 3.0 * compute_shell_sigma(
+            k_magnitude=k_in_mag,
+            energy_spread_frac=1e-4,
+            beam_divergence_rad=1e-3,
+        )
+    else:
+        tol_abs = jnp.asarray(tolerance_inv_ang, dtype=jnp.float64)
     k_out_mags: Float[Array, "M"] = jnp.linalg.norm(k_out_all, axis=1)
     elastic_condition: Bool[Array, "M"] = (
-        jnp.abs(k_out_mags - k_in_mag) < tolerance
+        jnp.abs(k_out_mags - k_in_mag) < tol_abs
     )
     z_condition: Bool[Array, "M"] = k_out_all[:, 2] * z_sign > 0
     allowed: Bool[Array, "M"] = elastic_condition & z_condition
@@ -357,7 +372,10 @@ def find_kinematic_reflections(
         allowed, size=gs.shape[0], fill_value=-1
     )[0]
     safe_indices: Int[Array, "M"] = jnp.maximum(allowed_indices, 0)
-    k_out: Float[Array, "M 3"] = k_out_all[safe_indices]
+    valid: Bool[Array, "M"] = allowed_indices >= 0
+    k_out: Float[Array, "M 3"] = jnp.where(
+        valid[:, None], k_out_all[safe_indices], 0.0
+    )
     return allowed_indices, k_out
 
 
@@ -371,7 +389,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     temperature: scalar_float = 300.0,
     surface_roughness: scalar_float = 0.0,
     detector_acceptance: scalar_float = 0.01,
-    surface_fraction: scalar_float = 0.3,
+    surface_fraction: scalar_float = 0.3,  # noqa: ARG001
     surface_config: SurfaceConfig | None = None,
     ctr_mixing_mode: str = "incoherent",
     ctr_weight: scalar_float = 1.0,
@@ -412,13 +430,19 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
         Detector angular acceptance in reciprocal angstroms.
         Default: 0.01
     surface_fraction : scalar_float, optional
-        Fraction of atoms considered as surface atoms (for backward
-        compatibility). Used only if surface_config is None.
+        Legacy height-fraction knob retained for API compatibility. It is
+        only honored when an explicit height-based ``surface_config`` is
+        constructed by the caller; with ``surface_config=None`` no surface
+        enhancement is applied and this value is ignored.
         Default: 0.3
     surface_config : SurfaceConfig | None, optional
-        Configuration for surface atom identification. Supports multiple
-        methods: "height" (default), "coordination", "layers", "explicit".
-        If None, uses height-based method with surface_fraction parameter.
+        Configuration for surface atom identification. Supports methods
+        "none", "height", "coordination", "layers", "explicit".
+        If None, defaults to ``SurfaceConfig(method="none")`` — no atom is
+        treated as a surface atom, because the bulk basis handled here is
+        implicitly repeated by the CTR factor and therefore has no surface
+        atoms. Slab-based callers that want thermal surface enhancement
+        must opt in explicitly.
     ctr_mixing_mode : str, optional
         How to combine kinematic and CTR contributions:
         - "coherent": Add complex amplitudes, then square (interference)
@@ -494,11 +518,13 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
         inv_recip: Float[Array, "3 3"] = jnp.linalg.inv(recip_vecs)
         hkl_all = jnp.matmul(g_allowed, inv_recip)
 
-    # Use provided config or create one from surface_fraction for compatibility
+    # Default: no surface enhancement. The bulk basis here is repeated by
+    # the CTR factor, so no basis atom is a surface atom; slab-based paths
+    # that genuinely want enhancement must opt in via surface_config.
     config: SurfaceConfig = (
         surface_config
         if surface_config is not None
-        else SurfaceConfig(method="height", height_fraction=surface_fraction)
+        else SurfaceConfig(method="none")
     )
     is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
         atom_positions, config
@@ -736,7 +762,13 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
     surface_config : SurfaceConfig | None, optional
-        Configuration for surface atom identification. Default: None
+        Configuration for surface atom identification. Default: None,
+        which maps to ``SurfaceConfig(method="none")`` — no surface
+        thermal enhancement. This simulator treats the crystal as a
+        semi-infinite repeated bulk (the :math:`1/\sin^2(\pi l)` CTR
+        factor); in that picture no basis atom is a surface atom, so
+        enhanced Debye-Waller factors would be unphysical. Slab-based
+        workflows must opt in with an explicit config.
 
     Returns
     -------
@@ -878,11 +910,13 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     )
     n_atoms: int = atom_positions.shape[0]
 
-    # Surface atom identification
+    # Surface atom identification. Default: no surface enhancement — the
+    # bulk unit cell is repeated by the 1/sin^2(pi*l) CTR factor, so no
+    # basis atom is a surface atom; slab models must opt in explicitly.
     config: SurfaceConfig = (
         surface_config
         if surface_config is not None
-        else SurfaceConfig(method="height", height_fraction=0.3)
+        else SurfaceConfig(method="none")
     )
     is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
         atom_positions, config
@@ -1060,10 +1094,12 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
         jnp.int32
     )
     n_atoms: int = atom_positions.shape[0]
+    # Default: no surface enhancement (bulk basis repeated by the CTR
+    # factor has no surface atoms); slab models must opt in explicitly.
     config: SurfaceConfig = (
         surface_config
         if surface_config is not None
-        else SurfaceConfig(method="height", height_fraction=0.3)
+        else SurfaceConfig(method="none")
     )
     is_surface_atom: Bool[Array, "M"] = identify_surface_atoms(
         atom_positions,
@@ -2556,8 +2592,11 @@ def sliced_crystal_to_projected_potential_slices(
     nx: int = int(jnp.ceil(x_extent / pixel_size))
     ny: int = int(jnp.ceil(y_extent / pixel_size))
     nz: int = int(jnp.ceil(depth / slice_thickness))
-    x_coords: Float[Array, "nx"] = jnp.linspace(0, x_extent, nx)
-    y_coords: Float[Array, "ny"] = jnp.linspace(0, y_extent, ny)
+    # Periodic grid: n samples spaced L/n, excluding the endpoint L
+    # (0 and L are the same periodic point). This matches the
+    # fftfreq(n, L/n) convention used by the Fresnel propagators.
+    x_coords: Float[Array, "nx"] = jnp.arange(nx) * (x_extent / nx)
+    y_coords: Float[Array, "ny"] = jnp.arange(ny) * (y_extent / ny)
     xx: Float[Array, "nx ny"]
     yy: Float[Array, "nx ny"]
     xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")

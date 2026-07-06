@@ -33,6 +33,7 @@ Coverage Map
 
    audit
    inout
+   physics
    plots
    procs
    recon

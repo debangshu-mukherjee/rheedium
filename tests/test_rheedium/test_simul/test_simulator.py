@@ -391,14 +391,18 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             max_intensity: scalar_float = jnp.max(intensities)
             chex.assert_scalar_positive(float(max_intensity))
 
-    @chex.all_variants(without_device=False, with_pmap=False)
+    @chex.variants(with_device=True, without_jit=True)
     def test_surface_enhancement_effect(self) -> None:
-        r"""Test that surface atoms have enhanced thermal motion.
+        r"""Test that opt-in surface enhancement reduces intensity.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: surface atoms have
-        enhanced thermal motion.
+        Verifies the documented behavior for this test case: surface
+        thermal enhancement is off by default (``surface_config=None``
+        maps to ``SurfaceConfig(method="none")`` because the bulk basis
+        is repeated by the CTR factor), and a caller who opts in with an
+        explicit height-based config gets reduced intensity from the
+        enhanced Debye-Waller damping of the tagged atoms.
 
         Notes
         -----
@@ -415,6 +419,9 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.compute_kinematic_intensities_with_ctrs`
+        :see: :func:`~rheedium.types.identify_surface_atoms`
         """
         var_compute: Callable[..., Any] = self.variant(
             compute_kinematic_intensities_with_ctrs
@@ -424,7 +431,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
         g_vectors: Float[Array, "..."] = jnp.array([[1.0, 0.0, 0.0]])
         k_out: Float[Array, "..."] = k_in + g_vectors
 
-        # Compare with and without surface effects
+        # Default: no surface enhancement (bulk cell, CTR-repeated)
         intensities_bulk: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
@@ -432,9 +439,9 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             k_out=k_out,
             temperature=300.0,
             surface_roughness=0.0,
-            surface_fraction=0.0,  # No surface atoms
         )
 
+        # Explicit opt-in: tag half the atoms as surface atoms
         intensities_surface: Float[Array, "..."] = var_compute(
             crystal=self.si_crystal,
             g_allowed=g_vectors,
@@ -442,7 +449,7 @@ class TestUpdatedSimulator(chex.TestCase, parameterized.TestCase):
             k_out=k_out,
             temperature=300.0,
             surface_roughness=0.0,
-            surface_fraction=0.5,  # Half atoms are surface
+            surface_config=SurfaceConfig(method="height", height_fraction=0.5),
         )
 
         # Surface enhancement should reduce intensity due to increased
@@ -1222,7 +1229,9 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         allowed_indices: Any
         k_out: Float[Array, "..."]
-        allowed_indices, k_out = var_find(k_in, gs, z_sign=-1.0, tolerance=0.5)
+        allowed_indices, k_out = var_find(
+            k_in, gs, z_sign=-1.0, tolerance_inv_ang=0.5
+        )
 
         # Check shapes
         chex.assert_shape(allowed_indices, (5,))
@@ -1280,7 +1289,7 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
         allowed_indices: Any
         k_out: Float[Array, "..."]
         allowed_indices, k_out = var_find(
-            k_in, gs, z_sign=-1.0, tolerance=tolerance
+            k_in, gs, z_sign=-1.0, tolerance_inv_ang=tolerance
         )
 
         chex.assert_tree_all_finite(k_out)
@@ -1323,7 +1332,9 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         allowed_indices: Any
         k_out: Float[Array, "..."]
-        allowed_indices, k_out = var_find(k_in, gs, z_sign=1.0, tolerance=0.5)
+        allowed_indices, k_out = var_find(
+            k_in, gs, z_sign=1.0, tolerance_inv_ang=0.5
+        )
 
         chex.assert_shape(allowed_indices, (3,))
 
@@ -1365,7 +1376,9 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         allowed_indices: Any
         k_out: Float[Array, "..."]
-        allowed_indices, k_out = var_find(k_in, gs, z_sign=-1.0, tolerance=0.5)
+        allowed_indices, k_out = var_find(
+            k_in, gs, z_sign=-1.0, tolerance_inv_ang=0.5
+        )
 
         chex.assert_shape(allowed_indices, (3,))
 
@@ -1401,10 +1414,130 @@ class TestFindKinematicReflections(chex.TestCase, parameterized.TestCase):
 
         allowed_indices: Any
         k_out: Float[Array, "..."]
-        allowed_indices, k_out = var_find(k_in, gs, tolerance=0.5)
+        allowed_indices, k_out = var_find(k_in, gs, tolerance_inv_ang=0.5)
 
         chex.assert_shape(allowed_indices, (1,))
         chex.assert_shape(k_out, (1, 3))
+
+    @chex.all_variants(without_device=False, with_pmap=False)
+    def test_default_tolerance_is_shell_derived(self) -> None:
+        r"""Test that the None default derives 3 x compute_shell_sigma.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: calling
+        ``find_kinematic_reflections`` without ``tolerance_inv_ang``
+        applies an absolute elastic tolerance of three Ewald-shell sigmas
+        (energy spread 1e-4, divergence 1 mrad). At 20 kV (\|k\| ~ 73
+        inverse Ångstroms) this admits only \|dk\| below roughly 0.25
+        inverse Ångstroms, so a G vector producing \|dk\| ~ 0.5 must be
+        rejected even though the old fractional-tolerance default
+        (0.05 x \|k\| = 3.66) would have passed it.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.find_kinematic_reflections`
+        :see: :func:`~rheedium.simul.compute_shell_sigma`
+        """
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
+
+        k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
+        k_in_mag: Float[Array, ""] = jnp.linalg.norm(k_in)
+        # G giving an elastic upward k_out (reflect k_in z-component)
+        g_elastic: Float[Array, "3"] = jnp.array([0.0, 0.0, 5.0])
+        # G giving |dk| ~ 0.5 1/A: inside the old 3.66 1/A default,
+        # outside the new ~0.22 1/A shell-derived default.
+        g_marginal: Float[Array, "3"] = k_in * (0.5 / k_in_mag) + g_elastic
+        gs: Float[Array, "..."] = jnp.stack([g_elastic, g_marginal])
+
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
+        allowed_indices, k_out = var_find(k_in, gs, z_sign=1.0)
+
+        dk_elastic: float = float(
+            jnp.abs(jnp.linalg.norm(k_in + g_elastic) - k_in_mag)
+        )
+        dk_marginal: float = float(
+            jnp.abs(jnp.linalg.norm(k_in + g_marginal) - k_in_mag)
+        )
+        self.assertLess(dk_elastic, 0.22)
+        self.assertGreater(dk_marginal, 0.25)
+        self.assertLess(dk_marginal, 3.66)
+        chex.assert_trees_all_equal(bool(allowed_indices[0] >= 0), True)
+        chex.assert_trees_all_equal(bool(jnp.any(allowed_indices == 1)), False)
+
+    @chex.all_variants(without_device=False, with_pmap=False)
+    def test_padded_slots_zeroed(self) -> None:
+        r"""Test that padded output slots return zero k_out rows.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with exactly
+        one kinematically allowed reflection among several G vectors, the
+        padded output rows carry ``k_out == 0`` and ``index == -1``
+        rather than live copies of another reflection gathered through
+        the JAX -1-wraps-to-last-element indexing convention.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.find_kinematic_reflections`
+        """
+        var_find: Callable[..., Any] = self.variant(find_kinematic_reflections)
+
+        k_in: Float[Array, "..."] = jnp.array([self.k_mag, 0.0, -2.5])
+        # Exactly one allowed reflection (elastic, upward); rest far off
+        gs: Float[Array, "..."] = jnp.array(
+            [
+                [0.0, 0.0, 5.0],
+                [10.0, 0.0, 0.0],
+                [0.0, 10.0, 0.0],
+                [10.0, 10.0, 10.0],
+            ]
+        )
+
+        allowed_indices: Any
+        k_out: Float[Array, "..."]
+        allowed_indices, k_out = var_find(
+            k_in, gs, z_sign=1.0, tolerance_inv_ang=0.25
+        )
+
+        chex.assert_trees_all_equal(
+            allowed_indices,
+            jnp.array([0, -1, -1, -1], dtype=allowed_indices.dtype),
+        )
+        chex.assert_trees_all_close(k_out[0], k_in + gs[0])
+        chex.assert_trees_all_equal(
+            jnp.all(k_out[1:] == 0.0),
+            jnp.array(True),
+        )
 
 
 class TestSlicedCrystalToProjectedPotentialSlices(
@@ -1671,6 +1804,72 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         chex.assert_trees_all_close(
             potential.slice_thickness, slice_thickness, atol=1e-6
         )
+
+    @chex.variants(with_device=True, without_jit=True)
+    def test_periodic_grid_excludes_endpoint(self) -> None:
+        r"""Grid samples are spaced L/n with no duplicate boundary column.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the lateral
+        potential grid uses n samples spaced L/n starting at 0 and
+        excluding the endpoint L, matching the fftfreq(n, L/n)
+        convention assumed by the Fresnel propagator. For a single atom
+        at (0, 0) on a periodic grid, column 0 (the atom site) and the
+        wrap-around column n-1 must not be duplicates, while columns 1
+        and n-1 sit at the same minimum-image distance and must agree.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        It runs through the Chex variant wrapper where present, so the same
+        assertion covers both transformed and untransformed JAX execution
+        paths.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~.sliced_crystal_to_projected_potential_slices`
+        """
+        var_convert: Callable[..., Any] = self.variant(
+            sliced_crystal_to_projected_potential_slices
+        )
+
+        single_atom: SlicedCrystal = create_sliced_crystal(
+            cart_positions=jnp.array([[0.0, 0.0, 1.0, 14.0]]),
+            cell_lengths=jnp.array([8.0, 8.0, 4.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            orientation=jnp.array([0, 0, 1]),
+            depth=4.0,
+            x_extent=8.0,
+            y_extent=8.0,
+        )
+        potential: Any = var_convert(
+            single_atom,
+            slice_thickness=4.0,
+            pixel_size=0.5,
+        )
+        v: Float[Array, "nx ny"] = potential.slices[0]
+        # nx = ceil(8.0 / 0.5) = 16 samples spaced L/n = 0.5 Angstroms
+        chex.assert_shape(v, (16, 16))
+        # Peak sits exactly on grid point (0, 0)
+        peak_idx: Any = jnp.unravel_index(jnp.argmax(v), v.shape)
+        self.assertEqual(int(peak_idx[0]), 0)
+        self.assertEqual(int(peak_idx[1]), 0)
+        # The old linspace(0, L, n) grid duplicated x=0 and x=L: the last
+        # column equalled the first. With arange(n) * (L/n) it must not.
+        self.assertFalse(bool(jnp.allclose(v[:, 0], v[:, -1], rtol=1e-6)))
+        self.assertFalse(bool(jnp.allclose(v[0, :], v[-1, :], rtol=1e-6)))
+        # Wrap-around symmetry: column 1 (distance L/n) matches column
+        # n-1 (distance L - (n-1) L/n = L/n through the boundary).
+        chex.assert_trees_all_close(v[:, 1], v[:, -1], rtol=1e-10)
+        chex.assert_trees_all_close(v[1, :], v[-1, :], rtol=1e-10)
 
 
 class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
@@ -2861,6 +3060,102 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
         self.assertTrue(
             jnp.all(jnp.isfinite(valid_detector)),
             "Valid detector points should be finite",
+        )
+
+    def test_default_applies_no_surface_enhancement(self) -> None:
+        r"""Default ewald_simulator applies no surface thermal enhancement.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: with
+        ``surface_config=None`` the simulator treats no atom as a surface
+        atom (``SurfaceConfig(method="none")``), because the bulk unit
+        cell it repeats through the CTR factor has no surface atoms. On
+        SrTiO3 at 300 K the default pattern must be bit-identical to an
+        explicit method-"none" run and to an explicit all-False mask,
+        even though several atoms sit in the top 30 percent of the cell.
+        An explicit height-based opt-in must change the intensities,
+        proving the old default (2x mean-square displacement for the top
+        30 percent of a bulk cell) would have altered the result and is
+        no longer applied silently.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Exact tree equality assertions check structure, dtype, and values where
+        the expected result is discrete or deterministic.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.ewald_simulator`
+        :see: :func:`~rheedium.types.identify_surface_atoms`
+        """
+        a_sto: float = 3.905
+        frac_coords: Float[Array, "5 3"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0],  # Sr
+                [0.5, 0.5, 0.5],  # Ti
+                [0.5, 0.5, 0.0],  # O
+                [0.0, 0.5, 0.5],  # O (top 30% of the cell by height)
+                [0.5, 0.0, 0.5],  # O (top 30% of the cell by height)
+            ]
+        )
+        atomic_numbers: Float[Array, "5"] = jnp.array(
+            [38.0, 22.0, 8.0, 8.0, 8.0]
+        )
+        sto_crystal: CrystalStructure = create_crystal_structure(
+            frac_positions=jnp.column_stack([frac_coords, atomic_numbers]),
+            cart_positions=jnp.column_stack(
+                [frac_coords * a_sto, atomic_numbers]
+            ),
+            cell_lengths=jnp.array([a_sto, a_sto, a_sto]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+        kwargs: dict[str, Any] = {
+            "crystal": sto_crystal,
+            "energy_kev": 20.0,
+            "theta_deg": 2.0,
+            "phi_deg": 0.0,
+            "hmax": 2,
+            "kmax": 2,
+            "temperature": 300.0,
+        }
+        pattern_default: Any = ewald_simulator(**kwargs)
+        pattern_none: Any = ewald_simulator(
+            **kwargs, surface_config=SurfaceConfig(method="none")
+        )
+        pattern_mask: Any = ewald_simulator(
+            **kwargs,
+            surface_config=SurfaceConfig(
+                method="explicit",
+                explicit_mask=jnp.zeros(5, dtype=bool),
+            ),
+        )
+        pattern_height: Any = ewald_simulator(
+            **kwargs,
+            surface_config=SurfaceConfig(method="height", height_fraction=0.3),
+        )
+        # Default is exactly the no-enhancement result
+        chex.assert_trees_all_equal(
+            pattern_default.intensities, pattern_none.intensities
+        )
+        chex.assert_trees_all_equal(
+            pattern_default.intensities, pattern_mask.intensities
+        )
+        # Opt-in height tagging (the old default) changes intensities,
+        # so the equality above is not vacuous.
+        self.assertFalse(
+            bool(
+                jnp.allclose(
+                    pattern_default.intensities,
+                    pattern_height.intensities,
+                    rtol=1e-6,
+                )
+            )
         )
 
     def test_upward_scattering_only(self) -> None:

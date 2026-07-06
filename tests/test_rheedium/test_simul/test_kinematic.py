@@ -230,7 +230,9 @@ class TestKinematicEwaldSphere(chex.TestCase):
         # z_sign=1.0 selects upward scattering (k_out_z > 0)
         indices: Any
         k_out: Float[Array, "..."]
-        indices, k_out = var_ewald(k_in, G_vectors, z_sign=1.0, tolerance=0.1)
+        indices, k_out = var_ewald(
+            k_in, G_vectors, z_sign=1.0, tolerance_inv_ang=0.1
+        )
 
         # Check that we got some valid results
         n_valid: scalar_float = int(jnp.sum(indices >= 0))

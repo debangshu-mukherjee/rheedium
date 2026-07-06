@@ -1087,3 +1087,63 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         )
         chex.assert_shape(v, grid)
         assert jnp.iscomplexobj(v)
+
+    def test_periodic_grid_excludes_endpoint(self) -> None:
+        r"""Grid samples are spaced L/n with no duplicate boundary column.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the potential
+        grid uses n samples spaced L/n starting at 0 and excluding the
+        endpoint L, matching the fftfreq(n, L/n) convention assumed by
+        fresnel_propagator. For a single atom at (0, 0) on a periodic
+        grid, column 0 (the atom site) and the wrap-around column n-1
+        (one pixel away through the boundary) must not be duplicates,
+        while columns 1 and n-1 sit at the same minimum-image distance
+        dx and must agree.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+
+        :see: :func:`~rheedium.simul.crystal_projected_potential`
+        :see: :func:`~rheedium.simul.fresnel_propagator`
+        """
+        grid: tuple[int, int]
+        cell: Float[Array, "2"]
+        voltage: float
+        dz: float
+        grid, cell, voltage, dz = _make_grid_params()
+        pos: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        z_arr: Int[Array, "1"] = jnp.array([14], dtype=jnp.int32)
+        v: Complex[Array, "H W"] = crystal_projected_potential(
+            atomic_positions_angstrom=pos,
+            atomic_numbers=z_arr,
+            grid_shape=grid,
+            cell_dimensions_angstrom=cell,
+            absorption_fraction=0.0,
+            parameterization="lobato",
+        )
+        v_real: Float[Array, "H W"] = jnp.real(v)
+        # Peak sits exactly on grid point (0, 0)
+        peak_idx: tuple[Array, ...] = jnp.unravel_index(
+            jnp.argmax(v_real), v_real.shape
+        )
+        assert int(peak_idx[0]) == 0
+        assert int(peak_idx[1]) == 0
+        # The old linspace(0, L, n) grid duplicated x=0 and x=L: the last
+        # column equalled the first. With arange(n) * (L/n) it must not.
+        assert not bool(jnp.allclose(v_real[:, 0], v_real[:, -1], rtol=1e-6))
+        assert not bool(jnp.allclose(v_real[0, :], v_real[-1, :], rtol=1e-6))
+        # Wrap-around symmetry: column 1 (distance dx = L/n) matches
+        # column n-1 (distance L - (n-1) dx = dx through the boundary).
+        chex.assert_trees_all_close(v_real[:, 1], v_real[:, -1], rtol=1e-10)
+        chex.assert_trees_all_close(v_real[1, :], v_real[-1, :], rtol=1e-10)

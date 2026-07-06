@@ -161,7 +161,12 @@ def xyz_to_crystal(
 
     1. Explicit ``cell_vectors`` parameter (if provided)
     2. ``xyz_data.lattice`` (from extended XYZ ``Lattice=`` metadata)
-    3. Inferred from atomic extent + padding (last resort)
+    3. Inferred from atomic extent + padding (last resort, only when
+       ``xyz_data.lattice is None``)
+
+    A genuine identity lattice (1 Ångstrom cubic cell) in
+    ``xyz_data.lattice`` is used as-is; it is never treated as a
+    missing-lattice sentinel.
 
     When inferring cell from positions:
 
@@ -202,14 +207,6 @@ def xyz_to_crystal(
         lattice = jnp.asarray(cell_vectors)
     elif xyz_data.lattice is not None:
         lattice = xyz_data.lattice
-        is_identity: bool = jnp.allclose(lattice, jnp.eye(3))
-        if is_identity:
-            logger.warning(
-                "XYZ file has no Lattice= metadata. Inferring cell from "
-                "atomic positions with %.1f A padding.",
-                padding_ang,
-            )
-            lattice = _infer_lattice_from_positions(positions, padding_ang)
     else:
         logger.warning(
             "XYZ file has no Lattice= metadata. Inferring cell from "

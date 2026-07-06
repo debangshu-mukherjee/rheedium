@@ -533,7 +533,8 @@ def _parse_xyz_metadata(line: str) -> Dict[str, object]:
         ).reshape(3, 3)
 
     energy_match: Optional[re.Match[str]] = re.search(
-        r"energy=([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)", line
+        r"(?<![A-Za-z_])energy=([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)",
+        line,
     )
     if energy_match:
         metadata["energy"] = float(energy_match.group(1))

@@ -438,6 +438,7 @@ def parse_vaspxml(  # noqa: PLR0912, PLR0915
             lattice=canonical_lattice,
             stress=stress,
             energy=energy,
+            forces=forces,
             properties=properties,
             comment=f"From vasprun.xml step {step}",
         )
@@ -560,6 +561,7 @@ def parse_vaspxml_trajectory(
             lattice=lattice,
             stress=stress,
             energy=energy,
+            forces=forces,
             properties=properties,
             comment=f"vasprun.xml step {step_idx}",
         )

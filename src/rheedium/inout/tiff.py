@@ -24,8 +24,9 @@ Notes
 -----
 TIFF loading uses ``tifffile`` for robust multi-page and BigTIFF
 support. Image data is converted to float64 JAX arrays on load.
-The ``detect_beam_center`` function returns coordinates suitable for
-direct assignment to ``DetectorGeometry.center_pixel``.
+The ``detect_beam_center`` function returns ``[row, col]`` pixel
+coordinates suitable for constructing
+``DetectorGeometry.beam_center_px``.
 """
 
 import contextlib
@@ -38,6 +39,7 @@ import numpy as np
 import tifffile
 from beartype import beartype
 from beartype.typing import List, Optional, Tuple, Union
+from jax.scipy.signal import convolve2d
 from jaxtyping import Array, Float, jaxtyped
 from numpy.typing import NDArray
 
@@ -162,8 +164,10 @@ def load_tiff_sequence(
     sort_by : str, optional
         Sorting method for directory of files. ``"name"`` sorts
         lexicographically by filename. ``"timestamp"`` sorts by
-        embedded timestamp metadata (falls back to name if
-        timestamps are unavailable). Default: ``"name"``
+        embedded timestamp metadata; if *any* frame lacks a valid
+        timestamp (NaN), the whole sequence deterministically falls
+        back to lexicographic name order and a warning is logged.
+        Default: ``"name"``
 
     Returns
     -------
@@ -307,7 +311,12 @@ def _load_tiff_directory(
 
     if sort_by == "timestamp":
         timestamps: List[float] = [m.timestamp_s for m in metadata_list]
-        if not all(np.isnan(t) for t in timestamps):
+        if any(np.isnan(t) for t in timestamps):
+            logger.warning(
+                "Some frames lack valid timestamps; falling back to "
+                "deterministic name sort."
+            )
+        else:
             sort_indices: List[int] = sorted(
                 range(len(timestamps)), key=lambda i: timestamps[i]
             )
@@ -321,10 +330,6 @@ def _load_tiff_directory(
                 )
                 for new_idx, i in enumerate(sort_indices)
             ]
-        else:
-            logger.warning(
-                "No valid timestamps found; falling back to name sort."
-            )
 
     np_stack: Float[NDArray, "T H W"] = np.stack(frames, axis=0)
     sequence: Float[Array, "T H W"] = jnp.asarray(np_stack, dtype=jnp.float64)
@@ -424,13 +429,15 @@ def detect_beam_center(
     Extended Summary
     ----------------
     Detects the position of the specular (direct) beam spot using a
-    weighted centroid approach. The image is first smoothed with a
-    Gaussian filter, then a threshold is applied to isolate the bright
-    spot region. The center is computed as the intensity-weighted
-    centroid of the thresholded region.
+    weighted centroid approach. The image is first smoothed with an
+    edge-padded Gaussian filter (no circular wrap-around, so spots near
+    an image edge do not bleed to the opposite edge), then a threshold
+    is applied to isolate the bright spot region. The center is
+    computed as the intensity-weighted centroid of the thresholded
+    region.
 
-    The returned coordinates are suitable for direct assignment to
-    ``DetectorGeometry.center_pixel``.
+    The returned ``[row, col]`` coordinates are suitable for
+    constructing ``DetectorGeometry.beam_center_px``.
 
     Parameters
     ----------
@@ -454,8 +461,11 @@ def detect_beam_center(
     Notes
     -----
     1. **Smooth** --
-       Convolve with Gaussian via FFT (same approach as
-       :func:`~rheedium.simul.beam_averaging.detector_psf_convolve`).
+       Pad the image with edge replication
+       (``jnp.pad(mode="edge")``) and convolve with a normalized
+       separable Gaussian kernel in valid mode. Unlike circular FFT
+       convolution, this keeps intensity from an edge spot on its own
+       side of the image.
     2. **Threshold** --
        Compute ``I_thresh = threshold_fraction * max(I_smooth)``.
        Zero out pixels below threshold.
@@ -475,17 +485,17 @@ def detect_beam_center(
     height: int = image.shape[0]
     width: int = image.shape[1]
 
-    freq_y: Float[Array, " H"] = jnp.fft.fftfreq(height)
-    freq_x: Float[Array, " W"] = jnp.fft.fftfreq(width)
-    fy: Float[Array, "H W"]
-    fx: Float[Array, "H W"]
-    fy, fx = jnp.meshgrid(freq_y, freq_x, indexing="ij")
-    gaussian_filter: Float[Array, "H W"] = jnp.exp(
-        -2.0 * jnp.pi**2 * sigma_pixels**2 * (fy**2 + fx**2)
+    kernel_radius: int = max(1, int(np.ceil(3.0 * float(sigma_pixels))))
+    offsets: Float[Array, " K"] = jnp.arange(
+        -kernel_radius, kernel_radius + 1, dtype=jnp.float64
     )
-    smoothed: Float[Array, "H W"] = jnp.real(
-        jnp.fft.ifft2(jnp.fft.fft2(image) * gaussian_filter)
+    kernel_1d: Float[Array, " K"] = jnp.exp(
+        -0.5 * (offsets / sigma_pixels) ** 2
     )
+    kernel_1d = kernel_1d / jnp.sum(kernel_1d)
+    kernel_2d: Float[Array, "K K"] = jnp.outer(kernel_1d, kernel_1d)
+    padded: Float[Array, "H2 W2"] = jnp.pad(image, kernel_radius, mode="edge")
+    smoothed: Float[Array, "H W"] = convolve2d(padded, kernel_2d, mode="valid")
     smoothed = jnp.maximum(smoothed, 0.0)
 
     peak_val: scalar_float = jnp.max(smoothed)

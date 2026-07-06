@@ -245,6 +245,124 @@ class TestParsePoscarHeader(chex.TestCase):
         with pytest.raises(ValueError, match="atom counts"):
             _parse_poscar_header(lines)
 
+    def test_negative_scale_is_target_volume(self) -> None:
+        r"""Negative scale is a target cell volume (VASP semantics).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a negative
+        universal scale of -160.103007 on a unit lattice resolves to the
+        linear factor (160.103007)**(1/3) = 5.43, matching ASE's parsing
+        of the same POSCAR (cell lengths [5.43, 5.43, 5.43] Angstroms).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The expected lattice literals are the ASE ``read(format="vasp")``
+        ground-truth values for the identical file contents.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        lines: list[str] = [
+            "Si target volume",
+            "-160.103007",
+            "1.0 0.0 0.0",
+            "0.0 1.0 0.0",
+            "0.0 0.0 1.0",
+            "Si",
+            "1",
+        ]
+        scaling: Any
+        lattice: Any
+        species: Any
+        counts: Any
+        scaling, lattice, species, counts = _parse_poscar_header(lines)
+
+        assert scaling == pytest.approx(5.43, abs=1e-9)
+        chex.assert_trees_all_close(
+            lattice,
+            jnp.array([[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]]),
+            atol=1e-9,
+        )
+
+    def test_three_scale_factors_rejected(self) -> None:
+        r"""A scale line with three values raises an accurate error.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a POSCAR scale
+        line with three values (per-axis lattice scale factors) is rejected
+        with a message that names the actual unsupported feature instead of
+        a generic parse failure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        lines: list[str] = [
+            "Three scales",
+            "2.0 2.0 2.0",
+            "2.715 0.0 0.0",
+            "0.0 2.715 0.0",
+            "0.0 0.0 2.715",
+            "Si",
+            "1",
+        ]
+        with pytest.raises(
+            ValueError,
+            match="three lattice scale factors are not supported",
+        ):
+            _parse_poscar_header(lines)
+
+    def test_negative_scale_left_handed_lattice_rejected(self) -> None:
+        r"""Negative scale with non-positive determinant raises ValueError.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a negative
+        (target volume) scale cannot be resolved for a left-handed raw
+        lattice whose determinant is not positive, so the parser raises
+        instead of producing a complex or NaN linear factor.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        lines: list[str] = [
+            "Left-handed",
+            "-160.103007",
+            "1.0 0.0 0.0",
+            "0.0 0.0 1.0",
+            "0.0 1.0 0.0",
+            "Si",
+            "1",
+        ]
+        with pytest.raises(ValueError, match="positive determinant"):
+            _parse_poscar_header(lines)
+
 
 class TestParsePoscarPositions(chex.TestCase):
     """Test POSCAR position parsing.
@@ -316,6 +434,49 @@ class TestParsePoscarPositions(chex.TestCase):
         )
 
         # 2.0 / 4.0 = 0.5 in each direction
+        expected: Float[Array, "..."] = jnp.array(
+            [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+        )
+        chex.assert_trees_all_close(positions, expected, atol=1e-10)
+
+    def test_cartesian_coordinates_scaled(self) -> None:
+        r"""Cartesian coordinate lines are multiplied by the scale factor.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: in Cartesian
+        mode the raw coordinate values are multiplied by the resolved
+        universal scale factor before conversion to fractional coordinates,
+        matching VASP/ASE semantics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        lines: list[str] = [
+            "0.0 0.0 0.0",
+            "1.3575 1.3575 1.3575",
+        ]
+        # Scaled lattice (raw 2.715 cubic times scale 2.0)
+        lattice: Float[Array, "..."] = jnp.eye(3) * 5.43
+        positions: Float[Array, "..."] = _parse_poscar_positions(
+            lines,
+            start_idx=0,
+            n_atoms=2,
+            is_cartesian=True,
+            lattice=lattice,
+            scale_factor=2.0,
+        )
+
+        # 1.3575 * 2.0 / 5.43 = 0.5 in each direction
         expected: Float[Array, "..."] = jnp.array(
             [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
         )
@@ -538,6 +699,117 @@ Cartesian
                 crystal.frac_positions[:, :3],
                 jnp.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]),
                 atol=1e-3,
+            )
+
+    def test_negative_scale_target_volume(self) -> None:
+        r"""Negative scale POSCAR resolves to the target-volume cell.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a POSCAR with
+        universal scale -160.103007 and a unit lattice parses to a cubic
+        5.43 Angstrom cell. The expected literals [5.43, 5.43, 5.43] are
+        the ASE ``read(format="vasp")`` cell lengths for the identical
+        file, cross-checking the VASP negative-scale (target volume)
+        convention.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        poscar_content: str = """Si negative volume scale
+-160.103007
+  1.0 0.0 0.0
+  0.0 1.0 0.0
+  0.0 0.0 1.0
+  Si
+  1
+Direct
+  0.5 0.5 0.5
+"""
+        tmp_dir: str
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            poscar_file: Path = Path(tmp_dir) / "POSCAR"
+            poscar_file.write_text(poscar_content)
+
+            crystal: CrystalStructure = parse_poscar(poscar_file)
+
+            # ASE ground truth: cubic 5.43 A cell (160.103007 ** (1/3))
+            chex.assert_trees_all_close(
+                crystal.cell_lengths,
+                jnp.array([5.43, 5.43, 5.43]),
+                atol=1e-8,
+            )
+            chex.assert_trees_all_close(
+                crystal.cell_angles,
+                jnp.array([90.0, 90.0, 90.0]),
+                atol=1e-8,
+            )
+            chex.assert_trees_all_close(
+                crystal.frac_positions[:, :3],
+                jnp.array([[0.5, 0.5, 0.5]]),
+                atol=1e-10,
+            )
+
+    def test_cartesian_mode_with_scale(self) -> None:
+        r"""Scaled Cartesian POSCAR positions convert to correct fractions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a POSCAR with
+        universal scale 2.0, raw lattice 2.715 Angstrom cubic, and a
+        Cartesian coordinate line (1.3575, 1.3575, 1.3575) parses to
+        fractional coordinates (0.5, 0.5, 0.5) in a 5.43 Angstrom cell.
+        The expected literals match ASE ``read(format="vasp")`` for the
+        identical file.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_poscar``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        poscar_content: str = """Si cartesian scaled
+2.0
+  2.715 0.0 0.0
+  0.0 2.715 0.0
+  0.0 0.0 2.715
+  Si
+  1
+Cartesian
+  1.3575 1.3575 1.3575
+"""
+        tmp_dir: str
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            poscar_file: Path = Path(tmp_dir) / "POSCAR"
+            poscar_file.write_text(poscar_content)
+
+            crystal: CrystalStructure = parse_poscar(poscar_file)
+
+            # ASE ground truth: 5.43 A cell, frac (0.5, 0.5, 0.5)
+            chex.assert_trees_all_close(
+                crystal.cell_lengths,
+                jnp.array([5.43, 5.43, 5.43]),
+                atol=1e-10,
+            )
+            chex.assert_trees_all_close(
+                crystal.frac_positions[:, :3],
+                jnp.array([[0.5, 0.5, 0.5]]),
+                atol=1e-10,
             )
 
     def test_selective_dynamics(self) -> None:

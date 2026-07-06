@@ -181,7 +181,7 @@ def kinematic_spot_simulator(
     kmax: scalar_int = 3,
     lmax: scalar_int = 1,
     detector_distance: scalar_float = 100.0,
-    tolerance: scalar_float = 0.05,
+    tolerance_inv_ang: scalar_float | None = None,
 ) -> RHEEDPattern:
     r"""Kinematic RHEED spot simulator using discrete 3D reciprocal lattice.
 
@@ -207,8 +207,12 @@ def kinematic_spot_simulator(
         Maximum l Miller index. Default: 1
     detector_distance : scalar_float, optional
         Sample-to-screen distance in mm. Default: 100.0
-    tolerance : scalar_float, optional
-        Tolerance for Ewald sphere constraint. Default: 0.05
+    tolerance_inv_ang : scalar_float | None, optional
+        Absolute Ewald-shell half-thickness in inverse Ångstroms, passed
+        through to :func:`~rheedium.simul.find_kinematic_reflections`.
+        If None (default), derived from beam parameters as
+        :math:`3 \\sigma_{shell}` (ΔE/E = 1e-4, 1 mrad divergence);
+        at 20 kV this admits :math:`|\\Delta k| \\lesssim 0.25` 1/Å.
 
     Returns
     -------
@@ -267,7 +271,10 @@ def kinematic_spot_simulator(
     all_indices: Int[Array, "M"]
     all_k_out: Float[Array, "M 3"]
     all_indices, all_k_out = find_kinematic_reflections(
-        k_in=k_in, gs=reciprocal_points, z_sign=1.0, tolerance=tolerance
+        k_in=k_in,
+        gs=reciprocal_points,
+        z_sign=1.0,
+        tolerance_inv_ang=tolerance_inv_ang,
     )
 
     # Filter to valid reflections only (indices >= 0)

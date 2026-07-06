@@ -299,6 +299,101 @@ class TestLoadTiffSequence(chex.TestCase):
         with pytest.raises(FileNotFoundError):
             load_tiff_sequence("/nonexistent/path.tif")
 
+    def test_timestamp_sort_orders_frames(self) -> None:
+        r"""Valid timestamps reorder frames chronologically.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: when every
+        frame carries a valid embedded timestamp, ``sort_by="timestamp"``
+        reorders the stack chronologically even when that order differs
+        from lexicographic filename order.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        dirpath: Path = self.tmp_path / "stamped"
+        dirpath.mkdir(parents=True, exist_ok=True)
+        # Timestamp order (c, b, a) is the reverse of name order.
+        name: str
+        stamp: float
+        for name, stamp in [("a", 300.0), ("b", 200.0), ("c", 100.0)]:
+            frame: NDArray = np.full((H, W), ord(name), dtype=np.uint16)
+            tifffile.imwrite(
+                str(dirpath / f"{name}.tif"),
+                frame,
+                description=f"Timestamp={stamp}",
+            )
+        seq: Any
+        meta: Any
+        seq, meta = load_tiff_sequence(dirpath, sort_by="timestamp")
+        observed: list[str] = [
+            chr(int(seq[i, 0, 0])) for i in range(seq.shape[0])
+        ]
+        self.assertEqual(observed, ["c", "b", "a"])
+        self.assertEqual([m.frame_index for m in meta], [0, 1, 2])
+
+    def test_timestamp_sort_mixed_nan_falls_back_to_name(self) -> None:
+        r"""Any NaN timestamp deterministically falls back to name sort.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: when at least
+        one frame lacks a valid timestamp (NaN), ``sort_by="timestamp"``
+        deterministically falls back to lexicographic name order for the
+        whole sequence instead of producing an arbitrary interleaving of
+        NaN and valid keys, and repeated calls yield the identical order.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        dirpath: Path = self.tmp_path / "mixed"
+        dirpath.mkdir(parents=True, exist_ok=True)
+        # Timestamp order would be (c, a); b has no timestamp at all.
+        name: str
+        desc: str
+        for name, desc in [
+            ("a", "Timestamp=300.0"),
+            ("b", ""),
+            ("c", "Timestamp=100.0"),
+        ]:
+            frame: NDArray = np.full((H, W), ord(name), dtype=np.uint16)
+            tifffile.imwrite(
+                str(dirpath / f"{name}.tif"),
+                frame,
+                description=desc,
+            )
+        seq_first: Any
+        seq_second: Any
+        seq_first, _ = load_tiff_sequence(dirpath, sort_by="timestamp")
+        seq_second, _ = load_tiff_sequence(dirpath, sort_by="timestamp")
+        observed_first: list[str] = [
+            chr(int(seq_first[i, 0, 0])) for i in range(seq_first.shape[0])
+        ]
+        observed_second: list[str] = [
+            chr(int(seq_second[i, 0, 0])) for i in range(seq_second.shape[0])
+        ]
+        self.assertEqual(observed_first, ["a", "b", "c"])
+        self.assertEqual(observed_first, observed_second)
+
     def test_empty_directory(self) -> None:
         r"""Raises ValueError for directory with no TIFFs.
 
@@ -744,6 +839,52 @@ class TestDetectBeamCenter(chex.TestCase):
         chex.assert_trees_all_close(
             center,
             jnp.array([row_center, col_center], dtype=jnp.float64),
+            atol=1.0,
+        )
+
+    def test_edge_spot_not_biased(self) -> None:
+        r"""A spot near the image edge is located within one pixel.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a Gaussian
+        spot centered at (row 5, col 5), close to the top-left corner, is
+        detected within 1 pixel of its true position. Edge-padded
+        smoothing keeps the spot's intensity on its own side of the
+        image; the previous circular FFT convolution wrapped intensity to
+        the opposite edges and biased the detected centroid by more than
+        one pixel for this exact fixture.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_tiff``, so the Test Reference
+        exposes both the guarantee and the implementation path.
+        """
+        size: int = 64
+        spot_row: float = 5.0
+        spot_col: float = 5.0
+        y: Float[Array, "..."] = jnp.arange(size, dtype=jnp.float64)
+        x: Float[Array, "..."] = jnp.arange(size, dtype=jnp.float64)
+        yy: Float[Array, "..."]
+        xx: Float[Array, "..."]
+        yy, xx = jnp.meshgrid(y, x, indexing="ij")
+        img: Float[Array, "..."] = (
+            jnp.exp(
+                -((yy - spot_row) ** 2 + (xx - spot_col) ** 2) / (2.0 * 2.0**2)
+            )
+            * 1000.0
+        )
+        center: Float[Array, "..."] = detect_beam_center(img, sigma_pixels=5.0)
+        chex.assert_trees_all_close(
+            center,
+            jnp.array([spot_row, spot_col], dtype=jnp.float64),
             atol=1.0,
         )
 
