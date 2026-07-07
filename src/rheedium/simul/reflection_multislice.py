@@ -197,14 +197,22 @@ def _deposit_edge_on_potentials(  # noqa: PLR0913
     z_lo: float,
     cutoff_value: float,
     parameterization: str,
+    occupancies: Float[Array, "n"] | None = None,
 ) -> Float[Array, "nx ny nz"]:
     """Deposit projected atomic potentials onto an edge-on grid.
 
     Atom ``x`` coordinates are wrapped periodically into ``[0, l_x)`` before
     slice assignment (the beam axis is periodic over the cell), and the
     transverse ``y`` distance uses minimum-image wrapping over ``l_y``.
+    Each atom's projected potential is scaled by its site occupancy
+    (``occupancies``; ones when None).
     """
     nx_slices, ny, nz = grid_shape
+    occupancy_weights = (
+        jnp.ones(positions.shape[0], dtype=jnp.float64)
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
+    )
     y_axis = dy_value * jnp.arange(ny, dtype=jnp.float64)
     z_axis = z_lo + dz_value * jnp.arange(nz, dtype=jnp.float64)
     yy = y_axis[:, None]
@@ -234,7 +242,7 @@ def _deposit_edge_on_potentials(  # noqa: PLR0913
             0.0,
         )
         in_cutoff = radius <= cutoff_value
-        potential = projected_potential(
+        potential = occupancy_weights[atom_idx] * projected_potential(
             atomic_numbers[atom_idx],
             radius,
             parameterization=parameterization,
@@ -309,7 +317,9 @@ def crystal_to_edge_on_slices(
     2. Wrap each atom's ``x`` coordinate periodically into ``[0, l_x)`` and
        assign it to exactly one beam-axis ``x`` slice.
     3. Sum projected atomic potentials in the transverse plane, with
-       minimum-image wrapping only along ``y``.
+       minimum-image wrapping only along ``y``; each atom's potential is
+       scaled by its site occupancy (``crystal.occupancies``, ones when
+       absent).
 
     The slices carry the crystal's mean inner potential implicitly, so no
     separate inner-potential refraction parameter exists on this path.
@@ -324,6 +334,11 @@ def crystal_to_edge_on_slices(
 
     positions = crystal.cart_positions[:, :3]
     atomic_numbers = crystal.cart_positions[:, 3].astype(jnp.int32)
+    occupancies = (
+        jnp.ones(positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     l_x = float(crystal.cell_lengths[0])
     l_y = float(crystal.cell_lengths[1])
     dx_value = float(dx_slice)
@@ -362,6 +377,7 @@ def crystal_to_edge_on_slices(
         z_lo=z_lo,
         cutoff_value=cutoff_value,
         parameterization=parameterization,
+        occupancies=occupancies,
     )
     return create_edge_on_slices(
         slices=slices,
@@ -397,6 +413,11 @@ def _edge_on_slices_like(
     z_lo = float(template.z_lo)
     positions = crystal.cart_positions[:, :3]
     atomic_numbers = crystal.cart_positions[:, 3].astype(jnp.int32)
+    occupancies = (
+        jnp.ones(positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     slices = _deposit_edge_on_potentials(
         positions=positions,
         atomic_numbers=atomic_numbers,
@@ -409,6 +430,7 @@ def _edge_on_slices_like(
         z_lo=z_lo,
         cutoff_value=float(r_cutoff),
         parameterization=parameterization,
+        occupancies=occupancies,
     )
     return create_edge_on_slices(
         slices=slices,

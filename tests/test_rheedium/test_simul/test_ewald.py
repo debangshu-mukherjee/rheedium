@@ -1528,3 +1528,252 @@ class TestEwaldAllowedReflections(chex.TestCase, parameterized.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOccupancyWeightedEwald(chex.TestCase):
+    """Occupancy weighting through the Ewald structure-factor stack.
+
+    :see: :func:`~rheedium.simul.ewald._compute_structure_factor_single`
+    :see: :func:`~rheedium.simul.build_ewald_data`
+    :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+    """
+
+    def test_structure_factor_scales_linearly_with_occupancy(self) -> None:
+        r"""Verify F(q) scales as occ * f_Z(q) with exact zero at occ 0.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the per-site
+        occupancy multiplies the atomic form-factor amplitude, so a
+        half-occupied site produces exactly half the full-occupancy
+        structure factor and a zero-occupancy site contributes exactly
+        zero (the C6 contract).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        atom_positions: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_numbers: Int[Array, "1"] = jnp.array([14], dtype=jnp.int32)
+        g_vector: Float[Array, "3"] = jnp.array([1.157, 0.4, 0.2])
+        f_full: Complex[Array, ""] = _compute_structure_factor_single(
+            g_vector=g_vector,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=300.0,
+        )
+        f_half: Complex[Array, ""] = _compute_structure_factor_single(
+            g_vector=g_vector,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=300.0,
+            occupancies=jnp.array([0.5]),
+        )
+        f_zero: Complex[Array, ""] = _compute_structure_factor_single(
+            g_vector=g_vector,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=300.0,
+            occupancies=jnp.array([0.0]),
+        )
+        chex.assert_trees_all_close(
+            complex(f_half), 0.5 * complex(f_full), rtol=1e-12
+        )
+        self.assertEqual(complex(f_zero), 0.0 + 0.0j)
+
+    def test_build_ewald_data_carries_occupancies(self) -> None:
+        r"""Verify build_ewald_data stores and applies crystal occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the crystal's
+        per-site occupancies are stored on the returned ``EwaldData`` and
+        already weight the pre-computed grid intensities, so a uniform
+        occupancy of 0.5 quarters every stored intensity.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        frac: Float[Array, "1 4"] = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+        cell_lengths: Float[Array, "3"] = jnp.array([3.0, 3.0, 3.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        crystal_full: CrystalStructure = create_crystal_structure(
+            frac, frac, cell_lengths, cell_angles
+        )
+        crystal_half: CrystalStructure = create_crystal_structure(
+            frac,
+            frac,
+            cell_lengths,
+            cell_angles,
+            occupancies=jnp.array([0.5]),
+        )
+        ewald_full: EwaldData = build_ewald_data(
+            crystal_full, energy_kev=20.0, hmax=1, kmax=1, lmax=1
+        )
+        ewald_half: EwaldData = build_ewald_data(
+            crystal_half, energy_kev=20.0, hmax=1, kmax=1, lmax=1
+        )
+        chex.assert_trees_all_close(ewald_half.occupancies, jnp.array([0.5]))
+        chex.assert_trees_all_close(
+            ewald_half.intensities,
+            0.25 * ewald_full.intensities,
+            rtol=1e-12,
+        )
+
+    def test_allowed_reflections_reflect_occupancy_in_both_modes(
+        self,
+    ) -> None:
+        r"""Verify both reflection modes weight intensities by occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: binary-mode
+        reflections (stored grid intensities) and finite-domain-mode
+        reflections (continuous rod-intersection intensities re-evaluated
+        through ``rod_base_intensities`` from ``EwaldData.occupancies``)
+        both scale by the squared occupancy.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        frac: Float[Array, "1 4"] = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+        cell_lengths: Float[Array, "3"] = jnp.array([3.0, 3.0, 3.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        ewald_full: EwaldData = build_ewald_data(
+            create_crystal_structure(frac, frac, cell_lengths, cell_angles),
+            energy_kev=20.0,
+            hmax=2,
+            kmax=2,
+            lmax=2,
+        )
+        ewald_half: EwaldData = build_ewald_data(
+            create_crystal_structure(
+                frac,
+                frac,
+                cell_lengths,
+                cell_angles,
+                occupancies=jnp.array([0.5]),
+            ),
+            energy_kev=20.0,
+            hmax=2,
+            kmax=2,
+            lmax=2,
+        )
+        indices_full: Int[Array, "N"]
+        intensities_full: Float[Array, "N"]
+        indices_full, _, intensities_full = ewald_allowed_reflections(
+            ewald_full, theta_deg=2.0, phi_deg=0.0
+        )
+        _, _, intensities_half = ewald_allowed_reflections(
+            ewald_half, theta_deg=2.0, phi_deg=0.0
+        )
+        valid: Bool[Array, "N"] = indices_full >= 0
+        self.assertGreater(int(jnp.sum(valid)), 0)
+        chex.assert_trees_all_close(
+            intensities_half[valid],
+            0.25 * intensities_full[valid],
+            rtol=1e-12,
+        )
+        domain: Float[Array, "3"] = jnp.array([100.0, 100.0, 50.0])
+        rod_indices: Int[Array, "N"]
+        rod_full: Float[Array, "N"]
+        rod_indices, _, rod_full = ewald_allowed_reflections(
+            ewald_full,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            domain_extent_ang=domain,
+        )
+        _, _, rod_half = ewald_allowed_reflections(
+            ewald_half,
+            theta_deg=2.0,
+            phi_deg=0.0,
+            domain_extent_ang=domain,
+        )
+        rod_valid: Bool[Array, "N"] = (rod_indices >= 0) & (rod_full > 1e-12)
+        self.assertGreater(int(jnp.sum(rod_valid)), 0)
+        chex.assert_trees_all_close(
+            rod_half[rod_valid],
+            0.25 * rod_full[rod_valid],
+            rtol=1e-12,
+        )
+
+    def test_grad_of_intensity_wrt_occupancy_is_finite_nonzero(self) -> None:
+        r"""Check d(intensity)/d(occupancy) is finite and nonzero.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the summed
+        allowed-reflection intensity is differentiable with respect to a
+        site occupancy with a finite, nonzero gradient (the
+        differentiability contract that the pre-fix integer-Z truncation
+        broke).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The body also exercises differentiability, protecting JAX transform
+        compatibility for this path.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_ewald``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        frac: Float[Array, "1 4"] = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+        cell_lengths: Float[Array, "3"] = jnp.array([3.0, 3.0, 3.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+
+        def summed_intensity(occupancy: scalar_float) -> scalar_float:
+            crystal: CrystalStructure = create_crystal_structure(
+                frac,
+                frac,
+                cell_lengths,
+                cell_angles,
+                occupancies=jnp.array([occupancy]),
+            )
+            ewald: EwaldData = build_ewald_data(
+                crystal, energy_kev=20.0, hmax=2, kmax=2, lmax=2
+            )
+            _, _, intensities = ewald_allowed_reflections(
+                ewald, theta_deg=2.0, phi_deg=0.0
+            )
+            return jnp.sum(intensities)
+
+        value: scalar_float
+        gradient: scalar_float
+        value, gradient = jax.value_and_grad(summed_intensity)(0.5)
+        self.assertTrue(bool(jnp.isfinite(gradient)))
+        self.assertGreater(abs(float(gradient)), 0.0)
+        chex.assert_trees_all_close(
+            float(gradient), 4.0 * float(value) / 1.0, rtol=1e-10
+        )

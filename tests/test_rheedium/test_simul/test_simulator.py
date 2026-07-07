@@ -1076,6 +1076,7 @@ class TestRationalizationGuards(chex.TestCase):
             "src/rheedium/procs/library.py": {
                 "gaas001_2x4": "CrystalStructure",
                 "mgo001_bulk_terminated": "CrystalStructure",
+                "place_adatoms": "CrystalStructure",
                 "si100_2x1": "CrystalStructure",
                 "si111_1x1": "CrystalStructure",
                 "si111_7x7": "CrystalStructure",
@@ -1098,6 +1099,7 @@ class TestRationalizationGuards(chex.TestCase):
                 "apply_surface_displacement_field": "CrystalStructure",
                 "apply_surface_occupancy_field": "CrystalStructure",
                 "apply_twin_wall_field": "CrystalStructure",
+                "apply_vicinal_staircase": "CrystalStructure",
                 "bind_step_edge_distribution": "Callable",
                 "bind_twin_wall_distribution": "Callable",
                 "incoherent_domain_average": "Float",
@@ -7762,3 +7764,185 @@ class TestEwaldSimulatorVmapConsistency(chex.TestCase, parameterized.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOccupancyInSimulatorKernels(chex.TestCase):
+    """Occupancy weighting through the simulator scattering kernels.
+
+    :see: :func:`~rheedium.simul.compute_kinematic_intensities_with_ctrs`
+    :see: :func:`~rheedium.simul.ewald_simulator`
+    :see: :func:`~rheedium.simul.sliced_crystal_to_projected_potential_slices`
+    """
+
+    def _cubic_crystal(
+        self,
+        occupancies: Float[Array, "2"] | None,
+    ) -> CrystalStructure:
+        """Build a two-atom cubic crystal with optional occupancies."""
+        frac: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.5, 8.0]]
+        )
+        cart: Float[Array, "2 4"] = jnp.column_stack(
+            [frac[:, :3] * 4.0, frac[:, 3]]
+        )
+        return create_crystal_structure(
+            frac_positions=frac,
+            cart_positions=cart,
+            cell_lengths=jnp.array([4.0, 4.0, 4.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            occupancies=occupancies,
+        )
+
+    def test_kinematic_ctr_intensities_scale_with_occupancy(self) -> None:
+        r"""Verify occupancy quarters |F|^2 in the kinematic CTR kernel.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: uniform
+        occupancy 0.5 multiplies each form factor by 0.5, so the
+        reflection intensities from
+        ``compute_kinematic_intensities_with_ctrs`` drop by exactly a
+        factor of four relative to full occupancy.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal_full: CrystalStructure = self._cubic_crystal(None)
+        crystal_half: CrystalStructure = self._cubic_crystal(
+            jnp.array([0.5, 0.5])
+        )
+        k_in: Float[Array, "3"] = jnp.array([50.0, 0.0, -1.5])
+        g_allowed: Float[Array, "1 3"] = jnp.array([[1.5708, 0.0, 3.0]])
+        k_out: Float[Array, "1 3"] = (k_in + g_allowed[0])[None, :]
+        intensity_full: Float[Array, "1"] = (
+            compute_kinematic_intensities_with_ctrs(
+                crystal_full,
+                g_allowed,
+                k_in,
+                k_out,
+                ctr_mixing_mode="none",
+            )
+        )
+        intensity_half: Float[Array, "1"] = (
+            compute_kinematic_intensities_with_ctrs(
+                crystal_half,
+                g_allowed,
+                k_in,
+                k_out,
+                ctr_mixing_mode="none",
+            )
+        )
+        chex.assert_trees_all_close(
+            intensity_half, 0.25 * intensity_full, rtol=1e-12
+        )
+
+    def test_ewald_simulator_zero_occupancy_equals_absent_atom(self) -> None:
+        r"""Verify occupancy-0 atoms vanish from the Ewald pattern.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the
+        ``ewald_simulator`` kernel weights each atom's form factor by
+        its occupancy, so setting one basis atom's occupancy to zero
+        reproduces the pattern of the crystal with that atom deleted.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal_masked: CrystalStructure = self._cubic_crystal(
+            jnp.array([1.0, 0.0])
+        )
+        frac_single: Float[Array, "1 4"] = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+        crystal_absent: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_single,
+            cart_positions=frac_single,
+            cell_lengths=jnp.array([4.0, 4.0, 4.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+        pattern_masked: RHEEDPattern = ewald_simulator(
+            crystal_masked, energy_kev=15.0, theta_deg=2.0, hmax=2, kmax=2
+        )
+        pattern_absent: RHEEDPattern = ewald_simulator(
+            crystal_absent, energy_kev=15.0, theta_deg=2.0, hmax=2, kmax=2
+        )
+        chex.assert_trees_all_close(
+            pattern_masked.intensities,
+            pattern_absent.intensities,
+            atol=1e-10,
+        )
+
+    def test_sliced_crystal_potential_scales_with_occupancy(self) -> None:
+        r"""Verify slab potential slices scale with SlicedCrystal occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the
+        ``occupancies`` field carried by ``SlicedCrystal`` scales each
+        atom's projected potential, so a uniform occupancy of 0.5 halves
+        every potential sample produced by
+        ``sliced_crystal_to_projected_potential_slices``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        cart: Float[Array, "2 4"] = jnp.array(
+            [
+                [1.0, 1.0, 0.5, 14.0],
+                [3.0, 2.0, 1.5, 8.0],
+            ]
+        )
+        common: dict[str, Any] = {
+            "cart_positions": cart,
+            "cell_lengths": jnp.array([4.0, 4.0, 4.0]),
+            "cell_angles": jnp.array([90.0, 90.0, 90.0]),
+            "orientation": jnp.array([0, 0, 1]),
+            "depth": 4.0,
+            "x_extent": 4.0,
+            "y_extent": 4.0,
+        }
+        slab_full: SlicedCrystal = create_sliced_crystal(**common)
+        slab_half: SlicedCrystal = create_sliced_crystal(
+            **common, occupancies=jnp.array([0.5, 0.5])
+        )
+        potential_full: PotentialSlices = (
+            sliced_crystal_to_projected_potential_slices(
+                slab_full, slice_thickness=2.0, pixel_size=0.5
+            )
+        )
+        potential_half: PotentialSlices = (
+            sliced_crystal_to_projected_potential_slices(
+                slab_half, slice_thickness=2.0, pixel_size=0.5
+            )
+        )
+        chex.assert_trees_all_close(
+            potential_half.slices,
+            0.5 * potential_full.slices,
+            atol=1e-14,
+        )

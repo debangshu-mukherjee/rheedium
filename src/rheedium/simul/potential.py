@@ -48,6 +48,7 @@ def crystal_projected_potential(
     cell_dimensions_angstrom: Float[Array, "2"],
     absorption_fraction: scalar_float = 0.1,
     parameterization: str = "lobato",
+    occupancies: Float[Array, "N_atoms"] | None = None,
 ) -> Complex[Array, "H W"]:
     r"""Compute the complex projected potential for one slice.
 
@@ -71,6 +72,10 @@ def crystal_projected_potential(
     parameterization : str, optional
         Potential model: ``"lobato"`` or ``"kirkland"``. Default:
         ``"lobato"``.
+    occupancies : Float[Array, "N_atoms"] | None, optional
+        Per-atom site occupancies in [0, 1]; each atom's projected
+        potential is scaled by its occupancy. Default: None (all
+        sites fully occupied).
 
     Returns
     -------
@@ -84,7 +89,8 @@ def crystal_projected_potential(
        from ``cell_dimensions_angstrom`` and ``grid_shape``.
     2. For each atom: compute the minimum-image radial distance to
        every grid pixel and evaluate the projected atomic potential via
-       :func:`rheedium.simul.projected_potential`.
+       :func:`rheedium.simul.projected_potential`, scaled by the atom's
+       site occupancy.
     3. Sum contributions from all atoms with ``jax.vmap`` + ``jnp.sum``
        (differentiable through every atom).
     4. The real part is the elastic potential. The imaginary part is
@@ -94,6 +100,11 @@ def crystal_projected_potential(
     """
     absorption_fraction_arr: Float[Array, ""] = jnp.asarray(
         absorption_fraction, dtype=jnp.float64
+    )
+    occupancy_weights: Float[Array, "N_atoms"] = (
+        jnp.ones(atomic_positions_angstrom.shape[0], dtype=jnp.float64)
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
     )
     n_x: int = grid_shape[0]
     n_y: int = grid_shape[1]
@@ -111,20 +122,21 @@ def crystal_projected_potential(
     def _atom_contribution(
         atom_pos: Float[Array, "3"],
         atom_z: Int[Array, ""],
+        atom_occupancy: Float[Array, ""],
     ) -> Float[Array, "H W"]:
-        """Project a single atom's potential onto the grid."""
+        """Project a single atom's occupancy-weighted potential."""
         dx: Float[Array, "H W"] = xx - atom_pos[0]
         dy: Float[Array, "H W"] = yy - atom_pos[1]
         dx = dx - lx * jnp.round(dx / lx)
         dy = dy - ly * jnp.round(dy / ly)
         r: Float[Array, "H W"] = jnp.sqrt(dx**2 + dy**2)
-        v_atom: Float[Array, "H W"] = projected_potential(
+        v_atom: Float[Array, "H W"] = atom_occupancy * projected_potential(
             atom_z, r, parameterization
         )
         return v_atom
 
     contributions: Float[Array, "N_atoms H W"] = jax.vmap(_atom_contribution)(
-        atomic_positions_angstrom, atomic_numbers
+        atomic_positions_angstrom, atomic_numbers, occupancy_weights
     )
     v_real: Float[Array, "H W"] = jnp.sum(contributions, axis=0)
     v_abs: Float[Array, "H W"] = absorption_fraction_arr * v_real

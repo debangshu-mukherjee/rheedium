@@ -186,48 +186,40 @@ def _generate_surface_slab_fixtures(
 
 
 def _generate_reconstruction_fixtures(slab_001: CrystalStructure) -> None:
-    """Generate reconstruction fixtures from a declarative spec list."""
-    reconstruction_specs: tuple[
-        tuple[str, Int[NDArray, "2 2"], float, Float[NDArray, "N 3"]],
-        ...,
-    ] = (
-        (
-            "recon_2x2.npz",
-            np.array([[2, 0], [0, 2]], dtype=np.int32),
-            3.0,
-            np.zeros((1, 3), dtype=np.float64),
-        ),
-        (
-            "recon_no_disp.npz",
-            np.array([[1, 0], [0, 1]], dtype=np.int32),
-            3.0,
-            np.zeros((1, 3), dtype=np.float64),
-        ),
-        (
-            "recon_with_disp.npz",
-            np.array([[1, 0], [0, 1]], dtype=np.int32),
-            3.0,
-            np.array([[0.5, 0.0, 0.0]], dtype=np.float64),
-        ),
+    """Generate reconstruction fixtures via the signed-tiling builder."""
+    surface_depth: float = 3.0
+    recon_2x2: CrystalStructure = apply_surface_reconstruction(
+        slab=slab_001,
+        reconstruction_matrix=jnp.asarray([[2, 0], [0, 2]], dtype=jnp.int32),
+        surface_layer_depth_angstrom=jnp.asarray(surface_depth),
     )
+    _write_fixture("recon_2x2.npz", recon_2x2)
 
-    for (
-        name,
-        reconstruction_matrix,
-        surface_depth,
-        displacements,
-    ) in reconstruction_specs:
-        reconstructed: CrystalStructure = apply_surface_reconstruction(
-            slab=slab_001,
-            reconstruction_matrix=jnp.asarray(
-                reconstruction_matrix, dtype=jnp.int32
-            ),
-            surface_layer_depth_angstrom=jnp.asarray(
-                surface_depth, dtype=jnp.float64
-            ),
-            atomic_displacements=jnp.asarray(displacements, dtype=jnp.float64),
+    identity: Int[NDArray, "2 2"] = jnp.asarray(
+        [[1, 0], [0, 1]], dtype=jnp.int32
+    )
+    no_disp: CrystalStructure = apply_surface_reconstruction(
+        slab=slab_001,
+        reconstruction_matrix=identity,
+        surface_layer_depth_angstrom=jnp.asarray(surface_depth),
+    )
+    _write_fixture("recon_no_disp.npz", no_disp)
+
+    n_surface: int = int(
+        np.sum(
+            np.asarray(no_disp.cart_positions[:, 2])
+            >= float(no_disp.cart_positions[:, 2].max()) - surface_depth
         )
-        _write_fixture(name, reconstructed)
+    )
+    displacements: Float[NDArray, "N 3"] = np.zeros((n_surface, 3))
+    displacements[0] = np.array([0.5, 0.0, 0.0])
+    with_disp: CrystalStructure = apply_surface_reconstruction(
+        slab=slab_001,
+        reconstruction_matrix=identity,
+        surface_layer_depth_angstrom=jnp.asarray(surface_depth),
+        atomic_displacements=jnp.asarray(displacements, dtype=jnp.float64),
+    )
+    _write_fixture("recon_with_disp.npz", with_disp)
 
 
 def _generate_adsorbate_fixtures(slab_001: CrystalStructure) -> None:

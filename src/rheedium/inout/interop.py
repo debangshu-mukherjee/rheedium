@@ -30,13 +30,32 @@ from jaxtyping import Array, Float, Int, jaxtyped
 from numpy.typing import NDArray
 from pymatgen.core import Lattice, Structure
 
-from rheedium.types import CrystalStructure, XYZData, create_xyz_data
+from rheedium.types import (
+    CrystalStructure,
+    XYZData,
+    create_crystal_structure,
+    create_xyz_data,
+)
 from rheedium.ucell import build_cell_vectors
 
 from .crystal import xyz_to_crystal
 from .xyz import _ATOMIC_NUMBERS
 
 _Z_TO_SYMBOL: dict[int, str] = {v: k for k, v in _ATOMIC_NUMBERS.items()}
+
+
+def _with_occupancies(
+    crystal: CrystalStructure,
+    occupancies: Float[Array, "N"],
+) -> CrystalStructure:
+    """Rebuild a crystal with the given per-site occupancies attached."""
+    return create_crystal_structure(
+        frac_positions=crystal.frac_positions,
+        cart_positions=crystal.cart_positions,
+        cell_lengths=crystal.cell_lengths,
+        cell_angles=crystal.cell_angles,
+        occupancies=occupancies,
+    )
 
 
 def from_ase(atoms: Atoms) -> CrystalStructure:
@@ -81,6 +100,11 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
     Periodic boundary conditions (PBC) from the ASE Atoms are not
     preserved in CrystalStructure, which assumes full 3D periodicity.
 
+    ASE has no first-class site occupancy. If
+    ``atoms.info["occupancies"]`` is present (as written by
+    :func:`to_ase`), it is validated against the atom count and stored
+    in ``crystal.occupancies``; otherwise all sites are fully occupied.
+
     1. **Validate input** --
        Check cell is 3D and non-degenerate.
     2. **Extract data** --
@@ -89,6 +113,8 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
     3. **Convert** --
        Create XYZData and delegate to
        :func:`xyz_to_crystal`.
+    4. **Attach occupancies** --
+       Read ``atoms.info["occupancies"]`` when present.
 
     Examples
     --------
@@ -133,7 +159,18 @@ def from_ase(atoms: Atoms) -> CrystalStructure:
         lattice=lattice,
     )
 
-    return xyz_to_crystal(xyz_data)
+    crystal: CrystalStructure = xyz_to_crystal(xyz_data)
+    info_occupancies = atoms.info.get("occupancies")
+    if info_occupancies is not None:
+        occupancies: Float[Array, "N"] = jnp.asarray(
+            np.asarray(info_occupancies, dtype=np.float64)
+        )
+        if occupancies.shape != (positions.shape[0],):
+            raise ValueError(
+                "atoms.info['occupancies'] must have one entry per atom"
+            )
+        crystal = _with_occupancies(crystal, occupancies)
+    return crystal
 
 
 @jaxtyped(typechecker=beartype)
@@ -166,12 +203,18 @@ def to_ase(crystal: CrystalStructure) -> Atoms:
     matching the assumption in rheedium that crystal structures are
     periodic.
 
+    ASE has no first-class site occupancy, so the crystal's
+    ``occupancies`` array is stashed in ``atoms.info["occupancies"]``;
+    :func:`from_ase` reads it back for a lossless round trip.
+
     1. **Reconstruct cell** --
        Build cell vectors from lengths and angles.
     2. **Convert to NumPy** --
        Extract positions and atomic numbers.
     3. **Create Atoms** --
        ASE Atoms with ``pbc=True``.
+    4. **Stash occupancies** --
+       Store ``crystal.occupancies`` in ``atoms.info``.
 
     Examples
     --------
@@ -199,12 +242,19 @@ def to_ase(crystal: CrystalStructure) -> Atoms:
     )
     cell_np: Float[NDArray, "3 3"] = np.asarray(cell)
 
-    return Atoms(
+    atoms: Atoms = Atoms(
         numbers=atomic_numbers_np,
         positions=positions_np,
         cell=cell_np,
         pbc=True,
     )
+    if crystal.occupancies is not None:
+        # ASE has no first-class site occupancy; stash the array in
+        # atoms.info so from_ase can round-trip it.
+        atoms.info["occupancies"] = np.asarray(
+            crystal.occupancies, dtype=np.float64
+        )
+    return atoms
 
 
 def from_pymatgen(structure: Structure) -> CrystalStructure:
@@ -236,17 +286,22 @@ def from_pymatgen(structure: Structure) -> CrystalStructure:
     The conversion extracts:
 
     - ``structure.lattice.matrix`` : Lattice vectors
-    - ``structure.cart_coords`` : Cartesian atomic positions
-    - ``site.specie.Z`` : Atomic numbers for each site
+    - ``site.coords`` : Cartesian position of each site
+    - ``site.species`` : Species dict of each site
+
+    Disordered (partially occupied) sites are supported: each
+    ``(element, occupancy)`` entry of a site's species dict becomes a
+    co-located atom with that element's integral Z and the fractional
+    occupancy stored in ``crystal.occupancies``.
 
     1. **Validate input** --
        Check input type.
     2. **Extract data** --
-       Lattice matrix, Cartesian coords, atomic
-       numbers from pymatgen Structure.
+       Lattice matrix plus, per site, one atom per species-dict entry
+       with its occupancy.
     3. **Convert** --
        Create XYZData and delegate to
-       :func:`xyz_to_crystal`.
+       :func:`xyz_to_crystal`, then attach the occupancy column.
 
     Examples
     --------
@@ -266,13 +321,24 @@ def from_pymatgen(structure: Structure) -> CrystalStructure:
         structure.lattice.matrix, dtype=jnp.float64
     )
 
-    positions: Float[Array, "N 3"] = jnp.asarray(
-        structure.cart_coords, dtype=jnp.float64
-    )
+    positions_list: list[NDArray] = []
+    atomic_numbers_list: list[int] = []
+    occupancies_list: list[float] = []
+    for site in structure:
+        site_coords: NDArray = np.asarray(site.coords, dtype=np.float64)
+        for element, occupancy in site.species.items():
+            positions_list.append(site_coords)
+            atomic_numbers_list.append(int(element.Z))
+            occupancies_list.append(float(occupancy))
 
-    atomic_numbers_list: list[int] = [site.specie.Z for site in structure]
+    positions: Float[Array, "N 3"] = jnp.asarray(
+        np.stack(positions_list, axis=0), dtype=jnp.float64
+    )
     atomic_numbers: Int[Array, "N"] = jnp.array(
         atomic_numbers_list, dtype=jnp.int32
+    )
+    occupancies: Float[Array, "N"] = jnp.array(
+        occupancies_list, dtype=jnp.float64
     )
 
     xyz_data: XYZData = create_xyz_data(
@@ -281,7 +347,8 @@ def from_pymatgen(structure: Structure) -> CrystalStructure:
         lattice=lattice,
     )
 
-    return xyz_to_crystal(xyz_data)
+    crystal: CrystalStructure = xyz_to_crystal(xyz_data)
+    return _with_occupancies(crystal, occupancies)
 
 
 @jaxtyped(typechecker=beartype)
@@ -310,12 +377,16 @@ def to_pymatgen(crystal: CrystalStructure) -> Structure:
     - Lattice from cell_lengths and cell_angles (reconstructed via
       build_cell_vectors)
     - Fractional coordinates from frac_positions
-    - Element species from atomic numbers
+    - Element species from atomic numbers, with per-site occupancies
+      mapped to pymatgen species dictionaries (``{symbol: occupancy}``)
+      so partially occupied sites survive the conversion
 
     1. **Reconstruct cell** --
        Build cell vectors from lengths and angles.
     2. **Map species** --
-       Convert atomic numbers to element symbols.
+       Convert atomic numbers to element symbols; when the crystal
+       carries occupancies, each site becomes a ``{symbol: occupancy}``
+       species dict (pymatgen's native partial-occupancy form).
     3. **Create Structure** --
        pymatgen Structure from lattice, species, and
        fractional coordinates.
@@ -345,7 +416,17 @@ def to_pymatgen(crystal: CrystalStructure) -> Structure:
         crystal.frac_positions[:, :3]
     )
 
-    species: list[str] = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
+    symbols: list[str] = [_Z_TO_SYMBOL.get(z, f"X{z}") for z in atomic_numbers]
+    if crystal.occupancies is None:
+        species: list[str] | list[dict[str, float]] = symbols
+    else:
+        occupancies_np: Float[NDArray, "N"] = np.asarray(
+            crystal.occupancies, dtype=np.float64
+        )
+        species = [
+            {symbol: float(occupancy)}
+            for symbol, occupancy in zip(symbols, occupancies_np, strict=True)
+        ]
 
     return Structure(lattice_pmg, species, frac_coords)
 

@@ -208,6 +208,12 @@ def parse_cif_and_scrape(
     )
     filtered_cart_xyz: Float[Array, "m 3"] = cart_xyz[mask]
     filtered_atomic_numbers: Float[Array, "m 1"] = atomic_numbers[mask]
+    source_occupancies: Float[Array, "n"] = (
+        jnp.ones(cart_xyz.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
+    filtered_occupancies: Float[Array, "m"] = source_occupancies[mask]
     cell_vectors: Float[Array, "3 3"] = rh.ucell.build_cell_vectors(
         crystal.cell_lengths[0],
         crystal.cell_lengths[1],
@@ -231,6 +237,7 @@ def parse_cif_and_scrape(
         cart_positions=filtered_cart_positions,
         cell_lengths=crystal.cell_lengths,
         cell_angles=crystal.cell_angles,
+        occupancies=filtered_occupancies,
     )
     return filtered_crystal
 

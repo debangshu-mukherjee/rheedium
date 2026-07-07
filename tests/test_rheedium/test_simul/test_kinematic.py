@@ -1045,3 +1045,88 @@ class TestSrTiO3StructureFactor(chex.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestSimpleStructureFactorOccupancy(chex.TestCase):
+    """Occupancy weighting in the simplified structure factor.
+
+    :see: :func:`~rheedium.simul.simple_structure_factor`
+    """
+
+    def test_occupancy_scales_simplified_form_factor(self) -> None:
+        r"""Verify f_j = occ_j * Z_j in the simplified structure factor.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the optional
+        per-site occupancies multiply the Z-approximation form factors,
+        so a half-occupied site contributes half its atomic number to
+        the scattering amplitude and the single-site intensity drops by
+        a factor of four.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        reciprocal_vector: Float[Array, "3"] = jnp.array([1.5, 0.0, 0.0])
+        positions: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_numbers: Integer[Array, "1"] = jnp.array([14])
+        intensity_full: Float[Array, ""] = kinematic_structure_factor(
+            reciprocal_vector, positions, atomic_numbers
+        )
+        intensity_half: Float[Array, ""] = kinematic_structure_factor(
+            reciprocal_vector,
+            positions,
+            atomic_numbers,
+            jnp.array([0.5]),
+        )
+        chex.assert_trees_all_close(
+            intensity_half, 0.25 * intensity_full, rtol=1e-12
+        )
+
+    def test_zero_occupancy_site_contributes_nothing(self) -> None:
+        r"""Verify an occupancy-0 site equals an absent site exactly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a site with
+        occupancy zero contributes exactly zero scattering amplitude, so
+        the intensity equals that of the crystal with the site removed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_kinematic``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        reciprocal_vector: Float[Array, "3"] = jnp.array([1.5, 0.7, 0.0])
+        positions: Float[Array, "2 3"] = jnp.array(
+            [[0.0, 0.0, 0.0], [2.0, 1.5, 2.5]]
+        )
+        atomic_numbers: Integer[Array, "2"] = jnp.array([14, 8])
+        intensity_masked: Float[Array, ""] = kinematic_structure_factor(
+            reciprocal_vector,
+            positions,
+            atomic_numbers,
+            jnp.array([1.0, 0.0]),
+        )
+        intensity_absent: Float[Array, ""] = kinematic_structure_factor(
+            reciprocal_vector, positions[:1], atomic_numbers[:1]
+        )
+        chex.assert_trees_all_close(
+            intensity_masked, intensity_absent, rtol=1e-12
+        )

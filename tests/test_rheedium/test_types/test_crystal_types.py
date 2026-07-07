@@ -1949,3 +1949,86 @@ class TestPyTreeIntegration(chex.TestCase, parameterized.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestEwaldDataOccupancies(chex.TestCase):
+    """Occupancy metadata on the EwaldData PyTree.
+
+    :see: :func:`~rheedium.types.create_ewald_data`
+    """
+
+    def test_factory_stores_occupancies_as_float64(self) -> None:
+        r"""Verify create_ewald_data converts and stores occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the optional
+        ``occupancies`` argument is converted to float64 and stored on
+        the returned ``EwaldData`` alongside the atomic positions and
+        numbers used by the continuous-rod paths.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        n_points: int = 2
+        ewald: EwaldData = create_ewald_data(
+            wavelength_ang=jnp.asarray(0.05),
+            k_magnitude=jnp.asarray(125.0),
+            sphere_radius=jnp.asarray(125.0),
+            recip_vectors=jnp.eye(3),
+            hkl_grid=jnp.zeros((n_points, 3), dtype=jnp.int32),
+            g_vectors=jnp.zeros((n_points, 3)),
+            g_magnitudes=jnp.zeros(n_points),
+            structure_factors=jnp.zeros(n_points, dtype=jnp.complex128),
+            intensities=jnp.zeros(n_points),
+            atom_positions=jnp.zeros((1, 3)),
+            atomic_numbers=jnp.array([14], dtype=jnp.int32),
+            occupancies=jnp.array([0.5], dtype=jnp.float32),
+        )
+        assert ewald.occupancies is not None
+        self.assertEqual(ewald.occupancies.dtype, jnp.float64)
+        np.testing.assert_allclose(np.asarray(ewald.occupancies), [0.5])
+
+    def test_factory_defaults_occupancies_to_none(self) -> None:
+        r"""Verify occupancies default to None on hand-built EwaldData.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: omitting the
+        ``occupancies`` argument leaves the field ``None``, which every
+        consumer interprets as fully occupied sites.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_crystal_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        n_points: int = 2
+        ewald: EwaldData = create_ewald_data(
+            wavelength_ang=jnp.asarray(0.05),
+            k_magnitude=jnp.asarray(125.0),
+            sphere_radius=jnp.asarray(125.0),
+            recip_vectors=jnp.eye(3),
+            hkl_grid=jnp.zeros((n_points, 3), dtype=jnp.int32),
+            g_vectors=jnp.zeros((n_points, 3)),
+            g_magnitudes=jnp.zeros(n_points),
+            structure_factors=jnp.zeros(n_points, dtype=jnp.complex128),
+            intensities=jnp.zeros(n_points),
+        )
+        self.assertIsNone(ewald.occupancies)

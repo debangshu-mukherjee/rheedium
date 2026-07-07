@@ -1147,3 +1147,60 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         # column n-1 (distance L - (n-1) dx = dx through the boundary).
         chex.assert_trees_all_close(v_real[:, 1], v_real[:, -1], rtol=1e-10)
         chex.assert_trees_all_close(v_real[1, :], v_real[-1, :], rtol=1e-10)
+
+
+class TestCrystalProjectedPotentialOccupancy(chex.TestCase):
+    """Occupancy weighting of the projected slice potential.
+
+    :see: :func:`~rheedium.simul.crystal_projected_potential`
+    """
+
+    def test_occupancy_scales_projected_potential_linearly(self) -> None:
+        r"""Verify the projected potential scales as occ * v_Z(r).
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the optional
+        per-atom occupancies scale each atom's projected potential
+        linearly, so half occupancy halves the whole slice potential and
+        zero occupancy contributes exactly nothing.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_multislice``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        positions: Float[Array, "1 3"] = jnp.array([[1.0, 1.0, 0.0]])
+        atomic_numbers: Int[Array, "1"] = jnp.array([14], dtype=jnp.int32)
+        grid_shape: tuple[int, int] = (16, 16)
+        cell_dimensions: Float[Array, "2"] = jnp.array([4.0, 4.0])
+        potential_full: Complex[Array, "16 16"] = crystal_projected_potential(
+            positions, atomic_numbers, grid_shape, cell_dimensions
+        )
+        potential_half: Complex[Array, "16 16"] = crystal_projected_potential(
+            positions,
+            atomic_numbers,
+            grid_shape,
+            cell_dimensions,
+            occupancies=jnp.array([0.5]),
+        )
+        potential_zero: Complex[Array, "16 16"] = crystal_projected_potential(
+            positions,
+            atomic_numbers,
+            grid_shape,
+            cell_dimensions,
+            occupancies=jnp.array([0.0]),
+        )
+        chex.assert_trees_all_close(
+            potential_half, 0.5 * potential_full, rtol=1e-12
+        )
+        chex.assert_trees_all_close(
+            jnp.max(jnp.abs(potential_zero)), jnp.asarray(0.0), atol=0.0
+        )

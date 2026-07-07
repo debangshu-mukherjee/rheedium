@@ -42,7 +42,7 @@ JIT while preserving identity-like gradient flow on valid inputs.
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Final, NamedTuple, Union
+from beartype.typing import Final, NamedTuple, Optional, Union
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import float_jax_image, scalar_float, scalar_num
@@ -409,6 +409,10 @@ class SlicedCrystal(eqx.Module):
     y_extent : scalar_float
         Lateral extent of the slab in the y-direction in Ångstroms.
         Should be >100 Å for realistic RHEED simulation.
+    occupancies : Float[Array, "N"] | None
+        Per-atom site occupancies in [0, 1]. Each atom's projected
+        potential is weighted by its occupancy in the multislice
+        conversion. ``None`` means fully occupied (all ones).
 
     Notes
     -----
@@ -452,6 +456,7 @@ class SlicedCrystal(eqx.Module):
     depth: scalar_float
     x_extent: scalar_float
     y_extent: scalar_float
+    occupancies: Float[Array, "N"] | None = None
 
 
 @jaxtyped(typechecker=beartype)
@@ -463,6 +468,7 @@ def create_sliced_crystal(
     depth: scalar_float,
     x_extent: scalar_float,
     y_extent: scalar_float,
+    occupancies: Optional[Float[Array, "N"]] = None,
 ) -> SlicedCrystal:
     """Create a SlicedCrystal instance with data validation.
 
@@ -484,6 +490,9 @@ def create_sliced_crystal(
         Lateral extent in x-direction in Ångstroms.
     y_extent : scalar_float
         Lateral extent in y-direction in Ångstroms.
+    occupancies : Optional[Float[Array, "N"]], optional
+        Per-atom site occupancies in [0, 1]. If omitted, all sites are
+        treated as fully occupied. Default: None.
 
     Returns
     -------
@@ -500,6 +509,8 @@ def create_sliced_crystal(
     - Recommend x_extent and y_extent >= 100 Angstroms.
     - Validate atomic numbers (cart_positions[:, 3]) are in
       valid range [1, 118].
+    - Validate occupancies, when given, have shape (N,) and lie in
+      [0, 1].
     """
     cart_positions: Float[Array, "N 4"] = jnp.asarray(
         cart_positions, dtype=jnp.float64
@@ -514,6 +525,11 @@ def create_sliced_crystal(
     depth: Float[Array, ""] = jnp.asarray(depth, dtype=jnp.float64)
     x_extent: Float[Array, ""] = jnp.asarray(x_extent, dtype=jnp.float64)
     y_extent: Float[Array, ""] = jnp.asarray(y_extent, dtype=jnp.float64)
+    occupancies_arr: Optional[Float[Array, "N"]] = (
+        None
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
+    )
 
     def _validate_and_create() -> SlicedCrystal:
         """Validate and create a SlicedCrystal instance."""
@@ -531,6 +547,8 @@ def create_sliced_crystal(
             raise ValueError("cell_angles must have shape (3,)")
         if orientation.shape != (3,):
             raise ValueError("orientation must have shape (3,)")
+        if occupancies_arr is not None and occupancies_arr.shape != (n_atoms,):
+            raise ValueError("occupancies must have shape (N,)")
 
         checked_cart_positions: Float[Array, "N 4"] = eqx.error_if(
             cart_positions,
@@ -568,6 +586,15 @@ def create_sliced_crystal(
             y_extent <= 0,
             "y_extent must be positive",
         )
+        checked_occupancies: Optional[Float[Array, "N"]] = (
+            None
+            if occupancies_arr is None
+            else eqx.error_if(
+                occupancies_arr,
+                jnp.any((occupancies_arr < 0.0) | (occupancies_arr > 1.0)),
+                "occupancies must be between 0 and 1",
+            )
+        )
 
         return SlicedCrystal(
             cart_positions=checked_cart_positions,
@@ -577,6 +604,7 @@ def create_sliced_crystal(
             depth=checked_depth,
             x_extent=checked_x_extent,
             y_extent=checked_y_extent,
+            occupancies=checked_occupancies,
         )
 
     validated_sliced_crystal: SlicedCrystal = _validate_and_create()

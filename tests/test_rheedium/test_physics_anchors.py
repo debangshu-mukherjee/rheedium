@@ -421,6 +421,246 @@ def test_slab_density(orientation: tuple[int, int, int]) -> None:
         assert np.ptp(band[:, 0]) >= 0.8 * x_extent
 
 
+def _bulk_crystal(
+    frac: np.ndarray,
+    z_numbers: np.ndarray,
+    a: float,
+    b: float,
+    c: float,
+) -> Any:
+    """Build a simple orthorhombic bulk crystal for slab-mesh tests."""
+    cell = np.asarray(build_cell_vectors(a, b, c, 90.0, 90.0, 90.0))
+    cart = np.asarray(frac) @ cell
+    return create_crystal_structure(
+        frac_positions=jnp.asarray(np.column_stack([frac, z_numbers])),
+        cart_positions=jnp.asarray(np.column_stack([cart, z_numbers])),
+        cell_lengths=jnp.asarray([a, b, c]),
+        cell_angles=jnp.asarray([90.0, 90.0, 90.0]),
+    )
+
+
+def test_surface_mesh() -> None:
+    r"""create_surface_slab returns the true primitive (hkl) mesh.
+
+    Extended Summary
+    ----------------
+    WP7.1 acceptance anchor: cutting diamond Si along (111) yields the
+    primitive hexagonal surface mesh (|a| = |b| = a/sqrt2 = 3.840
+    Angstroms, gamma = 120 degrees), the returned in-plane vectors are
+    genuine lattice translations (translating the slab atoms by a or b
+    maps the atom set onto itself within 1e-6 Angstrom under periodic
+    wrapping), the slab reproduces bulk atomic density, and an
+    orthorhombic 3x4x5 cell cut along (100) exposes the 4x5 in-plane cell.
+
+    Notes
+    -----
+    It builds the diamond-Si and orthorhombic bulk cells inside the test
+    body and compares against the closed-form primitive-mesh geometry,
+    with no reference to rheedium's own slab arithmetic beyond the
+    function under test.
+
+    :see: :class:`~.test_surface_builder.TestCreateSurfaceSlab`
+    """
+    from rheedium.procs.surface_builder import create_surface_slab
+
+    si_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.0],
+            [0.5, 0.0, 0.5],
+            [0.0, 0.5, 0.5],
+            [0.25, 0.25, 0.25],
+            [0.75, 0.75, 0.25],
+            [0.75, 0.25, 0.75],
+            [0.25, 0.75, 0.75],
+        ]
+    )
+    a_si = 5.431
+    si = _bulk_crystal(si_frac, np.full(8, 14.0), a_si, a_si, a_si)
+
+    slab = create_surface_slab(
+        si, jnp.asarray([1, 1, 1], dtype=jnp.int32), 20.0, 15.0
+    )
+    lengths = np.asarray(slab.cell_lengths)
+    angles = np.asarray(slab.cell_angles)
+    assert abs(lengths[0] - 3.840) < 0.01
+    assert abs(lengths[1] - 3.840) < 0.01
+    assert abs(angles[2] - 120.0) < 0.1
+
+    cell = np.asarray(build_cell_vectors(*lengths, *angles))
+    cart = np.asarray(slab.cart_positions[:, :3])
+    z = np.asarray(slab.cart_positions[:, 3])
+    inv = np.linalg.inv(cell)
+    keys = {
+        (round(f[0] % 1.0, 4), round(f[1] % 1.0, 4), round(f[2], 4), int(zz))
+        for f, zz in zip(cart @ inv, z, strict=True)
+    }
+    for lattice_vector in (cell[0], cell[1]):
+        shifted = cart + lattice_vector
+        shifted_frac = shifted @ inv
+        for f, zz in zip(shifted_frac, z, strict=True):
+            key = (
+                round(f[0] % 1.0, 4),
+                round(f[1] % 1.0, 4),
+                round(f[2], 4),
+                int(zz),
+            )
+            assert key in keys
+
+    # Bulk-density anchor via exact-layer (n_layers) mode.
+    n_slab = create_surface_slab(
+        si,
+        jnp.asarray([1, 1, 1], dtype=jnp.int32),
+        n_layers=6,
+        vacuum_gap_angstrom=15.0,
+    )
+    ln = np.asarray(n_slab.cell_lengths)
+    an = np.asarray(n_slab.cell_angles)
+    celln = np.asarray(build_cell_vectors(*ln, *an))
+    area = np.linalg.norm(np.cross(celln[0], celln[1]))
+    d_layer = (ln[2] - 15.0) / 6.0
+    n_atoms = n_slab.cart_positions.shape[0]
+    bulk_density = 8.0 / a_si**3
+    slab_density = n_atoms / (area * 6.0 * d_layer)
+    assert abs(slab_density / bulk_density - 1.0) < 0.02
+
+    ortho = _bulk_crystal(
+        np.array([[0.0, 0.0, 0.0]]), np.array([14.0]), 3.0, 4.0, 5.0
+    )
+    s100 = create_surface_slab(
+        ortho, jnp.asarray([1, 0, 0], dtype=jnp.int32), 12.0, 5.0
+    )
+    in_plane = np.sort(np.asarray(s100.cell_lengths)[:2])
+    np.testing.assert_allclose(in_plane, np.array([4.0, 5.0]), atol=1e-6)
+
+
+@pytest.mark.parametrize(
+    ("builder_name", "matrix", "rod"),
+    [
+        ("si111_7x7", (7, 0, 0, 7), (1, 0)),
+        ("si100_2x1", (2, 0, 0, 1), (1, 0)),
+        ("gaas001_2x4", (2, 0, 0, 4), (1, 0)),
+        ("gaas001_2x4", (2, 0, 0, 4), (0, 1)),
+        ("srtio3_001_2x1", (2, 0, 0, 1), (1, 0)),
+    ],
+)
+def test_reconstruction_rods(
+    builder_name: str,
+    matrix: tuple[int, int, int, int],
+    rod: tuple[int, int],
+) -> None:
+    r"""Reconstructions carry fractional-order rods absent when ideal.
+
+    Extended Summary
+    ----------------
+    WP7.3 acceptance anchor: each library reconstruction has a nonzero
+    structure factor at its fractional-order rod (1/7 for Si 7x7, 1/2 for
+    Si 2x1 and STO 2x1, 1/2 and 1/4 for GaAs 2x4), while the same
+    supercell built from the ideal (unreconstructed) surface -- via
+    ``apply_surface_reconstruction`` with no displacement or adatoms --
+    has a vanishing structure factor there. The supercell atom count also
+    equals |det M| times the base count plus the added adatoms.
+
+    Notes
+    -----
+    The fractional rod ``G = h b1 + k b2`` uses the supercell reciprocal
+    vectors, so the ideal-slab structure factor vanishes by exact
+    sub-cell periodicity while the reconstruction breaks it. The
+    structure factor is evaluated with the production kinematic kernel.
+
+    :see: :class:`~.test_library.TestSi111_7x7`
+    """
+    import rheedium.procs.library as lib
+    from rheedium.procs.surface_builder import apply_surface_reconstruction
+
+    builder = getattr(lib, builder_name)
+    recon = builder()
+    base_builder = {
+        "si111_7x7": lambda: lib.si111_1x1(),
+        "si100_2x1": lambda: lib.create_surface_slab(
+            lib._build_bulk_crystal(
+                lib._SI_DIAMOND_FRAC,
+                lib._SI_DIAMOND_Z,
+                5.431,
+                5.431,
+                5.431,
+                90.0,
+                90.0,
+                90.0,
+            ),
+            jnp.asarray([1, 0, 0], dtype=jnp.int32),
+            20.0,
+            15.0,
+        ),
+        "gaas001_2x4": lambda: lib.create_surface_slab(
+            lib._build_bulk_crystal(
+                lib._GAAS_ZB_FRAC,
+                lib._GAAS_ZB_Z,
+                5.6533,
+                5.6533,
+                5.6533,
+                90.0,
+                90.0,
+                90.0,
+            ),
+            jnp.asarray([0, 0, 1], dtype=jnp.int32),
+            20.0,
+            15.0,
+        ),
+        "srtio3_001_2x1": lambda: lib.create_surface_slab(
+            lib._build_bulk_crystal(
+                lib._STO_PV_FRAC,
+                lib._STO_PV_Z,
+                3.905,
+                3.905,
+                3.905,
+                90.0,
+                90.0,
+                90.0,
+            ),
+            jnp.asarray([0, 0, 1], dtype=jnp.int32),
+            20.0,
+            15.0,
+        ),
+    }[builder_name]
+    base = base_builder()
+    m = jnp.asarray(
+        [[matrix[0], matrix[1]], [matrix[2], matrix[3]]], dtype=jnp.int32
+    )
+    ideal = apply_surface_reconstruction(base, m, 0.0)
+
+    det_m = abs(matrix[0] * matrix[3] - matrix[1] * matrix[2])
+    n_adatoms = recon.cart_positions.shape[0] - ideal.cart_positions.shape[0]
+    assert recon.cart_positions.shape[0] == (
+        det_m * base.cart_positions.shape[0] + n_adatoms
+    )
+    assert n_adatoms >= 0
+
+    def _rod_amplitude(crystal: Any) -> float:
+        recip = np.asarray(
+            reciprocal_lattice_vectors(
+                *crystal.cell_lengths, *crystal.cell_angles
+            )
+        )
+        g_vec = jnp.asarray(rod[0] * recip[0] + rod[1] * recip[1])
+        f = _compute_structure_factor_single(
+            g_vector=g_vec,
+            atom_positions=crystal.cart_positions[:, :3],
+            atomic_numbers=crystal.cart_positions[:, 3].astype(jnp.int32),
+            temperature=300.0,
+        )
+        return float(jnp.abs(f))
+
+    ideal_amp = _rod_amplitude(ideal)
+    recon_amp = _rod_amplitude(recon)
+    assert ideal_amp < 1e-6
+    assert recon_amp > 1e-2
+
+    # No atom floats more than 3 A above the next-highest layer.
+    z_layers = np.unique(np.round(np.asarray(recon.cart_positions[:, 2]), 3))
+    assert float(z_layers[-1] - z_layers[-2]) <= 3.0
+
+
 def test_ewald_default_tolerance_matches_beam_physics() -> None:
     r"""Default Ewald tolerance is 3 sigma of the physical shell at 20 kV.
 
@@ -1088,3 +1328,250 @@ def test_flat_step_fresnel() -> None:
         # absorbing caps only remove flux
         assert total_400 <= 1.0
         assert total_800 <= 1.0
+
+
+def test_occupancy_weights_structure_factor_exactly() -> None:
+    r"""A site with occupancy w scatters with amplitude exactly w * f_Z(q).
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: partial site
+    occupancy is a linear amplitude weight on the atomic form factor.
+    A single silicon site at occupancy 0.5 must produce a structure
+    factor of exactly ``0.5 * f_Si(q)`` (the pre-fix effective-Z
+    encoding produced ``f_N(q)`` instead, 16-21 percent off with the
+    wrong q-dependence), occupancy 0.0 must contribute exactly zero,
+    and the gradient of a spot intensity with respect to the occupancy
+    must be finite and nonzero (``dI/dw = 2 w f^2``).
+
+    Notes
+    -----
+    It evaluates ``_compute_structure_factor_single`` for a one-atom
+    silicon crystal at several scattering vectors and compares against
+    the full-occupancy reference amplitude scaled by the occupancy.
+
+    Numerical expectations are checked with tight tolerance-aware
+    closeness assertions because the weighting is algebraically exact,
+    and the gradient leg checks the analytic value ``2 w |F_full|^2``.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_physics_anchors``, so the Test Reference
+    exposes both the guarantee and the implementation path.
+
+    :see: :func:`~rheedium.simul.ewald._compute_structure_factor_single`
+    """
+    atom_positions = jnp.array([[0.0, 0.0, 0.0]])
+    atomic_numbers = jnp.array([14], dtype=jnp.int32)
+    temperature = 300.0
+    for q in (
+        jnp.array([0.8, 0.0, 0.0]),
+        jnp.array([1.157, 0.4, 0.2]),
+        jnp.array([0.0, 2.5, 1.0]),
+    ):
+        f_full = _compute_structure_factor_single(
+            g_vector=q,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=temperature,
+        )
+        f_half = _compute_structure_factor_single(
+            g_vector=q,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=temperature,
+            occupancies=jnp.array([0.5]),
+        )
+        f_zero = _compute_structure_factor_single(
+            g_vector=q,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=temperature,
+            occupancies=jnp.array([0.0]),
+        )
+        np.testing.assert_allclose(
+            complex(f_half), 0.5 * complex(f_full), rtol=1e-12
+        )
+        assert complex(f_zero) == 0.0 + 0.0j
+
+    q_anchor = jnp.array([1.157, 0.4, 0.2])
+    f_full_anchor = _compute_structure_factor_single(
+        g_vector=q_anchor,
+        atom_positions=atom_positions,
+        atomic_numbers=atomic_numbers,
+        temperature=temperature,
+    )
+
+    def spot_intensity(occupancy: float) -> jnp.ndarray:
+        amplitude = _compute_structure_factor_single(
+            g_vector=q_anchor,
+            atom_positions=atom_positions,
+            atomic_numbers=atomic_numbers,
+            temperature=temperature,
+            occupancies=jnp.array([occupancy]),
+        )
+        return jnp.abs(amplitude) ** 2
+
+    gradient = jax.grad(spot_intensity)(0.5)
+    assert bool(jnp.isfinite(gradient))
+    expected_gradient = 2.0 * 0.5 * abs(complex(f_full_anchor)) ** 2
+    np.testing.assert_allclose(float(gradient), expected_gradient, rtol=1e-10)
+
+
+def test_antisite_pair_scatters_as_weighted_form_factors() -> None:
+    r"""An antisite at fraction x scatters as (1-x) f_A + x f_B.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: the
+    two-co-located-sites representation produced by
+    ``apply_antisite_field`` reproduces the virtual-crystal scattering
+    amplitude ``(1 - x) f_host(q) + x f_substitute(q)`` at the mixed
+    site, because the pair's occupancies are complementary and each
+    weights its own element's true form factor.
+
+    Notes
+    -----
+    It applies an antisite fraction of 0.3 (silicon host, germanium
+    substitute) to a one-atom crystal and evaluates the production
+    structure-factor kernel over the resulting two co-located sites.
+
+    The reference is assembled from independent
+    ``atomic_scattering_factor`` evaluations of the two elements, so the
+    check exercises the exact identity rather than rheedium's own
+    summed output.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_physics_anchors``, so the Test Reference
+    exposes both the guarantee and the implementation path.
+
+    :see: :func:`~rheedium.procs.apply_antisite_field`
+    """
+    from rheedium.procs.crystal_defects import apply_antisite_field
+    from rheedium.simul.form_factors import atomic_scattering_factor
+
+    frac = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+    cell_lengths = jnp.array([5.43, 5.43, 5.43])
+    cell_angles = jnp.array([90.0, 90.0, 90.0])
+    crystal = create_crystal_structure(frac, frac, cell_lengths, cell_angles)
+    mixing_fraction = 0.3
+    antisite = apply_antisite_field(
+        crystal,
+        jnp.array([mixing_fraction]),
+        jnp.array([32.0]),
+    )
+    assert antisite.cart_positions.shape[0] == 2
+    np.testing.assert_allclose(
+        np.asarray(antisite.cart_positions[:, 3]), np.array([14.0, 32.0])
+    )
+
+    q_vector = jnp.array([1.157, 0.3, 0.4])
+    pair_amplitude = _compute_structure_factor_single(
+        g_vector=q_vector,
+        atom_positions=antisite.cart_positions[:, :3],
+        atomic_numbers=antisite.cart_positions[:, 3].astype(jnp.int32),
+        temperature=300.0,
+        occupancies=antisite.occupancies,
+    )
+    f_host = jnp.squeeze(
+        atomic_scattering_factor(
+            atomic_number=jnp.asarray(14),
+            q_vector=q_vector,
+            temperature=300.0,
+            is_surface=False,
+        )
+    )
+    f_substitute = jnp.squeeze(
+        atomic_scattering_factor(
+            atomic_number=jnp.asarray(32),
+            q_vector=q_vector,
+            temperature=300.0,
+            is_surface=False,
+        )
+    )
+    expected = (
+        (1.0 - mixing_fraction) * f_host + mixing_fraction * f_substitute
+    ) * jnp.exp(1j * jnp.dot(q_vector, antisite.cart_positions[0, :3]))
+    np.testing.assert_allclose(
+        complex(pair_amplitude), complex(expected), rtol=1e-12
+    )
+
+
+def test_occupancy_weighting_survives_ewald_rod_paths() -> None:
+    r"""Occupancy weighting reaches both Ewald reflection modes.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: a crystal at
+    uniform occupancy 0.5 yields exactly one quarter of the
+    full-occupancy intensity through ``build_ewald_data`` followed by
+    ``ewald_allowed_reflections`` in both the binary mode (stored
+    integer-l grid intensities) and the finite-domain mode, whose
+    continuous rod-intersection intensities are re-evaluated by
+    ``rod_base_intensities`` from the occupancies stored on
+    ``EwaldData``.
+
+    Notes
+    -----
+    It builds two EwaldData instances differing only in occupancy and
+    compares the per-slot intensities of the allowed reflections; the
+    quarter ratio is exact because the amplitude weight is linear.
+
+    Numerical expectations are checked with tight tolerance-aware
+    closeness assertions, which is appropriate for an algebraically
+    exact scaling through floating-point kernels.
+
+    The documented check is rendered from
+    ``tests.test_rheedium.test_physics_anchors``, so the Test Reference
+    exposes both the guarantee and the implementation path.
+
+    :see: :func:`~rheedium.simul.build_ewald_data`
+    :see: :func:`~rheedium.simul.ewald_allowed_reflections`
+    """
+    frac = jnp.array([[0.0, 0.0, 0.0, 14.0]])
+    cell_lengths = jnp.array([3.0, 3.0, 3.0])
+    cell_angles = jnp.array([90.0, 90.0, 90.0])
+
+    def build(occupancy: float) -> Any:
+        crystal = create_crystal_structure(
+            frac,
+            frac,
+            cell_lengths,
+            cell_angles,
+            occupancies=jnp.array([occupancy]),
+        )
+        return build_ewald_data(
+            crystal, energy_kev=20.0, hmax=2, kmax=2, lmax=2
+        )
+
+    ewald_full = build(1.0)
+    ewald_half = build(0.5)
+    np.testing.assert_allclose(np.asarray(ewald_half.occupancies), [0.5])
+
+    indices_full, _, binary_full = ewald_allowed_reflections(
+        ewald_full, theta_deg=2.0, phi_deg=0.0
+    )
+    _, _, binary_half = ewald_allowed_reflections(
+        ewald_half, theta_deg=2.0, phi_deg=0.0
+    )
+    binary_mask = np.asarray(indices_full) >= 0
+    assert binary_mask.sum() > 0
+    np.testing.assert_allclose(
+        np.asarray(binary_half)[binary_mask],
+        0.25 * np.asarray(binary_full)[binary_mask],
+        rtol=1e-12,
+    )
+
+    domain = jnp.array([100.0, 100.0, 50.0])
+    rod_indices, _, rod_full = ewald_allowed_reflections(
+        ewald_full, theta_deg=2.0, phi_deg=0.0, domain_extent_ang=domain
+    )
+    _, _, rod_half = ewald_allowed_reflections(
+        ewald_half, theta_deg=2.0, phi_deg=0.0, domain_extent_ang=domain
+    )
+    rod_mask = (np.asarray(rod_indices) >= 0) & (np.asarray(rod_full) > 1e-12)
+    assert rod_mask.sum() > 0
+    np.testing.assert_allclose(
+        np.asarray(rod_half)[rod_mask],
+        0.25 * np.asarray(rod_full)[rod_mask],
+        rtol=1e-12,
+    )

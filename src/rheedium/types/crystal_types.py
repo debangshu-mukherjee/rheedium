@@ -305,6 +305,11 @@ class EwaldData(eqx.Module):
         grid intensities with a warning).
     atomic_numbers : Int[Array, "M"] | None
         Atomic numbers matching ``atom_positions``.
+    occupancies : Float[Array, "M"] | None
+        Per-site occupancies matching ``atom_positions``. Each atom's
+        form-factor amplitude is multiplied by its occupancy, so partially
+        occupied sites scatter as ``occ * f_Z(q)``. ``None`` means fully
+        occupied (all ones).
     temperature : Float[Array, ""] | None
         Temperature in Kelvin used for the stored Debye-Waller factors.
 
@@ -341,6 +346,7 @@ class EwaldData(eqx.Module):
     atom_positions: Float[Array, "M 3"] | None = None
     atomic_numbers: Int[Array, "M"] | None = None
     temperature: Float[Array, ""] | None = None
+    occupancies: Float[Array, "M"] | None = None
 
 
 @jaxtyped(typechecker=beartype)
@@ -357,6 +363,7 @@ def create_ewald_data(  # noqa: PLR0913
     atom_positions: Optional[Float[Array, "M 3"]] = None,
     atomic_numbers: Optional[Int[Array, "M"]] = None,
     temperature: Optional[Float[Array, ""]] = None,
+    occupancies: Optional[Float[Array, "M"]] = None,
 ) -> EwaldData:
     r"""Create an EwaldData PyTree with validation.
 
@@ -382,6 +389,18 @@ def create_ewald_data(  # noqa: PLR0913
         Complex structure factors for N points.
     intensities : Float[Array, "N"]
         Diffraction intensities for N points.
+    atom_positions : Optional[Float[Array, "M 3"]], optional
+        Cartesian atomic positions in Ångstroms for continuous-rod
+        re-evaluation. Default: None.
+    atomic_numbers : Optional[Int[Array, "M"]], optional
+        Atomic numbers matching ``atom_positions``. Default: None.
+    temperature : Optional[Float[Array, ""]], optional
+        Temperature in Kelvin of the stored Debye-Waller factors.
+        Default: None.
+    occupancies : Optional[Float[Array, "M"]], optional
+        Per-site occupancies matching ``atom_positions``; each atom's
+        form factor is weighted by its occupancy. Default: None
+        (fully occupied).
 
     Returns
     -------
@@ -504,6 +523,9 @@ def create_ewald_data(  # noqa: PLR0913
             temperature=None
             if temperature is None
             else jnp.asarray(temperature, dtype=jnp.float64),
+            occupancies=None
+            if occupancies is None
+            else jnp.asarray(occupancies, dtype=jnp.float64),
         )
 
     validated_ewald_data: EwaldData = _validate_and_create()

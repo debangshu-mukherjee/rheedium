@@ -59,15 +59,18 @@ def _compute_structure_factor_single(
     atomic_numbers: Int[Array, "M"],
     temperature: scalar_float,
     parameterization: str = "lobato",
+    occupancies: Float[Array, "M"] | None = None,
 ) -> Complex[Array, ""]:
     r"""Compute structure factor F(G) for a single reciprocal vector.
 
     Calculates the crystallographic structure factor including selected
-    atomic form factors and Debye-Waller thermal damping:
+    atomic form factors, per-site occupancy weights, and Debye-Waller
+    thermal damping:
 
     .. math::
 
-        F(G) = \sum_j f_j(|G|) \cdot \exp(-W_j) \cdot \exp(i \cdot G \cdot r_j)
+        F(G) = \sum_j occ_j \cdot f_j(|G|) \cdot \exp(-W_j)
+        \cdot \exp(i \cdot G \cdot r_j)
 
     :see: :class:`~.test_ewald.TestComputeStructureFactorSingle`
 
@@ -83,6 +86,10 @@ def _compute_structure_factor_single(
         Temperature in Kelvin for Debye-Waller calculation.
     parameterization : str
         Atomic form-factor model, ``"lobato"`` or ``"kirkland"``.
+    occupancies : Float[Array, "M"] | None, optional
+        Per-site occupancies in [0, 1] multiplying each atom's form
+        factor, so a half-occupied Si site scatters as
+        :math:`0.5 f_{Si}(q)`. Default: None (all sites fully occupied).
 
     Returns
     -------
@@ -93,16 +100,23 @@ def _compute_structure_factor_single(
     -----
     1. **Per-atom contributions** --
        For each atom, evaluate the selected form factor
-       with Debye-Waller damping, and phase
-       factor :math:`\\exp(i G \\cdot r_j)`.
+       with Debye-Waller damping, weight by the site occupancy,
+       and apply the phase factor :math:`\\exp(i G \\cdot r_j)`.
     2. **Sum contributions** --
        Accumulate complex structure factor over all atoms.
     """
+    occupancy_weights: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
+    )
 
     def _atomic_contribution(atom_idx: Int[Array, ""]) -> Complex[Array, ""]:
         atomic_num: Int[Array, ""] = atomic_numbers[atom_idx]
         atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
-        scattering: Float[Array, ""] = jnp.squeeze(
+        scattering: Float[Array, ""] = occupancy_weights[
+            atom_idx
+        ] * jnp.squeeze(
             atomic_scattering_factor(
                 atomic_number=atomic_num,
                 q_vector=g_vector,
@@ -184,8 +198,9 @@ def build_ewald_data(
     5. **Reciprocal space vectors** --
        Transform Miller indices to G vectors.
     6. **Structure factors** --
-       Calculate :math:`F(G)` with Lobato form factors by default
-       and Debye-Waller thermal damping.
+       Calculate :math:`F(G)` with Lobato form factors by default,
+       per-site occupancy weights (``crystal.occupancies``, ones when
+       absent), and Debye-Waller thermal damping.
     7. **Intensities** --
        Compute :math:`I(G) = |F(G)|^2`.
     8. **Package result** --
@@ -256,6 +271,11 @@ def build_ewald_data(
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    occupancies: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
 
     def _compute_sf(g_vec: Float[Array, "3"]) -> Complex[Array, ""]:
         return _compute_structure_factor_single(
@@ -264,6 +284,7 @@ def build_ewald_data(
             atomic_numbers=atomic_numbers,
             temperature=temperature_arr,
             parameterization=parameterization,
+            occupancies=occupancies,
         )
 
     structure_factors: Complex[Array, "N"] = jax.vmap(_compute_sf)(g_vecs)
@@ -281,6 +302,7 @@ def build_ewald_data(
         atom_positions=atom_positions,
         atomic_numbers=atomic_numbers,
         temperature=temperature_arr,
+        occupancies=occupancies,
     )
     return ewald_data
 

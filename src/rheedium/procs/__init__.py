@@ -23,7 +23,7 @@ Routine Listings
 :func:`apply_surface_displacement_field`
     Apply per-atom displacement vectors to the top surface region.
 :func:`apply_surface_occupancy_field`
-    Attenuate effective atomic numbers near the top surface.
+    Attenuate site occupancies near the top surface.
 :func:`apply_surface_reconstruction`
     Apply an m x n surface reconstruction to a slab.
 :func:`apply_twin_wall_field`
@@ -111,6 +111,7 @@ from .grains import (
 from .library import (
     gaas001_2x4,
     mgo001_bulk_terminated,
+    place_adatoms,
     si100_2x1,
     si111_1x1,
     si111_7x7,
@@ -133,6 +134,7 @@ from .surface_modifier import (
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
     apply_twin_wall_field,
+    apply_vicinal_staircase,
     bind_step_edge_distribution,
     bind_twin_wall_distribution,
     incoherent_domain_average,
@@ -152,6 +154,7 @@ __all__: list[str] = [
     "apply_surface_reconstruction",
     "apply_twin_wall_field",
     "apply_vacancy_field",
+    "apply_vicinal_staircase",
     "bind_step_edge_distribution",
     "bind_kinematic_axis_distribution",
     "bind_multislice_axis_distribution",
@@ -164,6 +167,7 @@ __all__: list[str] = [
     "log_intensity_transform",
     "mgo001_bulk_terminated",
     "normalize_image",
+    "place_adatoms",
     "preprocess_experimental",
     "si100_2x1",
     "si111_1x1",

@@ -18,6 +18,7 @@ from rheedium.procs.surface_modifier import (
     apply_surface_displacement_field,
     apply_surface_occupancy_field,
     apply_twin_wall_field,
+    apply_vicinal_staircase,
     bind_step_edge_distribution,
     bind_twin_wall_distribution,
     incoherent_domain_average,
@@ -86,7 +87,6 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         """
         q_z: Float[Array, "100"] = jnp.linspace(0.0, 10.0, 100)
         result: Float[Array, "100"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
             q_z=q_z,
@@ -115,7 +115,6 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         """
         q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
         result: Float[Array, "200"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
             q_z=q_z,
@@ -144,7 +143,6 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         """
         q_z: Float[Array, "200"] = jnp.linspace(0.0, 10.0, 200)
         result: Float[Array, "200"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=50.0,
             q_z=q_z,
@@ -175,7 +173,6 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         q_at_pi: scalar_float = jnp.pi / step_height
         q_z: Float[Array, "2"] = jnp.array([0.0, q_at_pi])
         result: Float[Array, "2"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=step_height,
             terrace_width_angstrom=50.0,
             q_z=q_z,
@@ -206,7 +203,6 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         q_at_2pi: scalar_float = 2.0 * jnp.pi / step_height
         q_z: Float[Array, "1"] = jnp.array([q_at_2pi])
         result: Float[Array, "1"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=step_height,
             terrace_width_angstrom=50.0,
             q_z=q_z,
@@ -235,13 +231,11 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         """
         q_z: Float[Array, "1000"] = jnp.linspace(0.0, 10.0, 1000)
         narrow: Float[Array, "1000"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=20.0,
             q_z=q_z,
         )
         wide: Float[Array, "1000"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([1, 0], dtype=jnp.int32),
             step_height_angstrom=2.0,
             terrace_width_angstrom=100.0,
             q_z=q_z,
@@ -272,12 +266,51 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
         """
         q_z: Float[Array, "500"] = jnp.linspace(0.0, 20.0, 500)
         result: Float[Array, "500"] = vicinal_surface_step_splitting(
-            hk_index=jnp.array([0, 0], dtype=jnp.int32),
             step_height_angstrom=3.0,
             terrace_width_angstrom=30.0,
             q_z=q_z,
         )
         chex.assert_tree_all_finite(result)
+
+    def test_grid_independent_normalization(self) -> None:
+        r"""Two q_z grids give the same value at shared points.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: normalizing
+        by the analytic zero-splitting (in-phase) peak of ``1`` makes the
+        profile independent of the ``q_z`` sampling grid, so a coarse and
+        a fine grid agree to 1 percent at the ``q_z`` values they share
+        (the retired per-grid-max normalization did not).
+
+        Notes
+        -----
+        It evaluates the splitting on a coarse and a dense ``q_z`` grid
+        whose coarse points are a subset of the dense points, then
+        compares the shared samples directly.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the
+        Test Reference exposes both the guarantee and the implementation
+        path.
+        """
+        q_coarse: Float[Array, "9"] = jnp.linspace(0.05, 4.0, 9)
+        q_fine: Float[Array, "41"] = jnp.linspace(0.05, 4.0, 41)
+        coarse: np.ndarray = np.asarray(
+            vicinal_surface_step_splitting(
+                step_height_angstrom=2.0,
+                terrace_width_angstrom=40.0,
+                q_z=q_coarse,
+            )
+        )
+        fine: np.ndarray = np.asarray(
+            vicinal_surface_step_splitting(
+                step_height_angstrom=2.0,
+                terrace_width_angstrom=40.0,
+                q_z=q_fine,
+            )
+        )
+        np.testing.assert_allclose(coarse, fine[::5], rtol=1e-2)
 
 
 class TestApplySurfaceOccupancyField(chex.TestCase):
@@ -286,13 +319,16 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
     :see: :func:`~rheedium.procs.apply_surface_occupancy_field`
     """
 
-    def test_scales_only_surface_region_atomic_numbers(self) -> None:
-        r"""Verify only surface-region atomic numbers are scaled.
+    def test_scales_only_surface_region_occupancies(self) -> None:
+        r"""Verify only surface-region site occupancies are scaled.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: only
-        surface-region atomic numbers are scaled.
+        surface-region site ``occupancies`` are scaled, while the
+        atomic-number column stays the integral element identity (the
+        C6 contract: occupancy is a first-class float field, never an
+        "effective Z").
 
         Notes
         -----
@@ -315,7 +351,12 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
         np.testing.assert_allclose(
             np.asarray(modified.cart_positions[:, 3]),
-            np.array([14.0, 7.0, 2.0]),
+            np.array([14.0, 14.0, 8.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(modified.occupancies),
+            np.array([1.0, 0.5, 0.25]),
             atol=1e-5,
         )
         np.testing.assert_allclose(
@@ -353,7 +394,12 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
 
         np.testing.assert_allclose(
             np.asarray(modified.cart_positions[:, 3]),
-            np.array([14.0, 14.0, 0.0]),
+            np.array([14.0, 14.0, 8.0]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(modified.occupancies),
+            np.array([1.0, 1.0, 0.0]),
             atol=1e-5,
         )
 
@@ -388,11 +434,11 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
                     slab,
                     0.8,
                     jnp.array([1.0, occupancy, 1.0]),
-                ).cart_positions[:, 3]
+                ).occupancies
             )
 
         grad_value: scalar_float = jax.grad(objective)(0.5)
-        chex.assert_trees_all_close(float(grad_value), 14.0, atol=1e-4)
+        chex.assert_trees_all_close(float(grad_value), 1.0, atol=1e-4)
 
     def test_jit_compiles(self) -> None:
         r"""Verify apply_surface_occupancy_field compiles under jit.
@@ -423,13 +469,13 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
                 slab,
                 0.8,
                 jnp.array([1.0, occupancy, 1.0]),
-            ).cart_positions[:, 3]
+            ).occupancies
         )
 
         result: Float[Array, "3"] = compiled(0.5)
         np.testing.assert_allclose(
             np.asarray(result),
-            np.array([14.0, 7.0, 8.0]),
+            np.array([1.0, 0.5, 1.0]),
             atol=1e-5,
         )
 
@@ -459,18 +505,20 @@ class TestApplySurfaceOccupancyField(chex.TestCase):
         slab: CrystalStructure = _make_test_slab()
 
         def top_layer_weight(occupancy: scalar_float) -> scalar_float:
-            return apply_surface_occupancy_field(
+            modified: CrystalStructure = apply_surface_occupancy_field(
                 slab,
                 0.8,
                 jnp.array([1.0, occupancy, 1.0]),
-            ).cart_positions[1, 3]
+            )
+            assert modified.occupancies is not None
+            return modified.occupancies[1]
 
         result: Float[Array, "3"] = jax.vmap(top_layer_weight)(
             jnp.array([0.0, 0.5, 1.0])
         )
         np.testing.assert_allclose(
             np.asarray(result),
-            np.array([0.0, 7.0, 14.0]),
+            np.array([0.0, 0.5, 1.0]),
             atol=1e-5,
         )
 
@@ -696,6 +744,75 @@ class TestApplySurfaceDisplacementField(chex.TestCase):
             np.array([4.8, 4.95, 5.1]),
             atol=1e-5,
         )
+
+
+class TestApplyVicinalStaircase(chex.TestCase):
+    """Tests for apply_vicinal_staircase.
+
+    :see: :func:`~rheedium.procs.apply_vicinal_staircase`
+    """
+
+    def test_mean_slope_and_drop_and_gradient(self) -> None:
+        r"""Staircase slope, five-terrace drop, and gradient are exact.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the smooth
+        monotonic staircase ``h(x) = -s [x/w - sin(2 pi x/w)/(2 pi)]`` has
+        mean slope exactly ``-s/w`` over whole terraces, drops exactly
+        ``5 s`` over five terraces, and is differentiable in the terrace
+        width.
+
+        Notes
+        -----
+        It samples the height field on a dense line of atoms along the
+        step direction, reads the z-displacement off the returned slab,
+        and checks the closed-form slope and drop plus a finite
+        ``jax.grad`` with respect to ``terrace_width_ang``.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_procs.test_surface_modifier``, so the
+        Test Reference exposes both the guarantee and the implementation
+        path.
+        """
+        width: float = 12.0
+        step: float = 1.5
+        xs: Float[Array, "N"] = jnp.linspace(0.0, 5.0 * width, 400)
+        z0: Float[Array, "N"] = jnp.full_like(xs, 3.0)
+        cart: Float[Array, "N 4"] = jnp.column_stack(
+            [xs, jnp.zeros_like(xs), z0, jnp.full_like(xs, 14.0)]
+        )
+        cell: Float[Array, "3 3"] = build_cell_vectors(
+            5.0 * width + 10.0, 10.0, 40.0, 90.0, 90.0, 90.0
+        )
+        frac: Float[Array, "N 4"] = jnp.column_stack(
+            [cart[:, :3] @ jnp.linalg.inv(cell), cart[:, 3]]
+        )
+        surface: CrystalStructure = create_crystal_structure(
+            frac_positions=frac,
+            cart_positions=cart,
+            cell_lengths=jnp.array([5.0 * width + 10.0, 10.0, 40.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+        result: CrystalStructure = apply_vicinal_staircase(
+            surface, terrace_width_ang=width, step_height_ang=step
+        )
+        h: np.ndarray = np.asarray(result.cart_positions[:, 2]) - 3.0
+        x_np: np.ndarray = np.asarray(xs)
+        drop: float = float(h[0] - h[-1])
+        np.testing.assert_allclose(drop, 5.0 * step, atol=1e-6)
+        slope: float = float(np.polyfit(x_np, h, 1)[0])
+        np.testing.assert_allclose(slope, -step / width, atol=2e-3)
+        assert bool(np.all(np.diff(h) <= 1e-9))
+
+        def total_drop(w: scalar_float) -> Float[Array, ""]:
+            out: CrystalStructure = apply_vicinal_staircase(
+                surface, terrace_width_ang=w, step_height_ang=step
+            )
+            return out.cart_positions[0, 2] - out.cart_positions[-1, 2]
+
+        grad_w: Float[Array, ""] = jax.grad(total_drop)(width)
+        assert bool(jnp.isfinite(grad_w))
 
 
 class TestApplyStepEdgeField(chex.TestCase):
@@ -1538,7 +1655,7 @@ class TestBindStepEdgeDistribution(chex.TestCase):
         direct: CrystalStructure = apply_step_edge_field(
             slab=slab,
             step_height_angstrom=sample[0],
-            terrace_width_angstrom=sample[1],
+            corrugation_period_ang=sample[1],
             surface_layer_depth_angstrom=0.8,
             step_direction_xy=jnp.array([1.0, 0.0]),
         )

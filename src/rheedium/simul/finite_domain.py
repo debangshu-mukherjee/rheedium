@@ -710,8 +710,9 @@ def rod_base_intensities(
     1. Fallback path returns ``ewald.intensities`` when atomic data are
        absent, warning that rod intensities use the integer-``l`` grid.
     2. Otherwise compute :math:`q^* = k_{out} - k_{in}` per slot and
-       evaluate the structure factor with the same form-factor and
-       Debye-Waller machinery used on the grid.
+       evaluate the structure factor with the same form-factor,
+       per-site occupancy, and Debye-Waller machinery used on the grid
+       (``ewald.occupancies``; ones when absent).
     """
     if ewald.atom_positions is None or ewald.atomic_numbers is None:
         warnings.warn(
@@ -738,6 +739,7 @@ def rod_base_intensities(
             atomic_numbers=ewald.atomic_numbers,
             temperature=temperature,
             parameterization=parameterization,
+            occupancies=ewald.occupancies,
         )
         return jnp.abs(structure_factor) ** 2
 

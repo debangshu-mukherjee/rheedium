@@ -587,6 +587,11 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    occupancies: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     recip_vecs: Float[Array, "3 3"] = reciprocal_lattice_vectors(
         *crystal.cell_lengths,
         *crystal.cell_angles,
@@ -628,7 +633,7 @@ def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
             atomic_num: scalar_int = atomic_numbers[atom_idx]
             atom_pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: bool = is_surface_atom[atom_idx]
-            form_factor: scalar_float = jnp.squeeze(
+            form_factor: scalar_float = occupancies[atom_idx] * jnp.squeeze(
                 atomic_scattering_factor(
                     atomic_number=atomic_num,
                     q_vector=q_vector,
@@ -920,6 +925,11 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    occupancies: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     n_atoms: int = atom_positions.shape[0]
 
     # Surface atom identification. Default: no surface enhancement — the
@@ -952,7 +962,7 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
             z_num: Int[Array, ""] = atomic_numbers[atom_idx]
             pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: Bool[Array, ""] = is_surface_atom[atom_idx]
-            ff: Float[Array, ""] = jnp.squeeze(
+            ff: Float[Array, ""] = occupancies[atom_idx] * jnp.squeeze(
                 atomic_scattering_factor(
                     atomic_number=z_num,
                     q_vector=q_vector,
@@ -1105,6 +1115,11 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    occupancies: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     n_atoms: int = atom_positions.shape[0]
     # Default: no surface enhancement (bulk basis repeated by the CTR
     # factor has no surface atoms); slab models must opt in explicitly.
@@ -1132,7 +1147,9 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
             z_num: Int[Array, ""] = atomic_numbers[atom_idx]
             pos: Float[Array, "3"] = atom_positions[atom_idx]
             is_surface: Bool[Array, ""] = is_surface_atom[atom_idx]
-            form_factor: Float[Array, ""] = jnp.squeeze(
+            form_factor: Float[Array, ""] = occupancies[
+                atom_idx
+            ] * jnp.squeeze(
                 atomic_scattering_factor(
                     atomic_number=z_num,
                     q_vector=q_vector,
@@ -2497,6 +2514,8 @@ def sliced_crystal_to_projected_potential_slices(
     - Assumes independent atom approximation
     - Periodic boundary conditions in x-y plane
     - Non-periodic in z-direction (surface slab)
+    - Each atom's projected potential is weighted by its site
+      occupancy (``sliced_crystal.occupancies``; ones when absent)
 
     1. **Grid dimensions** --
        Compute nx, ny from extents and pixel size, nz from
@@ -2538,6 +2557,11 @@ def sliced_crystal_to_projected_potential_slices(
     pixel_size: Float[Array, ""] = jnp.asarray(pixel_size, dtype=jnp.float64)
     positions: Float[Array, "N 3"] = sliced_crystal.cart_positions[:, :3]
     atomic_numbers: Float[Array, "N"] = sliced_crystal.cart_positions[:, 3]
+    occupancies: Float[Array, "N"] = (
+        jnp.ones(positions.shape[0], dtype=jnp.float64)
+        if sliced_crystal.occupancies is None
+        else jnp.asarray(sliced_crystal.occupancies, dtype=jnp.float64)
+    )
     x_extent: Float[Array, ""] = sliced_crystal.x_extent
     y_extent: Float[Array, ""] = sliced_crystal.y_extent
     depth: Float[Array, ""] = sliced_crystal.depth
@@ -2579,7 +2603,9 @@ def sliced_crystal_to_projected_potential_slices(
             dx = dx - x_extent * jnp.round(dx / x_extent)
             dy = dy - y_extent * jnp.round(dy / y_extent)
             r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2)
-            atom_potential: Float[Array, "nx ny"] = projected_potential(
+            atom_potential: Float[Array, "nx ny"] = occupancies[
+                atom_idx
+            ] * projected_potential(
                 z_number,
                 r,
                 parameterization,

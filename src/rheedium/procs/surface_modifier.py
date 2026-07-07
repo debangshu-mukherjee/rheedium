@@ -13,8 +13,11 @@ Routine Listings
 :func:`apply_step_edge_field`
     Apply a smooth periodic step-edge displacement field to the top
     surface of a slab.
+:func:`apply_vicinal_staircase`
+    Apply a smooth monotonic differentiable vicinal staircase height
+    field along an in-plane direction.
 :func:`apply_surface_occupancy_field`
-    Attenuate the effective atomic numbers of atoms near the surface.
+    Attenuate the site occupancies of atoms near the surface.
 :func:`apply_surface_displacement_field`
     Apply per-atom displacement vectors to the top surface region.
 :func:`apply_twin_wall_field`
@@ -37,8 +40,8 @@ Notes
 -----
 All public APIs are implemented with pure JAX operations. The
 structure-space modifiers keep the cell fixed and update only the
-position or effective-occupancy fields in the returned
-``CrystalStructure``.
+position or first-class ``occupancies`` fields in the returned
+``CrystalStructure``; atomic numbers stay integral.
 
 R5 return type: structure-space modifiers return ``CrystalStructure``;
 statistical step/twin population producers return ``Distribution``; bind
@@ -88,28 +91,44 @@ def _surface_depth_weights(
     )
 
 
+def _slab_occupancies(slab: CrystalStructure) -> Float[Array, "N_atoms"]:
+    """Return the slab's occupancies, defaulting to fully occupied."""
+    if slab.occupancies is None:
+        return jnp.ones(slab.cart_positions.shape[0], dtype=jnp.float64)
+    return jnp.asarray(slab.occupancies, dtype=jnp.float64)
+
+
 def _rebuild_surface_structure(
     slab: CrystalStructure,
     cart_xyz: Float[Array, "N_atoms 3"],
-    effective_atomic_numbers: Float[Array, "N_atoms"],
+    atomic_numbers: Float[Array, "N_atoms"],
+    occupancies: Float[Array, "N_atoms"] | None = None,
 ) -> CrystalStructure:
-    """Recompute fractional coordinates after a surface-space update."""
+    """Recompute fractional coordinates after a surface-space update.
+
+    When ``occupancies`` is None, the slab's own occupancies are
+    carried through unchanged (ones when the slab has none).
+    """
     cell_vectors: Float[Array, "3 3"] = build_cell_vectors(
         *slab.cell_lengths, *slab.cell_angles
     )
     inv_cell_vectors: Float[Array, "3 3"] = jnp.linalg.inv(cell_vectors)
     frac_xyz: Float[Array, "N_atoms 3"] = cart_xyz @ inv_cell_vectors
     frac_positions: Float[Array, "N_atoms 4"] = jnp.column_stack(
-        [frac_xyz, effective_atomic_numbers]
+        [frac_xyz, atomic_numbers]
     )
     cart_positions: Float[Array, "N_atoms 4"] = jnp.column_stack(
-        [cart_xyz, effective_atomic_numbers]
+        [cart_xyz, atomic_numbers]
+    )
+    new_occupancies: Float[Array, "N_atoms"] = (
+        _slab_occupancies(slab) if occupancies is None else occupancies
     )
     return create_crystal_structure(
         frac_positions=frac_positions,
         cart_positions=cart_positions,
         cell_lengths=slab.cell_lengths,
         cell_angles=slab.cell_angles,
+        occupancies=new_occupancies,
     )
 
 
@@ -128,7 +147,7 @@ def _unit_vector_from_azimuth_deg(
 def apply_step_edge_field(
     slab: CrystalStructure,
     step_height_angstrom: scalar_float,
-    terrace_width_angstrom: scalar_float,
+    corrugation_period_ang: scalar_float,
     surface_layer_depth_angstrom: scalar_float,
     step_direction_xy: Float[Array, "2"] = _DEFAULT_STEP_DIRECTION,
     edge_sharpness: scalar_float = 12.0,
@@ -144,9 +163,11 @@ def apply_step_edge_field(
         Input surface slab.
     step_height_angstrom : scalar_float
         Peak-to-peak height difference between neighboring terraces.
-    terrace_width_angstrom : scalar_float
-        Mean terrace width along the in-plane step progression
-        direction.
+    corrugation_period_ang : scalar_float
+        Spatial period of the two-level ``tanh`` corrugation along the
+        step-progression direction. This is a *full period* of the
+        up/down terrace pattern, so each terrace (one plateau) spans half
+        of ``corrugation_period_ang``.
     surface_layer_depth_angstrom : scalar_float
         Depth of the surface region affected by the step-edge field.
     step_direction_xy : Float[Array, "2"], optional
@@ -190,8 +211,14 @@ def apply_step_edge_field(
     in_plane_direction: Float[Array, "2"] = jnp.asarray(
         step_direction_xy, dtype=jnp.float64
     )
-    normalized_direction: Float[Array, "2"] = in_plane_direction / (
-        jnp.linalg.norm(in_plane_direction) + 1e-10
+    in_plane_norm: Float[Array, ""] = jnp.linalg.norm(in_plane_direction)
+    safe_in_plane_norm: Float[Array, ""] = jnp.where(
+        in_plane_norm > 0.0, in_plane_norm, 1.0
+    )
+    normalized_direction: Float[Array, "2"] = jnp.where(
+        in_plane_norm > 0.0,
+        in_plane_direction / safe_in_plane_norm,
+        in_plane_direction,
     )
     projected_coordinate: Float[Array, "N_atoms"] = jnp.dot(
         slab.cart_positions[:, :2], normalized_direction
@@ -200,7 +227,7 @@ def apply_step_edge_field(
         2.0
         * jnp.pi
         * projected_coordinate
-        / (jnp.asarray(terrace_width_angstrom, dtype=jnp.float64) + 1e-10)
+        / (jnp.asarray(corrugation_period_ang, dtype=jnp.float64) + 1e-10)
     )
     terrace_profile: Float[Array, "N_atoms"] = 0.5 * jnp.tanh(
         jnp.asarray(edge_sharpness, dtype=jnp.float64) * jnp.sin(phase)
@@ -216,7 +243,84 @@ def apply_step_edge_field(
     return _rebuild_surface_structure(
         slab=slab,
         cart_xyz=displaced_cart_xyz,
-        effective_atomic_numbers=slab.cart_positions[:, 3],
+        atomic_numbers=slab.cart_positions[:, 3],
+    )
+
+
+@jaxtyped(typechecker=beartype)
+def apply_vicinal_staircase(
+    surface: CrystalStructure,
+    terrace_width_ang: scalar_float,
+    step_height_ang: scalar_float,
+    step_direction_xy: Float[Array, "2"] = _DEFAULT_STEP_DIRECTION,
+) -> CrystalStructure:
+    r"""Apply a smooth monotonic vicinal staircase height field.
+
+    :see: :class:`~.test_surface_modifier.TestApplyVicinalStaircase`
+
+    Parameters
+    ----------
+    surface : CrystalStructure
+        Input surface slab.
+    terrace_width_ang : scalar_float
+        Terrace width ``w`` in Angstroms (one full period of the
+        staircase corresponds to one terrace-and-step).
+    step_height_ang : scalar_float
+        Step height ``s`` in Angstroms (descent per terrace).
+    step_direction_xy : Float[Array, "2"], optional
+        In-plane direction of the staircase descent. Default ``[1, 0]``.
+
+    Returns
+    -------
+    staircased : CrystalStructure
+        Slab whose Cartesian ``z`` is offset by the staircase height
+        field.
+
+    Notes
+    -----
+    1. **Height profile** -- with ``x`` the in-plane coordinate along
+       ``step_direction_xy``, the displacement is the smooth, monotonic,
+       differentiable staircase
+
+       .. math::
+
+          h(x) = -s \left[ \frac{x}{w}
+                 - \frac{\sin(2\pi x / w)}{2\pi} \right].
+
+    2. **Monotonic descent** -- the derivative
+       ``h'(x) = -(s/w)(1 - cos(2\pi x / w)) <= 0`` is flat mid-terrace
+       and steepest at each step, so the surface never rises.
+    3. **Exact averages** -- the mean slope over any whole number of
+       terraces is exactly ``-s/w`` and the height drop over five
+       terraces is exactly ``5 s``; ``h`` is differentiable in ``w`` and
+       ``s`` everywhere, so it composes with ``jax.grad``.
+    """
+    direction: Float[Array, "2"] = jnp.asarray(
+        step_direction_xy, dtype=jnp.float64
+    )
+    direction_norm: Float[Array, ""] = jnp.linalg.norm(direction)
+    safe_norm: Float[Array, ""] = jnp.where(
+        direction_norm > 0.0, direction_norm, 1.0
+    )
+    unit_direction: Float[Array, "2"] = jnp.where(
+        direction_norm > 0.0, direction / safe_norm, direction
+    )
+    projected: Float[Array, "N_atoms"] = jnp.dot(
+        surface.cart_positions[:, :2], unit_direction
+    )
+    width: Float[Array, ""] = jnp.asarray(terrace_width_ang, dtype=jnp.float64)
+    height: Float[Array, ""] = jnp.asarray(step_height_ang, dtype=jnp.float64)
+    phase: Float[Array, "N_atoms"] = 2.0 * jnp.pi * projected / width
+    z_shift: Float[Array, "N_atoms"] = -height * (
+        projected / width - jnp.sin(phase) / (2.0 * jnp.pi)
+    )
+    displaced_cart_xyz: Float[Array, "N_atoms 3"] = (
+        surface.cart_positions[:, :3].at[:, 2].add(z_shift)
+    )
+    return _rebuild_surface_structure(
+        slab=surface,
+        cart_xyz=displaced_cart_xyz,
+        atomic_numbers=surface.cart_positions[:, 3],
     )
 
 
@@ -312,7 +416,7 @@ def apply_twin_wall_field(
     return _rebuild_surface_structure(
         slab=slab,
         cart_xyz=displaced_cart_xyz,
-        effective_atomic_numbers=slab.cart_positions[:, 3],
+        atomic_numbers=slab.cart_positions[:, 3],
     )
 
 
@@ -343,8 +447,9 @@ def apply_surface_occupancy_field(
     Returns
     -------
     occupancy_modified_slab : CrystalStructure
-        Slab with unchanged coordinates and cell, but with surface-local
-        effective atomic numbers scaled by the occupancy field.
+        Slab with unchanged coordinates, cell, and atomic numbers, but
+        with surface-local site ``occupancies`` scaled by the occupancy
+        field.
 
     Notes
     -----
@@ -353,11 +458,13 @@ def apply_surface_occupancy_field(
     2. **Clip occupancies** --
        Restrict the supplied per-atom occupancies to ``[0, 1]``.
     3. **Blend interior and surface behavior** --
-       Interior atoms retain unit occupancy while top-surface atoms move
-       toward the supplied values.
+       Interior atoms retain their existing occupancy while top-surface
+       atoms move toward the supplied values; the resulting scale
+       multiplies the slab's occupancies (ones when absent).
     4. **Return a new slab** --
-       Preserve geometry and update only the effective atomic-number
-       column.
+       Preserve geometry and atomic numbers; only the first-class
+       ``occupancies`` field changes, which every simulation kernel
+       applies as a per-atom form-factor weight.
     """
     surface_weights: Float[Array, "N_atoms"] = _surface_depth_weights(
         slab=slab,
@@ -370,13 +477,14 @@ def apply_surface_occupancy_field(
     occupancy_scale: Float[Array, "N_atoms"] = 1.0 + surface_weights * (
         clipped_occupancies - 1.0
     )
-    effective_atomic_numbers: Float[Array, "N_atoms"] = (
-        slab.cart_positions[:, 3] * occupancy_scale
+    new_occupancies: Float[Array, "N_atoms"] = (
+        _slab_occupancies(slab) * occupancy_scale
     )
     return _rebuild_surface_structure(
         slab=slab,
         cart_xyz=slab.cart_positions[:, :3],
-        effective_atomic_numbers=effective_atomic_numbers,
+        atomic_numbers=slab.cart_positions[:, 3],
+        occupancies=new_occupancies,
     )
 
 
@@ -433,7 +541,7 @@ def apply_surface_displacement_field(
     return _rebuild_surface_structure(
         slab=slab,
         cart_xyz=displaced_cart_xyz,
-        effective_atomic_numbers=slab.cart_positions[:, 3],
+        atomic_numbers=slab.cart_positions[:, 3],
     )
 
 
@@ -718,7 +826,7 @@ def bind_step_edge_distribution(
         return apply_step_edge_field(
             slab=slab,
             step_height_angstrom=sample[0],
-            terrace_width_angstrom=sample[1],
+            corrugation_period_ang=sample[1],
             surface_layer_depth_angstrom=surface_layer_depth_angstrom,
             step_direction_xy=_unit_vector_from_azimuth_deg(sample[2]),
             edge_sharpness=edge_sharpness,
@@ -730,7 +838,6 @@ def bind_step_edge_distribution(
 
 @jaxtyped(typechecker=beartype)
 def vicinal_surface_step_splitting(
-    hk_index: Int[Array, "2"],
     step_height_angstrom: scalar_float,
     terrace_width_angstrom: scalar_float,
     q_z: Float[Array, "N_qz"],
@@ -741,34 +848,40 @@ def vicinal_surface_step_splitting(
 
     Parameters
     ----------
-    hk_index : Int[Array, "2"]
-        In-plane Miller indices ``(h, k)`` of the rod.
     step_height_angstrom : scalar_float
-        Single step height in Angstroms.
+        Single step height ``d`` in Angstroms.
     terrace_width_angstrom : scalar_float
-        Mean terrace width in Angstroms.
+        Mean terrace width ``w`` in Angstroms.
     q_z : Float[Array, "N_qz"]
         Perpendicular momentum transfer in inverse Angstroms.
 
     Returns
     -------
     step_modified_intensity : Float[Array, "N_qz"]
-        CTR intensity profile modified by step interference and
-        normalized to unit maximum.
+        CTR intensity profile modified by step interference, normalized
+        by the analytic zero-splitting (in-phase) peak so the result is
+        independent of the ``q_z`` sampling grid.
 
     Notes
     -----
     1. **Build the phase difference** --
-       Compute ``delta_phi = q_z * step_height``.
-    2. **Use an Airy-style interference form** --
+       Compute ``delta_phi = q_z * d``.
+    2. **Airy-style interference form** --
        Model the regular terrace array as
-       ``1 / (1 + F * sin(delta_phi / 2)**2)`` with
-       ``F = 4 * (w / d)**2``.
-    3. **Normalize** --
-       Divide by the maximum value so the result peaks at one.
-    """
-    del hk_index  # Reserved for future rod-dependent step models.
+       ``1 / (1 + F * sin(delta_phi / 2)**2)``.
+    3. **Grid-independent normalization** --
+       The analytic in-phase (zero-splitting) peak is ``1`` (at
+       ``sin(delta_phi / 2) = 0``), so the profile is already normalized
+       to that closed-form maximum rather than to the discrete
+       per-grid maximum. Two different ``q_z`` grids therefore return the
+       same value at any shared ``q_z``.
 
+    The ``hk_index`` parameter of earlier versions was unused and has been
+    removed (red-team finding N12): this reduced model has no in-plane rod
+    dependence. The finesse ``F = 4 (w / d)**2`` is an *uncalibrated
+    heuristic* controlling peak sharpness; it is not fit to a dynamical
+    reference and should be treated as qualitative.
+    """
     step_height_angstrom = jnp.asarray(step_height_angstrom, dtype=jnp.float64)
     terrace_width_angstrom = jnp.asarray(
         terrace_width_angstrom, dtype=jnp.float64
@@ -780,7 +893,7 @@ def vicinal_surface_step_splitting(
         4.0 * (terrace_width_angstrom / (step_height_angstrom + 1e-10)) ** 2
     )
     intensity: Float[Array, "N_qz"] = 1.0 / (1.0 + finesse * sin_sq)
-    return intensity / (jnp.max(intensity) + 1e-10)
+    return intensity
 
 
 @jaxtyped(typechecker=beartype)
@@ -859,6 +972,7 @@ __all__: list[str] = [
     "apply_surface_displacement_field",
     "apply_surface_occupancy_field",
     "apply_twin_wall_field",
+    "apply_vicinal_staircase",
     "bind_step_edge_distribution",
     "bind_twin_wall_distribution",
     "incoherent_domain_average",

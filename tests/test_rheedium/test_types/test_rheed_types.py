@@ -2462,3 +2462,101 @@ class TestDetectorGeometry(chex.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestSlicedCrystalOccupancies(chex.TestCase):
+    """Occupancy field on the SlicedCrystal PyTree.
+
+    :see: :func:`~rheedium.types.create_sliced_crystal`
+    """
+
+    def test_factory_stores_and_validates_occupancies(self) -> None:
+        r"""Verify create_sliced_crystal stores per-atom occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the optional
+        ``occupancies`` argument is stored as float64 on the returned
+        ``SlicedCrystal`` and defaults to ``None`` (fully occupied) when
+        omitted.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        cart_positions: Float[Array, "2 4"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [1.0, 1.0, 0.5, 8.0],
+            ]
+        )
+        sliced: SlicedCrystal = create_sliced_crystal(
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([150.0, 150.0, 20.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            orientation=jnp.array([0, 0, 1]),
+            depth=20.0,
+            x_extent=150.0,
+            y_extent=150.0,
+            occupancies=jnp.array([1.0, 0.25]),
+        )
+        assert sliced.occupancies is not None
+        self.assertEqual(sliced.occupancies.dtype, jnp.float64)
+        chex.assert_trees_all_close(sliced.occupancies, jnp.array([1.0, 0.25]))
+        default: SlicedCrystal = create_sliced_crystal(
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([150.0, 150.0, 20.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            orientation=jnp.array([0, 0, 1]),
+            depth=20.0,
+            x_extent=150.0,
+            y_extent=150.0,
+        )
+        self.assertIsNone(default.occupancies)
+
+    def test_factory_rejects_wrong_occupancy_shape(self) -> None:
+        r"""Verify a mismatched occupancy length is rejected.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: an
+        ``occupancies`` array whose length differs from the atom count
+        raises a ``ValueError`` at construction time.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_types.test_rheed_types``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        cart_positions: Float[Array, "2 4"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 14.0],
+                [1.0, 1.0, 0.5, 8.0],
+            ]
+        )
+        with pytest.raises((ValueError, TypeCheckError)):
+            create_sliced_crystal(
+                cart_positions=cart_positions,
+                cell_lengths=jnp.array([150.0, 150.0, 20.0]),
+                cell_angles=jnp.array([90.0, 90.0, 90.0]),
+                orientation=jnp.array([0, 0, 1]),
+                depth=20.0,
+                x_extent=150.0,
+                y_extent=150.0,
+                occupancies=jnp.array([1.0, 0.25, 0.5]),
+            )

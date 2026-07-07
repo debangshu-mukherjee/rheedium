@@ -394,6 +394,11 @@ def calculate_ctr_amplitude(
         :, 3
     ].astype(jnp.int32)
     n_atoms: int = atomic_positions.shape[0]
+    occupancies: Float[Array, "n_atoms"] = (
+        jnp.ones(n_atoms, dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
     cell_lengths: Float[Array, "3"] = crystal.cell_lengths
     cell_angles: Float[Array, "3"] = crystal.cell_angles
     reciprocal_vectors: Float[Array, "3 3"] = reciprocal_lattice_vectors(
@@ -435,6 +440,7 @@ def calculate_ctr_amplitude(
                 temperature=temperature,
                 is_surface_atom=surface_mask,
                 parameterization=parameterization,
+                occupancies=occupancies,
             )
             truncation: Complex[Array, ""] = ctr_truncation_amplitude(
                 l_values=l_val, layer_attenuation=layer_attenuation
@@ -781,12 +787,14 @@ def surface_structure_factor(
     temperature: scalar_float = 300.0,
     is_surface_atom: Bool[Array, "N"] | None = None,
     parameterization: str = "lobato",
+    occupancies: Float[Array, "N"] | None = None,
 ) -> Complex[Array, ""]:
     r"""Calculate structure factor for surface with q_z dependence.
 
     Computes the complex structure factor F(q) for a surface, including
-    atomic form factors and Debye-Waller factors. Surface atoms can be
-    treated with enhanced thermal vibrations via per-atom masking.
+    atomic form factors, per-site occupancy weights, and Debye-Waller
+    factors. Surface atoms can be treated with enhanced thermal
+    vibrations via per-atom masking.
 
     :see: :class:`~.test_surface_rods.TestSurfaceRods`
 
@@ -807,6 +815,9 @@ def surface_structure_factor(
         Default: None (prevents double-application with kinematic path)
     parameterization : str, optional
         Atomic form-factor model, ``"lobato"`` (default) or ``"kirkland"``.
+    occupancies : Float[Array, "N"] | None, optional
+        Per-site occupancies in [0, 1] multiplying each atom's form
+        factor. Default: None (all sites fully occupied).
 
     Returns
     -------
@@ -819,7 +830,8 @@ def surface_structure_factor(
        Compute :math:`\\exp(i q \\cdot r_j)` for each atom.
     2. **Scattering factors** --
        Evaluate per-atom form factor with Debye-Waller
-       damping and surface enhancement flag.
+       damping and surface enhancement flag, weighted by the site
+       occupancy.
     3. **Sum contributions** --
        Accumulate weighted complex contributions.
     4. **Return result** --
@@ -837,6 +849,11 @@ def surface_structure_factor(
         jnp.zeros(n_atoms, dtype=jnp.bool_)
         if is_surface_atom is None
         else is_surface_atom
+    )
+    occupancy_weights: Float[Array, "N"] = (
+        jnp.ones(n_atoms, dtype=jnp.float64)
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
     )
 
     phases: Float[Array, "N"] = jnp.einsum(
@@ -859,9 +876,9 @@ def surface_structure_factor(
         return jnp.squeeze(scattering)
 
     atom_indices: Int[Array, "N"] = jnp.arange(n_atoms)
-    scattering_factors: Float[Array, "N"] = jax.vmap(get_atom_scattering)(
-        atom_indices
-    )
+    scattering_factors: Float[Array, "N"] = occupancy_weights * jax.vmap(
+        get_atom_scattering
+    )(atom_indices)
     weighted_contributions: Complex[Array, "N"] = (
         scattering_factors * phase_factors
     )

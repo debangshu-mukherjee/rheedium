@@ -3475,3 +3475,130 @@ class TestReorientToZoneAxis(chex.TestCase, parameterized.TestCase):
 
 if __name__ == "__main__":
     chex.TestCase.main()
+
+
+class TestOccupancyCarriers(chex.TestCase):
+    """Occupancy survival through the unit-cell carrier utilities.
+
+    :see: :func:`~rheedium.ucell.atom_scraper`
+    :see: :func:`~rheedium.ucell.bulk_to_slice`
+    :see: :func:`~rheedium.ucell.reorient_to_zone_axis`
+    """
+
+    def _two_site_crystal(self) -> CrystalStructure:
+        """Build a cubic crystal with distinct per-site occupancies."""
+        frac: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.5, 8.0]]
+        )
+        cart: Float[Array, "2 4"] = jnp.column_stack(
+            [frac[:, :3] * 4.0, frac[:, 3]]
+        )
+        return create_crystal_structure(
+            frac_positions=frac,
+            cart_positions=cart,
+            cell_lengths=jnp.array([4.0, 4.0, 4.0]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            occupancies=jnp.array([0.9, 0.4]),
+        )
+
+    def test_atom_scraper_carries_occupancies(self) -> None:
+        r"""Verify atom_scraper keeps each kept atom's occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: filtering a
+        crystal along a zone axis carries each surviving atom's site
+        occupancy into the returned structure unchanged.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_unitcell``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = self._two_site_crystal()
+        scraped: CrystalStructure = atom_scraper(
+            crystal, jnp.array([0.0, 0.0, 1.0]), 4.0
+        )
+        assert scraped.occupancies is not None
+        chex.assert_trees_all_close(scraped.occupancies, jnp.array([0.9, 0.4]))
+        thin_slab: CrystalStructure = atom_scraper(
+            crystal, jnp.array([0.0, 0.0, 1.0]), 1.0
+        )
+        chex.assert_trees_all_close(thin_slab.occupancies, jnp.array([0.4]))
+
+    def test_bulk_to_slice_carries_occupancies(self) -> None:
+        r"""Verify bulk_to_slice replicas inherit source occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: every replica
+        of a basis atom in the tiled slab carries the source atom's
+        occupancy, keyed here by the distinct occupancies attached to the
+        two species.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_unitcell``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = self._two_site_crystal()
+        slab: SlicedCrystal = bulk_to_slice(
+            crystal,
+            jnp.array([0, 0, 1]),
+            depth=8.0,
+            x_extent=12.0,
+            y_extent=12.0,
+        )
+        assert slab.occupancies is not None
+        atomic_numbers: NDArray = np.asarray(slab.cart_positions[:, 3])
+        occupancies: NDArray = np.asarray(slab.occupancies)
+        np.testing.assert_allclose(occupancies[atomic_numbers == 14.0], 0.9)
+        np.testing.assert_allclose(occupancies[atomic_numbers == 8.0], 0.4)
+
+    def test_reorient_replicas_inherit_source_occupancy(self) -> None:
+        r"""Verify reorientation replicates per-atom occupancies.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: filling the
+        surface cell of a reoriented crystal replicates each basis atom's
+        occupancy with it, so every silicon site keeps 0.9 and every
+        oxygen site keeps 0.4 after a [1, 1, 1] reorientation rebuilds
+        the basis in the new surface cell.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_ucell.test_unitcell``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = self._two_site_crystal()
+        reoriented: CrystalStructure = reorient_to_zone_axis(
+            crystal, jnp.array([1, 1, 1])
+        )
+        assert reoriented.occupancies is not None
+        atomic_numbers: NDArray = np.asarray(reoriented.cart_positions[:, 3])
+        occupancies: NDArray = np.asarray(reoriented.occupancies)
+        self.assertGreaterEqual(atomic_numbers.size, 2)
+        np.testing.assert_allclose(occupancies[atomic_numbers == 14.0], 0.9)
+        np.testing.assert_allclose(occupancies[atomic_numbers == 8.0], 0.4)

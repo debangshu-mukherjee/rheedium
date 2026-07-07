@@ -102,6 +102,7 @@ def simple_structure_factor(
     reciprocal_vector: Float[Array, "3"],
     atom_positions: Float[Array, "M 3"],
     atomic_numbers: Int[Array, "M"],
+    occupancies: Float[Array, "M"] | None = None,
 ) -> Float[Array, ""]:
     r"""Calculate structure factor for a single reflection.
 
@@ -109,7 +110,7 @@ def simple_structure_factor(
 
     .. math::
 
-        F(G) = \sum_j f_j \cdot \exp(i \cdot G \cdot r_j)
+        F(G) = \sum_j occ_j \cdot f_j \cdot \exp(i \cdot G \cdot r_j)
 
     :see: :class:`~.test_kinematic.TestKinematicStructureFactor`
 
@@ -121,6 +122,9 @@ def simple_structure_factor(
         Cartesian positions of atoms in unit cell
     atomic_numbers : Int[Array, "M"]
         Atomic numbers (Z) for each atom
+    occupancies : Float[Array, "M"] | None, optional
+        Per-site occupancies in [0, 1] multiplying each atom's
+        scattering factor. Default: None (all sites fully occupied).
 
     Returns
     -------
@@ -133,19 +137,20 @@ def simple_structure_factor(
 
     .. math::
 
-        F(G) = \\sum_j f_j(G) \\cdot \\exp(i \\cdot G \\cdot r_j)
+        F(G) = \\sum_j occ_j \\cdot f_j(G) \\cdot
+        \\exp(i \\cdot G \\cdot r_j)
 
     For more accurate scattering, use the Lobato-default Ewald simulator or
     :func:`atomic_scattering_factor`.
 
     1. **Approximate scattering factors** --
        Use :math:`f_j \\approx Z_j` (atomic number) as a
-       simplified form factor.
+       simplified form factor, weighted by the site occupancy.
     2. **Compute phase factors** --
        Calculate :math:`\\exp(i \\cdot G \\cdot r_j)` for all
        atoms via vectorized dot products.
     3. **Sum contributions** --
-       :math:`F = \\sum f_j \\cdot \\exp(i \\cdot G \\cdot r_j)`.
+       :math:`F = \\sum occ_j f_j \\cdot \\exp(i \\cdot G \\cdot r_j)`.
     4. **Return intensity** --
        :math:`I(G) = |F(G)|^2`.
 
@@ -162,7 +167,14 @@ def simple_structure_factor(
     atomic_scattering_factor : Accurate form factor with thermal damping
     surface_structure_factor : Structure factor for CTR calculations
     """
-    f_j: Float[Array, "M"] = atomic_numbers.astype(jnp.float64)
+    occupancy_weights: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if occupancies is None
+        else jnp.asarray(occupancies, dtype=jnp.float64)
+    )
+    f_j: Float[Array, "M"] = occupancy_weights * atomic_numbers.astype(
+        jnp.float64
+    )
     dot_products: Float[Array, "M"] = jnp.dot(
         atom_positions, reciprocal_vector
     )
@@ -293,9 +305,16 @@ def kinematic_spot_simulator(
     atomic_numbers: Int[Array, "M"] = crystal.cart_positions[:, 3].astype(
         jnp.int32
     )
+    occupancies: Float[Array, "M"] = (
+        jnp.ones(atom_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
 
     def _calculate_intensity(gg: Float[Array, "3"]) -> Float[Array, ""]:
-        return simple_structure_factor(gg, atom_positions, atomic_numbers)
+        return simple_structure_factor(
+            gg, atom_positions, atomic_numbers, occupancies
+        )
 
     intensities: Float[Array, "N"] = jax.vmap(_calculate_intensity)(
         reciprocal_allowed

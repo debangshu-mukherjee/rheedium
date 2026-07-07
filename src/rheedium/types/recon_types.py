@@ -535,6 +535,7 @@ def create_crystal_displacement_axis_spec(
             cart_positions=cart_positions,
             cell_lengths=crystal.cell_lengths,
             cell_angles=crystal.cell_angles,
+            occupancies=crystal.occupancies,
         )
         return perturbed
 

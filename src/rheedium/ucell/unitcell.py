@@ -590,7 +590,8 @@ def atom_scraper(
        epsilon for zero-thickness (top-layer) mode.
     6. **Gather Filtered Atoms** --
        Extract fractional and Cartesian positions for
-       atoms that pass the mask.
+       atoms that pass the mask, carrying each kept atom's
+       site occupancy.
     7. **Scale Cell Vectors** --
        Rescale lattice vectors along the zone axis to
        match the new slab height while preserving
@@ -671,6 +672,12 @@ def atom_scraper(
     filtered_cart: Float[Array, "m 4"] = _gather_valid_positions(
         crystal.cart_positions, mask
     )
+    source_occupancies: Float[Array, "n"] = (
+        jnp.ones(crystal.cart_positions.shape[0], dtype=jnp.float64)
+        if crystal.occupancies is None
+        else jnp.asarray(crystal.occupancies, dtype=jnp.float64)
+    )
+    filtered_occupancies: Float[Array, "m"] = source_occupancies[mask]
     original_height: Float[Array, ""] = jnp.max(dot_vals) - jnp.min(dot_vals)
     new_height: Float[Array, ""] = jnp.where(
         is_top_layer_mode,
@@ -751,6 +758,7 @@ def atom_scraper(
         cart_positions=filtered_cart_canonical,
         cell_lengths=new_lengths,
         cell_angles=new_angles,
+        occupancies=filtered_occupancies,
     )
     return filtered_crystal
 
@@ -1009,7 +1017,7 @@ def _surface_cell_transform(
 
 
 @jaxtyped(typechecker=beartype)
-def reorient_to_zone_axis(
+def reorient_to_zone_axis(  # noqa: PLR0915
     crystal: CrystalStructure,
     zone_axis: Int[Array, "3"],
 ) -> CrystalStructure:
@@ -1057,7 +1065,8 @@ def reorient_to_zone_axis(
     4. **Fill basis** --
        Replicate each original atom over integer lattice translations and keep
        those whose new fractional coordinates lie in ``[0, 1)``. The kept count
-       equals ``|det M|`` times the original atom count.
+       equals ``|det M|`` times the original atom count. Every replicated
+       atom inherits its source atom's site occupancy.
     5. **Assemble** --
        Convert kept fractional coordinates to Cartesian in the canonical frame
        and construct a validated :class:`CrystalStructure`.
@@ -1118,6 +1127,11 @@ def reorient_to_zone_axis(
         crystal.frac_positions[:, :3], dtype=np.float64
     )
     atomic_numbers: np.ndarray = np.asarray(crystal.frac_positions[:, 3])
+    source_occupancies: np.ndarray = (
+        np.ones(old_frac.shape[0], dtype=np.float64)
+        if crystal.occupancies is None
+        else np.asarray(crystal.occupancies, dtype=np.float64)
+    )
 
     selectors: np.ndarray = np.array(
         [[s0, s1, s2] for s0 in (0, 1) for s1 in (0, 1) for s2 in (0, 1)],
@@ -1139,6 +1153,7 @@ def reorient_to_zone_axis(
     tol: float = 1e-6
     kept_frac: List[List[float]] = []
     kept_z: List[float] = []
+    kept_occ: List[float] = []
     seen: set = set()
     for atom_idx in range(old_frac.shape[0]):
         candidates: np.ndarray = old_frac[atom_idx][None, :] + translations
@@ -1147,6 +1162,7 @@ def reorient_to_zone_axis(
             (new_frac >= -tol) & (new_frac < 1.0 - tol), axis=1
         )
         z_val: float = float(atomic_numbers[atom_idx])
+        occ_val: float = float(source_occupancies[atom_idx])
         for row in new_frac[inside]:
             wrapped: np.ndarray = np.mod(row, 1.0)
             wrapped[wrapped > 1.0 - tol] = 0.0
@@ -1163,6 +1179,7 @@ def reorient_to_zone_axis(
                 [float(wrapped[0]), float(wrapped[1]), float(wrapped[2])]
             )
             kept_z.append(z_val)
+            kept_occ.append(occ_val)
 
     expected_atoms: int = int(round(abs(np.linalg.det(transform_int)))) * int(
         old_frac.shape[0]
@@ -1177,6 +1194,9 @@ def reorient_to_zone_axis(
     z_col: Float[Array, "M 1"] = jnp.asarray(kept_z, dtype=jnp.float64)[
         :, None
     ]
+    kept_occupancies: Float[Array, "M"] = jnp.asarray(
+        kept_occ, dtype=jnp.float64
+    )
     cart_xyz: Float[Array, "M 3"] = frac_xyz @ canonical_vectors
 
     new_frac_positions: Float[Array, "M 4"] = jnp.concatenate(
@@ -1190,6 +1210,7 @@ def reorient_to_zone_axis(
         cart_positions=new_cart_positions,
         cell_lengths=new_lengths,
         cell_angles=new_angles,
+        occupancies=kept_occupancies,
     )
 
 
@@ -1237,8 +1258,8 @@ def bulk_to_slice(  # noqa: PLR0915
 
     Notes
     -----
-    - The transformation preserves atomic types and relative
-      positions.
+    - The transformation preserves atomic types, per-atom site
+      occupancies, and relative positions.
     - The resulting structure has z as the surface normal.
     - Periodic boundary conditions apply in x and y
       directions.
@@ -1338,6 +1359,11 @@ def bulk_to_slice(  # noqa: PLR0915
     rotated_cell_vecs: Float[Array, "3 3"] = cell_vecs @ rotation_matrix.T
 
     atomic_numbers: Float[Array, "N"] = bulk_crystal.cart_positions[:, 3]
+    basis_occupancies: Float[Array, "N"] = (
+        jnp.ones(atomic_numbers.shape[0], dtype=jnp.float64)
+        if bulk_crystal.occupancies is None
+        else jnp.asarray(bulk_crystal.occupancies, dtype=jnp.float64)
+    )
 
     positive_layer_z: Float[Array, ""] = jnp.min(
         jnp.where(
@@ -1410,6 +1436,9 @@ def bulk_to_slice(  # noqa: PLR0915
     supercell_atomic_nums: Float[Array, "M"] = jnp.tile(
         atomic_numbers, n_replicas
     )
+    supercell_occupancies: Float[Array, "M"] = jnp.tile(
+        basis_occupancies, n_replicas
+    )
 
     centered_positions: Float[Array, "M 3"] = supercell_positions
 
@@ -1434,6 +1463,9 @@ def bulk_to_slice(  # noqa: PLR0915
     filtered_atomic_nums: Float[Array, "K"] = supercell_atomic_nums[
         combined_mask
     ]
+    filtered_occupancies: Float[Array, "K"] = supercell_occupancies[
+        combined_mask
+    ]
 
     final_positions: Float[Array, "K 4"] = jnp.column_stack(
         [filtered_positions, filtered_atomic_nums]
@@ -1452,6 +1484,7 @@ def bulk_to_slice(  # noqa: PLR0915
         depth=depth,
         x_extent=x_extent,
         y_extent=y_extent,
+        occupancies=filtered_occupancies,
     )
 
 

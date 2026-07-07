@@ -112,9 +112,12 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             5.0,
         )
 
+        # A 3 Angstrom request on a d_layer=2 (001) cut snaps up to two whole
+        # layers (span 4), so c = 2 * 2 + 5 vacuum = 9; the material span is an
+        # exact multiple of the interlayer spacing (a valid periodic cell).
         np.testing.assert_allclose(
             np.asarray(slab.cell_lengths),
-            np.array([2.0, 2.0, 8.0]),
+            np.array([2.0, 2.0, 9.0]),
             atol=1e-6,
         )
         np.testing.assert_allclose(
@@ -154,11 +157,16 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             5.0,
         )
 
-        assert slab.cart_positions.shape == (5, 4)
+        assert slab.cart_positions.shape[1] == 4
+        assert slab.cart_positions.shape[0] > 0
+        # (110) of the BCC test cell reduces to a primitive in-plane mesh of
+        # length sqrt(3); the 3 Angstrom request snaps up to three whole
+        # d_layer=a/sqrt(2) layers, so c = 3 * a / sqrt(2) + 5 vacuum.
         np.testing.assert_allclose(
-            np.asarray(slab.cell_lengths),
-            np.array([2.0, 2.0, 8.0]),
-            atol=1e-6,
+            float(slab.cell_lengths[2]), 3.0 * np.sqrt(2.0) + 5.0, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            float(slab.cell_lengths[0]), np.sqrt(3.0), atol=1e-4
         )
         assert float(slab.cart_positions[:, 2].max()) <= 3.0 + 1e-6
         assert np.all(np.isfinite(np.asarray(slab.frac_positions)))
@@ -189,7 +197,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             _make_test_slab(),
             jnp.array([[1, 0], [0, 1]], dtype=jnp.int32),
             1.0,
-            jnp.array([[0.1, 0.2, 0.3]], dtype=jnp.float64),
+            jnp.array([[0.1, 0.2, 0.3], [0.0, 0.0, 0.0]], dtype=jnp.float64),
         )
 
         np.testing.assert_allclose(
@@ -240,7 +248,7 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             _make_test_slab(),
             jnp.array([[1, 1], [0, 1]], dtype=jnp.int32),
             0.0,
-            jnp.zeros((0, 3), dtype=jnp.float64),
+            jnp.zeros((1, 3), dtype=jnp.float64),
         )
 
         assert reconstructed.cart_positions.shape == (3, 4)
@@ -260,15 +268,18 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             atol=1e-6,
         )
 
-    def test_add_adsorbate_layer_appends_weighted_cartesian_positions(
+    def test_add_adsorbate_layer_appends_occupancy_weighted_sites(
         self,
     ) -> None:
-        r"""Adsorbates should be appended in both coordinate systems.
+        r"""Adsorbates keep integral Z and store coverage as occupancy.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Adsorbates should
-        be appended in both coordinate systems.
+        Verifies the documented behavior for this test case: adsorbates are
+        appended in both coordinate systems with their element's integral
+        atomic number, while the fractional monolayer coverage lands in the
+        first-class ``occupancies`` field (the C6 contract — coverage never
+        rescales Z into a different element).
 
         Notes
         -----
@@ -296,8 +307,8 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             np.asarray(decorated.cart_positions[-2:]),
             np.array(
                 [
-                    [0.5, 1.0, 4.5, 2.0],
-                    [1.5, 0.5, 1.5, 4.0],
+                    [0.5, 1.0, 4.5, 8.0],
+                    [1.5, 0.5, 1.5, 16.0],
                 ]
             ),
             atol=1e-6,
@@ -306,10 +317,20 @@ class TestSurfaceBuilderDirect(chex.TestCase):
             np.asarray(decorated.frac_positions[-2:]),
             np.array(
                 [
-                    [0.25, 0.5, 0.75, 2.0],
-                    [0.75, 0.25, 0.25, 4.0],
+                    [0.25, 0.5, 0.75, 8.0],
+                    [0.75, 0.25, 0.25, 16.0],
                 ]
             ),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(decorated.occupancies[-2:]),
+            np.array([0.25, 0.25]),
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(decorated.occupancies[:-2]),
+            np.ones(slab.cart_positions.shape[0]),
             atol=1e-6,
         )
         np.testing.assert_allclose(
@@ -739,12 +760,14 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         )
 
     def test_coverage_weights_atomic_number(self) -> None:
-        r"""Coverage 0.5 should halve the adsorbate Z value.
+        r"""Coverage keeps integral Z (coverage lives in occupancy).
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Coverage 0.5
-        should halve the adsorbate Z value.
+        Verifies the documented behavior for this test case: partial
+        coverage no longer rescales the adsorbate atomic number; the
+        adsorbate keeps its element's integral Z (here O, Z=8) while the
+        coverage enters the first-class occupancy field.
 
         Notes
         -----
@@ -762,7 +785,7 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         ads: Any = _load("ads_half.npz")
         n_orig: int = orig["cart_positions"].shape[0]
         ads_z: Any = float(ads["cart_positions"][n_orig, 3])
-        chex.assert_trees_all_close(ads_z, 4.0, atol=1e-6)
+        chex.assert_trees_all_close(ads_z, 8.0, atol=1e-6)
 
     def test_cell_parameters_unchanged(self) -> None:
         r"""Adsorbates should not change cell parameters.
@@ -816,12 +839,14 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         )
 
     def test_zero_coverage_zeroes_z(self) -> None:
-        r"""Coverage 0.0 should produce zero effective Z.
+        r"""Coverage 0.0 keeps integral Z (zero enters occupancy).
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: Coverage 0.0
-        should produce zero effective Z.
+        Verifies the documented behavior for this test case: zero coverage
+        keeps the adsorbate's integral atomic number (Z=14) rather than
+        rescaling it to zero; the vanishing weight lives in the occupancy
+        field, so the atom simply contributes no scattering amplitude.
 
         Notes
         -----
@@ -839,4 +864,4 @@ class TestAddAdsorbateLayer(chex.TestCase, parameterized.TestCase):
         ads: Any = _load("ads_zero.npz")
         n_orig: int = orig["cart_positions"].shape[0]
         ads_z: Any = float(ads["cart_positions"][n_orig, 3])
-        chex.assert_trees_all_close(ads_z, 0.0, atol=1e-10)
+        chex.assert_trees_all_close(ads_z, 14.0, atol=1e-10)

@@ -408,3 +408,91 @@ class TestHdf5RoundTrip(chex.TestCase):
             path.write_bytes(b"this is not a valid HDF5 file")
             with pytest.raises(RuntimeError, match="Failed to open HDF5"):
                 rh.inout.load_from_h5(path)
+
+
+class TestOccupancyHdf5RoundTrip(chex.TestCase):
+    """HDF5 round trips preserve first-class occupancy fields.
+
+    :see: :func:`~rheedium.inout.save_to_h5`
+    :see: :func:`~rheedium.inout.load_from_h5`
+    """
+
+    def test_occupancies_round_trip_exactly(self) -> None:
+        r"""Verify occupancy arrays round-trip bit-exactly through HDF5.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the
+        ``occupancies`` fields of ``CrystalStructure`` and
+        ``SlicedCrystal`` are dynamic registry children, so saving and
+        loading preserves the arrays exactly, and a ``None`` occupancy
+        field stays ``None``.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with exact array-equality
+        assertions because HDF5 stores the float64 payload losslessly.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_hdf5``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = rh.types.create_crystal_structure(
+            frac_positions=jnp.array(
+                [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.5, 8.0]],
+                dtype=jnp.float64,
+            ),
+            cart_positions=jnp.array(
+                [[0.0, 0.0, 0.0, 14.0], [2.715, 2.715, 2.715, 8.0]],
+                dtype=jnp.float64,
+            ),
+            cell_lengths=jnp.array([5.43, 5.43, 5.43], dtype=jnp.float64),
+            cell_angles=jnp.array([90.0, 90.0, 90.0], dtype=jnp.float64),
+            occupancies=jnp.array([0.9, 0.4], dtype=jnp.float64),
+        )
+        sliced: SlicedCrystal = rh.types.create_sliced_crystal(
+            cart_positions=jnp.array(
+                [[0.0, 0.0, 0.0, 14.0], [1.5, 1.5, 2.0, 8.0]],
+                dtype=jnp.float64,
+            ),
+            cell_lengths=jnp.array([120.0, 120.0, 20.0], dtype=jnp.float64),
+            cell_angles=jnp.array([90.0, 90.0, 90.0], dtype=jnp.float64),
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=jnp.asarray(20.0, dtype=jnp.float64),
+            x_extent=jnp.asarray(120.0, dtype=jnp.float64),
+            y_extent=jnp.asarray(120.0, dtype=jnp.float64),
+            occupancies=jnp.array([1.0, 0.25], dtype=jnp.float64),
+        )
+        bare_sliced: SlicedCrystal = rh.types.create_sliced_crystal(
+            cart_positions=jnp.array(
+                [[0.0, 0.0, 0.0, 14.0]],
+                dtype=jnp.float64,
+            ),
+            cell_lengths=jnp.array([120.0, 120.0, 20.0], dtype=jnp.float64),
+            cell_angles=jnp.array([90.0, 90.0, 90.0], dtype=jnp.float64),
+            orientation=jnp.array([0, 0, 1], dtype=jnp.int32),
+            depth=jnp.asarray(20.0, dtype=jnp.float64),
+            x_extent=jnp.asarray(120.0, dtype=jnp.float64),
+            y_extent=jnp.asarray(120.0, dtype=jnp.float64),
+        )
+        with TemporaryDirectory() as tmp_dir:
+            path: Path = Path(tmp_dir) / "occupancies.h5"
+            rh.inout.save_to_h5(
+                path,
+                crystal=crystal,
+                sliced=sliced,
+                bare_sliced=bare_sliced,
+            )
+            loaded: dict[str, Any] = rh.inout.load_from_h5(path)
+        np.testing.assert_array_equal(
+            np.asarray(loaded["crystal"].occupancies),
+            np.asarray(crystal.occupancies),
+        )
+        np.testing.assert_array_equal(
+            np.asarray(loaded["sliced"].occupancies),
+            np.asarray(sliced.occupancies),
+        )
+        self.assertIsNone(loaded["bare_sliced"].occupancies)

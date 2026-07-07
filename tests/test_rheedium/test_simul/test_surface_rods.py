@@ -1614,3 +1614,121 @@ class TestIntegratedWindowConsistency(chex.TestCase, parameterized.TestCase):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestSurfaceStructureFactorOccupancy(chex.TestCase):
+    """Occupancy weighting in surface structure factors and CTR paths.
+
+    :see: :func:`~rheedium.simul.surface_structure_factor`
+    :see: :func:`~rheedium.simul.calculate_ctr_amplitude`
+    """
+
+    def test_occupancy_scales_surface_structure_factor(self) -> None:
+        r"""Verify occupancy multiplies the surface form factor linearly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the optional
+        per-site occupancies multiply each atom's form factor in
+        ``surface_structure_factor``, so a half-occupied single site
+        gives exactly half the full-occupancy amplitude and a
+        zero-occupancy site contributes exactly zero.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        q_vector: Float[Array, "3"] = jnp.array([1.2, 0.0, 0.8])
+        positions: Float[Array, "1 3"] = jnp.array([[0.0, 0.0, 0.0]])
+        atomic_numbers: Int[Array, "1"] = jnp.array([14], dtype=jnp.int32)
+        amplitude_full = surface_structure_factor(
+            q_vector=q_vector,
+            atomic_positions=positions,
+            atomic_numbers=atomic_numbers,
+        )
+        amplitude_half = surface_structure_factor(
+            q_vector=q_vector,
+            atomic_positions=positions,
+            atomic_numbers=atomic_numbers,
+            occupancies=jnp.array([0.5]),
+        )
+        amplitude_zero = surface_structure_factor(
+            q_vector=q_vector,
+            atomic_positions=positions,
+            atomic_numbers=atomic_numbers,
+            occupancies=jnp.array([0.0]),
+        )
+        chex.assert_trees_all_close(
+            amplitude_half, 0.5 * amplitude_full, rtol=1e-12
+        )
+        self.assertEqual(complex(amplitude_zero), 0.0 + 0.0j)
+
+    def test_ctr_amplitude_uses_crystal_occupancies(self) -> None:
+        r"""Verify CTR amplitudes read occupancies off the crystal.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the CTR entry
+        points weight each basis atom by ``crystal.occupancies``, so a
+        two-atom basis whose second site has occupancy zero produces the
+        same rod intensities as the one-atom crystal with that site
+        removed.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_surface_rods``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        cell_lengths: Float[Array, "3"] = jnp.array([4.0, 4.0, 4.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        frac_two: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.5, 8.0]]
+        )
+        cart_two: Float[Array, "2 4"] = jnp.column_stack(
+            [frac_two[:, :3] * 4.0, frac_two[:, 3]]
+        )
+        crystal_masked: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_two,
+            cart_positions=cart_two,
+            cell_lengths=cell_lengths,
+            cell_angles=cell_angles,
+            occupancies=jnp.array([1.0, 0.0]),
+        )
+        crystal_absent: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_two[:1],
+            cart_positions=cart_two[:1],
+            cell_lengths=cell_lengths,
+            cell_angles=cell_angles,
+        )
+        hk_indices: Int[Array, "1 2"] = jnp.array([[1, 0]], dtype=jnp.int32)
+        l_values: Float[Array, "5"] = jnp.linspace(0.1, 0.9, 5)
+        intensity_masked = calculate_ctr_intensity(
+            hk_indices=hk_indices,
+            l_values=l_values,
+            crystal=crystal_masked,
+            surface_roughness=0.0,
+        )
+        intensity_absent = calculate_ctr_intensity(
+            hk_indices=hk_indices,
+            l_values=l_values,
+            crystal=crystal_absent,
+            surface_roughness=0.0,
+        )
+        chex.assert_trees_all_close(
+            intensity_masked, intensity_absent, rtol=1e-12
+        )

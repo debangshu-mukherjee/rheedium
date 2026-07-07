@@ -827,3 +827,60 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(pattern.intensities)
         chex.assert_trees_all_equal(jnp.all(pattern.intensities >= 0), True)
         assert float(jnp.max(pattern.intensities)) > 0.0
+
+
+class TestEdgeOnSlicesOccupancy(chex.TestCase):
+    """Occupancy weighting of edge-on projected potential slices.
+
+    :see: :func:`~rheedium.simul.crystal_to_edge_on_slices`
+    """
+
+    def test_occupancy_scales_edge_on_potentials(self) -> None:
+        r"""Verify edge-on slice potentials scale with site occupancy.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: each atom's
+        projected potential deposited by ``crystal_to_edge_on_slices``
+        is weighted by ``crystal.occupancies``, so a uniform occupancy
+        of 0.5 exactly halves every nonzero potential sample.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_reflection_multislice``, so
+        the Test Reference exposes both the guarantee and the
+        implementation path.
+        """
+        frac_positions: Float[Array, "2 4"] = jnp.array(
+            [[0.0, 0.0, 0.0, 14.0], [0.5, 0.5, 0.5, 8.0]]
+        )
+        cell_lengths: Float[Array, "3"] = jnp.array([4.0, 4.0, 4.0])
+        cell_angles: Float[Array, "3"] = jnp.array([90.0, 90.0, 90.0])
+        cart_positions: Float[Array, "2 4"] = jnp.column_stack(
+            [frac_positions[:, :3] * 4.0, frac_positions[:, 3]]
+        )
+        crystal_full: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=cell_lengths,
+            cell_angles=cell_angles,
+        )
+        crystal_half: CrystalStructure = create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=cell_lengths,
+            cell_angles=cell_angles,
+            occupancies=jnp.array([0.5, 0.5]),
+        )
+        slices_full = crystal_to_edge_on_slices(crystal_full)
+        slices_half = crystal_to_edge_on_slices(crystal_half)
+        chex.assert_trees_all_close(
+            slices_half.slices, 0.5 * slices_full.slices, atol=1e-14
+        )

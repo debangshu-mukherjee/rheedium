@@ -818,3 +818,148 @@ class TestInteropEdgeCases(chex.TestCase):
             float(expected_z),
             atol=1e-10,
         )
+
+
+class TestOccupancyInterop(chex.TestCase):
+    """Occupancy round trips through the ASE and pymatgen bridges.
+
+    :see: :func:`~rheedium.inout.to_ase`
+    :see: :func:`~rheedium.inout.from_ase`
+    :see: :func:`~rheedium.inout.to_pymatgen`
+    :see: :func:`~rheedium.inout.from_pymatgen`
+    """
+
+    def _partially_occupied_crystal(self) -> CrystalStructure:
+        """Create an MgO crystal with a partially occupied oxygen site."""
+        frac_positions: Float[Array, "2 4"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 12.0],
+                [0.5, 0.5, 0.5, 8.0],
+            ]
+        )
+        cart_positions: Float[Array, "2 4"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 12.0],
+                [2.105, 2.105, 2.105, 8.0],
+            ]
+        )
+        return create_crystal_structure(
+            frac_positions=frac_positions,
+            cart_positions=cart_positions,
+            cell_lengths=jnp.array([4.21, 4.21, 4.21]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+            occupancies=jnp.array([1.0, 0.4]),
+        )
+
+    def test_ase_round_trip_preserves_occupancies(self) -> None:
+        r"""Verify occupancies survive to_ase followed by from_ase.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ASE has no
+        first-class site occupancy, so ``to_ase`` stashes the occupancy
+        array in ``atoms.info["occupancies"]`` and ``from_ase`` restores
+        it exactly on the reconstructed crystal.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = self._partially_occupied_crystal()
+        atoms: Any = to_ase(crystal)
+        np.testing.assert_allclose(
+            np.asarray(atoms.info["occupancies"]), [1.0, 0.4]
+        )
+        round_tripped: CrystalStructure = from_ase(atoms)
+        assert round_tripped.occupancies is not None
+        np.testing.assert_allclose(
+            np.asarray(round_tripped.occupancies), [1.0, 0.4]
+        )
+
+    def test_pymatgen_round_trip_preserves_occupancies(self) -> None:
+        r"""Verify occupancies map to pymatgen species dictionaries.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: ``to_pymatgen``
+        expresses each site as a ``{symbol: occupancy}`` species dict
+        (pymatgen's native partial-occupancy form) and ``from_pymatgen``
+        recovers the same per-site occupancies and integral atomic
+        numbers.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        crystal: CrystalStructure = self._partially_occupied_crystal()
+        structure: Any = to_pymatgen(crystal)
+        occupancy_by_site: list[float] = [
+            float(sum(site.species.values())) for site in structure
+        ]
+        np.testing.assert_allclose(occupancy_by_site, [1.0, 0.4])
+        round_tripped: CrystalStructure = from_pymatgen(structure)
+        assert round_tripped.occupancies is not None
+        np.testing.assert_allclose(
+            np.asarray(round_tripped.occupancies), [1.0, 0.4]
+        )
+        np.testing.assert_allclose(
+            np.asarray(round_tripped.cart_positions[:, 3]), [12.0, 8.0]
+        )
+
+    def test_from_pymatgen_expands_disordered_sites(self) -> None:
+        r"""Verify disordered pymatgen sites become co-located atoms.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a pymatgen
+        site with a mixed species dictionary (Sr 0.5 / Ba 0.5) is
+        expanded into two co-located atoms carrying each element's
+        integral atomic number and fractional occupancy, so disordered
+        crystals keep their composition instead of silently dropping
+        species.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_inout.test_interop``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        pymatgen_core: Any = pytest.importorskip("pymatgen.core")
+        structure: Any = pymatgen_core.Structure(
+            pymatgen_core.Lattice.cubic(4.0),
+            [{"Sr": 0.5, "Ba": 0.5}, "Ti"],
+            [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
+        )
+        crystal: CrystalStructure = from_pymatgen(structure)
+        atomic_numbers: Any = np.asarray(crystal.cart_positions[:, 3])
+        occupancies: Any = np.asarray(crystal.occupancies)
+        np.testing.assert_allclose(np.sort(atomic_numbers), [22.0, 38.0, 56.0])
+        np.testing.assert_allclose(occupancies[atomic_numbers == 38.0], [0.5])
+        np.testing.assert_allclose(occupancies[atomic_numbers == 56.0], [0.5])
+        np.testing.assert_allclose(occupancies[atomic_numbers == 22.0], [1.0])
+        np.testing.assert_allclose(
+            np.asarray(crystal.cart_positions[atomic_numbers == 38.0, :3]),
+            np.asarray(crystal.cart_positions[atomic_numbers == 56.0, :3]),
+        )

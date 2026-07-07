@@ -11,6 +11,77 @@ Each entry summarizes the commits that landed for that version bump in
 
 ### Red-team remediation
 
+- Rebuilt the surface layer (Phase 7 Wave 2). `create_surface_slab`
+  (WP7.1/C5) now cuts the true `(hkl)` surface: it reuses
+  `reorient_to_zone_axis` and reduces the in-plane cell to its primitive
+  surface mesh, so Si(111) returns `|a| = |b| = 3.840 Å`, `γ = 120°`
+  (previously a non-primitive/rotated cell). It accepts either
+  `n_layers` (exact integer repeats, takes precedence) or
+  `slab_thickness_angstrom`, tiles in-plane only via `in_plane_repeat`,
+  and wraps fractional coordinates into `[0, 1)` (fixes N6) so the
+  returned `a`/`b` are genuine lattice translations.
+- `apply_surface_reconstruction` (WP7.4/M18, N6, N7) now tiles over the
+  signed bounding box of the supercell corners, tests membership in
+  half-open `[0, 1)` supercell fractional coordinates with corner-snap
+  dedup (exactly `|det M| · n_basis` atoms for any integer matrix,
+  including shears), orders atoms by `(z, y, x)`, and raises
+  `ValueError` on a displacement/surface-atom count mismatch instead of
+  silently truncating. `atomic_displacements` is now optional
+  (`None` = expand only).
+- Fixed the structure library (WP7.3/C7). GaAs now uses the correct
+  8-atom zincblende basis (`(001)` layer spacing `a/4 = 1.4133 Å`,
+  alternating Ga/As). Every reconstructed surface is built from the true
+  base mesh, expanded with `apply_surface_reconstruction`, and decorated
+  by the new `place_adatoms` helper (adatoms placed by height above the
+  top atomic layer, not a cell fraction): `si100_2x1` (symmetric 2.35 Å
+  dimers by displacement), `si111_7x7` (7×7 supercell + 12 adatoms,
+  documented adatoms-only simplified DAS), `gaas001_2x4` (2 As dimers +
+  missing-dimer trench), and `srtio3_001_2x1` (new `termination`
+  argument, double-layer TiO2 unit). Fractional-order rods are now
+  present in each reconstruction and vanish for the ideal slab.
+- Vicinal step models (WP7.5/N5, WP7.6/N12). `apply_step_edge_field`
+  renames its period argument to `corrugation_period_ang` (each terrace
+  is half a period); a new `apply_vicinal_staircase` applies the smooth,
+  monotonic, differentiable staircase
+  `h(x) = −s [x/w − sin(2πx/w)/(2π)]` (mean slope `−s/w`, drop `5s` over
+  five terraces). `vicinal_surface_step_splitting` drops the unused
+  `hk_index`, normalizes by the analytic zero-splitting peak
+  (grid-independent), and documents the `4(w/d)²` finesse as an
+  uncalibrated heuristic.
+- Site occupancy is now a first-class float field through the entire
+  simulation stack (WP7.2/C6). `CrystalStructure`, `SlicedCrystal`, and
+  `EwaldData` carry an optional `occupancies` array (`None` = fully
+  occupied; factories validate the [0, 1] range), and every scattering
+  kernel multiplies each atom's form factor or projected potential by
+  its occupancy: `_compute_structure_factor_single`, `build_ewald_data`,
+  both `ewald_allowed_reflections` modes (including the continuous
+  rod-intersection path via `rod_base_intensities`),
+  `simple_structure_factor`, `surface_structure_factor` and the CTR
+  entry points, the `ewald_simulator` /
+  `compute_kinematic_intensities_with_ctrs` / `_ewald_amplitude_pattern`
+  kernels, `crystal_projected_potential` (new optional `occupancies`
+  argument), `sliced_crystal_to_projected_potential_slices`, and
+  `crystal_to_edge_on_slices`. A half-occupied Si site now scatters as
+  exactly `0.5 * f_Si(q)` (previously it scattered as nitrogen via the
+  truncated "effective Z" encoding), occupancy 0 contributes exactly
+  zero, and gradients w.r.t. occupancies are finite and nonzero.
+  Producers keep Z integral and set occupancies instead:
+  `apply_vacancy_field` scales occupancies (a 1% Si vacancy stays
+  silicon, never aluminum), `apply_interstitial_field` stores candidate
+  occupancies, `apply_antisite_field` now returns **two co-located
+  sites** per input site (host at `occ*(1-x)`, substitute at `occ*x`,
+  doubling N) so the site scatters as `(1-x) f_A + x f_B`,
+  `apply_surface_occupancy_field` scales surface occupancies, and
+  `add_adsorbate_layer` stores `coverage_fraction` as the adsorbate
+  occupancy. Carriers preserve the column: `atom_scraper`,
+  `bulk_to_slice`, `reorient_to_zone_axis` (replicas inherit their
+  source atom's occupancy), `create_surface_slab`,
+  `apply_surface_reconstruction`, `parse_cif_and_scrape`, displacement
+  perturbations, and HDF5 round trips. Interop maps occupancies to
+  `atoms.info["occupancies"]` for ASE and to species dictionaries for
+  pymatgen; `from_pymatgen` now expands disordered sites into co-located
+  atoms instead of raising.
+
 - Unified the CTR model on the semi-infinite truncation rod
   (WP5.1/M4, M6, N2): `simul.calculate_ctr_intensity` /
   `simul.calculate_ctr_amplitude` now take continuous `l_values` instead

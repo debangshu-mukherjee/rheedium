@@ -3,33 +3,38 @@
 Extended Summary
 ----------------
 Provides factory functions that return ``CrystalStructure`` slabs for
-common experimentally studied surfaces. Each function constructs a bulk
-unit cell with known lattice parameters, creates a surface slab of
-standard thickness, and optionally applies the canonical surface
-reconstruction. All parameters are JAX-traceable scalars so lattice
-constants and defect or process variables can be optimized.
+common experimentally studied surfaces. Each reconstructed surface is
+built from the true ``(hkl)`` primitive mesh
+(:func:`~rheedium.procs.create_surface_slab`), expanded to the
+reconstruction supercell
+(:func:`~rheedium.procs.apply_surface_reconstruction`),
+and decorated with adatoms placed by *height above the top atomic layer*
+(:func:`place_adatoms`) or by displacing existing surface atoms. All bulk
+lattice constants remain overridable for thermal-expansion studies.
 
 Routine Listings
 ----------------
+:func:`place_adatoms`
+    Append adatoms at a fixed height above the slab's top atomic layer.
 :func:`si111_1x1`
     Bulk-terminated Si(111) surface slab.
 :func:`si111_7x7`
-    Si(111)-7x7 DAS reconstruction with adatoms and restatoms.
+    Si(111)-7x7 simplified adatoms-only DAS reconstruction.
 :func:`si100_2x1`
     Si(100)-2x1 symmetric dimer row reconstruction.
 :func:`gaas001_2x4`
-    GaAs(001)-2x4 beta2 As-rich reconstruction.
+    GaAs(001)-2x4 beta2-like As-dimer reconstruction.
 :func:`mgo001_bulk_terminated`
     Bulk-terminated MgO(001) rocksalt surface.
 :func:`srtio3_001_2x1`
-    SrTiO3(001)-2x1 TiO2 double-layer reconstruction.
+    SrTiO3(001)-2x1 double-layer TiO2 (or SrO) reconstruction.
 
 Notes
 -----
 Each library function returns a ``CrystalStructure`` that can be
 passed directly to ``ewald_simulator`` or ``multislice_simulator``.
-Lattice parameters default to literature values at 300 K but can be
-overridden for thermal expansion studies or optimization.
+``reorient_to_zone_axis`` uses concrete Miller indices, so these builders
+run eagerly (they are not traced); lattice constants remain plain floats.
 
 R5 return type: every public library function is a structure builder and
 returns ``CrystalStructure``. Statistical populations and sub-coherence bind
@@ -37,7 +42,9 @@ closures live in the dedicated producer/modifier modules.
 """
 
 import jax.numpy as jnp
+import numpy as np
 from beartype import beartype
+from beartype.typing import Literal
 from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.types import (
@@ -47,7 +54,10 @@ from rheedium.types import (
 )
 from rheedium.ucell import build_cell_vectors
 
-from .surface_builder import add_adsorbate_layer, create_surface_slab
+from .surface_builder import (
+    apply_surface_reconstruction,
+    create_surface_slab,
+)
 
 # -------------------------------------------------------------------
 # Crystallographic data: fractional coordinates and atomic numbers
@@ -69,16 +79,22 @@ _SI_DIAMOND_FRAC: Float[Array, "8 3"] = jnp.array(
 )
 _SI_DIAMOND_Z: Float[Array, "8"] = jnp.full(8, 14.0)
 
-# Zincblende GaAs (F-43m, #216): 4 atoms (2 Ga + 2 As)
-_GAAS_ZB_FRAC: Float[Array, "4 3"] = jnp.array(
+# Zincblende GaAs (F-43m, #216): 8-atom conventional cell (4 Ga + 4 As)
+_GAAS_ZB_FRAC: Float[Array, "8 3"] = jnp.array(
     [
         [0.000, 0.000, 0.000],
         [0.500, 0.500, 0.000],
+        [0.500, 0.000, 0.500],
+        [0.000, 0.500, 0.500],
         [0.250, 0.250, 0.250],
         [0.750, 0.750, 0.250],
+        [0.750, 0.250, 0.750],
+        [0.250, 0.750, 0.750],
     ]
 )
-_GAAS_ZB_Z: Float[Array, "4"] = jnp.array([31.0, 31.0, 33.0, 33.0])
+_GAAS_ZB_Z: Float[Array, "8"] = jnp.array(
+    [31.0, 31.0, 31.0, 31.0, 33.0, 33.0, 33.0, 33.0]
+)
 
 # Rocksalt MgO (Fm-3m, #225): 8 atoms (4 Mg + 4 O)
 _MGO_RS_FRAC: Float[Array, "8 3"] = jnp.array(
@@ -94,16 +110,7 @@ _MGO_RS_FRAC: Float[Array, "8 3"] = jnp.array(
     ]
 )
 _MGO_RS_Z: Float[Array, "8"] = jnp.array(
-    [
-        12.0,
-        12.0,
-        12.0,
-        12.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-    ]
+    [12.0, 12.0, 12.0, 12.0, 8.0, 8.0, 8.0, 8.0]
 )
 
 # Perovskite SrTiO3 (Pm-3m, #221): 5 atoms (1 Sr + 1 Ti + 3 O)
@@ -118,48 +125,30 @@ _STO_PV_FRAC: Float[Array, "5 3"] = jnp.array(
 )
 _STO_PV_Z: Float[Array, "5"] = jnp.array([38.0, 22.0, 8.0, 8.0, 8.0])
 
-# Si(111)-7x7 DAS adatom positions in fractional coords of the
-# surface cell. 12 adatoms at approximate T4 sites, z_frac ~ 0.95
-# (just above slab surface).
-_SI_7X7_ADATOM_FRAC: Float[Array, "12 3"] = jnp.array(
+# Si(111)-7x7 simplified DAS adatom in-plane positions (12 per cell) in
+# fractional coordinates of the 7x7 surface supercell. Any placement with
+# 7x7 periodicity, 12 adatoms/cell, and local rest-atom spacing is
+# acceptable for the documented "adatoms-only simplified DAS" model.
+_SI_7X7_ADATOM_XY: Float[Array, "12 2"] = np.array(
     [
-        [1.0 / 7.0, 1.0 / 7.0, 0.95],
-        [3.0 / 7.0, 1.0 / 7.0, 0.95],
-        [5.0 / 7.0, 1.0 / 7.0, 0.95],
-        [0.0 / 7.0, 3.0 / 7.0, 0.95],
-        [2.0 / 7.0, 3.0 / 7.0, 0.95],
-        [4.0 / 7.0, 3.0 / 7.0, 0.95],
-        [1.0 / 7.0, 5.0 / 7.0, 0.95],
-        [3.0 / 7.0, 5.0 / 7.0, 0.95],
-        [5.0 / 7.0, 5.0 / 7.0, 0.95],
-        [0.0 / 7.0, 0.0 / 7.0, 0.95],
-        [2.0 / 7.0, 5.0 / 7.0, 0.95],
-        [4.0 / 7.0, 1.0 / 7.0, 0.95],
+        [1.0 / 7.0, 1.0 / 7.0],
+        [3.0 / 7.0, 1.0 / 7.0],
+        [5.0 / 7.0, 1.0 / 7.0],
+        [0.0 / 7.0, 3.0 / 7.0],
+        [2.0 / 7.0, 3.0 / 7.0],
+        [4.0 / 7.0, 3.0 / 7.0],
+        [1.0 / 7.0, 5.0 / 7.0],
+        [3.0 / 7.0, 5.0 / 7.0],
+        [5.0 / 7.0, 5.0 / 7.0],
+        [0.0 / 7.0, 0.0 / 7.0],
+        [2.0 / 7.0, 5.0 / 7.0],
+        [4.0 / 7.0, 1.0 / 7.0],
     ]
 )
-_SI_7X7_ADATOM_Z: Float[Array, "12"] = jnp.full(12, 14.0)
-
-# Si(100)-2x1 dimer positions
-_SI_2X1_DIMER_FRAC: Float[Array, "2 3"] = jnp.array(
-    [
-        [0.25, 0.0, 0.95],
-        [0.75, 0.0, 0.95],
-    ]
-)
-_SI_2X1_DIMER_Z: Float[Array, "2"] = jnp.array([14.0, 14.0])
-
-# GaAs(001)-2x4 As dimer positions
-_GAAS_2X4_AS_FRAC: Float[Array, "2 3"] = jnp.array(
-    [
-        [0.25, 0.125, 0.95],
-        [0.75, 0.125, 0.95],
-    ]
-)
-_GAAS_2X4_AS_Z: Float[Array, "2"] = jnp.array([33.0, 33.0])
 
 
 # -------------------------------------------------------------------
-# Helper
+# Helpers
 # -------------------------------------------------------------------
 
 
@@ -191,27 +180,137 @@ def _build_bulk_crystal(
     crystal : CrystalStructure
         Bulk crystal structure.
     """
-    cell_lengths: Float[Array, "3"] = jnp.array([a, b, c])
-    cell_angles: Float[Array, "3"] = jnp.array([alpha, beta, gamma])
-
-    cell_vecs: Float[Array, "3 3"] = build_cell_vectors(
-        a, b, c, alpha, beta, gamma
+    frac_coords = np.asarray(frac_coords, dtype=np.float64)
+    atomic_numbers = np.asarray(atomic_numbers, dtype=np.float64)
+    cell_vecs: np.ndarray = np.asarray(
+        build_cell_vectors(a, b, c, alpha, beta, gamma), dtype=np.float64
     )
-    cart_coords: Float[Array, "N 3"] = frac_coords @ cell_vecs
-
-    frac_with_z: Float[Array, "N 4"] = jnp.column_stack(
-        [frac_coords, atomic_numbers]
-    )
-    cart_with_z: Float[Array, "N 4"] = jnp.column_stack(
-        [cart_coords, atomic_numbers]
-    )
-
+    cart_coords: np.ndarray = frac_coords @ cell_vecs
     return create_crystal_structure(
-        frac_positions=frac_with_z,
-        cart_positions=cart_with_z,
-        cell_lengths=cell_lengths,
-        cell_angles=cell_angles,
+        frac_positions=jnp.asarray(
+            np.column_stack([frac_coords, atomic_numbers])
+        ),
+        cart_positions=jnp.asarray(
+            np.column_stack([cart_coords, atomic_numbers])
+        ),
+        cell_lengths=jnp.asarray([a, b, c], dtype=jnp.float64),
+        cell_angles=jnp.asarray([alpha, beta, gamma], dtype=jnp.float64),
     )
+
+
+@jaxtyped(typechecker=beartype)
+def place_adatoms(
+    slab: CrystalStructure,
+    frac_xy_in_supercell: Float[Array, "N_ad 2"],
+    height_above_top_ang: scalar_float,
+    z_number: scalar_float,
+) -> CrystalStructure:
+    """Append adatoms at a height above the slab's top atomic layer.
+
+    :see: :class:`~.test_library.TestPlaceAdatoms`
+
+    Parameters
+    ----------
+    slab : CrystalStructure
+        Surface slab to decorate.
+    frac_xy_in_supercell : Float[Array, "N_ad 2"]
+        In-plane fractional ``(u, v)`` coordinates of each adatom in the
+        slab supercell.
+    height_above_top_ang : scalar_float
+        Height in Angstroms placed above the current topmost atom (not a
+        cell fraction), so the adatom never floats an arbitrary distance
+        above the surface.
+    z_number : scalar_float
+        Integral atomic number of the adatom species.
+
+    Returns
+    -------
+    decorated : CrystalStructure
+        Slab with the adatoms appended at full occupancy.
+
+    Notes
+    -----
+    1. The in-plane fractional coordinates are mapped to Cartesian with
+       the slab's in-plane cell vectors.
+    2. The adatom ``z`` is the current top-atom Cartesian ``z`` plus
+       ``height_above_top_ang``.
+    3. Fractional coordinates are recomputed so the frame contract
+       ``cart = frac @ build_cell_vectors`` holds for every atom.
+    """
+    cell: np.ndarray = np.asarray(
+        build_cell_vectors(*slab.cell_lengths, *slab.cell_angles),
+        dtype=np.float64,
+    )
+    slab_cart: np.ndarray = np.asarray(slab.cart_positions, dtype=np.float64)
+    slab_frac: np.ndarray = np.asarray(slab.frac_positions, dtype=np.float64)
+    top_z: float = float(slab_cart[:, 2].max())
+    fxy: np.ndarray = np.asarray(frac_xy_in_supercell, dtype=np.float64)
+    n_ad: int = fxy.shape[0]
+
+    ad_cart: np.ndarray = (
+        fxy[:, 0:1] * cell[0][None, :] + fxy[:, 1:2] * cell[1][None, :]
+    )
+    ad_cart[:, 2] = top_z + float(height_above_top_ang)
+    ad_frac: np.ndarray = ad_cart @ np.linalg.inv(cell)
+    znum: np.ndarray = np.full((n_ad, 1), float(z_number))
+
+    new_cart: np.ndarray = np.concatenate(
+        [slab_cart, np.column_stack([ad_cart, znum])], axis=0
+    )
+    new_frac: np.ndarray = np.concatenate(
+        [slab_frac, np.column_stack([ad_frac, znum])], axis=0
+    )
+    slab_occ: np.ndarray = (
+        np.ones(slab_cart.shape[0], dtype=np.float64)
+        if slab.occupancies is None
+        else np.asarray(slab.occupancies, dtype=np.float64)
+    )
+    new_occ: np.ndarray = np.concatenate(
+        [slab_occ, np.ones(n_ad, dtype=np.float64)]
+    )
+    return create_crystal_structure(
+        frac_positions=jnp.asarray(new_frac),
+        cart_positions=jnp.asarray(new_cart),
+        cell_lengths=jnp.asarray(slab.cell_lengths),
+        cell_angles=jnp.asarray(slab.cell_angles),
+        occupancies=jnp.asarray(new_occ),
+    )
+
+
+def _symmetric_dimer_displacements(
+    expanded: CrystalStructure,
+    surface_depth_ang: float,
+    bond_ang: float,
+) -> np.ndarray:
+    """Displacements pulling the top two surface atoms into one dimer.
+
+    The two top-layer atoms (in the deterministic (z, y, x) order used by
+    :func:`apply_surface_reconstruction`) are moved symmetrically toward
+    each other along their connecting line until their separation equals
+    ``bond_ang`` (a documented symmetric-dimer simplification).
+    """
+    cart: np.ndarray = np.asarray(expanded.cart_positions, dtype=np.float64)
+    order: np.ndarray = np.lexsort((cart[:, 0], cart[:, 1], cart[:, 2]))
+    cart = cart[order]
+    z_max: float = float(cart[:, 2].max())
+    surface_idx: np.ndarray = np.nonzero(
+        cart[:, 2] >= z_max - surface_depth_ang
+    )[0]
+    if surface_idx.shape[0] != 2:
+        raise ValueError(
+            "symmetric dimer expects exactly two surface atoms, found "
+            f"{surface_idx.shape[0]}"
+        )
+    p_a: np.ndarray = cart[surface_idx[0], :3]
+    p_b: np.ndarray = cart[surface_idx[1], :3]
+    sep: np.ndarray = p_b - p_a
+    dist: float = float(np.linalg.norm(sep))
+    unit: np.ndarray = sep / dist
+    shift: float = 0.5 * (dist - bond_ang)
+    displacements: np.ndarray = np.zeros((2, 3), dtype=np.float64)
+    displacements[0] = unit * shift
+    displacements[1] = -unit * shift
+    return displacements
 
 
 # -------------------------------------------------------------------
@@ -232,8 +331,7 @@ def si111_1x1(
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
-        Cubic lattice parameter. Literature: 5.431 Angstroms at
-        300 K.
+        Cubic lattice parameter. Literature: 5.431 Angstroms at 300 K.
     slab_depth_angstrom : scalar_float
         Slab thickness in Angstroms. Default: 20.0.
     vacuum_gap_angstrom : scalar_float
@@ -242,35 +340,31 @@ def si111_1x1(
     Returns
     -------
     slab : CrystalStructure
-        Si(111)-1x1 surface slab. Baseline for validating against
-        Laue ring positions.
+        Si(111)-1x1 primitive hexagonal surface mesh (|a| = |b| = a/sqrt2,
+        gamma = 120 degrees).
 
     Notes
     -----
     1. Build diamond cubic Si unit cell with 8 atoms per cell.
-    2. Cut along (111) plane with specified thickness.
-    3. Add vacuum gap above the surface.
+    2. Cut the primitive ``(111)`` surface mesh with the requested depth.
+    3. Add the vacuum gap above the surface.
     """
     bulk: CrystalStructure = _build_bulk_crystal(
-        frac_coords=_SI_DIAMOND_FRAC,
-        atomic_numbers=_SI_DIAMOND_Z,
-        a=a_lattice_angstrom,
-        b=a_lattice_angstrom,
-        c=a_lattice_angstrom,
-        alpha=90.0,
-        beta=90.0,
-        gamma=90.0,
+        _SI_DIAMOND_FRAC,
+        _SI_DIAMOND_Z,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        90.0,
+        90.0,
+        90.0,
     )
-
-    surface_normal: jnp.ndarray = jnp.array([1, 1, 1], dtype=jnp.int32)
-    slab: CrystalStructure = create_surface_slab(
+    return create_surface_slab(
         bulk_crystal=bulk,
-        surface_normal_miller=surface_normal,
+        surface_normal_miller=jnp.asarray([1, 1, 1], dtype=jnp.int32),
         slab_thickness_angstrom=slab_depth_angstrom,
         vacuum_gap_angstrom=vacuum_gap_angstrom,
     )
-
-    return slab
 
 
 @jaxtyped(typechecker=beartype)
@@ -279,7 +373,7 @@ def si111_7x7(
     slab_depth_angstrom: scalar_float = 20.0,
     vacuum_gap_angstrom: scalar_float = 15.0,
 ) -> CrystalStructure:
-    """Construct Si(111)-7x7 DAS reconstruction slab.
+    """Construct Si(111)-7x7 simplified adatoms-only DAS slab.
 
     :see: :class:`~.test_library.TestSi111_7x7`
 
@@ -295,35 +389,30 @@ def si111_7x7(
     Returns
     -------
     slab : CrystalStructure
-        Si(111)-7x7 slab with 12 adatoms placed at the
-        canonical DAS model T4 sites above the surface.
+        Si(111)-7x7 supercell of the primitive hexagonal Si(111) mesh with
+        12 Si adatoms per cell placed 1.5 Angstroms above the top layer.
 
     Notes
     -----
-    1. Build bulk-terminated Si(111)-1x1 slab.
-    2. Add 12 adatom positions at T4 sites distributed over
-       the 7x7 surface cell using the virtual crystal
-       approximation with full coverage.
+    1. Build the primitive Si(111)-1x1 slab.
+    2. Expand it to the 7x7 supercell via
+       :func:`~rheedium.procs.apply_surface_reconstruction`.
+    3. Place 12 Si adatoms per 7x7 cell 1.5 Angstroms above the top layer.
 
-    The DAS (dimer-adatom-stacking-fault) model has 12 adatoms
-    per 7x7 cell: 6 in the faulted half and 6 in the unfaulted
-    half. This simplified model places Si adatoms at approximate
-    T4 positions above the surface.
+    This is a documented *adatoms-only simplified DAS* model: it captures
+    the 7x7 periodicity and the 12-adatom count of the true
+    dimer-adatom-stacking-fault structure, but does not add the corner
+    holes, dimer walls, or stacking fault of the full DAS model.
     """
-    base_slab: CrystalStructure = si111_1x1(
-        a_lattice_angstrom=a_lattice_angstrom,
-        slab_depth_angstrom=slab_depth_angstrom,
-        vacuum_gap_angstrom=vacuum_gap_angstrom,
+    base: CrystalStructure = si111_1x1(
+        a_lattice_angstrom, slab_depth_angstrom, vacuum_gap_angstrom
     )
-
-    slab: CrystalStructure = add_adsorbate_layer(
-        slab=base_slab,
-        adsorbate_positions_fractional=_SI_7X7_ADATOM_FRAC,
-        adsorbate_atomic_numbers=_SI_7X7_ADATOM_Z,
-        coverage_fraction=1.0,
+    super7: CrystalStructure = apply_surface_reconstruction(
+        slab=base,
+        reconstruction_matrix=jnp.asarray([[7, 0], [0, 7]], dtype=jnp.int32),
+        surface_layer_depth_angstrom=0.0,
     )
-
-    return slab
+    return place_adatoms(super7, jnp.asarray(_SI_7X7_ADATOM_XY), 1.5, 14.0)
 
 
 @jaxtyped(typechecker=beartype)
@@ -348,59 +437,65 @@ def si100_2x1(
     Returns
     -------
     slab : CrystalStructure
-        Si(100)-2x1 slab with symmetric dimer atoms at the
-        surface.
+        Si(100)-2x1 slab whose two top-layer atoms per cell are displaced
+        toward each other into a 2.35 Angstrom symmetric dimer.
 
     Notes
     -----
-    1. Build diamond cubic Si bulk cell.
-    2. Cut along (100) to create a surface slab.
-    3. Add dimer atoms at surface positions representing the
-       2x1 symmetric dimer reconstruction.
+    1. Build the primitive Si(100)-1x1 slab.
+    2. Expand to the 2x1 supercell.
+    3. Displace the two top-layer atoms toward each other to a 2.35
+       Angstrom bond (documented symmetric-dimer simplification: real
+       Si(100) dimers also buckle, which this model omits).
     """
     bulk: CrystalStructure = _build_bulk_crystal(
-        frac_coords=_SI_DIAMOND_FRAC,
-        atomic_numbers=_SI_DIAMOND_Z,
-        a=a_lattice_angstrom,
-        b=a_lattice_angstrom,
-        c=a_lattice_angstrom,
-        alpha=90.0,
-        beta=90.0,
-        gamma=90.0,
+        _SI_DIAMOND_FRAC,
+        _SI_DIAMOND_Z,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        90.0,
+        90.0,
+        90.0,
     )
-
-    surface_normal: jnp.ndarray = jnp.array([1, 0, 0], dtype=jnp.int32)
-    slab: CrystalStructure = create_surface_slab(
+    base: CrystalStructure = create_surface_slab(
         bulk_crystal=bulk,
-        surface_normal_miller=surface_normal,
+        surface_normal_miller=jnp.asarray([1, 0, 0], dtype=jnp.int32),
         slab_thickness_angstrom=slab_depth_angstrom,
         vacuum_gap_angstrom=vacuum_gap_angstrom,
     )
-
-    slab_with_dimers: CrystalStructure = add_adsorbate_layer(
-        slab=slab,
-        adsorbate_positions_fractional=_SI_2X1_DIMER_FRAC,
-        adsorbate_atomic_numbers=_SI_2X1_DIMER_Z,
-        coverage_fraction=1.0,
+    matrix: Array = jnp.asarray([[2, 0], [0, 1]], dtype=jnp.int32)
+    surface_depth: float = 0.6
+    expanded: CrystalStructure = apply_surface_reconstruction(
+        slab=base,
+        reconstruction_matrix=matrix,
+        surface_layer_depth_angstrom=surface_depth,
     )
-
-    return slab_with_dimers
+    displacements: np.ndarray = _symmetric_dimer_displacements(
+        expanded, surface_depth, 2.35
+    )
+    return apply_surface_reconstruction(
+        slab=base,
+        reconstruction_matrix=matrix,
+        surface_layer_depth_angstrom=surface_depth,
+        atomic_displacements=jnp.asarray(displacements),
+    )
 
 
 @jaxtyped(typechecker=beartype)
 def gaas001_2x4(
-    a_lattice_angstrom: scalar_float = 5.653,
+    a_lattice_angstrom: scalar_float = 5.6533,
     slab_depth_angstrom: scalar_float = 20.0,
     vacuum_gap_angstrom: scalar_float = 15.0,
 ) -> CrystalStructure:
-    """Construct GaAs(001)-2x4 beta2 As-rich surface slab.
+    """Construct GaAs(001)-2x4 beta2-like As-dimer surface slab.
 
     :see: :class:`~.test_library.TestGaAs001_2x4`
 
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
-        Cubic lattice parameter. Literature: 5.653 Angstroms.
+        Cubic lattice parameter. Literature: 5.6533 Angstroms.
     slab_depth_angstrom : scalar_float
         Slab thickness in Angstroms. Default: 20.0.
     vacuum_gap_angstrom : scalar_float
@@ -409,43 +504,53 @@ def gaas001_2x4(
     Returns
     -------
     slab : CrystalStructure
-        GaAs(001)-2x4 slab with As dimer rows at the surface.
-        Used as the canonical MBE growth surface.
+        GaAs(001)-2x4 supercell with two As dimers (bond 2.5 Angstroms)
+        per cell placed 1.4 Angstroms above the complete layer, and a
+        documented missing-dimer trench.
 
     Notes
     -----
-    1. Build zincblende GaAs unit cell (4 atoms: 2 Ga + 2 As).
-    2. Cut along (001) to create a surface slab.
-    3. Add As dimer atoms at surface positions representing
-       the beta2 reconstruction.
+    1. Build the fixed (unreconstructed) GaAs(001) slab (8-atom bulk cell;
+       (001) layer spacing a/4 = 1.4133 Angstroms, alternating Ga/As).
+    2. Expand to the 2x4 supercell.
+    3. Place two As dimers (4 As atoms, 2.5 Angstrom bonds) 1.4 Angstroms
+       above the top layer, leaving the third dimer row empty as the
+       documented missing-dimer trench (beta2-like simplification).
     """
     bulk: CrystalStructure = _build_bulk_crystal(
-        frac_coords=_GAAS_ZB_FRAC,
-        atomic_numbers=_GAAS_ZB_Z,
-        a=a_lattice_angstrom,
-        b=a_lattice_angstrom,
-        c=a_lattice_angstrom,
-        alpha=90.0,
-        beta=90.0,
-        gamma=90.0,
+        _GAAS_ZB_FRAC,
+        _GAAS_ZB_Z,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        90.0,
+        90.0,
+        90.0,
     )
-
-    surface_normal: jnp.ndarray = jnp.array([0, 0, 1], dtype=jnp.int32)
-    slab: CrystalStructure = create_surface_slab(
+    base: CrystalStructure = create_surface_slab(
         bulk_crystal=bulk,
-        surface_normal_miller=surface_normal,
+        surface_normal_miller=jnp.asarray([0, 0, 1], dtype=jnp.int32),
         slab_thickness_angstrom=slab_depth_angstrom,
         vacuum_gap_angstrom=vacuum_gap_angstrom,
     )
-
-    slab_with_as: CrystalStructure = add_adsorbate_layer(
-        slab=slab,
-        adsorbate_positions_fractional=_GAAS_2X4_AS_FRAC,
-        adsorbate_atomic_numbers=_GAAS_2X4_AS_Z,
-        coverage_fraction=1.0,
+    super24: CrystalStructure = apply_surface_reconstruction(
+        slab=base,
+        reconstruction_matrix=jnp.asarray([[2, 0], [0, 4]], dtype=jnp.int32),
+        surface_layer_depth_angstrom=0.0,
     )
-
-    return slab_with_as
+    a_super: float = float(super24.cell_lengths[0])
+    half_bond_frac: float = 0.5 * 2.5 / a_super
+    # Two As dimers in adjacent quarter-rows, leaving the v=0 and v=0.75
+    # rows empty as the documented missing-dimer trench. The asymmetric
+    # occupancy breaks both the 1/2- (a) and 1/4-order (b) periodicities.
+    dimer_rows: list[float] = [0.25, 0.5]
+    as_xy: list[list[float]] = []
+    for v in dimer_rows:
+        as_xy.append([0.5 - half_bond_frac, v])
+        as_xy.append([0.5 + half_bond_frac, v])
+    return place_adatoms(
+        super24, jnp.asarray(as_xy, dtype=jnp.float64), 1.4, 33.0
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -461,46 +566,39 @@ def mgo001_bulk_terminated(
     Parameters
     ----------
     a_lattice_angstrom : scalar_float
-        Cubic lattice parameter. Literature: 4.211 Angstroms at
-        300 K.
+        Cubic lattice parameter. Literature: 4.211 Angstroms at 300 K.
     slab_depth_angstrom : scalar_float
-        Slab thickness in Angstroms. Default: 25.0 (6 unit cells).
+        Slab thickness in Angstroms. Default: 25.0.
     vacuum_gap_angstrom : scalar_float
         Vacuum gap above slab in Angstroms. Default: 15.0.
 
     Returns
     -------
     slab : CrystalStructure
-        MgO(001) slab with rocksalt structure. Canonical test case
-        for oxide surface RHEED with well-known 1x1 patterns.
+        MgO(001) slab with rocksalt structure and a 1x1 termination.
 
     Notes
     -----
-    1. Build rocksalt MgO unit cell (8 atoms: 4 Mg + 4 O).
-       Space group Fm-3m (#225).
-    2. Cut along (001) plane.
-    3. Add vacuum gap. No reconstruction needed for 1x1.
+    1. Build rocksalt MgO unit cell (8 atoms: 4 Mg + 4 O), Fm-3m (#225).
+    2. Cut the primitive ``(001)`` mesh.
+    3. Add the vacuum gap. No reconstruction is applied for 1x1.
     """
     bulk: CrystalStructure = _build_bulk_crystal(
-        frac_coords=_MGO_RS_FRAC,
-        atomic_numbers=_MGO_RS_Z,
-        a=a_lattice_angstrom,
-        b=a_lattice_angstrom,
-        c=a_lattice_angstrom,
-        alpha=90.0,
-        beta=90.0,
-        gamma=90.0,
+        _MGO_RS_FRAC,
+        _MGO_RS_Z,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        90.0,
+        90.0,
+        90.0,
     )
-
-    surface_normal: jnp.ndarray = jnp.array([0, 0, 1], dtype=jnp.int32)
-    slab: CrystalStructure = create_surface_slab(
+    return create_surface_slab(
         bulk_crystal=bulk,
-        surface_normal_miller=surface_normal,
+        surface_normal_miller=jnp.asarray([0, 0, 1], dtype=jnp.int32),
         slab_thickness_angstrom=slab_depth_angstrom,
         vacuum_gap_angstrom=vacuum_gap_angstrom,
     )
-
-    return slab
 
 
 @jaxtyped(typechecker=beartype)
@@ -508,8 +606,9 @@ def srtio3_001_2x1(
     a_lattice_angstrom: scalar_float = 3.905,
     slab_depth_angstrom: scalar_float = 20.0,
     vacuum_gap_angstrom: scalar_float = 15.0,
+    termination: Literal["TiO2", "SrO"] = "TiO2",
 ) -> CrystalStructure:
-    """Construct SrTiO3(001)-2x1 TiO2 double-layer slab.
+    """Construct SrTiO3(001)-2x1 double-layer TiO2 (or SrO) slab.
 
     :see: :class:`~.test_library.TestSrTiO3_001_2x1`
 
@@ -521,45 +620,69 @@ def srtio3_001_2x1(
         Slab thickness in Angstroms. Default: 20.0.
     vacuum_gap_angstrom : scalar_float
         Vacuum gap above slab in Angstroms. Default: 15.0.
+    termination : {"TiO2", "SrO"}
+        Which atomic plane terminates the surface. The bulk cut origin is
+        shifted by half a layer for the ``"SrO"`` termination. Default
+        ``"TiO2"``.
 
     Returns
     -------
     slab : CrystalStructure
-        SrTiO3(001) slab with TiO2-terminated surface. Common
-        ferroelectric substrate for thin film growth.
+        SrTiO3(001)-2x1 supercell with one extra TiO2 unit (1 Ti + 2 O)
+        per cell added on top (double-layer TiO2 simplified model).
 
     Notes
     -----
-    1. Build perovskite SrTiO3 unit cell (5 atoms per cell).
-       Space group Pm-3m (#221).
-    2. Cut along (001) plane.
-    3. Add vacuum gap.
+    1. Build the perovskite SrTiO3 unit cell (5 atoms), Pm-3m (#221),
+       shifting the cut origin to expose the requested termination.
+    2. Cut the primitive ``(001)`` mesh and expand to the 2x1 supercell.
+    3. Add one extra TiO2 formula unit (1 Ti + 2 O) per 2x1 cell on top at
+       ~1.95 Angstroms above the surface (documented simplified
+       double-layer TiO2 model; the true reconstruction also relaxes the
+       subsurface layers, which this model omits).
     """
+    if termination not in ("TiO2", "SrO"):
+        raise ValueError("termination must be 'TiO2' or 'SrO'")
+    z_shift: float = 0.5 if termination == "SrO" else 0.0
+    shifted_frac: np.ndarray = np.asarray(_STO_PV_FRAC).copy()
+    shifted_frac[:, 2] = np.mod(shifted_frac[:, 2] + z_shift, 1.0)
     bulk: CrystalStructure = _build_bulk_crystal(
-        frac_coords=_STO_PV_FRAC,
-        atomic_numbers=_STO_PV_Z,
-        a=a_lattice_angstrom,
-        b=a_lattice_angstrom,
-        c=a_lattice_angstrom,
-        alpha=90.0,
-        beta=90.0,
-        gamma=90.0,
+        jnp.asarray(shifted_frac),
+        _STO_PV_Z,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        a_lattice_angstrom,
+        90.0,
+        90.0,
+        90.0,
     )
-
-    surface_normal: jnp.ndarray = jnp.array([0, 0, 1], dtype=jnp.int32)
-    slab: CrystalStructure = create_surface_slab(
+    base: CrystalStructure = create_surface_slab(
         bulk_crystal=bulk,
-        surface_normal_miller=surface_normal,
+        surface_normal_miller=jnp.asarray([0, 0, 1], dtype=jnp.int32),
         slab_thickness_angstrom=slab_depth_angstrom,
         vacuum_gap_angstrom=vacuum_gap_angstrom,
     )
-
-    return slab
+    super2: CrystalStructure = apply_surface_reconstruction(
+        slab=base,
+        reconstruction_matrix=jnp.asarray([[2, 0], [0, 1]], dtype=jnp.int32),
+        surface_layer_depth_angstrom=0.0,
+    )
+    height: float = 0.5 * a_lattice_angstrom
+    decorated: CrystalStructure = place_adatoms(
+        super2, jnp.asarray([[0.25, 0.5]], dtype=jnp.float64), height, 22.0
+    )
+    return place_adatoms(
+        decorated,
+        jnp.asarray([[0.0, 0.5], [0.5, 0.5]], dtype=jnp.float64),
+        height,
+        8.0,
+    )
 
 
 __all__: list[str] = [
     "gaas001_2x4",
     "mgo001_bulk_terminated",
+    "place_adatoms",
     "si100_2x1",
     "si111_1x1",
     "si111_7x7",
