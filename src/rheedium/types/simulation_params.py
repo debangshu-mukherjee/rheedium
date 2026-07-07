@@ -64,7 +64,19 @@ class SurfaceCTRParams(eqx.Module):
 
 
 class RenderParams(eqx.Module):
-    """Detector rendering, kernel, and ensemble-integration parameters."""
+    """Detector rendering, kernel, and ensemble-integration parameters.
+
+    The ``kernel="multislice"`` path runs the edge-on reflection multislice
+    pipeline, controlled by the grid knobs ``dx_slice``, ``dy``, ``dz``
+    (edge-on grid spacings in Angstroms), ``propagation_length_ang`` (total
+    crystal length traversed along the beam), ``vacuum_above`` (vacuum
+    read-off window above the surface), and ``cap_width`` (absorbing-layer
+    thickness). ``potential_slices`` is deprecated and ignored for that
+    kernel: edge-on slices are built from the crystal directly.
+    ``inner_potential_v0`` applies only to the transmission-geometry tools
+    (``multislice_propagate`` and friends); the reflection pipeline carries
+    the mean inner potential inside its slices.
+    """
 
     spot_sigma_px: scalar_float = 1.4
     n_angular_samples: int = eqx.field(default=5, static=True)
@@ -75,6 +87,12 @@ class RenderParams(eqx.Module):
     kernel: str = eqx.field(default="kinematic", static=True)
     inner_potential_v0: scalar_float = 0.0
     bandwidth_limit: scalar_float = 2.0 / 3.0
+    dx_slice: float = eqx.field(default=1.0, static=True)
+    dy: float = eqx.field(default=0.25, static=True)
+    dz: float = eqx.field(default=0.25, static=True)
+    propagation_length_ang: float = eqx.field(default=200.0, static=True)
+    vacuum_above: float = eqx.field(default=30.0, static=True)
+    cap_width: float = eqx.field(default=15.0, static=True)
     potential_slices: PotentialSlices | None = None
     orientation_distribution: OrientationDistribution | None = None
     distribution: Distribution | None = None

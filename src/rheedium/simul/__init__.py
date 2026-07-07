@@ -98,6 +98,8 @@ Routine Listings
     Convert a crystal slab to edge-on reflection multislice slices.
 :func:`reflection_multislice_propagate`
     Propagate an edge-on wavefield through reflection slices.
+:func:`reflection_detector_amplitude`
+    Render reflected channel amplitudes onto a dense detector field.
 :func:`reflection_multislice_simulator`
     Simulate reflected RHEED by edge-on multislice.
 :func:`lorentzian_rod_profile`
@@ -105,11 +107,15 @@ Routine Listings
 :func:`make_ewald_sphere`
     Create incident wavevector k_in from beam parameters.
 :func:`multislice_propagate`
-    Propagate electron wave through potential slices via multislice.
+    Propagate electron wave through potential slices along z (transmission
+    geometry -- not valid for grazing-incidence RHEED).
 :func:`multislice_amplitude`
-    Return reciprocal-space multislice amplitude before modulus-squared.
+    Return reciprocal-space transmission multislice amplitude before
+    modulus-squared.
 :func:`multislice_simulator`
-    Simulate RHEED pattern from potential slices using multislice (dynamical).
+    Simulate a transmission diffraction pattern from potential slices;
+    RHEED users should use ``reflection_multislice_simulator`` or
+    ``simulate_detector_image`` with ``kernel="multislice"``.
 :func:`project_on_detector_geometry`
     Project reciprocal lattice points with full detector geometry support.
 :func:`render_pattern_to_image`
@@ -146,10 +152,10 @@ works directly for the fixed-shape numerical kernels; the string-mode
 functions (e.g. ``compute_kinematic_intensities_with_ctrs`` with
 ``ctr_mixing_mode``) require the string to be static; prefer
 ``eqx.filter_jit`` at these public boundaries. The
-grid/reflection builders -- ``sliced_crystal_to_projected_potential_slices``
-and ``multislice_simulator`` -- size their output from the data
-(``int(jnp.ceil(...))`` grids, data-dependent reflection counts) and so are
-**not** ``jit``-compilable as written; run them eagerly or fix their sizes.
+grid builders -- ``sliced_crystal_to_projected_potential_slices`` and
+``crystal_to_edge_on_slices`` -- size their output from the data
+(``int(jnp.ceil(...))`` grids) and so are **not** ``jit``-compilable as
+written; run them eagerly or fix their sizes.
 See the "JAX Transformability" guide for the full support matrix.
 """
 
@@ -190,6 +196,7 @@ from .multislice import (
 from .potential import crystal_projected_potential
 from .reflection_multislice import (
     crystal_to_edge_on_slices,
+    reflection_detector_amplitude,
     reflection_multislice_propagate,
     reflection_multislice_simulator,
 )
@@ -291,6 +298,7 @@ __all__: list[str] = [
     "render_ctr_amplitude_to_field",
     "render_ctr_streaks_to_image",
     "render_pattern_to_image",
+    "reflection_detector_amplitude",
     "reflection_multislice_propagate",
     "reflection_multislice_simulator",
     "simulate_detector_image_grid",

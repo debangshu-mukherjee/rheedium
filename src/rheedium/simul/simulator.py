@@ -23,15 +23,16 @@ Routine Listings
 :func:`log_compress_image`
     Apply normalized log compression for screen-style visualization.
 :func:`multislice_propagate`
-    Propagate electron wave through potential slices using multislice
-    algorithm.
+    Propagate electron wave through potential slices along z (transmission
+    geometry -- not valid for grazing-incidence RHEED).
 :func:`multislice_amplitude`
-    Return reciprocal-space multislice amplitude before modulus-squared.
+    Return reciprocal-space transmission multislice amplitude before
+    modulus-squared.
 :func:`multislice_detector_amplitude`
-    Render multislice reciprocal-space amplitudes onto a dense detector field.
+    Render transmission multislice amplitudes onto a dense detector field.
 :func:`multislice_simulator`
-    Simulate RHEED pattern from potential slices using multislice
-    (dynamical).
+    Simulate a transmission diffraction pattern from potential slices;
+    RHEED users should use the reflection multislice pipeline instead.
 :func:`project_on_detector_geometry`
     Project wavevectors with full detector geometry support.
 :func:`render_pattern_to_image`
@@ -54,6 +55,7 @@ gradient-based optimization and inverse problems.
 
 import warnings
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
@@ -62,6 +64,8 @@ from jax.experimental import checkify
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
 from rheedium.procs.distribution_binds import (
+    BEAM_AXIS_IDS,
+    STRUCTURE_AXIS_IDS,
     bind_kinematic_axis_distribution,
     bind_multislice_axis_distribution,
 )
@@ -1822,135 +1826,6 @@ def log_compress_image(
 
 
 @jaxtyped(typechecker=beartype)
-def _crystal_to_potential_slices_like(
-    crystal: CrystalStructure,
-    template: PotentialSlices,
-    parameterization: str,
-) -> PotentialSlices:
-    """Project a sampled structure onto the fixed multislice grid."""
-    slices: Float[Array, "nz nx ny"] = template.slices
-    nz: int = slices.shape[0]
-    nx: int = slices.shape[1]
-    ny: int = slices.shape[2]
-    slice_thickness: Float[Array, ""] = jnp.asarray(
-        template.slice_thickness,
-        dtype=jnp.float64,
-    )
-    dx: Float[Array, ""] = jnp.asarray(
-        template.x_calibration,
-        dtype=jnp.float64,
-    )
-    dy: Float[Array, ""] = jnp.asarray(
-        template.y_calibration,
-        dtype=jnp.float64,
-    )
-    x_extent: Float[Array, ""] = nx * dx
-    y_extent: Float[Array, ""] = ny * dy
-    positions: Float[Array, "N 3"] = crystal.cart_positions[:, :3]
-    atomic_numbers: Float[Array, "N"] = crystal.cart_positions[:, 3]
-    x_coords: Float[Array, "nx"] = jnp.arange(nx, dtype=jnp.float64) * dx
-    y_coords: Float[Array, "ny"] = jnp.arange(ny, dtype=jnp.float64) * dy
-    xx: Float[Array, "nx ny"]
-    yy: Float[Array, "nx ny"]
-    xx, yy = jnp.meshgrid(x_coords, y_coords, indexing="ij")
-
-    def _slice_potential(slice_idx: Int[Array, ""]) -> Float[Array, "nx ny"]:
-        z_start: Float[Array, ""] = slice_idx * slice_thickness
-        z_end: Float[Array, ""] = (slice_idx + 1) * slice_thickness
-        z_positions: Float[Array, "N"] = positions[:, 2]
-        z_width: Float[Array, ""] = jnp.maximum(
-            0.05 * slice_thickness,
-            1.0e-6,
-        )
-        slice_weight: Float[Array, "N"] = jax.nn.sigmoid(
-            (z_positions - z_start) / z_width
-        ) * jax.nn.sigmoid((z_end - z_positions) / z_width)
-
-        def _atom_contribution(
-            atom_idx: Int[Array, ""],
-        ) -> Float[Array, "nx ny"]:
-            position: Float[Array, "3"] = positions[atom_idx]
-            z_number: Int[Array, ""] = atomic_numbers[atom_idx].astype(
-                jnp.int32
-            )
-            dx_grid: Float[Array, "nx ny"] = xx - position[0]
-            dy_grid: Float[Array, "nx ny"] = yy - position[1]
-            dx_grid = dx_grid - x_extent * jnp.round(dx_grid / x_extent)
-            dy_grid = dy_grid - y_extent * jnp.round(dy_grid / y_extent)
-            radius: Float[Array, "nx ny"] = jnp.sqrt(dx_grid**2 + dy_grid**2)
-            atom_potential: Float[Array, "nx ny"] = projected_potential(
-                z_number,
-                radius,
-                parameterization,
-            )
-            return slice_weight[atom_idx] * atom_potential
-
-        atom_indices: Int[Array, "N"] = jnp.arange(positions.shape[0])
-        return jnp.sum(jax.vmap(_atom_contribution)(atom_indices), axis=0)
-
-    slice_indices: Int[Array, "nz"] = jnp.arange(nz)
-    return create_potential_slices(
-        slices=jax.vmap(_slice_potential)(slice_indices),
-        slice_thickness=slice_thickness,
-        x_calibration=dx,
-        y_calibration=dy,
-    )
-
-
-@jaxtyped(typechecker=beartype)
-def _apply_domain_envelope_to_potential_slices(
-    potential_slices: PotentialSlices,
-    domain_size_angstrom: scalar_float,
-    domain_aspect_ratio: Tuple[float, float, float],
-) -> PotentialSlices:
-    """Apply a differentiable finite-domain envelope to a slice grid."""
-    slices: Float[Array, "nz nx ny"] = potential_slices.slices
-    nx: int = slices.shape[1]
-    ny: int = slices.shape[2]
-    dx: Float[Array, ""] = jnp.asarray(
-        potential_slices.x_calibration,
-        dtype=jnp.float64,
-    )
-    dy: Float[Array, ""] = jnp.asarray(
-        potential_slices.y_calibration,
-        dtype=jnp.float64,
-    )
-    aspect: Float[Array, "3"] = jnp.asarray(
-        domain_aspect_ratio,
-        dtype=jnp.float64,
-    )
-    size: Float[Array, ""] = jnp.maximum(
-        jnp.asarray(domain_size_angstrom, dtype=jnp.float64),
-        1.0e-6,
-    )
-    x_axis: Float[Array, "nx"] = (
-        jnp.arange(nx, dtype=jnp.float64) - 0.5 * (nx - 1)
-    ) * dx
-    y_axis: Float[Array, "ny"] = (
-        jnp.arange(ny, dtype=jnp.float64) - 0.5 * (ny - 1)
-    ) * dy
-    xx: Float[Array, "nx ny"]
-    yy: Float[Array, "nx ny"]
-    xx, yy = jnp.meshgrid(x_axis, y_axis, indexing="ij")
-    sigma_x: Float[Array, ""] = jnp.maximum(size * aspect[0], dx)
-    sigma_y: Float[Array, ""] = jnp.maximum(size * aspect[1], dy)
-    envelope: Float[Array, "nx ny"] = jnp.exp(
-        -0.5 * ((xx / sigma_x) ** 2 + (yy / sigma_y) ** 2)
-    )
-    skew_coordinate: Float[Array, "nx ny"] = (xx + 0.5 * yy) / jnp.maximum(
-        size,
-        1.0e-6,
-    )
-    envelope = envelope * (1.0 + 0.75 * jnp.tanh(skew_coordinate))
-    return create_potential_slices(
-        slices=slices * envelope[None, :, :],
-        slice_thickness=potential_slices.slice_thickness,
-        x_calibration=potential_slices.x_calibration,
-        y_calibration=potential_slices.y_calibration,
-    )
-
-
-@jaxtyped(typechecker=beartype)
 def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
     distributions: tuple[Distribution, ...],
     crystal: CrystalStructure,
@@ -2097,10 +1972,50 @@ def _bind_kinematic_distributions(  # noqa: PLR0913, PLR0915
 
 
 @jaxtyped(typechecker=beartype)
+def _validate_multislice_kernel_axes(
+    distributions: tuple[Distribution, ...],
+    phi_deg: scalar_num,
+) -> None:
+    """Reject distribution axes the reflection kernel cannot honor.
+
+    The edge-on reflection pipeline currently supports ``phi_deg == 0``
+    only, so any axis that rotates the azimuth (grain populations, size
+    envelopes bound through azimuth updates, generic one-dimensional phi
+    axes) raises :class:`NotImplementedError`, as do beam axes whose
+    samples carry nonzero phi offsets. Beam-energy/theta axes and
+    structure axes (twins, steps) are fully supported.
+    """
+    if abs(float(phi_deg)) > 1e-12:
+        raise NotImplementedError(
+            "reflection multislice currently supports phi_deg=0 only"
+        )
+    for distribution in distributions:
+        axis_id: str | None = distribution.axis_id
+        if axis_id in STRUCTURE_AXIS_IDS:
+            continue
+        if axis_id in BEAM_AXIS_IDS:
+            max_phi_offset: float = float(
+                jnp.max(jnp.abs(distribution.samples[:, 1]))
+            )
+            if max_phi_offset > 1e-12:
+                raise NotImplementedError(
+                    "kernel='multislice' routes through the edge-on "
+                    "reflection pipeline, which supports phi_deg=0 only; "
+                    f"beam axis {axis_id!r} carries nonzero phi offsets."
+                )
+            continue
+        raise NotImplementedError(
+            f"Distribution axis {axis_id!r} is not supported by the "
+            "reflection multislice kernel: it binds an azimuth rotation "
+            "or finite-domain envelope, and the edge-on pipeline supports "
+            "phi_deg=0 with periodic transverse geometry only. Use the "
+            "kinematic kernel for these axes."
+        )
+
+
 def _bind_multislice_distributions(  # noqa: PLR0913
     distributions: tuple[Distribution, ...],
     crystal: CrystalStructure,
-    potential_slices: PotentialSlices,
     energy_kev: scalar_num,
     theta_deg: scalar_num,
     phi_deg: scalar_num,
@@ -2109,13 +2024,41 @@ def _bind_multislice_distributions(  # noqa: PLR0913
     pixel_size_mm: Tuple[float, float],
     beam_center_px: Tuple[float, float],
     spot_sigma_px: scalar_float,
-    inner_potential_v0: scalar_float,
     bandwidth_limit: scalar_float,
     parameterization: str,
-    domain_aspect_ratio: Tuple[float, float, float],
     defect_surface_layer_depth_angstrom: scalar_float,
+    dx_slice: float,
+    dy: float,
+    dz: float,
+    propagation_length_ang: float,
+    vacuum_above: float,
+    cap_width: float,
 ) -> Callable[[Float[Array, "D"]], Complex[Array, "H W"]]:
-    """Bind composed distribution samples to the multislice kernel."""
+    """Bind composed distribution samples to the reflection multislice kernel.
+
+    Builds edge-on potential slices from the crystal once, then binds
+    theta/energy offsets (and per-sample structure rebuilds for twin/step
+    axes) to :func:`rheedium.simul.reflection_detector_amplitude`, exactly
+    mirroring the kinematic kernel's beam-axis semantics. Azimuth-rotating
+    axes raise :class:`NotImplementedError` because the reflection module
+    supports ``phi_deg == 0`` only.
+    """
+    from .reflection_multislice import (
+        _edge_on_slices_like,
+        crystal_to_edge_on_slices,
+        reflection_detector_amplitude,
+    )
+
+    _validate_multislice_kernel_axes(distributions, phi_deg)
+    template_slices = crystal_to_edge_on_slices(
+        crystal,
+        dx_slice=dx_slice,
+        dy=dy,
+        dz=dz,
+        vacuum_above=vacuum_above,
+        cap_width=cap_width,
+        parameterization=parameterization,
+    )
     axis_dims: tuple[int, ...] = tuple(
         distribution.samples.shape[1] for distribution in distributions
     )
@@ -2148,21 +2091,13 @@ def _bind_multislice_distributions(  # noqa: PLR0913
     )
 
     def _bound(sample: Float[Array, "D"]) -> Complex[Array, "H W"]:
-        sample_potential_slices: PotentialSlices = potential_slices
+        sample_slices = template_slices
         sample_energy_kev: Float[Array, ""] = jnp.asarray(
             energy_kev,
             dtype=jnp.float64,
         )
         sample_theta_deg: Float[Array, ""] = jnp.asarray(
             theta_deg,
-            dtype=jnp.float64,
-        )
-        sample_phi_deg: Float[Array, ""] = jnp.asarray(
-            phi_deg,
-            dtype=jnp.float64,
-        )
-        sample_spot_sigma_px: Float[Array, ""] = jnp.asarray(
-            spot_sigma_px,
             dtype=jnp.float64,
         )
         cursor: int = 0
@@ -2173,47 +2108,27 @@ def _bind_multislice_distributions(  # noqa: PLR0913
             cursor += sample_dim
             axis_update: MultisliceAxisUpdate = axis_bind(axis_sample)
             if axis_update.crystal is not None:
-                sample_potential_slices = _crystal_to_potential_slices_like(
+                sample_slices = _edge_on_slices_like(
                     axis_update.crystal,
-                    template=potential_slices,
+                    template=template_slices,
                     parameterization=parameterization,
-                )
-            if axis_update.domain_size_angstrom is not None:
-                sample_potential_slices = (
-                    _apply_domain_envelope_to_potential_slices(
-                        sample_potential_slices,
-                        domain_size_angstrom=axis_update.domain_size_angstrom,
-                        domain_aspect_ratio=domain_aspect_ratio,
-                    )
-                )
-                finite_sigma_px: Float[Array, ""] = 4.0 / jnp.maximum(
-                    jnp.asarray(
-                        axis_update.domain_size_angstrom,
-                        dtype=jnp.float64,
-                    ),
-                    1.0e-6,
-                )
-                sample_spot_sigma_px = jnp.sqrt(
-                    sample_spot_sigma_px**2 + finite_sigma_px**2
                 )
             sample_energy_kev = (
                 sample_energy_kev + axis_update.energy_delta_kev
             )
             sample_theta_deg = sample_theta_deg + axis_update.theta_delta_deg
-            sample_phi_deg = sample_phi_deg + axis_update.phi_delta_deg
 
-        return multislice_detector_amplitude(
-            potential_slices=sample_potential_slices,
+        return reflection_detector_amplitude(
+            slices=sample_slices,
             energy_kev=sample_energy_kev,
             theta_deg=sample_theta_deg,
-            phi_deg=sample_phi_deg,
             detector_distance_mm=detector_distance_mm,
             image_shape_px=image_shape_px,
             pixel_size_mm=pixel_size_mm,
             beam_center_px=beam_center_px,
-            spot_sigma_px=sample_spot_sigma_px,
-            inner_potential_v0=inner_potential_v0,
+            spot_sigma_px=spot_sigma_px,
             bandwidth_limit=bandwidth_limit,
+            propagation_length_ang=propagation_length_ang,
         )
 
     return _bound
@@ -2380,6 +2295,13 @@ def simulate_detector_image(
     2. Bind those axes to the selected coherent amplitude kernel.
     3. Reduce with :func:`apply_distributions`.
     4. Apply detector PSF and normalize.
+
+    ``render.kernel="multislice"`` runs the edge-on *reflection* multislice
+    pipeline (:mod:`rheedium.simul.reflection_multislice`): edge-on slices
+    are built from ``crystal`` directly, so ``render.potential_slices`` is
+    deprecated and ignored for this kernel. The reflection module supports
+    ``phi_deg == 0`` only; nonzero azimuths (including distribution axes
+    that rotate the azimuth) raise :class:`NotImplementedError`.
     """
     if beam is None:
         beam = BeamSpec()
@@ -2447,17 +2369,20 @@ def simulate_detector_image(
             ),
         )
     else:
-        if render.potential_slices is None:
-            raise ValueError(
-                "kernel='multislice' requires potential_slices. Convert a "
-                "sliced crystal with "
-                "sliced_crystal_to_projected_potential_slices or pass "
-                "precomputed PotentialSlices."
+        if render.potential_slices is not None:
+            warnings.warn(
+                "render.potential_slices is deprecated and ignored for "
+                "kernel='multislice': the RHEED multislice kernel now runs "
+                "the edge-on reflection pipeline, which builds its own "
+                "slices from the crystal. Use multislice_propagate / "
+                "multislice_simulator directly for transmission-geometry "
+                "potential slices.",
+                DeprecationWarning,
+                stacklevel=2,
             )
         bound = _bind_multislice_distributions(
             distributions=distributions,
             crystal=crystal,
-            potential_slices=render.potential_slices,
             energy_kev=beam.energy_kev,
             theta_deg=beam.theta_deg,
             phi_deg=beam.phi_deg,
@@ -2466,13 +2391,17 @@ def simulate_detector_image(
             pixel_size_mm=detector_pixel_size_mm(detector),
             beam_center_px=detector_beam_center_px(detector),
             spot_sigma_px=render.spot_sigma_px,
-            inner_potential_v0=render.inner_potential_v0,
             bandwidth_limit=render.bandwidth_limit,
             parameterization=render.parameterization,
-            domain_aspect_ratio=surface.finite_domain_aspect_ratio,
             defect_surface_layer_depth_angstrom=(
                 surface.defect_surface_layer_depth_angstrom
             ),
+            dx_slice=render.dx_slice,
+            dy=render.dy,
+            dz=render.dz,
+            propagation_length_ang=render.propagation_length_ang,
+            vacuum_above=render.vacuum_above,
+            cap_width=render.cap_width,
         )
     detector_image: Float[Array, "H W"] = apply_distributions(
         distributions,
@@ -2581,8 +2510,10 @@ def sliced_crystal_to_projected_potential_slices(
     --------
     projected_potential : Projected atomic potential calculation.
     create_potential_slices : Create PotentialSlices from array.
-    multislice_propagate : Propagate wave through potential slices.
-    multislice_simulator : Complete multislice RHEED simulation.
+    multislice_propagate : Transmission propagation through the slices.
+    multislice_simulator : Sparse transmission diffraction pattern.
+    reflection_multislice_simulator : The RHEED (reflection) multislice
+        path, which builds its own edge-on slices from the crystal.
 
     Examples
     --------
@@ -2675,6 +2606,89 @@ def sliced_crystal_to_projected_potential_slices(
 
 
 @jaxtyped(typechecker=beartype)
+def _refraction_wavevector_components(
+    energy_kev: scalar_float,
+    theta_deg: scalar_float,
+    inner_potential_v0: scalar_float,
+) -> tuple[Float[Array, ""], Float[Array, ""]]:
+    r"""Return the refracted wavevector components at a crystal surface.
+
+    Snell's law for electrons at a mean-inner-potential step conserves the
+    momentum component parallel to the surface and rescales only the
+    surface-normal component:
+
+    .. math::
+
+        k_\parallel = k \cos\theta \quad \text{(unchanged)}, \qquad
+        k_{z,\text{inside}} = k \sqrt{\sin^2\theta + V_0 / V}.
+
+    Parameters
+    ----------
+    energy_kev : scalar_float
+        Accelerating voltage in kilovolts.
+    theta_deg : scalar_float
+        Grazing incidence angle in degrees, measured from the surface.
+    inner_potential_v0 : scalar_float
+        Mean inner potential of the crystal in volts.
+
+    Returns
+    -------
+    k_parallel : Float[Array, ""]
+        Surface-parallel wavevector magnitude in inverse Angstroms; it is
+        identical inside and outside the crystal.
+    k_z_inside : Float[Array, ""]
+        Surface-normal wavevector magnitude inside the crystal in inverse
+        Angstroms; this is what a z-resolved solver would propagate with,
+        and it matches the Fresnel-step ``k_perp_in`` used by
+        ``reflection_multislice._flat_step_specular_reflectivity``.
+    """
+    lam_ang: Float[Array, ""] = wavelength_ang(energy_kev)
+    k_mag: Float[Array, ""] = 2.0 * jnp.pi / lam_ang
+    theta_rad: Float[Array, ""]
+    theta_rad, _ = incidence_angles_to_radians(theta_deg, 0.0)
+    voltage_v: Float[Array, ""] = (
+        jnp.asarray(energy_kev, dtype=jnp.float64) * 1000.0
+    )
+    k_parallel: Float[Array, ""] = k_mag * jnp.cos(theta_rad)
+    k_z_inside: Float[Array, ""] = k_mag * jnp.sqrt(
+        jnp.sin(theta_rad) ** 2 + inner_potential_v0 / voltage_v
+    )
+    return k_parallel, k_z_inside
+
+
+_TRANSMISSION_TILT_GUARD_MESSAGE: Final[str] = (
+    "multislice_propagate: the in-plane tilt k*cos(theta) exceeds the "
+    "bandwidth-limited grid Nyquist pi*bandwidth_limit/min(dx, dy), so the "
+    "tilted incident wave cannot be represented on this grid (it would "
+    "alias). This kernel is a TRANSMISSION calculation along z and is not "
+    "valid for grazing-incidence RHEED; use the reflection pipeline instead "
+    "(simulate_detector_image with RenderParams(kernel='multislice') or "
+    "rheedium.simul.reflection_multislice_simulator)."
+)
+
+
+def _guard_transmission_tilt(
+    psi: Complex[Array, "nx ny"],
+    k_parallel: Float[Array, ""],
+    tilt_limit: Float[Array, ""],
+) -> Complex[Array, "nx ny"]:
+    """Raise when the in-plane tilt is unrepresentable on the grid.
+
+    With concrete inputs this raises :class:`ValueError` eagerly; under
+    tracing (``jit``/``vmap``) it attaches an ``equinox.error_if`` runtime
+    check to the wavefield instead.
+    """
+    exceeds = k_parallel > tilt_limit
+    try:
+        exceeds_concrete = bool(exceeds)
+    except jax.errors.ConcretizationTypeError:
+        return eqx.error_if(psi, exceeds, _TRANSMISSION_TILT_GUARD_MESSAGE)
+    if exceeds_concrete:
+        raise ValueError(_TRANSMISSION_TILT_GUARD_MESSAGE)
+    return psi
+
+
+@jaxtyped(typechecker=beartype)
 def multislice_propagate(
     potential_slices: PotentialSlices,
     energy_kev: scalar_float,
@@ -2683,19 +2697,25 @@ def multislice_propagate(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> Complex[Array, "nx ny"]:
-    r"""Propagate electron wave through potential slices.
+    r"""Propagate an electron wave through potential slices along z.
 
-    This implements the multislice algorithm for dynamical electron
-    diffraction, which accounts for multiple scattering events. The
-    algorithm alternates between:
-    1. Transmission through a slice: ψ' = ψ × exp(iσV)
-    2. Fresnel propagation: ψ → FFT⁻¹[FFT[ψ] × P(kx,ky)]
+    **Transmission geometry along z -- NOT valid for grazing-incidence
+    RHEED.** Slices are x-y planes stacked along the surface normal and the
+    wave marches through them exactly as in a TEM multislice calculation.
+    For RHEED use the edge-on reflection pipeline instead
+    (``simulate_detector_image`` with ``RenderParams(kernel="multislice")``
+    or :func:`rheedium.simul.reflection_multislice_simulator`). A
+    representability guard raises when the requested in-plane tilt
+    :math:`k\cos\theta` exceeds the bandwidth-limited grid Nyquist
+    frequency, which makes grazing-incidence misuse impossible instead of
+    silently aliased.
 
-    The interaction constant σ = 2π/(λV) is computed in simplified form
-    suitable for high-energy electrons. The Fresnel propagator in reciprocal
-    space is P(kx,ky) = exp(-iπλΔz(kx² + ky²)) which accounts for free-space
-    propagation between slices. The initial wave is a tilted plane wave with
-    phase k_in_x*x + k_in_y*y at z=0.
+    The algorithm alternates between transmission through a slice,
+    :math:`\psi' = \psi \exp(i\sigma V)`, and Fresnel propagation,
+    :math:`\psi \to \mathrm{FFT}^{-1}[\mathrm{FFT}[\psi] P(k_x, k_y)]`
+    with :math:`P = \exp(-i\pi\lambda\Delta z (k_x^2 + k_y^2))`. The
+    initial wave is a tilted plane wave with phase
+    :math:`k_\parallel(\hat{x}\cos\varphi + \hat{y}\sin\varphi)\cdot r`.
 
     :see: :class:`~.test_simulator.TestMultislicePropagate`
 
@@ -2706,16 +2726,21 @@ def multislice_propagate(
     energy_kev : scalar_float
         Accelerating voltage in kilovolts
     theta_deg : scalar_float
-        Grazing incidence angle in degrees
+        Angle of the beam from the x-y (slice) plane in degrees. For a
+        transmission calculation this is close to 90 degrees (beam along
+        the slice-stacking z axis); the representability guard rejects
+        grazing values on realistic grids.
     phi_deg : scalar_float, optional
         Azimuthal angle of incident beam in degrees (default: 0.0)
         phi=0: beam along +x axis, phi=90: beam along +y axis
     inner_potential_v0 : scalar_float, optional
         Inner (mean) potential of the crystal in volts (default: 0.0).
-        This causes refraction at the surface. Typical values are 10-20 V
-        for most materials. When non-zero, the electron wavelength inside
-        the crystal is shortened, and the beam refracts at the surface
-        according to Snell's law for electrons.
+        Refraction at the surface conserves the surface-parallel momentum:
+        the tilt phase uses :math:`k_\parallel = k\cos\theta` unchanged,
+        while the surface-normal component inside the crystal is
+        :math:`k_{z,\text{inside}} = k\sqrt{\sin^2\theta + V_0/V}` (see
+        ``_refraction_wavevector_components``; a z-resolved solver would
+        propagate with that component).
     bandwidth_limit : scalar_float, optional
         Fraction of Nyquist frequency to retain (default: 2/3).
         Applied as a low-pass filter in Fourier space to prevent aliasing
@@ -2727,35 +2752,34 @@ def multislice_propagate(
     exit_wave : Complex[Array, "nx ny"]
         Complex exit wave after propagation through all slices
 
+    Raises
+    ------
+    ValueError
+        When ``k cos(theta) > bandwidth_limit * pi / min(dx, dy)``: the
+        tilted incident wave cannot be represented on the grid. Under
+        tracing the same condition raises through ``equinox.error_if``.
+
     Notes
     -----
     The transmission function is
     :math:`T(x,y) = \exp(i \sigma V(x,y))`, where
     :math:`\sigma = 2 \pi m e / (h^2 k)` is the interaction constant.
 
-    The Fresnel propagator in reciprocal space is
-    :math:`P(k_x, k_y, \Delta z) = \exp(-i \pi \lambda \Delta z
-    (k_x^2 + k_y^2))`.
-
-    For RHEED geometry with grazing incidence, we:
-
-    1. Start with a tilted plane wave.
-    2. Propagate through slices perpendicular to the surface normal.
-    3. Account for the projection of ``k_in`` onto the surface.
-
-    1. **Initialise wave** --
-       Tilted plane wave from :math:`k_{in,x}` and
-       :math:`k_{in,y}` (with refraction if
-       :math:`V_0 \\neq 0`).
-    2. **Build propagator** --
+    1. **Guard** --
+       Raise if the in-plane tilt exceeds the bandwidth-limited
+       grid Nyquist.
+    2. **Initialise wave** --
+       Tilted plane wave from the k-parallel-conserving
+       :math:`k_{in,x}`, :math:`k_{in,y}`.
+    3. **Build propagator** --
        Fresnel propagator
-       :math:`P = \\exp(-i \\pi \\lambda \\Delta z
+       :math:`P = \exp(-i \pi \lambda \Delta z
        (k_x^2 + k_y^2))` and bandwidth aperture.
-    3. **Scan slices** --
+    4. **Scan slices** --
        For each slice: transmit
-       :math:`\\psi' = \\psi \\exp(i \\sigma V)`, then
+       :math:`\psi' = \psi \exp(i \sigma V)`, then
        propagate in Fourier space.
-    4. **Return exit wave** --
+    5. **Return exit wave** --
        Complex wave after all slices.
 
     See Also
@@ -2763,7 +2787,8 @@ def multislice_propagate(
     wavelength_ang : Compute electron wavelength from voltage.
     sliced_crystal_to_projected_potential_slices : Create projected-potential
         slices from crystal.
-    multislice_simulator : Complete multislice RHEED simulation.
+    multislice_simulator : Sparse transmission diffraction pattern.
+    reflection_multislice_simulator : The RHEED (reflection) multislice path.
 
     References
     ----------
@@ -2778,7 +2803,6 @@ def multislice_propagate(
     nx: int = v_slices.shape[1]
     ny: int = v_slices.shape[2]
     lam_ang: scalar_float = wavelength_ang(energy_kev)
-    k_mag: scalar_float = 2.0 * jnp.pi / lam_ang
     sigma: scalar_float = interaction_constant(energy_kev, lam_ang)
     x: Float[Array, " nx"] = jnp.arange(nx) * dx
     y: Float[Array, " ny"] = jnp.arange(ny) * dy
@@ -2787,33 +2811,33 @@ def multislice_propagate(
     kx_grid: Float[Array, " nx ny"]
     ky_grid: Float[Array, " nx ny"]
     kx_grid, ky_grid = jnp.meshgrid(kx, ky, indexing="ij")
-    polar_angle_rad: scalar_float
     azimuth_angle_rad: scalar_float
-    polar_angle_rad, azimuth_angle_rad = incidence_angles_to_radians(
+    _, azimuth_angle_rad = incidence_angles_to_radians(
         theta_deg,
         phi_deg,
     )
-    voltage_v: scalar_float = energy_kev * 1000.0
-    refraction_index: scalar_float = jnp.sqrt(
-        jnp.maximum(1.0 + inner_potential_v0 / voltage_v, 1e-12)
+    k_parallel: Float[Array, ""]
+    k_parallel, _ = _refraction_wavevector_components(
+        energy_kev=energy_kev,
+        theta_deg=theta_deg,
+        inner_potential_v0=inner_potential_v0,
     )
-    cos_theta_crystal: scalar_float = jnp.clip(
-        jnp.cos(polar_angle_rad) / refraction_index,
-        -1.0,
-        1.0,
-    )
-    theta_crystal: scalar_float = jnp.arccos(cos_theta_crystal)
-    k_in_x: scalar_float = (
-        k_mag * jnp.cos(theta_crystal) * jnp.cos(azimuth_angle_rad)
-    )
-    k_in_y: scalar_float = (
-        k_mag * jnp.cos(theta_crystal) * jnp.sin(azimuth_angle_rad)
-    )
+    k_in_x: scalar_float = k_parallel * jnp.cos(azimuth_angle_rad)
+    k_in_y: scalar_float = k_parallel * jnp.sin(azimuth_angle_rad)
     x_grid: Float[Array, " nx ny"]
     y_grid: Float[Array, " nx ny"]
     x_grid, y_grid = jnp.meshgrid(x, y, indexing="ij")
     phase_init: Float[Array, "nx ny"] = k_in_x * x_grid + k_in_y * y_grid
     psi: Complex[Array, "nx ny"] = jnp.exp(1j * phase_init)
+    tilt_limit: Float[Array, ""] = (
+        jnp.asarray(bandwidth_limit, dtype=jnp.float64)
+        * jnp.pi
+        / jnp.minimum(
+            jnp.asarray(dx, dtype=jnp.float64),
+            jnp.asarray(dy, dtype=jnp.float64),
+        )
+    )
+    psi = _guard_transmission_tilt(psi, k_parallel, tilt_limit)
     kx_max: scalar_float = 0.5 / dx
     ky_max: scalar_float = 0.5 / dy
     k_cutoff_x: scalar_float = bandwidth_limit * kx_max
@@ -2857,7 +2881,11 @@ def multislice_amplitude(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> Complex[Array, "nx ny"]:
-    """Return the coherent multislice diffraction amplitude.
+    """Return the coherent transmission multislice diffraction amplitude.
+
+    Transmission geometry along z -- NOT valid for grazing-incidence RHEED;
+    use the reflection pipeline (``kernel='multislice'`` via
+    ``simulate_detector_image`` or ``reflection_multislice_simulator``).
 
     :see: :class:`~.test_multislice.TestMultisliceAmplitude`
 
@@ -2868,7 +2896,9 @@ def multislice_amplitude(
     energy_kev : scalar_float
         Accelerating voltage in kilovolts.
     theta_deg : scalar_float
-        Grazing incidence angle in degrees.
+        Angle of the beam from the slice plane in degrees (near 90 for
+        transmission; grazing values are rejected by the representability
+        guard in :func:`multislice_propagate`).
     phi_deg : scalar_float, optional
         Azimuthal angle of incident beam in degrees. Default: 0.0.
     inner_potential_v0 : scalar_float, optional
@@ -2892,7 +2922,8 @@ def multislice_amplitude(
 
     See Also
     --------
-    multislice_simulator : Legacy sparse pattern path using ``|amplitude|^2``.
+    multislice_simulator : Sparse transmission pattern using
+        ``|amplitude|^2``.
     """
     exit_wave: Complex[Array, "nx ny"] = multislice_propagate(
         potential_slices=potential_slices,
@@ -2916,7 +2947,12 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> tuple[RHEEDPattern, Complex[Array, "N"]]:
-    """Project multislice reciprocal amplitudes onto detector coordinates."""
+    """Project transmission multislice amplitudes onto the detector.
+
+    Transmission geometry along z -- NOT valid for grazing-incidence
+    RHEED. Exit-wave momenta are ``k_in + 2 pi fftfreq`` (fftfreq is in
+    cycles per Angstrom while ``k_in`` is in radians per Angstrom).
+    """
     exit_wave_k: Complex[Array, "nx ny"] = multislice_amplitude(
         potential_slices=potential_slices,
         energy_kev=energy_kev,
@@ -2949,8 +2985,8 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
             jnp.sin(polar_angle_rad),
         ]
     )
-    k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid
-    k_out_y: Float[Array, "nx ny"] = k_in[1] + ky_grid
+    k_out_x: Float[Array, "nx ny"] = k_in[0] + 2.0 * jnp.pi * kx_grid
+    k_out_y: Float[Array, "nx ny"] = k_in[1] + 2.0 * jnp.pi * ky_grid
     k_out_z_squared: Float[Array, "nx ny"] = k_mag**2 - k_out_x**2 - k_out_y**2
     valid_mask: Bool[Array, "nx ny"] = k_out_z_squared > 0
     k_out_z: Float[Array, "nx ny"] = jnp.where(
@@ -3002,7 +3038,12 @@ def multislice_detector_amplitude(  # noqa: PLR0913
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> Complex[Array, "H W"]:
-    """Render multislice coherent amplitudes onto a detector field."""
+    """Render transmission multislice amplitudes onto a detector field.
+
+    Transmission geometry along z -- NOT valid for grazing-incidence
+    RHEED; the public ``kernel='multislice'`` detector path uses
+    :func:`rheedium.simul.reflection_detector_amplitude` instead.
+    """
     pattern, amplitudes = _multislice_amplitude_pattern(
         potential_slices=potential_slices,
         energy_kev=energy_kev,
@@ -3036,25 +3077,29 @@ def multislice_simulator(
     inner_potential_v0: scalar_float = 0.0,
     bandwidth_limit: scalar_float = 2.0 / 3.0,
 ) -> RHEEDPattern:
-    r"""Simulate a RHEED pattern from potential slices with multislice.
+    r"""Simulate a transmission diffraction pattern from potential slices.
 
-    This function implements the complete multislice RHEED simulation
-    pipeline:
+    **Transmission geometry along z -- NOT valid for grazing-incidence
+    RHEED.** The wave marches through x-y slices stacked along z exactly as
+    in a TEM multislice calculation; for RHEED use the reflection pipeline
+    (``simulate_detector_image`` with ``RenderParams(kernel="multislice")``
+    or :func:`rheedium.simul.reflection_multislice_simulator`).
 
-    1. Propagate the electron wave through the crystal
-       (:func:`multislice_propagate`).
-    2. Fourier transform the exit wave to get the reciprocal-space amplitude.
+    The pipeline is:
+
+    1. Propagate the electron wave through the slices
+       (:func:`multislice_propagate`, including its representability
+       guard against aliased tilts).
+    2. Fourier transform the exit wave to get the reciprocal-space
+       amplitude.
     3. Apply the Ewald-sphere constraint for elastic scattering, where
-       :math:`|k_{out}| = |k_{in}| = 2\pi / \lambda`.
-    4. Project diffracted beams onto the detector using the angle
-       approximation :math:`\theta_x \approx k_x / k_z`,
-       :math:`\theta_y \approx k_y / k_z`.
+       :math:`|k_{out}| = |k_{in}| = 2\pi / \lambda` and
+       :math:`k_{out,\{x,y\}} = k_{in,\{x,y\}} + 2\pi\,\mathrm{fftfreq}`
+       (fftfreq is cycles per Angstrom, ``k_in`` is radians per Angstrom).
+    4. Project diffracted beams onto the detector with
+       :func:`project_on_detector_geometry` -- the same convention used by
+       every other pattern producer in this module.
     5. Calculate the intensity as :math:`|\text{amplitude}|^2`.
-
-    The Ewald-sphere constraint gives
-    :math:`k_{out,z}^2 = k^2 - k_{out,x}^2 - k_{out,y}^2`.
-    Only real solutions (positive k_out_z²) correspond to propagating waves;
-    evanescent waves don't reach the detector.
 
     :see: :class:`~.test_simulator.TestMultisliceSimulator`
 
@@ -3064,16 +3109,19 @@ def multislice_simulator(
         3D array of projected potentials from
         sliced_crystal_to_projected_potential_slices()
     energy_kev : scalar_float
-        Accelerating voltage in kilovolts (typically 10-30 keV for RHEED)
+        Accelerating voltage in kilovolts
     theta_deg : scalar_float
-        Grazing incidence angle in degrees (typically 1-5°)
+        Angle of the beam from the x-y (slice) plane in degrees; near 90
+        for a transmission calculation. Grazing values raise the
+        representability guard in :func:`multislice_propagate`.
     phi_deg : scalar_float, optional
         Azimuthal angle of incident beam in degrees (default: 0.0)
     detector_distance : scalar_float, optional
         Distance from sample to detector screen in mm (default: 100.0)
     inner_potential_v0 : scalar_float, optional
         Inner (mean) potential of the crystal in volts (default: 0.0).
-        This causes refraction at the surface. Typical values are 10-20 V.
+        Surface refraction conserves the surface-parallel momentum (see
+        :func:`multislice_propagate`).
     bandwidth_limit : scalar_float, optional
         Fraction of Nyquist frequency to retain (default: 2/3).
         Applied as a low-pass filter to prevent aliasing artifacts.
@@ -3081,23 +3129,19 @@ def multislice_simulator(
     Returns
     -------
     pattern : RHEEDPattern
-        RHEED diffraction pattern with detector coordinates and intensities.
-        The g_indices field contains flattened grid indices since Miller
-        indices are not well-defined for multislice simulation.
+        Transmission diffraction pattern with detector coordinates and
+        intensities. All ``nx * ny`` reciprocal-grid channels are returned
+        with fixed shapes: evanescent (non-propagating) channels are padded
+        with ``g_indices == -1`` and zeroed ``intensities``, following the
+        package's ``-1``-padded fixed-size convention (``k_out`` keeps the
+        in-plane components with ``k_z = 0`` because the pattern validator
+        requires non-zero wavevectors).
 
     Notes
     -----
-    The multislice algorithm captures dynamical diffraction effects including:
-    - Multiple scattering events
-    - Absorption and inelastic processes (if imaginary potential included)
-    - Thickness-dependent intensity oscillations
-    - Kikuchi lines from diffuse scattering
-
-    Unlike the kinematic approximation, multislice is quantitatively accurate
-    for thick samples and strong scattering conditions.
-
-    For RHEED geometry, the exit wave is projected onto the Ewald sphere
-    to satisfy elastic scattering constraint :math:`|k_{out}| = |k_{in}|`.
+    The multislice algorithm captures dynamical transmission diffraction
+    effects: multiple scattering, absorption (with an imaginary potential),
+    and thickness-dependent intensity oscillations.
 
     1. **Exit wave** --
        Propagate through all slices via
@@ -3108,16 +3152,14 @@ def multislice_simulator(
        :math:`k_{out,z}^2 = k^2 - k_{out,x}^2
        - k_{out,y}^2`; keep real solutions.
     4. **Detector projection** --
-       :math:`\\theta_x \\approx k_x / k_z`,
-       :math:`\\theta_y \\approx k_y / k_z`.
+       :func:`project_on_detector_geometry` on the fixed-size channel set.
     5. **Assemble pattern** --
-       Filter non-zero intensities and create
-       :class:`RHEEDPattern`.
+       Zero padded slots and create :class:`RHEEDPattern`.
 
     See Also
     --------
     multislice_propagate : Core propagation algorithm
-    simulate_rheed_pattern : Kinematic approximation simulator
+    reflection_multislice_simulator : The RHEED (reflection) multislice path
     sliced_crystal_to_projected_potential_slices : Convert SlicedCrystal to
         projected-potential slices
 
@@ -3125,7 +3167,7 @@ def multislice_simulator(
     ----------
     - Kirkland, E. J. (2010). Advanced Computing in Electron Microscopy,
       2nd ed.
-    - Ichimiya & Cohen (2004). Reflection High-Energy Electron Diffraction.
+    - Cowley & Moodie (1957). Acta Cryst. 10, 609-619.
     """
     exit_wave_k: Complex[Array, "nx ny"] = multislice_amplitude(
         potential_slices=potential_slices,
@@ -3159,51 +3201,34 @@ def multislice_simulator(
             jnp.sin(polar_angle_rad),
         ]
     )
-    k_out_x: Float[Array, "nx ny"] = k_in[0] + kx_grid
-    k_out_y: Float[Array, "nx ny"] = k_in[1] + ky_grid
+    k_out_x: Float[Array, "nx ny"] = k_in[0] + 2.0 * jnp.pi * kx_grid
+    k_out_y: Float[Array, "nx ny"] = k_in[1] + 2.0 * jnp.pi * ky_grid
     k_out_z_squared: Float[Array, "nx ny"] = k_mag**2 - k_out_x**2 - k_out_y**2
     valid_mask: Bool[Array, "nx ny"] = k_out_z_squared > 0
     k_out_z: Float[Array, "nx ny"] = jnp.where(
-        valid_mask, jnp.sqrt(k_out_z_squared), 0.0
+        valid_mask, jnp.sqrt(jnp.maximum(k_out_z_squared, 0.0)), 0.0
     )
-    theta_x: Float[Array, "nx ny"] = jnp.where(
-        valid_mask, k_out_x / k_out_z, 0.0
-    )
-    theta_y: Float[Array, "nx ny"] = jnp.where(
-        valid_mask, k_out_y / k_out_z, 0.0
-    )
-    det_x: Float[Array, "nx ny"] = detector_distance * theta_x
-    det_y: Float[Array, "nx ny"] = detector_distance * theta_y
-    intensity_k: Float[Array, "nx ny"] = jnp.abs(exit_wave_k) ** 2
     intensity_k: Float[Array, "nx ny"] = jnp.where(
-        valid_mask, intensity_k, 0.0
+        valid_mask, jnp.abs(exit_wave_k) ** 2, 0.0
     )
-    det_x_flat: Float[Array, "n"] = det_x.ravel()
-    det_y_flat: Float[Array, "n"] = det_y.ravel()
-    intensity_flat: Float[Array, "n"] = intensity_k.ravel()
-    k_out_x_flat: Float[Array, "n"] = k_out_x.ravel()
-    k_out_y_flat: Float[Array, "n"] = k_out_y.ravel()
-    k_out_z_flat: Float[Array, "n"] = k_out_z.ravel()
-    nonzero_mask: Bool[Array, "n"] = intensity_flat > 0
-    det_x_filtered: Float[Array, "m"] = det_x_flat[nonzero_mask]
-    det_y_filtered: Float[Array, "m"] = det_y_flat[nonzero_mask]
-    intensity_filtered: Float[Array, "m"] = intensity_flat[nonzero_mask]
-    k_out_filtered: Float[Array, "m 3"] = jnp.column_stack(
-        [
-            k_out_x_flat[nonzero_mask],
-            k_out_y_flat[nonzero_mask],
-            k_out_z_flat[nonzero_mask],
-        ]
+    valid_flat: Bool[Array, "n"] = valid_mask.ravel()
+    k_out_flat: Float[Array, "n 3"] = jnp.column_stack(
+        [k_out_x.ravel(), k_out_y.ravel(), k_out_z.ravel()]
     )
-    detector_points: Float[Array, "m 2"] = jnp.column_stack(
-        [det_x_filtered, det_y_filtered]
+    detector_points: Float[Array, "n 2"] = project_on_detector_geometry(
+        k_out_flat,
+        DetectorGeometry(distance=detector_distance),
     )
-    grid_indices: Int[Array, "m"] = jnp.where(nonzero_mask)[0]
+    intensity_padded: Float[Array, "n"] = jnp.where(
+        valid_flat, intensity_k.ravel(), 0.0
+    )
+    channel_indices: Int[Array, "n"] = jnp.arange(nx * ny, dtype=jnp.int32)
+    grid_indices: Int[Array, "n"] = jnp.where(valid_flat, channel_indices, -1)
     pattern: RHEEDPattern = create_rheed_pattern(
         g_indices=grid_indices,
-        k_out=k_out_filtered,
+        k_out=k_out_flat,
         detector_points=detector_points,
-        intensities=intensity_filtered,
+        intensities=intensity_padded,
     )
     return pattern
 

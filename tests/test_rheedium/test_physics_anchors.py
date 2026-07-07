@@ -885,3 +885,206 @@ def test_ctr_regularization_alias_preserves_bragg_cap() -> None:
         eps = -np.log(1.0 - np.sqrt(reg))
         cap = float(ctr_truncation_intensity(jnp.asarray(1.0), eps))
         np.testing.assert_allclose(cap, 1.0 / reg, rtol=1e-10)
+
+
+def test_refraction_conserves_k_parallel() -> None:
+    r"""Inner-potential refraction conserves the surface-parallel momentum.
+
+    Extended Summary
+    ----------------
+    Snell's law for electrons at a mean-inner-potential step keeps the
+    surface-parallel wavevector component continuous and rescales only the
+    surface-normal component: ``k_parallel = k cos(theta)`` unchanged and
+    ``k_z_inside = k sqrt(sin^2(theta) + V0/V)``, which implies the exact
+    identity ``k_z_inside^2 - k_z_vac^2 = k^2 V0 / V``. The old code
+    rescaled the parallel component through ``cos(theta)/n`` instead
+    (red-team finding M3), violating momentum conservation exactly where
+    the inner potential matters most.
+
+    Notes
+    -----
+    It evaluates the transmission tool's refraction helper at 20 kV,
+    theta = 2 degrees, V0 = 15 V and checks (a) exact equality of the
+    parallel component inside and outside, (b) the k_z identity to 1e-10
+    relative, and (c) agreement of the implied Fresnel step reflectivity
+    with the independent ``_flat_step_specular_reflectivity`` oracle in
+    the reflection module.
+
+    :see: :func:`~rheedium.simul.multislice_propagate`
+    :see: :func:`~rheedium.simul.reflection_multislice_simulator`
+    """
+    from rheedium.simul.reflection_multislice import (
+        _flat_step_specular_reflectivity,
+    )
+    from rheedium.simul.simulator import _refraction_wavevector_components
+    from rheedium.types import create_edge_on_slices
+
+    energy_kev = 20.0
+    theta_deg = 2.0
+    inner_potential_v0 = 15.0
+    lam = float(wavelength_ang(jnp.asarray(energy_kev)))
+    k_mag = 2.0 * math.pi / lam
+    theta_rad = math.radians(theta_deg)
+
+    k_parallel, k_z_inside = _refraction_wavevector_components(
+        energy_kev=energy_kev,
+        theta_deg=theta_deg,
+        inner_potential_v0=inner_potential_v0,
+    )
+    k_parallel_vacuum = k_mag * math.cos(theta_rad)
+    k_z_vacuum = k_mag * math.sin(theta_rad)
+
+    assert float(k_parallel) == k_parallel_vacuum
+    lhs = float(k_z_inside) ** 2 - k_z_vacuum**2
+    rhs = k_mag**2 * inner_potential_v0 / (energy_kev * 1000.0)
+    assert abs(lhs / rhs - 1.0) < 1e-10
+
+    dz = 0.25
+    dx_slice = 1.0
+    cap_width = 15.0
+    z_lo = -30.0 - cap_width
+    nz = int(math.ceil((30.0 + cap_width - z_lo) / dz))
+    z_axis = z_lo + dz * jnp.arange(nz)
+    profile = jnp.where(z_axis < 0.0, inner_potential_v0 * dx_slice, 0.0)
+    slices = create_edge_on_slices(
+        slices=jnp.tile(profile[None, None, :], (4, 2, 1)),
+        dx_slice=dx_slice,
+        dy=1.0,
+        dz=dz,
+        y_extent=2.0,
+        z_lo=z_lo,
+        z_surf=0.0,
+        cap_width=cap_width,
+    )
+    oracle_reflectivity, is_flat = _flat_step_specular_reflectivity(
+        slices=slices,
+        energy_kev=energy_kev,
+        theta_deg=theta_deg,
+    )
+    helper_reflectivity = (
+        (k_z_vacuum - float(k_z_inside)) / (k_z_vacuum + float(k_z_inside))
+    ) ** 2
+    assert float(is_flat) == 1.0
+    np.testing.assert_allclose(
+        float(oracle_reflectivity),
+        helper_reflectivity,
+        rtol=1e-10,
+    )
+
+
+def _flat_step_anchor_slices(
+    theta_deg: float,
+    length_ang: float,
+    energy_kev: float = 15.0,
+    inner_potential_v: float = 15.0,
+) -> Any:
+    r"""Build a uniform flat-step slab sized for genuine propagation.
+
+    The vacuum window exceeds the reflected wedge height
+    ``L tan(theta)`` so the incident wave feeding the surface never
+    crosses the top absorber, and the slab depth exceeds the descent of
+    the refracted transmitted beam so it is absorbed at the bottom only.
+    """
+    from rheedium.types import create_edge_on_slices
+
+    sin_theta = math.sin(math.radians(theta_deg))
+    sin_inside = math.sqrt(
+        sin_theta**2 + inner_potential_v / (energy_kev * 1000.0)
+    )
+    cap_width = 15.0
+    vacuum_above = max(30.0, 1.1 * length_ang * sin_theta + 10.0)
+    slab_depth = max(30.0, 1.2 * length_ang * sin_inside + 10.0)
+    dz = 0.125
+    dx_slice = 1.0
+    nx_slices = 8
+    ny = 2
+    z_lo = -slab_depth - cap_width
+    z_hi = vacuum_above + cap_width
+    nz = int(math.ceil((z_hi - z_lo) / dz))
+    z_axis = z_lo + dz * jnp.arange(nz)
+    profile = jnp.where(z_axis < 0.0, inner_potential_v * dx_slice, 0.0)
+    return create_edge_on_slices(
+        slices=jnp.tile(profile[None, None, :], (nx_slices, ny, 1)),
+        dx_slice=dx_slice,
+        dy=1.0,
+        dz=dz,
+        y_extent=float(ny),
+        z_lo=z_lo,
+        z_surf=0.0,
+        cap_width=cap_width,
+    )
+
+
+def test_flat_step_fresnel() -> None:
+    r"""Propagated flat-step reflectivity reproduces the Fresnel formula.
+
+    Extended Summary
+    ----------------
+    A uniform inner-potential step (V0 = 15 V) is the one dynamical RHEED
+    problem with a closed-form answer: the specular reflectivity is
+    ``|(k_z - k_z') / (k_z + k_z')|^2`` with
+    ``k_z' = k sqrt(sin^2(theta) + V0/V)``. The edge-on reflection
+    multislice must reproduce this by *genuine propagation* over hundreds
+    of Angstroms of crystal (red-team finding C9: the old code propagated
+    through about one unit cell and patched the specular channel with the
+    analytic answer at runtime). Gates: within 20 percent at
+    theta = 1.5 degrees and 15 kV for L = 400 Angstroms, within 40
+    percent at theta = 3 degrees, doubling L changes each answer by less
+    than 10 percent, and the total read-off intensity never exceeds the
+    incident flux (absorbing caps only remove flux).
+
+    Notes
+    -----
+    The read-off residual bias is understood: a ``(x / sin x)^2``
+    z-sampling factor with ``x = (k_z + k_z') dz / 2`` (about +7 percent
+    at 3 degrees for dz = 0.125) plus the paraxial-dispersion Fresnel
+    offset (about +2 percent), both shrinking with dz. The lock-in tail
+    average over the second half of the run suppresses start-up
+    transients, giving the sub-10-percent length stability asserted here.
+
+    :see: :func:`~rheedium.simul.reflection_multislice_propagate`
+    :see: :func:`~rheedium.simul.reflection_multislice_simulator`
+    """
+    from rheedium.simul.reflection_multislice import (
+        _reflection_amplitude_pattern,
+    )
+
+    energy_kev = 15.0
+    inner_potential_v = 15.0
+    lam = float(wavelength_ang(jnp.asarray(energy_kev)))
+    k_mag = 2.0 * math.pi / lam
+
+    def fresnel(theta_deg: float) -> float:
+        sin_theta = math.sin(math.radians(theta_deg))
+        k_z_vac = k_mag * sin_theta
+        k_z_in = k_mag * math.sqrt(
+            sin_theta**2 + inner_potential_v / (energy_kev * 1000.0)
+        )
+        return ((k_z_vac - k_z_in) / (k_z_vac + k_z_in)) ** 2
+
+    def readoff(theta_deg: float, length_ang: float) -> tuple[float, float]:
+        slices = _flat_step_anchor_slices(theta_deg, length_ang)
+        pattern, _ = _reflection_amplitude_pattern(
+            slices=slices,
+            energy_kev=energy_kev,
+            theta_deg=theta_deg,
+            propagation_length_ang=length_ang,
+        )
+        specular = float(pattern.intensities[0])
+        total = float(jnp.sum(pattern.intensities))
+        return specular, total
+
+    tolerances = {1.5: 0.20, 3.0: 0.40}
+    for theta_deg, tolerance in tolerances.items():
+        reference = fresnel(theta_deg)
+        specular_400, total_400 = readoff(theta_deg, 400.0)
+        specular_800, total_800 = readoff(theta_deg, 800.0)
+        assert abs(specular_400 / reference - 1.0) < tolerance, (
+            f"theta={theta_deg}: {specular_400} vs Fresnel {reference}"
+        )
+        assert abs(specular_800 / reference - 1.0) < tolerance
+        # convergence: doubling the propagation length changes < 10%
+        assert abs(specular_800 / specular_400 - 1.0) < 0.10
+        # absorbing caps only remove flux
+        assert total_400 <= 1.0
+        assert total_800 <= 1.0

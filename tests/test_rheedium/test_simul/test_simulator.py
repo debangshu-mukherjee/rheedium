@@ -41,10 +41,14 @@ from rheedium.simul.beam_averaging import (
     apply_distributions,
     decompose_beam_modes,
 )
+from rheedium.simul.reflection_multislice import (
+    _reflection_amplitude_pattern,
+    crystal_to_edge_on_slices,
+    reflection_detector_amplitude,
+)
 from rheedium.simul.simulator import (
     _ewald_amplitude_pattern,
     _kinematic_finite_domain_amplitude,
-    _multislice_amplitude_pattern,
     _render_ctr_streaks_to_image,
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -53,7 +57,6 @@ from rheedium.simul.simulator import (
     find_kinematic_reflections,
     kinematic_amplitude,
     log_compress_image,
-    multislice_detector_amplitude,
     multislice_propagate,
     multislice_simulator,
     project_on_detector_geometry,
@@ -144,6 +147,12 @@ def simulate_detector_image(  # noqa: PLR0913
     inner_potential_v0: Any = 0.0,
     bandwidth_limit: Any = 2.0 / 3.0,
     finite_domain_aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 0.5),
+    dx_slice: float = 1.0,
+    dy: float = 0.25,
+    dz: float = 0.25,
+    propagation_length_ang: float = 200.0,
+    vacuum_above: float = 30.0,
+    cap_width: float = 15.0,
 ) -> Float[Array, "H W"]:
     """Test-local adapter from legacy fixtures to carrier API."""
     image: Float[Array, "H W"] = _simulate_detector_image(
@@ -190,6 +199,12 @@ def simulate_detector_image(  # noqa: PLR0913
             kernel=kernel,
             inner_potential_v0=inner_potential_v0,
             bandwidth_limit=bandwidth_limit,
+            dx_slice=dx_slice,
+            dy=dy,
+            dz=dz,
+            propagation_length_ang=propagation_length_ang,
+            vacuum_above=vacuum_above,
+            cap_width=cap_width,
             potential_slices=potential_slices,
             orientation_distribution=orientation_distribution,
             distribution=distribution,
@@ -497,7 +512,7 @@ class TestCheckedNumericalEntryPoints(chex.TestCase):
         err, exit_wave = jax.jit(checked_multislice_propagate)(
             potential,
             20.0,
-            2.0,
+            88.0,
         )
         err.throw()
 
@@ -539,7 +554,7 @@ class TestCheckedNumericalEntryPoints(chex.TestCase):
         err, exit_wave = jax.jit(checked_multislice_propagate)(
             potential,
             20.0,
-            2.0,
+            88.0,
         )
 
         del exit_wave
@@ -1931,7 +1946,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         chex.assert_shape(exit_wave, (32, 32))
@@ -1967,7 +1982,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         total_intensity: scalar_float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
@@ -2009,7 +2024,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=voltage,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         chex.assert_tree_all_finite(exit_wave)
@@ -2019,17 +2034,19 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
 
     @chex.all_variants(without_device=False, with_pmap=False)
     @parameterized.named_parameters(
-        ("shallow", 0.5),
-        ("medium", 2.0),
-        ("steep", 5.0),
+        ("tilt_87", 87.0),
+        ("tilt_88", 88.0),
+        ("near_normal", 89.5),
     )
-    def test_grazing_angle_variation(self, theta: float) -> None:
-        r"""Test propagation at different grazing angles.
+    def test_transmission_tilt_variation(self, theta: float) -> None:
+        r"""Test propagation at different near-normal transmission tilts.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: propagation at
-        different grazing angles.
+        different near-normal transmission tilts. The kernel is a
+        transmission tool along z, so only steep angles are representable;
+        grazing tilts are rejected by the representability guard.
 
         Notes
         -----
@@ -2094,7 +2111,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
             phi_deg=phi,
         )
 
@@ -2136,7 +2153,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
             inner_potential_v0=v0,
         )
 
@@ -2178,7 +2195,7 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
             bandwidth_limit=limit,
         )
 
@@ -2223,13 +2240,90 @@ class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
         exit_wave: Any = var_propagate(
             zero_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         chex.assert_tree_all_finite(exit_wave)
         # Should still have intensity (plane wave propagates)
         total_intensity: scalar_float = float(jnp.sum(jnp.abs(exit_wave) ** 2))
         chex.assert_scalar_positive(total_intensity)
+
+    def test_grazing_tilt_raises_representability_error(self) -> None:
+        r"""Test grazing incidence raises the representability guard.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: grazing
+        incidence raises the representability guard. At 20 kV and a 2 degree
+        grazing angle the in-plane tilt k cos(theta) is about 73 inverse
+        Angstroms, far beyond the bandwidth-limited Nyquist of a 0.1
+        Angstrom grid (about 20.9 inverse Angstroms), so the transmission
+        kernel must refuse instead of silently aliasing (red-team finding
+        C3).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        potential: PotentialSlices = create_potential_slices(
+            slices=jnp.zeros((2, 16, 16)),
+            slice_thickness=1.0,
+            x_calibration=0.1,
+            y_calibration=0.1,
+        )
+
+        with pytest.raises(ValueError, match="reflection"):
+            multislice_propagate(
+                potential,
+                energy_kev=20.0,
+                theta_deg=2.0,
+            )
+
+    def test_steep_tilt_passes_representability_guard(self) -> None:
+        r"""Test a steep transmission tilt passes the representability guard.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: a steep
+        transmission tilt passes the representability guard. At 85 degrees
+        from the slice plane the in-plane tilt is about 6.4 inverse
+        Angstroms, well inside the bandwidth-limited Nyquist of a 0.1
+        Angstrom grid, so propagation must proceed and stay finite.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        potential: PotentialSlices = create_potential_slices(
+            slices=jnp.zeros((2, 16, 16)),
+            slice_thickness=1.0,
+            x_calibration=0.1,
+            y_calibration=0.1,
+        )
+
+        exit_wave: Any = multislice_propagate(
+            potential,
+            energy_kev=20.0,
+            theta_deg=85.0,
+        )
+
+        chex.assert_tree_all_finite(exit_wave)
 
 
 class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
@@ -2269,8 +2363,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: simulator returns
-        valid RHEEDPattern. Existing context from the original test prose:
-        Note: JIT not supported due to dynamic array sizes.
+        valid RHEEDPattern.
 
         Notes
         -----
@@ -2293,7 +2386,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         self.assertIsInstance(pattern, RHEEDPattern)
@@ -2307,8 +2400,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: all pattern arrays
-        have consistent shapes. Existing context from the original test prose:
-        Note: JIT not supported due to dynamic array sizes.
+        have consistent shapes.
 
         Notes
         -----
@@ -2331,7 +2423,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         n: Any = pattern.G_indices.shape[0]
@@ -2351,8 +2443,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: simulation at
-        different detector distances. Existing context from the original test
-        prose: Note: JIT not supported due to dynamic array sizes.
+        different detector distances.
 
         Notes
         -----
@@ -2376,7 +2467,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
             detector_distance=distance,
         )
 
@@ -2394,8 +2485,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: simulation at
-        different voltages. Existing context from the original test prose:
-        Note: JIT not supported due to dynamic array sizes.
+        different voltages.
 
         Notes
         -----
@@ -2419,25 +2509,25 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             energy_kev=voltage,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         chex.assert_tree_all_finite(pattern.intensities)
 
     @chex.variants(with_device=True, without_jit=True)
     @parameterized.named_parameters(
-        ("shallow", 1.0),
-        ("medium", 2.0),
-        ("steep", 5.0),
+        ("tilt_87", 87.0),
+        ("tilt_88", 88.0),
+        ("near_normal", 89.5),
     )
     def test_angle_variation(self, theta: float) -> None:
-        r"""Test simulation at different grazing angles.
+        r"""Test simulation at different near-normal transmission tilts.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: simulation at
-        different grazing angles. Existing context from the original test
-        prose: Note: JIT not supported due to dynamic array sizes.
+        different near-normal transmission tilts; grazing angles are
+        rejected by the representability guard in multislice_propagate.
 
         Notes
         -----
@@ -2473,8 +2563,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: output wavevectors
-        approximately satisfy Ewald sphere. Existing context from the original
-        test prose: Note: JIT not supported due to dynamic array sizes.
+        approximately satisfy Ewald sphere.
 
         Notes
         -----
@@ -2497,7 +2586,7 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
         pattern: Float[Array, "..."] = var_simulate(
             self.simple_potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         # k_out should have approximately same magnitude as k_in
@@ -2509,16 +2598,26 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
             pattern.k_out, axis=1
         )
 
-        # Filter non-zero k_out (valid reflections)
-        valid_mask: Bool[Array, "..."] = k_out_mags > 0
+        # Propagating channels carry g_indices >= 0; -1 marks padded slots
+        valid_mask: Bool[Array, "..."] = pattern.G_indices >= 0
         valid_k_out_mags: Float[Array, "..."] = k_out_mags[valid_mask]
 
-        if valid_k_out_mags.shape[0] > 0:
-            # All valid k_out should be close to k_in magnitude
+        assert valid_k_out_mags.shape[0] > 0
+        # All valid k_out should be close to k_in magnitude
+        chex.assert_trees_all_close(
+            valid_k_out_mags,
+            jnp.full_like(valid_k_out_mags, k_mag_expected),
+            rtol=0.1,
+        )
+        # Padded slots carry zero intensity
+        padded_intensity: Float[Array, "..."] = pattern.intensities[
+            ~valid_mask
+        ]
+        if padded_intensity.shape[0] > 0:
             chex.assert_trees_all_close(
-                valid_k_out_mags,
-                jnp.full_like(valid_k_out_mags, k_mag_expected),
-                rtol=0.1,
+                padded_intensity,
+                jnp.zeros_like(padded_intensity),
+                atol=0.0,
             )
 
 
@@ -5723,15 +5822,75 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
                 kernel="dynamical",
             )
 
-    def test_simulate_detector_image_rejects_multislice_without_payload(
+    def _fast_multislice_kwargs(self) -> dict[str, Any]:
+        """Compact reflection-multislice kwargs for public kernel tests."""
+        return {
+            "crystal": _SI_CRYSTAL_2ATOM,
+            "energy_kev": 20.0,
+            "theta_deg": 5.0,
+            "phi_deg": 0.0,
+            "detector_distance_mm": 20.0,
+            "image_shape_px": (32, 32),
+            "pixel_size_mm": (2.0, 2.0),
+            "beam_center_px": (16.0, 16.0),
+            "spot_sigma_px": 1.0,
+            "angular_divergence_mrad": 0.0,
+            "energy_spread_ev": 0.0,
+            "psf_sigma_pixels": 0.0,
+            "n_angular_samples": 1,
+            "n_energy_samples": 1,
+            "kernel": "multislice",
+            "dy": 0.5,
+            "dz": 0.5,
+            "vacuum_above": 6.0,
+            "cap_width": 3.0,
+            "propagation_length_ang": 24.0,
+        }
+
+    def test_simulate_detector_image_multislice_runs_without_payload(
         self,
     ) -> None:
-        r"""Multislice selection requires a concrete potential-slice payload.
+        r"""Multislice selection needs no potential-slice payload anymore.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: Multislice
-        selection requires a concrete potential-slice payload.
+        selection needs no potential-slice payload anymore. The public
+        multislice kernel routes through the edge-on reflection pipeline,
+        which builds its own slices from the crystal, so the call must
+        succeed with only a crystal and produce a finite normalized image.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        The result is checked with direct unittest or Chex assertions against
+        the expected contract.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        image: Float[Array, "32 32"] = simulate_detector_image(
+            **self._fast_multislice_kwargs(),
+        )
+
+        chex.assert_shape(image, (32, 32))
+        chex.assert_tree_all_finite(image)
+        self.assertGreater(float(jnp.max(image)), 0.0)
+
+    def test_simulate_detector_image_multislice_payload_deprecated(
+        self,
+    ) -> None:
+        r"""Passing potential_slices to the multislice kernel warns.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: passing
+        potential_slices to the multislice kernel warns. The payload is
+        accepted with a DeprecationWarning and ignored, so the image is
+        identical to the payload-free call.
 
         Notes
         -----
@@ -5745,17 +5904,99 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        with pytest.raises(ValueError, match="potential_slices"):
-            simulate_detector_image(
-                crystal=_SI_CRYSTAL_2ATOM,
-                hmax=0,
-                kmax=0,
-                image_shape_px=(16, 24),
-                pixel_size_mm=(6.0, 16.0),
-                beam_center_px=(12.0, 2.0),
-                render_ctrs_as_streaks=False,
-                kernel="multislice",
+        base: Float[Array, "32 32"] = simulate_detector_image(
+            **self._fast_multislice_kwargs(),
+        )
+
+        with pytest.warns(DeprecationWarning, match="potential_slices"):
+            with_payload: Float[Array, "32 32"] = simulate_detector_image(
+                **self._fast_multislice_kwargs(),
+                potential_slices=self._tiny_potential_slices(),
             )
+
+        chex.assert_trees_all_close(with_payload, base, atol=0.0)
+
+    def test_simulate_detector_image_multislice_brightest_is_specular(
+        self,
+    ) -> None:
+        r"""Multislice kernel puts the brightest pixel at the specular spot.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: the multislice
+        kernel puts the brightest pixel at the specular spot. For an SrTiO3
+        unit cell the edge-on reflection pipeline must place the image
+        maximum at the pixel predicted by projecting the specular outgoing
+        wavevector ``k (cos theta, 0, sin theta)`` with
+        ``project_on_detector_geometry`` -- the acceptance gate for the
+        WP6.1 reroute of the RHEED multislice path (red-team finding C3).
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body, keeping
+        the fixture and assertion path local to the documented case.
+
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
+
+        The documented check is rendered from
+        ``tests.test_rheedium.test_simul.test_simulator``, so the Test
+        Reference exposes both the guarantee and the implementation path.
+        """
+        a_sto: float = 3.905
+        frac: Float[Array, "5 4"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0, 38.0],
+                [0.5, 0.5, 0.5, 22.0],
+                [0.5, 0.5, 0.0, 8.0],
+                [0.5, 0.0, 0.5, 8.0],
+                [0.0, 0.5, 0.5, 8.0],
+            ]
+        )
+        cart: Float[Array, "5 4"] = frac.at[:, :3].multiply(a_sto)
+        crystal: CrystalStructure = create_crystal_structure(
+            frac_positions=frac,
+            cart_positions=cart,
+            cell_lengths=jnp.array([a_sto, a_sto, a_sto]),
+            cell_angles=jnp.array([90.0, 90.0, 90.0]),
+        )
+        theta_deg: float = 2.0
+        distance_mm: float = 100.0
+        beam_center_px: tuple[float, float] = (32.0, 4.0)
+        image: Float[Array, "64 64"] = simulate_detector_image(
+            crystal=crystal,
+            energy_kev=20.0,
+            theta_deg=theta_deg,
+            phi_deg=0.0,
+            detector_distance_mm=distance_mm,
+            image_shape_px=(64, 64),
+            pixel_size_mm=(1.0, 1.0),
+            beam_center_px=beam_center_px,
+            spot_sigma_px=1.4,
+            angular_divergence_mrad=0.0,
+            energy_spread_ev=0.0,
+            psf_sigma_pixels=0.0,
+            n_angular_samples=1,
+            n_energy_samples=1,
+            kernel="multislice",
+        )
+
+        row_px, col_px = jnp.unravel_index(jnp.argmax(image), image.shape)
+        lam_ang: float = float(wavelength_ang(20.0))
+        k_mag: float = 2.0 * jnp.pi / lam_ang
+        theta_rad: Float[Array, ""] = jnp.deg2rad(theta_deg)
+        k_out_specular: Float[Array, "1 3"] = k_mag * jnp.array(
+            [[jnp.cos(theta_rad), 0.0, jnp.sin(theta_rad)]]
+        )
+        specular_mm: Float[Array, "1 2"] = project_on_detector_geometry(
+            k_out_specular,
+            DetectorGeometry(distance=distance_mm),
+        )
+        expected_col: float = float(specular_mm[0, 0]) + beam_center_px[0]
+        expected_row: float = float(specular_mm[0, 1]) + beam_center_px[1]
+
+        assert abs(float(col_px) - expected_col) <= 1.0
+        assert abs(float(row_px) - expected_row) <= 1.0
 
     def test_simulate_detector_image_multislice_kernel_matches_bound_field(
         self,
@@ -5779,37 +6020,26 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        potential_slices: PotentialSlices = self._tiny_potential_slices()
-        kwargs: Any = {
-            "crystal": _SI_CRYSTAL_2ATOM,
-            "potential_slices": potential_slices,
-            "energy_kev": 20.0,
-            "theta_deg": 5.0,
-            "phi_deg": 0.0,
-            "detector_distance_mm": 20.0,
-            "image_shape_px": (32, 32),
-            "pixel_size_mm": (2.0, 2.0),
-            "beam_center_px": (16.0, 16.0),
-            "spot_sigma_px": 1.0,
-            "angular_divergence_mrad": 0.0,
-            "energy_spread_ev": 0.0,
-            "psf_sigma_pixels": 0.0,
-            "n_angular_samples": 1,
-            "n_energy_samples": 1,
-            "kernel": "multislice",
-        }
+        kwargs: Any = self._fast_multislice_kwargs()
 
         actual: Float[Array, "32 32"] = simulate_detector_image(**kwargs)
-        field: Complex[Array, "32 32"] = multislice_detector_amplitude(
-            potential_slices=potential_slices,
+        edge_slices = crystal_to_edge_on_slices(
+            kwargs["crystal"],
+            dy=kwargs["dy"],
+            dz=kwargs["dz"],
+            vacuum_above=kwargs["vacuum_above"],
+            cap_width=kwargs["cap_width"],
+        )
+        field: Complex[Array, "32 32"] = reflection_detector_amplitude(
+            slices=edge_slices,
             energy_kev=kwargs["energy_kev"],
             theta_deg=kwargs["theta_deg"],
-            phi_deg=kwargs["phi_deg"],
             detector_distance_mm=kwargs["detector_distance_mm"],
             image_shape_px=kwargs["image_shape_px"],
             pixel_size_mm=kwargs["pixel_size_mm"],
             beam_center_px=kwargs["beam_center_px"],
             spot_sigma_px=kwargs["spot_sigma_px"],
+            propagation_length_ang=kwargs["propagation_length_ang"],
         )
         expected: Float[Array, "32 32"] = jnp.abs(field) ** 2
         expected = expected / jnp.maximum(jnp.max(expected), 1e-12)
@@ -5841,7 +6071,6 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
-        potential_slices: PotentialSlices = self._tiny_potential_slices()
         detector_distance_mm: float = 20.0
         image_shape_px: tuple[int, int] = (32, 32)
         pixel_size_mm: tuple[float, float] = (2.0, 2.0)
@@ -5883,12 +6112,19 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             kmax=0,
             detector_distance=detector_distance_mm,
         )
-        multislice_pattern, _ = _multislice_amplitude_pattern(
-            potential_slices=potential_slices,
+        edge_slices = crystal_to_edge_on_slices(
+            _SI_CRYSTAL_2ATOM,
+            dy=0.5,
+            dz=0.5,
+            vacuum_above=6.0,
+            cap_width=3.0,
+        )
+        multislice_pattern, _ = _reflection_amplitude_pattern(
+            slices=edge_slices,
             energy_kev=20.0,
             theta_deg=5.0,
-            phi_deg=0.0,
             detector_distance_mm=detector_distance_mm,
+            propagation_length_ang=24.0,
         )
 
         xmin: float
@@ -5992,22 +6228,9 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
     ) -> None:
         """Assert one multislice producer axis changes the detector image."""
         kwargs: Any = {
-            "crystal": _SI_CRYSTAL_2ATOM,
-            "potential_slices": self._tiny_potential_slices(),
-            "energy_kev": 20.0,
-            "theta_deg": 5.0,
-            "phi_deg": 0.0,
-            "detector_distance_mm": 20.0,
+            **self._fast_multislice_kwargs(),
             "image_shape_px": (16, 16),
-            "pixel_size_mm": (2.0, 2.0),
             "beam_center_px": (8.0, 8.0),
-            "spot_sigma_px": 1.0,
-            "angular_divergence_mrad": 0.0,
-            "energy_spread_ev": 0.0,
-            "psf_sigma_pixels": 0.0,
-            "n_angular_samples": 1,
-            "n_energy_samples": 1,
-            "kernel": "multislice",
         }
         base: Float[Array, "16 16"] = simulate_detector_image(**kwargs)
         modified: Float[Array, "16 16"] = simulate_detector_image(
@@ -6083,23 +6306,25 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
         )
         self._assert_multislice_distribution_changes_image(distribution)
 
-    def test_simulate_detector_image_multislice_grain_axis_changes_image(
+    def test_simulate_detector_image_multislice_grain_axis_raises(
         self,
     ) -> None:
-        r"""FG1: grain axes bind orientation and size under multislice.
+        r"""FG1: grain axes raise NotImplementedError under multislice.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: FG1: grain axes
-        bind orientation and size under multislice.
+        raise NotImplementedError under multislice. Grain populations rotate
+        the beam azimuth, and the edge-on reflection pipeline behind the
+        public multislice kernel supports phi_deg=0 only.
 
         Notes
         -----
         It constructs the representative inputs inside the test body, keeping
         the fixture and assertion path local to the documented case.
 
-        The existing assertions in the function body compare the observed
-        result with the expected contract for this module.
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
@@ -6110,25 +6335,33 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             grain_sizes_angstrom=jnp.array([1.0]),
             grain_volume_fractions=jnp.array([1.0]),
         )
-        self._assert_multislice_distribution_changes_image(distribution)
 
-    def test_simulate_detector_image_multislice_size_axis_changes_image(
+        with pytest.raises(NotImplementedError, match="phi_deg=0"):
+            simulate_detector_image(
+                **self._fast_multislice_kwargs(),
+                distribution=distribution,
+            )
+
+    def test_simulate_detector_image_multislice_size_axis_raises(
         self,
     ) -> None:
-        r"""FG1: size axes bind finite-domain multislice envelopes.
+        r"""FG1: size axes raise NotImplementedError under multislice.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: FG1: size axes
-        bind finite-domain multislice envelopes.
+        raise NotImplementedError under multislice. Finite-domain envelopes
+        are incompatible with the periodic beam-axis tiling of the edge-on
+        reflection pipeline; the kinematic kernel remains the supported
+        path for size axes.
 
         Notes
         -----
         It constructs the representative inputs inside the test body, keeping
         the fixture and assertion path local to the documented case.
 
-        The existing assertions in the function body compare the observed
-        result with the expected contract for this module.
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
@@ -6140,7 +6373,12 @@ class TestDetectorImageOrchestrator(chex.TestCase, parameterized.TestCase):
             reduction=ReductionMode.INCOHERENT,
             axis_id="size",
         )
-        self._assert_multislice_distribution_changes_image(distribution)
+
+        with pytest.raises(NotImplementedError, match="not supported"):
+            simulate_detector_image(
+                **self._fast_multislice_kwargs(),
+                distribution=distribution,
+            )
 
     def test_simulate_detector_image_beam_modes_match_instrument_wrapper(
         self,
@@ -6892,10 +7130,9 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         )
 
     def _multislice_kwargs(self) -> dict[str, Any]:
-        """Shared compact multislice settings for FG1 grad gates."""
+        """Shared compact reflection-multislice settings for FG1 gates."""
         return {
             "crystal": _SI_CRYSTAL_2ATOM,
-            "potential_slices": self._tiny_potential_slices(),
             "energy_kev": 20.0,
             "theta_deg": 5.0,
             "phi_deg": 0.0,
@@ -6910,6 +7147,11 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
             "n_angular_samples": 1,
             "n_energy_samples": 1,
             "kernel": "multislice",
+            "dy": 0.5,
+            "dz": 0.5,
+            "vacuum_above": 6.0,
+            "cap_width": 3.0,
+            "propagation_length_ang": 24.0,
         }
 
     def test_grad_public_multislice_twin_axis_is_live(self) -> None:
@@ -6999,86 +7241,76 @@ class TestSimulateDetectorImagePhase6Gradients(chex.TestCase):
         chex.assert_tree_all_finite(grad_value)
         assert float(jnp.abs(grad_value)) > 1e-8
 
-    def test_grad_public_multislice_grain_axis_is_live(self) -> None:
-        r"""FG1: jax.grad through multislice grain size is live.
+    def test_grad_public_multislice_grain_axis_not_implemented(self) -> None:
+        r"""FG1: grain axes raise NotImplementedError under multislice.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: FG1: jax.grad
-        through multislice grain size is live.
+        Verifies the documented behavior for this test case: FG1: grain axes
+        raise NotImplementedError under multislice. Grain populations bind
+        an azimuth rotation, and the edge-on reflection pipeline behind the
+        public multislice kernel supports phi_deg=0 only, so the bind must
+        refuse loudly instead of silently ignoring the rotation.
 
         Notes
         -----
         It constructs the representative inputs inside the test body, keeping
         the fixture and assertion path local to the documented case.
 
-        The result is checked with direct unittest or Chex assertions against
-        the expected contract.
-
-        The body also exercises differentiability, protecting JAX transform
-        compatibility for this path.
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
+        distribution: Distribution = grain_population_to_distribution(
+            orientation_angles_deg=jnp.array([5.0]),
+            grain_sizes_angstrom=jnp.array([1.0]),
+            grain_volume_fractions=jnp.array([1.0]),
+        )
 
-        def loss(grain_size_angstrom: scalar_float) -> scalar_float:
-            distribution: Distribution = grain_population_to_distribution(
-                orientation_angles_deg=jnp.array([5.0]),
-                grain_sizes_angstrom=jnp.array([grain_size_angstrom]),
-                grain_volume_fractions=jnp.array([1.0]),
-            )
-            image: Float[Array, "16 16"] = simulate_detector_image(
+        with pytest.raises(NotImplementedError, match="phi_deg=0"):
+            simulate_detector_image(
                 **self._multislice_kwargs(),
                 distribution=distribution,
             )
-            return self._detector_metric(image)
 
-        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
-        chex.assert_tree_all_finite(grad_value)
-        assert float(jnp.abs(grad_value)) > 1e-8
-
-    def test_grad_public_multislice_size_axis_is_live(self) -> None:
-        r"""FG1: jax.grad through multislice size samples is live.
+    def test_grad_public_multislice_size_axis_not_implemented(self) -> None:
+        r"""FG1: size axes raise NotImplementedError under multislice.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: FG1: jax.grad
-        through multislice size samples is live.
+        Verifies the documented behavior for this test case: FG1: size axes
+        raise NotImplementedError under multislice. Finite-domain size
+        envelopes are incompatible with the periodic beam-axis tiling of
+        the edge-on reflection pipeline, so the bind must refuse loudly;
+        the kinematic kernel remains the supported path for size axes.
 
         Notes
         -----
         It constructs the representative inputs inside the test body, keeping
         the fixture and assertion path local to the documented case.
 
-        The result is checked with direct unittest or Chex assertions against
-        the expected contract.
-
-        The body also exercises differentiability, protecting JAX transform
-        compatibility for this path.
+        The negative path is validated by asserting the expected exception
+        rather than accepting silent coercion or fallback behavior.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_simul.test_simulator``, so the Test
         Reference exposes both the guarantee and the implementation path.
         """
+        distribution: Distribution = create_distribution(
+            samples=jnp.array([[1.0]], dtype=jnp.float64),
+            weights=jnp.array([1.0], dtype=jnp.float64),
+            reduction=ReductionMode.INCOHERENT,
+            axis_id="size",
+        )
 
-        def loss(size_angstrom: scalar_float) -> scalar_float:
-            distribution: Distribution = create_distribution(
-                samples=jnp.array([[size_angstrom]], dtype=jnp.float64),
-                weights=jnp.array([1.0], dtype=jnp.float64),
-                reduction=ReductionMode.INCOHERENT,
-                axis_id="size",
-            )
-            image: Float[Array, "16 16"] = simulate_detector_image(
+        with pytest.raises(NotImplementedError, match="not supported"):
+            simulate_detector_image(
                 **self._multislice_kwargs(),
                 distribution=distribution,
             )
-            return self._detector_metric(image)
-
-        grad_value: scalar_float = jax.grad(loss)(jnp.float64(1.0))
-        chex.assert_tree_all_finite(grad_value)
-        assert float(jnp.abs(grad_value)) > 1e-8
 
 
 class TestEwaldSimulatorGradients(chex.TestCase, parameterized.TestCase):
@@ -7423,7 +7655,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
                 energy_kev=voltage,
-                theta_deg=2.0,
+                theta_deg=88.0,
             )
             return jnp.sum(jnp.abs(psi_exit) ** 2)
 
@@ -7475,7 +7707,7 @@ class TestMultisliceGradients(chex.TestCase, parameterized.TestCase):
             psi_exit: Complex[Array, "H W"] = multislice_propagate(
                 potential,
                 energy_kev=voltage,
-                theta_deg=2.0,
+                theta_deg=88.0,
             )
             return jnp.sum(jnp.abs(psi_exit) ** 2)
 

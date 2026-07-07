@@ -696,12 +696,12 @@ class TestMultisliceAmplitude(chex.TestCase):
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
         exit_wave: Complex[Array, "8 8"] = multislice_propagate(
             potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         chex.assert_trees_all_close(
@@ -734,7 +734,7 @@ class TestMultisliceAmplitude(chex.TestCase):
         amplitude: Complex[Array, "8 8"] = multislice_amplitude(
             potential,
             energy_kev=20.0,
-            theta_deg=2.0,
+            theta_deg=88.0,
         )
 
         intensity: Float[Array, "8 8"] = jnp.abs(amplitude) ** 2
@@ -771,7 +771,7 @@ class TestMultisliceAmplitude(chex.TestCase):
             amplitude: Complex[Array, "8 8"] = multislice_amplitude(
                 potential,
                 energy_kev=20.0,
-                theta_deg=2.0,
+                theta_deg=88.0,
             )
             return jnp.sum(jnp.abs(amplitude) ** 2).real
 
