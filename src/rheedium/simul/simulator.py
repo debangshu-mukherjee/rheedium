@@ -2437,7 +2437,8 @@ def simulate_detector_image_instrument(
         raise ValueError(
             "simulate_detector_image_instrument currently supports only "
             "render.kernel='kinematic'; use simulate_detector_image with "
-            "render.potential_slices for multislice."
+            "RenderParams(kernel='multislice') for the reflection "
+            "multislice path."
         )
     return simulate_detector_image(
         crystal=crystal,

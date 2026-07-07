@@ -2,14 +2,15 @@
 # requires-python = ">=3.11,<3.14"
 # dependencies = ["rheedium==2026.6.10"]
 # ///
-"""Simulate one transmission multislice RHEED detector image.
+"""Simulate one reflection multislice RHEED detector image.
 
-The automaton loads a CIF, XYZ, or POSCAR bulk structure, converts it to a
-surface slab and projected potential slices, runs rheedium's transmission
-multislice forward model, rasterizes the sparse diffraction pattern to a dense
-detector image, and writes both PNG and ``.npz`` artifacts. In ``--smoke`` mode
-it uses a tiny slab generated in code so the backend contract is testable
-without external fixtures.
+The automaton loads a CIF, XYZ, or POSCAR bulk structure, re-expresses it in
+the requested surface cell, runs rheedium's edge-on reflection multislice
+forward model (beam along the surface, absorbing caps, genuine propagation
+over ``propagation_length_ang``), rasterizes the sparse reflected pattern to
+a dense detector image, and writes both PNG and ``.npz`` artifacts. In
+``--smoke`` mode it uses a tiny crystal generated in code so the backend
+contract is testable without external fixtures.
 """
 
 from __future__ import annotations
@@ -23,29 +24,31 @@ from jaxtyping import Array, Float, jaxtyped
 import rheedium as rh
 from rheedium.harness import Param, experiment
 from rheedium.types import (
+    CrystalStructure,
     DetectorGeometry,
-    PotentialSlices,
+    EdgeOnSlices,
     RHEEDPattern,
-    SlicedCrystal,
 )
 
 
 @jaxtyped(typechecker=beartype)
-def _smoke_sliced_crystal() -> SlicedCrystal:
-    """Return a tiny orthogonal slab for smoke testing."""
-    return rh.types.create_sliced_crystal(
-        cart_positions=jnp.asarray(
-            [
-                [1.0, 1.0, 1.0, 14.0],
-                [3.0, 3.0, 2.0, 14.0],
-            ]
-        ),
-        cell_lengths=jnp.asarray([4.0, 4.0, 4.0]),
-        cell_angles=jnp.asarray([90.0, 90.0, 90.0]),
-        orientation=jnp.asarray([0, 0, 1]),
-        depth=4.0,
-        x_extent=4.0,
-        y_extent=4.0,
+def _smoke_crystal() -> CrystalStructure:
+    """Return a tiny frame-consistent crystal for smoke testing."""
+    frac = jnp.asarray(
+        [
+            [0.25, 0.25, 0.25, 14.0],
+            [0.75, 0.75, 0.5, 14.0],
+        ]
+    )
+    cell_lengths = jnp.asarray([4.0, 4.0, 4.0])
+    cell_angles = jnp.asarray([90.0, 90.0, 90.0])
+    cell = rh.ucell.build_cell_vectors(*cell_lengths, *cell_angles)
+    cart = jnp.concatenate([frac[:, :3] @ cell, frac[:, 3:]], axis=1)
+    return rh.types.create_crystal_structure(
+        frac_positions=frac,
+        cart_positions=cart,
+        cell_lengths=cell_lengths,
+        cell_angles=cell_angles,
     )
 
 
@@ -84,19 +87,15 @@ def _zone_axis(args: Any) -> tuple[int, int, int]:
     return orientation
 
 
-def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
-    """Load a user crystal slab or return the smoke fixture."""
+def _surface_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
+    """Load a surface-oriented crystal or return the smoke fixture."""
     if smoke and not args.crystal:
-        return _smoke_sliced_crystal()
+        return _smoke_crystal()
     if not args.crystal:
         raise ValueError("crystal is required unless --smoke is set")
     crystal = rh.inout.parse_crystal(args.crystal)
-    return rh.ucell.bulk_to_slice(
-        bulk_crystal=crystal,
-        orientation=jnp.asarray(_zone_axis(args), dtype=jnp.int32),
-        depth=args.depth_ang,
-        x_extent=args.x_extent_ang,
-        y_extent=args.y_extent_ang,
+    return rh.ucell.reorient_to_zone_axis(
+        crystal, jnp.asarray(_zone_axis(args), dtype=jnp.int32)
     )
 
 
@@ -165,7 +164,7 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "depth_ang",
             float,
             default=20.0,
-            help="Surface slab depth used for bulk-to-slab lowering.",
+            help="Penetration depth below the surface in the edge-on slab.",
             unit="Angstrom",
             bounds=(1.0, 200.0),
             example=20.0,
@@ -174,7 +173,10 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "x_extent_ang",
             float,
             default=40.0,
-            help="Surface slab x extent used for bulk-to-slab lowering.",
+            help=(
+                "Unused by the reflection kernel; kept for recipe "
+                "compatibility."
+            ),
             unit="Angstrom",
             bounds=(1.0, 500.0),
             example=40.0,
@@ -183,7 +185,10 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "y_extent_ang",
             float,
             default=40.0,
-            help="Surface slab y extent used for bulk-to-slab lowering.",
+            help=(
+                "Unused by the reflection kernel; kept for recipe "
+                "compatibility."
+            ),
             unit="Angstrom",
             bounds=(1.0, 500.0),
             example=40.0,
@@ -192,7 +197,7 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "slice_thickness_ang",
             float,
             default=2.0,
-            help="Projected-potential slice thickness.",
+            help="Beam-axis slice step dx of the edge-on propagation.",
             unit="Angstrom",
             bounds=(0.1, 20.0),
             example=2.0,
@@ -201,7 +206,7 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "pixel_size_ang",
             float,
             default=0.5,
-            help="Projected-potential lateral pixel size.",
+            help="Transverse grid step (dy = dz) of the edge-on wavefield.",
             unit="Angstrom",
             bounds=(0.1, 10.0),
             example=0.5,
@@ -219,7 +224,10 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "inner_potential_v0",
             float,
             default=0.0,
-            help="Mean inner potential used in transmission propagation.",
+            help=(
+                "Ignored: the reflection kernel derives refraction from "
+                "the potential itself; kept for recipe compatibility."
+            ),
             unit="V",
             bounds=(-100.0, 100.0),
             example=0.0,
@@ -228,9 +236,21 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
             "bandwidth_limit",
             float,
             default=2.0 / 3.0,
-            help="Fraction of Nyquist frequency retained during propagation.",
+            help=(
+                "Ignored by the reflection simulator (internal 2/3 "
+                "limit); kept for recipe compatibility."
+            ),
             bounds=(0.05, 1.0),
             example=2.0 / 3.0,
+        ),
+        Param(
+            "propagation_length_ang",
+            float,
+            default=200.0,
+            help="Beam-axis propagation length through the crystal.",
+            unit="Angstrom",
+            bounds=(10.0, 2000.0),
+            example=200.0,
         ),
         Param(
             "image_size",
@@ -271,7 +291,7 @@ def _sliced_crystal(args: Any, *, smoke: bool) -> SlicedCrystal:
     },
 )
 def main(args: Any, ctx: Any) -> dict[str, Any]:
-    """Run the transmission multislice forward simulation."""
+    """Run the reflection multislice forward simulation."""
     image_size: int = (
         min(args.image_size, 48) if args.smoke else args.image_size
     )
@@ -284,23 +304,38 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         max(args.pixel_size_ang, 1.0) if args.smoke else args.pixel_size_ang
     )
 
-    sliced: SlicedCrystal = _sliced_crystal(args, smoke=args.smoke)
-    potential: PotentialSlices = (
-        rh.simul.sliced_crystal_to_projected_potential_slices(
-            sliced,
-            slice_thickness=slice_thickness_ang,
-            pixel_size=pixel_size_ang,
-            parameterization=args.parameterization,
-        )
+    vacuum_above_ang: float = 8.0 if args.smoke else 30.0
+    cap_width_ang: float = 4.0 if args.smoke else 15.0
+    propagation_length_ang: float = (
+        min(args.propagation_length_ang, 16.0)
+        if args.smoke
+        else args.propagation_length_ang
     )
-    pattern: RHEEDPattern = rh.simul.multislice_simulator(
-        potential,
+    crystal: CrystalStructure = _surface_crystal(args, smoke=args.smoke)
+    edge_on: EdgeOnSlices = rh.simul.crystal_to_edge_on_slices(
+        crystal,
+        phi_deg=args.phi_deg,
+        dx_slice=slice_thickness_ang,
+        dy=pixel_size_ang,
+        dz=pixel_size_ang,
+        vacuum_above=vacuum_above_ang,
+        cap_width=cap_width_ang,
+        penetration_depth=args.depth_ang,
+        parameterization=args.parameterization,
+    )
+    pattern: RHEEDPattern = rh.simul.reflection_multislice_simulator(
+        crystal,
         energy_kev=args.energy_kev,
         theta_deg=args.theta_deg,
         phi_deg=args.phi_deg,
         detector_distance=args.detector_distance_mm,
-        inner_potential_v0=args.inner_potential_v0,
-        bandwidth_limit=args.bandwidth_limit,
+        dx_slice=slice_thickness_ang,
+        dy=pixel_size_ang,
+        dz=pixel_size_ang,
+        vacuum_above=vacuum_above_ang,
+        cap_width=cap_width_ang,
+        propagation_length_ang=propagation_length_ang,
+        parameterization=args.parameterization,
     )
     geometry = DetectorGeometry(
         distance=args.detector_distance_mm,
@@ -327,14 +362,14 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
             "image": np.asarray(image),
             "detector_points": np.asarray(pattern.detector_points),
             "intensities": np.asarray(pattern.intensities),
-            "potential_slices": np.asarray(potential.slices),
+            "edge_on_slices": np.asarray(edge_on.slices),
         },
         role="detector_array",
     )
 
     metrics: dict[str, Any] = {
         "image_shape": [image_size, image_size],
-        "potential_shape": list(potential.slices.shape),
+        "edge_on_slices_shape": list(edge_on.slices.shape),
         "zone_axis": list(_zone_axis(args)),
         **_pattern_metrics(pattern),
         **_image_metrics(image),
