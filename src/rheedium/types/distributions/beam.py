@@ -237,10 +237,22 @@ def beam_modes_from_electron_beam(
     -------
     beam_modes : BeamModeDistribution
         GSM beam-mode producer derived from the existing beam specification.
+
+    Notes
+    -----
+    ``incidence_angle_deg`` must be finite and positive. For positive angles
+    whose sine is below ``1e-6``, the footprint projection deliberately uses
+    that floor; its zero gradient in the saturated region is intended.
     """
-    incidence_rad: Float[Array, ""] = jnp.deg2rad(
-        jnp.asarray(incidence_angle_deg, dtype=jnp.float64)
+    incidence_angle: Float[Array, ""] = jnp.asarray(
+        incidence_angle_deg, dtype=jnp.float64
     )
+    checked_incidence_angle: Float[Array, ""] = eqx.error_if(
+        incidence_angle,
+        (~jnp.isfinite(incidence_angle)) | (incidence_angle <= 0.0),
+        "incidence_angle_deg must be finite and positive",
+    )
+    incidence_rad: Float[Array, ""] = jnp.deg2rad(checked_incidence_angle)
     sin_incidence: Float[Array, ""] = jnp.maximum(
         jnp.sin(incidence_rad),
         _MIN_SIN_INCIDENCE,

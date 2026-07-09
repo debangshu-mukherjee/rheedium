@@ -314,7 +314,8 @@ def _gsm_axis_modes(
     index_variance: Float[Array, ""] = jnp.sum(weights * centered_indices**2)
     scale: Float[Array, ""] = jnp.where(
         index_variance > 0.0,
-        divergence_rad / jnp.sqrt(index_variance),
+        divergence_rad
+        / jnp.sqrt(jnp.where(index_variance > 0.0, index_variance, 1.0)),
         0.0,
     )
     offsets: Float[Array, "M"] = centered_indices * scale
@@ -815,9 +816,9 @@ def instrument_broadened_pattern(
     1. **Build a Distribution** --
        Convert angular and energy quadrature grids to one incoherent
        distribution over ``[polar_angle_rad, azimuth_angle_rad, energy_kev]``.
-    2. **Shared reduction** --
-       Evaluate the bound coherent amplitude through
-       :func:`apply_distributions`.
+    2. **Incoherent reduction** --
+       Average the simulated intensities directly through
+       :func:`apply_distribution_intensity`.
     3. **PSF convolution** --
        Apply :func:`detector_psf_convolve` to the combined pattern.
     4. **Clip** --
@@ -888,19 +889,18 @@ def instrument_broadened_pattern(
         axis_id="instrument_quadrature",
     )
 
-    def _instrument_amplitude(
+    def _instrument_intensity(
         sample: Float[Array, "3"],
-    ) -> Complex[Array, "H W"]:
-        intensity: Float[Array, "H W"] = simulate_fn(
+    ) -> Float[Array, "H W"]:
+        return simulate_fn(
             sample[0],
             sample[1],
             sample[2],
         )
-        return jnp.sqrt(jnp.maximum(intensity, 0.0)).astype(jnp.complex128)
 
-    combined: Float[Array, "H W"] = apply_distributions(
-        (distribution,),
-        _instrument_amplitude,
+    combined: Float[Array, "H W"] = apply_distribution_intensity(
+        distribution,
+        _instrument_intensity,
     )
     final_pattern: Float[Array, "H W"] = detector_psf_convolve(
         detector_image=combined,

@@ -640,6 +640,33 @@ class TestComputeShellSigma(chex.TestCase, parameterized.TestCase):
 
         chex.assert_scalar_positive(float(sigma))
 
+    def test_zero_width_gradient_is_finite(self) -> None:
+        r"""The shell-width gradient is zero when both widths vanish.
+
+        Extended Summary
+        ----------------
+        Differentiates the Ewald shell width with respect to beam divergence
+        at the exact boundary where both the energy-spread and divergence
+        contributions are zero.
+
+        Notes
+        -----
+        The quadrature norm convention selects a finite zero subgradient for
+        the physically sharp, zero-width shell.
+        """
+
+        def loss(divergence: scalar_float) -> scalar_float:
+            return compute_shell_sigma(
+                self.k_20kv,
+                energy_spread_frac=0.0,
+                beam_divergence_rad=divergence,
+            )
+
+        gradient: scalar_float = jax.grad(loss)(jnp.float64(0.0))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
+
 
 class TestPointDomainOverlap(chex.TestCase, parameterized.TestCase):
     """Test suite for the legacy point-based overlap (reference only).
@@ -1681,6 +1708,47 @@ class TestRodDomainOverlap(chex.TestCase, parameterized.TestCase):
             [jnp.cos(theta_rad), 0.0, -jnp.sin(theta_rad)]
         )
         return k_in
+
+    def test_tangent_rod_gradient_is_finite(self) -> None:
+        r"""A tangent rod has a finite zero discriminant gradient.
+
+        Extended Summary
+        ----------------
+        Constructs an exactly representable rod-sphere tangency and
+        differentiates the summed finite-thickness rod factor with respect to
+        the Ewald-sphere radius.
+
+        Notes
+        -----
+        The two quadratic roots merge at zero discriminant, where the adopted
+        square-root convention returns a zero subgradient instead of NaN.
+        """
+        hkl: Float[Array, "1 3"] = jnp.zeros((1, 3), dtype=jnp.float64)
+        reciprocal_vectors: Float[Array, "3 3"] = jnp.array(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+            ]
+        )
+        tangent_point: Float[Array, "3"] = jnp.array([0.0, 0.0, 1.0])
+        rod_sigma: Float[Array, "3"] = jnp.array([0.1, 0.1, 0.1])
+
+        def loss(k_magnitude: scalar_float) -> scalar_float:
+            _, rod_factor, _ = rod_domain_overlap(
+                hkl_points=hkl,
+                recip_vectors=reciprocal_vectors,
+                k_in=tangent_point,
+                k_magnitude=k_magnitude,
+                rod_sigma=rod_sigma,
+                shell_sigma=jnp.float64(0.1),
+            )
+            return jnp.sum(rod_factor)
+
+        gradient: scalar_float = jax.grad(loss)(jnp.float64(1.0))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
 
     def test_theta_scan_first_order_rod_no_gaps(self) -> None:
         r"""The first-order rod contributes continuously over a theta scan.

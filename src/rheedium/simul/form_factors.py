@@ -63,7 +63,7 @@ from rheedium.inout import (
     kirkland_potentials,
     lobato_potentials,
 )
-from rheedium.tools import bessel_k0, bessel_k1
+from rheedium.tools import bessel_k0, bessel_k1, safe_norm
 from rheedium.types import (
     AMU_TO_KG,
     BOLTZMANN_CONSTANT_JK,
@@ -1012,7 +1012,7 @@ def atomic_scattering_factor(
     """
     if parameterization not in {"lobato", "kirkland"}:
         raise ValueError("parameterization must be 'lobato' or 'kirkland'")
-    q_magnitude: Float[Array, "..."] = jnp.linalg.norm(q_vector, axis=-1)
+    q_magnitude: Float[Array, "..."] = safe_norm(q_vector, axis=-1)
     if parameterization == "lobato":
         form_factor: Float[Array, "..."] = lobato_form_factor(
             atomic_number, q_magnitude

@@ -26,6 +26,7 @@ from rheedium.recon import (
     unconstrained_from_simplex,
     wyckoff_fractional_from_unconstrained,
 )
+from rheedium.types.custom_types import scalar_float
 
 
 class TestReconTransforms(chex.TestCase):
@@ -114,6 +115,33 @@ class TestReconTransforms(chex.TestCase):
             )
         )(logits)
         chex.assert_tree_all_finite(gradient)
+
+    def test_unconstrained_simplex_interior_gradient_is_finite(self) -> None:
+        r"""The inverse simplex transform should be smooth in the interior.
+
+        Extended Summary
+        ----------------
+        Verifies the supported differentiability contract for centered logits
+        using two strictly positive weights and an exact analytic derivative.
+
+        Notes
+        -----
+        The probe intentionally excludes the simplex boundary, where the exact
+        inverse requires ``log(0)`` and is legitimately non-differentiable.
+        """
+
+        def first_logit(first_weight: scalar_float) -> scalar_float:
+            weights: Float[Array, "weights"] = jnp.stack(
+                (first_weight, 1.0 - first_weight)
+            )
+            return unconstrained_from_simplex(weights)[0]
+
+        gradient: scalar_float = jax.grad(first_logit)(
+            jnp.asarray(0.25, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(gradient, 8.0 / 3.0, atol=1e-12)
 
     def test_ordered_bounded_transform_is_monotone(self) -> None:
         r"""Ordered bounded transform should produce sorted interval points.

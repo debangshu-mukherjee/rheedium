@@ -6,9 +6,10 @@
 
 The automaton loads a CIF, XYZ, or POSCAR structure, runs rheedium's
 kinematic Ewald forward model, rasterizes the sparse diffraction pattern to a
-dense detector image, and writes both a PNG preview and an ``.npz`` numeric
-artifact. In ``--smoke`` mode it generates a tiny MgO-like cubic cell in code
-so the contract can be tested without external fixtures.
+dense detector image, and writes log and linear PNG previews plus an ``.npz``
+numeric artifact containing raw intensity. In ``--smoke`` mode it generates a
+tiny MgO-like cubic cell in code so the contract can be tested without
+external fixtures.
 """
 
 from __future__ import annotations
@@ -186,7 +187,11 @@ def _load_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
             "integrated_intensity": {"type": "number"},
         },
         "artifacts": {
-            "roles": ["detector_image", "detector_array"],
+            "roles": [
+                "detector_image",
+                "detector_image_linear",
+                "detector_array",
+            ],
         },
     },
 )
@@ -220,7 +225,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         spot_sigma_px=args.spot_sigma_px,
     )
 
-    png_artifact = ctx.save_image(
+    png_artifacts = ctx.save_image_scales(
         "pattern.png",
         image,
         cmap="phosphor",
@@ -245,7 +250,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     ctx.save_json("metrics.json", metrics, role="metrics")
     return {
         "metrics": metrics,
-        "artifacts": [png_artifact, npz_artifact],
+        "artifacts": [*png_artifacts, npz_artifact],
     }
 
 

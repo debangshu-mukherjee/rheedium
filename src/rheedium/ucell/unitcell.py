@@ -39,6 +39,7 @@ All functions are JAX-compatible and support automatic differentiation.
 
 import math
 
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
@@ -46,6 +47,7 @@ from beartype.typing import List, Tuple
 from jax import lax
 from jaxtyping import Array, Bool, Float, Int, Num, jaxtyped
 
+from rheedium.tools import safe_arccos, safe_divide, safe_norm
 from rheedium.types import (
     CrystalStructure,
     SlicedCrystal,
@@ -261,9 +263,15 @@ def get_unit_cell_matrix(
     sin_angles: Float[Array, "3"] = jnp.array(
         [jnp.sin(alpha_rad), jnp.sin(beta_rad), jnp.sin(gamma_rad)]
     )
-    volume_factor: Float[Array, ""] = jnp.sqrt(
+    volume_factor_squared: Float[Array, ""] = (
         1 - jnp.sum(jnp.square(cos_angles)) + (2 * jnp.prod(cos_angles))
     )
+    checked_volume_factor_squared: Float[Array, ""] = eqx.error_if(
+        volume_factor_squared,
+        volume_factor_squared <= 0.0,
+        "unit cell volume factor must be positive",
+    )
+    volume_factor: Float[Array, ""] = jnp.sqrt(checked_volume_factor_squared)
     matrix: Float[Array, "3 3"] = jnp.zeros(shape=(3, 3), dtype=jnp.float64)
     matrix = matrix.at[0, 0].set(a)
     matrix = matrix.at[0, 1].set(b * cos_angles[2])
@@ -358,7 +366,12 @@ def build_cell_vectors(
         / jnp.sin(gamma_rad)
     )
     c_z_sq: Float[Array, ""] = (c**2) - (c_x**2) - (c_y**2)
-    c_z: Float[Array, ""] = jnp.sqrt(jnp.clip(c_z_sq, min=0.0))
+    checked_c_z_sq: Float[Array, ""] = eqx.error_if(
+        c_z_sq,
+        c_z_sq <= 0.0,
+        "unit cell volume factor must be positive",
+    )
+    c_z: Float[Array, ""] = jnp.sqrt(checked_c_z_sq)
     c_vec: Float[Array, "3"] = jnp.array([c_x, c_y, c_z])
     cell_vectors: Float[Array, "3 3"] = jnp.stack(
         [a_vec, b_vec, c_vec], axis=0
@@ -421,31 +434,39 @@ def compute_lengths_angles(
     --------
     build_cell_vectors : Inverse operation from parameters to vectors.
     """
-    lengths: Float[Array, "3"] = jnp.linalg.norm(vectors, axis=1)
+    lengths: Float[Array, "3"] = safe_norm(vectors, axis=1)
+    checked_lengths: Float[Array, "3"] = eqx.error_if(
+        lengths,
+        jnp.any(lengths <= 0.0),
+        "cell-vector angles are undefined for zero-length vectors",
+    )
 
     a_vec: Float[Array, "3"] = vectors[0]
     b_vec: Float[Array, "3"] = vectors[1]
     c_vec: Float[Array, "3"] = vectors[2]
 
-    cos_alpha: Float[Array, ""] = jnp.dot(b_vec, c_vec) / (
-        lengths[1] * lengths[2]
+    cos_alpha: Float[Array, ""] = safe_divide(
+        jnp.dot(b_vec, c_vec),
+        checked_lengths[1] * checked_lengths[2],
     )
-    cos_beta: Float[Array, ""] = jnp.dot(a_vec, c_vec) / (
-        lengths[0] * lengths[2]
+    cos_beta: Float[Array, ""] = safe_divide(
+        jnp.dot(a_vec, c_vec),
+        checked_lengths[0] * checked_lengths[2],
     )
-    cos_gamma: Float[Array, ""] = jnp.dot(a_vec, b_vec) / (
-        lengths[0] * lengths[1]
+    cos_gamma: Float[Array, ""] = safe_divide(
+        jnp.dot(a_vec, b_vec),
+        checked_lengths[0] * checked_lengths[1],
     )
 
-    alpha_rad: Float[Array, ""] = jnp.arccos(jnp.clip(cos_alpha, -1.0, 1.0))
-    beta_rad: Float[Array, ""] = jnp.arccos(jnp.clip(cos_beta, -1.0, 1.0))
-    gamma_rad: Float[Array, ""] = jnp.arccos(jnp.clip(cos_gamma, -1.0, 1.0))
+    alpha_rad: Float[Array, ""] = safe_arccos(cos_alpha)
+    beta_rad: Float[Array, ""] = safe_arccos(cos_beta)
+    gamma_rad: Float[Array, ""] = safe_arccos(cos_gamma)
 
     angles: Float[Array, "3"] = jnp.array(
         [jnp.rad2deg(alpha_rad), jnp.rad2deg(beta_rad), jnp.rad2deg(gamma_rad)]
     )
 
-    return lengths, angles
+    return checked_lengths, angles
 
 
 @jaxtyped(typechecker=beartype)
@@ -631,8 +652,13 @@ def atom_scraper(
         crystal.cell_angles[1],
         crystal.cell_angles[2],
     )
-    zone_axis_norm: Float[Array, ""] = jnp.linalg.norm(zone_axis)
-    zone_axis_hat: Float[Array, "3"] = zone_axis / (zone_axis_norm + 1e-32)
+    zone_axis_norm: Float[Array, ""] = safe_norm(zone_axis)
+    checked_zone_axis_norm: Float[Array, ""] = eqx.error_if(
+        zone_axis_norm,
+        zone_axis_norm <= 0.0,
+        "zone_axis must be nonzero",
+    )
+    zone_axis_hat: Float[Array, "3"] = zone_axis / checked_zone_axis_norm
     cart_xyz: Float[Array, "n 3"] = crystal.cart_positions[:, :3]
     dot_vals: Float[Array, "n"] = jnp.einsum(
         "ij,j->i", cart_xyz, zone_axis_hat

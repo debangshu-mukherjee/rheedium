@@ -26,7 +26,7 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
 
     :see: :class:`~.test_special.TestBesselK0`
     """
-    x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
+    x_safe: Float[Array, "..."] = jnp.where(x > 0.0, x, 1.0)
 
     x_small: Float[Array, "..."] = jnp.where(x_safe <= SAFE_X, x_safe, SAFE_X)
     t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
@@ -89,7 +89,7 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
 
     :see: :class:`~.test_special.TestBesselK1`
     """
-    x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
+    x_safe: Float[Array, "..."] = jnp.where(x > 0.0, x, 1.0)
 
     x_small: Float[Array, "..."] = jnp.where(x_safe <= SAFE_X, x_safe, SAFE_X)
     t_small: Float[Array, "..."] = jnp.square(x_small / 2.0)
@@ -240,7 +240,11 @@ def _bessel_kn_recurrence(
         carry, _ = jax.lax.scan(masked_step, init, indices)
         return carry[1]
 
-    return jnp.where(n == 0, k0, jnp.where(n == 1, k1, _compute_kn()))
+    return jax.lax.cond(
+        n <= 1,
+        lambda: jax.lax.cond(n == 0, lambda: k0, lambda: k1),
+        _compute_kn,
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -414,37 +418,31 @@ def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.abs(checked_v - (half_index + 0.5)) < epsilon_tolerance
     )
 
-    small_x_non_int: Float[Array, "..."] = _bessel_kv_small_non_integer(
-        checked_v, x_safe, dtype
-    )
-    integer_vals: Float[Array, "..."] = _bessel_kv_small_integer(
-        checked_v,
-        x_safe,
-        dtype,
-    )
+    def integer_branch() -> Float[Array, "..."]:
+        return _bessel_kv_small_integer(checked_v, x_safe, dtype)
 
-    large_x_vals: Float[Array, "..."] = _bessel_kv_large(checked_v, x_safe)
-    non_integer_crossover: Float[Array, ""] = jnp.maximum(
-        10.0,
-        checked_v * checked_v / 2.0,
-    )
-    non_integer_vals: Float[Array, "..."] = jnp.where(
-        x_safe > non_integer_crossover,
-        large_x_vals,
-        small_x_non_int,
-    )
+    def non_integer_branch() -> Float[Array, "..."]:
+        small_x_vals: Float[Array, "..."] = _bessel_kv_small_non_integer(
+            checked_v, x_safe, dtype
+        )
+        large_x_vals: Float[Array, "..."] = _bessel_kv_large(checked_v, x_safe)
+        crossover: Float[Array, ""] = jnp.maximum(
+            10.0,
+            checked_v * checked_v / 2.0,
+        )
+        return jnp.where(x_safe > crossover, large_x_vals, small_x_vals)
 
-    general_result: Float[Array, "..."] = jnp.where(
-        is_integer,
-        integer_vals,
-        non_integer_vals,
-    )
+    def general_branch() -> Float[Array, "..."]:
+        return jax.lax.cond(
+            is_integer,
+            integer_branch,
+            non_integer_branch,
+        )
 
-    half_vals: Float[Array, "..."] = _bessel_k_half_integer(checked_v, x_safe)
-    result: Float[Array, "..."] = jnp.where(
+    result: Float[Array, "..."] = jax.lax.cond(
         is_half,
-        half_vals,
-        general_result,
+        lambda: _bessel_k_half_integer(checked_v, x_safe),
+        general_branch,
     )
     return jnp.where(x <= 0.0, jnp.inf, result)
 

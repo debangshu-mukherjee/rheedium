@@ -10,6 +10,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from absl.testing import parameterized
 from jaxtyping import Array, Complex, Float
 
@@ -311,6 +312,40 @@ class TestVicinalSurfaceStepSplitting(chex.TestCase, parameterized.TestCase):
             )
         )
         np.testing.assert_allclose(coarse, fine[::5], rtol=1e-2)
+
+    def test_rejects_nonpositive_step_height_during_gradient_probe(
+        self,
+    ) -> None:
+        r"""Nonpositive physical step heights are rejected under autodiff.
+
+        Extended Summary
+        ----------------
+        Verifies that the former additive denominator offset cannot create a
+        pole at ``step_height_angstrom = -1e-10`` because nonpositive step
+        heights are now invalid inputs.
+
+        Notes
+        -----
+        It runs the audited ``jax.grad`` boundary probe and checks the clear
+        runtime validation message, then confirms a positive interior input
+        still has a finite gradient.
+        """
+        q_z: Float[Array, "1"] = jnp.array([1.0])
+
+        def objective(step_height: scalar_float) -> scalar_float:
+            return jnp.sum(
+                vicinal_surface_step_splitting(
+                    step_height_angstrom=step_height,
+                    terrace_width_angstrom=10.0,
+                    q_z=q_z,
+                )
+            )
+
+        with pytest.raises(RuntimeError, match="step_height_angstrom"):
+            jax.grad(objective)(-1e-10)
+
+        gradient: scalar_float = jax.grad(objective)(2.0)
+        assert bool(jnp.isfinite(gradient))
 
 
 class TestApplySurfaceOccupancyField(chex.TestCase):
@@ -814,6 +849,39 @@ class TestApplyVicinalStaircase(chex.TestCase):
         grad_w: Float[Array, ""] = jax.grad(total_drop)(width)
         assert bool(jnp.isfinite(grad_w))
 
+    def test_rejects_zero_step_direction_during_gradient_probe(self) -> None:
+        r"""A zero staircase direction is rejected under autodiff.
+
+        Extended Summary
+        ----------------
+        Verifies that the meaningless zero direction cannot enter the former
+        ``where`` normalization trap during a ``jax.grad`` evaluation.
+
+        Notes
+        -----
+        It differentiates the summed output height with respect to the full
+        direction vector at the audited zero boundary and checks the explicit
+        validation error; a nonzero direction retains finite derivatives.
+        """
+        surface: CrystalStructure = _make_test_slab()
+
+        def objective(direction: Float[Array, "2"]) -> scalar_float:
+            modified: CrystalStructure = apply_vicinal_staircase(
+                surface,
+                terrace_width_ang=2.0,
+                step_height_ang=1.0,
+                step_direction_xy=direction,
+            )
+            return jnp.sum(modified.cart_positions[:, 2])
+
+        with pytest.raises(RuntimeError, match="step_direction_xy"):
+            jax.grad(objective)(jnp.zeros(2))
+
+        gradient: Float[Array, "2"] = jax.grad(objective)(
+            jnp.array([1.0, 0.0])
+        )
+        chex.assert_tree_all_finite(gradient)
+
 
 class TestApplyStepEdgeField(chex.TestCase):
     """Tests for apply_step_edge_field.
@@ -1007,6 +1075,40 @@ class TestApplyStepEdgeField(chex.TestCase):
             atol=1e-3,
         )
 
+    def test_rejects_zero_step_direction_during_gradient_probe(self) -> None:
+        r"""A zero periodic-step direction is rejected under autodiff.
+
+        Extended Summary
+        ----------------
+        Verifies that a zero ``step_direction_xy`` cannot reach the former
+        double-``where`` normalization trap during ``jax.grad``.
+
+        Notes
+        -----
+        It differentiates a surface height with respect to the direction at
+        the exact zero boundary and checks the validation message, then checks
+        finite derivatives for a valid nonzero direction.
+        """
+        slab: CrystalStructure = _make_test_slab()
+
+        def objective(direction: Float[Array, "2"]) -> scalar_float:
+            modified: CrystalStructure = apply_step_edge_field(
+                slab,
+                step_height_angstrom=1.0,
+                corrugation_period_ang=2.0,
+                surface_layer_depth_angstrom=0.8,
+                step_direction_xy=direction,
+            )
+            return modified.cart_positions[1, 2]
+
+        with pytest.raises(RuntimeError, match="step_direction_xy"):
+            jax.grad(objective)(jnp.zeros(2))
+
+        gradient: Float[Array, "2"] = jax.grad(objective)(
+            jnp.array([1.0, 0.0])
+        )
+        chex.assert_tree_all_finite(gradient)
+
 
 class TestApplyTwinWallField(chex.TestCase):
     """Tests for apply_twin_wall_field.
@@ -1131,6 +1233,40 @@ class TestApplyTwinWallField(chex.TestCase):
         grad_value: scalar_float = jax.grad(objective)(5.0)
         assert jnp.isfinite(grad_value)
         assert grad_value != 0.0
+
+    def test_rejects_zero_wall_normal_during_gradient_probe(self) -> None:
+        r"""A zero twin-wall normal is rejected under autodiff.
+
+        Extended Summary
+        ----------------
+        Verifies that a meaningless zero wall normal cannot enter norm
+        differentiation or the retired additive-epsilon normalization.
+
+        Notes
+        -----
+        It runs the audited ``jax.grad`` probe at the exact zero vector and
+        checks the validation error, then verifies finite derivatives for a
+        valid wall normal.
+        """
+        slab: CrystalStructure = _make_test_slab()
+
+        def objective(normal: Float[Array, "2"]) -> scalar_float:
+            modified: CrystalStructure = apply_twin_wall_field(
+                slab=slab,
+                twin_angle_deg=5.0,
+                wall_position_angstrom=0.8,
+                surface_layer_depth_angstrom=0.8,
+                wall_normal_xy=normal,
+            )
+            return jnp.sum(modified.cart_positions[:, :2])
+
+        with pytest.raises(RuntimeError, match="wall_normal_xy"):
+            jax.grad(objective)(jnp.zeros(2))
+
+        gradient: Float[Array, "2"] = jax.grad(objective)(
+            jnp.array([1.0, 0.0])
+        )
+        chex.assert_tree_all_finite(gradient)
 
 
 class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
@@ -1352,6 +1488,36 @@ class TestIncoherentDomainAverage(chex.TestCase, parameterized.TestCase):
             domain_volume_fractions=fractions,
         )
         chex.assert_tree_all_finite(result)
+
+    def test_zero_intensity_pixel_has_finite_gradient(self) -> None:
+        r"""Zero-intensity domain pixels retain their mixture derivative.
+
+        Extended Summary
+        ----------------
+        Verifies that incoherent domain averaging sums intensities directly
+        instead of passing them through a singular ``sqrt(I)`` round-trip.
+
+        Notes
+        -----
+        It differentiates the mixed detector pixel with respect to a zero
+        input pixel in a domain of normalized weight ``0.25`` and checks the
+        exact closed-form derivative.
+        """
+        patterns: Float[Array, "2 1 1"] = jnp.array([[[0.0]], [[4.0]]])
+
+        def objective(pixel: scalar_float) -> scalar_float:
+            varied_patterns: Float[Array, "2 1 1"] = patterns.at[0, 0, 0].set(
+                pixel
+            )
+            return incoherent_domain_average(
+                varied_patterns,
+                jnp.array([0.25, 0.75]),
+            )[0, 0]
+
+        gradient: scalar_float = jax.grad(objective)(0.0)
+
+        assert bool(jnp.isfinite(gradient))
+        chex.assert_trees_all_close(gradient, 0.25, atol=1e-12)
 
 
 class TestTwinWallToDistribution(chex.TestCase):

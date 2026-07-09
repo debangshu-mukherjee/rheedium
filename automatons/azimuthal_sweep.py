@@ -216,7 +216,14 @@ def _angle_rows(
             "max_integrated_intensity": {"type": "number"},
         },
         "artifacts": {
-            "roles": ["sweep_summary", "sweep_arrays", "sweep_preview"],
+            "roles": [
+                "sweep_summary",
+                "sweep_arrays",
+                "sweep_preview",
+                "sweep_preview_linear",
+                "sweep_montage",
+                "sweep_montage_linear",
+            ],
         },
     },
 )
@@ -290,13 +297,13 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="sweep_arrays",
     )
-    mean_artifact = ctx.save_image(
+    mean_artifacts = ctx.save_image_scales(
         "azimuthal_mean.png",
         mean_image,
         cmap="phosphor",
         role="sweep_preview",
     )
-    montage_artifact = ctx.save_image(
+    montage_artifacts = ctx.save_image_scales(
         "azimuthal_montage.png",
         montage,
         cmap="phosphor",
@@ -315,8 +322,8 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         "artifacts": [
             summary_artifact,
             array_artifact,
-            mean_artifact,
-            montage_artifact,
+            *mean_artifacts,
+            *montage_artifacts,
         ],
         "sweep": rows,
     }

@@ -438,6 +438,10 @@ def unconstrained_from_simplex(
     -----
     1. Clip and normalize weights onto the simplex.
     2. Take logs and remove the mean logit to fix the softmax gauge.
+    3. The mathematical inverse is differentiable only in the strict simplex
+       interior. At a zero-weight boundary it requires ``log(0)`` and is
+       legitimately non-differentiable; the numerical clip keeps the forward
+       result finite but does not define a supported boundary gradient.
     """
     clipped: Float[Array, "N"] = jnp.clip(weights, _EPS, None)
     normalized: Float[Array, "N"] = clipped / jnp.sum(clipped)

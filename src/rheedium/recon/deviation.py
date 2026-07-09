@@ -29,6 +29,7 @@ from beartype.typing import Any, Optional
 from jax.flatten_util import ravel_pytree
 from jaxtyping import Array, Float, Int, jaxtyped
 
+from rheedium.tools import safe_sqrt
 from rheedium.types import (
     RECIPE_DEVIATION_SCHEMA_VERSION,
     LaplaceUncertainty,
@@ -116,14 +117,10 @@ def _parameter_standard_deviation(
     """Return flattened parameter standard deviations."""
     floor: Float[Array, ""] = jnp.asarray(sigma_floor, dtype=jnp.float64)
     diagonal: Float[Array, "P"] = jnp.diag(covariance)
-    standard_deviation: Float[Array, "P"] = jnp.sqrt(
-        jnp.maximum(diagonal, 0.0)
+    standard_deviation: Float[Array, "P"] = safe_sqrt(
+        jnp.maximum(diagonal, floor**2)
     )
-    safe_standard_deviation: Float[Array, "P"] = jnp.maximum(
-        standard_deviation,
-        floor,
-    )
-    return safe_standard_deviation
+    return standard_deviation
 
 
 @jaxtyped(typechecker=beartype)

@@ -240,6 +240,28 @@ class TestBesselK0(chex.TestCase, parameterized.TestCase):
         neg_k1_vals: Float[Array, "points"] = -bessel_k1(x)
         chex.assert_trees_all_close(grad_vals, neg_k1_vals, rtol=1e-4)
 
+    def test_tiny_positive_input_keeps_true_gradient(self) -> None:
+        r"""Tiny positive K_0 inputs retain their large finite gradient.
+
+        Extended Summary
+        ----------------
+        Evaluates the audited ``x = 1e-30`` input and verifies that the domain
+        guard preserves both the true forward value and ``dK_0/dx = -K_1``.
+
+        Notes
+        -----
+        Only non-positive inputs are guarded; positive values are never
+        floored.
+        """
+        x_value: Float[Array, ""] = jnp.asarray(1e-30, dtype=jnp.float64)
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(bessel_k0)(x_value)
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, scipy_kv(0.0, 1e-30), rtol=1e-9)
+        chex.assert_trees_all_close(gradient, -bessel_k1(x_value), rtol=1e-12)
+
     def test_vmap(self) -> None:
         r"""Vmap over batch dimension works correctly.
 
@@ -417,6 +439,31 @@ class TestBesselK1(chex.TestCase, parameterized.TestCase):
         grad_val: scalar_float = grad_fn(jnp.array(1.0))
         chex.assert_tree_all_finite(grad_val)
         assert jnp.abs(grad_val) > 0
+
+    def test_tiny_positive_input_keeps_true_gradient(self) -> None:
+        r"""Tiny positive K_1 inputs retain their large finite gradient.
+
+        Extended Summary
+        ----------------
+        Evaluates the audited ``x = 1e-30`` input and checks the closed-form
+        derivative ``dK_1/dx = -K_0 - K_1/x``.
+
+        Notes
+        -----
+        The domain guard applies only at ``x <= 0`` and leaves this interior
+        positive point unchanged.
+        """
+        x_value: Float[Array, ""] = jnp.asarray(1e-30, dtype=jnp.float64)
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(bessel_k1)(x_value)
+        expected_gradient: Float[Array, ""] = (
+            -bessel_k0(x_value) - bessel_k1(x_value) / x_value
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, scipy_kv(1.0, 1e-30), rtol=1e-12)
+        chex.assert_trees_all_close(gradient, expected_gradient, rtol=1e-12)
 
     def test_k1_greater_than_k0(self) -> None:
         r"""K_1(x) > K_0(x) for all x > 0.
@@ -820,6 +867,46 @@ class TestBesselKnRecurrence(chex.TestCase, parameterized.TestCase):
             jnp.array(1, dtype=jnp.int32), x, k0, k1
         )
         chex.assert_trees_all_close(result, k1, atol=1e-10)
+
+    @parameterized.named_parameters(
+        ("order_zero", 0, 2.0),
+        ("order_one", 1, 3.0),
+    )
+    def test_base_orders_skip_singular_recurrence_gradient(
+        self,
+        order: int,
+        expected: float,
+    ) -> None:
+        r"""Base orders avoid the singular recurrence body under gradients.
+
+        Extended Summary
+        ----------------
+        Differentiates at the audited ``x = 0`` boundary and verifies that
+        orders zero and one return their supplied seed with zero gradient.
+
+        Notes
+        -----
+        A scalar ``lax.cond`` prevents the inactive division by zero from
+        entering the reverse-mode trace.
+        """
+
+        def recurrence(x_value: Float[Array, ""]) -> Float[Array, ""]:
+            return _bessel_kn_recurrence(
+                jnp.asarray(order, dtype=jnp.int32),
+                x_value,
+                jnp.asarray(2.0, dtype=jnp.float64),
+                jnp.asarray(3.0, dtype=jnp.float64),
+            )
+
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(recurrence)(
+            jnp.asarray(0.0, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, expected)
+        chex.assert_trees_all_close(gradient, 0.0)
 
     @parameterized.named_parameters(
         ("n2_x0p5", 2, 0.5, 7.550183551240869),
@@ -1299,6 +1386,33 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         x_arr: Float[Array, "..."] = jnp.array([x], dtype=jnp.float64)
         result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
         chex.assert_trees_all_close(result[0], expected, rtol=1e-3)
+
+    def test_integer_order_gradient_skips_non_integer_series(self) -> None:
+        r"""Integer-order selection has a finite zero order gradient.
+
+        Extended Summary
+        ----------------
+        Replays the audited ``v = 1, x = 1`` probe where the selected integer
+        branch is locally constant with respect to order.
+
+        Notes
+        -----
+        ``lax.cond`` ensures the singular non-integer series is not
+        differentiated at an integer order.
+        """
+
+        def at_unit_x(order: Float[Array, ""]) -> Float[Array, ""]:
+            return bessel_kv(order, jnp.asarray(1.0, dtype=jnp.float64))
+
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(at_unit_x)(
+            jnp.asarray(1.0, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, scipy_kv(1.0, 1.0), rtol=1e-6)
+        chex.assert_trees_all_close(gradient, 0.0)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(

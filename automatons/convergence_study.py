@@ -122,6 +122,9 @@ def _reference_image(image_size: int) -> Float[Array, "H W"]:
                 "convergence_summary",
                 "convergence_arrays",
                 "convergence_curve",
+                "convergence_curve_linear",
+                "convergence_preview",
+                "convergence_preview_linear",
             ],
         },
     },
@@ -170,13 +173,13 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="convergence_arrays",
     )
-    curve_artifact = ctx.save_image(
+    curve_artifacts = ctx.save_image_scales(
         "convergence_curve.png",
         curve_image,
         cmap="phosphor",
         role="convergence_curve",
     )
-    preview_artifact = ctx.save_image(
+    preview_artifacts = ctx.save_image_scales(
         "convergence_final.png",
         images[-1],
         cmap="phosphor",
@@ -194,8 +197,8 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         "artifacts": [
             summary_artifact,
             array_artifact,
-            curve_artifact,
-            preview_artifact,
+            *curve_artifacts,
+            *preview_artifacts,
         ],
         "convergence": rows,
     }

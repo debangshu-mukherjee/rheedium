@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import chex
+import jax
 import jax.numpy as jnp
 from absl.testing import parameterized
 from jaxtyping import Array, Float
@@ -16,6 +17,7 @@ from rheedium.simul.reflection_multislice import (
     _edge_on_slices_like,
     _flat_step_specular_reflectivity,
     _read_reflected_pattern,
+    _reflected_channel_amplitudes,
     _reflection_amplitude_pattern,
     crystal_to_edge_on_slices,
     reflection_detector_amplitude,
@@ -200,6 +202,47 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
         chex.assert_tree_all_finite(slices.slices)
         assert float(slices.z_surf) == 2.0
         assert float(slices.z_lo) == -1.0
+
+    def test_channel_cutoff_gradient_is_finite(self) -> None:
+        r"""The propagating-channel cutoff has a zero angle gradient.
+
+        Extended Summary
+        ----------------
+        Differentiates the surface-normal outgoing wavevector at zero grazing
+        angle, where the specular channel's squared normal momentum is exactly
+        zero.
+
+        Notes
+        -----
+        The readout uses the zero square-root subgradient at channel cutoff,
+        so the returned derivative is finite and exactly zero.
+        """
+        slices: EdgeOnSlices = create_edge_on_slices(
+            slices=jnp.zeros((1, 1, 8)),
+            dx_slice=1.0,
+            dy=1.0,
+            dz=1.0,
+            y_extent=1.0,
+            z_lo=-4.0,
+            z_surf=0.0,
+            cap_width=1.0,
+        )
+        wavefield = jnp.zeros((1, 8), dtype=jnp.complex128)
+
+        def loss(theta_deg: Float[Array, ""]) -> Float[Array, ""]:
+            k_out, _, _ = _reflected_channel_amplitudes(
+                wavefield=wavefield,
+                slices=slices,
+                energy_kev=20.0,
+                theta_deg=theta_deg,
+                n_steps=1,
+            )
+            return jnp.sum(k_out[:, 2])
+
+        gradient: Float[Array, ""] = jax.grad(loss)(jnp.float64(0.0))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
 
     def test_atom_x_coordinates_wrap_periodically(self) -> None:
         r"""Test atoms outside [0, l_x) wrap into the periodic beam cell.

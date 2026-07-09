@@ -22,12 +22,14 @@ All functions are JAX-compatible and support automatic differentiation.
 
 from pathlib import Path
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Tuple, Union
 from jaxtyping import Array, Bool, Float, Real, jaxtyped
 
 import rheedium as rh
+from rheedium.tools import safe_arccos, safe_divide, safe_norm
 from rheedium.types import CrystalStructure, create_crystal_structure
 
 
@@ -64,14 +66,19 @@ def angle_in_degrees(
     >>> angle
     90.0
     """
-    angle: Float[Array, ""] = (
-        180.0
-        * jnp.arccos(
-            jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))
-        )
-        / jnp.pi
+    norm_v1: Float[Array, ""] = safe_norm(v1)
+    norm_v2: Float[Array, ""] = safe_norm(v2)
+    norm_product: Float[Array, ""] = norm_v1 * norm_v2
+    checked_norm_product: Float[Array, ""] = eqx.error_if(
+        norm_product,
+        jnp.logical_or(norm_v1 <= 0.0, norm_v2 <= 0.0),
+        "angle is undefined for zero-length vectors",
     )
-    return angle
+    cosine: Float[Array, ""] = safe_divide(
+        jnp.dot(v1, v2),
+        checked_norm_product,
+    )
+    return jnp.rad2deg(safe_arccos(cosine))
 
 
 @jaxtyped(typechecker=beartype)

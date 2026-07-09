@@ -194,7 +194,13 @@ def _smoke_files(ctx: Any) -> tuple[str, str]:
             "best_artifact": {"type": "string"},
         },
         "artifacts": {
-            "roles": ["scores", "best_match_image", "residual_image"],
+            "roles": [
+                "scores",
+                "best_match_image",
+                "best_match_image_linear",
+                "residual_image",
+                "residual_image_linear",
+            ],
         },
     },
 )
@@ -242,13 +248,13 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         {"ranked": ranked},
         role="scores",
     )
-    best_artifact = ctx.save_image(
+    best_artifacts = ctx.save_image_scales(
         "best_match.png",
         best_image,
         cmap="phosphor",
         role="best_match_image",
     )
-    residual_artifact = ctx.save_image(
+    residual_artifacts = ctx.save_image_scales(
         "best_residual.png",
         residual,
         cmap="phosphor",
@@ -264,7 +270,11 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
             "best_mse": float(best["mse"]),
             "best_ncc": float(best["ncc"]),
         },
-        "artifacts": [scores_artifact, best_artifact, residual_artifact],
+        "artifacts": [
+            scores_artifact,
+            *best_artifacts,
+            *residual_artifacts,
+        ],
         "ranked": ranked[:top_k],
     }
 

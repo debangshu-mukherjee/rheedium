@@ -75,6 +75,36 @@ class TestWeightedLosses(chex.TestCase):
         )
         chex.assert_trees_all_close(residual, expected, atol=1e-12)
 
+    def test_zero_weight_residual_has_stationary_gradient(self) -> None:
+        r"""A zero-weight residual pixel should have a zero subgradient.
+
+        Extended Summary
+        ----------------
+        Verifies that differentiating a weighted residual with respect to an
+        exact-zero pixel weight remains finite and follows the repository's
+        stationary square-root boundary convention.
+
+        Notes
+        -----
+        The simulated and experimental pixels differ so the zero derivative
+        comes from the guarded square root rather than a zero residual.
+        """
+
+        def objective(weight: scalar_float) -> scalar_float:
+            residual: Float[Array, "1 1"] = weighted_image_residual(
+                simulated_image=jnp.array([[2.0]], dtype=jnp.float64),
+                experimental_image=jnp.array([[1.0]], dtype=jnp.float64),
+                weight_map=jnp.reshape(weight, (1, 1)),
+            )
+            return residual[0, 0]
+
+        gradient: scalar_float = jax.grad(objective)(
+            jnp.asarray(0.0, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(gradient, 0.0, atol=0.0)
+
     def test_weighted_mean_squared_error_normalizes_by_weight_sum(
         self,
     ) -> None:
@@ -355,3 +385,39 @@ class TestDifferentiableLosses(chex.TestCase):
             float(sparsity_prior(jnp.zeros(3, dtype=jnp.float64))),
             float(sparsity_prior(peaked)),
         )
+
+    def test_entropy_zero_component_has_finite_boundary_gradient(self) -> None:
+        r"""A zero entropy component should have a finite negative gradient.
+
+        Extended Summary
+        ----------------
+        Verifies that placing epsilon inside the logarithm preserves the
+        strong entropy force away from an exact-zero simplex component without
+        producing a non-finite derivative.
+
+        Notes
+        -----
+        The expected derivative includes both ``w * log(w + epsilon)`` and
+        the coupling introduced by internal simplex normalization.
+        """
+        epsilon: Float[Array, ""] = jnp.asarray(1e-12, dtype=jnp.float64)
+
+        def objective(first_weight: scalar_float) -> scalar_float:
+            weights: Float[Array, "weights"] = jnp.stack(
+                (
+                    first_weight,
+                    jnp.asarray(0.5, dtype=jnp.float64),
+                    jnp.asarray(0.5, dtype=jnp.float64),
+                )
+            )
+            return entropy_prior(weights, epsilon=epsilon)
+
+        gradient: scalar_float = jax.grad(objective)(
+            jnp.asarray(0.0, dtype=jnp.float64)
+        )
+        expected: scalar_float = (
+            jnp.log(epsilon) - jnp.log(0.5 + epsilon) - 0.5 / (0.5 + epsilon)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(gradient, expected, atol=1e-12)

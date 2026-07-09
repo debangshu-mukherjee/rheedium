@@ -194,7 +194,12 @@ def _grid_rows(
             "best_theta_deg": {"type": "number"},
         },
         "artifacts": {
-            "roles": ["grid_summary", "grid_arrays", "grid_heatmap"],
+            "roles": [
+                "grid_summary",
+                "grid_arrays",
+                "grid_heatmap",
+                "grid_heatmap_linear",
+            ],
         },
     },
 )
@@ -289,7 +294,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="grid_arrays",
     )
-    heatmap_artifact = ctx.save_image(
+    heatmap_artifacts = ctx.save_image_scales(
         "parameter_grid_heatmap.png",
         heatmap,
         cmap="phosphor",
@@ -305,7 +310,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [summary_artifact, array_artifact, heatmap_artifact],
+        "artifacts": [summary_artifact, array_artifact, *heatmap_artifacts],
         "grid": summary,
     }
 

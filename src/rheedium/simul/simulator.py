@@ -78,6 +78,7 @@ from rheedium.tools import (
     incidence_angles_to_radians,
     incident_wavevector,
     interaction_constant,
+    safe_sqrt,
     wavelength_ang,
 )
 from rheedium.types import (
@@ -2679,7 +2680,7 @@ def sliced_crystal_to_projected_potential_slices(
             dy: Float[Array, "nx ny"] = yy - pos[1]
             dx = dx - x_extent * jnp.round(dx / x_extent)
             dy = dy - y_extent * jnp.round(dy / y_extent)
-            r: Float[Array, "nx ny"] = jnp.sqrt(dx**2 + dy**2)
+            r: Float[Array, "nx ny"] = safe_sqrt(dx**2 + dy**2)
             atom_potential: Float[Array, "nx ny"] = occupancies[
                 atom_idx
             ] * projected_potential(
@@ -3095,7 +3096,7 @@ def _multislice_amplitude_pattern(  # noqa: PLR0913
     valid_mask: Bool[Array, "nx ny"] = k_out_z_squared > 0
     k_out_z: Float[Array, "nx ny"] = jnp.where(
         valid_mask,
-        jnp.sqrt(jnp.maximum(k_out_z_squared, 0.0)),
+        safe_sqrt(k_out_z_squared),
         0.0,
     )
     k_out_flat: Float[Array, "N 3"] = jnp.column_stack(

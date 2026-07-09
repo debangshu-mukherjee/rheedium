@@ -112,7 +112,12 @@ def _amplitude_kernel(
             "max_intensity": {"type": "number"},
         },
         "artifacts": {
-            "roles": ["ensemble_summary", "ensemble_arrays", "ensemble_image"],
+            "roles": [
+                "ensemble_summary",
+                "ensemble_arrays",
+                "ensemble_image",
+                "ensemble_image_linear",
+            ],
         },
     },
 )
@@ -165,7 +170,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="ensemble_arrays",
     )
-    image_artifact = ctx.save_image(
+    image_artifacts = ctx.save_image_scales(
         "ensemble_average.png",
         averaged,
         cmap="phosphor",
@@ -179,7 +184,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [summary_artifact, array_artifact, image_artifact],
+        "artifacts": [summary_artifact, array_artifact, *image_artifacts],
         "ensemble": summary,
     }
 

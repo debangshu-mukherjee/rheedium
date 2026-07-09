@@ -266,7 +266,14 @@ def _growth_state(
             "streak_sharpness": {"type": "number"},
             "is_2d": {"type": "boolean"},
         },
-        "artifacts": {"roles": ["growth_state", "observables", "rheed_frame"]},
+        "artifacts": {
+            "roles": [
+                "growth_state",
+                "observables",
+                "rheed_frame",
+                "rheed_frame_linear",
+            ]
+        },
     },
 )
 def main(args: Any, ctx: Any) -> dict[str, Any]:
@@ -334,7 +341,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="observables",
     )
-    frame_artifact = ctx.save_image(
+    frame_artifacts = ctx.save_image_scales(
         "rheed_frame.png",
         image,
         cmap="phosphor",
@@ -353,7 +360,11 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [state_artifact, observables_artifact, frame_artifact],
+        "artifacts": [
+            state_artifact,
+            observables_artifact,
+            *frame_artifacts,
+        ],
         "growth_state": state,
     }
 

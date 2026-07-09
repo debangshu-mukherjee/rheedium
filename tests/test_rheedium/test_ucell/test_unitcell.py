@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
+import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -34,6 +35,9 @@ from rheedium.ucell.unitcell import (
     reciprocal_lattice_vectors,
     reciprocal_unitcell,
     reorient_to_zone_axis,
+)
+from rheedium.ucell.unitcell import (
+    compute_lengths_angles as unitcell_compute_lengths_angles,
 )
 
 
@@ -604,6 +608,26 @@ class TestAtomScraper(chex.TestCase, parameterized.TestCase):
         # Should produce valid output regardless of axis scaling
         n_atoms: int = filtered.cart_positions.shape[0]
         chex.assert_scalar_positive(int(n_atoms))
+
+    def test_zero_zone_axis_is_rejected(self) -> None:
+        r"""A zero zone axis is rejected before normalization.
+
+        Extended Summary
+        ----------------
+        Verifies that the undefined zero direction cannot be divided by a
+        smoothed norm when selecting the crystal slice.
+
+        Notes
+        -----
+        It evaluates ``atom_scraper`` at the audited zero-axis boundary and
+        checks the explicit ``eqx.error_if`` validation message.
+        """
+        with pytest.raises(RuntimeError, match="zone_axis must be nonzero"):
+            atom_scraper(
+                crystal=self.cubic_crystal,
+                zone_axis=jnp.zeros(3),
+                thickness_ang=3.0,
+            )
 
     def test_x_axis_scraping(self) -> None:
         r"""Test scraping along x-axis.
@@ -1608,6 +1632,38 @@ class TestGetUnitCellMatrix(chex.TestCase, parameterized.TestCase):
         """Set up test fixtures."""
         super().setUp()
 
+    def test_degenerate_volume_factor_is_rejected_under_grad(self) -> None:
+        r"""A zero-volume cell is rejected during differentiation.
+
+        Extended Summary
+        ----------------
+        Verifies that the degenerate ``(60, 60, 120)`` angle triple is an
+        invalid cell rather than a square-root boundary with an infinite
+        derivative.
+
+        Notes
+        -----
+        It runs the audited ``jax.grad`` probe at the exact degenerate gamma
+        angle and checks the validation error, then confirms a valid interior
+        angle retains a finite gradient.
+        """
+
+        def objective(gamma: scalar_float) -> scalar_float:
+            return get_unit_cell_matrix(
+                a=1.0,
+                b=1.0,
+                c=1.0,
+                alpha=60.0,
+                beta=60.0,
+                gamma=gamma,
+            )[2, 2]
+
+        with pytest.raises(RuntimeError, match="volume factor"):
+            jax.grad(objective)(120.0)
+
+        gradient: scalar_float = jax.grad(objective)(90.0)
+        assert bool(jnp.isfinite(gradient))
+
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
         r"""Test transformation matrix for cubic system.
@@ -1858,6 +1914,37 @@ class TestBuildCellVectors(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
+
+    def test_degenerate_volume_factor_is_rejected_under_grad(self) -> None:
+        r"""Degenerate cell vectors are rejected during differentiation.
+
+        Extended Summary
+        ----------------
+        Verifies that the zero-volume ``(60, 60, 120)`` cell cannot reach the
+        singular square root formerly hidden by clipping.
+
+        Notes
+        -----
+        It runs the audited ``jax.grad`` boundary probe and checks the clear
+        volume-factor validation, then verifies a valid interior cell has a
+        finite derivative.
+        """
+
+        def objective(gamma: scalar_float) -> scalar_float:
+            return build_cell_vectors(
+                a=1.0,
+                b=1.0,
+                c=1.0,
+                alpha=60.0,
+                beta=60.0,
+                gamma=gamma,
+            )[2, 2]
+
+        with pytest.raises(RuntimeError, match="volume factor"):
+            jax.grad(objective)(120.0)
+
+        gradient: scalar_float = jax.grad(objective)(90.0)
+        assert bool(jnp.isfinite(gradient))
 
     @chex.all_variants(with_pmap=False)
     def test_cubic_system(self) -> None:
@@ -2171,6 +2258,60 @@ class TestComputeLengthsAngles(chex.TestCase, parameterized.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         super().setUp()
+
+    def test_parallel_angle_has_zero_subgradient(self) -> None:
+        r"""Parallel cell vectors use a zero angle subgradient.
+
+        Extended Summary
+        ----------------
+        Verifies the stationary angle convention in the unitcell-local
+        lattice conversion at an exact parallel-vector boundary.
+
+        Notes
+        -----
+        It differentiates alpha while scaling one of its parallel vectors and
+        checks that the former ``NaN`` is finite and exactly zero.
+        """
+        vectors: Float[Array, "3 3"] = jnp.array(
+            [
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+            ]
+        )
+
+        def objective(scale: scalar_float) -> scalar_float:
+            varied_vectors: Float[Array, "3 3"] = vectors.at[2, 0].set(scale)
+            return unitcell_compute_lengths_angles(varied_vectors)[1][0]
+
+        gradient: scalar_float = jax.grad(objective)(1.0)
+
+        assert bool(jnp.isfinite(gradient))
+        chex.assert_trees_all_close(gradient, 0.0, atol=1e-12)
+
+    def test_zero_cell_vector_is_rejected(self) -> None:
+        r"""A zero cell vector has undefined lattice angles.
+
+        Extended Summary
+        ----------------
+        Verifies that the unitcell-local inverse conversion validates all
+        vector lengths before forming angle cosines.
+
+        Notes
+        -----
+        It calls the audited function with one exact zero vector and checks
+        the clear ``eqx.error_if`` message.
+        """
+        vectors: Float[Array, "3 3"] = jnp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ]
+        )
+
+        with pytest.raises(RuntimeError, match="zero-length vectors"):
+            unitcell_compute_lengths_angles(vectors)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_cubic_system(self) -> None:

@@ -319,7 +319,14 @@ def _simulate_image(
             "best_candidate": {"type": "string"},
         },
         "artifacts": {
-            "roles": ["ranking", "score_table", "best_match_image"],
+            "roles": [
+                "ranking",
+                "score_table",
+                "best_match_image",
+                "best_match_image_linear",
+                "residual_image",
+                "residual_image_linear",
+            ],
         },
     },
 )
@@ -402,13 +409,13 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="score_table",
     )
-    best_artifact = ctx.save_image(
+    best_artifacts = ctx.save_image_scales(
         "best_match.png",
         best_image,
         cmap="phosphor",
         role="best_match_image",
     )
-    residual_artifact = ctx.save_image(
+    residual_artifacts = ctx.save_image_scales(
         "best_residual.png",
         residual,
         cmap="phosphor",
@@ -428,8 +435,8 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         "artifacts": [
             ranking_artifact,
             score_artifact,
-            best_artifact,
-            residual_artifact,
+            *best_artifacts,
+            *residual_artifacts,
         ],
         "ranked": ranked[:top_k],
     }

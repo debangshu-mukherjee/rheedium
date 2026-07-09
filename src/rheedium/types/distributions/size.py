@@ -114,7 +114,9 @@ def discretize_size_distribution(
         survival_edges: Float[Array, "M"] = 1.0 - quantile_edges
 
         def antiderivative(y: Float[Array, "M"]) -> Float[Array, "M"]:
-            return jnp.where(y > 0.0, -y * jnp.log(y) + y, 0.0)
+            positive: Float[Array, "M"] = y > 0.0
+            guarded_y: Float[Array, "M"] = jnp.where(positive, y, 1.0)
+            return jnp.where(positive, -y * jnp.log(guarded_y) + y, 0.0)
 
         integral_edges: Float[Array, "M"] = antiderivative(survival_edges)
         bin_integrals: Float[Array, "N"] = (
@@ -129,8 +131,10 @@ def discretize_size_distribution(
     nodes, quad_weights = gauss_hermite_nodes_weights(n_points)
     sqrt2: Float[Array, ""] = jnp.sqrt(jnp.array(2.0, dtype=jnp.float64))
     if dist.distribution_type == "lognormal":
+        from rheedium.tools.safe_math import safe_sqrt
+
         variance_ratio: Float[Array, ""] = (sigma_ang / mean_ang) ** 2
-        sigma_log: Float[Array, ""] = jnp.sqrt(jnp.log1p(variance_ratio))
+        sigma_log: Float[Array, ""] = safe_sqrt(jnp.log1p(variance_ratio))
         mu_log: Float[Array, ""] = jnp.log(mean_ang) - 0.5 * sigma_log**2
         raw_sizes: Float[Array, "N"] = jnp.exp(
             mu_log + sqrt2 * sigma_log * nodes

@@ -803,6 +803,37 @@ class TestFormFactors(chex.TestCase, parameterized.TestCase):
         f_sorted: Any = f_combined[sorted_indices]
         chex.assert_scalar_positive(float(f_sorted[0] - f_sorted[-1]))
 
+    def test_atomic_scattering_factor_zero_q_gradient_is_finite(self) -> None:
+        r"""The scattering-factor gradient is zero at a zero q-vector.
+
+        Extended Summary
+        ----------------
+        Differentiates the summed silicon scattering factor at the exact
+        zero-vector boundary where the Euclidean norm has no unique gradient.
+
+        Notes
+        -----
+        The gradient-safe norm convention selects the zero subgradient, so
+        every Cartesian component must be finite and exactly zero.
+        """
+
+        def loss(q_vector: Float[Array, "1 3"]) -> scalar_float:
+            return jnp.sum(
+                atomic_scattering_factor(
+                    14,
+                    q_vector,
+                    temperature=300.0,
+                    parameterization="kirkland",
+                )
+            )
+
+        gradient: Float[Array, "1 3"] = jax.grad(loss)(
+            jnp.zeros((1, 3), dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.zeros_like(gradient))
+
     @chex.variants(with_jit=True, without_jit=True)
     def test_atomic_scattering_factor_batched(self) -> None:
         r"""Test atomic scattering factor with batched inputs.

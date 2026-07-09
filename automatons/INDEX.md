@@ -2,6 +2,9 @@
 
 This catalog lists every top-level Python script in `automatons/`.
 
+Detector/intensity PNG artifacts use logarithmic display at their established
+names and include an explicitly linear companion with a `_linear.png` suffix.
+
 ## Loop A — Online RHEED
 
 | Script | Purpose |
@@ -13,9 +16,9 @@ This catalog lists every top-level Python script in `automatons/`.
 
 | Script | Purpose |
 |---|---|
-| `forward_kinematic.py` | Structure file or smoke crystal to kinematic RHEED detector PNG and `.npz` artifacts. |
-| `forward_multislice.py` | Structure file or smoke slab to transmission multislice detector PNG and `.npz` artifacts. |
-| `forward_reflection.py` | Structure file or smoke slab to edge-on reflection multislice detector PNG and `.npz` artifacts. |
+| `forward_kinematic.py` | Structure file or smoke crystal to dual-scale kinematic RHEED detector PNGs and a raw `.npz` artifact. |
+| `forward_multislice.py` | Structure file or smoke slab to dual-scale transmission multislice detector PNGs and a raw `.npz` artifact. |
+| `forward_reflection.py` | Structure file or smoke slab to dual-scale edge-on reflection multislice detector PNGs and a raw `.npz` artifact. |
 | `screen_xyz_ensemble.py` | Directory/glob of candidate structures to simulated RHEED ranking against a measured or simulated target. |
 | `match_measured_to_simulated.py` | Measured detector image to simulated-image similarity scores, best match, and residual artifacts. |
 
@@ -24,7 +27,7 @@ This catalog lists every top-level Python script in `automatons/`.
 | Script | Purpose |
 |---|---|
 | `fit_orientation_beam.py` | Synthetic measured detector vector to fitted orientation/beam parameters and covariance. |
-| `reconstruct_distribution.py` | Synthetic measured mixture to recovered incoherent distribution weights and band. |
+| `reconstruct_distribution.py` | Synthetic measured mixture to recovered incoherent distribution weights, uncertainty band, and dual-scale detector previews. |
 | `invert_structure.py` | Synthetic measured detector vector to recovered structure-latent parameters. |
 | `recipe_deviation.py` | Intended-vs-fitted recipe gap, z-scores, severity, and frozen deviation report. |
 

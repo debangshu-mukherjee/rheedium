@@ -51,12 +51,14 @@ Pattern-space averaging helpers return detector-image arrays as compatibility
 front ends over the shared reducer.
 """
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Callable
-from jaxtyping import Array, Complex, Float, Int, jaxtyped
+from jaxtyping import Array, Float, Int, jaxtyped
 
+from rheedium.tools import safe_norm
 from rheedium.types import (
     CrystalStructure,
     Distribution,
@@ -211,14 +213,14 @@ def apply_step_edge_field(
     in_plane_direction: Float[Array, "2"] = jnp.asarray(
         step_direction_xy, dtype=jnp.float64
     )
-    in_plane_norm: Float[Array, ""] = jnp.linalg.norm(in_plane_direction)
-    safe_in_plane_norm: Float[Array, ""] = jnp.where(
-        in_plane_norm > 0.0, in_plane_norm, 1.0
+    in_plane_norm: Float[Array, ""] = safe_norm(in_plane_direction)
+    checked_in_plane_norm: Float[Array, ""] = eqx.error_if(
+        in_plane_norm,
+        in_plane_norm <= 0.0,
+        "step_direction_xy must be nonzero",
     )
-    normalized_direction: Float[Array, "2"] = jnp.where(
-        in_plane_norm > 0.0,
-        in_plane_direction / safe_in_plane_norm,
-        in_plane_direction,
+    normalized_direction: Float[Array, "2"] = (
+        in_plane_direction / checked_in_plane_norm
     )
     projected_coordinate: Float[Array, "N_atoms"] = jnp.dot(
         slab.cart_positions[:, :2], normalized_direction
@@ -298,13 +300,13 @@ def apply_vicinal_staircase(
     direction: Float[Array, "2"] = jnp.asarray(
         step_direction_xy, dtype=jnp.float64
     )
-    direction_norm: Float[Array, ""] = jnp.linalg.norm(direction)
-    safe_norm: Float[Array, ""] = jnp.where(
-        direction_norm > 0.0, direction_norm, 1.0
+    direction_norm: Float[Array, ""] = safe_norm(direction)
+    checked_direction_norm: Float[Array, ""] = eqx.error_if(
+        direction_norm,
+        direction_norm <= 0.0,
+        "step_direction_xy must be nonzero",
     )
-    unit_direction: Float[Array, "2"] = jnp.where(
-        direction_norm > 0.0, direction / safe_norm, direction
-    )
+    unit_direction: Float[Array, "2"] = direction / checked_direction_norm
     projected: Float[Array, "N_atoms"] = jnp.dot(
         surface.cart_positions[:, :2], unit_direction
     )
@@ -375,9 +377,13 @@ def apply_twin_wall_field(
         transition_sharpness=transition_sharpness,
     )
     normal: Float[Array, "2"] = jnp.asarray(wall_normal_xy, dtype=jnp.float64)
-    normalized_normal: Float[Array, "2"] = normal / (
-        jnp.linalg.norm(normal) + 1e-10
+    normal_norm: Float[Array, ""] = safe_norm(normal)
+    checked_normal_norm: Float[Array, ""] = eqx.error_if(
+        normal_norm,
+        normal_norm <= 0.0,
+        "wall_normal_xy must be nonzero",
     )
+    normalized_normal: Float[Array, "2"] = normal / checked_normal_norm
     wall_coordinate: Float[Array, "N_atoms"] = jnp.dot(
         slab.cart_positions[:, :2], normalized_normal
     ) - jnp.asarray(wall_position_angstrom, dtype=jnp.float64)
@@ -883,14 +889,19 @@ def vicinal_surface_step_splitting(
     reference and should be treated as qualitative.
     """
     step_height_angstrom = jnp.asarray(step_height_angstrom, dtype=jnp.float64)
+    checked_step_height: Float[Array, ""] = eqx.error_if(
+        step_height_angstrom,
+        step_height_angstrom <= 0.0,
+        "step_height_angstrom must be positive",
+    )
     terrace_width_angstrom = jnp.asarray(
         terrace_width_angstrom, dtype=jnp.float64
     )
 
-    delta_phi: Float[Array, "N_qz"] = q_z * step_height_angstrom
+    delta_phi: Float[Array, "N_qz"] = q_z * checked_step_height
     sin_sq: Float[Array, "N_qz"] = jnp.sin(delta_phi / 2.0) ** 2
     finesse: Float[Array, ""] = (
-        4.0 * (terrace_width_angstrom / (step_height_angstrom + 1e-10)) ** 2
+        4.0 * (terrace_width_angstrom / checked_step_height) ** 2
     )
     intensity: Float[Array, "N_qz"] = 1.0 / (1.0 + finesse * sin_sq)
     return intensity
@@ -951,18 +962,17 @@ def incoherent_domain_average(
         axis_id="surface_domain_pattern",
     )
 
-    def _domain_amplitude(
+    def _domain_intensity(
         sample: Float[Array, "1"],
-    ) -> Complex[Array, "H W"]:
+    ) -> Float[Array, "H W"]:
         pattern_index: Int[Array, ""] = sample[0].astype(jnp.int32)
-        pattern: Float[Array, "H W"] = domain_patterns[pattern_index]
-        return jnp.sqrt(jnp.maximum(pattern, 0.0)).astype(jnp.complex128)
+        return domain_patterns[pattern_index]
 
-    from rheedium.simul.beam_averaging import apply_distributions
+    from rheedium.simul.beam_averaging import apply_distribution_intensity
 
-    mixed_pattern: Float[Array, "H W"] = apply_distributions(
-        (distribution,),
-        _domain_amplitude,
+    mixed_pattern: Float[Array, "H W"] = apply_distribution_intensity(
+        distribution,
+        _domain_intensity,
     )
     return has_positive_weight * mixed_pattern
 

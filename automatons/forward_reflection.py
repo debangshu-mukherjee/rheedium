@@ -6,9 +6,10 @@
 
 The automaton loads a CIF, XYZ, or POSCAR surface structure, runs rheedium's
 edge-on reflection multislice forward model, rasterizes the sparse reflected
-beam pattern to a dense detector image, and writes both PNG and ``.npz``
-artifacts. In ``--smoke`` mode it uses a tiny two-atom slab generated in code
-so the backend contract is testable without external fixtures.
+beam pattern to a dense detector image, and writes log and linear PNGs plus an
+``.npz`` artifact containing raw intensity. In ``--smoke`` mode it uses a tiny
+two-atom slab generated in code so the backend contract is testable without
+external fixtures.
 """
 
 from __future__ import annotations
@@ -257,7 +258,11 @@ def _load_crystal(args: Any, *, smoke: bool) -> CrystalStructure:
             "max_intensity": {"type": "number"},
         },
         "artifacts": {
-            "roles": ["detector_image", "detector_array"],
+            "roles": [
+                "detector_image",
+                "detector_image_linear",
+                "detector_array",
+            ],
         },
     },
 )
@@ -307,7 +312,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         spot_sigma_px=args.spot_sigma_px,
     )
 
-    png_artifact = ctx.save_image(
+    png_artifacts = ctx.save_image_scales(
         "pattern.png",
         image,
         cmap="phosphor",
@@ -333,7 +338,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     ctx.save_json("metrics.json", metrics, role="metrics")
     return {
         "metrics": metrics,
-        "artifacts": [png_artifact, npz_artifact],
+        "artifacts": [*png_artifacts, npz_artifact],
     }
 
 

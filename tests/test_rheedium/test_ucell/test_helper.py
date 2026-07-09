@@ -12,6 +12,7 @@ from typing import Any
 import chex
 import jax
 import jax.numpy as jnp
+import pytest
 from absl.testing import parameterized
 from jaxtyping import Array, Float, PRNGKeyArray
 
@@ -234,6 +235,51 @@ class TestAngleInDegrees(chex.TestCase):
         angle: Any = var_angle_in_degrees(v1, v2)
 
         chex.assert_scalar_in(float(angle), 0.0, 180.0)
+
+    def test_parallel_angle_has_zero_subgradient(self) -> None:
+        r"""Parallel vectors use a finite zero angle subgradient.
+
+        Extended Summary
+        ----------------
+        Verifies the documented stationary convention at the physical angle
+        extremum where the cosine is exactly one.
+
+        Notes
+        -----
+        It runs the audited ``jax.grad`` probe by scaling one vector parallel
+        to the other and checks that the formerly ``NaN`` derivative is finite
+        and exactly zero.
+        """
+
+        def objective(scale: scalar_float) -> scalar_float:
+            return rh.ucell.angle_in_degrees(
+                jnp.array([1.0, 0.0, 0.0]),
+                jnp.array([scale, 0.0, 0.0]),
+            )
+
+        gradient: scalar_float = jax.grad(objective)(1.0)
+
+        assert bool(jnp.isfinite(gradient))
+        chex.assert_trees_all_close(gradient, 0.0, atol=1e-12)
+
+    def test_zero_length_vector_is_rejected(self) -> None:
+        r"""An angle involving a zero-length vector is undefined.
+
+        Extended Summary
+        ----------------
+        Verifies that angle calculation validates its vector norms instead of
+        silently smoothing an undefined geometric input.
+
+        Notes
+        -----
+        It evaluates the public helper at the exact zero-vector boundary and
+        checks the clear ``eqx.error_if`` runtime message.
+        """
+        with pytest.raises(RuntimeError, match="zero-length vectors"):
+            rh.ucell.angle_in_degrees(
+                jnp.zeros(3),
+                jnp.array([1.0, 0.0, 0.0]),
+            )
 
 
 class TestComputeLengthsAngles(chex.TestCase):

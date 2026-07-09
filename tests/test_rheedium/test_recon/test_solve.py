@@ -739,6 +739,64 @@ class TestReconSolve(chex.TestCase):
 
         chex.assert_trees_all_close(weights, true_weights, atol=1e-8)
 
+    def test_all_zero_library_has_continuous_uniform_weight_gradient(
+        self,
+    ) -> None:
+        r"""An all-zero library should reach uniform weights continuously.
+
+        Extended Summary
+        ----------------
+        Verifies that epsilon-smoothed NNLS normalization retains the uniform
+        forward fallback while allowing a finite, nonzero gradient through an
+        exact all-zero intensity library.
+
+        Notes
+        -----
+        The scalar probe perturbs the first of two library entries against a
+        nonzero measured pixel. A tiny positive perturbation remains close to
+        uniform, demonstrating the absence of a hard conditional jump.
+        """
+        zero_library: Float[Array, "samples rows cols"] = jnp.zeros(
+            (2, 1, 1),
+            dtype=jnp.float64,
+        )
+        measured: Float[Array, "rows cols"] = jnp.ones(
+            (1, 1),
+            dtype=jnp.float64,
+        )
+
+        def first_weight(library_entry: Float[Array, ""]) -> Float[Array, ""]:
+            library: Float[Array, "samples rows cols"] = zero_library.at[
+                0, 0, 0
+            ].set(library_entry)
+            return reconstruct_incoherent_weights(
+                intensity_library=library,
+                measured_image=measured,
+            )[0]
+
+        weights: Float[Array, "samples"] = reconstruct_incoherent_weights(
+            intensity_library=zero_library,
+            measured_image=measured,
+        )
+        gradient: Float[Array, ""] = jax.grad(first_weight)(
+            jnp.asarray(0.0, dtype=jnp.float64)
+        )
+        nearby_weights: Float[Array, "samples"] = (
+            reconstruct_incoherent_weights(
+                intensity_library=zero_library.at[0, 0, 0].set(1e-50),
+                measured_image=measured,
+            )
+        )
+
+        chex.assert_trees_all_close(
+            weights,
+            jnp.array([0.5, 0.5], dtype=jnp.float64),
+            atol=1e-12,
+        )
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(gradient, 2.5e41, rtol=1e-12)
+        chex.assert_trees_all_close(nearby_weights, weights, atol=1e-6)
+
     def test_reconstruct_incoherent_weights_improves_clip_renormalize(
         self,
     ) -> None:

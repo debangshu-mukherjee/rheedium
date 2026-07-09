@@ -258,7 +258,12 @@ def _trend_label(slope: float, threshold: float) -> str:
             "n_frames": {"type": "integer"},
         },
         "artifacts": {
-            "roles": ["growth_monitor", "time_series", "mean_rheed_frame"],
+            "roles": [
+                "growth_monitor",
+                "time_series",
+                "mean_rheed_frame",
+                "mean_rheed_frame_linear",
+            ],
         },
     },
 )
@@ -330,7 +335,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="time_series",
     )
-    mean_artifact = ctx.save_image(
+    mean_artifacts = ctx.save_image_scales(
         "mean_rheed_frame.png",
         np.mean(frames, axis=0),
         cmap="phosphor",
@@ -349,7 +354,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [monitor_artifact, series_artifact, mean_artifact],
+        "artifacts": [monitor_artifact, series_artifact, *mean_artifacts],
         "growth_monitor": monitor,
     }
 

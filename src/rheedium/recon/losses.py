@@ -40,6 +40,7 @@ from beartype.typing import Optional, Tuple
 from jax.experimental import checkify
 from jaxtyping import Array, Float, jaxtyped
 
+from rheedium.tools import safe_sqrt
 from rheedium.types import scalar_float
 
 
@@ -80,12 +81,18 @@ def weighted_image_residual(
     -------
     residual : Float[Array, "H W"]
         Weighted residual image with the same shape as the inputs.
+
+    Notes
+    -----
+    At an exact-zero pixel weight the guarded square root uses the repository's
+    zero-subgradient convention, so an excluded pixel is stationary under
+    differentiation with respect to ``weight_map``.
     """
     residual: Float[Array, "H W"] = simulated_image - experimental_image
     if weight_map is None:
         return residual
     clipped_weight_map: Float[Array, "H W"] = jnp.maximum(weight_map, 0.0)
-    return jnp.sqrt(clipped_weight_map) * residual
+    return safe_sqrt(clipped_weight_map) * residual
 
 
 @jaxtyped(typechecker=beartype)
@@ -463,16 +470,24 @@ def entropy_prior(
     strength : scalar_float, optional
         Prior strength. Default: 1.0
     epsilon : scalar_float, optional
-        Positive probability floor. Default: 1e-12
+        Positive logarithm offset. Default: 1e-12
 
     Returns
     -------
     loss : scalar_float
         Negative entropy penalty, minimized by diffuse distributions.
+
+    Notes
+    -----
+    The entropy integrand is evaluated as ``w * log(w + epsilon)``. An
+    exact-zero normalized component therefore has a finite, large-negative
+    boundary derivative instead of the stationary derivative introduced by
+    clipping the component before taking its logarithm.
     """
-    clipped: Float[Array, "N"] = jnp.clip(weights, epsilon, None)
-    normalized: Float[Array, "N"] = clipped / jnp.sum(clipped)
-    loss: scalar_float = strength * jnp.sum(normalized * jnp.log(normalized))
+    normalized: Float[Array, "N"] = weights / jnp.sum(weights)
+    loss: scalar_float = strength * jnp.sum(
+        normalized * jnp.log(normalized + epsilon)
+    )
     return loss
 
 

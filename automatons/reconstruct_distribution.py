@@ -7,7 +7,8 @@
 The automaton wraps :func:`rheedium.recon.reconstruct_distribution` around a
 small three-template detector library. Smoke mode plants a known probability
 simplex, mixes the library intensities, reconstructs the distribution weights,
-and writes a JSON distribution artifact plus the recovered uncertainty band.
+and writes a JSON distribution artifact, the recovered uncertainty band, and
+log/linear previews of the reconstructed detector image.
 """
 
 from __future__ import annotations
@@ -130,7 +131,14 @@ def _simplex_param(
             "max_band": {"type": "number"},
             "effective_weight_count": {"type": "number"},
         },
-        "artifacts": {"roles": ["distribution", "distribution_arrays"]},
+        "artifacts": {
+            "roles": [
+                "distribution",
+                "distribution_arrays",
+                "reconstructed_image",
+                "reconstructed_image_linear",
+            ]
+        },
     },
 )
 def main(args: Any, ctx: Any) -> dict[str, Any]:
@@ -204,6 +212,17 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="distribution_arrays",
     )
+    reconstructed_image: Float[Array, "rows cols"] = jnp.einsum(
+        "n,nhw->hw",
+        weights,
+        intensity_library,
+    )
+    image_artifacts = ctx.save_image_scales(
+        "reconstructed_distribution.png",
+        reconstructed_image,
+        cmap="phosphor",
+        role="reconstructed_image",
+    )
     metrics: dict[str, Any] = {
         "weight_l1_error": weight_l1_error,
         "max_band": float(jnp.max(band)),
@@ -212,7 +231,11 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [distribution_artifact, array_artifact],
+        "artifacts": [
+            distribution_artifact,
+            array_artifact,
+            *image_artifacts,
+        ],
         "distribution": payload,
     }
 

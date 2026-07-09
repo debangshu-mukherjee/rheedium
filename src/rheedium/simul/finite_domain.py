@@ -70,7 +70,11 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
-from rheedium.tools import gauss_hermite_nodes_weights, incident_wavevector
+from rheedium.tools import (
+    gauss_hermite_nodes_weights,
+    incident_wavevector,
+    safe_sqrt,
+)
 from rheedium.types import (
     Distribution,
     EwaldData,
@@ -302,7 +306,7 @@ def compute_shell_sigma(
         beam_divergence_rad, dtype=jnp.float64
     )
     dk_over_k_energy: Float[Array, ""] = energy_spread_arr / 2.0
-    shell_sigma: Float[Array, ""] = k_magnitude * jnp.sqrt(
+    shell_sigma: Float[Array, ""] = k_magnitude * safe_sqrt(
         dk_over_k_energy**2 + divergence_arr**2
     )
     return shell_sigma
@@ -576,10 +580,8 @@ def rod_domain_overlap(  # noqa: PLR0913
     )
     disc: Float[Array, "N"] = b_coef**2 - 4.0 * a_coef * c_coef
     has_intersection: Bool[Array, "N"] = disc >= 0.0
-    sqrt_disc: Float[Array, "N"] = jnp.sqrt(jnp.maximum(disc, 0.0))
-    d_miss: Float[Array, "N"] = jnp.sqrt(jnp.maximum(-disc, 0.0)) / (
-        2.0 * jnp.sqrt(a_coef)
-    )
+    sqrt_disc: Float[Array, "N"] = safe_sqrt(disc)
+    d_miss: Float[Array, "N"] = safe_sqrt(-disc) / (2.0 * jnp.sqrt(a_coef))
     l_closest: Float[Array, "N"] = -b_coef / (2.0 * a_coef)
     # Branch l values: the two intersections when they exist, otherwise
     # the closest approach carried on branch 0 only.

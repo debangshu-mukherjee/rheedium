@@ -35,7 +35,7 @@ shared Layer-1 reducer, not structure builders.
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from jaxtyping import Array, Complex, Float, Int, jaxtyped
+from jaxtyping import Array, Float, Int, jaxtyped
 
 from rheedium.types import (
     Distribution,
@@ -187,18 +187,17 @@ def grain_distribution_average(
         axis_id="grain_pattern",
     )
 
-    def _domain_amplitude(
+    def _domain_intensity(
         sample: Float[Array, "1"],
-    ) -> Complex[Array, "H W"]:
+    ) -> Float[Array, "H W"]:
         pattern_index: Int[Array, ""] = sample[0].astype(jnp.int32)
-        pattern: Float[Array, "H W"] = domain_patterns[pattern_index]
-        return jnp.sqrt(jnp.maximum(pattern, 0.0)).astype(jnp.complex128)
+        return domain_patterns[pattern_index]
 
-    from rheedium.simul.beam_averaging import apply_distributions
+    from rheedium.simul.beam_averaging import apply_distribution_intensity
 
-    mixed_pattern: Float[Array, "H W"] = apply_distributions(
-        (distribution,),
-        _domain_amplitude,
+    mixed_pattern: Float[Array, "H W"] = apply_distribution_intensity(
+        distribution,
+        _domain_intensity,
     )
     return has_positive_weight * mixed_pattern
 

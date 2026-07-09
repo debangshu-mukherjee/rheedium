@@ -77,7 +77,7 @@ class TestR2InventoryGuards(chex.TestCase):
                         func = node.func
                         if (
                             isinstance(func, ast.Name)
-                            and func.id == "apply_distributions"
+                            and func.id == "apply_distribution_intensity"
                         ):
                             reducer_calls.append(f"{rel_path}:{function_name}")
                 function_source = (
@@ -173,6 +173,37 @@ class TestGrainDistributionAverage(chex.TestCase):
         )
 
         chex.assert_trees_all_close(result, 3.0, atol=1e-6)
+
+    def test_zero_intensity_pixel_has_finite_gradient(self) -> None:
+        r"""Zero-intensity grain pixels retain their mixture derivative.
+
+        Extended Summary
+        ----------------
+        Verifies that incoherent grain averaging operates directly in
+        intensity space, avoiding the singular ``sqrt(I)`` amplitude
+        round-trip at an exactly zero detector pixel.
+
+        Notes
+        -----
+        It differentiates one mixed output pixel with respect to the zero
+        pixel in a grain carrying weight ``0.25`` and checks the exact
+        closed-form derivative of ``0.25``.
+        """
+        patterns: Float[Array, "2 1 1"] = jnp.array([[[0.0]], [[4.0]]])
+
+        def objective(pixel: scalar_float) -> scalar_float:
+            varied_patterns: Float[Array, "2 1 1"] = patterns.at[0, 0, 0].set(
+                pixel
+            )
+            return grain_distribution_average(
+                varied_patterns,
+                jnp.array([0.25, 0.75]),
+            )[0, 0]
+
+        gradient: scalar_float = jax.grad(objective)(0.0)
+
+        assert bool(jnp.isfinite(gradient))
+        chex.assert_trees_all_close(gradient, 0.25, atol=1e-12)
 
     def test_grad_flows_through_grain_fraction(self) -> None:
         r"""Check gradients flow through the grain fraction weights.

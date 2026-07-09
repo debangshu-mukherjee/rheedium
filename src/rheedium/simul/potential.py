@@ -35,6 +35,7 @@ from beartype import beartype
 from beartype.typing import Tuple
 from jaxtyping import Array, Complex, Float, Int, jaxtyped
 
+from rheedium.tools import safe_sqrt
 from rheedium.types import scalar_float
 
 from .form_factors import projected_potential
@@ -129,7 +130,7 @@ def crystal_projected_potential(
         dy: Float[Array, "H W"] = yy - atom_pos[1]
         dx = dx - lx * jnp.round(dx / lx)
         dy = dy - ly * jnp.round(dy / ly)
-        r: Float[Array, "H W"] = jnp.sqrt(dx**2 + dy**2)
+        r: Float[Array, "H W"] = safe_sqrt(dx**2 + dy**2)
         v_atom: Float[Array, "H W"] = atom_occupancy * projected_potential(
             atom_z, r, parameterization
         )

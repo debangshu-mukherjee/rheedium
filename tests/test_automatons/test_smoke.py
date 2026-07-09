@@ -12,7 +12,12 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+import jax.numpy as jnp
+import numpy as np
 import pytest
+
+from rheedium.harness import ExperimentContext
+from rheedium.simul import log_compress_image
 
 _REPO_ROOT: Path = Path(__file__).parents[2]
 _AUTOMATON_DIR: Path = _REPO_ROOT / "automatons"
@@ -176,6 +181,54 @@ def _artifact_manifest(payload: dict[str, Any]) -> list[dict[str, str]]:
     ]
 
 
+def test_image_scale_artifacts_transform_pixels(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r"""Automaton image emission writes exact log and linear companions.
+
+    Extended Summary
+    ----------------
+    Verifies the shared automaton artifact helper preserves the requested base
+    name for log-compressed display pixels and adds a ``_linear.png`` artifact
+    containing the original, uncompressed detector intensities.
+
+    Notes
+    -----
+    It replaces Matplotlib's file encoder with a small capture function, emits
+    both scales from a known array, and compares the captured inputs against
+    ``log_compress_image`` and the untouched source array. The fake encoder
+    also writes placeholder bytes so normal manifest recording is exercised.
+    """
+    saved_images: dict[str, np.ndarray[Any, Any]] = {}
+
+    def capture_image(path: Path, image: Any, *, cmap: Any) -> None:
+        del cmap
+        saved_images[path.name] = np.asarray(image)
+        path.write_bytes(b"png")
+
+    monkeypatch.setattr("matplotlib.pyplot.imsave", capture_image)
+    context = ExperimentContext(
+        outdir=tmp_path,
+        seed=123,
+        experiment="image-scale-test",
+    )
+    image = np.asarray([[0.0, 1.0], [10.0, 100.0]], dtype=np.float64)
+
+    log_artifact, linear_artifact = context.save_image_scales(
+        "detector.png",
+        image,
+    )
+
+    assert log_artifact["path"] == "detector.png"
+    assert linear_artifact["path"] == "detector_linear.png"
+    np.testing.assert_allclose(
+        saved_images["detector.png"],
+        np.asarray(log_compress_image(jnp.asarray(image), gain=25.0)),
+    )
+    np.testing.assert_array_equal(saved_images["detector_linear.png"], image)
+
+
 @pytest.mark.parametrize(
     "script",
     _EXPERIMENT_SCRIPTS,
@@ -204,8 +257,23 @@ def test_automaton_smoke_run(script: Path, tmp_path: Path) -> None:
     assert isinstance(payload["experiment"], str)
     assert payload["experiment"]
     assert payload["artifacts"]
+    artifact_paths: set[str] = {
+        str(artifact["path"]) for artifact in payload["artifacts"]
+    }
     for artifact in payload["artifacts"]:
         assert (outdir / str(artifact["path"])).exists()
+    for artifact_path in artifact_paths:
+        path = Path(artifact_path)
+        if path.suffix != ".png":
+            continue
+        if path.stem.endswith("_linear"):
+            log_path = path.with_name(
+                f"{path.stem.removesuffix('_linear')}{path.suffix}"
+            )
+            assert log_path.as_posix() in artifact_paths
+        else:
+            linear_path = path.with_name(f"{path.stem}_linear{path.suffix}")
+            assert linear_path.as_posix() in artifact_paths
 
 
 @pytest.mark.parametrize(

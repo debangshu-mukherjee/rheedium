@@ -117,7 +117,7 @@ def _softmax_weights(weight_logits: Float[Array, "M"]) -> Float[Array, "M"]:
 @jaxtyped(typechecker=beartype)
 def _softplus(x: Float[Array, ""]) -> Float[Array, ""]:
     """Softplus transform for non-negative scalar parameters."""
-    return jnp.log1p(jnp.exp(x))
+    return jax.nn.softplus(x)
 
 
 @jaxtyped(typechecker=beartype)

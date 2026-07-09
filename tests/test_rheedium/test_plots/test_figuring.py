@@ -19,6 +19,7 @@ matplotlib.use("Agg")
 
 
 from rheedium.plots.figuring import create_phosphor_colormap, plot_rheed
+from rheedium.simul import log_compress_image
 from rheedium.types import RHEEDPattern
 from rheedium.types.custom_types import scalar_float
 from rheedium.types.rheed_types import create_rheed_pattern
@@ -260,6 +261,143 @@ class TestPlotRheed:
     def teardown_method(self) -> None:
         """Clean up matplotlib figures after each test."""
         plt.close("all")
+
+    def test_log_intensity_scale_is_default(self) -> None:
+        r"""Default display pixels use normalized logarithmic compression.
+
+        Extended Summary
+        ----------------
+        Verifies that omitting ``intensity_scale`` transforms the rendered
+        linear detector pixels with the public log-compression function and
+        its default gain.
+
+        Notes
+        -----
+        It renders one pattern explicitly on the linear scale, captures the
+        image data supplied to Matplotlib, then renders the same pattern with
+        defaults and compares every resulting pixel to
+        ``log_compress_image(linear, gain=25.0)``.
+        """
+        pattern: RHEEDPattern = _make_test_pattern(n=5)
+        plot_rheed(
+            pattern,
+            grid_size=20,
+            interp_type="gaussian",
+            intensity_scale="linear",
+        )
+        linear_pixels: NDArray[Any] = np.asarray(
+            plt.gcf().axes[0].images[0].get_array()
+        )
+        plt.close("all")
+
+        plot_rheed(pattern, grid_size=20, interp_type="gaussian")
+        default_pixels: NDArray[Any] = np.asarray(
+            plt.gcf().axes[0].images[0].get_array()
+        )
+        expected_pixels: NDArray[Any] = np.asarray(
+            log_compress_image(jnp.asarray(linear_pixels), gain=25.0)
+        )
+
+        np.testing.assert_allclose(default_pixels, expected_pixels)
+        assert not np.allclose(default_pixels, linear_pixels)
+
+    def test_linear_intensity_scale_preserves_pixels(self) -> None:
+        r"""Explicit linear display preserves the uncompressed image pixels.
+
+        Extended Summary
+        ----------------
+        Verifies that ``intensity_scale="linear"`` restores the prior raw
+        Gaussian-rendering behavior without normalizing or compressing the
+        detector intensities.
+
+        Notes
+        -----
+        It renders a single diffraction point and independently constructs
+        the expected Gaussian raster from its coordinate, intensity, grid,
+        extent padding, and spot width before comparing the full pixel array.
+        """
+        grid_size: int = 9
+        spot_width: float = 0.2
+        pattern: RHEEDPattern = _make_test_pattern(n=1)
+        plot_rheed(
+            pattern,
+            grid_size=grid_size,
+            interp_type="gaussian",
+            spot_width=spot_width,
+            intensity_scale="linear",
+        )
+        actual_pixels: NDArray[Any] = np.asarray(
+            plt.gcf().axes[0].images[0].get_array()
+        )
+
+        x0: float = float(pattern.detector_points[0, 0])
+        y0: float = float(pattern.detector_points[0, 1])
+        intensity: float = float(pattern.intensities[0])
+        x_axis: NDArray[Any] = np.linspace(x0 - 0.5, x0 + 0.5, grid_size)
+        y_axis: NDArray[Any] = np.linspace(y0 - 0.5, y0 + 0.5, grid_size)
+        xx: NDArray[Any]
+        yy: NDArray[Any]
+        xx, yy = np.meshgrid(x_axis, y_axis, indexing="xy")
+        expected_pixels: NDArray[Any] = intensity * np.exp(
+            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * spot_width**2)
+        )
+
+        np.testing.assert_allclose(actual_pixels, expected_pixels)
+
+    def test_log_gain_controls_intensity_compression(self) -> None:
+        r"""The exposed log gain controls the default display transform.
+
+        Extended Summary
+        ----------------
+        Verifies that a caller-supplied ``log_gain`` is passed through to the
+        existing detector log-compression function rather than being ignored
+        or replaced by the default gain.
+
+        Notes
+        -----
+        It captures a linear rendering as the uncompressed reference, renders
+        the same pattern with a non-default gain, and compares every displayed
+        pixel to the public compression function at that gain.
+        """
+        pattern: RHEEDPattern = _make_test_pattern(n=5)
+        plot_rheed(
+            pattern,
+            grid_size=20,
+            intensity_scale="linear",
+        )
+        linear_pixels: NDArray[Any] = np.asarray(
+            plt.gcf().axes[0].images[0].get_array()
+        )
+        plt.close("all")
+
+        log_gain: float = 5.0
+        plot_rheed(pattern, grid_size=20, log_gain=log_gain)
+        actual_pixels: NDArray[Any] = np.asarray(
+            plt.gcf().axes[0].images[0].get_array()
+        )
+        expected_pixels: NDArray[Any] = np.asarray(
+            log_compress_image(jnp.asarray(linear_pixels), gain=log_gain)
+        )
+
+        np.testing.assert_allclose(actual_pixels, expected_pixels)
+
+    def test_invalid_intensity_scale(self) -> None:
+        r"""Unsupported intensity scales raise a clear ``ValueError``.
+
+        Extended Summary
+        ----------------
+        Verifies that the plot helper restricts its new display parameter to
+        the documented ``"log"`` and ``"linear"`` values.
+
+        Notes
+        -----
+        It passes an unsupported scale through the normal rendering path and
+        asserts that validation fails explicitly with the parameter name in
+        the diagnostic instead of silently choosing a fallback transform.
+        """
+        pattern: RHEEDPattern = _make_test_pattern(n=1)
+        with pytest.raises(ValueError, match="intensity_scale"):
+            plot_rheed(pattern, grid_size=10, intensity_scale="square-root")
 
     def test_gaussian_rendering(self) -> None:
         r"""Test Gaussian rendering mode runs without error.

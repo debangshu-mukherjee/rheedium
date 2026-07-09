@@ -18,6 +18,7 @@ import pytest
 from jaxtyping import Array, Complex, Float
 
 from rheedium.simul.beam_averaging import (
+    _gsm_axis_modes,
     angular_divergence_average,
     apply_distribution,
     apply_distribution_intensity,
@@ -55,13 +56,14 @@ class TestR2InventoryGuards(chex.TestCase):
 
     repo_root = Path(__file__).parents[3]
 
-    def test_instrument_broadened_pattern_uses_shared_reducer(self) -> None:
-        r"""R2 instrument quadrature should route through the one reducer.
+    def test_instrument_broadened_pattern_uses_intensity_reducer(self) -> None:
+        r"""Instrument quadrature routes through the intensity reducer.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: R2 instrument
-        quadrature should route through the one reducer.
+        Verifies that the incoherent instrument distribution averages the
+        simulator's intensities directly instead of converting them to
+        synthetic amplitudes and squaring them again.
 
         Notes
         -----
@@ -79,7 +81,14 @@ class TestR2InventoryGuards(chex.TestCase):
         source = path.read_text(encoding="utf-8")
         function = _public_function(path, "instrument_broadened_pattern")
         function_source = ast.get_source_segment(source, function) or ""
-        reducer_calls = [
+        intensity_reducer_calls = [
+            node
+            for node in ast.walk(function)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "apply_distribution_intensity"
+        ]
+        amplitude_reducer_calls = [
             node
             for node in ast.walk(function)
             if isinstance(node, ast.Call)
@@ -87,7 +96,8 @@ class TestR2InventoryGuards(chex.TestCase):
             and node.func.id == "apply_distributions"
         ]
 
-        self.assertLen(reducer_calls, 1)
+        self.assertLen(intensity_reducer_calls, 1)
+        self.assertEmpty(amplitude_reducer_calls)
         self.assertNotIn("patterns:", function_source)
         self.assertNotIn("jnp.einsum", function_source)
 
@@ -307,8 +317,31 @@ class TestBeamModeDecomposition(chex.TestCase):
             dist.samples[:, 1],
             dist.weights,
         )
-
         self.assertGreater(float(theta_variance), float(phi_variance))
+
+    def test_single_mode_divergence_gradient_is_zero(self) -> None:
+        r"""A one-mode GSM axis has a finite zero divergence gradient.
+
+        Extended Summary
+        ----------------
+        Differentiates the sole modal offset with respect to beam divergence
+        when the one-point modal index variance is exactly zero.
+
+        Notes
+        -----
+        A single mode is centered at zero for every divergence, so its exact
+        derivative is zero; the guarded denominator must not leak a NaN from
+        the unselected scaling branch.
+        """
+
+        def loss(divergence: scalar_float) -> scalar_float:
+            offsets, _ = _gsm_axis_modes(jnp.float64(0.5), divergence, 1)
+            return jnp.sum(offsets)
+
+        gradient: scalar_float = jax.grad(loss)(jnp.float64(1e-3))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
 
 
 class TestDistributionApply(chex.TestCase):
@@ -1236,6 +1269,49 @@ class TestInstrumentBroadenedPattern(chex.TestCase):
             ),
         )(**kwargs)
         chex.assert_trees_all_close(nojit, jitted, atol=1e-4)
+
+    def test_zero_intensity_gradient_is_finite(self) -> None:
+        r"""Instrument averaging has a zero gradient at zero intensity.
+
+        Extended Summary
+        ----------------
+        Differentiates a quadratic intensity kernel whose quadrature samples
+        all evaluate to exactly zero, exercising the incoherent reduction at
+        the audited boundary.
+
+        Notes
+        -----
+        Direct intensity averaging preserves the analytic zero derivative and
+        avoids the undefined derivative of the retired square-root amplitude
+        round-trip.
+        """
+
+        def loss(scale: scalar_float) -> scalar_float:
+            def zero_boundary_intensity(
+                polar: scalar_float,
+                azimuth: scalar_float,
+                energy: scalar_float,
+            ) -> Float[Array, "1 1"]:
+                del azimuth, energy
+                return jnp.full((1, 1), (scale * polar) ** 2)
+
+            pattern: Float[Array, "1 1"] = instrument_broadened_pattern(
+                simulate_fn=zero_boundary_intensity,
+                nominal_polar_angle_rad=jnp.float64(0.0),
+                nominal_azimuth_angle_rad=jnp.float64(0.0),
+                nominal_energy_kev=jnp.float64(20.0),
+                angular_divergence_mrad=jnp.float64(0.0),
+                energy_spread_ev=jnp.float64(0.0),
+                psf_sigma_pixels=jnp.float64(0.0),
+                n_angular_samples=1,
+                n_energy_samples=1,
+            )
+            return jnp.sum(pattern)
+
+        gradient: scalar_float = jax.grad(loss)(jnp.float64(1.0))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
 
 
 class TestGradients(chex.TestCase):

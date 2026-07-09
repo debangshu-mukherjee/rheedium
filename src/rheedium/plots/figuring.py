@@ -19,6 +19,7 @@ Visualization functions use matplotlib for rendering and scipy for
 interpolation.
 """
 
+import jax.numpy as jnp
 import matplotlib.colors as mcolors
 import matplotlib.image as mimage
 import matplotlib.pyplot as plt
@@ -32,6 +33,7 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy.interpolate import griddata
 
+from rheedium.simul import log_compress_image
 from rheedium.types import RHEEDPattern, scalar_float
 
 
@@ -114,6 +116,30 @@ def create_phosphor_colormap(
     return cmap
 
 
+def _scale_intensity_image(
+    image: Float[NDArray, "H W"],
+    intensity_scale: str,
+    log_gain: float,
+) -> Float[NDArray, "H W"]:
+    """Apply the requested detector-intensity display transform."""
+    if intensity_scale == "log":
+        return np.asarray(
+            log_compress_image(jnp.asarray(image), gain=log_gain)
+        )
+    if intensity_scale == "linear":
+        return image
+    raise ValueError(
+        f"intensity_scale must be 'log' or 'linear'. Got: {intensity_scale}"
+    )
+
+
+def _resolve_colormap(cmap_name: Optional[str]) -> mcolors.Colormap:
+    """Return the phosphor colormap or a named Matplotlib colormap."""
+    if cmap_name == "phosphor":
+        return create_phosphor_colormap()
+    return plt.get_cmap(cmap_name)
+
+
 @beartype
 def plot_rheed(
     rheed_pattern: RHEEDPattern,
@@ -124,11 +150,16 @@ def plot_rheed(
     figsize: Tuple[float, float] = (8, 10),
     x_extent: Optional[Tuple[float, float]] = None,
     y_extent: Optional[Tuple[float, float]] = None,
+    intensity_scale: str = "log",
+    log_gain: float = 25.0,
 ) -> None:
     """Plot RHEED pattern with multiple rendering options.
 
     Renders RHEED pattern to 2D image using interpolation or Gaussian
-    broadening, then displays with phosphor-screen colormap.
+    broadening, then displays with phosphor-screen colormap. Detector
+    intensity is log-compressed by default because a phosphor screen spans
+    many decades of dynamic range; request ``intensity_scale="linear"`` to
+    display the uncompressed image.
 
     :see: :class:`~.test_figuring.TestPlotRheed`
 
@@ -155,6 +186,14 @@ def plot_rheed(
         X-axis range (min, max) in mm. Default: auto from data with padding
     y_extent : Tuple[float, float], optional
         Y-axis range (min, max) in mm. Default: auto from data with padding
+    intensity_scale : str, optional
+        Display transform, either ``"log"`` or ``"linear"``. The default is
+        ``"log"`` so weak and strong diffraction features remain visible
+        across the phosphor screen's wide dynamic range. ``"linear"``
+        restores the uncompressed display behavior.
+    log_gain : float, optional
+        Gain passed to :func:`rheedium.simul.log_compress_image` when
+        ``intensity_scale="log"``. Default: 25.0
 
     Notes
     -----
@@ -168,7 +207,10 @@ def plot_rheed(
        For Gaussian mode, sum 2D Gaussian spots centered
        at each diffraction point. For interpolation modes,
        use scipy griddata on the irregular point set.
-    4. **Apply Colormap** --
+    4. **Scale Intensity** --
+       Apply normalized logarithmic compression by default, or retain raw
+       image values when linear intensity was explicitly requested.
+    5. **Apply Colormap** --
        Select the phosphor colormap or a named matplotlib
        colormap, then display with imshow and colorbar.
     """
@@ -225,17 +267,19 @@ def plot_rheed(
             f"Got: {interp_type}"
         )
 
-    cmap: mcolors.Colormap
-    if cmap_name == "phosphor":
-        cmap = create_phosphor_colormap()
-    else:
-        cmap = plt.get_cmap(cmap_name)
+    display_image: Float[NDArray, "H W"] = _scale_intensity_image(
+        image,
+        intensity_scale,
+        log_gain,
+    )
+
+    cmap: mcolors.Colormap = _resolve_colormap(cmap_name)
 
     fig: Figure
     ax: Axes
     fig, ax = plt.subplots(figsize=figsize)
     im: mimage.AxesImage = ax.imshow(
-        image,
+        display_image,
         extent=[x_min, x_max, y_min, y_max],
         origin="lower",
         cmap=cmap,
@@ -243,8 +287,11 @@ def plot_rheed(
     )
     ax.set_xlabel("x_d (mm)")
     ax.set_ylabel("y_d (mm)")
-    ax.set_title(f"RHEED Pattern ({interp_type})")
-    plt.colorbar(im, ax=ax, label="Intensity (arb. units)")
+    ax.set_title(f"RHEED Pattern ({interp_type}, {intensity_scale} intensity)")
+    colorbar_label: str = (
+        "Log-compressed intensity" if intensity_scale == "log" else "Intensity"
+    )
+    plt.colorbar(im, ax=ax, label=f"{colorbar_label} (arb. units)")
     plt.show()
 
 

@@ -5,10 +5,12 @@ parameters into signed gaps, z-scores, and severity codes.
 """
 
 import chex
+import jax
 import jax.numpy as jnp
 import pytest
 from jaxtyping import Array, Float
 
+import rheedium.recon.deviation as deviation_module
 import rheedium.types as rh_types
 from rheedium import recon
 from rheedium.recon import (
@@ -22,6 +24,7 @@ from rheedium.types import (
     RecipeDeviationReport,
     ReconProblem,
 )
+from rheedium.types.custom_types import scalar_float
 
 _DESIGN: Float[Array, "pixels params"] = jnp.array(
     [[1.0, 0.0], [0.0, 2.0], [1.0, -1.0]],
@@ -99,6 +102,51 @@ class TestRecipeDeviation(chex.TestCase):
             jnp.array([0.1, 0.1], dtype=jnp.float64),
             atol=1e-12,
         )
+
+    def test_zero_covariance_standard_deviation_gradient_is_stationary(
+        self,
+    ) -> None:
+        r"""Zero covariance should produce a stationary finite gradient.
+
+        Extended Summary
+        ----------------
+        Verifies that flooring covariance before its guarded square root avoids
+        the undefined derivative that otherwise leaks through a later standard
+        deviation floor.
+
+        Notes
+        -----
+        The probe covers both a positive sigma floor and the exact-zero-floor
+        path that relies on the shared zero-subgradient square-root convention.
+        """
+
+        def standard_deviation(
+            variance: scalar_float,
+            sigma_floor: scalar_float,
+        ) -> scalar_float:
+            covariance: Float[Array, "1 1"] = jnp.reshape(variance, (1, 1))
+            return deviation_module._parameter_standard_deviation(
+                covariance,
+                sigma_floor,
+            )[0]
+
+        for sigma_floor in (0.0, 1e-8):
+            gradient: scalar_float = jax.grad(standard_deviation, argnums=0)(
+                jnp.asarray(0.0, dtype=jnp.float64),
+                sigma_floor,
+            )
+            expected_value: scalar_float = standard_deviation(
+                jnp.asarray(0.0, dtype=jnp.float64),
+                sigma_floor,
+            )
+
+            chex.assert_tree_all_finite(gradient)
+            chex.assert_trees_all_close(gradient, 0.0, atol=0.0)
+            chex.assert_trees_all_close(
+                expected_value,
+                sigma_floor,
+                atol=0.0,
+            )
 
     def test_recipe_deviation_uses_default_laplace_covariance(self) -> None:
         r"""Recipe deviation should default to K4 Laplace covariance.

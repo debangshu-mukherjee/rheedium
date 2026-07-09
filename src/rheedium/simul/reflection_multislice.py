@@ -43,7 +43,7 @@ from beartype import beartype
 from beartype.typing import Callable
 from jaxtyping import Array, Bool, Complex, Float, Int, jaxtyped
 
-from rheedium.tools import interaction_constant, wavelength_ang
+from rheedium.tools import interaction_constant, safe_sqrt, wavelength_ang
 from rheedium.types import (
     CrystalStructure,
     DetectorGeometry,
@@ -717,7 +717,7 @@ def _reflected_channel_amplitudes(
     ky_axis = _reciprocal_axis(ny, slices.dy)
     kz_sq = k_mag**2 - k_x0**2 - ky_axis**2
     propagating = kz_sq > 0
-    kz_up = jnp.sqrt(jnp.maximum(kz_sq, 0.0))
+    kz_up = safe_sqrt(kz_sq)
 
     read_margin = jnp.maximum(2.0 * dz_value, 0.5)
     window_lo = slices.z_surf + read_margin

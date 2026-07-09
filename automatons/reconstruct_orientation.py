@@ -133,6 +133,7 @@ def _weight_loss_gradient(
                 "orientation_fit",
                 "orientation_arrays",
                 "residual_image",
+                "residual_image_linear",
             ],
         },
     },
@@ -236,7 +237,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
         },
         role="orientation_arrays",
     )
-    residual_artifact = ctx.save_image(
+    residual_artifacts = ctx.save_image_scales(
         "orientation_residual.png",
         jnp.abs(result.residual_pattern),
         cmap="phosphor",
@@ -251,7 +252,7 @@ def main(args: Any, ctx: Any) -> dict[str, Any]:
     }
     return {
         "metrics": metrics,
-        "artifacts": [fit_artifact, array_artifact, residual_artifact],
+        "artifacts": [fit_artifact, array_artifact, *residual_artifacts],
         "orientation_fit": fit_payload,
     }
 

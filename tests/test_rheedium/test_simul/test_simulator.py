@@ -49,6 +49,7 @@ from rheedium.simul.reflection_multislice import (
 from rheedium.simul.simulator import (
     _ewald_amplitude_pattern,
     _kinematic_finite_domain_amplitude,
+    _multislice_amplitude_pattern,
     _render_ctr_streaks_to_image,
     checked_multislice_propagate,
     compute_kinematic_intensities_with_ctrs,
@@ -1889,6 +1890,48 @@ class TestSlicedCrystalToProjectedPotentialSlices(
         chex.assert_trees_all_close(v[:, 1], v[:, -1], rtol=1e-10)
         chex.assert_trees_all_close(v[1, :], v[-1, :], rtol=1e-10)
 
+    def test_atom_on_grid_point_gradient_is_finite(self) -> None:
+        r"""A sliced-crystal atom on a grid point has zero gradient.
+
+        Extended Summary
+        ----------------
+        Differentiates a one-atom, one-pixel projected-potential slice with
+        respect to the atom's x position at the exact zero-radius boundary.
+
+        Notes
+        -----
+        The radial-distance convention supplies a finite zero subgradient
+        while retaining a finite projected-potential forward value.
+        """
+
+        def loss(x_position: scalar_float) -> scalar_float:
+            crystal: SlicedCrystal = create_sliced_crystal(
+                cart_positions=jnp.array([[x_position, 0.0, 0.5, 14.0]]),
+                cell_lengths=jnp.array([1.0, 1.0, 1.0]),
+                cell_angles=jnp.array([90.0, 90.0, 90.0]),
+                orientation=jnp.array([0, 0, 1]),
+                depth=1.0,
+                x_extent=1.0,
+                y_extent=1.0,
+            )
+            potential: PotentialSlices = (
+                sliced_crystal_to_projected_potential_slices(
+                    crystal,
+                    slice_thickness=1.0,
+                    pixel_size=1.0,
+                    parameterization="kirkland",
+                )
+            )
+            return jnp.sum(potential.slices)
+
+        origin: Float[Array, ""] = jnp.float64(0.0)
+        forward: scalar_float = loss(origin)
+        gradient: scalar_float = jax.grad(loss)(origin)
+
+        chex.assert_tree_all_finite(forward)
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
+
 
 class TestMultislicePropagate(chex.TestCase, parameterized.TestCase):
     """Test suite for multislice wave propagation.
@@ -2358,6 +2401,41 @@ class TestMultisliceSimulator(chex.TestCase, parameterized.TestCase):
             x_calibration=0.5,
             y_calibration=0.5,
         )
+
+    def test_ewald_channel_cutoff_gradient_is_finite(self) -> None:
+        r"""The transmission Ewald cutoff has a zero angle gradient.
+
+        Extended Summary
+        ----------------
+        Differentiates the private amplitude-pattern projection at zero angle
+        on a grid fine enough to satisfy the transmission tilt guard, placing
+        the sole outgoing channel exactly at zero normal momentum.
+
+        Notes
+        -----
+        The selected Ewald branch uses the zero square-root subgradient, so
+        the single-where mask cannot leak a NaN into the angle derivative.
+        """
+        potential: PotentialSlices = create_potential_slices(
+            slices=jnp.zeros((1, 1, 1)),
+            slice_thickness=1.0,
+            x_calibration=0.001,
+            y_calibration=0.001,
+        )
+
+        def loss(theta_deg: scalar_float) -> scalar_float:
+            pattern, _ = _multislice_amplitude_pattern(
+                potential_slices=potential,
+                energy_kev=20.0,
+                theta_deg=theta_deg,
+                bandwidth_limit=1.0,
+            )
+            return jnp.sum(pattern.k_out[:, 2])
+
+        gradient: scalar_float = jax.grad(loss)(jnp.float64(0.0))
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
 
     @chex.variants(with_device=True, without_jit=True)
     def test_returns_rheed_pattern(self) -> None:

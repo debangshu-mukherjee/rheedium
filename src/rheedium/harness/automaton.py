@@ -38,6 +38,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 from beartype import beartype
 from beartype.typing import Any
@@ -307,12 +308,45 @@ class ExperimentContext:
         role: str = "detector_image",
         cmap: str = "phosphor",
         preview: bool = True,
+        intensity_scale: str = "log",
+        log_gain: float = 25.0,
     ) -> dict[str, Any]:
-        """Render a 2D array as a PNG artifact."""
+        """Render a 2D array as a log-scale PNG by default.
+
+        Parameters
+        ----------
+        name : str
+            Relative PNG artifact path.
+        image : Any
+            Two-dimensional non-negative intensity array.
+        role : str, optional
+            Artifact-manifest role. Default: ``"detector_image"``
+        cmap : str, optional
+            Matplotlib colormap or ``"phosphor"``. Default: ``"phosphor"``
+        preview : bool, optional
+            Embed small artifacts in the result manifest. Default: True
+        intensity_scale : str, optional
+            Display transform, ``"log"`` by default or explicitly
+            ``"linear"`` for uncompressed intensity.
+        log_gain : float, optional
+            Gain for normalized log compression. Default: 25.0
+        """
         from matplotlib import pyplot as plt  # noqa: PLC0415
 
         path: Path = self.path_for_artifact(name)
         image_np: np.ndarray[Any, Any] = np.asarray(image)
+        if intensity_scale == "log":
+            from rheedium.simul import log_compress_image  # noqa: PLC0415
+
+            image_np = np.asarray(
+                log_compress_image(jnp.asarray(image_np), gain=log_gain)
+            )
+        elif intensity_scale != "linear":
+            raise AutomatonError(
+                "intensity_scale must be 'log' or 'linear'",
+                error_kind=ErrorKind.UNSUPPORTED,
+                field="intensity_scale",
+            )
         if cmap == "phosphor":
             from rheedium.plots import (  # noqa: I001, PLC0415
                 create_phosphor_colormap,
@@ -328,6 +362,67 @@ class ExperimentContext:
             mime="image/png",
             preview=preview,
         )
+
+    def save_image_scales(
+        self,
+        name: str,
+        image: Any,
+        *,
+        role: str = "detector_image",
+        cmap: str = "phosphor",
+        preview: bool = True,
+        log_gain: float = 25.0,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Render log and linear PNG artifacts for one intensity image.
+
+        The existing ``name`` is retained for the default log-scale artifact;
+        the explicitly linear companion inserts ``_linear`` before the file
+        suffix and appends ``_linear`` to the manifest role.
+
+        Parameters
+        ----------
+        name : str
+            Relative path for the default log-scale PNG artifact.
+        image : Any
+            Two-dimensional non-negative intensity array.
+        role : str, optional
+            Manifest role for the default log artifact.
+        cmap : str, optional
+            Matplotlib colormap or ``"phosphor"``. Default: ``"phosphor"``
+        preview : bool, optional
+            Embed small artifacts in the result manifest. Default: True
+        log_gain : float, optional
+            Gain for normalized log compression. Default: 25.0
+
+        Returns
+        -------
+        log_artifact : dict[str, Any]
+            Manifest entry for ``name`` on the default log scale.
+        linear_artifact : dict[str, Any]
+            Manifest entry for the ``_linear`` companion.
+        """
+        artifact_name: Path = Path(name)
+        linear_name: str = artifact_name.with_name(
+            f"{artifact_name.stem}_linear{artifact_name.suffix}"
+        ).as_posix()
+        log_artifact: dict[str, Any] = self.save_image(
+            name,
+            image,
+            role=role,
+            cmap=cmap,
+            preview=preview,
+            intensity_scale="log",
+            log_gain=log_gain,
+        )
+        linear_artifact: dict[str, Any] = self.save_image(
+            linear_name,
+            image,
+            role=f"{role}_linear",
+            cmap=cmap,
+            preview=preview,
+            intensity_scale="linear",
+        )
+        return log_artifact, linear_artifact
 
     def save_figure(
         self,

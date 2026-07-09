@@ -664,7 +664,8 @@ def reconstruct_incoherent_weights(
     1. Flatten the intensity library into a pixel-by-sample design matrix.
     2. Solve the regularized normal equations for an analytic initial point.
     3. Run fixed-step projected-gradient NNLS for the non-negative weights.
-    4. Renormalize onto the documented probability simplex.
+    4. Add ``1e-12`` before renormalizing onto the probability simplex, so an
+       all-zero library approaches uniform weights continuously.
     """
     n_samples: int = intensity_library.shape[0]
     design: Float[Array, "P N"] = jnp.reshape(
@@ -704,15 +705,14 @@ def reconstruct_incoherent_weights(
         _projected_step,
         initial_weights,
     )
-    total_weight: Float[Array, ""] = jnp.sum(nonnegative_weights)
-    uniform_weights: Float[Array, "N"] = (
-        jnp.ones(n_samples, dtype=nonnegative_weights.dtype) / n_samples
+    normalization_epsilon: Float[Array, ""] = jnp.asarray(
+        1e-12,
+        dtype=nonnegative_weights.dtype,
     )
-    weights: Float[Array, "N"] = jax.lax.cond(
-        total_weight > 0.0,
-        lambda: nonnegative_weights / total_weight,
-        lambda: uniform_weights,
+    smoothed_weights: Float[Array, "N"] = (
+        nonnegative_weights + normalization_epsilon
     )
+    weights: Float[Array, "N"] = smoothed_weights / jnp.sum(smoothed_weights)
     return weights
 
 

@@ -1148,6 +1148,43 @@ class TestCrystalProjectedPotential(chex.TestCase, parameterized.TestCase):
         chex.assert_trees_all_close(v_real[:, 1], v_real[:, -1], rtol=1e-10)
         chex.assert_trees_all_close(v_real[1, :], v_real[-1, :], rtol=1e-10)
 
+    def test_atom_on_grid_point_gradient_is_finite(self) -> None:
+        r"""An atom centered on a potential pixel has a zero gradient.
+
+        Extended Summary
+        ----------------
+        Differentiates a one-pixel projected potential with respect to the
+        atom's x coordinate at the exact point where both radial offsets are
+        zero.
+
+        Notes
+        -----
+        The radial-distance convention selects a zero subgradient at the
+        origin, and the regression also checks that the forward potential is
+        finite.
+        """
+        atomic_numbers: Int[Array, "1"] = jnp.array([14], dtype=jnp.int32)
+        cell: Float[Array, "2"] = jnp.array([1.0, 1.0])
+
+        def loss(x_position: scalar_float) -> scalar_float:
+            potential: Complex[Array, "1 1"] = crystal_projected_potential(
+                atomic_positions_angstrom=jnp.array([[x_position, 0.0, 0.0]]),
+                atomic_numbers=atomic_numbers,
+                grid_shape=(1, 1),
+                cell_dimensions_angstrom=cell,
+                absorption_fraction=0.0,
+                parameterization="kirkland",
+            )
+            return jnp.sum(jnp.real(potential))
+
+        origin: Float[Array, ""] = jnp.float64(0.0)
+        forward: scalar_float = loss(origin)
+        gradient: scalar_float = jax.grad(loss)(origin)
+
+        chex.assert_tree_all_finite(forward)
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_equal(gradient, jnp.float64(0.0))
+
 
 class TestCrystalProjectedPotentialOccupancy(chex.TestCase):
     """Occupancy weighting of the projected slice potential.

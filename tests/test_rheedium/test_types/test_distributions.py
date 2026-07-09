@@ -595,6 +595,60 @@ class TestBeamModeDistributionFactories(chex.TestCase):
         chex.assert_trees_all_close(modes.energy_spread_ev, 0.4, atol=1e-12)
         assert modes.distribution_id == "bridge"
 
+    def test_incidence_floor_has_intended_zero_gradient(self) -> None:
+        r"""The positive-angle footprint floor has zero saturated gradient.
+
+        Extended Summary
+        ----------------
+        Replays the audited tiny positive incidence-angle probe below the
+        projection floor and verifies that its saturation gradient is finite.
+
+        Notes
+        -----
+        The hard floor is an intentional physical bound, so its zero gradient
+        in the saturated region is part of the documented API contract.
+        """
+        beam = create_electron_beam(
+            coherence_length_transverse_angstrom=1000.0,
+            spot_size_um=jnp.asarray([50.0, 25.0], dtype=jnp.float64),
+        )
+
+        def in_plane_beta(angle_deg: Float[Array, ""]) -> Float[Array, ""]:
+            return beam_modes_from_electron_beam(
+                beam,
+                incidence_angle_deg=angle_deg,
+            ).beta_in_plane
+
+        gradient: Float[Array, ""] = jax.grad(in_plane_beta)(
+            jnp.asarray(1e-8, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(gradient, 0.0)
+
+    def test_beam_modes_reject_nonpositive_incidence_angles(self) -> None:
+        r"""Electron-beam projection rejects non-positive incidence angles.
+
+        Extended Summary
+        ----------------
+        Checks the explicit domain validation added alongside the intentional
+        positive-angle saturation floor.
+
+        Notes
+        -----
+        Validation uses ``eqx.error_if`` and therefore applies in eager and
+        transformed execution.
+        """
+        beam = create_electron_beam()
+
+        for incidence_angle in (0.0, -1.0):
+            assert_rejects(
+                beam_modes_from_electron_beam,
+                beam,
+                incidence_angle_deg=incidence_angle,
+                match="incidence_angle_deg must be finite and positive",
+            )
+
     def test_beam_mode_presets_rank_source_coherence(self) -> None:
         r"""Thermionic preset is broader and more mixed than field emission.
 
@@ -1366,6 +1420,77 @@ class TestSizeProducer(chex.TestCase):
 
         chex.assert_trees_all_close(sizes, jnp.array([75.0]))
         chex.assert_trees_all_close(weights, jnp.array([1.0]))
+
+    def test_zero_width_lognormal_has_zero_sigma_gradient(self) -> None:
+        r"""A zero-width lognormal is a delta with zero sigma gradient.
+
+        Extended Summary
+        ----------------
+        Replays the audited ``sigma_ang = 0`` probe and verifies exact samples
+        at the mean together with the chosen finite zero subgradient.
+
+        Notes
+        -----
+        The log-space width uses the repository ``safe_sqrt`` boundary
+        convention.
+        """
+
+        def summed_sizes(sigma_ang: Float[Array, ""]) -> Float[Array, ""]:
+            dist = SizeDistribution(
+                distribution_type="lognormal",
+                mean_ang=jnp.asarray(100.0, dtype=jnp.float64),
+                sigma_ang=sigma_ang,
+                min_size_ang=jnp.asarray(10.0, dtype=jnp.float64),
+                max_size_ang=jnp.asarray(500.0, dtype=jnp.float64),
+            )
+            sizes, _ = discretize_size_distribution(dist, n_points=7)
+            return jnp.sum(sizes)
+
+        zero_sigma: Float[Array, ""] = jnp.asarray(0.0, dtype=jnp.float64)
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(summed_sizes)(zero_sigma)
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, 700.0)
+        chex.assert_trees_all_close(gradient, 0.0)
+
+    def test_exponential_truncation_edge_has_finite_mean_gradient(
+        self,
+    ) -> None:
+        r"""The zero-survival truncation edge has its analytic mean gradient.
+
+        Extended Summary
+        ----------------
+        Replays the audited upper-edge probe where ``1 - CDF`` rounds to zero
+        and checks the final equal-probability bin against its closed form.
+
+        Notes
+        -----
+        For seven untruncated exponential bins, the final conditional-mean
+        sample and its derivative at unit mean are both ``1 + log(7)``.
+        """
+
+        def final_bin_size(mean_ang: Float[Array, ""]) -> Float[Array, ""]:
+            dist = SizeDistribution(
+                distribution_type="exponential",
+                mean_ang=mean_ang,
+                sigma_ang=jnp.asarray(0.0, dtype=jnp.float64),
+                min_size_ang=jnp.asarray(0.0, dtype=jnp.float64),
+                max_size_ang=jnp.asarray(100.0, dtype=jnp.float64),
+            )
+            sizes, _ = discretize_size_distribution(dist, n_points=7)
+            return sizes[-1]
+
+        unit_mean: Float[Array, ""] = jnp.asarray(1.0, dtype=jnp.float64)
+        value: Float[Array, ""]
+        gradient: Float[Array, ""]
+        value, gradient = jax.value_and_grad(final_bin_size)(unit_mean)
+        expected: Float[Array, ""] = 1.0 + jnp.log(7.0)
+
+        chex.assert_tree_all_finite(gradient)
+        chex.assert_trees_all_close(value, expected, rtol=1e-12)
+        chex.assert_trees_all_close(gradient, expected, rtol=1e-12)
 
     def test_exponential_size_quantiles_match_untruncated_moments(
         self,
