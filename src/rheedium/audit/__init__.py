@@ -18,6 +18,17 @@ simulation pipeline:
    *changes* relative to a baseline rather than physics correctness, and
    are intended as a guardrail against unintended drift.
 
+The submodules are organized as follows:
+
+- :mod:`invariants`
+    Physics-based sanity checks for the rheedium simulation pipeline.
+- :mod:`metrics`
+    Image-space audit metrics for RHEED benchmark comparisons.
+- :mod:`reference_benchmark`
+    Reference-bundle benchmarking for detector-image realism audits.
+- :mod:`reference_types`
+    Typed containers for audit reference cases and benchmark results.
+
 Routine Listings
 ----------------
 :class:`InvariantResult`

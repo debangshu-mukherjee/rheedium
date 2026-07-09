@@ -8,6 +8,21 @@ data. Forward procedural models, preprocessing steps, and
 differentiable surface-construction utilities live in
 :mod:`rheedium.procs`.
 
+The submodules are organized as follows:
+
+- :mod:`deviation`
+    Recipe-deviation reporting for reconstruction outputs.
+- :mod:`losses`
+    Loss functions and residual builders for inverse RHEED problems.
+- :mod:`orientation`
+    Inverse recovery of orientation distributions from experimental RHEED.
+- :mod:`solve`
+    Optimistix-backed solvers for differentiable RHEED inversion.
+- :mod:`transforms`
+    Bijective parameter transforms for differentiable reconstruction.
+- :mod:`uncertainty`
+    Fisher and Laplace uncertainty helpers for reconstruction problems.
+
 Routine Listings
 ----------------
 :func:`positive_from_unconstrained`

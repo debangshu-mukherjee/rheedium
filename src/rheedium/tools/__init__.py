@@ -12,6 +12,23 @@ well-tested toolbox rather than reimplementing low-level numerics.
 All functions are JAX-compatible, JIT-safe, and support automatic
 differentiation unless noted otherwise.
 
+The submodules are organized as follows:
+
+- :mod:`caching`
+    Persistent XLA compilation cache configuration for rheedium.
+- :mod:`exporting`
+    Ahead-of-time export helpers for distributing rheedium forward models.
+- :mod:`parallel`
+    Parallel processing utilities for distributed RHEED simulations.
+- :mod:`quadrature`
+    Quadrature helpers shared across the rheedium package.
+- :mod:`simul_utils`
+    Shared utility functions for RHEED simulation modules.
+- :mod:`special`
+    Special-function kernels shared across the rheedium package.
+- :mod:`wrappers`
+    Function wrappers for JAX compatibility.
+
 Routine Listings
 ----------------
 :func:`bessel_k0`

@@ -8,6 +8,31 @@ includes utilities for calculating electron wavelengths, scattering
 intensities, crystal truncation rods (CTRs), and complete diffraction patterns
 from crystal structures.
 
+The submodules are organized as follows:
+
+- :mod:`beam_averaging`
+    Beam averaging and instrument broadening for RHEED simulations.
+- :mod:`ewald`
+    Ewald sphere builder functions.
+- :mod:`finite_domain`
+    Finite domain Ewald sphere broadening for RHEED simulation.
+- :mod:`form_factors`
+    Atomic form factors and scattering calculations for electron diffraction.
+- :mod:`kinematic`
+    Kinematic RHEED simulator.
+- :mod:`multislice`
+    Multislice algorithm primitives for dynamical RHEED simulation.
+- :mod:`potential`
+    Crystal projected potential construction for multislice simulation.
+- :mod:`reflection_multislice`
+    Reflection-geometry multislice simulation for RHEED.
+- :mod:`simulator`
+    Functions for simulating RHEED patterns and diffraction patterns.
+- :mod:`surface_rods`
+    Surface reciprocal lattice rod calculations for RHEED simulations.
+- :mod:`sweeps`
+    Generic vectorized detector-image sweep utilities.
+
 Routine Listings
 ----------------
 :func:`angular_divergence_average`

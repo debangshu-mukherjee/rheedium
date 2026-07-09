@@ -7,6 +7,27 @@ used in crystallography and RHEED simulations, including CIF files, XYZ files,
 VASP POSCAR/CONTCAR files, and vasprun.xml for crystal structures. It also
 provides interoperability with ASE and pymatgen libraries.
 
+The submodules are organized as follows:
+
+- :mod:`cif`
+    Functions for reading and writing crystal structure data.
+- :mod:`crystal`
+    Unified crystal structure parsing and conversion utilities.
+- :mod:`hdf5`
+    HDF5 serializer and deserializer for rheedium PyTrees.
+- :mod:`interop`
+    External library interoperability for ASE and pymatgen.
+- :mod:`lattice`
+    Lattice-vector conversion helpers for crystal parsers.
+- :mod:`poscar`
+    VASP POSCAR/CONTCAR file parsing utilities.
+- :mod:`tiff`
+    TIFF image sequence loading and preprocessing for RHEED analysis.
+- :mod:`vaspxml`
+    VASP vasprun.xml parsing utilities.
+- :mod:`xyz`
+    Read XYZ files and convert to JAX-compatible data structures.
+
 Routine Listings
 ----------------
 :func:`atomic_masses`

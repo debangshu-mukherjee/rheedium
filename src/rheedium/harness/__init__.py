@@ -8,6 +8,11 @@ decorates one ``main(args, ctx)`` function with :func:`experiment`, and
 receives consistent CLI parsing, JSON input, validation, artifact helpers, and
 final-line JSON result emission.
 
+The submodules are organized as follows:
+
+- :mod:`automaton`
+    Automaton process-boundary implementation for the rheedium harness.
+
 Routine Listings
 ----------------
 :class:`Param`

@@ -1,5 +1,16 @@
 """Probability distribution types for statistical RHEED simulation.
 
+The submodules are organized as follows:
+
+- :mod:`base`
+    Base distribution contracts and reduction helpers.
+- :mod:`beam`
+    Beam-mode distributions and ElectronBeam adapters.
+- :mod:`orientation`
+    Orientation distributions and generic orientation producers.
+- :mod:`size`
+    Domain-size distributions and generic size producers.
+
 Routine Listings
 ----------------
 :class:`Distribution`

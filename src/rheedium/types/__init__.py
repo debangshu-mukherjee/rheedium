@@ -6,6 +6,31 @@ This module defines JAX-compatible data structures for representing crystal
 structures, RHEED patterns, and other simulation data. All types are PyTrees
 that support JAX transformations and automatic differentiation.
 
+The submodules are organized as follows:
+
+- :mod:`beam_types`
+    Data structures for electron beam and instrument characterization.
+- :mod:`bind_types`
+    Type carriers for distribution-axis bind updates.
+- :mod:`constants`
+    Physical constants for RHEED simulation.
+- :mod:`crystal_types`
+    Data structures and factory functions for crystal structure representation.
+- :mod:`custom_types`
+    Custom type aliases for scalar JAX data.
+- :mod:`detector`
+    Detector geometry carrier and detector-grid helpers.
+- :mod:`distributions`
+    Probability distribution types for statistical RHEED simulation.
+- :mod:`inout_types`
+    Type carriers for input/output metadata.
+- :mod:`recon_types`
+    Type carriers and constructors for reconstruction workflows.
+- :mod:`rheed_types`
+    Data structures and factory functions for RHEED pattern representation.
+- :mod:`simulation_params`
+    Parameter carriers for detector-image simulation orchestration.
+
 Routine Listings
 ----------------
 :class:`CrystalStructure`

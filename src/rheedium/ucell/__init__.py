@@ -6,6 +6,13 @@ This module provides functions for crystallographic calculations including
 unit cell transformations, reciprocal space operations, and specialized
 mathematical functions like Bessel functions used in scattering calculations.
 
+The submodules are organized as follows:
+
+- :mod:`helper`
+    Helper functions for unit cell calculations and transformations.
+- :mod:`unitcell`
+    Functions for unit cell calculations and transformations.
+
 Routine Listings
 ----------------
 :func:`angle_in_degrees`

@@ -8,6 +8,23 @@ structure in differentiable ways. The intent is that inverse
 algorithms in :mod:`rheedium.recon` can optimize through these
 procedural transforms against experimental RHEED data.
 
+The submodules are organized as follows:
+
+- :mod:`crystal_defects`
+    Differentiable crystal-defect generators.
+- :mod:`distribution_binds`
+    Producer-owned bind helpers for generic Distribution axes.
+- :mod:`grains`
+    Differentiable grain and domain distribution models.
+- :mod:`library`
+    Pre-parameterized differentiable surface model library.
+- :mod:`preprocessing`
+    Differentiable preprocessing of experimental RHEED images.
+- :mod:`surface_builder`
+    Surface slab construction and reconstruction utilities.
+- :mod:`surface_modifier`
+    Differentiable surface modifiers for RHEED forward models.
+
 Routine Listings
 ----------------
 :func:`add_adsorbate_layer`

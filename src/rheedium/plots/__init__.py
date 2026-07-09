@@ -7,6 +7,13 @@ structures, and physics concepts. It includes specialized colormaps that
 simulate the appearance of phosphor screens used in experimental RHEED
 setups, as well as pedagogical diagrams for documentation.
 
+The submodules are organized as follows:
+
+- :mod:`diagrams`
+    Visualization functions for RHEED physics and crystallography diagrams.
+- :mod:`figuring`
+    Functions for creating and customizing RHEED pattern visualizations.
+
 Routine Listings
 ----------------
 :func:`create_phosphor_colormap`
