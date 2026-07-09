@@ -230,9 +230,15 @@ def create_rheed_pattern(
             jnp.any(~jnp.isfinite(k_out)),
             "k_out contains non-finite values",
         )
+        # Padded reflections (g_indices == -1) carry exactly-zero k_out by
+        # contract (see find_ctr_ewald_intersection); only genuine
+        # reflections must have non-zero wavevectors.
         checked_k_out = eqx.error_if(
             checked_k_out,
-            jnp.any(jnp.linalg.norm(checked_k_out, axis=1) <= 0),
+            jnp.any(
+                (jnp.linalg.norm(checked_k_out, axis=1) <= 0)
+                & (g_indices >= 0)
+            ),
             "k_out vectors must be non-zero",
         )
         checked_detector_points: Float[Array, "mm 2"] = eqx.error_if(

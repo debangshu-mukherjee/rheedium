@@ -17,6 +17,8 @@ from numpy.typing import NDArray
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+from rheedium.plots import create_phosphor_colormap  # noqa: E402
+
 
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 SWEEP_DIR: Final[Path] = PROJECT_ROOT / "tutorials" / "sweeps"
@@ -48,13 +50,16 @@ class RenderedPanel:
     parameter_unit: str
     parameter_value: float
     theta_deg: float
-    voltage_kv: float
+    energy_kev: float
 
 
 README_PANELS: Final[tuple[SweepPanel, ...]] = (
-    SweepPanel("SrTiO3", "sto_theta4_phi_sweep.npz", 2),
-    SweepPanel("MgO", "mgo_theta2p2_phi_sweep.npz", 2),
-    SweepPanel("Bi2Se3", "bi2se3_theta2p5_phi_sweep.npz", 2),
+    # Frame 0 is phi = 0 deg (a symmetry azimuth), so the streaks are
+    # mirror-symmetric about the specular rod. Off-axis frames (e.g. phi = 10
+    # deg) are physically asymmetric and read poorly as a hero image.
+    SweepPanel("SrTiO3", "sto_theta4_phi_sweep.npz", 0),
+    SweepPanel("MgO", "mgo_theta2p2_phi_sweep.npz", 0),
+    SweepPanel("Bi2Se3", "bi2se3_theta2p5_phi_sweep.npz", 0),
 )
 
 
@@ -148,7 +153,7 @@ def _load_panel(panel: SweepPanel) -> RenderedPanel:
             parameter_unit=parameter_unit,
             parameter_value=float(parameter_values[panel.frame_index]),
             theta_deg=_load_float_scalar(data, "theta_deg"),
-            voltage_kv=_load_float_scalar(data, "voltage_kv"),
+            energy_kev=_load_float_scalar(data, "energy_kev"),
         )
         return rendered
     finally:
@@ -185,7 +190,7 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
             parameter_value = f"{parameter_value} {panel.parameter_unit}"
         image_artist: AxesImage = axis.imshow(
             panel.image,
-            cmap="inferno",
+            cmap=create_phosphor_colormap(),
             extent=panel.extent_mm,
             origin="lower",
             vmin=0.0,
@@ -213,7 +218,7 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
         axis.text(
             0.03,
             0.04,
-            f"{panel.theta_deg:g} deg, {panel.voltage_kv:g} kV",
+            f"{panel.theta_deg:g} deg, {panel.energy_kev:g} keV",
             color="#ededed",
             fontsize=8,
             transform=axis.transAxes,

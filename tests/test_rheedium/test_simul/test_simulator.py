@@ -3430,12 +3430,32 @@ class TestEwaldSimulator(chex.TestCase, parameterized.TestCase):
             dtype=np.float64,
         )
         k_mag_sq: Any = float(np.dot(k_in, k_in))
+        # Mirror the production inscribed-disk rod cutoff: the rectangular
+        # Miller box is not closed under the surface-net point group for
+        # non-orthogonal cells, so rods are restricted to |G_par| <= G_max.
+        a_xy: Float[NDArray, "..."] = np.asarray(recip_a[:2])
+        b_xy: Float[NDArray, "..."] = np.asarray(recip_b[:2])
+        a_hat: Float[NDArray, "..."] = a_xy / max(
+            float(np.linalg.norm(a_xy)), 1e-12
+        )
+        b_hat: Float[NDArray, "..."] = b_xy / max(
+            float(np.linalg.norm(b_xy)), 1e-12
+        )
+        a_perp: float = float(
+            np.linalg.norm(a_xy - np.dot(a_xy, b_hat) * b_hat)
+        )
+        b_perp: float = float(
+            np.linalg.norm(b_xy - np.dot(b_xy, a_hat) * a_hat)
+        )
+        g_max: float = min(hmax * a_perp, kmax * b_perp) * (1.0 + 1e-9)
         rows: list[tuple[float, float]] = []
         h: int
         for h in range(-hmax, hmax + 1):
             k: int
             for k in range(-kmax, kmax + 1):
                 g_hk: Any = h * recip_a + k * recip_b
+                if float(np.linalg.norm(g_hk[:2])) > g_max:
+                    continue
                 p_vec: Any = k_in + g_hk
                 a_coef: Any = float(np.dot(recip_c, recip_c))
                 b_coef: Any = float(2.0 * np.dot(p_vec, recip_c))

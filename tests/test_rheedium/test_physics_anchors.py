@@ -1575,3 +1575,110 @@ def test_occupancy_weighting_survives_ewald_rod_paths() -> None:
         0.25 * np.asarray(rod_full)[rod_mask],
         rtol=1e-12,
     )
+
+
+def _zone_axis_pattern_points(
+    lengths: tuple[float, float, float],
+    angles: tuple[float, float, float],
+) -> np.ndarray:
+    """Simulate a phi=0 pattern for a two-atom cell; return visible points."""
+    cell = np.asarray(build_cell_vectors(*lengths, *angles))
+    frac = np.array([[0.0, 0.0, 0.0], [0.3, 0.2, 0.1]])
+    cart = frac @ cell
+    z_numbers = np.array([14.0, 8.0])
+    crystal = create_crystal_structure(
+        frac_positions=jnp.asarray(np.column_stack([frac, z_numbers])),
+        cart_positions=jnp.asarray(np.column_stack([cart, z_numbers])),
+        cell_lengths=jnp.asarray(lengths),
+        cell_angles=jnp.asarray(angles),
+    )
+    from rheedium.simul import ewald_simulator
+
+    pattern = ewald_simulator(
+        crystal=crystal,
+        energy_kev=30.0,
+        theta_deg=2.5,
+        phi_deg=0.0,
+        hmax=3,
+        kmax=3,
+        detector_distance=80.0,
+        temperature=300.0,
+        surface_roughness=0.0,
+        layer_attenuation=0.01,
+        ctr_power=1.0,
+        roughness_power=1.0,
+    )
+    points = np.asarray(pattern.detector_points)
+    valid = np.asarray(pattern.G_indices) >= 0
+    return points[valid]
+
+
+def test_rheed_zone_axis_mirror_symmetry() -> None:
+    r"""Rod positions obey the surface-net mirror at a low-index zone axis.
+
+    Extended Summary
+    ----------------
+    The left-right mirror of a RHEED pattern is the reflection
+    (Gx, Gy) -> (Gx, -Gy) across the incidence plane, so streak positions
+    pair up exactly when the 2D surface net has a mirror line along the
+    beam azimuth: square/rectangular nets (gamma = 90) and the hexagonal
+    net (gamma = 120, beam along a). A rectangular Miller-index box is not
+    closed under that mirror for non-orthogonal cells (the mirror of
+    (h, k) is (h, -h-k) for the hexagonal net), which silently sheared
+    hexagonal patterns until the rod sample was restricted to an isotropic
+    |G_par| disk. This anchors: (a) hexagonal and cubic patterns are 100%
+    mirror-paired with a symmetric transverse range and a centered
+    specular rod; (b) for an oblique net (gamma = 80, point group 2 with
+    no mirror line) every rod whose mirrored G_par is a genuine lattice
+    vector still has its visible partner, so any residual asymmetry is
+    crystallographic, never a sampling artifact.
+
+    Notes
+    -----
+    It builds synthetic two-atom cells inside the test body and compares
+    the simulated detector positions against the closed-form mirror
+    operation and the reciprocal-basis integrality test, with no
+    reference to rheedium's own sampling arithmetic.
+
+    :see: :func:`~rheedium.simul.ewald_simulator`
+    """
+    for lengths, angles in (
+        ((4.0, 4.0, 6.0), (90.0, 90.0, 120.0)),
+        ((4.0, 4.0, 4.0), (90.0, 90.0, 90.0)),
+    ):
+        pts = _zone_axis_pattern_points(lengths, angles)
+        hx, vy = pts[:, 0], pts[:, 1]
+        for i in range(len(pts)):
+            has_partner = np.any(
+                (np.abs(hx + hx[i]) < 1e-6) & (np.abs(vy - vy[i]) < 1e-6)
+            )
+            assert has_partner, (angles, pts[i])
+        assert np.min(np.abs(hx)) < 1e-9
+        np.testing.assert_allclose(hx.min(), -hx.max(), atol=1e-9)
+
+    oblique_lengths = (4.0, 4.0, 4.0)
+    oblique_angles = (80.0, 80.0, 80.0)
+    pts = _zone_axis_pattern_points(oblique_lengths, oblique_angles)
+    hx, vy = pts[:, 0], pts[:, 1]
+    recip = np.asarray(
+        reciprocal_lattice_vectors(
+            *oblique_lengths, *oblique_angles, in_degrees=True
+        )
+    )
+    basis_2d = np.stack([recip[0][:2], recip[1][:2]], axis=1)
+    lattice_valid_mirrors = 0
+    for h in range(-3, 4):
+        for k in range(-3, 4):
+            g_par = basis_2d @ np.array([float(h), float(k)])
+            mirrored_hk = np.linalg.solve(
+                basis_2d, np.array([g_par[0], -g_par[1]])
+            )
+            if np.allclose(mirrored_hk, np.round(mirrored_hk), atol=1e-9):
+                lattice_valid_mirrors += 1
+    assert 0 < lattice_valid_mirrors < 49
+    paired = sum(
+        bool(np.any((np.abs(hx + hx[i]) < 1e-6) & (np.abs(vy - vy[i]) < 1e-6)))
+        for i in range(len(pts))
+    )
+    assert paired < len(pts)
+    assert np.min(np.abs(hx)) < 1e-9

@@ -439,6 +439,69 @@ def find_kinematic_reflections(
 
 
 @jaxtyped(typechecker=beartype)
+def _isotropic_rod_mask(
+    h_flat: Int[Array, "N"],
+    k_flat: Int[Array, "N"],
+    recip_a: Float[Array, "3"],
+    recip_b: Float[Array, "3"],
+    hmax: int,
+    kmax: int,
+) -> Float[Array, "N"]:
+    r"""Mask rectangular-box rods to the inscribed isotropic disk.
+
+    A rectangular Miller-index box ``h, k in [-hmax, hmax] x [-kmax, kmax]``
+    maps to a parallelogram in reciprocal space. For non-orthogonal in-plane
+    reciprocal bases the parallelogram is not closed under the surface-net
+    point group, so a mirror-related rod pair can straddle the boundary and
+    the sampled rod set silently breaks the mirror symmetry of the pattern
+    (Friedel-violating streak positions for hexagonal cells at a zone axis).
+    Restricting the sample to the inscribed disk
+    :math:`|G_\parallel| \le G_{max}` fixes this for every lattice: point
+    group operations preserve :math:`|G_\parallel|`, so an isotropic cutoff
+    is closed under all of them by construction.
+
+    ``G_max`` is the inscribed radius of the sampled parallelogram — the
+    minimum distance from the origin to its boundary lines — so no rod
+    outside the requested box is ever needed.
+
+    Parameters
+    ----------
+    h_flat, k_flat : Int[Array, "N"]
+        Flattened Miller indices of the candidate rods.
+    recip_a, recip_b : Float[Array, "3"]
+        In-plane reciprocal lattice vectors in 1/Å.
+    hmax, kmax : int
+        Requested box half-widths.
+
+    Returns
+    -------
+    Float[Array, "N"]
+        1.0 for rods inside the inscribed disk, 0.0 outside.
+    """
+    a_xy: Float[Array, "2"] = recip_a[:2]
+    b_xy: Float[Array, "2"] = recip_b[:2]
+    a_norm: Float[Array, ""] = jnp.linalg.norm(a_xy)
+    b_norm: Float[Array, ""] = jnp.linalg.norm(b_xy)
+    a_hat: Float[Array, "2"] = a_xy / jnp.maximum(a_norm, 1e-12)
+    b_hat: Float[Array, "2"] = b_xy / jnp.maximum(b_norm, 1e-12)
+    # Distance from origin to the boundary lines h = +/-hmax (spanned by
+    # b*) and k = +/-kmax (spanned by a*): the perpendicular component of
+    # the stepped vector with respect to the spanning direction.
+    a_perp: Float[Array, ""] = jnp.linalg.norm(
+        a_xy - jnp.dot(a_xy, b_hat) * b_hat
+    )
+    b_perp: Float[Array, ""] = jnp.linalg.norm(
+        b_xy - jnp.dot(b_xy, a_hat) * a_hat
+    )
+    g_max: Float[Array, ""] = jnp.minimum(hmax * a_perp, kmax * b_perp)
+    g_par: Float[Array, "N 2"] = (
+        h_flat[:, None] * a_xy[None, :] + k_flat[:, None] * b_xy[None, :]
+    )
+    g_par_norm: Float[Array, "N"] = jnp.linalg.norm(g_par, axis=-1)
+    return (g_par_norm <= g_max * (1.0 + 1e-9)).astype(jnp.float64)
+
+
+@jaxtyped(typechecker=beartype)
 def compute_kinematic_intensities_with_ctrs(  # noqa: PLR0913, PLR0915
     crystal: CrystalStructure,
     g_allowed: Float[Array, "N 3"],
@@ -893,6 +956,13 @@ def ewald_simulator(  # noqa: PLR0913, PLR0915
     k_out_all: Float[Array, "N 2 3"]
     valid_all: Float[Array, "N 2"]
     l_all, k_out_all, valid_all = jax.vmap(_find_intersection)(rod_indices)
+    # Restrict the rectangular Miller box to its inscribed isotropic disk so
+    # the sampled rod set is closed under the surface-net point group (the
+    # box alone breaks mirror symmetry for non-orthogonal cells).
+    rod_mask: Float[Array, "N"] = _isotropic_rod_mask(
+        h_flat, k_flat, recip_a, recip_b, hmax_int, kmax_int
+    )
+    valid_all = valid_all * rod_mask[:, None]
     l_all = l_all.reshape(-1)
     k_out_all = k_out_all.reshape(-1, 3)
     valid_all = valid_all.reshape(-1)
@@ -1085,6 +1155,13 @@ def _ewald_amplitude_pattern(  # noqa: PLR0913, PLR0915
     k_out_all: Float[Array, "N 2 3"]
     valid_all: Float[Array, "N 2"]
     l_all, k_out_all, valid_all = jax.vmap(_find_intersection)(rod_indices)
+    # Same inscribed-disk restriction as ewald_simulator (see
+    # _isotropic_rod_mask): keeps the rod sample closed under the
+    # surface-net point group for non-orthogonal cells.
+    rod_mask: Float[Array, "N"] = _isotropic_rod_mask(
+        h_flat, k_flat, recip_a, recip_b, hmax_int, kmax_int
+    )
+    valid_all = valid_all * rod_mask[:, None]
     l_all = l_all.reshape(-1)
     k_out_all = k_out_all.reshape(-1, 3)
     valid_all = valid_all.reshape(-1)

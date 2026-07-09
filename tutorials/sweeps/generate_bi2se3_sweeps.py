@@ -139,20 +139,57 @@ def _compute_dynamic_range_floor(crystal, settings):
     return settings["dynamic_range_scale"] * faintest
 
 
+def _reindex_to_mirror_azimuth(crystal):
+    """Re-index the hexagonal cell so the beam (phi=0, along a') runs
+    along <1-100>, the sigma-plane trace of R-3m.
+
+    Along <11-20> (the a axis) the R-centering rule -h+k+l = 3n places
+    Bragg maxima at different l on mirror-related rods, so the pattern
+    intensities are genuinely 3-fold asymmetric (the well-known trigonal
+    asymmetry of Bi2Se3). Along <1-100> the structural mirror makes the
+    pattern exactly left-right symmetric. The new primitive cell is
+    a' = a1 - a2 (|a'| = sqrt(3) a along <1-100>), b' = a2, c' = c
+    (det = 1), so fractional coordinates map as (f1, f1 + f2, f3).
+    """
+    a_len = float(crystal.cell_lengths[0])
+    c_len = float(crystal.cell_lengths[2])
+    frac = np.asarray(crystal.frac_positions)
+    coords, z_numbers = frac[:, :3], frac[:, 3:]
+    new_coords = np.column_stack(
+        [
+            coords[:, 0],
+            (coords[:, 0] + coords[:, 1]) % 1.0,
+            coords[:, 2],
+        ]
+    )
+    lengths = (np.sqrt(3.0) * a_len, a_len, c_len)
+    angles = (90.0, 90.0, 150.0)
+    cell = np.asarray(rh.ucell.build_cell_vectors(*lengths, *angles))
+    new_cart = new_coords @ cell
+    return rh.types.create_crystal_structure(
+        frac_positions=jnp.asarray(np.column_stack([new_coords, z_numbers])),
+        cart_positions=jnp.asarray(np.column_stack([new_cart, z_numbers])),
+        cell_lengths=jnp.asarray(lengths),
+        cell_angles=jnp.asarray(angles),
+    )
+
+
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     sweeps_dir = repo_root / "tutorials" / "sweeps"
     sweeps_dir.mkdir(parents=True, exist_ok=True)
-    crystal = rh.inout.parse_cif(
-        repo_root / "tests" / "test_data" / "bi2se3" / "Bi2Se3.cif"
+    crystal = _reindex_to_mirror_azimuth(
+        rh.inout.parse_cif(
+            repo_root / "tests" / "test_data" / "bi2se3" / "Bi2Se3.cif"
+        )
     )
     settings = {
         "material": "Bi2Se3",
         "energy_kev": 30.0,
         "theta_deg": 2.5,
         "phi_deg": 0.0,
-        "hmax": 3,
-        "kmax": 3,
+        "hmax": 8,
+        "kmax": 8,
         "detector_distance_mm": 80.0,
         "temperature": 300.0,
         "surface_roughness": 0.0,

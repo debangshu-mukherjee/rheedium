@@ -759,7 +759,7 @@ class TestReflectionMultislice(chex.TestCase, parameterized.TestCase):
             energy_kev=30.0,
             theta_deg=2.5,
             phi_deg=0.0,
-            hmax=4,
+            hmax=12,
             kmax=12,
             detector_distance=80.0,
         )
