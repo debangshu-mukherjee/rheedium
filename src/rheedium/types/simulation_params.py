@@ -52,10 +52,7 @@ class SurfaceCTRParams(eqx.Module):
     ctr_regularization: scalar_float | None = None
     ctr_power: scalar_float = 1.0
     roughness_power: scalar_float = 1.0
-    surface_config: SurfaceConfig | None = eqx.field(
-        default=None,
-        static=True,
-    )
+    surface_config: SurfaceConfig | None = None
     defect_surface_layer_depth_angstrom: scalar_float = 1.0
     finite_domain_aspect_ratio: Tuple[float, float, float] = eqx.field(
         default=(1.0, 1.0, 0.5),

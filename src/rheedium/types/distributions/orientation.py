@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Callable, Final, Optional, Tuple
-from jaxtyping import Array, Complex, Float, jaxtyped
+from jaxtyping import Array, Float, jaxtyped
 
 from rheedium.tools import gauss_hermite_nodes_weights
 
@@ -114,8 +114,8 @@ def create_orientation_distribution(
     weights : Optional[Float[Array, "M"]], optional
         Probability weights for each angle. Default: equal weights.
     mosaic_fwhm_deg : scalar_float, optional
-        Gaussian mosaic broadening FWHM in degrees. Negative values are
-        clamped to 0.0. Default: 0.0
+        Gaussian mosaic broadening FWHM in degrees. Negative values raise
+        through the runtime check. Default: 0.0
     distribution_id : Optional[str], optional
         Identifier for the distribution.
 
@@ -321,7 +321,6 @@ def _fwhm_to_sigma(fwhm: Float[Array, ""]) -> Float[Array, ""]:
 def discretize_orientation(
     dist: OrientationDistribution,
     n_mosaic_points: scalar_int = 7,
-    n_sigma_range: scalar_float = 3.0,
 ) -> Tuple[Float[Array, "N"], Float[Array, "N"]]:
     """Convert OrientationDistribution to quadrature points and weights.
 
@@ -341,8 +340,6 @@ def discretize_orientation(
     n_mosaic_points : scalar_int, optional
         Number of Gauss-Hermite quadrature points per discrete peak
         for mosaic integration. Default: 7
-    n_sigma_range : scalar_float, optional
-        Number of sigma to extend mosaic sampling. Default: 3.0
 
     Returns
     -------
@@ -359,7 +356,6 @@ def discretize_orientation(
 
     The total number of output points is always M × n_mosaic_points.
     """
-    del n_sigma_range
     sigma_deg: Float[Array, ""] = _fwhm_to_sigma(dist.mosaic_fwhm_deg)
     sigma_effective: Float[Array, ""] = jnp.where(
         dist.mosaic_fwhm_deg < _ZERO_MOSAIC_FWHM_DEG,
@@ -573,17 +569,17 @@ def integrate_over_orientation(
         n_mosaic_points=n_mosaic_points,
     )
 
-    def _amplitude_from_orientation(
+    def _intensity_from_orientation(
         sample: Float[Array, "D"],
-    ) -> Complex[Array, "H W"]:
+    ) -> Float[Array, "H W"]:
         intensity: Float[Array, "H W"] = simulate_fn(sample[0])
-        return jnp.sqrt(jnp.maximum(intensity, 0.0)).astype(jnp.complex128)
+        return intensity
 
-    from rheedium.simul.beam_averaging import apply_distribution
+    from rheedium.simul.beam_averaging import apply_distribution_intensity
 
-    weighted_sum: float_jax_image = apply_distribution(
+    weighted_sum: float_jax_image = apply_distribution_intensity(
         distribution,
-        _amplitude_from_orientation,
+        _intensity_from_orientation,
     )
     return weighted_sum
 

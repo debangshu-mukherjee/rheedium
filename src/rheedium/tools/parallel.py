@@ -73,6 +73,7 @@ def shard_array(
     mesh: jax.sharding.Mesh = jax.make_mesh(
         (num_devices,),
         ("devices",),
+        devices=tuple(devices),
     )
     pspec_list: list[str | None] = [None] * input_array.ndim
     for ax in shard_axes:
@@ -89,7 +90,7 @@ def distribute_batched(
     batched_fn: Callable[[Num[Array, " ..."]], Num[Array, " ..."]],
     batch_array: Num[Array, "N ..."],
     devices: list[jax.Device] | tuple[jax.Device, ...] | None = None,
-    pad_value: float = 0.0,
+    pad_value: float | None = None,
 ) -> Num[Array, "N ..."]:
     """Run a batched callable data-parallel across a 1-D device mesh.
 
@@ -131,10 +132,14 @@ def distribute_batched(
     devices : Sequence[jax.Device], optional
         The devices to distribute across. If ``None``, all available
         devices from :func:`jax.devices` are used.
-    pad_value : float, optional
-        Fill value used to pad the leading axis up to a device
-        multiple. Padded rows are discarded before returning, so the
-        value only affects discarded computation. Default: ``0.0``.
+    pad_value : float or None, optional
+        Padding strategy for the leading axis when ``N`` is not a
+        multiple of the device count. ``None`` (default) replicates the
+        edge rows, so padded rows are always valid inputs to any runtime
+        checks (:func:`equinox.error_if`) inside ``batched_fn``. A float
+        pads with that constant value instead (legacy behavior). Padded
+        rows are discarded before returning, so the choice only affects
+        discarded computation. Default: ``None``.
 
     Returns
     -------
@@ -151,7 +156,8 @@ def distribute_batched(
     -----
     1. Resolve the device list and compute the padding needed to make
        the leading axis divisible by the device count.
-    2. Pad the leading axis with ``pad_value`` when required.
+    2. Pad the leading axis when required -- replicating the edge rows
+       by default, or with ``pad_value`` when a constant is given.
     3. Build a 1-D device mesh and a ``NamedSharding`` that shards the
        leading axis and replicates the rest.
     4. Compile ``batched_fn`` with ``jax.jit`` using that sharding as
@@ -175,11 +181,18 @@ def distribute_batched(
         pad_width: list[tuple[int, int]] = [(0, pad_count)] + [(0, 0)] * (
             batch_array.ndim - 1
         )
-        padded_array: Num[Array, " ..."] = jnp.pad(
-            batch_array,
-            pad_width,
-            constant_values=pad_value,
-        )
+        if pad_value is None:
+            padded_array: Num[Array, " ..."] = jnp.pad(
+                batch_array,
+                pad_width,
+                mode="edge",
+            )
+        else:
+            padded_array = jnp.pad(
+                batch_array,
+                pad_width,
+                constant_values=pad_value,
+            )
     else:
         padded_array = batch_array
     mesh: jax.sharding.Mesh = jax.make_mesh(

@@ -28,6 +28,14 @@ from rheedium.tools.special import (
 from rheedium.types.custom_types import scalar_float
 
 
+def _relative_error(
+    actual: NDArray[np.float64],
+    expected: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Return elementwise relative error against nonzero SciPy references."""
+    return np.abs((actual - expected) / expected)
+
+
 class TestBesselK0(chex.TestCase, parameterized.TestCase):
     """Test bessel_k0 against scipy reference values.
 
@@ -1441,12 +1449,12 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_positive_values(self) -> None:
-        r"""K_v(x) stays positive for positive x.
+        r"""K_v(x) matches scipy for representative positive inputs.
 
         Extended Summary
         ----------------
-        Verifies the documented behavior for this test case: K_v(x) stays
-        positive for positive x.
+        Verifies the documented behavior for this test case: K_v(x) matches
+        scipy for representative positive inputs.
 
         Notes
         -----
@@ -1457,8 +1465,8 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         assertion covers both transformed and untransformed JAX execution
         paths.
 
-        The existing assertions in the function body compare the observed
-        result with the expected contract for this module.
+        Numerical expectations are checked with tolerance-aware closeness
+        assertions, which is appropriate for floating-point JAX arrays.
 
         The documented check is rendered from
         ``tests.test_rheedium.test_tools.test_special``, so the Test Reference
@@ -1470,7 +1478,8 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
         v: scalar_float
         for v in [0.0, 0.5, 1.0, 2.0]:
             result: Callable[..., Any] = self.variant(bessel_kv)(v, x_arr)
-            assert jnp.all(result > 0)
+            expected: Float[NDArray, "..."] = scipy_kv(v, np.asarray(x_arr))
+            chex.assert_trees_all_close(result, expected, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_bessel_kv_monotonic_decay(self) -> None:
@@ -1601,6 +1610,128 @@ class TestBesselKv(chex.TestCase, parameterized.TestCase):
                 v, np.array([5.0, 10.0])
             )
             chex.assert_trees_all_close(result, expected, rtol=1e-3)
+
+    def test_integer_orders_match_scipy_on_log_grid(self) -> None:
+        r"""Integer K_v uses accurate K0/K1 recurrence seeds.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Integer K_v
+        uses accurate K0/K1 recurrence seeds.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        x_grid: NDArray[np.float64] = np.logspace(-3.0, 2.0, 200)
+        x_arr: Float[Array, "points"] = jnp.asarray(x_grid, dtype=jnp.float64)
+
+        for order in (1, 2, 3, 5, 10, 20, 25):
+            actual: NDArray[np.float64] = np.asarray(
+                bessel_kv(float(order), x_arr)
+            )
+            expected: NDArray[np.float64] = scipy_kv(order, x_grid)
+            max_rel: float = float(np.max(_relative_error(actual, expected)))
+            assert max_rel < 1e-6
+
+    def test_half_integer_orders_match_scipy_on_log_grid(self) -> None:
+        r"""Half-integer K_v uses exact closed-form polynomials.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Half-
+        integer K_v uses exact closed-form polynomials.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        x_grid: NDArray[np.float64] = np.logspace(-3.0, 2.0, 200)
+        x_arr: Float[Array, "points"] = jnp.asarray(x_grid, dtype=jnp.float64)
+
+        for order in (0.5, 1.5, 2.5):
+            actual: NDArray[np.float64] = np.asarray(bessel_kv(order, x_arr))
+            expected: NDArray[np.float64] = scipy_kv(order, x_grid)
+            max_rel: float = float(np.max(_relative_error(actual, expected)))
+            assert max_rel < 1e-12
+
+    def test_non_integer_orders_match_scipy_with_documented_midrange(
+        self,
+    ) -> None:
+        r"""Non-integer K_v respects the documented 2 < x < 10 bound.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-integer
+        K_v respects the documented 2 < x < 10 bound.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        x_grid: NDArray[np.float64] = np.logspace(-3.0, 2.0, 240)
+        x_arr: Float[Array, "points"] = jnp.asarray(x_grid, dtype=jnp.float64)
+        midrange: NDArray[np.bool_] = (x_grid > 2.0) & (x_grid < 10.0)
+
+        for order in (0.3, 1.7):
+            actual: NDArray[np.float64] = np.asarray(bessel_kv(order, x_arr))
+            expected: NDArray[np.float64] = scipy_kv(order, x_grid)
+            rel_err: NDArray[np.float64] = _relative_error(actual, expected)
+            assert float(np.max(rel_err[midrange])) < 1e-3
+            assert float(np.max(rel_err[~midrange])) < 1e-6
+
+    def test_order_zero_delegates_to_k0_kernel(self) -> None:
+        r"""K_0 through bessel_kv equals the public K0 kernel.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K_0 through
+        bessel_kv equals the public K0 kernel.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        x_arr: Float[Array, "points"] = jnp.asarray(
+            [2.01, 3.0, 5.0],
+            dtype=jnp.float64,
+        )
+        chex.assert_trees_all_close(
+            bessel_kv(0.0, x_arr),
+            bessel_k0(x_arr),
+            rtol=1e-9,
+            atol=1e-12,
+        )
+
+    def test_nonpositive_domain_returns_inf(self) -> None:
+        r"""K functions return inf at the real-domain singularity.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: K functions
+        return inf at the real-domain singularity.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        x_arr: Float[Array, "points"] = jnp.asarray(
+            [0.0, -1.0],
+            dtype=jnp.float64,
+        )
+        assert jnp.all(jnp.isinf(bessel_k0(x_arr)))
+        assert jnp.all(jnp.isinf(bessel_k1(x_arr)))
+        assert jnp.all(jnp.isinf(bessel_kv(0.3, x_arr)))
 
 
 class TestBesselKvEdgeCases(chex.TestCase):

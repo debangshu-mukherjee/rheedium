@@ -61,10 +61,10 @@ def jax_safe(fn: Callable[..., Any]) -> Callable[..., Any]:
     function under test with ``jax_safe`` resolves this.
     """
 
-    def wrapper(*args: Any) -> Any:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         """Call the wrapped function after converting positional args."""
         converted_args: tuple[Any, ...] = tuple(jnp.asarray(a) for a in args)
-        result: Any = fn(*converted_args)
+        result: Any = fn(*converted_args, **kwargs)
         return result
 
     wrapped: Callable[..., Any] = wrapper

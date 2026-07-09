@@ -7,12 +7,18 @@ from typing import Any
 import pytest
 from jaxtyping import Array, Float
 
+import rheedium.simul.ewald as ewald_module
 from rheedium.audit.invariants import (
     InvariantResult,
     check_elastic_closure_ewald,
     check_form_factor_monotonic_decrease,
     check_form_factor_positivity,
     check_friedel_law_structure_factor,
+    check_lobato_bethe_sum_rule,
+    check_projected_potential_hankel_pair,
+    check_refraction_k_parallel_conservation,
+    check_srtio3_001_slab_density,
+    check_triclinic_frame_contract,
     check_wavelength_relativistic_consistency,
     run_default_invariants,
 )
@@ -160,6 +166,40 @@ def test_friedel_law_structure_factor() -> None:
     )
 
 
+def test_friedel_law_uses_production_structure_factor(
+    monkeypatch: Any,
+) -> None:
+    r"""A patched production structure factor should trip the invariant.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: A patched
+    production structure factor should trip the invariant.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+
+    def garbage_structure_factor(
+        g_vector: Float[Array, "3"],
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> complex:
+        return 1.0 + 0.0j if float(g_vector[0]) >= 0.0 else 3.0 + 0.0j
+
+    monkeypatch.setattr(
+        ewald_module,
+        "_compute_structure_factor_single",
+        garbage_structure_factor,
+    )
+
+    result = check_friedel_law_structure_factor()
+
+    assert not result.passed
+
+
 def test_elastic_closure_ewald_simulator() -> None:
     r"""ewald_simulator reflections lie exactly on the Ewald sphere.
 
@@ -187,6 +227,38 @@ def test_elastic_closure_ewald_simulator() -> None:
     assert result.passed, (
         f"Elastic closure violated: residual={result.residual}"
     )
+
+
+def test_new_phase8_default_invariants_pass() -> None:
+    r"""Phase 8 audit invariants should pass as standalone checks.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Phase 8 audit
+    invariants should pass as standalone checks.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+    checks = [
+        (check_lobato_bethe_sum_rule(), "lobato_bethe_sum_rule"),
+        (
+            check_projected_potential_hankel_pair(),
+            "projected_potential_hankel_pair",
+        ),
+        (check_srtio3_001_slab_density(), "srtio3_001_slab_density"),
+        (check_triclinic_frame_contract(), "triclinic_frame_contract"),
+        (
+            check_refraction_k_parallel_conservation(),
+            "refraction_k_parallel_conservation",
+        ),
+    ]
+
+    for result, name in checks:
+        _assert_well_formed(result, name)
+        assert result.passed, f"{name} failed: residual={result.residual}"
 
 
 def test_run_default_invariants_returns_full_suite() -> None:
@@ -219,6 +291,11 @@ def test_run_default_invariants_returns_full_suite() -> None:
         "wavelength_relativistic_consistency",
         "friedel_law_structure_factor",
         "elastic_closure_ewald",
+        "lobato_bethe_sum_rule",
+        "projected_potential_hankel_pair",
+        "srtio3_001_slab_density",
+        "triclinic_frame_contract",
+        "refraction_k_parallel_conservation",
     }
     results: Float[Array, "..."] = run_default_invariants()
     assert isinstance(results, list)

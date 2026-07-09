@@ -86,8 +86,9 @@ def discretize_size_distribution(
     -----
     1. Delta or zero-width distributions collapse to one mean-size sample.
     2. Lognormal distributions use moment-matched log-space quadrature.
-    3. Gaussian and exponential distributions use clipped positive support.
-    4. Weights are normalized after support clipping.
+    3. Exponential distributions use equal-probability bins on the truncated
+       support, represented by each bin's inverse-CDF average.
+    4. Gaussian weights are normalized after support clipping.
     """
     mean_ang: Float[Array, ""] = dist.mean_ang
     sigma_ang: Float[Array, ""] = dist.sigma_ang
@@ -101,6 +102,28 @@ def discretize_size_distribution(
         weights: Float[Array, "1"] = jnp.ones((1,), dtype=jnp.float64)
         return sizes, weights
 
+    if dist.distribution_type == "exponential":
+        mean: Float[Array, ""] = dist.mean_ang
+        lower_cdf: Float[Array, ""] = 1.0 - jnp.exp(-dist.min_size_ang / mean)
+        upper_cdf: Float[Array, ""] = 1.0 - jnp.exp(-dist.max_size_ang / mean)
+        cdf_width: Float[Array, ""] = upper_cdf - lower_cdf
+        bin_edges: Float[Array, "M"] = (
+            jnp.arange(n_points + 1, dtype=jnp.float64) / n_points
+        )
+        quantile_edges: Float[Array, "M"] = lower_cdf + (bin_edges * cdf_width)
+        survival_edges: Float[Array, "M"] = 1.0 - quantile_edges
+
+        def antiderivative(y: Float[Array, "M"]) -> Float[Array, "M"]:
+            return jnp.where(y > 0.0, -y * jnp.log(y) + y, 0.0)
+
+        integral_edges: Float[Array, "M"] = antiderivative(survival_edges)
+        bin_integrals: Float[Array, "N"] = (
+            integral_edges[:-1] - integral_edges[1:]
+        )
+        sizes = mean * n_points * bin_integrals / cdf_width
+        weights = jnp.full((n_points,), 1.0 / n_points, dtype=jnp.float64)
+        return sizes, weights
+
     nodes: Float[Array, "N"]
     quad_weights: Float[Array, "N"]
     nodes, quad_weights = gauss_hermite_nodes_weights(n_points)
@@ -112,8 +135,6 @@ def discretize_size_distribution(
         raw_sizes: Float[Array, "N"] = jnp.exp(
             mu_log + sqrt2 * sigma_log * nodes
         )
-    elif dist.distribution_type == "exponential":
-        raw_sizes = jnp.maximum(0.0, mean_ang * (1.0 + sqrt2 * nodes))
     else:
         raw_sizes = mean_ang + sqrt2 * sigma_ang * nodes
     sizes = jnp.clip(raw_sizes, dist.min_size_ang, dist.max_size_ang)

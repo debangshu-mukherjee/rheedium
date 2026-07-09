@@ -34,6 +34,8 @@ Routine Listings
     Map simplex weights to centered unconstrained logits.
 :func:`ordered_bounded_from_unconstrained`
     Map unconstrained values to ordered points inside a finite interval.
+:func:`unconstrained_from_ordered_bounded`
+    Map ordered bounded points back to unconstrained increment logits.
 """
 
 import jax
@@ -446,7 +448,7 @@ def unconstrained_from_simplex(
 
 @jaxtyped(typechecker=beartype)
 def ordered_bounded_from_unconstrained(
-    unconstrained: Float[Array, "N"],
+    z: Float[Array, "N"],
     lower: scalar_float,
     upper: scalar_float,
 ) -> Float[Array, "N"]:
@@ -456,7 +458,7 @@ def ordered_bounded_from_unconstrained(
 
     Parameters
     ----------
-    unconstrained : Float[Array, "N"]
+    z : Float[Array, "N"]
         Unconstrained segment logits.
     lower : scalar_float
         Lower interval endpoint.
@@ -466,7 +468,7 @@ def ordered_bounded_from_unconstrained(
     Returns
     -------
     ordered : Float[Array, "N"]
-        Monotonically non-decreasing points in ``[lower, upper]``.
+        Strictly increasing points inside ``(lower, upper)``.
 
     Notes
     -----
@@ -474,11 +476,47 @@ def ordered_bounded_from_unconstrained(
     2. Use their cumulative sum as ordered fractional coordinates.
     3. Affinely scale the fractions to the physical interval.
     """
-    increments: Float[Array, "N"] = simplex_from_unconstrained(unconstrained)
-    cumulative: Float[Array, "N"] = jnp.cumsum(increments)
+    logits: Float[Array, "N_plus_1"] = jnp.concatenate(
+        [z, jnp.zeros((1,), dtype=z.dtype)]
+    )
+    increments: Float[Array, "N_plus_1"] = jax.nn.softmax(logits)
+    cumulative: Float[Array, "N"] = jnp.cumsum(increments)[:-1]
     width: scalar_float = upper - lower
     ordered: Float[Array, "N"] = lower + width * cumulative
     return ordered
+
+
+@jaxtyped(typechecker=beartype)
+def unconstrained_from_ordered_bounded(
+    x: Float[Array, "N"],
+    lower: scalar_float,
+    upper: scalar_float,
+) -> Float[Array, "N"]:
+    """Map ordered finite-interval points back to unconstrained logits.
+
+    :see: :class:`~.test_transforms.TestReconTransforms`
+
+    Parameters
+    ----------
+    x : Float[Array, "N"]
+        Strictly increasing physical points inside ``(lower, upper)``.
+    lower : scalar_float
+        Lower interval endpoint.
+    upper : scalar_float
+        Upper interval endpoint.
+
+    Returns
+    -------
+    unconstrained : Float[Array, "N"]
+        Increment logits whose forward transform recovers ``x``.
+    """
+    u: Float[Array, "N"] = (x - lower) / (upper - lower)
+    inc: Float[Array, "N"] = jnp.diff(
+        jnp.concatenate([jnp.zeros((1,), dtype=x.dtype), u])
+    )
+    last: Float[Array, ""] = 1.0 - u[-1]
+    unconstrained: Float[Array, "N"] = jnp.log(inc / last)
+    return unconstrained
 
 
 __all__: list[str] = [
@@ -491,6 +529,7 @@ __all__: list[str] = [
     "unconstrained_from_bounded",
     "unconstrained_from_fractional",
     "unconstrained_from_lattice",
+    "unconstrained_from_ordered_bounded",
     "unconstrained_from_positive",
     "unconstrained_from_simplex",
     "wyckoff_fractional_from_unconstrained",

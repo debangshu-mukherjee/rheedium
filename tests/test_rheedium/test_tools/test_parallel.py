@@ -527,6 +527,34 @@ class TestShardArrayMultiDevice(chex.TestCase):
         assert len(result.sharding.device_set) == 4
         chex.assert_trees_all_close(result, arr)
 
+    def test_requested_device_ids_are_honored(self) -> None:
+        r"""Explicit devices [2, 3] receive the committed shards.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Explicit
+        devices [2, 3] receive the committed shards.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        devices: Any = tuple(jax.devices()[2:4])
+        arr: Float[Array, "devices coords"] = jnp.arange(8.0).reshape(2, 4)
+        result: Float[Array, "devices coords"] = shard_array(
+            arr,
+            shard_axes=0,
+            devices=devices,
+        )
+
+        shard_device_ids: set[int] = {
+            shard.device.id for shard in result.addressable_shards
+        }
+        assert shard_device_ids == {2, 3}
+        chex.assert_trees_all_close(result, arr)
+
     def test_shard_values_roundtrip(self) -> None:
         r"""Data gathered from sharded array must match original.
 

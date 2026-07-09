@@ -5,6 +5,7 @@ the simulation and crystallography packages so domain modules can depend on a
 single numerical toolbox.
 """
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 from beartype import beartype
@@ -20,6 +21,8 @@ SAFE_X: Final[float] = 2.0
 @jaxtyped(typechecker=beartype)
 def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
     r"""Compute modified Bessel function of the second kind, order zero.
+
+    Returns ``inf`` for ``x <= 0``, matching the real-domain singularity.
 
     :see: :class:`~.test_special.TestBesselK0`
     """
@@ -71,13 +74,18 @@ def bessel_k0(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.exp(-x_safe) / jnp.sqrt(x_safe) * poly_large
     )
 
-    return jnp.where(x_safe <= SAFE_X, k0_small, k0_large)
+    result: Float[Array, "..."] = jnp.where(
+        x_safe <= SAFE_X, k0_small, k0_large
+    )
+    return jnp.where(x <= 0.0, jnp.inf, result)
 
 
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
     r"""Compute modified Bessel function of the second kind, order one.
+
+    Returns ``inf`` for ``x <= 0``, matching the real-domain singularity.
 
     :see: :class:`~.test_special.TestBesselK1`
     """
@@ -129,7 +137,10 @@ def bessel_k1(x: Float[Array, "..."]) -> Float[Array, "..."]:
         jnp.exp(-x_safe) / jnp.sqrt(x_safe) * poly_large
     )
 
-    return jnp.where(x_safe <= SAFE_X, k1_small, k1_large)
+    result: Float[Array, "..."] = jnp.where(
+        x_safe <= SAFE_X, k1_small, k1_large
+    )
+    return jnp.where(x <= 0.0, jnp.inf, result)
 
 
 @jaxtyped(typechecker=beartype)
@@ -145,17 +156,17 @@ def _bessel_iv_series(
     x_half: Float[Array, "..."] = x_val / 2.0
     x_half_v: Float[Array, "..."] = jnp.power(x_half, v_order)
     x2_quarter: Float[Array, "..."] = (x_val * x_val) / 4.0
-    max_terms: int = 20
-    k_arr: Float[Array, "20"] = jnp.arange(max_terms, dtype=dtype)
+    max_terms: int = 25
+    k_arr: Float[Array, "25"] = jnp.arange(max_terms, dtype=dtype)
     gamma_v_plus_1: Float[Array, ""] = jax.scipy.special.gamma(v_order + 1)
-    gamma_terms: Float[Array, "20"] = jax.scipy.special.gamma(
+    gamma_terms: Float[Array, "25"] = jax.scipy.special.gamma(
         k_arr + v_order + 1
     )
-    factorial_terms: Float[Array, "20"] = jax.scipy.special.factorial(k_arr)
-    powers: Float[Array, "... 20"] = jnp.power(
+    factorial_terms: Float[Array, "25"] = jax.scipy.special.factorial(k_arr)
+    powers: Float[Array, "... 25"] = jnp.power(
         x2_quarter[..., jnp.newaxis], k_arr
     )
-    series_terms: Float[Array, "... 20"] = powers / (
+    series_terms: Float[Array, "... 25"] = powers / (
         factorial_terms * gamma_terms / gamma_v_plus_1
     )
     return x_half_v / gamma_v_plus_1 * jnp.sum(series_terms, axis=-1)
@@ -206,8 +217,8 @@ def _bessel_kn_recurrence(
 
     def _compute_kn() -> Float[Array, "..."]:
         init: Tuple[Float[Array, "..."], Float[Array, "..."]] = (k0, k1)
-        max_n: int = 20
-        indices: Float[Array, "19"] = jnp.arange(1, max_n, dtype=jnp.float32)
+        max_n: int = 50
+        indices: Float[Array, "49"] = jnp.arange(1, max_n, dtype=x.dtype)
 
         def masked_step(
             carry: Tuple[Float[Array, "..."], Float[Array, "..."]],
@@ -246,7 +257,12 @@ def _bessel_kv_small_non_integer(
     iv_pos: Float[Array, "..."] = _bessel_iv_series(v, x, dtype)
     iv_neg: Float[Array, "..."] = _bessel_iv_series(-v, x, dtype)
     sin_piv: Float[Array, ""] = jnp.sin(jnp.pi * v)
-    pi_over_2sin: Float[Array, ""] = jnp.pi / (2.0 * sin_piv)
+    safe_sin_piv: Float[Array, ""] = jnp.where(
+        jnp.abs(sin_piv) > error_bound,
+        sin_piv,
+        1.0,
+    )
+    pi_over_2sin: Float[Array, ""] = jnp.pi / (2.0 * safe_sin_piv)
     iv_diff: Float[Array, "..."] = iv_neg - iv_pos
     return jnp.where(
         jnp.abs(sin_piv) > error_bound, pi_over_2sin * iv_diff, 0.0
@@ -263,25 +279,21 @@ def _bessel_kv_small_integer(
 
     :see: :class:`~.test_special.TestBesselKvSmallInteger`
     """
+    del dtype
     v_int: Float[Array, ""] = jnp.round(v)
     n: Int[Array, ""] = jnp.abs(v_int).astype(jnp.int32)
-
-    k0: Float[Array, "..."] = _bessel_k0_series(x, dtype)
-
-    i1: Float[Array, "..."] = jax.scipy.special.i1(x)
-    k1_coeffs: Float[Array, "5"] = jnp.array(
-        [1.0, -0.5, 0.0625, -0.03125, 0.0234375], dtype=dtype
+    checked_n: Int[Array, ""] = eqx.error_if(
+        n,
+        n > 50,
+        "bessel_kv supports integer orders up to 50",
     )
-    x2: Float[Array, "..."] = (x * x) / 4.0
-    k1_powers: Float[Array, "... 5"] = jnp.power(
-        x2[..., jnp.newaxis], jnp.arange(5)
-    )
-    k1_poly: Float[Array, "..."] = jnp.sum(k1_coeffs * k1_powers, axis=-1)
-    log_i1_term: Float[Array, "..."] = -jnp.log(x / 2.0) * i1
-    k1: Float[Array, "..."] = log_i1_term + k1_poly / x
+    k0: Float[Array, "..."] = bessel_k0(x)
+    k1: Float[Array, "..."] = bessel_k1(x)
 
-    kn_result: Float[Array, "..."] = _bessel_kn_recurrence(n, x, k0, k1)
-    return jnp.where(v >= 0, kn_result, kn_result)
+    kn_result: Float[Array, "..."] = _bessel_kn_recurrence(
+        checked_n, x, k0, k1
+    )
+    return kn_result
 
 
 @jaxtyped(typechecker=beartype)
@@ -296,24 +308,29 @@ def _bessel_kv_large(
     sqrt_term: Float[Array, "..."] = jnp.sqrt(jnp.pi / (2.0 * x))
     exp_term: Float[Array, "..."] = jnp.exp(-x)
 
-    v2: Float[Array, ""] = v * v
-    four_v2: Float[Array, ""] = 4.0 * v2
-    a0: Float[Array, ""] = 1.0
-    a1: Float[Array, ""] = (four_v2 - 1.0) / 8.0
-    a2: Float[Array, ""] = (four_v2 - 1.0) * (four_v2 - 9.0) / (2.0 * 64.0)
-    a3: Float[Array, ""] = (
-        (four_v2 - 1.0) * (four_v2 - 9.0) * (four_v2 - 25.0) / (6.0 * 512.0)
-    )
-    a4: Float[Array, ""] = (
-        (four_v2 - 1.0)
-        * (four_v2 - 9.0)
-        * (four_v2 - 25.0)
-        * (four_v2 - 49.0)
-        / (24.0 * 4096.0)
-    )
+    four_v2: Float[Array, ""] = 4.0 * v * v
+    indices: Float[Array, "7"] = jnp.arange(1, 8, dtype=x.dtype)
 
-    z: Float[Array, "..."] = 1.0 / x
-    poly: Float[Array, "..."] = a0 + z * (a1 + z * (a2 + z * (a3 + z * a4)))
+    def step(
+        carry: Tuple[Float[Array, ""], Float[Array, "..."]],
+        k: Float[Array, ""],
+    ) -> Tuple[
+        Tuple[Float[Array, ""], Float[Array, "..."]],
+        None,
+    ]:
+        coeff: Float[Array, ""]
+        total: Float[Array, "..."]
+        coeff, total = carry
+        odd: Float[Array, ""] = 2.0 * k - 1.0
+        coeff = coeff * (four_v2 - odd * odd) / (k * 8.0)
+        total = total + coeff / jnp.power(x, k)
+        return (coeff, total), None
+
+    init: Tuple[Float[Array, ""], Float[Array, "..."]] = (
+        jnp.asarray(1.0, dtype=x.dtype),
+        jnp.ones_like(x),
+    )
+    (_, poly), _ = jax.lax.scan(step, init, indices)
     return sqrt_term * exp_term * poly
 
 
@@ -328,39 +345,108 @@ def _bessel_k_half(x: Float[Array, "..."]) -> Float[Array, "..."]:
     return sqrt_pi_over_2x * exp_neg_x
 
 
+@jaxtyped(typechecker=beartype)
+def _bessel_k_half_integer(
+    v: Float[Array, ""],
+    x: Float[Array, "..."],
+) -> Float[Array, "..."]:
+    """Compute exact half-integer K_v(x) closed forms up to |v| <= 50."""
+    v_abs: Float[Array, ""] = jnp.abs(v)
+    order: Int[Array, ""] = jnp.maximum(
+        jnp.round(v_abs - 0.5).astype(jnp.int32),
+        0,
+    )
+    order_float: Float[Array, ""] = order.astype(x.dtype)
+    indices: Float[Array, "50"] = jnp.arange(1, 51, dtype=x.dtype)
+
+    def step(
+        carry: Tuple[Float[Array, "..."], Float[Array, "..."]],
+        k: Float[Array, ""],
+    ) -> Tuple[
+        Tuple[Float[Array, "..."], Float[Array, "..."]],
+        None,
+    ]:
+        term: Float[Array, "..."]
+        total: Float[Array, "..."]
+        term, total = carry
+        next_term: Float[Array, "..."] = (
+            term * (order_float + k) * (order_float - k + 1.0) / (k * 2.0 * x)
+        )
+        active: Bool[Array, ""] = k <= order_float
+        total = jnp.where(active, total + next_term, total)
+        term = jnp.where(active, next_term, term)
+        return (term, total), None
+
+    init: Tuple[Float[Array, "..."], Float[Array, "..."]] = (
+        jnp.ones_like(x),
+        jnp.ones_like(x),
+    )
+    (_, poly), _ = jax.lax.scan(step, init, indices)
+    return _bessel_k_half(x) * poly
+
+
 @jax.jit
 @jaxtyped(typechecker=beartype)
 def bessel_kv(v: scalar_float, x: Float[Array, "..."]) -> Float[Array, "..."]:
     """Compute the modified Bessel function of the second kind K_v(x).
 
+    Returns ``inf`` for ``x <= 0``, matching the real-domain singularity.
+
     :see: :class:`~.test_special.TestBesselKv`
     """
-    v = jnp.asarray(v)
     x = jnp.asarray(x)
     dtype: jnp.dtype = x.dtype
+    x_safe: Float[Array, "..."] = jnp.maximum(x, 1e-20)
+    v_abs: Float[Array, ""] = jnp.abs(jnp.asarray(v, dtype=dtype))
+    checked_v: Float[Array, ""] = eqx.error_if(
+        v_abs,
+        v_abs > 50.0,
+        "bessel_kv supports |v| <= 50",
+    )
 
-    v_int: Float[Array, ""] = jnp.round(v)
+    v_int: Float[Array, ""] = jnp.round(checked_v)
     epsilon_tolerance: float = 1e-10
-    is_integer: Bool[Array, ""] = jnp.abs(v - v_int) < epsilon_tolerance
+    is_integer: Bool[Array, ""] = jnp.abs(checked_v - v_int) < (
+        epsilon_tolerance
+    )
+    half_index: Float[Array, ""] = jnp.round(checked_v - 0.5)
+    is_half: Bool[Array, ""] = (
+        jnp.abs(checked_v - (half_index + 0.5)) < epsilon_tolerance
+    )
 
     small_x_non_int: Float[Array, "..."] = _bessel_kv_small_non_integer(
-        v, x, dtype
+        checked_v, x_safe, dtype
     )
-    small_x_int: Float[Array, "..."] = _bessel_kv_small_integer(v, x, dtype)
-    small_x_vals: Float[Array, "..."] = jnp.where(
-        is_integer, small_x_int, small_x_non_int
+    integer_vals: Float[Array, "..."] = _bessel_kv_small_integer(
+        checked_v,
+        x_safe,
+        dtype,
     )
 
-    large_x_vals: Float[Array, "..."] = _bessel_kv_large(v, x)
+    large_x_vals: Float[Array, "..."] = _bessel_kv_large(checked_v, x_safe)
+    non_integer_crossover: Float[Array, ""] = jnp.maximum(
+        10.0,
+        checked_v * checked_v / 2.0,
+    )
+    non_integer_vals: Float[Array, "..."] = jnp.where(
+        x_safe > non_integer_crossover,
+        large_x_vals,
+        small_x_non_int,
+    )
 
-    small_x_threshold: float = 2.0
     general_result: Float[Array, "..."] = jnp.where(
-        x <= small_x_threshold, small_x_vals, large_x_vals
+        is_integer,
+        integer_vals,
+        non_integer_vals,
     )
 
-    k_half_vals: Float[Array, "..."] = _bessel_k_half(x)
-    is_half: Bool[Array, ""] = jnp.abs(v - 0.5) < epsilon_tolerance
-    return jnp.where(is_half, k_half_vals, general_result)
+    half_vals: Float[Array, "..."] = _bessel_k_half_integer(checked_v, x_safe)
+    result: Float[Array, "..."] = jnp.where(
+        is_half,
+        half_vals,
+        general_result,
+    )
+    return jnp.where(x <= 0.0, jnp.inf, result)
 
 
 __all__: list[str] = [

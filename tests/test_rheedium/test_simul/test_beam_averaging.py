@@ -14,11 +14,13 @@ from typing import TypedDict
 import chex
 import jax
 import jax.numpy as jnp
+import pytest
 from jaxtyping import Array, Complex, Float
 
 from rheedium.simul.beam_averaging import (
     angular_divergence_average,
     apply_distribution,
+    apply_distribution_intensity,
     apply_distributions,
     decompose_beam_modes,
     decompose_beam_modes_static,
@@ -359,6 +361,64 @@ class TestDistributionApply(chex.TestCase):
         )
 
         chex.assert_trees_all_close(actual, expected, atol=1e-12)
+
+    def test_apply_distribution_intensity_incoherent_matches_manual(
+        self,
+    ) -> None:
+        r"""Intensity reducer should weight intensities without amplitudes.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Intensity
+        reducer should weight intensities without amplitudes.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        dist = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.25, 0.75]),
+            reduction=ReductionMode.INCOHERENT,
+        )
+
+        def intensity(sample: Float[Array, "1"]) -> Float[Array, "2 2"]:
+            return jnp.ones((2, 2), dtype=jnp.float64) * sample[0] ** 2
+
+        actual: Float[Array, "2 2"] = apply_distribution_intensity(
+            dist,
+            intensity,
+        )
+
+        chex.assert_trees_all_close(actual, 3.25, atol=1e-12)
+
+    def test_apply_distribution_intensity_rejects_coherent_axes(self) -> None:
+        r"""Intensity reducer is restricted to incoherent distributions.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Intensity
+        reducer is restricted to incoherent distributions.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        dist = create_distribution(
+            samples=jnp.array([[1.0], [2.0]]),
+            weights=jnp.array([0.25, 0.75]),
+            reduction=ReductionMode.COHERENT,
+        )
+
+        with pytest.raises(ValueError, match="incoherent"):
+            apply_distribution_intensity(
+                dist,
+                lambda sample: jnp.ones((2, 2), dtype=jnp.float64) * sample[0],
+            )
 
     def test_apply_distribution_coherent_matches_manual(self) -> None:
         r"""Coherent reduction sums amplitudes before modulus squared.

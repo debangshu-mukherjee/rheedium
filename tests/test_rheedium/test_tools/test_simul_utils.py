@@ -9,8 +9,10 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
+import pytest
 from absl.testing import parameterized
 from jax.test_util import check_grads
 from jaxtyping import Array, Float
@@ -189,6 +191,26 @@ class TestWavelengthAng(chex.TestCase, parameterized.TestCase):
         wavelengths: Float[Array, "voltages"] = wavelength_ang(voltages)
         chex.assert_shape(wavelengths, (3,))
         chex.assert_tree_all_finite(wavelengths)
+
+    def test_nonpositive_energy_rejected(self) -> None:
+        r"""Non-positive beam energy raises the runtime validation error.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Non-
+        positive beam energy raises the runtime validation error.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        with pytest.raises(
+            eqx.EquinoxRuntimeError,
+            match="energy_kev must be positive",
+        ):
+            wavelength_ang(0.0)
 
 
 class TestIncidenceAnglesToRadians(chex.TestCase, parameterized.TestCase):

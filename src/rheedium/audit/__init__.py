@@ -37,6 +37,16 @@ Routine Listings
 :func:`check_friedel_law_structure_factor`
     Verify :math:`I(\\mathbf{G}) = I(-\\mathbf{G})` for the kinematic
     structure factor.
+:func:`check_lobato_bethe_sum_rule`
+    Verify the loaded Lobato table satisfies the Bethe sum rule.
+:func:`check_projected_potential_hankel_pair`
+    Verify real-space/projected-potential Hankel consistency.
+:func:`check_refraction_k_parallel_conservation`
+    Verify refraction conserves surface-parallel momentum.
+:func:`check_srtio3_001_slab_density`
+    Verify SrTiO3(001) slab density from ``bulk_to_slice``.
+:func:`check_triclinic_frame_contract`
+    Verify triclinic fractional/cartesian/reciprocal frame contracts.
 :func:`check_wavelength_relativistic_consistency`
     Verify ``wavelength_ang`` matches an independent CODATA evaluation.
 :func:`dominant_peak_positions`
@@ -82,6 +92,11 @@ from .invariants import (
     check_form_factor_monotonic_decrease,
     check_form_factor_positivity,
     check_friedel_law_structure_factor,
+    check_lobato_bethe_sum_rule,
+    check_projected_potential_hankel_pair,
+    check_refraction_k_parallel_conservation,
+    check_srtio3_001_slab_density,
+    check_triclinic_frame_contract,
     check_wavelength_relativistic_consistency,
     run_default_invariants,
 )
@@ -131,6 +146,11 @@ __all__: list[str] = [
     "check_form_factor_monotonic_decrease",
     "check_form_factor_positivity",
     "check_friedel_law_structure_factor",
+    "check_lobato_bethe_sum_rule",
+    "check_projected_potential_hankel_pair",
+    "check_refraction_k_parallel_conservation",
+    "check_srtio3_001_slab_density",
+    "check_triclinic_frame_contract",
     "check_wavelength_relativistic_consistency",
     "dominant_peak_positions",
     "extract_streak_profile",

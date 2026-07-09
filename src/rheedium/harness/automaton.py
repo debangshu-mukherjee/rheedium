@@ -24,6 +24,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import os
 import signal
 import sys
@@ -425,7 +426,14 @@ def experiment(
 @jaxtyped(typechecker=beartype)
 def emit(result: Mapping[str, Any]) -> None:
     """Write a machine-readable JSON result as one stdout line."""
-    print(json.dumps(_json_ready(dict(result)), sort_keys=True), flush=True)
+    print(
+        json.dumps(
+            _json_ready(dict(result)),
+            allow_nan=False,
+            sort_keys=True,
+        ),
+        flush=True,
+    )
 
 
 def _run_experiment(  # noqa: PLR0911, PLR0912, PLR0915
@@ -438,6 +446,13 @@ def _run_experiment(  # noqa: PLR0911, PLR0912, PLR0915
     """Run one automaton invocation from parsed command-line inputs."""
     parser: argparse.ArgumentParser = _build_parser(spec)
     namespace: argparse.Namespace = parser.parse_args(argv)
+
+    if (
+        namespace.unchecked
+        and os.environ.get("RHEEDIUM_DISABLE_RUNTIME_CHECKS") != "1"
+    ):
+        os.environ["RHEEDIUM_DISABLE_RUNTIME_CHECKS"] = "1"
+        os.execv(sys.executable, [sys.executable] + sys.argv)  # noqa: S606
 
     if namespace.describe:
         emit(spec.describe())
@@ -459,8 +474,6 @@ def _run_experiment(  # noqa: PLR0911, PLR0912, PLR0915
         if namespace.cache:
             cache_dir: str = enable_compilation_cache()
             context.log(f"persistent compilation cache enabled at {cache_dir}")
-        if namespace.unchecked:
-            os.environ["RHEEDIUM_DISABLE_RUNTIME_CHECKS"] = "1"
         run_args: SimpleNamespace = SimpleNamespace(
             **params,
             smoke=bool(namespace.smoke),
@@ -932,6 +945,8 @@ def _json_ready(value: Any) -> Any:  # noqa: PLR0911
         return None
     if isinstance(value, Path):
         return str(value)
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
     if isinstance(value, Mapping):
         return {str(key): _json_ready(item) for key, item in value.items()}
     if isinstance(value, tuple):
@@ -939,10 +954,10 @@ def _json_ready(value: Any) -> Any:  # noqa: PLR0911
     if isinstance(value, list):
         return [_json_ready(item) for item in value]
     if isinstance(value, np.generic):
-        return value.item()
+        return _json_ready(value.item())
     if hasattr(value, "tolist") and not isinstance(value, (str, bytes)):
         try:
-            return value.tolist()
+            return _json_ready(value.tolist())
         except (TypeError, ValueError, AttributeError):
             return str(value)
     return value

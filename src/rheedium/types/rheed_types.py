@@ -42,7 +42,7 @@ JIT while preserving identity-like gradient flow on valid inputs.
 import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
-from beartype.typing import Final, NamedTuple, Optional, Union
+from beartype.typing import Final, Optional, Union
 from jaxtyping import Array, Bool, Float, Int, jaxtyped
 
 from .custom_types import float_jax_image, scalar_float, scalar_num
@@ -153,8 +153,8 @@ class RHEEDImage(eqx.Module):
     ...     img_array=image,
     ...     incoming_angle=2.0,  # 2 degree grazing angle
     ...     calibration=0.01,  # 0.01 units per pixel
-    ...     electron_wavelength=0.037,  # 10 keV electrons
-    ...     detector_distance=1000.0,  # 1000 Å to detector
+    ...     electron_wavelength=0.037,  # 100 keV electrons
+    ...     detector_distance=1000.0,  # 1000 mm to detector
     ... )
     """
 
@@ -611,10 +611,10 @@ def create_sliced_crystal(
     return validated_sliced_crystal
 
 
-class SurfaceConfig(NamedTuple):
+class SurfaceConfig(eqx.Module):
     """Configuration for surface atom identification.
 
-    This NamedTuple specifies how to identify which atoms are considered
+    This Equinox module specifies how to identify which atoms are considered
     surface atoms for enhanced Debye-Waller factors in RHEED simulations.
 
     :see: :class:`~.test_rheed_types.TestSurfaceConfig`
@@ -652,12 +652,12 @@ class SurfaceConfig(NamedTuple):
         same length as number of atoms. Default: None
     """
 
-    method: str = "height"
-    height_fraction: float = 0.3
-    coordination_cutoff: float = 3.0
-    coordination_threshold: int = 8
-    n_layers: int = 1
-    layer_tolerance: float = 0.5
+    method: str = eqx.field(default="height", static=True)
+    height_fraction: float = eqx.field(default=0.3, static=True)
+    coordination_cutoff: float = eqx.field(default=3.0, static=True)
+    coordination_threshold: int = eqx.field(default=8, static=True)
+    n_layers: int = eqx.field(default=1, static=True)
+    layer_tolerance: float = eqx.field(default=0.5, static=True)
     explicit_mask: Bool[Array, "N"] | None = None
 
 

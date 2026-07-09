@@ -295,7 +295,10 @@ def recipe_deviation_report_payload(
     -----
     1. Flatten fitted, intended, deviation, z-score, and sigma pytrees.
     2. Pair flattened scalar values with stable parameter labels.
-    3. Emit solver diagnostics, uncertainty metadata, and thresholds.
+    3. Emit solver diagnostics, including the reconstruction ``converged``
+       flag. By default that flag reflects solver success rather than a tiny
+       data-scale loss, unless the solve caller explicitly opted into a
+       data-units loss threshold.
     """
     fitted_flat: Float[Array, "P"]
     fitted_flat, _ = ravel_pytree(report.result.params)

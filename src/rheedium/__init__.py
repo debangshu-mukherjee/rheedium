@@ -79,15 +79,15 @@ import os
 import warnings
 from importlib.metadata import version
 
-_RHEEDIUM_XLA_FLAGS: tuple[str, ...] = (
-    "--xla_cpu_multi_thread_eigen=true",
-    "intra_op_parallelism_threads=0",
-)
+_RHEEDIUM_XLA_FLAGS: tuple[str, ...] = ("--xla_cpu_multi_thread_eigen=true",)
 _existing_xla: str = os.environ.get("XLA_FLAGS", "")
-_xla_parts: list[str] = [_existing_xla] if _existing_xla else []
+_xla_parts: list[str] = _existing_xla.split()
+_xla_keys: set[str] = {_part.split("=", 1)[0] for _part in _xla_parts}
 for _flag in _RHEEDIUM_XLA_FLAGS:
-    if _flag.split("=", 1)[0] not in _existing_xla:
+    _flag_key: str = _flag.split("=", 1)[0]
+    if _flag_key not in _xla_keys:
         _xla_parts.append(_flag)
+        _xla_keys.add(_flag_key)
 os.environ["XLA_FLAGS"] = " ".join(_xla_parts).strip()
 
 if os.environ.get("RHEEDIUM_DISABLE_RUNTIME_CHECKS", "0") == "1":

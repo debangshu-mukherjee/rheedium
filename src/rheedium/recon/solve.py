@@ -25,6 +25,9 @@ Routine Listings
     Recover a distribution over a perturbation axis from a measured image.
 """
 
+import warnings
+
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import optax
@@ -140,6 +143,7 @@ def solve(  # noqa: PLR0913
     atol: scalar_float = 1e-6,
     learning_rate: scalar_float = 1e-2,
     clip_norm: scalar_float = 1.0,
+    loss_atol: float | None = None,
     throw: bool = False,
     compilation_cache_dir: Optional[str] = None,
     compilation_cache_per_arch: bool = True,
@@ -171,6 +175,10 @@ def solve(  # noqa: PLR0913
         Learning rate used by the optax ``"adamw"`` path. Default: 1e-2
     clip_norm : scalar_float, optional
         Global gradient clipping norm for the optax path. Default: 1.0
+    loss_atol : float | None, optional
+        Explicit data-units loss threshold for marking a solve converged in
+        addition to the optimizer status. ``None`` disables this check, so the
+        flag reports only the solver's own success/failure. Default: None
     throw : bool, optional
         If True, let ``optimistix`` raise on solver failure. Default: False
     compilation_cache_dir : Optional[str], optional
@@ -272,7 +280,11 @@ def solve(  # noqa: PLR0913
     solver_successful: Bool[Array, ""] = jnp.asarray(
         solution.result == optx.RESULTS.successful
     )
-    loss_successful: Bool[Array, ""] = jnp.asarray(final_loss <= atol)
+    loss_successful: Bool[Array, ""] = (
+        jnp.asarray(False)
+        if loss_atol is None
+        else jnp.asarray(final_loss <= loss_atol)
+    )
     converged: Bool[Array, ""] = jnp.logical_or(
         solver_successful,
         loss_successful,
@@ -301,6 +313,7 @@ def multistart(  # noqa: PLR0913
     atol: scalar_float = 1e-6,
     learning_rate: scalar_float = 1e-2,
     clip_norm: scalar_float = 1.0,
+    loss_atol: float | None = None,
     key: Optional[Array] = None,
     n_starts: Optional[int] = None,
     random_scale: scalar_float = 1.0,
@@ -335,6 +348,9 @@ def multistart(  # noqa: PLR0913
         Learning rate used by the optax path. Default: 1e-2
     clip_norm : scalar_float, optional
         Global gradient clipping norm for the optax path. Default: 1.0
+    loss_atol : float | None, optional
+        Explicit data-units loss threshold forwarded to :func:`solve`.
+        Default: None
     key : Optional[Array], optional
         PRNG key used to generate random starts around ``initial_latents``.
         If omitted, ``initial_latents`` is interpreted as an already-batched
@@ -399,6 +415,7 @@ def multistart(  # noqa: PLR0913
             atol=atol,
             learning_rate=learning_rate,
             clip_norm=clip_norm,
+            loss_atol=loss_atol,
             compilation_cache_dir=compilation_cache_dir,
             compilation_cache_per_arch=compilation_cache_per_arch,
         )
@@ -407,7 +424,20 @@ def multistart(  # noqa: PLR0913
     losses: Float[Array, "K"] = jnp.asarray(
         [result.loss for result in results]
     )
-    best_index: int = int(jnp.argmin(losses))
+    if bool(jnp.all(~jnp.isfinite(losses))):
+        warnings.warn(
+            "All multistart losses are non-finite; returning the first "
+            "result marked unconverged.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        first_result: ReconResult = results[0]
+        return eqx.tree_at(
+            lambda result: result.converged,
+            first_result,
+            jnp.asarray(False),
+        )
+    best_index: int = int(jnp.nanargmin(losses))
     best_result: ReconResult = results[best_index]
     return best_result
 
@@ -632,8 +662,9 @@ def reconstruct_incoherent_weights(
     Notes
     -----
     1. Flatten the intensity library into a pixel-by-sample design matrix.
-    2. Solve the regularized normal equations.
-    3. Project tiny negative numerical excursions to zero and renormalize.
+    2. Solve the regularized normal equations for an analytic initial point.
+    3. Run fixed-step projected-gradient NNLS for the non-negative weights.
+    4. Renormalize onto the documented probability simplex.
     """
     n_samples: int = intensity_library.shape[0]
     design: Float[Array, "P N"] = jnp.reshape(
@@ -651,10 +682,27 @@ def reconstruct_incoherent_weights(
         normal_matrix + ridge * identity,
         rhs,
     )
-    nonnegative_weights: Float[Array, "N"] = jnp.clip(
+    initial_weights: Float[Array, "N"] = jnp.maximum(
         raw_weights,
         0.0,
-        None,
+    )
+    step_size: Float[Array, ""] = 1.0 / jnp.maximum(
+        jnp.linalg.norm(design, 2) ** 2,
+        jnp.asarray(1e-30, dtype=design.dtype),
+    )
+
+    def _projected_step(
+        _iteration: Any,
+        weights: Float[Array, "N"],
+    ) -> Float[Array, "N"]:
+        gradient: Float[Array, "N"] = normal_matrix @ weights - rhs
+        return jnp.maximum(weights - step_size * gradient, 0.0)
+
+    nonnegative_weights: Float[Array, "N"] = jax.lax.fori_loop(
+        0,
+        200,
+        _projected_step,
+        initial_weights,
     )
     total_weight: Float[Array, ""] = jnp.sum(nonnegative_weights)
     uniform_weights: Float[Array, "N"] = (
@@ -708,7 +756,8 @@ def reconstruct_distribution(
     2. Solve the convex linear weight reconstruction problem.
     3. Package the recovered simplex weights as a
        :class:`~rheedium.types.Distribution`.
-    4. Estimate a local Fisher/Laplace band in weight coordinates.
+    4. Estimate a local unconstrained linear-Gaussian uncertainty band in
+       weight coordinates.
     """
     intensity_library: Float[Array, "N H W"] = (
         build_incoherent_intensity_library(

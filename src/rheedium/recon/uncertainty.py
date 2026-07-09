@@ -19,7 +19,7 @@ Routine Listings
 :func:`laplace_uncertainty`
     Build a local Laplace uncertainty estimate from residual sensitivities.
 :func:`laplace_inverse_mass_matrix`
-    Build a blackjax inverse-mass warm start from Laplace precision.
+    Build a blackjax inverse-mass warm start from Laplace covariance.
 :func:`posterior_from_samples`
     Summarize posterior samples with diagnostics and credible intervals.
 :func:`sample_posterior`
@@ -48,15 +48,12 @@ def _as_chain_initial_positions(
     initial_position: Any,
 ) -> tuple[Float[Array, "C P"], Callable[[Float[Array, "P"]], Any]]:
     """Flatten initial positions and detect a leading chain axis."""
-    leaves: list[Any] = jax.tree_util.tree_leaves(initial_position)
-    if len(leaves) == 1:
-        array_position: Array = jnp.asarray(leaves[0])
-        if array_position.ndim == 2:
-            chain_positions: Float[Array, "C P"] = jnp.asarray(
-                array_position,
-                dtype=jnp.float64,
-            )
-            return chain_positions, _identity
+    if isinstance(initial_position, jax.Array) and initial_position.ndim == 2:
+        chain_positions: Float[Array, "C P"] = jnp.asarray(
+            initial_position,
+            dtype=jnp.float64,
+        )
+        return chain_positions, _identity
 
     flat_position: Float[Array, "P"]
     unravel_fn: Callable[[Float[Array, "P"]], Any]
@@ -69,6 +66,8 @@ def _split_r_hat(samples: Float[Array, "C S P"]) -> Float[Array, "P"]:
     """Compute split-chain R-hat for flattened samples."""
     n_chains: int = samples.shape[0]
     n_draws: int = samples.shape[1]
+    if n_draws < 4:
+        return jnp.full((samples.shape[2],), jnp.nan, dtype=samples.dtype)
     usable_draws: int = max((n_draws // 2) * 2, 2)
     trimmed: Float[Array, "C S2 P"] = samples[:, :usable_draws, :]
     half_draws: int = usable_draws // 2
@@ -419,18 +418,18 @@ def laplace_inverse_mass_matrix(
     diagonal: bool = True,
     regularization: scalar_float = 1e-6,
 ) -> Float[Array, "..."]:
-    """Build a blackjax inverse-mass warm start from Laplace precision.
+    """Build a blackjax inverse-mass warm start from Laplace covariance.
 
     :see: :class:`~.test_uncertainty.TestReconPosteriorUncertainty`
 
     Parameters
     ----------
     uncertainty : LaplaceUncertainty
-        Local Laplace summary whose Fisher matrix approximates posterior
-        precision.
+        Local Laplace summary whose covariance approximates the posterior
+        covariance.
     diagonal : bool, optional
-        If True, return only the positive diagonal precision. If False, return
-        the full regularized precision matrix. Default: True
+        If True, return only the regularized covariance diagonal. If False,
+        return the full regularized covariance matrix. Default: True
     regularization : scalar_float, optional
         Positive diagonal stabilization. Default: 1e-6
 
@@ -441,23 +440,21 @@ def laplace_inverse_mass_matrix(
 
     Notes
     -----
-    1. Reuse the already-formed Fisher/JᵀJ precision from the Laplace summary.
-    2. Add positive regularization for rank-deficient directions.
-    3. Return the shape expected by blackjax's inverse-mass argument.
+    BlackJAX's ``inverse_mass_matrix`` is the posterior covariance: window
+    adaptation sets it to the Welford covariance of warmup positions.
+    Therefore this helper returns the Laplace covariance, not the Fisher
+    precision.
     """
-    precision: Float[Array, "P P"] = uncertainty.fisher_information
-    n_params: int = precision.shape[0]
-    regularized_precision: Float[Array, "P P"] = precision + (
-        regularization * jnp.eye(n_params, dtype=precision.dtype)
+    raw_covariance: Float[Array, "P P"] = uncertainty.covariance
+    covariance: Float[Array, "P P"] = 0.5 * (raw_covariance + raw_covariance.T)
+    n_params: int = covariance.shape[0]
+    regularized_covariance: Float[Array, "P P"] = covariance + (
+        regularization * jnp.eye(n_params, dtype=covariance.dtype)
     )
     if diagonal:
-        diagonal_precision: Float[Array, "P"] = jnp.maximum(
-            jnp.diag(regularized_precision),
-            jnp.asarray(regularization, dtype=precision.dtype),
-        )
-        return diagonal_precision
+        return jnp.diag(regularized_covariance)
     inverse_mass_matrix: Float[Array, "P P"] = 0.5 * (
-        regularized_precision + regularized_precision.T
+        regularized_covariance + regularized_covariance.T
     )
     return inverse_mass_matrix
 
@@ -487,7 +484,9 @@ def posterior_from_samples(
     credibility : scalar_float, optional
         Equal-tailed credible interval mass. Default: 0.95
     r_hat_threshold : scalar_float, optional
-        Maximum allowed R-hat for ``converged``. Default: 1.1
+        Maximum allowed R-hat for ``converged``. For fewer than four draws,
+        split R-hat is reported as NaN and convergence gates on ESS alone.
+        Default: 1.1
     min_effective_sample_size : scalar_float, optional
         Minimum ESS for ``converged``. Default: 50.0
     unravel_fn : Callable[[Float[Array, "P"]], Any], optional
@@ -558,8 +557,12 @@ def posterior_from_samples(
     effective_sample_size: Float[Array, "P"] = _effective_sample_size(
         sample_array
     )
-    converged: Bool[Array, ""] = jnp.logical_and(
+    r_hat_converged: Bool[Array, ""] = jnp.logical_or(
+        n_draws < 4,
         jnp.all(r_hat <= r_hat_threshold),
+    )
+    converged: Bool[Array, ""] = jnp.logical_and(
+        r_hat_converged,
         jnp.all(effective_sample_size >= min_effective_sample_size),
     )
     posterior: PosteriorSamples = PosteriorSamples(

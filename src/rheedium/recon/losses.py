@@ -291,12 +291,21 @@ def normalized_cross_correlation_loss(
     loss : scalar_float
         ``1 - NCC``; zero is a perfect affine-intensity match.
     """
+    scaled_epsilon: scalar_float = (
+        epsilon
+        * 0.5
+        * (jnp.mean(simulated_image**2) + jnp.mean(experimental_image**2))
+        + 1e-30
+    )
     weights: Float[Array, "H W"]
     if weight_map is None:
         weights = jnp.ones_like(simulated_image)
     else:
         weights = jnp.maximum(weight_map, 0.0)
-    normalization: scalar_float = jnp.maximum(jnp.sum(weights), epsilon)
+    normalization: scalar_float = jnp.maximum(
+        jnp.sum(weights),
+        scaled_epsilon,
+    )
     simulated_mean: scalar_float = (
         jnp.sum(weights * simulated_image) / normalization
     )
@@ -315,7 +324,7 @@ def normalized_cross_correlation_loss(
         weights * experimental_centered**2
     )
     denominator: scalar_float = jnp.sqrt(
-        simulated_norm * experimental_norm + epsilon
+        simulated_norm * experimental_norm + scaled_epsilon
     )
     correlation: scalar_float = numerator / denominator
     loss: scalar_float = 1.0 - correlation

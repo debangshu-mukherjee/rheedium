@@ -255,3 +255,100 @@ def test_result_key_is_deterministic(
     second = _last_json(capsys.readouterr().out)
 
     assert first["result_key"] == second["result_key"]
+
+
+def test_emit_sanitizes_nonfinite_floats(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    r"""``emit`` maps JSON-forbidden NaN and infinity values to null.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: ``emit`` maps
+    JSON-forbidden NaN and infinity values to null.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+    harness.emit(
+        {
+            "metric": float("nan"),
+            "nested": [float("inf"), float("-inf"), 1.0],
+        }
+    )
+
+    payload = _last_json(capsys.readouterr().out)
+    assert payload == {"metric": None, "nested": [None, None, 1.0]}
+
+
+def test_unchecked_reexecs_with_runtime_check_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r"""``--unchecked`` re-execs once with the import-time env var set.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: ``--unchecked``
+    re-execs once with the import-time env var set.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+    main = _dummy_experiment()
+    calls: list[tuple[str, list[str]]] = []
+
+    def _fake_execv(executable: str, argv: list[str]) -> None:
+        calls.append((executable, argv))
+        raise RuntimeError("execv called")
+
+    monkeypatch.delenv("RHEEDIUM_DISABLE_RUNTIME_CHECKS", raising=False)
+    monkeypatch.setattr(automaton.os, "execv", _fake_execv)
+    monkeypatch.setattr(automaton.sys, "argv", ["dummy.py", "--unchecked"])
+
+    with pytest.raises(RuntimeError, match="execv called"):
+        main(["--unchecked"])
+
+    assert automaton.os.environ["RHEEDIUM_DISABLE_RUNTIME_CHECKS"] == "1"
+    assert calls == [
+        (
+            automaton.sys.executable,
+            [automaton.sys.executable, "dummy.py", "--unchecked"],
+        )
+    ]
+
+
+def test_unchecked_env_guard_prevents_reexec_loop(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r"""The env guard lets the re-executed process continue normally.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: The env guard
+    lets the re-executed process continue normally.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+    main = _dummy_experiment()
+
+    def _unexpected_execv(executable: str, argv: list[str]) -> None:
+        del executable, argv
+        raise AssertionError("execv should not be called")
+
+    monkeypatch.setenv("RHEEDIUM_DISABLE_RUNTIME_CHECKS", "1")
+    monkeypatch.setattr(automaton.os, "execv", _unexpected_execv)
+
+    code = main(["--unchecked", "--validate", "--outdir", str(tmp_path)])
+
+    assert code == 0
+    payload = _last_json(capsys.readouterr().out)
+    assert payload["status"] == "ok"

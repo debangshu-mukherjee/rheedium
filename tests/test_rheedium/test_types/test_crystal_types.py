@@ -21,6 +21,7 @@ from jaxtyping import (
 from numpy.typing import NDArray
 from typing_extensions import TypedDict
 
+from rheedium.types import crystal_types
 from rheedium.types.crystal_types import (
     CrystalStructure,
     EwaldData,
@@ -34,6 +35,29 @@ from rheedium.types.crystal_types import (
 from rheedium.ucell.unitcell import build_cell_vectors
 
 from ..._assertions import assert_rejects
+
+
+def test_crystal_types_all_exports_phase9_carriers() -> None:
+    r"""Phase 9 carrier names are exported from ``crystal_types.__all__``.
+
+    Extended Summary
+    ----------------
+    Verifies the documented behavior for this test case: Phase 9 carrier
+    names are exported from ``crystal_types.__all__``.
+
+    Notes
+    -----
+    It constructs the representative inputs inside the test body,
+    keeping the fixture and assertion path local to the documented case.
+    """
+    expected: set[str] = {
+        "EdgeOnSlices",
+        "KirklandParameters",
+        "create_edge_on_slices",
+        "create_kirkland_parameters",
+    }
+
+    assert expected <= set(crystal_types.__all__)
 
 
 class EwaldKwargs(TypedDict):

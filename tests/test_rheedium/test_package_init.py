@@ -20,6 +20,9 @@ _PROBE: str = (
     "import os, rheedium; "
     "print('EQX=' + os.environ.get('EQX_ON_ERROR', '<unset>'))"
 )
+_XLA_PROBE: str = (
+    "import os, rheedium; print('XLA=' + os.environ.get('XLA_FLAGS', ''))"
+)
 _REPO_ROOT: Path = Path(__file__).parents[2]
 _TYPE_CONSTRUCTOR_EXEMPTIONS: set[tuple[str, str]] = {
     ("src/rheedium/plots/figuring.py", "create_phosphor_colormap"),
@@ -45,6 +48,24 @@ def _resolved_eqx_on_error(**overrides: str) -> str:
         row for row in result.stdout.splitlines() if row.startswith("EQX=")
     )
     return line.removeprefix("EQX=")
+
+
+def _resolved_xla_flags(**overrides: str) -> str:
+    """Import rheedium in a subprocess and return resolved ``XLA_FLAGS``."""
+    env: dict[str, str] = dict(os.environ)
+    env.update(overrides)
+    result: subprocess.CompletedProcess[str] = subprocess.run(
+        [sys.executable, "-c", _XLA_PROBE],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+        timeout=300,
+    )
+    line: str = next(
+        row for row in result.stdout.splitlines() if row.startswith("XLA=")
+    )
+    return line.removeprefix("XLA=")
 
 
 def _base_name(base: ast.expr) -> str:
@@ -134,6 +155,53 @@ class TestRuntimeCheckToggle(chex.TestCase):
             )
             == "nan"
         )
+
+
+class TestXlaFlags(chex.TestCase):
+    """Tests for import-time ``XLA_FLAGS`` normalization."""
+
+    def test_inert_intra_op_token_is_not_added(self) -> None:
+        r"""Rheedium no longer injects the inert Eigen thread-count token.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Rheedium no
+        longer injects the inert Eigen thread-count token.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        flags: str = _resolved_xla_flags(XLA_FLAGS="")
+
+        assert "intra_op_parallelism_threads=0" not in flags.split()
+
+    def test_existing_xla_flag_key_is_not_duplicated(self) -> None:
+        r"""Existing XLA flag keys are deduplicated token-wise.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Existing
+        XLA flag keys are deduplicated token-wise.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        flags: str = _resolved_xla_flags(
+            XLA_FLAGS="--xla_cpu_multi_thread_eigen=false"
+        )
+        matching_tokens: list[str] = [
+            token
+            for token in flags.split()
+            if token.split("=", 1)[0] == "--xla_cpu_multi_thread_eigen"
+        ]
+
+        assert matching_tokens == ["--xla_cpu_multi_thread_eigen=false"]
 
 
 class TestNamingGuards(chex.TestCase):

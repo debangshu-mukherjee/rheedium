@@ -267,7 +267,10 @@ def simulate_detector_image_from_metadata(
     angle_nodes, angle_weights = gauss_hermite_nodes_weights(
         metadata.n_angular_samples
     )
-    angle_average = np.zeros(image_shape_px, dtype=np.float64)
+    energy_nodes, energy_weights = gauss_hermite_nodes_weights(
+        metadata.n_energy_samples
+    )
+    combined_image = np.zeros(image_shape_px, dtype=np.float64)
     for node, weight in zip(
         np.asarray(angle_nodes),
         np.asarray(angle_weights),
@@ -276,33 +279,22 @@ def simulate_detector_image_from_metadata(
         theta_sample_deg = theta_deg + np.rad2deg(
             np.sqrt(2.0) * divergence_rad * float(node)
         )
-        angle_average += float(weight) * _simulate_raw_image(
-            energy_kev=energy_kev,
-            theta_deg=theta_sample_deg,
-            phi_deg=phi_deg,
-        )
-    angle_average /= np.sqrt(np.pi)
-
-    energy_nodes, energy_weights = gauss_hermite_nodes_weights(
-        metadata.n_energy_samples
-    )
-    energy_average = np.zeros(image_shape_px, dtype=np.float64)
-    for node, weight in zip(
-        np.asarray(energy_nodes),
-        np.asarray(energy_weights),
-        strict=True,
-    ):
-        energy_sample_kev = energy_kev + np.sqrt(2.0) * spread_kev * float(
-            node
-        )
-        energy_average += float(weight) * _simulate_raw_image(
-            energy_kev=energy_sample_kev,
-            theta_deg=theta_deg,
-            phi_deg=phi_deg,
-        )
-    energy_average /= np.sqrt(np.pi)
-
-    combined_image = 0.5 * (angle_average + energy_average)
+        for energy_node, energy_weight in zip(
+            np.asarray(energy_nodes),
+            np.asarray(energy_weights),
+            strict=True,
+        ):
+            energy_sample_kev = energy_kev + np.sqrt(2.0) * spread_kev * float(
+                energy_node
+            )
+            combined_image += float(
+                weight * energy_weight
+            ) * _simulate_raw_image(
+                energy_kev=energy_sample_kev,
+                theta_deg=theta_sample_deg,
+                phi_deg=phi_deg,
+            )
+    combined_image /= np.pi
     broadened_image = detector_psf_convolve(
         detector_image=jnp.asarray(combined_image, dtype=jnp.float64),
         psf_sigma_pixels=jnp.asarray(

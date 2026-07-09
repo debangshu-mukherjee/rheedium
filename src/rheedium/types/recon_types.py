@@ -214,8 +214,8 @@ class ReconResult(eqx.Module):
     iterations : Int[Array, ""]
         Number of nonlinear solver steps reported by ``optimistix``.
     converged : Bool[Array, ""]
-        True when the solver result is successful or the final loss is below
-        the absolute tolerance.
+        True when the solver reports success, or when callers explicitly opt
+        into a data-units loss threshold.
     solver_status : str
         Static human-readable solver status.
     """

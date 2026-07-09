@@ -21,6 +21,7 @@ from rheedium.recon import (
     unconstrained_from_bounded,
     unconstrained_from_fractional,
     unconstrained_from_lattice,
+    unconstrained_from_ordered_bounded,
     unconstrained_from_positive,
     unconstrained_from_simplex,
     wyckoff_fractional_from_unconstrained,
@@ -136,8 +137,44 @@ class TestReconTransforms(chex.TestCase):
         )
 
         self.assertGreaterEqual(float(jnp.min(ordered)), -2.0)
-        self.assertLessEqual(float(jnp.max(ordered)), 3.0)
+        self.assertLess(float(ordered[-1]), 3.0)
         self.assertTrue(bool(jnp.all(jnp.diff(ordered) >= -1e-12)))
+
+    def test_ordered_bounded_transform_round_trips_and_couples_outputs(
+        self,
+    ) -> None:
+        r"""Ordered bounded transform should invert and stay fully coupled.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Ordered
+        bounded transform should invert and stay fully coupled.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        logits: Float[Array, "points"] = jnp.array(
+            [-1.2, 0.4, 2.0, -0.3],
+            dtype=jnp.float64,
+        )
+        ordered: Float[Array, "points"] = ordered_bounded_from_unconstrained(
+            logits,
+            -3.0,
+            5.0,
+        )
+        recovered_logits: Float[Array, "points"] = (
+            unconstrained_from_ordered_bounded(ordered, -3.0, 5.0)
+        )
+        chex.assert_trees_all_close(recovered_logits, logits, atol=1e-12)
+
+        jacobian: Float[Array, "points points"] = jax.jacfwd(
+            lambda z: ordered_bounded_from_unconstrained(z, -3.0, 5.0)
+        )(logits)
+        self.assertTrue(bool(jnp.all(jnp.abs(jacobian) > 1e-12)))
+        self.assertTrue(bool(jnp.all(jnp.abs(jacobian[-1]) > 1e-12)))
 
     def test_fractional_lattice_and_wyckoff_transforms_are_smooth(
         self,
@@ -274,4 +311,8 @@ class TestReconTransformNamespace(chex.TestCase):
         self.assertIs(
             recon.wyckoff_fractional_from_unconstrained,
             wyckoff_fractional_from_unconstrained,
+        )
+        self.assertIs(
+            recon.unconstrained_from_ordered_bounded,
+            unconstrained_from_ordered_bounded,
         )

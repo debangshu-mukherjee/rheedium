@@ -4,9 +4,11 @@ Verifies the general optimistix/optax reconstruction surface on lightweight
 synthetic inverse problems with deterministic linear forward models.
 """
 
+import importlib
 import os
 import tempfile
 import time
+from unittest.mock import patch
 
 import chex
 import jax
@@ -58,6 +60,24 @@ def _linear_problem() -> tuple[ReconProblem, Float[Array, "params"]]:
         measured=measured,
     )
     return problem, true_params
+
+
+def _fake_result(
+    latent: Float[Array, "params"],
+    loss: float,
+    converged: bool = True,
+) -> ReconResult:
+    """Build a lightweight ReconResult for multistart selection tests."""
+    return ReconResult(
+        params=latent,
+        latent_params=latent,
+        simulated=latent,
+        residual=latent,
+        loss=jnp.asarray(loss, dtype=jnp.float64),
+        iterations=jnp.asarray(0, dtype=jnp.int32),
+        converged=jnp.asarray(converged),
+        solver_status="fake",
+    )
 
 
 def _parametric_spread_weights(
@@ -286,6 +306,37 @@ class TestReconSolve(chex.TestCase):
         self.assertLess(float(result.loss), float(initial_loss) * 1e-2)
         chex.assert_tree_all_finite(result.params)
 
+    def test_max_steps_hit_with_tiny_loss_is_not_converged(self) -> None:
+        r"""A tiny data-scale loss should not override solver failure.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A tiny
+        data-scale loss should not override solver failure.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        problem: ReconProblem = ReconProblem(
+            forward=lambda latent: 1e-6 * latent,
+            measured=jnp.zeros(1, dtype=jnp.float64),
+        )
+
+        result: ReconResult = solve(
+            problem=problem,
+            initial_latent=jnp.asarray([1.0], dtype=jnp.float64),
+            mode="adamw",
+            max_steps=1,
+            learning_rate=0.01,
+            atol=1e-6,
+        )
+
+        self.assertLess(float(result.loss), 1e-6)
+        self.assertFalse(bool(result.converged))
+
     def test_multistart_returns_lowest_loss_result(self) -> None:
         r"""Multistart should choose the start with the best final loss.
 
@@ -318,6 +369,84 @@ class TestReconSolve(chex.TestCase):
 
         chex.assert_trees_all_close(result.params, true_params, atol=1e-10)
         chex.assert_trees_all_close(result.loss, 0.0, atol=1e-12)
+
+    def test_multistart_ignores_nan_losses_in_both_orderings(self) -> None:
+        r"""Multistart should select finite losses over NaN losses.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Multistart
+        should select finite losses over NaN losses.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        solve_module = importlib.import_module("rheedium.recon.solve")
+        problem: ReconProblem
+        true_params: Float[Array, "params"]
+        problem, true_params = _linear_problem()
+
+        def fake_solve(
+            *,
+            initial_latent: Float[Array, "params"],
+            **_kwargs: object,
+        ) -> ReconResult:
+            if bool(jnp.any(jnp.isnan(initial_latent))):
+                return _fake_result(initial_latent, float("nan"))
+            return _fake_result(initial_latent, 0.0)
+
+        for starts in (
+            jnp.asarray([[jnp.nan, jnp.nan], true_params], dtype=jnp.float64),
+            jnp.asarray([true_params, [jnp.nan, jnp.nan]], dtype=jnp.float64),
+        ):
+            with patch.object(solve_module, "solve", side_effect=fake_solve):
+                result: ReconResult = multistart(
+                    problem=problem,
+                    initial_latents=starts,
+                )
+            chex.assert_trees_all_close(result.params, true_params, atol=1e-12)
+
+    def test_multistart_all_nonfinite_warns_and_marks_unconverged(
+        self,
+    ) -> None:
+        r"""All non-finite multistart losses should return an honest result.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: All non-
+        finite multistart losses should return an honest result.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        solve_module = importlib.import_module("rheedium.recon.solve")
+        problem: ReconProblem
+        problem, _true_params = _linear_problem()
+
+        def fake_solve(
+            *,
+            initial_latent: Float[Array, "params"],
+            **_kwargs: object,
+        ) -> ReconResult:
+            return _fake_result(initial_latent, float("nan"))
+
+        starts = jnp.asarray([[jnp.nan, 0.0], [0.0, jnp.nan]])
+        with (
+            patch.object(solve_module, "solve", side_effect=fake_solve),
+            self.assertWarns(RuntimeWarning),
+        ):
+            result: ReconResult = multistart(
+                problem=problem,
+                initial_latents=starts,
+            )
+
+        self.assertFalse(bool(result.converged))
 
     def test_seeded_random_multistart_is_reproducible(self) -> None:
         r"""Seeded random multistart should be reproducible.
@@ -553,6 +682,7 @@ class TestReconSolve(chex.TestCase):
                 initial_latent=jnp.zeros(2, dtype=jnp.float64),
                 max_steps=6,
                 atol=1e-10,
+                loss_atol=1e-10,
                 compilation_cache_dir=cache_dir,
                 compilation_cache_per_arch=False,
             )
@@ -608,6 +738,63 @@ class TestReconSolve(chex.TestCase):
         )
 
         chex.assert_trees_all_close(weights, true_weights, atol=1e-8)
+
+    def test_reconstruct_incoherent_weights_improves_clip_renormalize(
+        self,
+    ) -> None:
+        r"""Projected-gradient NNLS should improve over clip-renormalize.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Projected-
+        gradient NNLS should improve over clip-renormalize.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        design: Float[Array, "pixels samples"] = jnp.asarray(
+            [
+                [0.73823378, 0.62787073, 1.21273992],
+                [2.14948076, 2.20291312, 0.20353860],
+                [0.10000000, 0.17625004, 0.72775358],
+                [1.16310470, 1.26296184, 1.64134268],
+                [1.78285691, 1.78230331, 2.35079836],
+            ],
+            dtype=jnp.float64,
+        )
+        unconstrained_weights: Float[Array, "samples"] = jnp.asarray(
+            [1.4, -0.6, 0.2],
+            dtype=jnp.float64,
+        )
+        measured_vector: Float[Array, "pixels"] = (
+            design @ unconstrained_weights
+        )
+        intensity_library: Float[Array, "samples rows cols"] = design.T[
+            :, None, :
+        ]
+        measured: Float[Array, "rows cols"] = measured_vector[None, :]
+
+        weights: Float[Array, "samples"] = reconstruct_incoherent_weights(
+            intensity_library=intensity_library,
+            measured_image=measured,
+            ridge=1e-12,
+        )
+        clipped: Float[Array, "samples"] = jnp.maximum(
+            unconstrained_weights,
+            0.0,
+        )
+        clip_renormalized: Float[Array, "samples"] = clipped / jnp.sum(clipped)
+        nnls_residual: Float[Array, ""] = jnp.linalg.norm(
+            design @ weights - measured_vector
+        )
+        clip_residual: Float[Array, ""] = jnp.linalg.norm(
+            design @ clip_renormalized - measured_vector
+        )
+
+        self.assertLess(float(nnls_residual), float(clip_residual))
 
     def test_solve_recovers_parametric_distribution_spread(self) -> None:
         r"""Solve should recover a planted parametric distribution spread.

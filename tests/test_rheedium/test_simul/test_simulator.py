@@ -886,7 +886,8 @@ class TestRationalizationGuards(chex.TestCase):
             for node in ast.walk(integrate_node)
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
         ]
-        self.assertEqual(call_names.count("apply_distribution"), 1)
+        self.assertEqual(call_names.count("apply_distribution_intensity"), 1)
+        self.assertEqual(call_names.count("apply_distribution"), 0)
         self.assertNotIn("jax.vmap", integrate_source)
         self.assertNotIn("einsum", integrate_source)
 

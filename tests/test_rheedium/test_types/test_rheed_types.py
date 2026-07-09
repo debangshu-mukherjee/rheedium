@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 import chex
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import pytest
@@ -20,6 +21,8 @@ from jaxtyping import (
     TypeCheckError,
 )
 
+from rheedium.simul import simulate_detector_image
+from rheedium.types import BeamSpec, RenderParams, SurfaceCTRParams
 from rheedium.types.custom_types import scalar_float
 from rheedium.types.detector import DetectorGeometry
 from rheedium.types.rheed_types import (
@@ -34,6 +37,7 @@ from rheedium.types.rheed_types import (
 )
 
 from ..._assertions import assert_rejects
+from ..._factories import make_si_crystal_2atom
 
 
 class TestRHEEDPattern(chex.TestCase):
@@ -2232,7 +2236,7 @@ class TestIdentifySurfaceAtoms(chex.TestCase):
 
 
 class TestSurfaceConfig(chex.TestCase):
-    """Tests for SurfaceConfig NamedTuple.
+    """Tests for SurfaceConfig.
 
     :see: :class:`~rheedium.types.SurfaceConfig`
     """
@@ -2296,12 +2300,12 @@ class TestSurfaceConfig(chex.TestCase):
         assert config.coordination_threshold == 6
 
     def test_immutable(self) -> None:
-        r"""SurfaceConfig should be immutable (NamedTuple).
+        r"""SurfaceConfig should be immutable.
 
         Extended Summary
         ----------------
         Verifies the documented behavior for this test case: SurfaceConfig
-        should be immutable (NamedTuple).
+        should be immutable.
 
         Notes
         -----
@@ -2318,6 +2322,69 @@ class TestSurfaceConfig(chex.TestCase):
         config: Any = SurfaceConfig()
         with pytest.raises(AttributeError):
             config.method = "layers"
+
+    def test_explicit_mask_is_dynamic_leaf_for_jitted_detector_simulation(
+        self,
+    ) -> None:
+        r"""Fresh equal explicit masks reuse one detector-image compilation.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Fresh equal
+        explicit masks reuse one detector-image compilation.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        crystal = make_si_crystal_2atom()
+        beam = BeamSpec(angular_divergence_mrad=0.0, energy_spread_ev=0.0)
+        detector = DetectorGeometry(
+            image_shape_px=(8, 8),
+            pixel_size_mm=(8.0, 8.0),
+            beam_center_px=(4.0, 1.0),
+            psf_sigma_pixels=0.0,
+        )
+        render = RenderParams(
+            n_angular_samples=1,
+            n_energy_samples=1,
+            render_ctrs_as_streaks=False,
+        )
+        compilation_count: int = 0
+
+        def _run(mask: Bool[Array, "N"]) -> Float[Array, "H W"]:
+            nonlocal compilation_count
+            compilation_count += 1
+            surface = SurfaceCTRParams(
+                hmax=0,
+                kmax=0,
+                surface_config=SurfaceConfig(
+                    method="explicit",
+                    explicit_mask=mask,
+                ),
+            )
+            return simulate_detector_image(
+                crystal=crystal,
+                beam=beam,
+                surface=surface,
+                detector=detector,
+                render=render,
+            )
+
+        compiled = eqx.filter_jit(_run)
+        first_mask: Bool[Array, "N"] = jnp.asarray([True, False])
+        second_mask: Bool[Array, "N"] = jnp.asarray([True, False])
+
+        first = compiled(first_mask)
+        second = compiled(second_mask)
+        first.block_until_ready()
+        second.block_until_ready()
+
+        chex.assert_shape(first, (8, 8))
+        chex.assert_trees_all_close(second, first)
+        assert compilation_count == 1
 
 
 class TestDetectorGeometry(chex.TestCase):

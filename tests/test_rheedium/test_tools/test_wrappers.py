@@ -54,3 +54,33 @@ class TestJaxSafe(chex.TestCase):
         doubled: Float[Array, ""] = wrapped(np.float64(3.0))
 
         chex.assert_trees_all_close(doubled, jnp.asarray(6.0))
+
+    def test_forwards_keyword_arguments(self) -> None:
+        r"""Wrapped functions can be called with keyword arguments.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Wrapped
+        functions can be called with keyword arguments.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+
+        @jaxtyped(typechecker=beartype)
+        def _scale_scalar(
+            value: Float[Array, ""],
+            *,
+            scale: float,
+        ) -> Float[Array, ""]:
+            """Scale one scalar after jaxtyping validation."""
+            scaled: Float[Array, ""] = value * scale
+            return scaled
+
+        wrapped: Callable[..., Float[Array, ""]] = jax_safe(_scale_scalar)
+        scaled: Float[Array, ""] = wrapped(np.float64(3.0), scale=4.0)
+
+        chex.assert_trees_all_close(scaled, jnp.asarray(12.0))

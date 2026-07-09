@@ -1,5 +1,6 @@
 """Tests for orientation-distribution probability types and integration."""
 
+import inspect
 from collections.abc import Callable
 
 import chex
@@ -1023,6 +1024,23 @@ class TestOrientationDiscretization(chex.TestCase):
     :see: :func:`~rheedium.types.discretize_orientation`
     """
 
+    def test_discretize_orientation_has_honest_signature(self) -> None:
+        r"""The public discretizer exposes only parameters it uses.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: The public
+        discretizer exposes only parameters it uses.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        signature = inspect.signature(discretize_orientation)
+        assert "n_sigma_range" not in signature.parameters
+
     def test_discretize_orientation_returns_normalized_weights(self) -> None:
         r"""Quadrature weights remain a proper probability distribution.
 
@@ -1348,6 +1366,55 @@ class TestSizeProducer(chex.TestCase):
 
         chex.assert_trees_all_close(sizes, jnp.array([75.0]))
         chex.assert_trees_all_close(weights, jnp.array([1.0]))
+
+    def test_exponential_size_quantiles_match_untruncated_moments(
+        self,
+    ) -> None:
+        r"""Truncated exponential bins recover untruncated moments.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Truncated
+        exponential bins recover untruncated moments.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        mean_ang: float = 40.0
+        dist = SizeDistribution(
+            distribution_type="exponential",
+            mean_ang=jnp.asarray(mean_ang, dtype=jnp.float64),
+            sigma_ang=jnp.asarray(0.0, dtype=jnp.float64),
+            min_size_ang=jnp.asarray(0.0, dtype=jnp.float64),
+            max_size_ang=jnp.asarray(50.0 * mean_ang, dtype=jnp.float64),
+        )
+
+        sizes, weights = discretize_size_distribution(dist, n_points=64)
+        observed_mean: Float[Array, ""] = jnp.sum(weights * sizes)
+        observed_second: Float[Array, ""] = jnp.sum(weights * sizes * sizes)
+        centered: Float[Array, "N"] = sizes - observed_mean
+        observed_variance: Float[Array, ""] = jnp.sum(
+            weights * centered * centered
+        )
+        observed_skew: Float[Array, ""] = (
+            jnp.sum(weights * centered * centered * centered)
+            / observed_variance**1.5
+        )
+
+        chex.assert_trees_all_close(
+            observed_mean,
+            mean_ang,
+            rtol=5e-3,
+        )
+        chex.assert_trees_all_close(
+            observed_second,
+            2.0 * mean_ang * mean_ang,
+            rtol=2e-2,
+        )
+        chex.assert_trees_all_close(observed_skew, 2.0, rtol=1e-1)
 
 
 class TestProducerComposition(chex.TestCase):

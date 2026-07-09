@@ -34,6 +34,8 @@ Routine Listings
     Map simplex weights to centered unconstrained logits.
 :func:`ordered_bounded_from_unconstrained`
     Map unconstrained values to ordered points inside a finite interval.
+:func:`unconstrained_from_ordered_bounded`
+    Map ordered bounded points back to unconstrained increment logits.
 :func:`weighted_image_residual`
     Build a weighted least-squares residual field between two images.
 :func:`weighted_mean_squared_error`
@@ -147,6 +149,7 @@ from .transforms import (
     unconstrained_from_bounded,
     unconstrained_from_fractional,
     unconstrained_from_lattice,
+    unconstrained_from_ordered_bounded,
     unconstrained_from_positive,
     unconstrained_from_simplex,
     wyckoff_fractional_from_unconstrained,
@@ -200,6 +203,7 @@ __all__: list[str] = [
     "unconstrained_from_bounded",
     "unconstrained_from_fractional",
     "unconstrained_from_lattice",
+    "unconstrained_from_ordered_bounded",
     "unconstrained_from_positive",
     "unconstrained_from_simplex",
     "validate_recipe_deviation_report",

@@ -246,3 +246,116 @@ class TestAuditMetrics(chex.TestCase):
         )
         assert specular_offset_px(peak, peak) == pytest.approx(0.0, abs=1e-12)
         assert streak_fwhm_px(profile) > 0.0
+
+    def test_streak_fwhm_returns_zero_for_nonpositive_profiles(self) -> None:
+        r"""FWHM should be zero when the profile has no positive peak.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: FWHM should
+        be zero when the profile has no positive peak.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        assert streak_fwhm_px(jnp.zeros(5, dtype=jnp.float64)) == (
+            pytest.approx(0.0, abs=1e-12)
+        )
+        assert streak_fwhm_px(-jnp.ones(5, dtype=jnp.float64)) == (
+            pytest.approx(0.0, abs=1e-12)
+        )
+
+    def test_dominant_peaks_emit_nan_after_masking_all_peaks(self) -> None:
+        r"""Requested peak slots beyond valid maxima should become NaN.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Requested
+        peak slots beyond valid maxima should become NaN.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        image: Float[Array, "rows cols"] = jnp.zeros(
+            (5, 7),
+            dtype=jnp.float64,
+        )
+        image = image.at[2, 3].set(1.0)
+
+        peaks: Float[Array, "peaks"] = dominant_peak_positions(
+            image,
+            axis="horizontal",
+            n_peaks=2,
+            min_separation_px=10,
+        )
+
+        assert float(peaks[0]) == pytest.approx(3.0)
+        assert bool(jnp.isnan(peaks[1]))
+
+    def test_rod_spacing_error_ignores_nan_peak_slots(self) -> None:
+        r"""Rod-spacing error should use nan-aware spacing statistics.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Rod-spacing
+        error should use nan-aware spacing statistics.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        reference: Float[Array, "peaks"] = jnp.asarray(
+            [10.0, 20.0, jnp.nan],
+            dtype=jnp.float64,
+        )
+        simulated: Float[Array, "peaks"] = jnp.asarray(
+            [12.0, 22.0, jnp.nan],
+            dtype=jnp.float64,
+        )
+
+        assert rod_spacing_error_px(reference, simulated) == pytest.approx(
+            0.0,
+            abs=1e-12,
+        )
+
+    def test_flat_normalized_cross_correlation_uses_constant_guard(
+        self,
+    ) -> None:
+        r"""Flat images should compare by constant equality.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Flat images
+        should compare by constant equality.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        flat: Float[Array, "rows cols"] = 5.0 * jnp.ones(
+            (4, 4),
+            dtype=jnp.float64,
+        )
+        nearly_same: Float[Array, "rows cols"] = flat + 1e-13
+        different: Float[Array, "rows cols"] = flat + 1e-8
+
+        assert normalized_cross_correlation(
+            flat, nearly_same
+        ) == pytest.approx(
+            1.0,
+            abs=1e-12,
+        )
+        assert normalized_cross_correlation(flat, different) == pytest.approx(
+            0.0,
+            abs=1e-12,
+        )

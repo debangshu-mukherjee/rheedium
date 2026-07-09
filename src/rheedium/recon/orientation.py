@@ -179,6 +179,51 @@ def _prepare_pattern_for_loss(
 
 
 @jaxtyped(typechecker=beartype)
+def _mask_for_pattern(
+    pattern: float_jax_image,
+    mask: Optional[float_jax_image],
+) -> float_jax_image:
+    """Return a non-negative loss mask matching ``pattern``."""
+    if mask is None:
+        return jnp.ones_like(pattern)
+    return jnp.maximum(jnp.asarray(mask, dtype=jnp.float64), 0.0)
+
+
+@jaxtyped(typechecker=beartype)
+def _prepared_residual_for_loss(
+    simulated_pattern: float_jax_image,
+    observed_pattern: float_jax_image,
+    normalize: bool,
+) -> float_jax_image:
+    """Return the residual before mask weighting is applied."""
+    prepared_observed: float_jax_image = _prepare_pattern_for_loss(
+        observed_pattern,
+        mask=None,
+        normalize=normalize,
+    )
+    prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
+        simulated_pattern,
+        mask=None,
+        normalize=normalize,
+    )
+    return prepared_simulated - prepared_observed
+
+
+@jaxtyped(typechecker=beartype)
+def _masked_mean_square(
+    residual: float_jax_image,
+    mask: Optional[float_jax_image],
+) -> Float[Array, ""]:
+    """Return mean square with mask weights applied exactly once."""
+    mask_array: float_jax_image = _mask_for_pattern(residual, mask)
+    n_pixels: Float[Array, ""] = jnp.maximum(
+        jnp.sum(mask_array),
+        jnp.asarray(_PROBABILITY_EPS, dtype=jnp.float64),
+    )
+    return jnp.sum(mask_array * jnp.square(residual)) / n_pixels
+
+
+@jaxtyped(typechecker=beartype)
 def orientation_loss(
     distribution: OrientationDistribution,
     simulate_fn: Callable[[scalar_float], float_jax_image],
@@ -240,26 +285,12 @@ def orientation_loss(
         n_mosaic_points=n_mosaic_points,
     )
 
-    prepared_observed: float_jax_image = _prepare_pattern_for_loss(
-        observed_pattern,
-        mask=mask,
+    residual: float_jax_image = _prepared_residual_for_loss(
+        simulated_pattern=simulated_pattern,
+        observed_pattern=observed_pattern,
         normalize=normalize,
     )
-    prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
-        simulated_pattern,
-        mask=mask,
-        normalize=normalize,
-    )
-
-    mask_array: float_jax_image
-    if mask is None:
-        mask_array = jnp.ones_like(observed_pattern)
-    else:
-        mask_array = jnp.asarray(mask, dtype=jnp.float64)
-    n_pixels: Float[Array, ""] = jnp.sum(mask_array) + _PROBABILITY_EPS
-    mse: Float[Array, ""] = (
-        jnp.sum(jnp.square(prepared_observed - prepared_simulated)) / n_pixels
-    )
+    mse: Float[Array, ""] = _masked_mean_square(residual, mask)
 
     weights: Float[Array, "M"] = sanitized_distribution.discrete_weights
     target_weights: Float[Array, "M"]
@@ -398,26 +429,12 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
         simulated_pattern: float_jax_image
         distribution: OrientationDistribution
         simulated_pattern, distribution = simulated
-        prepared_observed: float_jax_image = _prepare_pattern_for_loss(
-            measured,
-            mask=mask,
+        residual: float_jax_image = _prepared_residual_for_loss(
+            simulated_pattern=simulated_pattern,
+            observed_pattern=measured,
             normalize=normalize,
         )
-        prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
-            simulated_pattern,
-            mask=mask,
-            normalize=normalize,
-        )
-        mask_array: float_jax_image
-        if mask is None:
-            mask_array = jnp.ones_like(measured)
-        else:
-            mask_array = jnp.asarray(mask, dtype=jnp.float64)
-        n_pixels: Float[Array, ""] = jnp.sum(mask_array) + _PROBABILITY_EPS
-        mse: Float[Array, ""] = (
-            jnp.sum(jnp.square(prepared_observed - prepared_simulated))
-            / n_pixels
-        )
+        mse: Float[Array, ""] = _masked_mean_square(residual, mask)
         weights: Float[Array, "M"] = distribution.discrete_weights
         target_weights: Float[Array, "M"] = (
             jnp.ones(weights.shape[0], dtype=jnp.float64) / weights.shape[0]
@@ -442,15 +459,18 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
         simulated_pattern: float_jax_image
         distribution: OrientationDistribution
         simulated_pattern, distribution = simulated
-        prepared_observed: float_jax_image = _prepare_pattern_for_loss(
-            measured,
-            mask=mask,
+        image_residual: float_jax_image = _prepared_residual_for_loss(
+            simulated_pattern=simulated_pattern,
+            observed_pattern=measured,
             normalize=normalize,
         )
-        prepared_simulated: float_jax_image = _prepare_pattern_for_loss(
-            simulated_pattern,
-            mask=mask,
-            normalize=normalize,
+        mask_array: float_jax_image = _mask_for_pattern(image_residual, mask)
+        n_pixels: Float[Array, ""] = jnp.maximum(
+            jnp.sum(mask_array),
+            jnp.asarray(_PROBABILITY_EPS, dtype=jnp.float64),
+        )
+        weighted_image_residual: float_jax_image = (
+            jnp.sqrt(mask_array / n_pixels) * image_residual
         )
         weights: Float[Array, "M"] = distribution.discrete_weights
         target_weights: Float[Array, "M"] = (
@@ -466,7 +486,7 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
             weights - target_weights
         )
         residual: Tuple[float_jax_image, Float[Array, "M"]] = (
-            prepared_simulated - prepared_observed,
+            weighted_image_residual,
             regularization_residual,
         )
         return residual
@@ -484,6 +504,7 @@ def fit_orientation_weights(  # noqa: PLR0913, PLR0915
         mode="adamw",
         max_steps=n_iterations_int,
         atol=convergence_tol,
+        loss_atol=float(convergence_tol),
         learning_rate=learning_rate,
     )
     fitted_distribution: OrientationDistribution = solve_result.params
@@ -586,9 +607,14 @@ def compute_fisher_information(
         )
         prepared_pattern: float_jax_image = _prepare_pattern_for_loss(
             pattern,
-            mask=mask,
+            mask=None,
             normalize=normalize,
         )
+        if mask is not None:
+            prepared_pattern = (
+                jnp.sqrt(_mask_for_pattern(prepared_pattern, mask))
+                * prepared_pattern
+            )
         return prepared_pattern.reshape(-1)
 
     jacobian: Float[Array, "P M"] = jax.jacrev(flattened_pattern_from_logits)(

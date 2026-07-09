@@ -18,6 +18,8 @@ Routine Listings
     Average pattern over Gaussian angular divergence distribution.
 :func:`apply_distribution`
     Apply a weighted distribution to a coherent amplitude closure.
+:func:`apply_distribution_intensity`
+    Apply an incoherent weighted distribution to an intensity closure.
 :func:`apply_distributions`
     Apply multiple distribution axes with nested coherent/incoherent reduction.
 :func:`decompose_beam_modes`
@@ -111,6 +113,46 @@ def apply_distribution(
         distribution.weights,
         jnp.abs(amplitudes) ** 2,
     )
+
+
+@jaxtyped(typechecker=beartype)
+def apply_distribution_intensity(
+    distribution: Distribution,
+    bound_intensity_fn: Callable[[Float[Array, "D"]], Float[Array, "H W"]],
+) -> Float[Array, "H W"]:
+    r"""Apply one incoherent distribution axis to an intensity function.
+
+    Parameters
+    ----------
+    distribution : Distribution
+        Weighted latent samples with ``ReductionMode.INCOHERENT``.
+    bound_intensity_fn : Callable[[Float[Array, "D"]], Float[Array, "H W"]]
+        Closure mapping one sample vector directly to detector intensity.
+
+    Returns
+    -------
+    intensity : Float[Array, "H W"]
+        Weighted incoherent detector intensity.
+
+    Raises
+    ------
+    ValueError
+        If ``distribution`` is configured for coherent amplitude reduction.
+
+    Notes
+    -----
+    This is the intensity-space companion to :func:`apply_distribution` for
+    callers that already produce intensities. It avoids the numerically
+    fragile ``sqrt(I)`` round-trip at exactly zero-intensity pixels.
+    """
+    if distribution.reduction is not ReductionMode.INCOHERENT:
+        raise ValueError(
+            "apply_distribution_intensity only supports incoherent axes"
+        )
+    intensities: Float[Array, "N H W"] = jax.vmap(bound_intensity_fn)(
+        distribution.samples
+    )
+    return jnp.einsum("n,nhw->hw", distribution.weights, intensities)
 
 
 def _index_product(axis_sizes: Sequence[int]) -> Int[Array, "P K"]:
@@ -870,6 +912,7 @@ def instrument_broadened_pattern(
 __all__: list[str] = [
     "angular_divergence_average",
     "apply_distribution",
+    "apply_distribution_intensity",
     "apply_distributions",
     "decompose_beam_modes",
     "decompose_beam_modes_static",

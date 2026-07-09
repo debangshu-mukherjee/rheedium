@@ -429,7 +429,7 @@ class TestReconPosteriorUncertainty(chex.TestCase):
         self.assertTrue(bool(jnp.all(inverse_mass > 0.0)))
         chex.assert_trees_all_close(
             inverse_mass,
-            jnp.diag(uncertainty.fisher_information) + 1e-6,
+            jnp.diag(uncertainty.covariance) + 1e-6,
             atol=1e-12,
         )
 
@@ -457,6 +457,72 @@ class TestReconPosteriorUncertainty(chex.TestCase):
         chex.assert_tree_all_finite(posterior.covariance)
         chex.assert_tree_all_finite(posterior.credible_interval)
         self.assertTrue(bool(jnp.all(posterior.effective_sample_size > 0.0)))
+
+    def test_short_chains_report_nan_rhat_and_gate_on_ess(self) -> None:
+        r"""R-hat is undefined for fewer than four draws and is not gated.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: R-hat is
+        undefined for fewer than four draws and is not gated.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        samples: Float[Array, "chains draws params"] = jnp.asarray(
+            [
+                [[0.0], [0.1], [0.2]],
+                [[0.0], [0.1], [0.2]],
+            ],
+            dtype=jnp.float64,
+        )
+
+        posterior: PosteriorSamples = posterior_from_samples(
+            samples=samples,
+            min_effective_sample_size=1.0,
+        )
+
+        self.assertTrue(bool(jnp.isnan(posterior.r_hat[0])))
+        self.assertTrue(bool(posterior.converged))
+
+    def test_sample_posterior_preserves_pytree_with_2d_leaf(self) -> None:
+        r"""A pytree containing a 2D array should stay one pytree chain.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: A pytree
+        containing a 2D array should stay one pytree chain.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+
+        def log_probability(
+            params: dict[str, Float[Array, "rows cols"]],
+        ) -> Float[Array, ""]:
+            return -0.5 * jnp.sum(params["W"] ** 2)
+
+        initial = {"W": jnp.zeros((2, 3), dtype=jnp.float64)}
+        posterior: PosteriorSamples = sample_posterior(
+            log_probability_fn=log_probability,
+            initial_position=initial,
+            key=jax.random.PRNGKey(23),
+            num_samples=2,
+            num_warmup=0,
+            step_size=0.1,
+            inverse_mass_matrix=jnp.ones(6, dtype=jnp.float64),
+            adapt=False,
+            min_effective_sample_size=1.0,
+        )
+
+        self.assertEqual(posterior.samples.shape[0], 1)
+        self.assertEqual(posterior.mean_tree()["W"].shape, (2, 3))
 
     def test_free_form_weight_posterior_band_contains_planted_shape(
         self,

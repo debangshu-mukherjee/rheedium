@@ -183,6 +183,18 @@ def normalized_cross_correlation(
     pattern_b = jnp.asarray(pattern_b, dtype=jnp.float64)
     centered_a: Float[Array, "H W"] = pattern_a - jnp.mean(pattern_a)
     centered_b: Float[Array, "H W"] = pattern_b - jnp.mean(pattern_b)
+    variance_a: Float[Array, ""] = jnp.mean(centered_a**2)
+    variance_b: Float[Array, ""] = jnp.mean(centered_b**2)
+    epsilon: Float[Array, ""] = jnp.asarray(1e-12, dtype=jnp.float64)
+    flat_a: Float[Array, ""] = variance_a < epsilon * jnp.mean(pattern_a) ** 2
+    flat_b: Float[Array, ""] = variance_b < epsilon * jnp.mean(pattern_b) ** 2
+    if bool(flat_a) and bool(flat_b):
+        max_abs_reference: Float[Array, ""] = jnp.max(jnp.abs(pattern_a))
+        max_abs_delta: Float[Array, ""] = jnp.max(
+            jnp.abs(pattern_a - pattern_b)
+        )
+        same_constant: bool = bool(max_abs_delta <= 1e-12 * max_abs_reference)
+        return jnp.asarray(1.0 if same_constant else 0.0, dtype=jnp.float64)
     numerator: Float[Array, ""] = jnp.sum(centered_a * centered_b)
     denominator: Float[Array, ""] = jnp.sqrt(
         jnp.sum(centered_a**2) * jnp.sum(centered_b**2)
@@ -235,6 +247,10 @@ def dominant_peak_positions(
     profile_length: int = int(profile.shape[0])
 
     for _ in range(n_peaks):
+        peak_value: Float[Array, ""] = jnp.max(working_profile)
+        if not bool(jnp.isfinite(peak_value)):
+            peak_positions.append(jnp.asarray(jnp.nan, dtype=jnp.float64))
+            continue
         peak_index: int = int(jnp.argmax(working_profile))
         peak_positions.append(jnp.asarray(peak_index, dtype=jnp.float64))
         left_idx: int = max(0, peak_index - min_separation_px)
@@ -273,7 +289,9 @@ def rod_spacing_error_px(
     simulated_spacings: Float[Array, "M"] = jnp.diff(
         jnp.sort(simulated_peak_positions_px)
     )
-    return jnp.sqrt(jnp.mean((reference_spacings - simulated_spacings) ** 2))
+    return jnp.sqrt(
+        jnp.nanmean((reference_spacings - simulated_spacings) ** 2)
+    )
 
 
 @jaxtyped(typechecker=beartype)
@@ -346,6 +364,8 @@ def streak_fwhm_px(
     """
     profile = jnp.asarray(profile, dtype=jnp.float64)
     peak_value: Float[Array, ""] = jnp.max(profile)
+    if bool(peak_value <= 0.0):
+        return jnp.asarray(0.0, dtype=jnp.float64)
     half_max: Float[Array, ""] = 0.5 * peak_value
     above_half_max: Float[Array, "N"] = (profile >= half_max).astype(
         jnp.float64

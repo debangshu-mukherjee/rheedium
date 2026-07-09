@@ -6,6 +6,7 @@ RHEED simulator cost.
 """
 
 import chex
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
@@ -20,6 +21,8 @@ from rheedium.types import (
     OrientationDistribution,
     OrientationFitResult,
     create_discrete_orientation,
+    create_gaussian_orientation,
+    create_orientation_distribution,
     integrate_over_orientation,
 )
 from rheedium.types.custom_types import scalar_float
@@ -44,6 +47,21 @@ def _true_distribution() -> OrientationDistribution:
         weights=jnp.array([0.15, 0.55, 0.30]),
         distribution_id="synthetic_truth",
     )
+
+
+def _zero_pixel_gaussian_pattern(
+    phi_deg: scalar_float,
+) -> Float[Array, "rows cols"]:
+    """Return a thresholded Gaussian spot with many exact-zero pixels."""
+    axis: Float[Array, "pixels"] = jnp.linspace(-1.0, 1.0, 16)
+    x_grid: Float[Array, "rows cols"]
+    y_grid: Float[Array, "rows cols"]
+    x_grid, y_grid = jnp.meshgrid(axis, axis, indexing="xy")
+    center: scalar_float = jnp.asarray(phi_deg, dtype=jnp.float64) / 20.0
+    raw_spot: Float[Array, "rows cols"] = jnp.exp(
+        -((x_grid - center) ** 2 + y_grid**2) / 0.08
+    )
+    return jnp.where(raw_spot > 0.08, raw_spot, 0.0)
 
 
 class TestOrientationLoss(chex.TestCase):
@@ -88,6 +106,42 @@ class TestOrientationLoss(chex.TestCase):
         )
 
         chex.assert_trees_all_close(loss, 0.0, atol=1e-10)
+
+    def test_orientation_loss_soft_mask_weights_residual_once(self) -> None:
+        r"""Soft masks should scale squared residuals linearly.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Soft masks
+        should scale squared residuals linearly.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        distribution: OrientationDistribution = create_discrete_orientation(
+            angles_deg=jnp.array([0.0]),
+            weights=jnp.array([1.0]),
+        )
+
+        def simulate_fn(_phi_deg: scalar_float) -> Float[Array, "1 2"]:
+            return jnp.array([[0.0, 1.0]], dtype=jnp.float64)
+
+        observed: Float[Array, "1 2"] = jnp.zeros((1, 2), dtype=jnp.float64)
+        mask: Float[Array, "1 2"] = jnp.array([[1.0, 0.5]], dtype=jnp.float64)
+
+        loss: scalar_float = orientation_loss(
+            distribution=distribution,
+            simulate_fn=simulate_fn,
+            observed_pattern=observed,
+            mask=mask,
+            normalize=False,
+            n_mosaic_points=1,
+        )
+
+        chex.assert_trees_all_close(loss, 1.0 / 3.0, atol=1e-12)
 
 
 class TestOrientationFitting(chex.TestCase):
@@ -148,6 +202,73 @@ class TestOrientationFitting(chex.TestCase):
             float(jnp.max(jnp.abs(result.residual_pattern))),
             1e-3,
         )
+
+    def test_zero_pixel_mosaic_gradients_and_fit_are_finite(self) -> None:
+        r"""Zero-intensity pixels should not NaN orientation gradients.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Zero-
+        intensity pixels should not NaN orientation gradients.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        base_image: Float[Array, "rows cols"] = _zero_pixel_gaussian_pattern(
+            0.0
+        )
+        zero_fraction: Float[Array, ""] = jnp.mean(base_image == 0.0)
+        self.assertGreaterEqual(float(zero_fraction), 0.4)
+
+        def loss(
+            center_deg: scalar_float, fwhm_deg: scalar_float
+        ) -> scalar_float:
+            distribution = create_orientation_distribution(
+                angles_deg=jnp.atleast_1d(center_deg),
+                weights=jnp.ones(1, dtype=jnp.float64),
+                mosaic_fwhm_deg=fwhm_deg,
+            )
+            pattern: Float[Array, "rows cols"] = integrate_over_orientation(
+                _zero_pixel_gaussian_pattern,
+                distribution,
+                n_mosaic_points=5,
+            )
+            return jnp.mean(pattern)
+
+        grad_center: scalar_float
+        grad_fwhm: scalar_float
+        grad_center, grad_fwhm = jax.grad(loss, argnums=(0, 1))(
+            jnp.asarray(0.0, dtype=jnp.float64),
+            jnp.asarray(0.4, dtype=jnp.float64),
+        )
+        chex.assert_tree_all_finite(grad_center)
+        chex.assert_tree_all_finite(grad_fwhm)
+
+        observed: Float[Array, "rows cols"] = integrate_over_orientation(
+            _zero_pixel_gaussian_pattern,
+            create_gaussian_orientation(center_deg=0.0, fwhm_deg=0.4),
+            n_mosaic_points=5,
+        )
+        result: OrientationFitResult = fit_orientation_weights(
+            observed_pattern=observed,
+            simulate_fn=_zero_pixel_gaussian_pattern,
+            candidate_angles_deg=jnp.array([-0.5, 0.0, 0.5]),
+            learning_rate=0.03,
+            n_iterations=10,
+            convergence_tol=1e-12,
+            regularization_strength=0.0,
+            entropy_weight=0.0,
+            n_mosaic_points=5,
+            normalize=False,
+        )
+
+        chex.assert_tree_all_finite(
+            result.fitted_distribution.discrete_weights
+        )
+        chex.assert_tree_all_finite(result.fitted_distribution.mosaic_fwhm_deg)
 
 
 class TestOrientationUncertainty(chex.TestCase):

@@ -1145,11 +1145,15 @@ def create_xyz_data(
 
 __all__: list[str] = [
     "CrystalStructure",
+    "EdgeOnSlices",
     "EwaldData",
+    "KirklandParameters",
     "PotentialSlices",
     "XYZData",
     "create_crystal_structure",
+    "create_edge_on_slices",
     "create_ewald_data",
+    "create_kirkland_parameters",
     "create_potential_slices",
     "create_xyz_data",
 ]

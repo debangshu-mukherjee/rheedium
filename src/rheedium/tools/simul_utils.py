@@ -24,6 +24,7 @@ These functions live in :mod:`rheedium.tools`. Prefer importing from
 ``rheedium.simul.simul_utils`` module path.
 """
 
+import equinox as eqx
 import jax.numpy as jnp
 from beartype import beartype
 from beartype.typing import Union
@@ -101,6 +102,11 @@ def wavelength_ang(
     # Convert kV to V
     voltage_v: Float[Array, "..."] = (
         jnp.asarray(energy_kev, dtype=jnp.float64) * 1000.0
+    )
+    voltage_v = eqx.error_if(
+        voltage_v,
+        voltage_v <= 0.0,
+        "energy_kev must be positive",
     )
 
     corrected_voltage: Float[Array, "..."] = voltage_v * (

@@ -247,6 +247,36 @@ class TestDifferentiableLosses(chex.TestCase):
         chex.assert_tree_all_finite(value)
         chex.assert_tree_all_finite(gradient)
 
+    def test_ncc_loss_flat_image_gradient_stays_finite(self) -> None:
+        r"""Flat bright images should not create exploding NCC gradients.
+
+        Extended Summary
+        ----------------
+        Verifies the documented behavior for this test case: Flat bright
+        images should not create exploding NCC gradients.
+
+        Notes
+        -----
+        It constructs the representative inputs inside the test body,
+        keeping the fixture and assertion path local to the documented
+        case.
+        """
+        target: Float[Array, "rows cols"] = 1.0e6 * jnp.ones(
+            (4, 4),
+            dtype=jnp.float64,
+        )
+
+        def objective(offset: scalar_float) -> scalar_float:
+            simulated: Float[Array, "rows cols"] = target + offset
+            return normalized_cross_correlation_loss(simulated, target)
+
+        gradient: scalar_float = jax.grad(objective)(
+            jnp.asarray(1.0, dtype=jnp.float64)
+        )
+
+        chex.assert_tree_all_finite(gradient)
+        self.assertLess(abs(float(gradient)), 1e-6)
+
     def test_affine_marginalization_removes_scale_and_background(self) -> None:
         r"""Analytic calibration should remove affine intensity mismatch.
 

@@ -61,23 +61,32 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import jax.numpy as jnp
+import numpy as np
+import scipy.special
 from beartype import beartype
 from jaxtyping import Array, Float
 
+import rheedium.simul.ewald as ewald_module
+from rheedium.inout import lobato_potentials
 from rheedium.simul import (
     ewald_simulator,
     kirkland_form_factor,
+    kirkland_projected_potential,
     lobato_form_factor,
+    lobato_projected_potential,
 )
-from rheedium.tools import (
-    incident_wavevector,
-    wavelength_ang,
-)
+from rheedium.tools import incident_wavevector, wavelength_ang
 from rheedium.types import (
+    ELECTRON_MASS_KG,
+    ELEMENTARY_CHARGE_C,
+    PLANCK_CONSTANT_JS,
+    SPEED_OF_LIGHT_MS,
+    CrystalStructure,
     create_crystal_structure,
     scalar_float,
     scalar_int,
 )
+from rheedium.ucell.unitcell import bulk_to_slice
 
 
 @dataclass(frozen=True)
@@ -113,21 +122,6 @@ class InvariantResult:
     detail: str
 
 
-def _simple_structure_factor(
-    reciprocal_vector: Float[Array, "3"],
-    atom_positions: Float[Array, "M 3"],
-    atomic_numbers: Array,
-) -> Float[Array, ""]:
-    """Compute a minimal kinematic structure factor intensity locally."""
-    scattering_factors: Float[Array, "M"] = atomic_numbers.astype(jnp.float64)
-    dot_products: Float[Array, "M"] = jnp.dot(
-        atom_positions, reciprocal_vector
-    )
-    phases = jnp.exp(1j * dot_products)
-    structure_factor = jnp.sum(scattering_factors * phases)
-    return jnp.abs(structure_factor) ** 2
-
-
 def _result(
     name: str,
     residual: scalar_float,
@@ -144,6 +138,97 @@ def _result(
         units=units,
         detail=detail,
     )
+
+
+def _direct_cell_vectors(
+    lengths: Float[Array, "3"],
+    angles_deg: Float[Array, "3"],
+) -> Float[Array, "3 3"]:
+    """Build direct cell vectors from lengths and angles."""
+    a_len, b_len, c_len = [float(item) for item in lengths]
+    alpha, beta, gamma = [math.radians(float(item)) for item in angles_deg]
+    sin_gamma = math.sin(gamma)
+    a_vec = np.array([a_len, 0.0, 0.0], dtype=np.float64)
+    b_vec = np.array(
+        [b_len * math.cos(gamma), b_len * sin_gamma, 0.0],
+        dtype=np.float64,
+    )
+    c_x = c_len * math.cos(beta)
+    c_y = (
+        c_len
+        * (math.cos(alpha) - math.cos(beta) * math.cos(gamma))
+        / (sin_gamma)
+    )
+    c_z = math.sqrt(max(c_len**2 - c_x**2 - c_y**2, 0.0))
+    c_vec = np.array([c_x, c_y, c_z], dtype=np.float64)
+    return jnp.asarray(np.stack([a_vec, b_vec, c_vec]), dtype=jnp.float64)
+
+
+def _reciprocal_from_direct(
+    direct_vectors: Float[Array, "3 3"],
+) -> Float[Array, "3 3"]:
+    """Build reciprocal vectors as rows from a direct-cell matrix."""
+    return 2.0 * jnp.pi * jnp.linalg.inv(direct_vectors).T
+
+
+def _relativistic_wavelength_ang_from_constants(
+    energy_kev: scalar_float,
+) -> float:
+    """Return relativistic electron wavelength from constants only."""
+    voltage = float(energy_kev) * 1.0e3
+    kinetic_energy_j = ELEMENTARY_CHARGE_C * voltage
+    rest_energy_j = ELECTRON_MASS_KG * SPEED_OF_LIGHT_MS**2
+    relativistic_factor = 1.0 + kinetic_energy_j / (2.0 * rest_energy_j)
+    momentum = math.sqrt(
+        2.0 * ELECTRON_MASS_KG * kinetic_energy_j * relativistic_factor
+    )
+    return PLANCK_CONSTANT_JS / momentum * 1.0e10
+
+
+def _crystal_from_fractional(
+    frac_xyz: Float[Array, "M 3"],
+    atomic_numbers: Float[Array, "M"],
+    lengths: Float[Array, "3"],
+    angles_deg: Float[Array, "3"],
+) -> CrystalStructure:
+    """Create a crystal from fractional coordinates and atomic numbers."""
+    direct_vectors = _direct_cell_vectors(lengths, angles_deg)
+    cart_xyz = frac_xyz @ direct_vectors
+    frac_positions = jnp.concatenate(
+        [frac_xyz, atomic_numbers[:, None]],
+        axis=1,
+    )
+    cart_positions = jnp.concatenate(
+        [cart_xyz, atomic_numbers[:, None]],
+        axis=1,
+    )
+    return create_crystal_structure(
+        frac_positions=frac_positions,
+        cart_positions=cart_positions,
+        cell_lengths=lengths,
+        cell_angles=angles_deg,
+    )
+
+
+def _gaas_zincblende_crystal() -> CrystalStructure:
+    """Return a fixed non-centrosymmetric conventional GaAs cell."""
+    frac_xyz = jnp.asarray(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.5],
+            [0.5, 0.5, 0.0],
+            [0.25, 0.25, 0.25],
+            [0.25, 0.75, 0.75],
+            [0.75, 0.25, 0.75],
+            [0.75, 0.75, 0.25],
+        ],
+        dtype=jnp.float64,
+    )
+    atomic_numbers = jnp.asarray([31.0] * 4 + [33.0] * 4, dtype=jnp.float64)
+    lengths = jnp.asarray([5.6533, 5.6533, 5.6533], dtype=jnp.float64)
+    angles = jnp.asarray([90.0, 90.0, 90.0], dtype=jnp.float64)
+    return _crystal_from_fractional(frac_xyz, atomic_numbers, lengths, angles)
 
 
 @beartype
@@ -441,13 +526,13 @@ def check_wavelength_relativistic_consistency(
 @beartype
 def check_friedel_law_structure_factor(
     g_vectors: Sequence[Sequence[scalar_float]] = (
-        (0.5, 0.0, 0.0),
-        (0.0, 0.5, 0.0),
-        (0.5, 0.5, 0.0),
-        (0.3, 0.4, 0.2),
-        (1.0, 0.0, 0.5),
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (1.0, 1.0, 0.0),
+        (1.0, 2.0, 1.0),
+        (2.0, 0.0, 1.0),
     ),
-    relative_tolerance: scalar_float = 1.0e-6,
+    relative_tolerance: scalar_float = 1.0e-10,
 ) -> InvariantResult:
     r"""Verify :math:`I(\mathbf{G}) = I(-\mathbf{G})` for the structure factor.
 
@@ -458,8 +543,9 @@ def check_friedel_law_structure_factor(
     :math:`|F(-\mathbf{G})|^{2} = |F(\mathbf{G})|^{2}`. This must hold
     for any (non-centrosymmetric) crystal.
 
-    Uses an asymmetric two-atom basis to avoid trivially satisfying
-    Friedel's law via centrosymmetry.
+    Uses a fixed non-centrosymmetric GaAs zincblende cell and the production
+    structure-factor path, including real form factors and Debye-Waller
+    damping, so the check exercises the same code used by simulation.
 
     :see: :func:`~.test_friedel_law_structure_factor`
 
@@ -478,27 +564,35 @@ def check_friedel_law_structure_factor(
     InvariantResult
         Worst-case relative asymmetry between paired reflections.
     """
-    atom_positions = jnp.array(
-        [
-            [0.0, 0.0, 0.0],
-            [0.31, 0.42, 0.17],
-            [0.65, 0.18, 0.79],
-        ],
-        dtype=jnp.float64,
+    crystal = _gaas_zincblende_crystal()
+    reciprocal_basis = _reciprocal_from_direct(
+        _direct_cell_vectors(crystal.cell_lengths, crystal.cell_angles)
     )
-    atomic_numbers = jnp.array([14, 8, 22], dtype=jnp.int32)
+    atom_positions = crystal.cart_positions[:, :3]
+    atomic_numbers = crystal.cart_positions[:, 3].astype(jnp.int32)
 
     worst = 0.0
     worst_g = g_vectors[0]
     for g in g_vectors:
-        g_pos = jnp.array(g, dtype=jnp.float64)
+        hkl = jnp.array(g, dtype=jnp.float64)
+        g_pos = hkl @ reciprocal_basis
         g_neg = -g_pos
-        intensity_pos = float(
-            _simple_structure_factor(g_pos, atom_positions, atomic_numbers)
+        structure_factor_pos = ewald_module._compute_structure_factor_single(
+            g_pos,
+            atom_positions,
+            atomic_numbers,
+            300.0,
+            "kirkland",
         )
-        intensity_neg = float(
-            _simple_structure_factor(g_neg, atom_positions, atomic_numbers)
+        structure_factor_neg = ewald_module._compute_structure_factor_single(
+            g_neg,
+            atom_positions,
+            atomic_numbers,
+            300.0,
+            "kirkland",
         )
+        intensity_pos = float(jnp.abs(structure_factor_pos) ** 2)
+        intensity_neg = float(jnp.abs(structure_factor_neg) ** 2)
         denom = max(abs(intensity_pos), 1.0e-30)
         rel_error = abs(intensity_pos - intensity_neg) / denom
         if rel_error > worst:
@@ -511,8 +605,9 @@ def check_friedel_law_structure_factor(
         tolerance=relative_tolerance,
         units="dimensionless (relative)",
         detail=(
-            "worst |I(G) - I(-G)| / I(G) over a non-centrosymmetric "
-            f"three-atom basis; worst at G={tuple(worst_g)}"
+            "worst |I(G) - I(-G)| / I(G) through production structure "
+            "factors for non-centrosymmetric GaAs; worst at "
+            f"hkl={tuple(worst_g)}"
         ),
     )
 
@@ -525,18 +620,13 @@ def check_elastic_closure_ewald(
     kmax: scalar_int = 3,
     relative_tolerance: scalar_float = 1.0e-4,
 ) -> InvariantResult:
-    r"""Verify elastic closure for ``ewald_simulator``.
+    r"""Verify the rod-Ewald quadratic closure used by ``ewald_simulator``.
 
-    Asserts :math:`\|\mathbf{k}_{out}\| = \|\mathbf{k}_{in}\|` for
-    every reflection returned by the exact rod-Ewald intersection.
-
-    Elastic scattering preserves kinetic energy, so every outgoing
-    wavevector returned by a RHEED simulator must lie on the Ewald
-    sphere of radius :math:`\|\mathbf{k}_{in}\| = 2\pi / \lambda`. A
-    deviation from this constraint indicates an inconsistent definition
-    of :math:`\mathbf{k}` (with vs without the :math:`2\pi`), an
-    incorrect rod-Ewald intersection, or a frame-of-reference bug in
-    the projection.
+    This check is scoped to the algebra of the exact rod-sphere quadratic:
+    each returned outgoing vector must remain on the elastic sphere, and its
+    momentum transfer must match the returned rod index when recomputed from
+    an independent reciprocal basis. It is not a full detector-calibration or
+    intensity invariant.
 
     Uses :func:`rheedium.simul.ewald_simulator`, which solves the
     rod-sphere intersection exactly rather than searching a discrete
@@ -595,13 +685,24 @@ def check_elastic_closure_ewald(
         kmax=kmax,
     )
 
-    lam = float(wavelength_ang(energy_kev))
-    k_in = incident_wavevector(lam, theta_deg)
+    wavelength_reference = _relativistic_wavelength_ang_from_constants(
+        energy_kev
+    )
+    k_magnitude_reference = 2.0 * math.pi / wavelength_reference
+    k_in = incident_wavevector(
+        wavelength_ang(energy_kev),
+        theta_deg,
+        0.0,
+    )
     k_in_magnitude = float(jnp.linalg.norm(k_in))
+    k_in_reference_error = (
+        abs(k_in_magnitude - k_magnitude_reference) / k_magnitude_reference
+    )
 
     intensities = jnp.asarray(pattern.intensities)
+    g_indices = jnp.asarray(pattern.G_indices)
     k_out = jnp.asarray(pattern.k_out)
-    valid_mask = intensities > 0.0
+    valid_mask = (intensities > 0.0) & (g_indices >= 0)
     if not bool(jnp.any(valid_mask)):
         return _result(
             name="elastic_closure_ewald",
@@ -614,9 +715,39 @@ def check_elastic_closure_ewald(
             ),
         )
     k_out_valid = k_out[valid_mask]
+    g_indices_valid = g_indices[valid_mask]
     k_out_magnitudes = jnp.linalg.norm(k_out_valid, axis=1)
     rel_errors = jnp.abs(k_out_magnitudes - k_in_magnitude) / k_in_magnitude
-    worst = float(jnp.max(rel_errors))
+    elastic_error = float(jnp.max(rel_errors))
+
+    direct_vectors = _direct_cell_vectors(cell_lengths, cell_angles)
+    reciprocal_basis = _reciprocal_from_direct(direct_vectors)
+    inverse_reciprocal = jnp.linalg.inv(reciprocal_basis)
+    q_vectors: Float[Array, "N 3"] = k_out_valid - k_in
+    hkl_coefficients: Float[Array, "N 3"] = q_vectors @ inverse_reciprocal
+    n_k: int = 2 * int(kmax) + 1
+    h_values = (g_indices_valid // n_k - int(hmax)).astype(jnp.float64)
+    k_values = (g_indices_valid % n_k - int(kmax)).astype(jnp.float64)
+    index_error = float(
+        jnp.max(
+            jnp.maximum(
+                jnp.abs(hkl_coefficients[:, 0] - h_values),
+                jnp.abs(hkl_coefficients[:, 1] - k_values),
+            )
+        )
+    )
+    rebuilt_q: Float[Array, "N 3"] = (
+        h_values[:, None] * reciprocal_basis[0]
+        + k_values[:, None] * reciprocal_basis[1]
+        + hkl_coefficients[:, 2:3] * reciprocal_basis[2]
+    )
+    q_error = float(
+        jnp.max(
+            jnp.linalg.norm(rebuilt_q - q_vectors, axis=1)
+            / jnp.maximum(jnp.linalg.norm(q_vectors, axis=1), 1.0)
+        )
+    )
+    worst = max(elastic_error, k_in_reference_error, index_error, q_error)
 
     return _result(
         name="elastic_closure_ewald",
@@ -624,9 +755,222 @@ def check_elastic_closure_ewald(
         tolerance=relative_tolerance,
         units="dimensionless (relative)",
         detail=(
-            "worst (||k_out|| - ||k_in||) / ||k_in|| over all valid "
-            f"ewald_simulator reflections from a cubic test crystal "
-            f"at V={energy_kev} kV"
+            "worst of elastic-sphere error, constants-derived |k_in| error, "
+            "and independent reciprocal-basis reconstruction error over "
+            f"valid ewald_simulator reflections at V={energy_kev} kV"
+        ),
+    )
+
+
+@beartype
+def check_lobato_bethe_sum_rule(
+    relative_tolerance: scalar_float = 1.0e-3,
+) -> InvariantResult:
+    r"""Verify the loaded Lobato table satisfies the Bethe sum rule."""
+    params = np.asarray(lobato_potentials(), dtype=np.float64)
+    amplitudes = params[:, 0::2]
+    scales = params[:, 1::2]
+    atomic_numbers = np.arange(1, params.shape[0] + 1, dtype=np.float64)
+    expected = 0.0957336 * atomic_numbers
+    actual = np.sum(amplitudes / scales, axis=1)
+    relative_errors = np.abs(actual - expected) / expected
+    worst = float(np.max(relative_errors))
+    worst_z = int(np.argmax(relative_errors) + 1)
+    return _result(
+        name="lobato_bethe_sum_rule",
+        residual=worst,
+        tolerance=relative_tolerance,
+        units="dimensionless (relative)",
+        detail=(
+            "worst relative error in sum(a_i / b_i) = 0.0957336 Z "
+            f"over the loaded Lobato table, dominated by Z={worst_z}"
+        ),
+    )
+
+
+@beartype
+def check_projected_potential_hankel_pair(
+    relative_tolerance: scalar_float = 5.0e-2,
+) -> InvariantResult:
+    r"""Verify one Hankel-pair point for each form-factor parameterization."""
+    g_grid = np.linspace(0.0, 80.0, 50_000)
+    q_grid = jnp.asarray(2.0 * np.pi * g_grid, dtype=jnp.float64)
+    prefactor = 47.87801 * 2.0 * np.pi
+    checks: tuple[
+        tuple[
+            str,
+            Callable[[int, Float[Array, " n"]], Float[Array, " n"]],
+            Callable[[int, Float[Array, " r"]], Float[Array, " r"]],
+        ],
+        ...,
+    ] = (
+        ("kirkland", kirkland_form_factor, kirkland_projected_potential),
+        ("lobato", lobato_form_factor, lobato_projected_potential),
+    )
+    worst = 0.0
+    worst_name = checks[0][0]
+    z_value = 14
+    r_ang = 0.5
+    for name, form_factor_fn, potential_fn in checks:
+        form_factor = np.asarray(form_factor_fn(z_value, q_grid))
+        integrand = (
+            form_factor
+            * scipy.special.j0(2.0 * np.pi * g_grid * r_ang)
+            * g_grid
+        )
+        reference = prefactor * np.trapezoid(integrand, g_grid)
+        observed = float(potential_fn(z_value, jnp.asarray([r_ang]))[0])
+        relative_error = abs(observed / reference - 1.0)
+        if relative_error > worst:
+            worst = relative_error
+            worst_name = name
+    return _result(
+        name="projected_potential_hankel_pair",
+        residual=worst,
+        tolerance=relative_tolerance,
+        units="dimensionless (relative)",
+        detail=(
+            "worst Hankel-pair relative error at Z=14, r=0.5 Å, "
+            f"dominated by {worst_name}"
+        ),
+    )
+
+
+@beartype
+def check_srtio3_001_slab_density(
+    relative_tolerance: scalar_float = 5.0e-2,
+) -> InvariantResult:
+    r"""Verify ``bulk_to_slice`` preserves SrTiO3(001) bulk density."""
+    lattice_constant = 3.905
+    frac_xyz = jnp.asarray(
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.0],
+            [0.5, 0.0, 0.5],
+            [0.0, 0.5, 0.5],
+        ],
+        dtype=jnp.float64,
+    )
+    atomic_numbers = jnp.asarray([38.0, 22.0, 8.0, 8.0, 8.0])
+    lengths = jnp.asarray([lattice_constant] * 3, dtype=jnp.float64)
+    angles = jnp.asarray([90.0, 90.0, 90.0], dtype=jnp.float64)
+    crystal = _crystal_from_fractional(
+        frac_xyz,
+        atomic_numbers,
+        lengths,
+        angles,
+    )
+    depth = 20.0
+    x_extent = 40.0
+    y_extent = 40.0
+    slab = bulk_to_slice(
+        crystal,
+        jnp.asarray([0, 0, 1], dtype=jnp.int32),
+        depth,
+        x_extent,
+        y_extent,
+    )
+    bulk_density = 5.0 / lattice_constant**3
+    expected_atoms = bulk_density * depth * x_extent * y_extent
+    actual_atoms = float(slab.cart_positions.shape[0])
+    residual = abs(actual_atoms / expected_atoms - 1.0)
+    return _result(
+        name="srtio3_001_slab_density",
+        residual=residual,
+        tolerance=relative_tolerance,
+        units="dimensionless (relative)",
+        detail=(
+            "relative atom-count density error for an in-memory SrTiO3(001) "
+            "bulk_to_slice slab"
+        ),
+    )
+
+
+@beartype
+def check_triclinic_frame_contract(
+    tolerance: scalar_float = 1.0e-10,
+) -> InvariantResult:
+    r"""Validate fractional/cartesian and reciprocal contracts in triclinic."""
+    lengths = jnp.asarray([3.2, 4.1, 5.3], dtype=jnp.float64)
+    angles = jnp.asarray([73.0, 82.0, 111.0], dtype=jnp.float64)
+    frac_xyz = jnp.asarray(
+        [
+            [0.1, 0.2, 0.3],
+            [0.6, 0.4, 0.8],
+            [0.25, 0.75, 0.5],
+        ],
+        dtype=jnp.float64,
+    )
+    atomic_numbers = jnp.asarray([14.0, 8.0, 22.0], dtype=jnp.float64)
+    crystal = _crystal_from_fractional(
+        frac_xyz,
+        atomic_numbers,
+        lengths,
+        angles,
+    )
+    direct_vectors = _direct_cell_vectors(lengths, angles)
+    recovered_frac = crystal.cart_positions[:, :3] @ jnp.linalg.inv(
+        direct_vectors
+    )
+    reciprocal_basis = _reciprocal_from_direct(direct_vectors)
+    reciprocal_contract = direct_vectors @ reciprocal_basis.T / (2.0 * jnp.pi)
+    residual = float(
+        jnp.maximum(
+            jnp.max(jnp.abs(recovered_frac - frac_xyz)),
+            jnp.max(
+                jnp.abs(
+                    reciprocal_contract
+                    - jnp.eye(3, dtype=reciprocal_contract.dtype)
+                )
+            ),
+        )
+    )
+    return _result(
+        name="triclinic_frame_contract",
+        residual=residual,
+        tolerance=tolerance,
+        units="absolute",
+        detail=(
+            "max absolute fractional-coordinate and A·Bᵀ/(2π) contract "
+            "error for an in-memory triclinic crystal"
+        ),
+    )
+
+
+@beartype
+def check_refraction_k_parallel_conservation(
+    relative_tolerance: scalar_float = 1.0e-10,
+) -> InvariantResult:
+    r"""Verify inner-potential refraction conserves surface-parallel k."""
+    from rheedium.simul.simulator import _refraction_wavevector_components
+
+    energy_kev = 20.0
+    theta_deg = 2.0
+    inner_potential_v0 = 15.0
+    wavelength = float(wavelength_ang(energy_kev))
+    k_magnitude = 2.0 * math.pi / wavelength
+    theta_rad = math.radians(theta_deg)
+    k_parallel_expected = k_magnitude * math.cos(theta_rad)
+    k_z_vacuum = k_magnitude * math.sin(theta_rad)
+    k_parallel, k_z_inside = _refraction_wavevector_components(
+        energy_kev=energy_kev,
+        theta_deg=theta_deg,
+        inner_potential_v0=inner_potential_v0,
+    )
+    parallel_error = abs(float(k_parallel) / k_parallel_expected - 1.0)
+    lhs = float(k_z_inside) ** 2 - k_z_vacuum**2
+    rhs = k_magnitude**2 * inner_potential_v0 / (energy_kev * 1000.0)
+    normal_error = abs(lhs / rhs - 1.0)
+    residual = max(parallel_error, normal_error)
+    return _result(
+        name="refraction_k_parallel_conservation",
+        residual=residual,
+        tolerance=relative_tolerance,
+        units="dimensionless (relative)",
+        detail=(
+            "max relative error in k_parallel continuity and the k_z "
+            "inner-potential identity at 20 kV"
         ),
     )
 
@@ -661,4 +1005,9 @@ def run_default_invariants() -> list[InvariantResult]:
     results.append(check_wavelength_relativistic_consistency())
     results.append(check_friedel_law_structure_factor())
     results.append(check_elastic_closure_ewald())
+    results.append(check_lobato_bethe_sum_rule())
+    results.append(check_projected_potential_hankel_pair())
+    results.append(check_srtio3_001_slab_density())
+    results.append(check_triclinic_frame_contract())
+    results.append(check_refraction_k_parallel_conservation())
     return results
