@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.15"]
+# dependencies = ["rheedium==2026.6.16"]
 # ///
 """Simulate one reflection multislice RHEED detector image.
 

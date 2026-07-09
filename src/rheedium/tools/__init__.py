@@ -22,6 +22,8 @@ The submodules are organized as follows:
     Parallel processing utilities for distributed RHEED simulations.
 - :mod:`quadrature`
     Quadrature helpers shared across the rheedium package.
+- :mod:`safe_math`
+    Gradient-safe elementary math for differentiable simulation paths.
 - :mod:`simul_utils`
     Shared utility functions for RHEED simulation modules.
 - :mod:`special`
@@ -38,6 +40,14 @@ Routine Listings
 :func:`bessel_kv`
     Modified Bessel function of the second kind, arbitrary real
     order.
+:func:`safe_arccos`
+    Inverse cosine with finite gradients at the domain edges.
+:func:`safe_divide`
+    Quotient with a sign-preserving denominator floor.
+:func:`safe_norm`
+    Vector norm with a finite (zero) gradient at the zero vector.
+:func:`safe_sqrt`
+    Square root with a finite (zero) gradient at zero.
 :func:`bucketize_grid`
     Snap a requested detector grid up to the nearest exported bucket.
 :func:`deserialize_exported`
@@ -94,6 +104,12 @@ from .exporting import (
 )
 from .parallel import distribute_batched, shard_array
 from .quadrature import gauss_hermite_nodes_weights
+from .safe_math import (
+    safe_arccos,
+    safe_divide,
+    safe_norm,
+    safe_sqrt,
+)
 from .simul_utils import (
     incidence_angles_to_radians,
     incident_wavevector,
@@ -118,6 +134,10 @@ __all__: list[str] = [
     "incident_wavevector",
     "interaction_constant",
     "jax_safe",
+    "safe_arccos",
+    "safe_divide",
+    "safe_norm",
+    "safe_sqrt",
     "serialize_exported",
     "shard_array",
     "wavelength_ang",

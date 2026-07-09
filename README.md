@@ -14,7 +14,16 @@
 [![Lines of Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/.github/badges/loc.json)](https://github.com/debangshu-mukherjee/rheedium)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/_static/readme/rheed-sweep-gallery.png" alt="Simulated RHEED detector images for SrTiO3, MgO, and Bi2Se3" width="900">
+  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/_static/readme/rheed-sweep-gallery.png" alt="Simulated RHEED detector images for SrTiO3, MgO, and Bi2Se3 (linear intensity)" width="900">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/debangshu-mukherjee/rheedium/main/docs/source/_static/readme/rheed-sweep-gallery-log.png" alt="The same simulated RHEED detector images on a log-intensity scale, revealing the fainter diffracted rods" width="900">
+  <br>
+  <em>Top: linear intensity, as a phosphor screen would show it — the specular
+  reflection dominates. Bottom: the same patterns on a log-intensity scale,
+  revealing how many orders of magnitude the diffracted rod intensities
+  span.</em>
 </p>
 
 ## Overview

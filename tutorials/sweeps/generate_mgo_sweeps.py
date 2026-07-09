@@ -145,8 +145,8 @@ def main() -> None:
     crystal = rh.inout.parse_cif(repo_root / "tests" / "test_data" / "MgO.cif")
     settings = {
         "material": "MgO",
-        "energy_kev": 20.0,
-        "theta_deg": 2.2,
+        "energy_kev": 18.0,
+        "theta_deg": 4.5,
         "phi_deg": 0.0,
         "hmax": 14,
         "kmax": 14,
@@ -189,7 +189,7 @@ def main() -> None:
         ]
     )
     np.savez_compressed(
-        sweeps_dir / "mgo_theta2p2_phi_sweep.npz",
+        sweeps_dir / "mgo_theta4p5_phi_sweep.npz",
         image_bank=phi_display_bank,
         parameter_values=phi_values,
         parameter_name="phi_deg",
@@ -219,7 +219,7 @@ def main() -> None:
         ]
     )
     np.savez_compressed(
-        sweeps_dir / "mgo_theta2p2_roughness_sweep.npz",
+        sweeps_dir / "mgo_theta4p5_roughness_sweep.npz",
         image_bank=roughness_display_bank,
         parameter_values=roughness_values,
         parameter_name="surface_roughness",
@@ -235,8 +235,8 @@ def main() -> None:
         log_gain=settings["log_gain"],
     )
 
-    print(sweeps_dir / "mgo_theta2p2_phi_sweep.npz")
-    print(sweeps_dir / "mgo_theta2p2_roughness_sweep.npz")
+    print(sweeps_dir / "mgo_theta4p5_phi_sweep.npz")
+    print(sweeps_dir / "mgo_theta4p5_roughness_sweep.npz")
 
 
 if __name__ == "__main__":

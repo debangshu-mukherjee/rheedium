@@ -286,7 +286,10 @@ rendered validation docs.
 
 Each module starts with a one-line summary, an `Extended Summary`, a
 `Routine Listings` section cross-referencing every public object, and a
-`Notes` section where relevant:
+`Notes` section where relevant. For a package `__init__.py`, the
+`Extended Summary` must always list **every submodule `.py` file** (as
+`- :mod:`name`` entries with a one-line description) — when you add a new
+submodule, add it to that listing in the same change:
 
 ```python
 """Functions for unit cell calculations and transformations.

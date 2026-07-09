@@ -28,6 +28,11 @@ Validation and regression tests for :mod:`rheedium.tools`.
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: tests.test_rheedium.test_tools.test_safe_math
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: tests.test_rheedium.test_tools.test_special
    :members:
    :undoc-members:

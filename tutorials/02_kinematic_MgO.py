@@ -354,11 +354,11 @@ plt.show()
 
 # %%
 mgo_phi_sweep_data = np.load(
-    repo_root / "tutorials" / "sweeps" / "mgo_theta2p2_phi_sweep.npz",
+    repo_root / "tutorials" / "sweeps" / "mgo_theta4p5_phi_sweep.npz",
     allow_pickle=False,
 )
 mgo_roughness_sweep_data = np.load(
-    repo_root / "tutorials" / "sweeps" / "mgo_theta2p2_roughness_sweep.npz",
+    repo_root / "tutorials" / "sweeps" / "mgo_theta4p5_roughness_sweep.npz",
     allow_pickle=False,
 )
 

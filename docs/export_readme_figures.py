@@ -26,6 +26,9 @@ OUTPUT_DIR: Final[Path] = (
     PROJECT_ROOT / "docs" / "source" / "_static" / "readme"
 )
 README_GALLERY: Final[Path] = OUTPUT_DIR / "rheed-sweep-gallery.png"
+README_GALLERY_LOG: Final[Path] = (
+    OUTPUT_DIR / "rheed-sweep-gallery-log.png"
+)
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,7 @@ class RenderedPanel:
     parameter_value: float
     theta_deg: float
     energy_kev: float
+    log_gain: float
 
 
 README_PANELS: Final[tuple[SweepPanel, ...]] = (
@@ -58,7 +62,7 @@ README_PANELS: Final[tuple[SweepPanel, ...]] = (
     # mirror-symmetric about the specular rod. Off-axis frames (e.g. phi = 10
     # deg) are physically asymmetric and read poorly as a hero image.
     SweepPanel("SrTiO3", "sto_theta4_phi_sweep.npz", 0),
-    SweepPanel("MgO", "mgo_theta2p2_phi_sweep.npz", 0),
+    SweepPanel("MgO", "mgo_theta4p5_phi_sweep.npz", 0),
     SweepPanel("Bi2Se3", "bi2se3_theta2p5_phi_sweep.npz", 0),
 )
 
@@ -154,6 +158,7 @@ def _load_panel(panel: SweepPanel) -> RenderedPanel:
             parameter_value=float(parameter_values[panel.frame_index]),
             theta_deg=_load_float_scalar(data, "theta_deg"),
             energy_kev=_load_float_scalar(data, "energy_kev"),
+            log_gain=_load_float_scalar(data, "log_gain"),
         )
         return rendered
     finally:
@@ -193,7 +198,19 @@ def _display_window(
     return (-x_half, x_half), (0.0, y_top)
 
 
-def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
+def _linear_frame(
+    display: NDArray[np.float64],
+    log_gain: float,
+) -> NDArray[np.float64]:
+    """Invert ``log_compress_image`` back to normalized linear intensity."""
+    scale = np.log1p(log_gain)
+    return np.expm1(np.clip(display, 0.0, 1.0) * scale) / log_gain
+
+
+def export_readme_gallery(
+    output_path: Path = README_GALLERY,
+    display_mode: str = "linear",
+) -> Path:
     """Render a compact README gallery from tutorial sweep banks."""
     panels: tuple[RenderedPanel, ...] = tuple(
         _load_panel(panel) for panel in README_PANELS
@@ -221,10 +238,16 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
         parameter_value: str = f"{panel.parameter_value:.0f}"
         if panel.parameter_unit:
             parameter_value = f"{parameter_value} {panel.parameter_unit}"
-        # Gamma-brighten the stored log-compressed frame so the fainter
-        # diffracted rods are visible next to the specular spot.
+        # The stored frame is log-compressed for display. "log" mode shows
+        # it gamma-brightened so faint rods sit next to the specular;
+        # "linear" mode inverts the compression so relative intensities are
+        # physical.
+        if display_mode == "log":
+            display_frame = np.power(np.clip(panel.image, 0.0, 1.0), 0.4)
+        else:
+            display_frame = _linear_frame(panel.image, panel.log_gain)
         image_artist: AxesImage = axis.imshow(
-            np.power(np.clip(panel.image, 0.0, 1.0), 0.4),
+            display_frame,
             cmap=create_phosphor_colormap(),
             extent=panel.extent_mm,
             origin="lower",
@@ -255,7 +278,8 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
         axis.text(
             0.03,
             0.04,
-            f"{panel.theta_deg:g} deg, {panel.energy_kev:g} keV",
+            f"{panel.theta_deg:g} deg, {panel.energy_kev:g} keV, "
+            f"{display_mode} intensity",
             color="#ededed",
             fontsize=8,
             transform=axis.transAxes,
@@ -280,8 +304,12 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
 
 def main() -> int:
     """Generate all README figures."""
-    output_path: Path = export_readme_gallery()
-    print(f"Wrote {output_path.relative_to(PROJECT_ROOT)}")
+    for path, mode in (
+        (README_GALLERY, "linear"),
+        (README_GALLERY_LOG, "log"),
+    ):
+        output_path: Path = export_readme_gallery(path, display_mode=mode)
+        print(f"Wrote {output_path.relative_to(PROJECT_ROOT)}")
     return 0
 
 
