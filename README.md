@@ -314,6 +314,18 @@ See
 for conventions (numpydoc docstrings, jaxtyping idioms, the tests-mirror-src
 layout, and the type-checker configuration rationale).
 
+### 2026-07 physics remediation
+
+A systematic red-team audit in July 2026 surfaced ~60 verified physics and
+implementation defects across the scattering, crystallography, I/O, kinematic,
+CTR, multislice, surface, reconstruction, audit, and tooling layers. All were
+fixed in a phased remediation (Phases 1–12), each work package anchored by
+external-truth tests (SciPy, closed-form constants, analytic identities) in
+`tests/test_rheedium/test_physics_anchors.py` and guarded going forward by
+`rh.audit.run_default_invariants()`. The per-work-package record, with finding
+IDs, is in the "Red-team remediation" section of
+[CHANGELOG.md](https://github.com/debangshu-mukherjee/rheedium/blob/main/CHANGELOG.md).
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/debangshu-mukherjee/rheedium/blob/main/LICENSE) file for details.

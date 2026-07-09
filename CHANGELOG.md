@@ -11,6 +11,73 @@ Each entry summarizes the commits that landed for that version bump in
 
 ### Red-team remediation
 
+- Final integration (Phase 12). Regenerated the synthetic reference-image
+  fixtures (`mgo001`, `srtio3_001`) on the fully-fixed pipeline and
+  un-`xfail`ed the two benchmark regression tests (WP8.11/N23), which now
+  pin pixel output (`atol=1e-12`) and self-consistent benchmark metrics
+  (NCC = 1, all geometry errors = 0). All twelve `run_default_invariants`
+  checks pass, including the new Phase-8 physics invariants.
+- Corrected the Ewald construction diagrams (Phase 10, WP10.1/WP10.2, M19).
+  `plot_ewald_sphere_2d` now draws `k_out` from the sphere center
+  `C = −k_in` to the specular rod–sphere intersection `P = (0, 2k sinθ)`
+  (asserted on the sphere to 1e-9, `|P − C| = k`) and `k_in` from `C` to
+  the reciprocal origin; `plot_ewald_sphere_3d` meshes the near-origin
+  belt (`v ∈ [π/2 − 0.15, π/2 + 0.15]`) instead of the north-pole cap, so
+  the drawn surface actually intersects the drawn rods (min distance to
+  the origin rod < 0.5 Å⁻¹, was ≈ 45).
+- Hardened the data-parallel harness during integration.
+  `tools.distribute_batched` now edge-replicates padding rows by default
+  (`pad_value=None`) so the rows appended to reach a device multiple are
+  always valid inputs to runtime checks — fixing an 8-device all-reduce
+  deadlock where the new `wavelength_ang` guard fired on zero-padded sweep
+  rows; an explicit float still selects legacy constant padding.
+- Fixed the tools and types layer (Phase 9). `tools.special.bessel_kv`
+  (WP9.1/M28) was rebuilt — integer orders via stable upward recurrence
+  (static cap 50, `eqx.error_if` beyond), half-integers via exact closed
+  forms, non-integers via an 8-term asymptotic series — matching SciPy to
+  `<1e-6` (integer), `<1e-12` (half-integer) and `<1e-3` (non-integer
+  midrange), with `bessel_kv(0, x) == bessel_k0(x)`. The exponential size
+  distribution (WP9.2/M29a) discretizes the truncated exponential by
+  equal-probability bin centroids (`E[L]` within 0.5 %, skewness within
+  10 % of 2). `shard_array` (WP9.3/M29b) honors its `devices` argument via
+  `jax.make_mesh(..., devices=...)`. `SurfaceConfig` (WP9.4/N14) is now an
+  `eqx.Module` with `explicit_mask` as an array leaf and scalar fields
+  `static=True`, and `SurfaceCTRParams.surface_config` is a pytree child,
+  so equal-but-fresh masks no longer force recompilation.
+  `discretize_orientation` (WP9.5/N16) drops the ignored `n_sigma_range`
+  parameter and `create_orientation_distribution`'s docstring matches its
+  raise-on-negative-FWHM behavior. The harness (WP9.6/N17, N25) re-execs
+  on `--unchecked` with `RHEEDIUM_DISABLE_RUNTIME_CHECKS=1` (loop-guarded)
+  and `emit` writes strict JSON (`allow_nan=False`) with a non-finite →
+  `null` sanitizer. Small-tool sweep (WP9.7/N25): `wavelength_ang` rejects
+  non-positive energy, `jax_safe` forwards `**kwargs`, XLA-flag dedup is
+  token-wise, and `crystal_types.__all__` exports `EdgeOnSlices` /
+  `KirklandParameters` and their factories.
+- Made the reconstruction and audit layers trustworthy (Phase 8).
+  Incoherent orientation averaging (WP8.1/M22) sums intensities directly
+  through the new `apply_distribution_intensity` (no `√I` complex
+  round-trip), so gradients are finite at exactly-zero pixels and
+  `fit_orientation_weights` no longer raises. `laplace_inverse_mass_matrix`
+  (WP8.2/M23) returns the posterior covariance (blackjax convention), not
+  precision. `multistart` (WP8.3/M24) guards `nanargmin` (all-NaN → first
+  result, `converged=False`, warning) and `converged` (WP8.4/M25) reflects
+  solver success only, with an explicit opt-in `loss_atol`. The
+  ordered-bounded transform (WP8.5/M26) gained a correct inverse
+  (`∂x_N/∂z_i ≠ 0`, `x[-1] < upper` strictly). Orientation residuals
+  (WP8.6/M17) are mask-weighted (`Σ(mask·r²)/Σmask`). `sample_posterior`
+  (WP8.7/N21) only takes the 2-D `(chains, params)` path for
+  `jax.Array`, never pytrees. `reconstruct_incoherent_weights` (WP8.8/N24)
+  uses projected-gradient NNLS (residual strictly below clip-renormalize)
+  and `_split_r_hat` returns NaN for `n_draws < 4`, gating on ESS. Audit
+  invariants (WP8.9/M27) call the production structure factor for the
+  Friedel check on non-centrosymmetric GaAs, add independent legs to the
+  elastic closure, and register five new invariants (Bethe sum rule,
+  Hankel pair, slab density, triclinic frame contract, k∥ conservation).
+  Metric guards (WP8.10/N8, N22) handle non-positive peaks, all-masked
+  peaks (nan-aware), and constant images, and scale the recon NCC-loss
+  `ε` by the image second moment so the flat-image gradient no longer
+  explodes. The reference benchmark (WP8.11/N23) uses the tensor-product
+  incoherent average over `θ × E`.
 - Rebuilt the surface layer (Phase 7 Wave 2). `create_surface_slab`
   (WP7.1/C5) now cuts the true `(hkl)` surface: it reuses
   `reorient_to_zone_axis` and reduces the in-plane cell to its primitive

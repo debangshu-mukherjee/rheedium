@@ -506,6 +506,12 @@ class TestDiagramPlots:
         Verifies the numeric construction geometry for the 2D Ewald sphere:
         the specular rod intersection drawn by the figure lies exactly on the
         sphere centered at the negative incident wavevector.
+
+        Notes
+        -----
+        It reconstructs the drawn `C`, `k`, and specular intersection `P` in
+        the test body and asserts `|P - C| == k` and that `P` lies inside the
+        axes limits.
         """
         energy_kev: float = 20.0
         theta_deg: float = 3.0
@@ -568,6 +574,12 @@ class TestDiagramPlots:
         Verifies the numeric construction geometry for the 3D Ewald sphere:
         the plotted near-origin belt includes mesh vertices close enough to
         the vertical reciprocal rod through the origin.
+
+        Notes
+        -----
+        It reconstructs the plotted belt mesh in the test body and asserts the
+        minimum vertex distance to the origin rod is below the documented
+        threshold.
         """
         energy_kev: float = 15.0
         theta_deg: float = 2.0

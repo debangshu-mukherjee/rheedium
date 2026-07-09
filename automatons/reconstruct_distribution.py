@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
-# dependencies = ["rheedium==2026.6.10"]
+# dependencies = ["rheedium==2026.6.15"]
 # ///
 """Recover an incoherent distribution with rheedium.recon.
 

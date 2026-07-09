@@ -55,6 +55,21 @@ jobs:
       with:
         fetch-depth: 2
 
+    # The automaton smoke tests spawn `uv run --with-editable .` subprocesses,
+    # each of which materializes a fresh ephemeral environment (jax, matplotlib,
+    # pandas, …) alongside the synced .venv. On the ~14 GB ubuntu runner these
+    # exhaust the disk ("No space left on device"). Reclaim the large
+    # preinstalled toolchains we do not use before building any environment.
+    - name: Free disk space (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "Disk before cleanup:"; df -h /
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        sudo docker image prune --all --force || true
+        echo "Disk after cleanup:"; df -h /
+
     # Defender real-time scanning of every extracted wheel / imported .py file
     # dominates Windows runner time for a large Python/JAX dependency tree.
     # Excluding the workspace (which holds the copied .venv) removes that tax.
@@ -216,6 +231,18 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+
+    # Each `uv run --with-editable .` below builds a fresh ephemeral environment;
+    # across all automatons these exhaust the ~14 GB runner disk. Reclaim the
+    # large preinstalled toolchains we do not use first.
+    - name: Free disk space
+      shell: bash
+      run: |
+        echo "Disk before cleanup:"; df -h /
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        sudo docker image prune --all --force || true
+        echo "Disk after cleanup:"; df -h /
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
