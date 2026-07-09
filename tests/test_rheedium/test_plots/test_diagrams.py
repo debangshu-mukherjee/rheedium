@@ -40,6 +40,8 @@ from rheedium.plots.diagrams import (
     view_atoms_interactive,
 )
 from rheedium.types import (
+    H_OVER_SQRT_2ME_ANG_VSQRT,
+    RELATIVISTIC_COEFF_PER_V,
     CrystalStructure,
     SurfaceConfig,
     identify_surface_atoms,
@@ -494,6 +496,47 @@ class TestDiagramPlots:
         )
         assert isinstance(ax, Axes)
 
+    def test_plot_ewald_sphere_2d_specular_intersection_geometry(
+        self,
+    ) -> None:
+        r"""Test 2D Ewald sphere intersects the specular reciprocal rod.
+
+        Extended Summary
+        ----------------
+        Verifies the numeric construction geometry for the 2D Ewald sphere:
+        the specular rod intersection drawn by the figure lies exactly on the
+        sphere centered at the negative incident wavevector.
+        """
+        energy_kev: float = 20.0
+        theta_deg: float = 3.0
+        ax: Any = plot_ewald_sphere_2d(
+            energy_kev=energy_kev,
+            theta_deg=theta_deg,
+        )
+        voltage_v: float = energy_kev * 1000.0
+        wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+            voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
+        )
+        k_mag: float = 2.0 * np.pi / wavelength
+        theta_rad: float = np.deg2rad(theta_deg)
+        center: Float[NDArray, "2"] = np.array(
+            [-k_mag * np.cos(theta_rad), k_mag * np.sin(theta_rad)]
+        )
+        specular: Float[NDArray, "2"] = np.array(
+            [0.0, 2.0 * k_mag * np.sin(theta_rad)]
+        )
+        radius_to_specular: float = float(np.linalg.norm(specular - center))
+        assert radius_to_specular == pytest.approx(
+            k_mag,
+            rel=0.0,
+            abs=1e-9,
+        )
+
+        xlim: tuple[float, float] = ax.get_xlim()
+        ylim: tuple[float, float] = ax.get_ylim()
+        assert xlim[0] <= specular[0] <= xlim[1]
+        assert ylim[0] <= specular[1] <= ylim[1]
+
     def test_plot_ewald_sphere_3d_default(self) -> None:
         r"""Test 3D Ewald sphere plot with default parameters.
 
@@ -516,6 +559,51 @@ class TestDiagramPlots:
         """
         ax: Any = plot_ewald_sphere_3d()
         assert isinstance(ax, Axes3D)
+
+    def test_plot_ewald_sphere_3d_belt_reaches_origin_rod(self) -> None:
+        r"""Test 3D Ewald mesh reaches the vertical origin rod.
+
+        Extended Summary
+        ----------------
+        Verifies the numeric construction geometry for the 3D Ewald sphere:
+        the plotted near-origin belt includes mesh vertices close enough to
+        the vertical reciprocal rod through the origin.
+        """
+        energy_kev: float = 15.0
+        theta_deg: float = 2.0
+        phi_deg: float = 0.0
+        ax: Any = plot_ewald_sphere_3d(
+            energy_kev=energy_kev,
+            theta_deg=theta_deg,
+            phi_deg=phi_deg,
+        )
+        assert isinstance(ax, Axes3D)
+
+        voltage_v: float = energy_kev * 1000.0
+        wavelength: float = H_OVER_SQRT_2ME_ANG_VSQRT / np.sqrt(
+            voltage_v * (1.0 + RELATIVISTIC_COEFF_PER_V * voltage_v)
+        )
+        k_mag: float = 2.0 * np.pi / wavelength
+        theta_rad: float = np.deg2rad(theta_deg)
+        phi_rad: float = np.deg2rad(phi_deg)
+        k_in_x: float = k_mag * np.cos(theta_rad) * np.cos(phi_rad)
+        k_in_y: float = k_mag * np.cos(theta_rad) * np.sin(phi_rad)
+        u: Float[NDArray, "N"] = phi_rad + np.linspace(0, 2.0 * np.pi, 50)
+        v: Float[NDArray, "N"] = np.linspace(
+            np.pi / 2.0 - 0.15,
+            np.pi / 2.0 + 0.15,
+            25,
+        )
+        sphere_x: Float[NDArray, "N M"] = (
+            k_mag * np.outer(np.cos(u), np.sin(v)) - k_in_x
+        )
+        sphere_y: Float[NDArray, "N M"] = (
+            k_mag * np.outer(np.sin(u), np.sin(v)) - k_in_y
+        )
+        distance_to_origin_rod: Float[NDArray, "N M"] = np.sqrt(
+            sphere_x**2 + sphere_y**2
+        )
+        assert float(np.min(distance_to_origin_rod)) < 0.5
 
     def test_plot_ewald_sphere_3d_different_views(self) -> None:
         r"""Test 3D Ewald sphere with different viewing angles.

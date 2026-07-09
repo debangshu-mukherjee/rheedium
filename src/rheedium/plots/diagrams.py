@@ -975,11 +975,16 @@ def plot_ewald_sphere_2d(
     center_x: float = -k_in_x
     center_z: float = -k_in_z
     g_spacing: float = 2 * np.pi / lattice_spacing
+    specular_x: float = 0.0
+    specular_z: float = 2.0 * k_mag * np.sin(theta_rad)
     theta_sphere: Float[NDArray, "N"] = np.linspace(-np.pi / 4, np.pi / 4, 200)
     sphere_x: Float[NDArray, "N"] = center_x + k_mag * np.cos(theta_sphere)
     sphere_z: Float[NDArray, "N"] = center_z + k_mag * np.sin(theta_sphere)
     ax.plot(sphere_x, sphere_z, "b-", linewidth=2, label="Ewald sphere")
     rod_indices: Int[NDArray, "N"] = np.arange(-(n_rods // 2), n_rods // 2 + 1)
+    x_limit: float = max(
+        10.0, float(np.max(np.abs(rod_indices))) * g_spacing + 1.0
+    )
     for h in rod_indices:
         g_x: float = h * g_spacing
         ax.axvline(g_x, color="green", linestyle="-", linewidth=1.5, alpha=0.7)
@@ -991,30 +996,36 @@ def plot_ewald_sphere_2d(
         xytext=(-k_in_x, -k_in_z),
         arrowprops={"arrowstyle": "->", "color": "red", "lw": 2},
     )
+    label_x: float = -0.6 * x_limit
+    in_label_fraction: float = (label_x - center_x) / (0.0 - center_x)
+    in_label_z: float = center_z * (1.0 - in_label_fraction)
     ax.text(
-        -k_in_x / 2 - 0.5,
-        -k_in_z / 2 - 0.5,
+        label_x,
+        in_label_z + 0.4,
         "$\\mathbf{k}_{in}$",
         fontsize=12,
         color="red",
     )
-    k_out_x: float = k_mag * np.cos(theta_rad)
-    k_out_z: float = k_mag * np.sin(theta_rad)
     ax.annotate(
         "",
-        xy=(k_out_x, k_out_z),
-        xytext=(0, 0),
+        xy=(specular_x, specular_z),
+        xytext=(center_x, center_z),
         arrowprops={"arrowstyle": "->", "color": "purple", "lw": 2},
     )
+    out_label_fraction: float = (label_x - center_x) / (specular_x - center_x)
+    out_label_z: float = center_z + out_label_fraction * (
+        specular_z - center_z
+    )
     ax.text(
-        k_out_x / 2 + 0.5,
-        k_out_z / 2 + 0.5,
+        label_x,
+        out_label_z - 0.4,
         "$\\mathbf{k}_{out}$",
         fontsize=12,
         color="purple",
     )
     ax.plot(0, 0, "ko", markersize=8)
     ax.text(0.5, -0.5, "O", fontsize=12)
+    ax.plot(specular_x, specular_z, "o", color="purple", markersize=6)
     ax.plot(center_x, center_z, "b+", markersize=10)
     ax.axhline(0, color="gray", linestyle="-", linewidth=2)
     ax.text(-8, 0.3, "Surface", fontsize=10, color="gray")
@@ -1028,8 +1039,8 @@ def plot_ewald_sphere_2d(
     ax.set_aspect("equal")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper right", fontsize=10)
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-3, 5)
+    ax.set_xlim(-x_limit, x_limit)
+    ax.set_ylim(-3, max(5.0, specular_z + 1.0))
     return ax
 
 
@@ -1096,18 +1107,22 @@ def plot_ewald_sphere_3d(
     )
     k_mag: float = 2 * np.pi / wavelength
     g_spacing: float = 2 * np.pi / lattice_spacing
-    u: Float[NDArray, "N"] = np.linspace(0, 2 * np.pi, 50)
-    v: Float[NDArray, "N"] = np.linspace(0, np.pi / 4, 25)
-    sphere_x: Float[NDArray, "N M"] = k_mag * np.outer(np.cos(u), np.sin(v))
-    sphere_y: Float[NDArray, "N M"] = k_mag * np.outer(np.sin(u), np.sin(v))
-    sphere_z: Float[NDArray, "N M"] = k_mag * np.outer(
-        np.ones(np.size(u)), np.cos(v)
-    )
     theta_rad: float = np.deg2rad(theta_deg)
     phi_rad: float = np.deg2rad(phi_deg)
     k_in_x: float = k_mag * np.cos(theta_rad) * np.cos(phi_rad)
     k_in_y: float = k_mag * np.cos(theta_rad) * np.sin(phi_rad)
     k_in_z: float = -k_mag * np.sin(theta_rad)
+    u: Float[NDArray, "N"] = phi_rad + np.linspace(0, 2 * np.pi, 50)
+    v: Float[NDArray, "N"] = np.linspace(
+        np.pi / 2 - 0.15,
+        np.pi / 2 + 0.15,
+        25,
+    )
+    sphere_x: Float[NDArray, "N M"] = k_mag * np.outer(np.cos(u), np.sin(v))
+    sphere_y: Float[NDArray, "N M"] = k_mag * np.outer(np.sin(u), np.sin(v))
+    sphere_z: Float[NDArray, "N M"] = k_mag * np.outer(
+        np.ones(np.size(u)), np.cos(v)
+    )
     sphere_x = sphere_x - k_in_x
     sphere_y = sphere_y - k_in_y
     sphere_z = sphere_z - k_in_z
