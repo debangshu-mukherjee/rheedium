@@ -160,6 +160,39 @@ def _load_panel(panel: SweepPanel) -> RenderedPanel:
         data.close()
 
 
+def _display_window(
+    image: NDArray[np.float64],
+    extent_mm: tuple[float, float, float, float],
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Zoom to the intensity-carrying region, keeping the specular centered.
+
+    Uses intensity-weighted quantiles so faint rod tails do not blow the
+    window up to the full detector, and mirrors the x-window about x = 0 so
+    the specular rod stays visually centered.
+    """
+    height_px, width_px = image.shape
+    x_mm = np.linspace(extent_mm[0], extent_mm[1], width_px)
+    y_mm = np.linspace(extent_mm[2], extent_mm[3], height_px)
+    rows, cols = np.where(image > 1e-3)
+    if rows.size == 0:
+        return (extent_mm[0], extent_mm[1]), (extent_mm[2], extent_mm[3])
+    x_half = float(np.max(np.abs(x_mm[cols])))
+    # Rods extend upward with faint tails; cap the window at the height
+    # containing 98% of the above-threshold pixels instead of the extreme.
+    y_top = float(np.percentile(y_mm[rows], 98.0))
+    x_half = 1.3 * max(x_half, 5.0)
+    y_top = 1.2 * max(y_top, 5.0)
+    # Every panel gets the same window aspect (width : height) so the three
+    # mm-true (aspect="equal") axes render as identical rectangles instead
+    # of collapsing into thin columns when the content is taller than wide.
+    target_ratio = 1.4
+    if 2.0 * x_half < target_ratio * y_top:
+        x_half = 0.5 * target_ratio * y_top
+    else:
+        y_top = 2.0 * x_half / target_ratio
+    return (-x_half, x_half), (0.0, y_top)
+
+
 def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
     """Render a compact README gallery from tutorial sweep banks."""
     panels: tuple[RenderedPanel, ...] = tuple(
@@ -188,13 +221,16 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
         parameter_value: str = f"{panel.parameter_value:.0f}"
         if panel.parameter_unit:
             parameter_value = f"{parameter_value} {panel.parameter_unit}"
+        # Gamma-brighten the stored log-compressed frame so the fainter
+        # diffracted rods are visible next to the specular spot.
         image_artist: AxesImage = axis.imshow(
-            panel.image,
+            np.power(np.clip(panel.image, 0.0, 1.0), 0.4),
             cmap=create_phosphor_colormap(),
             extent=panel.extent_mm,
             origin="lower",
             vmin=0.0,
             vmax=1.0,
+            interpolation="bicubic",
         )
         image_artist.set_rasterized(True)
         axis.set_facecolor("#050505")
@@ -207,8 +243,9 @@ def export_readme_gallery(output_path: Path = README_GALLERY) -> Path:
             fontsize=11,
             pad=8,
         )
-        axis.set_xlim(panel.xlim_mm)
-        axis.set_ylim(panel.ylim_mm)
+        window_x, window_y = _display_window(panel.image, panel.extent_mm)
+        axis.set_xlim(window_x)
+        axis.set_ylim(window_y)
         axis.set_xlabel("detector x (mm)", color="#d6d6d6", fontsize=8)
         axis.set_ylabel("detector y (mm)", color="#d6d6d6", fontsize=8)
         axis.tick_params(colors="#b8b8b8", labelsize=7, length=2)
