@@ -1,4 +1,19 @@
-"""Contract tests for :mod:`rheedium.harness`."""
+"""Contract tests for :mod:`rheedium.harness.automaton`.
+
+Extended Summary
+----------------
+These tests exercise the automaton process boundary implemented in
+:mod:`rheedium.harness.automaton` through the public
+:mod:`rheedium.harness` package facade, which re-exports it. They cover the
+package re-export contract, the ``--describe`` schema, machine-input
+precedence, pre-flight validation, structured error emission, and
+deterministic result keys.
+
+Notes
+-----
+:see: rheedium.harness.automaton
+:see: rheedium.harness
+"""
 
 from __future__ import annotations
 
@@ -9,10 +24,12 @@ from typing import Any
 
 import pytest
 
+from rheedium import harness
 from rheedium.harness import (
     DESCRIBE_SCHEMA_VERSION,
     RESULT_SCHEMA_VERSION,
     Param,
+    automaton,
     experiment,
 )
 
@@ -56,6 +73,26 @@ def _dummy_experiment() -> Any:
         }
 
     return main
+
+
+def test_package_reexports_automaton_surface() -> None:
+    r"""The package facade re-exports the implementation module verbatim.
+
+    Extended Summary
+    ----------------
+    Guards the package split: :mod:`rheedium.harness` is a thin facade whose
+    public names are defined in :mod:`rheedium.harness.automaton`. Each name in
+    the package ``__all__`` must resolve to the identical object on the
+    implementation module, so importing from either location is equivalent.
+
+    Notes
+    -----
+    It iterates over ``rheedium.harness.__all__`` and asserts each name is
+    present on both modules and bound to the same object via identity.
+    """
+    for name in harness.__all__:
+        assert hasattr(automaton, name), f"{name} missing from automaton"
+        assert getattr(harness, name) is getattr(automaton, name)
 
 
 def test_describe_emits_parameter_schema(
