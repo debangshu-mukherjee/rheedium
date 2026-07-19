@@ -870,6 +870,39 @@ each pin that exact version in their PEP 723 header
   unpublished changes still uses `uv run --with-editable . automatons/<x>.py`,
   which overrides the pin (see the automatons plan §3).
 
+### Building and Releasing
+
+Packaging is **uv end-to-end**: the build backend is `uv_build` (see
+`[build-system]` in `pyproject.toml`) and releases go out with `uv publish` —
+no `setuptools`, `build`, or `twine` anywhere. CI's `build` job runs
+`uv build` and then installs the built wheel into a clean ephemeral
+environment and imports it (`uv run --isolated --no-project --with
+dist/rheedium-*.whl python -c "import rheedium"`), which verifies wheel
+contents, metadata, and dependency resolution in one uv-native step.
+
+```bash
+# Build the sdist and wheel into dist/
+uv build
+
+# Smoke-test the built wheel in a clean environment
+uv run --isolated --no-project --with dist/rheedium-*.whl \
+  python -c "import rheedium; print(rheedium.__version__)"
+
+# Publish to PyPI (uses a PyPI API token)
+UV_PUBLISH_TOKEN=<pypi-token> uv publish
+```
+
+Release checklist:
+
+1. Bump `[project].version` (CalVer) **and** run `automatons/bump_pin.py` in
+   the same commit (see *Versioning & release pins* above); update
+   `CHANGELOG.md`.
+2. Run the full wall (`ruff check src/ tests/`, `pydoclint src/`, `ty check`,
+   `pre-commit run --all-files`, `pytest`) at the release commit.
+3. `uv build` from a clean tree; run the wheel smoke-test above and confirm
+   the metadata carries `License-Expression: MIT`.
+4. Tag the release commit (`v<version>`), then `uv publish`.
+
 ## Getting Help
 
 - **Questions:** Open a discussion or issue

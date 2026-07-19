@@ -3,7 +3,8 @@ name = "rheedium"
 version = "2026.6.16"
 description = "Differentiable RHEED simulations and Reconstruction in JAX"
 authors = [{ name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov" }]
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 maintainers = [{ name = "Debangshu Mukherjee", email = "mukherjeed@ornl.gov" }]
 keywords = [
     "RHEED",
@@ -19,7 +20,6 @@ requires-python = ">3.11, <3.14"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -84,7 +84,6 @@ notebooks = [
 ]
 dev = [
     "rheedium[docs,test,notebooks]",
-    "build>=1.2.2.post1",
     "ruff>=0.12.9",
     "ty>=0.0.27",
     "pyright>=1.1.390",
@@ -115,7 +114,7 @@ Homepage = "https://github.com/debangshu-mukherjee/rheedium/"
 Documentation = "https://rheedium.readthedocs.io/"
 
 [build-system]
-requires = ["uv_build>=0.8.3,<0.9.0"]
+requires = ["uv_build>=0.10.4,<0.11.0"]
 build-backend = "uv_build"
 
 [tool.uv]

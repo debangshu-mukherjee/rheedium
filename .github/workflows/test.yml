@@ -208,15 +208,16 @@ jobs:
     - name: Set up Python
       run: uv python install ${{ needs.resolve-python.outputs.latest }}
 
-    - name: Install build dependencies
-      run: uv sync --extra dev
-
     - name: Build package
       run: uv build
 
-    - name: Check package metadata
+    - name: Check built artifacts
       run: |
-        uvx twine check dist/*
+        # Install the built wheel into a clean ephemeral environment and
+        # import the package — verifies wheel contents, metadata, and
+        # dependency resolution in one uv-native step.
+        uv run --isolated --no-project --with dist/rheedium-*.whl \
+          python -c "import rheedium; print(rheedium.__version__)"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v6
