@@ -235,7 +235,12 @@ def kinematic_spot_simulator(
     -----
     This simulator treats the reciprocal lattice as discrete 3D points.
     For surface-sensitive RHEED with continuous crystal truncation rods
-    (CTRs) and streak patterns, use `kinematic_ctr_simulator` instead.
+    (CTRs), use :func:`~rheedium.simul.ewald_simulator`, which solves the
+    exact rod-Ewald sphere intersection. For streak patterns, pass the
+    resulting sparse pattern to
+    :func:`~rheedium.simul.render_ctr_streaks_to_image`, or use the
+    ensemble orchestrator :func:`~rheedium.simul.simulate_detector_image`
+    with ``render.render_ctrs_as_streaks=True``.
 
     1. **Generate reciprocal lattice** --
        Create G(h,k,l) up to (hmax, kmax, lmax).
