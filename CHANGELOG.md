@@ -9,6 +9,18 @@ Each entry summarizes the commits that landed for that version bump in
 
 ## [Unreleased]
 
+### Plotting
+
+- Moved the dark-green anchor of `create_phosphor_colormap` from 0.4 to
+  0.15. The colormap previously returned near-black (green ≤ 0.05) across
+  its entire lower 40 %, so on the sparse, high-dynamic-range images
+  `plot_rheed` renders — a kinematic MgO pattern has 0.05 % of its pixels
+  above half peak — every reflection but the specular spot came out black
+  even with the default `intensity_scale="log"` compression. Mid-range
+  values now land on the green ramp (0.3 → RGB green 67, was 9). Endpoint
+  behavior is unchanged: 0 is black, 1 is the white bloom, green stays
+  monotonic and dominant at mid-range.
+
 ### Red-team remediation
 
 - Final integration (Phase 12). Regenerated the synthetic reference-image

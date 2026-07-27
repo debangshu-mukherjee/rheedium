@@ -63,7 +63,11 @@ def create_phosphor_colormap(
     1. **Define Color Anchors** --
        Set transition points and RGB values from black
        through dark green, bright green, lighter green,
-       to white bloom.
+       to white bloom. The dark-green anchor sits at 0.15
+       rather than mid-scale so the green ramp covers most
+       of the range: diffraction images are sparse, and an
+       anchor placed high leaves weak reflections rendered
+       as black even after log compression.
     2. **Extract Channel Data** --
        Separate positions and RGB values from color
        definitions into individual channel lists.
@@ -89,7 +93,7 @@ def create_phosphor_colormap(
         Tuple[scalar_float, Tuple[scalar_float, scalar_float, scalar_float]]
     ] = [
         (0.0, (0.0, 0.0, 0.0)),
-        (0.4, (0.0, 0.05, 0.0)),
+        (0.15, (0.0, 0.05, 0.0)),
         (0.7, (0.15, 0.85, 0.15)),
         (0.9, (0.45, 0.95, 0.45)),
         (1.0, (0.8, 1.0, 0.8)),
