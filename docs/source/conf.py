@@ -88,7 +88,8 @@ myst_enable_extensions = [
 # "autodoc": silence the non-actionable "error while formatting signature"
 # warnings emitted when sphinx_autodoc_typehints introspects @chex.all_variants
 # test methods (the generated ``test_*__with_jit`` / ``__without_jit`` variants
-# have no resolvable signature). See plans/exposing_tests_in_docs.md.
+# have no resolvable signature). See
+# rheedium-plans/plans/guides/exposing_tests_in_docs.md.
 suppress_warnings = ["myst.mathjax", "autodoc"]
 
 # Ensure MyST parses all dollar-delimited math correctly
@@ -227,7 +228,8 @@ autodoc_inherit_docstrings = True
 # gain. The source<->test :see: contract is enforced instead by the
 # bidirectionality guard test (tests/test_rheedium/test_see_bidirectional.py) plus
 # the warnings-as-errors (-W) docs build in documentation.yml. See
-# plans/implemented/testing_docs.md (T4). The nitpick_ignore list below is staged
+# rheedium-plans/plans/implemented/testing_docs.md (T4). The nitpick_ignore
+# list below is staged
 # for if/when strict -n is enabled; it is inert while nitpicky = False.
 nitpicky = False
 

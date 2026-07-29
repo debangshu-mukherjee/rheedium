@@ -14,27 +14,12 @@ notebooks/__pycache__/
 /tests/io/__pycache__/
 /envs/__pycache__/
 /data/
-/.claude/
-/.claude/ROADMAP.md
-/.claude/settings.local.json
-/.claude/RHEED_Physics.md
-/.claude/ROADMAP_multislice.md
-/.claude/XYZ_CIF_Unite.md
-/.claude/ROADMAP.md
-/.claude/*.md
-/.claude/FIX_PLAN.md
-/.claude/RED_TEAM_REPORT.md
-/.claude/FIX_PROGRESS.md
-/rheedium-plans/
-/rheedium-plans/*
-/rheedium-plans
 
 
 #Temp folder for image generation
 .tmp/
 .tmp/*.png
 *.py[cod]
-/plans/SKILL.md
 /openspec/
 /openspec/*
 /openspec/.ipynb_checkpoints/

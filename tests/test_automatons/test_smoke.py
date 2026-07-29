@@ -853,29 +853,6 @@ def test_g8_agent_guide_points_to_live_automaton_catalogs() -> None:
     assert "automatons/export_model.py" in text
 
 
-def test_g8_automatons_plan_graduated_to_implemented() -> None:
-    r"""The automaton plan has graduated out of ``plans/partial``.
-
-    Extended Summary
-    ----------------
-    Verifies the final G8 bookkeeping: after the docs gate closes, the plan
-    lives under ``plans/implemented`` and records A0 plus G0-G8 closure.
-
-    Notes
-    -----
-    This guards against future edits reviving the old partial-plan path after
-    the implementation has landed.
-    """
-    partial = _REPO_ROOT / "plans/partial/automatons_plan.md"
-    implemented = _REPO_ROOT / "plans/implemented/automatons_plan.md"
-    assert not partial.exists()
-    assert implemented.exists()
-    text = implemented.read_text(encoding="utf-8")
-    assert "Status: **implemented" in text
-    assert "A0 + G0-G8 closed" in text
-    assert "68 `tests/test_automatons` tests passing" in text
-
-
 def test_pins_match_pyproject_version() -> None:
     r"""Every automaton PEP 723 pin matches the current package version.
 
