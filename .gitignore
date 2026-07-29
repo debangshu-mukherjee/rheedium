@@ -25,6 +25,10 @@ notebooks/__pycache__/
 /.claude/FIX_PLAN.md
 /.claude/RED_TEAM_REPORT.md
 /.claude/FIX_PROGRESS.md
+/rheedium-plans/
+/rheedium-plans/*
+/rheedium-plans
+
 
 #Temp folder for image generation
 .tmp/
